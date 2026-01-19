@@ -1,0 +1,400 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useOrg } from '@/contexts/OrgContext';
+import { toast } from 'sonner';
+import type { Database } from '@/integrations/supabase/types';
+
+type Invoice = Database['public']['Tables']['invoices']['Row'];
+type InvoiceItem = Database['public']['Tables']['invoice_items']['Row'];
+type Payment = Database['public']['Tables']['payments']['Row'];
+type InvoiceStatus = Database['public']['Enums']['invoice_status'];
+
+export interface InvoiceWithDetails extends Invoice {
+  items?: InvoiceItem[];
+  payments?: Payment[];
+  payer_guardian?: { id: string; full_name: string; email: string | null } | null;
+  payer_student?: { id: string; first_name: string; last_name: string; email: string | null } | null;
+}
+
+export interface InvoiceFilters {
+  status?: InvoiceStatus | 'all';
+  payerType?: 'guardian' | 'student' | 'all';
+  payerId?: string;
+  teacherId?: string;
+  dueDateFrom?: string;
+  dueDateTo?: string;
+}
+
+export function useInvoices(filters: InvoiceFilters = {}) {
+  const { currentOrg } = useOrg();
+
+  return useQuery({
+    queryKey: ['invoices', currentOrg?.id, filters],
+    queryFn: async () => {
+      if (!currentOrg?.id) return [];
+
+      let query = supabase
+        .from('invoices')
+        .select(`
+          *,
+          payer_guardian:guardians(id, full_name, email),
+          payer_student:students(id, first_name, last_name, email)
+        `)
+        .eq('org_id', currentOrg.id)
+        .order('created_at', { ascending: false });
+
+      if (filters.status && filters.status !== 'all') {
+        query = query.eq('status', filters.status);
+      }
+
+      if (filters.dueDateFrom) {
+        query = query.gte('due_date', filters.dueDateFrom);
+      }
+
+      if (filters.dueDateTo) {
+        query = query.lte('due_date', filters.dueDateTo);
+      }
+
+      if (filters.payerId) {
+        if (filters.payerType === 'guardian') {
+          query = query.eq('payer_guardian_id', filters.payerId);
+        } else if (filters.payerType === 'student') {
+          query = query.eq('payer_student_id', filters.payerId);
+        }
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return data as InvoiceWithDetails[];
+    },
+    enabled: !!currentOrg?.id,
+  });
+}
+
+export function useInvoice(id: string | undefined) {
+  const { currentOrg } = useOrg();
+
+  return useQuery({
+    queryKey: ['invoice', id],
+    queryFn: async () => {
+      if (!id || !currentOrg?.id) return null;
+
+      const { data: invoice, error: invoiceError } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          payer_guardian:guardians(id, full_name, email, phone),
+          payer_student:students(id, first_name, last_name, email, phone)
+        `)
+        .eq('id', id)
+        .eq('org_id', currentOrg.id)
+        .single();
+
+      if (invoiceError) throw invoiceError;
+
+      const { data: items, error: itemsError } = await supabase
+        .from('invoice_items')
+        .select(`
+          *,
+          student:students(id, first_name, last_name),
+          linked_lesson:lessons(id, title, start_at)
+        `)
+        .eq('invoice_id', id)
+        .order('created_at', { ascending: true });
+
+      if (itemsError) throw itemsError;
+
+      const { data: payments, error: paymentsError } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('invoice_id', id)
+        .order('paid_at', { ascending: false });
+
+      if (paymentsError) throw paymentsError;
+
+      return {
+        ...invoice,
+        items: items || [],
+        payments: payments || [],
+      } as InvoiceWithDetails;
+    },
+    enabled: !!id && !!currentOrg?.id,
+  });
+}
+
+export function useInvoiceStats() {
+  const { currentOrg } = useOrg();
+
+  return useQuery({
+    queryKey: ['invoice-stats', currentOrg?.id],
+    queryFn: async () => {
+      if (!currentOrg?.id) return null;
+
+      const today = new Date().toISOString().split('T')[0];
+
+      const { data: invoices, error } = await supabase
+        .from('invoices')
+        .select('status, total_minor, due_date')
+        .eq('org_id', currentOrg.id);
+
+      if (error) throw error;
+
+      const stats = {
+        totalOutstanding: 0,
+        overdue: 0,
+        overdueCount: 0,
+        draft: 0,
+        draftCount: 0,
+        sent: 0,
+        sentCount: 0,
+        paid: 0,
+        paidCount: 0,
+      };
+
+      invoices?.forEach((inv) => {
+        if (inv.status === 'draft') {
+          stats.draft += inv.total_minor;
+          stats.draftCount++;
+        } else if (inv.status === 'sent') {
+          stats.sent += inv.total_minor;
+          stats.sentCount++;
+          stats.totalOutstanding += inv.total_minor;
+          if (inv.due_date < today) {
+            stats.overdue += inv.total_minor;
+            stats.overdueCount++;
+          }
+        } else if (inv.status === 'overdue') {
+          stats.overdue += inv.total_minor;
+          stats.overdueCount++;
+          stats.totalOutstanding += inv.total_minor;
+        } else if (inv.status === 'paid') {
+          stats.paid += inv.total_minor;
+          stats.paidCount++;
+        }
+      });
+
+      return stats;
+    },
+    enabled: !!currentOrg?.id,
+  });
+}
+
+export function useCreateInvoice() {
+  const queryClient = useQueryClient();
+  const { currentOrg } = useOrg();
+
+  return useMutation({
+    mutationFn: async (data: {
+      due_date: string;
+      payer_guardian_id?: string | null;
+      payer_student_id?: string | null;
+      notes?: string;
+      vat_rate?: number;
+      items: Array<{
+        description: string;
+        quantity: number;
+        unit_price_minor: number;
+        linked_lesson_id?: string | null;
+        student_id?: string | null;
+      }>;
+    }) => {
+      if (!currentOrg?.id) throw new Error('No organisation selected');
+
+      const subtotal = data.items.reduce(
+        (sum, item) => sum + item.quantity * item.unit_price_minor,
+        0
+      );
+      const vatRate = data.vat_rate ?? (currentOrg.vat_enabled ? currentOrg.vat_rate : 0);
+      const taxMinor = Math.round(subtotal * (vatRate / 100));
+      const totalMinor = subtotal + taxMinor;
+
+      const { data: invoice, error: invoiceError } = await supabase
+        .from('invoices')
+        .insert({
+          org_id: currentOrg.id,
+          invoice_number: '', // Will be auto-generated by trigger
+          due_date: data.due_date,
+          payer_guardian_id: data.payer_guardian_id || null,
+          payer_student_id: data.payer_student_id || null,
+          notes: data.notes || null,
+          vat_rate: vatRate,
+          subtotal_minor: subtotal,
+          tax_minor: taxMinor,
+          total_minor: totalMinor,
+          currency_code: currentOrg.currency_code,
+        })
+        .select()
+        .single();
+
+      if (invoiceError) throw invoiceError;
+
+      const itemsToInsert = data.items.map((item) => ({
+        invoice_id: invoice.id,
+        org_id: currentOrg.id,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price_minor: item.unit_price_minor,
+        amount_minor: item.quantity * item.unit_price_minor,
+        linked_lesson_id: item.linked_lesson_id || null,
+        student_id: item.student_id || null,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('invoice_items')
+        .insert(itemsToInsert);
+
+      if (itemsError) throw itemsError;
+
+      return invoice;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+      toast.success('Invoice created');
+    },
+    onError: (error) => {
+      toast.error('Failed to create invoice: ' + error.message);
+    },
+  });
+}
+
+export function useUpdateInvoiceStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: InvoiceStatus }) => {
+      const { error } = await supabase
+        .from('invoices')
+        .update({ status })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoice'] });
+      queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+    },
+    onError: (error) => {
+      toast.error('Failed to update invoice: ' + error.message);
+    },
+  });
+}
+
+export function useRecordPayment() {
+  const queryClient = useQueryClient();
+  const { currentOrg } = useOrg();
+
+  return useMutation({
+    mutationFn: async (data: {
+      invoice_id: string;
+      amount_minor: number;
+      method: Database['public']['Enums']['payment_method'];
+      provider_reference?: string;
+    }) => {
+      if (!currentOrg?.id) throw new Error('No organisation selected');
+
+      const { error: paymentError } = await supabase.from('payments').insert({
+        org_id: currentOrg.id,
+        invoice_id: data.invoice_id,
+        amount_minor: data.amount_minor,
+        currency_code: currentOrg.currency_code,
+        method: data.method,
+        provider: 'manual',
+        provider_reference: data.provider_reference || null,
+      });
+
+      if (paymentError) throw paymentError;
+
+      // Check if invoice is fully paid
+      const { data: invoice } = await supabase
+        .from('invoices')
+        .select('total_minor')
+        .eq('id', data.invoice_id)
+        .single();
+
+      const { data: payments } = await supabase
+        .from('payments')
+        .select('amount_minor')
+        .eq('invoice_id', data.invoice_id);
+
+      const totalPaid = payments?.reduce((sum, p) => sum + p.amount_minor, 0) || 0;
+
+      if (invoice && totalPaid >= invoice.total_minor) {
+        await supabase
+          .from('invoices')
+          .update({ status: 'paid' })
+          .eq('id', data.invoice_id);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoice'] });
+      queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+      toast.success('Payment recorded');
+    },
+    onError: (error) => {
+      toast.error('Failed to record payment: ' + error.message);
+    },
+  });
+}
+
+export function useUnbilledLessons(dateRange: { from: string; to: string }, teacherId?: string) {
+  const { currentOrg } = useOrg();
+
+  return useQuery({
+    queryKey: ['unbilled-lessons', currentOrg?.id, dateRange, teacherId],
+    queryFn: async () => {
+      if (!currentOrg?.id) return [];
+
+      // Get all lessons in range
+      let lessonsQuery = supabase
+        .from('lessons')
+        .select(`
+          id,
+          title,
+          start_at,
+          end_at,
+          teacher_user_id,
+          lesson_participants(
+            student:students(
+              id,
+              first_name,
+              last_name,
+              student_guardians(
+                guardian:guardians(id, full_name, email),
+                is_primary_payer
+              )
+            )
+          )
+        `)
+        .eq('org_id', currentOrg.id)
+        .eq('status', 'completed')
+        .gte('start_at', dateRange.from)
+        .lte('start_at', dateRange.to);
+
+      if (teacherId) {
+        lessonsQuery = lessonsQuery.eq('teacher_user_id', teacherId);
+      }
+
+      const { data: lessons, error: lessonsError } = await lessonsQuery;
+      if (lessonsError) throw lessonsError;
+
+      // Get already billed lesson IDs
+      const { data: billedItems, error: billedError } = await supabase
+        .from('invoice_items')
+        .select('linked_lesson_id')
+        .eq('org_id', currentOrg.id)
+        .not('linked_lesson_id', 'is', null);
+
+      if (billedError) throw billedError;
+
+      const billedLessonIds = new Set(billedItems?.map((i) => i.linked_lesson_id) || []);
+
+      // Filter out already billed lessons
+      return lessons?.filter((l) => !billedLessonIds.has(l.id)) || [];
+    },
+    enabled: !!currentOrg?.id && !!dateRange.from && !!dateRange.to,
+  });
+}
