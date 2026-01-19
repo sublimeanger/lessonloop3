@@ -148,6 +148,50 @@ export type Database = {
           },
         ]
       }
+      billing_runs: {
+        Row: {
+          created_at: string
+          created_by: string
+          end_date: string
+          id: string
+          org_id: string
+          run_type: Database["public"]["Enums"]["billing_run_type"]
+          start_date: string
+          status: Database["public"]["Enums"]["billing_run_status"]
+          summary: Json | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          end_date: string
+          id?: string
+          org_id: string
+          run_type?: Database["public"]["Enums"]["billing_run_type"]
+          start_date: string
+          status?: Database["public"]["Enums"]["billing_run_status"]
+          summary?: Json | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          end_date?: string
+          id?: string
+          org_id?: string
+          run_type?: Database["public"]["Enums"]["billing_run_type"]
+          start_date?: string
+          status?: Database["public"]["Enums"]["billing_run_status"]
+          summary?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       closure_dates: {
         Row: {
           applies_to_all_locations: boolean
@@ -271,6 +315,153 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_items: {
+        Row: {
+          amount_minor: number
+          created_at: string
+          description: string
+          id: string
+          invoice_id: string
+          linked_lesson_id: string | null
+          org_id: string
+          quantity: number
+          student_id: string | null
+          unit_price_minor: number
+        }
+        Insert: {
+          amount_minor: number
+          created_at?: string
+          description: string
+          id?: string
+          invoice_id: string
+          linked_lesson_id?: string | null
+          org_id: string
+          quantity?: number
+          student_id?: string | null
+          unit_price_minor: number
+        }
+        Update: {
+          amount_minor?: number
+          created_at?: string
+          description?: string
+          id?: string
+          invoice_id?: string
+          linked_lesson_id?: string | null
+          org_id?: string
+          quantity?: number
+          student_id?: string | null
+          unit_price_minor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_linked_lesson_id_fkey"
+            columns: ["linked_lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          created_at: string
+          currency_code: string
+          due_date: string
+          id: string
+          invoice_number: string
+          issue_date: string
+          notes: string | null
+          org_id: string
+          payer_guardian_id: string | null
+          payer_student_id: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          subtotal_minor: number
+          tax_minor: number
+          total_minor: number
+          updated_at: string
+          vat_rate: number
+        }
+        Insert: {
+          created_at?: string
+          currency_code?: string
+          due_date: string
+          id?: string
+          invoice_number: string
+          issue_date?: string
+          notes?: string | null
+          org_id: string
+          payer_guardian_id?: string | null
+          payer_student_id?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal_minor?: number
+          tax_minor?: number
+          total_minor?: number
+          updated_at?: string
+          vat_rate?: number
+        }
+        Update: {
+          created_at?: string
+          currency_code?: string
+          due_date?: string
+          id?: string
+          invoice_number?: string
+          issue_date?: string
+          notes?: string | null
+          org_id?: string
+          payer_guardian_id?: string | null
+          payer_student_id?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal_minor?: number
+          tax_minor?: number
+          total_minor?: number
+          updated_at?: string
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_payer_guardian_id_fkey"
+            columns: ["payer_guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_payer_student_id_fkey"
+            columns: ["payer_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
             referencedColumns: ["id"]
           },
         ]
@@ -604,6 +795,60 @@ export type Database = {
           vat_registration_number?: string | null
         }
         Relationships: []
+      }
+      payments: {
+        Row: {
+          amount_minor: number
+          created_at: string
+          currency_code: string
+          id: string
+          invoice_id: string
+          method: Database["public"]["Enums"]["payment_method"]
+          org_id: string
+          paid_at: string
+          provider: Database["public"]["Enums"]["payment_provider"]
+          provider_reference: string | null
+        }
+        Insert: {
+          amount_minor: number
+          created_at?: string
+          currency_code?: string
+          id?: string
+          invoice_id: string
+          method?: Database["public"]["Enums"]["payment_method"]
+          org_id: string
+          paid_at?: string
+          provider?: Database["public"]["Enums"]["payment_provider"]
+          provider_reference?: string | null
+        }
+        Update: {
+          amount_minor?: number
+          created_at?: string
+          currency_code?: string
+          id?: string
+          invoice_id?: string
+          method?: Database["public"]["Enums"]["payment_method"]
+          org_id?: string
+          paid_at?: string
+          provider?: Database["public"]["Enums"]["payment_provider"]
+          provider_reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -999,6 +1244,7 @@ export type Database = {
         Args: { _lesson_id: string; _user_id: string }
         Returns: boolean
       }
+      generate_invoice_number: { Args: { _org_id: string }; Returns: string }
       get_org_role: {
         Args: { _org_id: string; _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -1042,6 +1288,8 @@ export type Database = {
         | "cancelled_by_teacher"
         | "cancelled_by_student"
       billing_approach: "monthly" | "termly" | "custom"
+      billing_run_status: "pending" | "completed" | "failed"
+      billing_run_type: "monthly" | "term" | "custom"
       day_of_week:
         | "monday"
         | "tuesday"
@@ -1051,11 +1299,14 @@ export type Database = {
         | "saturday"
         | "sunday"
       employment_type: "employee" | "contractor"
+      invoice_status: "draft" | "sent" | "paid" | "overdue" | "void"
       lesson_status: "scheduled" | "completed" | "cancelled"
       lesson_type: "private" | "group"
       location_type: "school" | "studio" | "home" | "online"
       membership_status: "active" | "invited" | "disabled"
       org_type: "solo_teacher" | "studio" | "academy" | "agency"
+      payment_method: "card" | "bank_transfer" | "cash" | "other"
+      payment_provider: "stripe" | "manual"
       recurrence_pattern: "weekly"
       relationship_type: "mother" | "father" | "guardian" | "other"
       student_status: "active" | "inactive"
@@ -1195,6 +1446,8 @@ export const Constants = {
         "cancelled_by_student",
       ],
       billing_approach: ["monthly", "termly", "custom"],
+      billing_run_status: ["pending", "completed", "failed"],
+      billing_run_type: ["monthly", "term", "custom"],
       day_of_week: [
         "monday",
         "tuesday",
@@ -1205,11 +1458,14 @@ export const Constants = {
         "sunday",
       ],
       employment_type: ["employee", "contractor"],
+      invoice_status: ["draft", "sent", "paid", "overdue", "void"],
       lesson_status: ["scheduled", "completed", "cancelled"],
       lesson_type: ["private", "group"],
       location_type: ["school", "studio", "home", "online"],
       membership_status: ["active", "invited", "disabled"],
       org_type: ["solo_teacher", "studio", "academy", "agency"],
+      payment_method: ["card", "bank_transfer", "cash", "other"],
+      payment_provider: ["stripe", "manual"],
       recurrence_pattern: ["weekly"],
       relationship_type: ["mother", "father", "guardian", "other"],
       student_status: ["active", "inactive"],
