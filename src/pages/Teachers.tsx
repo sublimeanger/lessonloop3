@@ -40,6 +40,7 @@ interface Invite {
 
 export default function Teachers() {
   const { currentOrg, isOrgAdmin } = useOrg();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
@@ -49,7 +50,7 @@ export default function Teachers() {
   
   // Invite form
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'admin' | 'teacher'>('teacher');
+  const [inviteRole, setInviteRole] = useState<'admin' | 'teacher' | 'finance'>('teacher');
 
   const fetchTeachers = async () => {
     if (!currentOrg) return;
@@ -94,7 +95,7 @@ export default function Teachers() {
       .select('*')
       .eq('org_id', currentOrg.id)
       .is('accepted_at', null)
-      .in('role', ['admin', 'teacher']);
+      .in('role', ['admin', 'teacher', 'finance']);
     
     setInvites((inviteData || []) as Invite[]);
     setIsLoading(false);
@@ -111,11 +112,13 @@ export default function Teachers() {
     }
     
     setIsSaving(true);
-    const { error } = await supabase.from('invites').insert({
+    
+    // Create the invite
+    const { data: invite, error } = await supabase.from('invites').insert({
       org_id: currentOrg.id,
       email: inviteEmail.trim().toLowerCase(),
       role: inviteRole,
-    });
+    }).select().single();
     
     if (error) {
       if (error.message.includes('duplicate')) {
@@ -123,12 +126,39 @@ export default function Teachers() {
       } else {
         toast({ title: 'Error sending invite', description: error.message, variant: 'destructive' });
       }
-    } else {
-      toast({ title: 'Invite sent', description: `Invitation sent to ${inviteEmail}` });
-      setIsDialogOpen(false);
-      setInviteEmail('');
-      fetchTeachers();
+      setIsSaving(false);
+      return;
     }
+    
+    // Call edge function to send email
+    try {
+      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user?.id).single();
+      
+      await supabase.functions.invoke('send-invite-email', {
+        body: {
+          inviteId: invite.id,
+          orgId: currentOrg.id,
+          orgName: currentOrg.name,
+          recipientEmail: inviteEmail.trim().toLowerCase(),
+          recipientRole: inviteRole,
+          inviteToken: invite.token,
+          inviterName: profile?.full_name || 'A team member',
+        },
+      });
+      
+      toast({ title: 'Invite sent', description: `Invitation sent to ${inviteEmail}` });
+    } catch (emailError: any) {
+      // Invite created but email may not have sent
+      console.error('Email error:', emailError);
+      toast({ 
+        title: 'Invite created', 
+        description: 'Invite created but email may not have been sent. Share the invite link manually.',
+      });
+    }
+    
+    setIsDialogOpen(false);
+    setInviteEmail('');
+    fetchTeachers();
     setIsSaving(false);
   };
 
@@ -146,6 +176,7 @@ export default function Teachers() {
       case 'owner': return 'bg-primary text-primary-foreground';
       case 'admin': return 'bg-blue-500 text-white';
       case 'teacher': return 'bg-green-500 text-white';
+      case 'finance': return 'bg-amber-500 text-white';
       default: return 'bg-muted';
     }
   };
@@ -278,15 +309,20 @@ export default function Teachers() {
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
-              <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'admin' | 'teacher')}>
+              <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'admin' | 'teacher' | 'finance')}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="teacher">Teacher</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="finance">Finance</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                {inviteRole === 'admin' ? 'Admins can manage students, teachers, and billing.' : 'Teachers can view and manage their assigned students.'}
+                {inviteRole === 'admin' 
+                  ? 'Admins can manage students, teachers, and billing.' 
+                  : inviteRole === 'finance'
+                  ? 'Finance users can manage invoices and billing.'
+                  : 'Teachers can view and manage their assigned students.'}
               </p>
             </div>
           </div>

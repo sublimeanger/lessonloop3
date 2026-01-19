@@ -23,6 +23,7 @@ import InvoiceDetail from "./pages/InvoiceDetail";
 import Reports from "./pages/Reports";
 import Messages from "./pages/Messages";
 import Settings from "./pages/Settings";
+import AcceptInvite from "./pages/AcceptInvite";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
               <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
               <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+              <Route path="/accept-invite" element={<AcceptInvite />} />
               
               {/* Onboarding (requires auth but not onboarding completion) */}
               <Route path="/onboarding" element={

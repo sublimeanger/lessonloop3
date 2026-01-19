@@ -190,6 +190,59 @@ export type Database = {
           },
         ]
       }
+      message_log: {
+        Row: {
+          body: string
+          created_at: string
+          error_message: string | null
+          id: string
+          message_type: string
+          org_id: string
+          recipient_email: string
+          recipient_name: string | null
+          related_id: string | null
+          sent_at: string | null
+          status: string
+          subject: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_type: string
+          org_id: string
+          recipient_email: string
+          recipient_name?: string | null
+          related_id?: string | null
+          sent_at?: string | null
+          status?: string
+          subject: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_type?: string
+          org_id?: string
+          recipient_email?: string
+          recipient_name?: string | null
+          related_id?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_memberships: {
         Row: {
           created_at: string
@@ -585,6 +638,7 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_user_id_by_email: { Args: { _email: string }; Returns: string }
       get_user_org_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_roles: {
         Args: { _user_id: string }
