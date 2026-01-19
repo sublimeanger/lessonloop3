@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance_records: {
+        Row: {
+          attendance_status: Database["public"]["Enums"]["attendance_status"]
+          cancellation_reason: string | null
+          id: string
+          lesson_id: string
+          org_id: string
+          recorded_at: string
+          recorded_by: string
+          student_id: string
+        }
+        Insert: {
+          attendance_status?: Database["public"]["Enums"]["attendance_status"]
+          cancellation_reason?: string | null
+          id?: string
+          lesson_id: string
+          org_id: string
+          recorded_at?: string
+          recorded_by: string
+          student_id: string
+        }
+        Update: {
+          attendance_status?: Database["public"]["Enums"]["attendance_status"]
+          cancellation_reason?: string | null
+          id?: string
+          lesson_id?: string
+          org_id?: string
+          recorded_at?: string
+          recorded_by?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_records_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      availability_blocks: {
+        Row: {
+          created_at: string
+          day_of_week: Database["public"]["Enums"]["day_of_week"]
+          end_time_local: string
+          id: string
+          org_id: string
+          start_time_local: string
+          teacher_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: Database["public"]["Enums"]["day_of_week"]
+          end_time_local: string
+          id?: string
+          org_id: string
+          start_time_local: string
+          teacher_user_id: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: Database["public"]["Enums"]["day_of_week"]
+          end_time_local?: string
+          id?: string
+          org_id?: string
+          start_time_local?: string
+          teacher_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_blocks_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       availability_templates: {
         Row: {
           created_at: string
@@ -130,6 +223,141 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_participants: {
+        Row: {
+          created_at: string
+          id: string
+          lesson_id: string
+          org_id: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lesson_id: string
+          org_id: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          org_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_participants_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_participants_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_participants_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lessons: {
+        Row: {
+          created_at: string
+          created_by: string
+          end_at: string
+          id: string
+          lesson_type: Database["public"]["Enums"]["lesson_type"]
+          location_id: string | null
+          notes_private: string | null
+          notes_shared: string | null
+          online_meeting_url: string | null
+          org_id: string
+          recurrence_id: string | null
+          room_id: string | null
+          start_at: string
+          status: Database["public"]["Enums"]["lesson_status"]
+          teacher_user_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          end_at: string
+          id?: string
+          lesson_type?: Database["public"]["Enums"]["lesson_type"]
+          location_id?: string | null
+          notes_private?: string | null
+          notes_shared?: string | null
+          online_meeting_url?: string | null
+          org_id: string
+          recurrence_id?: string | null
+          room_id?: string | null
+          start_at: string
+          status?: Database["public"]["Enums"]["lesson_status"]
+          teacher_user_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          end_at?: string
+          id?: string
+          lesson_type?: Database["public"]["Enums"]["lesson_type"]
+          location_id?: string | null
+          notes_private?: string | null
+          notes_shared?: string | null
+          online_meeting_url?: string | null
+          org_id?: string
+          recurrence_id?: string | null
+          room_id?: string | null
+          start_at?: string
+          status?: Database["public"]["Enums"]["lesson_status"]
+          teacher_user_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lessons_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_recurrence_id_fkey"
+            columns: ["recurrence_id"]
+            isOneToOne: false
+            referencedRelation: "recurrence_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
             referencedColumns: ["id"]
           },
         ]
@@ -411,6 +639,50 @@ export type Database = {
           },
         ]
       }
+      recurrence_rules: {
+        Row: {
+          created_at: string
+          days_of_week: number[]
+          end_date: string | null
+          id: string
+          interval_weeks: number
+          org_id: string
+          pattern_type: Database["public"]["Enums"]["recurrence_pattern"]
+          start_date: string
+          timezone: string
+        }
+        Insert: {
+          created_at?: string
+          days_of_week?: number[]
+          end_date?: string | null
+          id?: string
+          interval_weeks?: number
+          org_id: string
+          pattern_type?: Database["public"]["Enums"]["recurrence_pattern"]
+          start_date: string
+          timezone?: string
+        }
+        Update: {
+          created_at?: string
+          days_of_week?: number[]
+          end_date?: string | null
+          id?: string
+          interval_weeks?: number
+          org_id?: string
+          pattern_type?: Database["public"]["Enums"]["recurrence_pattern"]
+          start_date?: string
+          timezone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurrence_rules_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rooms: {
         Row: {
           capacity: number | null
@@ -608,6 +880,44 @@ export type Database = {
           },
         ]
       }
+      time_off_blocks: {
+        Row: {
+          created_at: string
+          end_at: string
+          id: string
+          org_id: string
+          reason: string | null
+          start_at: string
+          teacher_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_at: string
+          id?: string
+          org_id: string
+          reason?: string | null
+          start_at: string
+          teacher_user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_at?: string
+          id?: string
+          org_id?: string
+          reason?: string | null
+          start_at?: string
+          teacher_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_off_blocks_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -634,6 +944,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_edit_lesson: {
+        Args: { _lesson_id: string; _user_id: string }
+        Returns: boolean
+      }
       get_org_role: {
         Args: { _org_id: string; _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -670,6 +984,12 @@ export type Database = {
     }
     Enums: {
       app_role: "owner" | "admin" | "teacher" | "finance" | "parent"
+      attendance_status:
+        | "present"
+        | "absent"
+        | "late"
+        | "cancelled_by_teacher"
+        | "cancelled_by_student"
       billing_approach: "monthly" | "termly" | "custom"
       day_of_week:
         | "monday"
@@ -680,9 +1000,12 @@ export type Database = {
         | "saturday"
         | "sunday"
       employment_type: "employee" | "contractor"
+      lesson_status: "scheduled" | "completed" | "cancelled"
+      lesson_type: "private" | "group"
       location_type: "school" | "studio" | "home" | "online"
       membership_status: "active" | "invited" | "disabled"
       org_type: "solo_teacher" | "studio" | "academy" | "agency"
+      recurrence_pattern: "weekly"
       relationship_type: "mother" | "father" | "guardian" | "other"
       student_status: "active" | "inactive"
     }
@@ -813,6 +1136,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "admin", "teacher", "finance", "parent"],
+      attendance_status: [
+        "present",
+        "absent",
+        "late",
+        "cancelled_by_teacher",
+        "cancelled_by_student",
+      ],
       billing_approach: ["monthly", "termly", "custom"],
       day_of_week: [
         "monday",
@@ -824,9 +1154,12 @@ export const Constants = {
         "sunday",
       ],
       employment_type: ["employee", "contractor"],
+      lesson_status: ["scheduled", "completed", "cancelled"],
+      lesson_type: ["private", "group"],
       location_type: ["school", "studio", "home", "online"],
       membership_status: ["active", "invited", "disabled"],
       org_type: ["solo_teacher", "studio", "academy", "agency"],
+      recurrence_pattern: ["weekly"],
       relationship_type: ["mother", "father", "guardian", "other"],
       student_status: ["active", "inactive"],
     },
