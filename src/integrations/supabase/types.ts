@@ -14,9 +14,128 @@ export type Database = {
   }
   public: {
     Tables: {
+      invites: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          org_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          org_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          org_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_memberships: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          status: Database["public"]["Enums"]["membership_status"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["membership_status"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["membership_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_memberships_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organisations: {
+        Row: {
+          country_code: string
+          created_at: string
+          created_by: string
+          currency_code: string
+          id: string
+          name: string
+          org_type: Database["public"]["Enums"]["org_type"]
+          timezone: string
+          vat_enabled: boolean
+          vat_rate: number
+          vat_registration_number: string | null
+        }
+        Insert: {
+          country_code?: string
+          created_at?: string
+          created_by: string
+          currency_code?: string
+          id?: string
+          name: string
+          org_type?: Database["public"]["Enums"]["org_type"]
+          timezone?: string
+          vat_enabled?: boolean
+          vat_rate?: number
+          vat_registration_number?: string | null
+        }
+        Update: {
+          country_code?: string
+          created_at?: string
+          created_by?: string
+          currency_code?: string
+          id?: string
+          name?: string
+          org_type?: Database["public"]["Enums"]["org_type"]
+          timezone?: string
+          vat_enabled?: boolean
+          vat_rate?: number
+          vat_registration_number?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
+          current_org_id: string | null
           email: string | null
           full_name: string | null
           has_completed_onboarding: boolean
@@ -26,6 +145,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          current_org_id?: string | null
           email?: string | null
           full_name?: string | null
           has_completed_onboarding?: boolean
@@ -35,6 +155,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          current_org_id?: string | null
           email?: string | null
           full_name?: string | null
           has_completed_onboarding?: boolean
@@ -42,7 +163,15 @@ export type Database = {
           phone?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_current_org_id_fkey"
+            columns: ["current_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -70,9 +199,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_org_role: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_user_org_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_roles: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"][]
+      }
+      has_org_role: {
+        Args: {
+          _org_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
       }
       has_role: {
         Args: {
@@ -81,9 +223,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_org_admin: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_org_member: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "owner" | "admin" | "teacher" | "finance" | "parent"
+      membership_status: "active" | "invited" | "disabled"
+      org_type: "solo_teacher" | "studio" | "academy" | "agency"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -212,6 +364,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "admin", "teacher", "finance", "parent"],
+      membership_status: ["active", "invited", "disabled"],
+      org_type: ["solo_teacher", "studio", "academy", "agency"],
     },
   },
 } as const

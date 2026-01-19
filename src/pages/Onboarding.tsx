@@ -1,22 +1,52 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrg, OrgType } from '@/contexts/OrgContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2, User, Users, Building, Building2 } from 'lucide-react';
 
 const steps = [
   { id: 1, title: 'Your details', description: 'Tell us about yourself' },
-  { id: 2, title: 'Organisation', description: 'Set up your teaching business' },
+  { id: 2, title: 'Your organisation', description: 'Set up your teaching business' },
   { id: 3, title: 'Get started', description: "You're all set!" },
+];
+
+const orgTypes: { value: OrgType; label: string; description: string; icon: React.ReactNode }[] = [
+  { 
+    value: 'solo_teacher', 
+    label: 'Solo Teacher', 
+    description: 'I teach on my own',
+    icon: <User className="h-5 w-5" />
+  },
+  { 
+    value: 'studio', 
+    label: 'Studio', 
+    description: 'Small team, shared space',
+    icon: <Users className="h-5 w-5" />
+  },
+  { 
+    value: 'academy', 
+    label: 'Academy', 
+    description: 'Multiple teachers & locations',
+    icon: <Building className="h-5 w-5" />
+  },
+  { 
+    value: 'agency', 
+    label: 'Agency', 
+    description: 'Manage teachers for clients',
+    icon: <Building2 className="h-5 w-5" />
+  },
 ];
 
 export default function Onboarding() {
   const navigate = useNavigate();
   const { profile, updateProfile } = useAuth();
+  const { createOrganisation, organisations } = useOrg();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -25,7 +55,7 @@ export default function Onboarding() {
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [phone, setPhone] = useState(profile?.phone || '');
   const [orgName, setOrgName] = useState('');
-  const [orgType, setOrgType] = useState('');
+  const [orgType, setOrgType] = useState<OrgType>('solo_teacher');
 
   const handleNext = async () => {
     if (currentStep === 1) {
@@ -56,7 +86,25 @@ export default function Onboarding() {
       }
       setCurrentStep(2);
     } else if (currentStep === 2) {
-      // For now just move forward, org setup can be expanded later
+      // Create organisation
+      const name = orgName.trim() || `${fullName.trim()}'s Music`;
+      
+      setIsLoading(true);
+      const { org, error } = await createOrganisation({
+        name,
+        org_type: orgType,
+      });
+      setIsLoading(false);
+      
+      if (error) {
+        toast({
+          title: 'Failed to create organisation',
+          description: error.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+      
       setCurrentStep(3);
     } else if (currentStep === 3) {
       // Mark onboarding as complete
@@ -142,27 +190,49 @@ export default function Onboarding() {
             {currentStep === 2 && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="orgName">Organisation name (optional)</Label>
+                  <Label htmlFor="orgName">Organisation name</Label>
                   <Input 
                     id="orgName" 
-                    placeholder="Smith Music Academy"
+                    placeholder={`${fullName.trim() || 'Your'}'s Music`}
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
                     disabled={isLoading}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Leave blank if you're teaching as a solo teacher
+                    This is how your teaching business will be displayed
                   </p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="orgType">Type of teaching</Label>
-                  <Input 
-                    id="orgType" 
-                    placeholder="Piano lessons, Music school, etc." 
-                    value={orgType}
-                    onChange={(e) => setOrgType(e.target.value)}
-                    disabled={isLoading}
-                  />
+                
+                <div className="space-y-3">
+                  <Label>What best describes your setup?</Label>
+                  <RadioGroup 
+                    value={orgType} 
+                    onValueChange={(v) => setOrgType(v as OrgType)}
+                    className="grid gap-3"
+                  >
+                    {orgTypes.map((type) => (
+                      <div key={type.value}>
+                        <RadioGroupItem
+                          value={type.value}
+                          id={type.value}
+                          className="peer sr-only"
+                          disabled={isLoading}
+                        />
+                        <Label
+                          htmlFor={type.value}
+                          className="flex items-center gap-4 rounded-lg border bg-card p-4 cursor-pointer transition-colors hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
+                        >
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                            {type.icon}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium">{type.label}</div>
+                            <div className="text-sm text-muted-foreground">{type.description}</div>
+                          </div>
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
                 </div>
               </>
             )}

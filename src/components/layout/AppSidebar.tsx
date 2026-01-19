@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
+import { useOrg } from '@/contexts/OrgContext';
 import {
   Sidebar,
   SidebarContent,
@@ -60,19 +61,20 @@ const parentNav: NavItem[] = [
   { title: 'Messages', url: '/messages', icon: MessageSquare },
 ];
 
-function getNavItems(roles: AppRole[]): NavItem[] {
-  // Priority: owner/admin > teacher > parent
-  if (roles.includes('owner') || roles.includes('admin')) {
-    return ownerAdminNav;
+function getNavItems(role: AppRole | null): NavItem[] {
+  if (!role) return ownerAdminNav;
+  
+  switch (role) {
+    case 'owner':
+    case 'admin':
+      return ownerAdminNav;
+    case 'teacher':
+      return teacherNav;
+    case 'parent':
+      return parentNav;
+    default:
+      return ownerAdminNav;
   }
-  if (roles.includes('teacher')) {
-    return teacherNav;
-  }
-  if (roles.includes('parent')) {
-    return parentNav;
-  }
-  // Default to owner nav for new users
-  return ownerAdminNav;
 }
 
 function getInitials(name: string | null | undefined): string {
@@ -85,18 +87,22 @@ function getInitials(name: string | null | undefined): string {
     .slice(0, 2);
 }
 
-function getPrimaryRole(roles: AppRole[]): string {
-  if (roles.includes('owner')) return 'Owner';
-  if (roles.includes('admin')) return 'Admin';
-  if (roles.includes('teacher')) return 'Teacher';
-  if (roles.includes('finance')) return 'Finance';
-  if (roles.includes('parent')) return 'Parent';
-  return 'User';
+function getRoleLabel(role: AppRole | null): string {
+  if (!role) return 'User';
+  const labels: Record<AppRole, string> = {
+    owner: 'Owner',
+    admin: 'Admin',
+    teacher: 'Teacher',
+    finance: 'Finance',
+    parent: 'Parent',
+  };
+  return labels[role];
 }
 
 export function AppSidebar() {
-  const { profile, roles, signOut } = useAuth();
-  const navItems = getNavItems(roles);
+  const { profile, signOut } = useAuth();
+  const { currentRole } = useOrg();
+  const navItems = getNavItems(currentRole);
 
   return (
     <Sidebar className="border-r">
@@ -138,7 +144,7 @@ export function AppSidebar() {
               {profile?.full_name || 'User'}
             </div>
             <div className="truncate text-xs text-muted-foreground">
-              {getPrimaryRole(roles)}
+              {getRoleLabel(currentRole)}
             </div>
           </div>
           <Button
