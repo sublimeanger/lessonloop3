@@ -4,6 +4,7 @@ import { useAuth, AppRole } from './AuthContext';
 
 export type OrgType = 'solo_teacher' | 'studio' | 'academy' | 'agency';
 export type MembershipStatus = 'active' | 'invited' | 'disabled';
+export type BillingApproach = 'monthly' | 'termly' | 'custom';
 
 export interface Organisation {
   id: string;
@@ -15,6 +16,8 @@ export interface Organisation {
   vat_enabled: boolean;
   vat_rate: number;
   vat_registration_number: string | null;
+  billing_approach: BillingApproach;
+  default_lesson_length_mins: number;
   created_by: string;
   created_at: string;
 }
