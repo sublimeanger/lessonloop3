@@ -7,8 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { OrgMembersTab } from '@/components/settings/OrgMembersTab';
+import { useOrg } from '@/contexts/OrgContext';
 
 export default function Settings() {
+  const { isOrgAdmin, isOrgOwner } = useOrg();
+  
   return (
     <AppLayout>
       <PageHeader
@@ -24,6 +28,9 @@ export default function Settings() {
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="organisation">Organisation</TabsTrigger>
+          {(isOrgAdmin || isOrgOwner) && (
+            <TabsTrigger value="members">Members</TabsTrigger>
+          )}
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
         </TabsList>
@@ -91,6 +98,12 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {(isOrgAdmin || isOrgOwner) && (
+          <TabsContent value="members">
+            <OrgMembersTab />
+          </TabsContent>
+        )}
 
         <TabsContent value="billing">
           <Card>
