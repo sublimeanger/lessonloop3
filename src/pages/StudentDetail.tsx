@@ -1,93 +1,426 @@
-import { useParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, Edit, Mail, Phone } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { useOrg } from '@/contexts/OrgContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Loader2, Mail, Phone, Calendar, Edit, Trash2, Plus, UserPlus } from 'lucide-react';
+
+type StudentStatus = 'active' | 'inactive';
+type RelationshipType = 'mother' | 'father' | 'guardian' | 'other';
+
+interface Student {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  dob: string | null;
+  notes: string | null;
+  status: StudentStatus;
+}
+
+interface Guardian {
+  id: string;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+}
+
+interface StudentGuardian {
+  id: string;
+  guardian_id: string;
+  relationship: RelationshipType;
+  is_primary_payer: boolean;
+  guardian?: Guardian;
+}
 
 export default function StudentDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { currentOrg, isOrgAdmin } = useOrg();
+  const { toast } = useToast();
+  
+  const [student, setStudent] = useState<Student | null>(null);
+  const [guardians, setGuardians] = useState<StudentGuardian[]>([]);
+  const [allGuardians, setAllGuardians] = useState<Guardian[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isGuardianDialogOpen, setIsGuardianDialogOpen] = useState(false);
+  
+  // Edit form
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [dob, setDob] = useState('');
+  const [notes, setNotes] = useState('');
+  
+  // Guardian form
+  const [selectedGuardianId, setSelectedGuardianId] = useState('');
+  const [newGuardianName, setNewGuardianName] = useState('');
+  const [newGuardianEmail, setNewGuardianEmail] = useState('');
+  const [newGuardianPhone, setNewGuardianPhone] = useState('');
+  const [relationship, setRelationship] = useState<RelationshipType>('guardian');
+  const [isPrimaryPayer, setIsPrimaryPayer] = useState(false);
+  const [isNewGuardian, setIsNewGuardian] = useState(false);
 
-  // Placeholder student data
-  const student = {
-    id,
-    name: 'Emma Wilson',
-    email: 'emma.wilson@example.com',
-    phone: '+44 7700 900123',
-    instrument: 'Piano',
-    grade: 'Grade 5',
-    guardian: 'Sarah Wilson',
-    guardianEmail: 'sarah.wilson@example.com',
+  const fetchStudent = async () => {
+    if (!id || !currentOrg) return;
+    setIsLoading(true);
+    
+    const { data, error } = await supabase
+      .from('students')
+      .select('*')
+      .eq('id', id)
+      .eq('org_id', currentOrg.id)
+      .maybeSingle();
+    
+    if (error || !data) {
+      toast({ title: 'Student not found', variant: 'destructive' });
+      navigate('/students');
+      return;
+    }
+    
+    setStudent(data as Student);
+    setFirstName(data.first_name);
+    setLastName(data.last_name);
+    setEmail(data.email || '');
+    setPhone(data.phone || '');
+    setDob(data.dob || '');
+    setNotes(data.notes || '');
+    setIsLoading(false);
   };
+
+  const fetchGuardians = async () => {
+    if (!id || !currentOrg) return;
+    
+    const { data } = await supabase
+      .from('student_guardians')
+      .select(`*, guardian:guardians(*)`)
+      .eq('student_id', id);
+    
+    setGuardians((data || []).map((sg: any) => ({
+      ...sg,
+      guardian: sg.guardian as Guardian
+    })));
+    
+    const { data: allG } = await supabase
+      .from('guardians')
+      .select('*')
+      .eq('org_id', currentOrg.id);
+    
+    setAllGuardians((allG || []) as Guardian[]);
+  };
+
+  useEffect(() => {
+    fetchStudent();
+    fetchGuardians();
+  }, [id, currentOrg?.id]);
+
+  const handleSave = async () => {
+    if (!student) return;
+    setIsSaving(true);
+    
+    const { error } = await supabase
+      .from('students')
+      .update({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        email: email.trim() || null,
+        phone: phone.trim() || null,
+        dob: dob || null,
+        notes: notes.trim() || null,
+      })
+      .eq('id', student.id);
+    
+    if (error) {
+      toast({ title: 'Error saving', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Student updated' });
+      setIsEditing(false);
+      fetchStudent();
+    }
+    setIsSaving(false);
+  };
+
+  const handleDelete = async () => {
+    if (!student) return;
+    const { error } = await supabase.from('students').delete().eq('id', student.id);
+    if (error) {
+      toast({ title: 'Error deleting', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Student deleted' });
+      navigate('/students');
+    }
+  };
+
+  const handleAddGuardian = async () => {
+    if (!student || !currentOrg) return;
+    setIsSaving(true);
+    
+    let guardianId = selectedGuardianId;
+    
+    if (isNewGuardian) {
+      if (!newGuardianName.trim()) {
+        toast({ title: 'Name required', variant: 'destructive' });
+        setIsSaving(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('guardians')
+        .insert({
+          org_id: currentOrg.id,
+          full_name: newGuardianName.trim(),
+          email: newGuardianEmail.trim() || null,
+          phone: newGuardianPhone.trim() || null,
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        toast({ title: 'Error creating guardian', description: error.message, variant: 'destructive' });
+        setIsSaving(false);
+        return;
+      }
+      guardianId = data.id;
+    }
+    
+    if (!guardianId) {
+      toast({ title: 'Select a guardian', variant: 'destructive' });
+      setIsSaving(false);
+      return;
+    }
+    
+    const { error } = await supabase
+      .from('student_guardians')
+      .insert({
+        org_id: currentOrg.id,
+        student_id: student.id,
+        guardian_id: guardianId,
+        relationship,
+        is_primary_payer: isPrimaryPayer,
+      });
+    
+    if (error) {
+      toast({ title: 'Error linking guardian', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Guardian added' });
+      setIsGuardianDialogOpen(false);
+      resetGuardianForm();
+      fetchGuardians();
+    }
+    setIsSaving(false);
+  };
+
+  const resetGuardianForm = () => {
+    setSelectedGuardianId('');
+    setNewGuardianName('');
+    setNewGuardianEmail('');
+    setNewGuardianPhone('');
+    setRelationship('guardian');
+    setIsPrimaryPayer(false);
+    setIsNewGuardian(false);
+  };
+
+  const removeGuardian = async (sgId: string) => {
+    const { error } = await supabase.from('student_guardians').delete().eq('id', sgId);
+    if (error) {
+      toast({ title: 'Error removing guardian', description: error.message, variant: 'destructive' });
+    } else {
+      fetchGuardians();
+    }
+  };
+
+  if (isLoading || !student) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const fullName = `${student.first_name} ${student.last_name}`;
 
   return (
     <AppLayout>
       <PageHeader
-        title={student.name}
-        description={`${student.instrument} • ${student.grade}`}
+        title={fullName}
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Students', href: '/students' },
-          { label: student.name },
+          { label: fullName },
         ]}
         actions={
-          <Button variant="outline" className="gap-2">
-            <Edit className="h-4 w-4" />
-            Edit
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsEditing(!isEditing)}>
+              <Edit className="mr-2 h-4 w-4" />
+              {isEditing ? 'Cancel' : 'Edit'}
+            </Button>
+            {isOrgAdmin && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete student?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete {fullName} and all their records.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         }
       />
 
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="lessons">Lessons</TabsTrigger>
+          <TabsTrigger value="guardians">Guardians</TabsTrigger>
+          <TabsTrigger value="lessons">Lesson History</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Contact Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{student.email}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{student.phone}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Guardian Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="font-medium">{student.guardian}</div>
-                  <div className="text-sm text-muted-foreground">{student.guardianEmail}</div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
+        <TabsContent value="overview">
           <Card>
             <CardHeader>
-              <CardTitle>Upcoming Lessons</CardTitle>
-              <CardDescription>Next scheduled lessons for this student</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Student Information</CardTitle>
+                  <CardDescription>Personal details and contact information</CardDescription>
+                </div>
+                <Badge variant={student.status === 'active' ? 'default' : 'secondary'}>{student.status}</Badge>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-center py-8 text-muted-foreground">
-                <Calendar className="mr-2 h-4 w-4" />
-                <span className="text-sm">No upcoming lessons scheduled</span>
+              {isEditing ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>First name</Label>
+                      <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Last name</Label>
+                      <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Email</Label>
+                      <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Phone</Label>
+                      <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date of birth</Label>
+                    <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Notes</Label>
+                    <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+                  </div>
+                  <Button onClick={handleSave} disabled={isSaving}>
+                    {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {student.email && (
+                      <div className="flex items-center gap-3">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <span>{student.email}</span>
+                      </div>
+                    )}
+                    {student.phone && (
+                      <div className="flex items-center gap-3">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <span>{student.phone}</span>
+                      </div>
+                    )}
+                    {student.dob && (
+                      <div className="flex items-center gap-3">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>{new Date(student.dob).toLocaleDateString('en-GB')}</span>
+                      </div>
+                    )}
+                  </div>
+                  {student.notes && (
+                    <div className="rounded-lg bg-muted p-3">
+                      <p className="text-sm">{student.notes}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="guardians">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Guardians</CardTitle>
+                <CardDescription>Parents and guardians linked to this student</CardDescription>
               </div>
+              <Button onClick={() => setIsGuardianDialogOpen(true)} size="sm" className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Guardian
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {guardians.length === 0 ? (
+                <div className="flex flex-col items-center py-8 text-center">
+                  <UserPlus className="h-10 w-10 text-muted-foreground/40" />
+                  <p className="mt-3 font-medium">No guardians linked</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Add a parent or guardian for billing and communication.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {guardians.map((sg) => (
+                    <div key={sg.id} className="flex items-center justify-between rounded-lg border p-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{sg.guardian?.full_name}</span>
+                          <Badge variant="outline" className="text-xs capitalize">{sg.relationship}</Badge>
+                          {sg.is_primary_payer && <Badge className="text-xs">Primary Payer</Badge>}
+                        </div>
+                        <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                          {sg.guardian?.email && <span>{sg.guardian.email}</span>}
+                          {sg.guardian?.phone && <span>{sg.guardian.phone}</span>}
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => removeGuardian(sg.id)}>Remove</Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -96,11 +429,13 @@ export default function StudentDetail() {
           <Card>
             <CardHeader>
               <CardTitle>Lesson History</CardTitle>
-              <CardDescription>All lessons for this student</CardDescription>
+              <CardDescription>Past and upcoming lessons</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="py-8 text-center text-muted-foreground">
-                No lessons recorded yet
+              <div className="flex flex-col items-center py-8 text-center">
+                <Calendar className="h-10 w-10 text-muted-foreground/40" />
+                <p className="mt-3 font-medium">No lessons yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">Schedule a lesson to see it here.</p>
               </div>
             </CardContent>
           </Card>
@@ -113,8 +448,9 @@ export default function StudentDetail() {
               <CardDescription>Billing history for this student</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="py-8 text-center text-muted-foreground">
-                No invoices created yet
+              <div className="flex flex-col items-center py-8 text-center">
+                <p className="font-medium">No invoices yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">Invoices will appear here when created.</p>
               </div>
             </CardContent>
           </Card>
@@ -123,17 +459,98 @@ export default function StudentDetail() {
         <TabsContent value="notes">
           <Card>
             <CardHeader>
-              <CardTitle>Lesson Notes</CardTitle>
-              <CardDescription>Progress and observations</CardDescription>
+              <CardTitle>Notes</CardTitle>
+              <CardDescription>Lesson notes and progress observations</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="py-8 text-center text-muted-foreground">
-                No notes added yet
+              <div className="flex flex-col items-center py-8 text-center">
+                <p className="font-medium">No notes yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">Add notes after lessons to track progress.</p>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Add Guardian Dialog */}
+      <Dialog open={isGuardianDialogOpen} onOpenChange={setIsGuardianDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Guardian</DialogTitle>
+            <DialogDescription>Link a parent or guardian to this student.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex gap-2">
+              <Button variant={isNewGuardian ? 'outline' : 'default'} onClick={() => setIsNewGuardian(false)} className="flex-1">
+                Existing Guardian
+              </Button>
+              <Button variant={isNewGuardian ? 'default' : 'outline'} onClick={() => setIsNewGuardian(true)} className="flex-1">
+                New Guardian
+              </Button>
+            </div>
+            
+            {isNewGuardian ? (
+              <>
+                <div className="space-y-2">
+                  <Label>Full name *</Label>
+                  <Input value={newGuardianName} onChange={(e) => setNewGuardianName(e.target.value)} placeholder="Sarah Wilson" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input type="email" value={newGuardianEmail} onChange={(e) => setNewGuardianEmail(e.target.value)} placeholder="sarah@example.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Phone</Label>
+                  <Input type="tel" value={newGuardianPhone} onChange={(e) => setNewGuardianPhone(e.target.value)} placeholder="+44 7700 900000" />
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <Label>Select guardian</Label>
+                <Select value={selectedGuardianId} onValueChange={setSelectedGuardianId}>
+                  <SelectTrigger><SelectValue placeholder="Choose..." /></SelectTrigger>
+                  <SelectContent>
+                    {allGuardians.filter(g => !guardians.some(sg => sg.guardian_id === g.id)).map((g) => (
+                      <SelectItem key={g.id} value={g.id}>{g.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Relationship</Label>
+                <Select value={relationship} onValueChange={(v) => setRelationship(v as RelationshipType)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mother">Mother</SelectItem>
+                    <SelectItem value="father">Father</SelectItem>
+                    <SelectItem value="guardian">Guardian</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Primary payer?</Label>
+                <Select value={isPrimaryPayer ? 'yes' : 'no'} onValueChange={(v) => setIsPrimaryPayer(v === 'yes')}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Yes</SelectItem>
+                    <SelectItem value="no">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setIsGuardianDialogOpen(false); resetGuardianForm(); }}>Cancel</Button>
+            <Button onClick={handleAddGuardian} disabled={isSaving}>
+              {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Adding...</> : 'Add Guardian'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

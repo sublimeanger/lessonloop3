@@ -55,6 +55,44 @@ export type Database = {
           },
         ]
       }
+      guardians: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          org_id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          org_id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          org_id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guardians_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invites: {
         Row: {
           accepted_at: string | null
@@ -105,7 +143,9 @@ export type Database = {
           created_at: string
           id: string
           is_primary: boolean
+          location_type: Database["public"]["Enums"]["location_type"]
           name: string
+          notes: string | null
           org_id: string
           postcode: string | null
           updated_at: string
@@ -118,7 +158,9 @@ export type Database = {
           created_at?: string
           id?: string
           is_primary?: boolean
+          location_type?: Database["public"]["Enums"]["location_type"]
           name: string
+          notes?: string | null
           org_id: string
           postcode?: string | null
           updated_at?: string
@@ -131,7 +173,9 @@ export type Database = {
           created_at?: string
           id?: string
           is_primary?: boolean
+          location_type?: Database["public"]["Enums"]["location_type"]
           name?: string
+          notes?: string | null
           org_id?: string
           postcode?: string | null
           updated_at?: string
@@ -314,11 +358,160 @@ export type Database = {
           },
         ]
       }
+      rooms: {
+        Row: {
+          capacity: number | null
+          created_at: string
+          id: string
+          location_id: string
+          name: string
+          org_id: string
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string
+          id?: string
+          location_id: string
+          name: string
+          org_id: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string
+          id?: string
+          location_id?: string
+          name?: string
+          org_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rooms_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rooms_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_guardians: {
+        Row: {
+          created_at: string
+          guardian_id: string
+          id: string
+          is_primary_payer: boolean
+          org_id: string
+          relationship: Database["public"]["Enums"]["relationship_type"]
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          guardian_id: string
+          id?: string
+          is_primary_payer?: boolean
+          org_id: string
+          relationship?: Database["public"]["Enums"]["relationship_type"]
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          guardian_id?: string
+          id?: string
+          is_primary_payer?: boolean
+          org_id?: string
+          relationship?: Database["public"]["Enums"]["relationship_type"]
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_guardians_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_guardians_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_guardians_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      students: {
+        Row: {
+          created_at: string
+          dob: string | null
+          email: string | null
+          first_name: string
+          id: string
+          last_name: string
+          notes: string | null
+          org_id: string
+          phone: string | null
+          status: Database["public"]["Enums"]["student_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dob?: string | null
+          email?: string | null
+          first_name: string
+          id?: string
+          last_name: string
+          notes?: string | null
+          org_id: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["student_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dob?: string | null
+          email?: string | null
+          first_name?: string
+          id?: string
+          last_name?: string
+          notes?: string | null
+          org_id?: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["student_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teacher_profiles: {
         Row: {
           bio: string | null
           created_at: string
           default_lesson_length_mins: number
+          display_name: string | null
+          employment_type: Database["public"]["Enums"]["employment_type"]
           id: string
           instruments: string[]
           org_id: string
@@ -330,6 +523,8 @@ export type Database = {
           bio?: string | null
           created_at?: string
           default_lesson_length_mins?: number
+          display_name?: string | null
+          employment_type?: Database["public"]["Enums"]["employment_type"]
           id?: string
           instruments?: string[]
           org_id: string
@@ -341,6 +536,8 @@ export type Database = {
           bio?: string | null
           created_at?: string
           default_lesson_length_mins?: number
+          display_name?: string | null
+          employment_type?: Database["public"]["Enums"]["employment_type"]
           id?: string
           instruments?: string[]
           org_id?: string
@@ -428,8 +625,12 @@ export type Database = {
         | "friday"
         | "saturday"
         | "sunday"
+      employment_type: "employee" | "contractor"
+      location_type: "school" | "studio" | "home" | "online"
       membership_status: "active" | "invited" | "disabled"
       org_type: "solo_teacher" | "studio" | "academy" | "agency"
+      relationship_type: "mother" | "father" | "guardian" | "other"
+      student_status: "active" | "inactive"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -568,8 +769,12 @@ export const Constants = {
         "saturday",
         "sunday",
       ],
+      employment_type: ["employee", "contractor"],
+      location_type: ["school", "studio", "home", "online"],
       membership_status: ["active", "invited", "disabled"],
       org_type: ["solo_teacher", "studio", "academy", "agency"],
+      relationship_type: ["mother", "father", "guardian", "other"],
+      student_status: ["active", "inactive"],
     },
   },
 } as const
