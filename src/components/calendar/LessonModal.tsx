@@ -139,6 +139,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
         end_at: endAt,
         teacher_user_id: teacherUserId,
         room_id: roomId,
+        location_id: locationId,
         student_ids: selectedStudents,
         exclude_lesson_id: lesson?.id,
       });

@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrgMembersTab } from '@/components/settings/OrgMembersTab';
+import { SchedulingSettingsTab } from '@/components/settings/SchedulingSettingsTab';
 import { useOrg } from '@/contexts/OrgContext';
 
 export default function Settings() {
@@ -30,6 +31,9 @@ export default function Settings() {
           <TabsTrigger value="organisation">Organisation</TabsTrigger>
           {(isOrgAdmin || isOrgOwner) && (
             <TabsTrigger value="members">Members</TabsTrigger>
+          )}
+          {(isOrgAdmin || isOrgOwner) && (
+            <TabsTrigger value="scheduling">Scheduling</TabsTrigger>
           )}
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
@@ -102,6 +106,12 @@ export default function Settings() {
         {(isOrgAdmin || isOrgOwner) && (
           <TabsContent value="members">
             <OrgMembersTab />
+          </TabsContent>
+        )}
+
+        {(isOrgAdmin || isOrgOwner) && (
+          <TabsContent value="scheduling">
+            <SchedulingSettingsTab />
           </TabsContent>
         )}
 

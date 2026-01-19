@@ -148,6 +148,54 @@ export type Database = {
           },
         ]
       }
+      closure_dates: {
+        Row: {
+          applies_to_all_locations: boolean
+          created_at: string
+          created_by: string
+          date: string
+          id: string
+          location_id: string | null
+          org_id: string
+          reason: string
+        }
+        Insert: {
+          applies_to_all_locations?: boolean
+          created_at?: string
+          created_by: string
+          date: string
+          id?: string
+          location_id?: string | null
+          org_id: string
+          reason: string
+        }
+        Update: {
+          applies_to_all_locations?: boolean
+          created_at?: string
+          created_by?: string
+          date?: string
+          id?: string
+          location_id?: string | null
+          org_id?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "closure_dates_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "closure_dates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guardians: {
         Row: {
           created_at: string
@@ -509,6 +557,7 @@ export type Database = {
       organisations: {
         Row: {
           billing_approach: Database["public"]["Enums"]["billing_approach"]
+          block_scheduling_on_closures: boolean
           country_code: string
           created_at: string
           created_by: string
@@ -524,6 +573,7 @@ export type Database = {
         }
         Insert: {
           billing_approach?: Database["public"]["Enums"]["billing_approach"]
+          block_scheduling_on_closures?: boolean
           country_code?: string
           created_at?: string
           created_by: string
@@ -539,6 +589,7 @@ export type Database = {
         }
         Update: {
           billing_approach?: Database["public"]["Enums"]["billing_approach"]
+          block_scheduling_on_closures?: boolean
           country_code?: string
           created_at?: string
           created_by?: string
