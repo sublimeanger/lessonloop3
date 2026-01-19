@@ -3,10 +3,10 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { MessageSquare, Plus, Bell } from 'lucide-react';
-import { useRole } from '@/contexts/RoleContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Messages() {
-  const { isParent } = useRole();
+  const { isParent } = useAuth();
 
   return (
     <AppLayout>

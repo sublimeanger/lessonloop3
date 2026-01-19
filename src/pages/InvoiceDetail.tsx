@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Download, Send, CreditCard } from 'lucide-react';
-import { useRole } from '@/contexts/RoleContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function InvoiceDetail() {
   const { id } = useParams();
-  const { isParent } = useRole();
+  const { isParent } = useAuth();
 
   // Placeholder invoice data
   const invoice = {

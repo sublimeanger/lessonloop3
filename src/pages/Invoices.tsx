@@ -3,10 +3,10 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Receipt, Plus, CreditCard } from 'lucide-react';
-import { useRole } from '@/contexts/RoleContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Invoices() {
-  const { isParent } = useRole();
+  const { isParent } = useAuth();
 
   return (
     <AppLayout>

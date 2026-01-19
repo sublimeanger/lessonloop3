@@ -1,18 +1,18 @@
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useRole } from '@/contexts/RoleContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Calendar, Users, Receipt, Clock } from 'lucide-react';
 
 const stats = [
-  { label: 'Today\'s Lessons', value: '8', icon: Calendar, change: '+2 from yesterday' },
-  { label: 'Active Students', value: '47', icon: Users, change: '+3 this month' },
-  { label: 'Outstanding Invoices', value: '£1,240', icon: Receipt, change: '5 unpaid' },
-  { label: 'Hours This Week', value: '32', icon: Clock, change: 'On track' },
+  { label: 'Today\'s Lessons', value: '0', icon: Calendar, change: 'No lessons scheduled' },
+  { label: 'Active Students', value: '0', icon: Users, change: 'Add your first student' },
+  { label: 'Outstanding Invoices', value: '£0', icon: Receipt, change: 'All paid up' },
+  { label: 'Hours This Week', value: '0', icon: Clock, change: 'Schedule lessons to track' },
 ];
 
 export default function Dashboard() {
-  const { role, isOwnerOrAdmin, isTeacher, isParent } = useRole();
+  const { profile, isParent } = useAuth();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -21,10 +21,12 @@ export default function Dashboard() {
     return 'Good evening';
   };
 
+  const firstName = profile?.full_name?.split(' ')[0] || 'there';
+
   return (
     <AppLayout>
       <PageHeader
-        title={`${getGreeting()}!`}
+        title={`${getGreeting()}, ${firstName}!`}
         description={
           isParent
             ? 'View your upcoming lessons and manage payments'
@@ -56,23 +58,16 @@ export default function Dashboard() {
             <CardDescription>Your upcoming lessons for today</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[
-                { time: '09:00', student: 'Emma Wilson', subject: 'Piano - Grade 5' },
-                { time: '10:00', student: 'James Brown', subject: 'Guitar - Beginner' },
-                { time: '11:30', student: 'Sophie Taylor', subject: 'Violin - Grade 3' },
-              ].map((lesson) => (
-                <div
-                  key={lesson.time}
-                  className="flex items-center gap-4 rounded-lg border p-3"
-                >
-                  <div className="text-sm font-medium text-primary">{lesson.time}</div>
-                  <div className="flex-1">
-                    <div className="font-medium">{lesson.student}</div>
-                    <div className="text-sm text-muted-foreground">{lesson.subject}</div>
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center justify-center py-8 text-center">
+              <div>
+                <Calendar className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                <p className="mt-2 text-sm text-muted-foreground">
+                  No lessons scheduled for today
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Go to Calendar to schedule your first lesson
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
