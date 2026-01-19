@@ -2,6 +2,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrg } from '@/contexts/OrgContext';
 import { Calendar, Users, Receipt, Clock } from 'lucide-react';
 
 const stats = [
@@ -12,7 +13,9 @@ const stats = [
 ];
 
 export default function Dashboard() {
-  const { profile, isParent } = useAuth();
+  const { profile } = useAuth();
+  const { currentOrg, currentRole } = useOrg();
+  const isParent = currentRole === 'parent';
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -30,7 +33,9 @@ export default function Dashboard() {
         description={
           isParent
             ? 'View your upcoming lessons and manage payments'
-            : 'Here\'s what\'s happening with your teaching today'
+            : currentOrg 
+              ? `Managing ${currentOrg.name}`
+              : 'Here\'s what\'s happening with your teaching today'
         }
       />
 

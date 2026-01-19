@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { OrgProvider } from "@/contexts/OrgContext";
 import { RouteGuard, PublicRoute } from "@/components/auth/RouteGuard";
 
 // Pages
@@ -31,52 +32,54 @@ const App = () => (
     <TooltipProvider>
       <BrowserRouter>
         <AuthProvider>
-          <Toaster />
-          <Sonner />
-          <Routes>
-            {/* Public auth routes */}
-            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-            <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
-            <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
-            
-            {/* Onboarding (requires auth but not onboarding completion) */}
-            <Route path="/onboarding" element={
-              <RouteGuard requireOnboarding={false}>
-                <Onboarding />
-              </RouteGuard>
-            } />
-            
-            {/* Protected app routes */}
-            <Route path="/dashboard" element={<RouteGuard><Dashboard /></RouteGuard>} />
-            <Route path="/calendar" element={<RouteGuard><CalendarPage /></RouteGuard>} />
-            <Route path="/students" element={<RouteGuard><Students /></RouteGuard>} />
-            <Route path="/students/:id" element={<RouteGuard><StudentDetail /></RouteGuard>} />
-            <Route path="/teachers" element={
-              <RouteGuard allowedRoles={['owner', 'admin']}>
-                <Teachers />
-              </RouteGuard>
-            } />
-            <Route path="/locations" element={
-              <RouteGuard allowedRoles={['owner', 'admin']}>
-                <Locations />
-              </RouteGuard>
-            } />
-            <Route path="/invoices" element={<RouteGuard><Invoices /></RouteGuard>} />
-            <Route path="/invoices/:id" element={<RouteGuard><InvoiceDetail /></RouteGuard>} />
-            <Route path="/reports" element={
-              <RouteGuard allowedRoles={['owner', 'admin', 'finance']}>
-                <Reports />
-              </RouteGuard>
-            } />
-            <Route path="/messages" element={<RouteGuard><Messages /></RouteGuard>} />
-            <Route path="/settings" element={<RouteGuard><Settings /></RouteGuard>} />
-            
-            {/* Redirects */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            
-            {/* 404 */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <OrgProvider>
+            <Toaster />
+            <Sonner />
+            <Routes>
+              {/* Public auth routes */}
+              <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+              <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+              <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+              
+              {/* Onboarding (requires auth but not onboarding completion) */}
+              <Route path="/onboarding" element={
+                <RouteGuard requireOnboarding={false}>
+                  <Onboarding />
+                </RouteGuard>
+              } />
+              
+              {/* Protected app routes */}
+              <Route path="/dashboard" element={<RouteGuard><Dashboard /></RouteGuard>} />
+              <Route path="/calendar" element={<RouteGuard><CalendarPage /></RouteGuard>} />
+              <Route path="/students" element={<RouteGuard><Students /></RouteGuard>} />
+              <Route path="/students/:id" element={<RouteGuard><StudentDetail /></RouteGuard>} />
+              <Route path="/teachers" element={
+                <RouteGuard allowedRoles={['owner', 'admin']}>
+                  <Teachers />
+                </RouteGuard>
+              } />
+              <Route path="/locations" element={
+                <RouteGuard allowedRoles={['owner', 'admin']}>
+                  <Locations />
+                </RouteGuard>
+              } />
+              <Route path="/invoices" element={<RouteGuard><Invoices /></RouteGuard>} />
+              <Route path="/invoices/:id" element={<RouteGuard><InvoiceDetail /></RouteGuard>} />
+              <Route path="/reports" element={
+                <RouteGuard allowedRoles={['owner', 'admin', 'finance']}>
+                  <Reports />
+                </RouteGuard>
+              } />
+              <Route path="/messages" element={<RouteGuard><Messages /></RouteGuard>} />
+              <Route path="/settings" element={<RouteGuard><Settings /></RouteGuard>} />
+              
+              {/* Redirects */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              
+              {/* 404 */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </OrgProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

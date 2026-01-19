@@ -10,6 +10,7 @@ interface Profile {
   email: string | null;
   phone: string | null;
   has_completed_onboarding: boolean;
+  current_org_id: string | null;
   created_at: string;
   updated_at: string;
 }
