@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      availability_templates: {
+        Row: {
+          created_at: string
+          day_of_week: Database["public"]["Enums"]["day_of_week"]
+          end_time: string
+          id: string
+          is_available: boolean
+          org_id: string
+          start_time: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: Database["public"]["Enums"]["day_of_week"]
+          end_time: string
+          id?: string
+          is_available?: boolean
+          org_id: string
+          start_time: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: Database["public"]["Enums"]["day_of_week"]
+          end_time?: string
+          id?: string
+          is_available?: boolean
+          org_id?: string
+          start_time?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_templates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invites: {
         Row: {
           accepted_at: string | null
@@ -48,6 +89,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "invites_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      locations: {
+        Row: {
+          address_line_1: string | null
+          address_line_2: string | null
+          city: string | null
+          country_code: string
+          created_at: string
+          id: string
+          is_primary: boolean
+          name: string
+          org_id: string
+          postcode: string | null
+          updated_at: string
+        }
+        Insert: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          city?: string | null
+          country_code?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          name: string
+          org_id: string
+          postcode?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          city?: string | null
+          country_code?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          name?: string
+          org_id?: string
+          postcode?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "locations_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
@@ -92,10 +183,12 @@ export type Database = {
       }
       organisations: {
         Row: {
+          billing_approach: Database["public"]["Enums"]["billing_approach"]
           country_code: string
           created_at: string
           created_by: string
           currency_code: string
+          default_lesson_length_mins: number
           id: string
           name: string
           org_type: Database["public"]["Enums"]["org_type"]
@@ -105,10 +198,12 @@ export type Database = {
           vat_registration_number: string | null
         }
         Insert: {
+          billing_approach?: Database["public"]["Enums"]["billing_approach"]
           country_code?: string
           created_at?: string
           created_by: string
           currency_code?: string
+          default_lesson_length_mins?: number
           id?: string
           name: string
           org_type?: Database["public"]["Enums"]["org_type"]
@@ -118,10 +213,12 @@ export type Database = {
           vat_registration_number?: string | null
         }
         Update: {
+          billing_approach?: Database["public"]["Enums"]["billing_approach"]
           country_code?: string
           created_at?: string
           created_by?: string
           currency_code?: string
+          default_lesson_length_mins?: number
           id?: string
           name?: string
           org_type?: Database["public"]["Enums"]["org_type"]
@@ -167,6 +264,94 @@ export type Database = {
           {
             foreignKeyName: "profiles_current_org_id_fkey"
             columns: ["current_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rate_cards: {
+        Row: {
+          created_at: string
+          currency_code: string
+          duration_mins: number
+          id: string
+          is_default: boolean
+          name: string
+          org_id: string
+          rate_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency_code?: string
+          duration_mins?: number
+          id?: string
+          is_default?: boolean
+          name: string
+          org_id: string
+          rate_amount: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency_code?: string
+          duration_mins?: number
+          id?: string
+          is_default?: boolean
+          name?: string
+          org_id?: string
+          rate_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rate_cards_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teacher_profiles: {
+        Row: {
+          bio: string | null
+          created_at: string
+          default_lesson_length_mins: number
+          id: string
+          instruments: string[]
+          org_id: string
+          teaching_address: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          default_lesson_length_mins?: number
+          id?: string
+          instruments?: string[]
+          org_id: string
+          teaching_address?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          default_lesson_length_mins?: number
+          id?: string
+          instruments?: string[]
+          org_id?: string
+          teaching_address?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_profiles_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
             referencedColumns: ["id"]
@@ -234,6 +419,15 @@ export type Database = {
     }
     Enums: {
       app_role: "owner" | "admin" | "teacher" | "finance" | "parent"
+      billing_approach: "monthly" | "termly" | "custom"
+      day_of_week:
+        | "monday"
+        | "tuesday"
+        | "wednesday"
+        | "thursday"
+        | "friday"
+        | "saturday"
+        | "sunday"
       membership_status: "active" | "invited" | "disabled"
       org_type: "solo_teacher" | "studio" | "academy" | "agency"
     }
@@ -364,6 +558,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "admin", "teacher", "finance", "parent"],
+      billing_approach: ["monthly", "termly", "custom"],
+      day_of_week: [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+      ],
       membership_status: ["active", "invited", "disabled"],
       org_type: ["solo_teacher", "studio", "academy", "agency"],
     },
