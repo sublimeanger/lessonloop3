@@ -3,10 +3,13 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { RoleProvider } from "@/contexts/RoleContext";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { RouteGuard, PublicRoute } from "@/components/auth/RouteGuard";
 
 // Pages
 import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import CalendarPage from "./pages/CalendarPage";
@@ -26,27 +29,47 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <RoleProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+      <BrowserRouter>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
           <Routes>
-            {/* Auth routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/onboarding" element={<Onboarding />} />
+            {/* Public auth routes */}
+            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+            <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+            <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
             
-            {/* App routes */}
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/calendar" element={<CalendarPage />} />
-            <Route path="/students" element={<Students />} />
-            <Route path="/students/:id" element={<StudentDetail />} />
-            <Route path="/teachers" element={<Teachers />} />
-            <Route path="/locations" element={<Locations />} />
-            <Route path="/invoices" element={<Invoices />} />
-            <Route path="/invoices/:id" element={<InvoiceDetail />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/settings" element={<Settings />} />
+            {/* Onboarding (requires auth but not onboarding completion) */}
+            <Route path="/onboarding" element={
+              <RouteGuard requireOnboarding={false}>
+                <Onboarding />
+              </RouteGuard>
+            } />
+            
+            {/* Protected app routes */}
+            <Route path="/dashboard" element={<RouteGuard><Dashboard /></RouteGuard>} />
+            <Route path="/calendar" element={<RouteGuard><CalendarPage /></RouteGuard>} />
+            <Route path="/students" element={<RouteGuard><Students /></RouteGuard>} />
+            <Route path="/students/:id" element={<RouteGuard><StudentDetail /></RouteGuard>} />
+            <Route path="/teachers" element={
+              <RouteGuard allowedRoles={['owner', 'admin']}>
+                <Teachers />
+              </RouteGuard>
+            } />
+            <Route path="/locations" element={
+              <RouteGuard allowedRoles={['owner', 'admin']}>
+                <Locations />
+              </RouteGuard>
+            } />
+            <Route path="/invoices" element={<RouteGuard><Invoices /></RouteGuard>} />
+            <Route path="/invoices/:id" element={<RouteGuard><InvoiceDetail /></RouteGuard>} />
+            <Route path="/reports" element={
+              <RouteGuard allowedRoles={['owner', 'admin', 'finance']}>
+                <Reports />
+              </RouteGuard>
+            } />
+            <Route path="/messages" element={<RouteGuard><Messages /></RouteGuard>} />
+            <Route path="/settings" element={<RouteGuard><Settings /></RouteGuard>} />
             
             {/* Redirects */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -54,8 +77,8 @@ const App = () => (
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-      </RoleProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
