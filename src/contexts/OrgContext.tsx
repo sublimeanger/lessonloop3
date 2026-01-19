@@ -18,6 +18,7 @@ export interface Organisation {
   vat_registration_number: string | null;
   billing_approach: BillingApproach;
   default_lesson_length_mins: number;
+  block_scheduling_on_closures: boolean;
   created_by: string;
   created_at: string;
 }

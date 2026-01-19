@@ -1,9 +1,17 @@
-import { useMemo, useRef, useState, useCallback } from 'react';
-import { format, startOfWeek, addDays, isSameDay, parseISO, differenceInMinutes, startOfDay, setHours, setMinutes } from 'date-fns';
+import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
+import { format, startOfWeek, addDays, isSameDay, parseISO, differenceInMinutes, startOfDay, setHours, setMinutes, endOfWeek, endOfDay } from 'date-fns';
 import { LessonWithDetails, CalendarView } from './types';
 import { LessonCard } from './LessonCard';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useOrg } from '@/contexts/OrgContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Badge } from '@/components/ui/badge';
+
+interface ClosureInfo {
+  date: Date;
+  reason: string;
+}
 
 interface CalendarGridProps {
   currentDate: Date;
@@ -27,9 +35,11 @@ export function CalendarGrid({
   onSlotClick,
   onSlotDrag 
 }: CalendarGridProps) {
+  const { currentOrg } = useOrg();
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ date: Date; y: number } | null>(null);
   const [dragEnd, setDragEnd] = useState<number | null>(null);
+  const [closures, setClosures] = useState<ClosureInfo[]>([]);
   const gridRef = useRef<HTMLDivElement>(null);
 
   const days = useMemo(() => {
@@ -40,6 +50,33 @@ export function CalendarGrid({
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   }, [currentDate, view]);
+
+  // Fetch closures for visible date range
+  useEffect(() => {
+    if (!currentOrg) return;
+    
+    const fetchClosures = async () => {
+      const start = view === 'day' ? startOfDay(currentDate) : startOfWeek(currentDate, { weekStartsOn: 1 });
+      const end = view === 'day' ? endOfDay(currentDate) : endOfWeek(currentDate, { weekStartsOn: 1 });
+      
+      const { data } = await supabase
+        .from('closure_dates')
+        .select('date, reason')
+        .eq('org_id', currentOrg.id)
+        .gte('date', format(start, 'yyyy-MM-dd'))
+        .lte('date', format(end, 'yyyy-MM-dd'));
+      
+      if (data) {
+        setClosures(data.map(c => ({ date: parseISO(c.date), reason: c.reason })));
+      }
+    };
+    
+    fetchClosures();
+  }, [currentOrg, currentDate, view]);
+
+  const getClosureForDay = (day: Date): ClosureInfo | undefined => {
+    return closures.find(c => isSameDay(c.date, day));
+  };
 
   const getLessonPosition = (lesson: LessonWithDetails) => {
     const start = parseISO(lesson.start_at);
@@ -137,23 +174,32 @@ export function CalendarGrid({
         {/* Header row */}
         <div className="sticky top-0 z-20 flex bg-background border-b">
           <div className="w-16 shrink-0" /> {/* Time gutter */}
-          {days.map((day) => (
-            <div
-              key={day.toISOString()}
-              className={cn(
-                'flex-1 text-center py-3 border-l',
-                isSameDay(day, new Date()) && 'bg-primary/5'
-              )}
-            >
-              <div className="text-sm text-muted-foreground">{format(day, 'EEE')}</div>
-              <div className={cn(
-                'text-lg font-semibold',
-                isSameDay(day, new Date()) && 'text-primary'
-              )}>
-                {format(day, 'd')}
+          {days.map((day) => {
+            const closure = getClosureForDay(day);
+            return (
+              <div
+                key={day.toISOString()}
+                className={cn(
+                  'flex-1 text-center py-3 border-l',
+                  isSameDay(day, new Date()) && 'bg-primary/5',
+                  closure && 'bg-amber-50 dark:bg-amber-950/20'
+                )}
+              >
+                <div className="text-sm text-muted-foreground">{format(day, 'EEE')}</div>
+                <div className={cn(
+                  'text-lg font-semibold',
+                  isSameDay(day, new Date()) && 'text-primary'
+                )}>
+                  {format(day, 'd')}
+                </div>
+                {closure && (
+                  <Badge variant="outline" className="text-[10px] px-1 py-0 mt-1 bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
+                    {closure.reason}
+                  </Badge>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Time grid */}
@@ -176,13 +222,15 @@ export function CalendarGrid({
           {/* Day columns */}
           {days.map((day) => {
             const dayLessons = lessons.filter(l => isSameDay(parseISO(l.start_at), day));
+            const closure = getClosureForDay(day);
             
             return (
               <div
                 key={day.toISOString()}
                 className={cn(
                   'flex-1 relative border-l',
-                  isSameDay(day, new Date()) && 'bg-primary/5'
+                  isSameDay(day, new Date()) && 'bg-primary/5',
+                  closure && 'bg-amber-50/50 dark:bg-amber-950/10'
                 )}
                 onMouseDown={(e) => handleMouseDown(e, day)}
                 onClick={(e) => handleSlotClick(e, day)}

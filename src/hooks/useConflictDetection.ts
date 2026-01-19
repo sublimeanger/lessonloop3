@@ -1,3 +1,4 @@
+import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { ConflictResult } from '@/components/calendar/types';
@@ -7,6 +8,7 @@ interface ConflictCheckParams {
   end_at: Date;
   teacher_user_id: string;
   room_id: string | null;
+  location_id: string | null;
   student_ids: string[];
   exclude_lesson_id?: string;
 }
@@ -18,7 +20,33 @@ export function useConflictDetection() {
     if (!currentOrg) return [];
 
     const conflicts: ConflictResult[] = [];
-    const { start_at, end_at, teacher_user_id, room_id, student_ids, exclude_lesson_id } = params;
+    const { start_at, end_at, teacher_user_id, room_id, location_id, student_ids, exclude_lesson_id } = params;
+
+    // Check closure dates
+    const lessonDate = format(start_at, 'yyyy-MM-dd');
+    const { data: closures } = await supabase
+      .from('closure_dates')
+      .select('reason, location_id, applies_to_all_locations')
+      .eq('org_id', currentOrg.id)
+      .eq('date', lessonDate);
+
+    if (closures && closures.length > 0) {
+      // Check if any closure applies to this lesson
+      const applicableClosure = closures.find(c => {
+        if (c.applies_to_all_locations) return true;
+        if (location_id && c.location_id === location_id) return true;
+        return false;
+      });
+
+      if (applicableClosure) {
+        const severity = currentOrg.block_scheduling_on_closures ? 'error' : 'warning';
+        conflicts.push({
+          type: 'closure' as any,
+          severity,
+          message: `This date is marked as closed: ${applicableClosure.reason}`,
+        });
+      }
+    }
 
     // Check teacher time-off
     const { data: timeOff } = await supabase
