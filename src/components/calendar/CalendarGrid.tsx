@@ -1,0 +1,234 @@
+import { useMemo, useRef, useState, useCallback } from 'react';
+import { format, startOfWeek, addDays, isSameDay, parseISO, differenceInMinutes, startOfDay, setHours, setMinutes } from 'date-fns';
+import { LessonWithDetails, CalendarView } from './types';
+import { LessonCard } from './LessonCard';
+import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+interface CalendarGridProps {
+  currentDate: Date;
+  view: CalendarView;
+  lessons: LessonWithDetails[];
+  onLessonClick: (lesson: LessonWithDetails) => void;
+  onSlotClick: (date: Date) => void;
+  onSlotDrag: (start: Date, end: Date) => void;
+}
+
+const HOUR_HEIGHT = 60; // pixels per hour
+const START_HOUR = 7;
+const END_HOUR = 21;
+const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
+
+export function CalendarGrid({ 
+  currentDate, 
+  view, 
+  lessons, 
+  onLessonClick, 
+  onSlotClick,
+  onSlotDrag 
+}: CalendarGridProps) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{ date: Date; y: number } | null>(null);
+  const [dragEnd, setDragEnd] = useState<number | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  const days = useMemo(() => {
+    if (view === 'day') {
+      return [currentDate];
+    }
+    // Week view: Monday to Sunday
+    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+    return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  }, [currentDate, view]);
+
+  const getLessonPosition = (lesson: LessonWithDetails) => {
+    const start = parseISO(lesson.start_at);
+    const end = parseISO(lesson.end_at);
+    const startMinutes = start.getHours() * 60 + start.getMinutes();
+    const endMinutes = end.getHours() * 60 + end.getMinutes();
+    const duration = endMinutes - startMinutes;
+    
+    const top = ((startMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+    const height = (duration / 60) * HOUR_HEIGHT;
+    
+    return { top, height: Math.max(height, 20) };
+  };
+
+  const getTimeFromY = (y: number): { hour: number; minute: number } => {
+    const totalMinutes = ((y / HOUR_HEIGHT) * 60) + (START_HOUR * 60);
+    const hour = Math.floor(totalMinutes / 60);
+    const minute = Math.round((totalMinutes % 60) / 15) * 15; // Snap to 15-min intervals
+    return { hour: Math.min(Math.max(hour, START_HOUR), END_HOUR), minute: minute % 60 };
+  };
+
+  const handleMouseDown = (e: React.MouseEvent, day: Date) => {
+    if (e.button !== 0) return;
+    const rect = gridRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const y = e.clientY - rect.top;
+    const { hour, minute } = getTimeFromY(y);
+    const startDate = setMinutes(setHours(startOfDay(day), hour), minute);
+    
+    setDragStart({ date: startDate, y });
+    setDragEnd(y + 30); // Default 30 min
+    setIsDragging(true);
+  };
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging || !gridRef.current) return;
+    const rect = gridRef.current.getBoundingClientRect();
+    const y = Math.max(0, e.clientY - rect.top);
+    setDragEnd(y);
+  }, [isDragging]);
+
+  const handleMouseUp = useCallback(() => {
+    if (!isDragging || !dragStart || dragEnd === null) {
+      setIsDragging(false);
+      setDragStart(null);
+      setDragEnd(null);
+      return;
+    }
+
+    const startY = Math.min(dragStart.y, dragEnd);
+    const endY = Math.max(dragStart.y, dragEnd);
+    
+    const { hour: startHour, minute: startMin } = getTimeFromY(startY);
+    const { hour: endHour, minute: endMin } = getTimeFromY(endY);
+    
+    const startDate = setMinutes(setHours(startOfDay(dragStart.date), startHour), startMin);
+    let endDate = setMinutes(setHours(startOfDay(dragStart.date), endHour), endMin);
+    
+    // Minimum 15 min duration
+    if (differenceInMinutes(endDate, startDate) < 15) {
+      endDate = new Date(startDate.getTime() + 30 * 60 * 1000);
+    }
+    
+    onSlotDrag(startDate, endDate);
+    
+    setIsDragging(false);
+    setDragStart(null);
+    setDragEnd(null);
+  }, [isDragging, dragStart, dragEnd, onSlotDrag]);
+
+  const handleSlotClick = (e: React.MouseEvent, day: Date) => {
+    // Only trigger if not dragging
+    if (isDragging) return;
+    
+    const rect = gridRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const y = e.clientY - rect.top;
+    const { hour, minute } = getTimeFromY(y);
+    const clickDate = setMinutes(setHours(startOfDay(day), hour), minute);
+    
+    onSlotClick(clickDate);
+  };
+
+  return (
+    <ScrollArea className="h-[calc(100vh-280px)]">
+      <div 
+        ref={gridRef}
+        className="relative select-none"
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        {/* Header row */}
+        <div className="sticky top-0 z-20 flex bg-background border-b">
+          <div className="w-16 shrink-0" /> {/* Time gutter */}
+          {days.map((day) => (
+            <div
+              key={day.toISOString()}
+              className={cn(
+                'flex-1 text-center py-3 border-l',
+                isSameDay(day, new Date()) && 'bg-primary/5'
+              )}
+            >
+              <div className="text-sm text-muted-foreground">{format(day, 'EEE')}</div>
+              <div className={cn(
+                'text-lg font-semibold',
+                isSameDay(day, new Date()) && 'text-primary'
+              )}>
+                {format(day, 'd')}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Time grid */}
+        <div className="flex">
+          {/* Time labels */}
+          <div className="w-16 shrink-0">
+            {HOURS.map((hour) => (
+              <div
+                key={hour}
+                className="relative border-b"
+                style={{ height: HOUR_HEIGHT }}
+              >
+                <span className="absolute -top-2.5 right-2 text-xs text-muted-foreground">
+                  {format(setHours(new Date(), hour), 'HH:mm')}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Day columns */}
+          {days.map((day) => {
+            const dayLessons = lessons.filter(l => isSameDay(parseISO(l.start_at), day));
+            
+            return (
+              <div
+                key={day.toISOString()}
+                className={cn(
+                  'flex-1 relative border-l',
+                  isSameDay(day, new Date()) && 'bg-primary/5'
+                )}
+                onMouseDown={(e) => handleMouseDown(e, day)}
+                onClick={(e) => handleSlotClick(e, day)}
+              >
+                {/* Hour grid lines */}
+                {HOURS.map((hour) => (
+                  <div
+                    key={hour}
+                    className="border-b border-dashed border-muted"
+                    style={{ height: HOUR_HEIGHT }}
+                  />
+                ))}
+
+                {/* Lessons */}
+                {dayLessons.map((lesson) => {
+                  const { top, height } = getLessonPosition(lesson);
+                  return (
+                    <div
+                      key={lesson.id}
+                      className="absolute left-1 right-1"
+                      style={{ top, height }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onLessonClick(lesson);
+                      }}
+                    >
+                      <LessonCard lesson={lesson} onClick={() => onLessonClick(lesson)} />
+                    </div>
+                  );
+                })}
+
+                {/* Drag selection overlay */}
+                {isDragging && dragStart && dragEnd !== null && isSameDay(dragStart.date, day) && (
+                  <div
+                    className="absolute left-1 right-1 bg-primary/20 border-2 border-primary border-dashed rounded"
+                    style={{
+                      top: Math.min(dragStart.y, dragEnd),
+                      height: Math.abs(dragEnd - dragStart.y),
+                    }}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </ScrollArea>
+  );
+}
