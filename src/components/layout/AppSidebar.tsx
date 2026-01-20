@@ -60,6 +60,7 @@ const teacherNav: NavItem[] = [
   { title: 'My Calendar', url: '/calendar', icon: Calendar },
   { title: 'My Students', url: '/students', icon: Users },
   { title: 'Messages', url: '/messages', icon: MessageSquare },
+  { title: 'Settings', url: '/settings', icon: Settings },
 ];
 
 const parentNav: NavItem[] = [

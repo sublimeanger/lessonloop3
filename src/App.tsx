@@ -86,14 +86,26 @@ const App = () => (
               
               {/* Protected app routes */}
               <Route path="/dashboard" element={<RouteGuard><Dashboard /></RouteGuard>} />
-              <Route path="/calendar" element={<RouteGuard><CalendarPage /></RouteGuard>} />
-              <Route path="/students" element={<RouteGuard><Students /></RouteGuard>} />
+              <Route path="/calendar" element={
+                <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
+                  <CalendarPage />
+                </RouteGuard>
+              } />
+              <Route path="/students" element={
+                <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
+                  <Students />
+                </RouteGuard>
+              } />
               <Route path="/students/import" element={
                 <RouteGuard allowedRoles={['owner', 'admin']}>
                   <StudentsImport />
                 </RouteGuard>
               } />
-              <Route path="/students/:id" element={<RouteGuard><StudentDetail /></RouteGuard>} />
+              <Route path="/students/:id" element={
+                <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
+                  <StudentDetail />
+                </RouteGuard>
+              } />
               <Route path="/teachers" element={
                 <RouteGuard allowedRoles={['owner', 'admin']}>
                   <Teachers />
@@ -104,15 +116,23 @@ const App = () => (
                   <Locations />
                 </RouteGuard>
               } />
-              <Route path="/invoices" element={<RouteGuard><Invoices /></RouteGuard>} />
-              <Route path="/invoices/:id" element={<RouteGuard><InvoiceDetail /></RouteGuard>} />
+              <Route path="/invoices" element={
+                <RouteGuard allowedRoles={['owner', 'admin', 'finance']}>
+                  <Invoices />
+                </RouteGuard>
+              } />
+              <Route path="/invoices/:id" element={
+                <RouteGuard allowedRoles={['owner', 'admin', 'finance']}>
+                  <InvoiceDetail />
+                </RouteGuard>
+              } />
               <Route path="/reports" element={
                 <RouteGuard allowedRoles={['owner', 'admin', 'finance']}>
                   <Reports />
                 </RouteGuard>
               } />
               <Route path="/reports/payroll" element={
-                <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
+                <RouteGuard allowedRoles={['owner', 'admin']}>
                   <PayrollReport />
                 </RouteGuard>
               } />
@@ -127,7 +147,7 @@ const App = () => (
                 </RouteGuard>
               } />
               <Route path="/reports/lessons" element={
-                <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
+                <RouteGuard allowedRoles={['owner', 'admin']}>
                   <LessonsDeliveredReport />
                 </RouteGuard>
               } />
@@ -136,8 +156,16 @@ const App = () => (
                   <CancellationReport />
                 </RouteGuard>
               } />
-              <Route path="/messages" element={<RouteGuard><Messages /></RouteGuard>} />
-              <Route path="/settings" element={<RouteGuard><Settings /></RouteGuard>} />
+              <Route path="/messages" element={
+                <RouteGuard allowedRoles={['owner', 'admin', 'teacher', 'finance']}>
+                  <Messages />
+                </RouteGuard>
+              } />
+              <Route path="/settings" element={
+                <RouteGuard allowedRoles={['owner', 'admin', 'teacher', 'finance']}>
+                  <Settings />
+                </RouteGuard>
+              } />
               
               {/* Redirects */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
