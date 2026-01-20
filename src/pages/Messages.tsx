@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { MessageSquare, Plus, Search, Filter, Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+
 import { useOrg } from '@/contexts/OrgContext';
 import { useMessageLog } from '@/hooks/useMessages';
 import { MessageList } from '@/components/messages/MessageList';
@@ -25,8 +25,8 @@ interface Guardian {
 }
 
 export default function Messages() {
-  const { isParent } = useAuth();
-  const { currentOrg } = useOrg();
+  const { currentOrg, currentRole } = useOrg();
+  const isParent = currentRole === 'parent';
   const [composeOpen, setComposeOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [channelFilter, setChannelFilter] = useState<string>('all');

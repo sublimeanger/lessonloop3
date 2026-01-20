@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Receipt, Plus, PlayCircle } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useOrg } from '@/contexts/OrgContext';
 import { useInvoices, useUpdateInvoiceStatus, type InvoiceFilters, type InvoiceWithDetails } from '@/hooks/useInvoices';
 import { InvoiceFiltersBar } from '@/components/invoices/InvoiceFiltersBar';
 import { InvoiceStatsWidget } from '@/components/invoices/InvoiceStatsWidget';
@@ -26,7 +26,8 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function Invoices() {
-  const { isParent } = useAuth();
+  const { currentRole } = useOrg();
+  const isParent = currentRole === 'parent';
   const [filters, setFilters] = useState<InvoiceFilters>({});
   const { data: invoices = [], isLoading } = useInvoices(filters);
   const updateStatus = useUpdateInvoiceStatus();

@@ -4,6 +4,7 @@ import { Header } from './Header';
 import { AppSidebar } from './AppSidebar';
 import { LoopAssistProvider, useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { LoopAssistDrawer } from '@/components/looopassist/LoopAssistDrawer';
+import { useOrg } from '@/contexts/OrgContext';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -11,6 +12,10 @@ interface AppLayoutProps {
 
 function AppLayoutInner({ children }: AppLayoutProps) {
   const { isOpen, setIsOpen } = useLoopAssistUI();
+  const { currentRole } = useOrg();
+  
+  // Only show LoopAssist for staff roles (not parents)
+  const showLoopAssist = currentRole && currentRole !== 'parent';
   
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -21,7 +26,9 @@ function AppLayoutInner({ children }: AppLayoutProps) {
           {children}
         </main>
       </div>
-      <LoopAssistDrawer open={isOpen} onOpenChange={setIsOpen} />
+      {showLoopAssist && (
+        <LoopAssistDrawer open={isOpen} onOpenChange={setIsOpen} />
+      )}
     </div>
   );
 }

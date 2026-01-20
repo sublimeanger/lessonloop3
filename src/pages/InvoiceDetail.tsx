@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { useInvoice, useUpdateInvoiceStatus } from '@/hooks/useInvoices';
 import { LoadingState } from '@/components/shared/LoadingState';
@@ -66,8 +65,8 @@ function getStatusBadge(status: InvoiceStatus, dueDate: string) {
 export default function InvoiceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isParent } = useAuth();
-  const { currentOrg } = useOrg();
+  const { currentOrg, currentRole } = useOrg();
+  const isParent = currentRole === 'parent';
   const { data: invoice, isLoading } = useInvoice(id);
   const updateStatus = useUpdateInvoiceStatus();
 
