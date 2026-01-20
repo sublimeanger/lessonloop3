@@ -10,14 +10,13 @@ import {
   Send,
   Trash2,
   ChevronLeft,
-  CheckCircle,
-  XCircle,
   Loader2,
   Sparkles,
 } from 'lucide-react';
 import { useLoopAssist, AIMessage, AIConversation } from '@/hooks/useLoopAssist';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { renderMessageWithChips } from './EntityChip';
+import { ActionCard, stripActionBlock, parseActionFromResponse } from './ActionCard';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -37,9 +36,9 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     isStreaming,
     streamingContent,
     pendingProposals,
-    createConversation,
     sendMessage,
     handleProposal,
+    handleProposalLoading,
     deleteConversation,
   } = useLoopAssist(pageContext);
 
@@ -69,6 +68,14 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
   const handleSelectConversation = (id: string) => {
     setCurrentConversationId(id);
     setShowConversationList(false);
+  };
+
+  const handleConfirmAction = (proposalId: string) => {
+    handleProposal({ proposalId, action: 'confirm' });
+  };
+
+  const handleCancelAction = (proposalId: string) => {
+    handleProposal({ proposalId, action: 'cancel' });
   };
 
   const suggestedPrompts = getSuggestedPrompts(pageContext.type);
@@ -173,28 +180,16 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                   </div>
                 )}
 
-                {/* Pending proposals */}
+                {/* Pending action proposals with rich cards */}
                 {pendingProposals.map((proposal) => (
-                  <div key={proposal.id} className="rounded-lg border bg-accent/50 p-3">
-                    <p className="mb-2 text-sm font-medium">Action pending confirmation</p>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleProposal({ proposalId: proposal.id, action: 'confirm' })}
-                      >
-                        <CheckCircle className="mr-1 h-4 w-4" />
-                        Confirm
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleProposal({ proposalId: proposal.id, action: 'cancel' })}
-                      >
-                        <XCircle className="mr-1 h-4 w-4" />
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
+                  <ActionCard
+                    key={proposal.id}
+                    proposalId={proposal.id}
+                    proposal={proposal.proposal}
+                    onConfirm={handleConfirmAction}
+                    onCancel={handleCancelAction}
+                    isLoading={handleProposalLoading}
+                  />
                 ))}
               </div>
             </ScrollArea>
@@ -286,6 +281,12 @@ function ConversationList({
 
 function MessageBubble({ message }: { message: AIMessage }) {
   const isUser = message.role === 'user';
+  
+  // For assistant messages, strip action blocks from display
+  const displayContent = isUser ? message.content : stripActionBlock(message.content);
+  
+  // Check if there's an inline action preview (for streaming)
+  const hasAction = !isUser && parseActionFromResponse(message.content);
 
   return (
     <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
@@ -296,8 +297,13 @@ function MessageBubble({ message }: { message: AIMessage }) {
         )}
       >
         <div className="whitespace-pre-wrap">
-          {isUser ? message.content : renderMessageWithChips(message.content)}
+          {isUser ? displayContent : renderMessageWithChips(displayContent)}
         </div>
+        {hasAction && (
+          <div className="mt-2 text-xs text-muted-foreground italic">
+            Action proposal below ↓
+          </div>
+        )}
       </div>
     </div>
   );
@@ -308,27 +314,27 @@ function getSuggestedPrompts(contextType: string): string[] {
     case 'calendar':
       return [
         "What lessons do I have today?",
-        "Show me this week's schedule summary",
+        "Reschedule tomorrow's lessons by 30 minutes",
         "Any cancellations this week?",
       ];
     case 'student':
       return [
         "Draft a progress update email for this student",
         "Show lesson history for this student",
-        "Any outstanding invoices?",
+        "Send invoice reminders for this student",
       ];
     case 'invoice':
       return [
-        "Send a payment reminder",
+        "Send a payment reminder for this invoice",
         "Show payment history",
         "Draft a follow-up email",
       ];
     default:
       return [
-        "What's my revenue this month?",
+        "Send reminders for all overdue invoices",
+        "Generate invoices for last month",
         "Show me outstanding invoices",
-        "How many lessons this week?",
-        "Who has the most cancellations?",
+        "Draft an email to a parent",
       ];
   }
 }

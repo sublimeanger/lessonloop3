@@ -14,8 +14,8 @@ interface Invoice {
   due_date: string;
   payer_guardian_id?: string;
   payer_student_id?: string;
-  guardians?: { full_name: string } | null;
-  students?: { first_name: string; last_name: string } | null;
+  guardians?: { id: string; full_name: string; email: string | null } | null;
+  students?: { id: string; first_name: string; last_name: string; email: string | null } | null;
 }
 
 interface Lesson {
@@ -38,10 +38,16 @@ interface Student {
   status: string;
 }
 
+interface Guardian {
+  id: string;
+  full_name: string;
+  email: string | null;
+}
+
 // Build comprehensive context for Q&A
 async function buildDataContext(supabase: any, orgId: string): Promise<{
   summary: string;
-  entities: { invoices: Invoice[]; lessons: Lesson[]; students: Student[] };
+  entities: { invoices: Invoice[]; lessons: Lesson[]; students: Student[]; guardians: Guardian[] };
 }> {
   const today = new Date();
   const todayStr = today.toISOString().split("T")[0];
@@ -53,8 +59,8 @@ async function buildDataContext(supabase: any, orgId: string): Promise<{
     .from("invoices")
     .select(`
       id, invoice_number, status, total_minor, due_date, payer_guardian_id, payer_student_id,
-      guardians:payer_guardian_id(full_name),
-      students:payer_student_id(first_name, last_name)
+      guardians:payer_guardian_id(id, full_name, email),
+      students:payer_student_id(id, first_name, last_name, email)
     `)
     .eq("org_id", orgId)
     .in("status", ["overdue", "sent"])
@@ -82,6 +88,14 @@ async function buildDataContext(supabase: any, orgId: string): Promise<{
     .eq("org_id", orgId)
     .eq("status", "active")
     .order("last_name", { ascending: true })
+    .limit(50);
+
+  // Fetch guardians
+  const { data: guardians } = await supabase
+    .from("guardians")
+    .select("id, full_name, email")
+    .eq("org_id", orgId)
+    .order("full_name", { ascending: true })
     .limit(50);
 
   // Build invoice summary with citations
@@ -130,7 +144,7 @@ async function buildDataContext(supabase: any, orgId: string): Promise<{
         const studentNames = l.lesson_participants?.map(p => 
           p.students ? `${p.students.first_name} ${p.students.last_name}` : ""
         ).filter(Boolean).join(", ") || "No students";
-        lessonSummary += `\n  - ${time} ${l.title} with ${studentNames}`;
+        lessonSummary += `\n  - [Lesson:${l.id}] ${time} ${l.title} with ${studentNames}`;
       });
     });
   }
@@ -147,12 +161,25 @@ async function buildDataContext(supabase: any, orgId: string): Promise<{
     }
   }
 
+  // Build guardian summary
+  let guardianSummary = "";
+  if ((guardians || []).length > 0) {
+    guardianSummary += `\n\nGUARDIANS (${guardians.length}):`;
+    guardians.slice(0, 10).forEach((g: Guardian) => {
+      guardianSummary += `\n- [Guardian:${g.id}] ${g.full_name}${g.email ? ` (${g.email})` : ""}`;
+    });
+    if (guardians.length > 10) {
+      guardianSummary += `\n... and ${guardians.length - 10} more`;
+    }
+  }
+
   return {
-    summary: invoiceSummary + lessonSummary + studentSummary,
+    summary: invoiceSummary + lessonSummary + studentSummary + guardianSummary,
     entities: {
       invoices: overdueInvoices || [],
       lessons: upcomingLessons || [],
       students: students || [],
+      guardians: guardians || [],
     },
   };
 }
@@ -166,9 +193,11 @@ You help music teachers, academy owners, and administrators with:
 - Providing insights about revenue, attendance, and business metrics
 
 CRITICAL - ENTITY CITATIONS:
-When referencing specific invoices, students, or lessons in your answers, ALWAYS use the citation format from the data:
+When referencing specific entities, ALWAYS use these citation formats:
 - For invoices: [Invoice:LL-2026-XXXXX] - use the exact invoice number
-- For students: [Student:uuid] - use the exact student ID from the data
+- For students: [Student:uuid] - use the exact student ID
+- For lessons: [Lesson:uuid] - use the exact lesson ID
+- For guardians: [Guardian:uuid] - use the exact guardian ID
 
 This allows users to click through to view details.
 
@@ -177,20 +206,56 @@ Guidelines:
 - Use UK English spelling and date formats (DD/MM/YYYY)
 - Currency is GBP (£)
 - When answering questions, cite specific entities using the formats above
-- When proposing actions, clearly describe what will happen and ask for confirmation
+- When proposing actions, clearly describe what will happen
 - For read-only questions, provide helpful answers based on the context
 - If you don't have enough information, ask clarifying questions
 
-When proposing an action, format it as:
-**Proposed Action:** [action type]
-[Description of what will happen]
-[Click "Confirm" below to execute this action]
+CRITICAL - ACTION PROPOSALS:
+When the user requests an action (send reminders, generate invoices, reschedule, draft email), you MUST respond with a structured action proposal.
 
-Available action types:
-- send_invoice_reminder: Send payment reminder email
-- draft_email: Draft an email to a guardian/student
-- schedule_lesson: Propose a new lesson
-- run_billing: Start a billing run for a date range`;
+The user's request indicates they want to take action when they say things like:
+- "Send reminders", "Remind", "Chase up"
+- "Generate invoices", "Create billing run", "Bill for"
+- "Reschedule", "Move lessons", "Shift"
+- "Draft email", "Write to", "Send message to"
+
+When proposing an action, respond with normal text PLUS a JSON block in this exact format:
+
+\`\`\`action
+{
+  "action_type": "generate_billing_run" | "send_invoice_reminders" | "reschedule_lessons" | "draft_email",
+  "description": "Human-readable description of what will happen",
+  "entities": [
+    {"type": "invoice", "id": "...", "label": "..."},
+    {"type": "student", "id": "...", "label": "..."},
+    {"type": "lesson", "id": "...", "label": "..."},
+    {"type": "guardian", "id": "...", "label": "..."}
+  ],
+  "params": {
+    // Action-specific parameters
+  }
+}
+\`\`\`
+
+ACTION TYPES AND PARAMS:
+
+1. generate_billing_run - Create invoices for lessons in a date range
+   params: { "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "mode": "term" | "monthly" | "custom" }
+   entities: List students/guardians who will be billed
+
+2. send_invoice_reminders - Send payment reminder emails for overdue/outstanding invoices
+   params: { "invoice_ids": ["id1", "id2", ...] }
+   entities: List invoices that will receive reminders
+
+3. reschedule_lessons - Move lessons to a new time
+   params: { "lesson_ids": ["id1", ...], "shift_minutes": 30 } OR { "lesson_ids": [...], "new_start_time": "HH:MM" }
+   entities: List lessons that will be rescheduled
+
+4. draft_email - Draft an email to a guardian about a student
+   params: { "guardian_id": "...", "student_id": "...", "tone": "formal" | "friendly" | "concerned", "subject": "...", "body": "..." }
+   entities: List the guardian and student involved
+
+IMPORTANT: Only include the action block when the user explicitly requests an action. For questions or information requests, respond normally without an action block.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -261,11 +326,22 @@ serve(async (req) => {
           .single();
         if (student) {
           const recentLessons = student.lesson_participants?.slice(0, 5) || [];
+          const guardianLinks = student.student_guardians || [];
           pageContextInfo = `\n\nCURRENT PAGE - Student: [Student:${student.id}] ${student.first_name} ${student.last_name}
 Status: ${student.status}
 Email: ${student.email || "Not provided"}
 Phone: ${student.phone || "Not provided"}
 Recent lessons: ${recentLessons.length}`;
+          
+          // List guardians
+          if (guardianLinks.length > 0) {
+            pageContextInfo += "\nGuardians:";
+            guardianLinks.forEach((link: any) => {
+              if (link.guardians) {
+                pageContextInfo += `\n  - [Guardian:${link.guardians.id}] ${link.guardians.full_name} (${link.relationship})`;
+              }
+            });
+          }
           
           // Get student's invoices
           const { data: studentInvoices } = await supabase
@@ -288,19 +364,22 @@ Recent lessons: ${recentLessons.length}`;
           .select(`
             *, 
             invoice_items(*),
-            guardians:payer_guardian_id(full_name, email),
-            students:payer_student_id(first_name, last_name, email)
+            guardians:payer_guardian_id(id, full_name, email),
+            students:payer_student_id(id, first_name, last_name, email)
           `)
           .eq("id", context.id)
           .single();
         if (invoice) {
           const payer = invoice.guardians?.full_name || 
             (invoice.students ? `${invoice.students.first_name} ${invoice.students.last_name}` : "Unknown");
+          const payerId = invoice.payer_guardian_id || invoice.payer_student_id;
+          const payerType = invoice.payer_guardian_id ? "Guardian" : "Student";
           pageContextInfo = `\n\nCURRENT PAGE - Invoice: [Invoice:${invoice.invoice_number}]
+Invoice ID: ${invoice.id}
 Status: ${invoice.status}
 Total: £${(invoice.total_minor / 100).toFixed(2)}
 Due: ${invoice.due_date}
-Payer: ${payer}
+Payer: [${payerType}:${payerId}] ${payer}
 Items: ${invoice.invoice_items?.length || 0}`;
         }
       } else if (context.type === "calendar") {
