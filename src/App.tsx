@@ -26,6 +26,12 @@ import Settings from "./pages/Settings";
 import AcceptInvite from "./pages/AcceptInvite";
 import NotFound from "./pages/NotFound";
 
+// Portal Pages
+import PortalHome from "./pages/portal/PortalHome";
+import PortalSchedule from "./pages/portal/PortalSchedule";
+import PortalInvoices from "./pages/portal/PortalInvoices";
+import PortalMessages from "./pages/portal/PortalMessages";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -47,6 +53,28 @@ const App = () => (
               <Route path="/onboarding" element={
                 <RouteGuard requireOnboarding={false}>
                   <Onboarding />
+                </RouteGuard>
+              } />
+              
+              {/* Portal routes (parent only) */}
+              <Route path="/portal/home" element={
+                <RouteGuard allowedRoles={['parent']}>
+                  <PortalHome />
+                </RouteGuard>
+              } />
+              <Route path="/portal/schedule" element={
+                <RouteGuard allowedRoles={['parent']}>
+                  <PortalSchedule />
+                </RouteGuard>
+              } />
+              <Route path="/portal/invoices" element={
+                <RouteGuard allowedRoles={['parent']}>
+                  <PortalInvoices />
+                </RouteGuard>
+              } />
+              <Route path="/portal/messages" element={
+                <RouteGuard allowedRoles={['parent']}>
+                  <PortalMessages />
                 </RouteGuard>
               } />
               

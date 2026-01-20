@@ -1,0 +1,225 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { PortalLayout } from '@/components/layout/PortalLayout';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Receipt, Loader2, Download, CreditCard, AlertCircle } from 'lucide-react';
+import { format, parseISO, isBefore, startOfToday } from 'date-fns';
+import { useOrg } from '@/contexts/OrgContext';
+import { useParentInvoices } from '@/hooks/useParentPortal';
+
+function formatCurrency(amountMinor: number, currencyCode: string = 'GBP'): string {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: currencyCode,
+  }).format(amountMinor / 100);
+}
+
+export default function PortalInvoices() {
+  const { currentOrg } = useOrg();
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  const { data: invoices, isLoading } = useParentInvoices({ status: statusFilter });
+
+  const getStatusBadge = (status: string, dueDate: string) => {
+    const isOverdue = status === 'sent' && isBefore(parseISO(dueDate), startOfToday());
+    
+    if (isOverdue) {
+      return <Badge variant="destructive">Overdue</Badge>;
+    }
+
+    switch (status) {
+      case 'draft':
+        return <Badge variant="outline">Draft</Badge>;
+      case 'sent':
+        return <Badge variant="default">Awaiting Payment</Badge>;
+      case 'paid':
+        return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">Paid</Badge>;
+      case 'overdue':
+        return <Badge variant="destructive">Overdue</Badge>;
+      case 'void':
+        return <Badge variant="outline">Void</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  // Separate outstanding from paid/void
+  const outstandingInvoices = invoices?.filter(inv => ['sent', 'overdue'].includes(inv.status)) || [];
+  const otherInvoices = invoices?.filter(inv => !['sent', 'overdue'].includes(inv.status)) || [];
+
+  // Calculate total outstanding
+  const totalOutstanding = outstandingInvoices.reduce((sum, inv) => sum + inv.total_minor, 0);
+
+  return (
+    <PortalLayout>
+      <PageHeader
+        title="Invoices & Payments"
+        description="View and pay your invoices"
+      />
+
+      {/* Outstanding Summary */}
+      {totalOutstanding > 0 && (
+        <Card className="mb-6 border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-600" />
+                <div>
+                  <p className="font-medium">Outstanding Balance</p>
+                  <p className="text-2xl font-bold text-amber-600">
+                    {formatCurrency(totalOutstanding, currentOrg?.currency_code || 'GBP')}
+                  </p>
+                </div>
+              </div>
+              {/* Payment button would go here when Stripe is integrated */}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Filter */}
+      <div className="flex items-center gap-4 mb-6">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Invoices</SelectItem>
+            <SelectItem value="sent">Awaiting Payment</SelectItem>
+            <SelectItem value="overdue">Overdue</SelectItem>
+            <SelectItem value="paid">Paid</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : !invoices || invoices.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Receipt className="h-12 w-12 text-muted-foreground/40" />
+            <h3 className="mt-4 text-lg font-medium">No invoices found</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {statusFilter !== 'all'
+                ? `No ${statusFilter} invoices to display.`
+                : 'You have no invoices yet.'}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-8">
+          {/* Outstanding */}
+          {outstandingInvoices.length > 0 && statusFilter === 'all' && (
+            <div>
+              <h2 className="text-lg font-semibold mb-4">Outstanding</h2>
+              <div className="space-y-3">
+                {outstandingInvoices.map((invoice) => (
+                  <InvoiceCard
+                    key={invoice.id}
+                    invoice={invoice}
+                    currencyCode={currentOrg?.currency_code || 'GBP'}
+                    getStatusBadge={getStatusBadge}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* All/Filtered */}
+          {(statusFilter !== 'all' ? invoices : otherInvoices).length > 0 && (
+            <div>
+              {statusFilter === 'all' && otherInvoices.length > 0 && (
+                <h2 className="text-lg font-semibold mb-4">Payment History</h2>
+              )}
+              <div className="space-y-3">
+                {(statusFilter !== 'all' ? invoices : otherInvoices).map((invoice) => (
+                  <InvoiceCard
+                    key={invoice.id}
+                    invoice={invoice}
+                    currencyCode={currentOrg?.currency_code || 'GBP'}
+                    getStatusBadge={getStatusBadge}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </PortalLayout>
+  );
+}
+
+interface InvoiceCardProps {
+  invoice: {
+    id: string;
+    invoice_number: string;
+    status: string;
+    due_date: string;
+    issue_date: string;
+    total_minor: number;
+    payer_guardian?: { full_name: string } | null;
+    payer_student?: { first_name: string; last_name: string } | null;
+  };
+  currencyCode: string;
+  getStatusBadge: (status: string, dueDate: string) => JSX.Element;
+}
+
+function InvoiceCard({ invoice, currencyCode, getStatusBadge }: InvoiceCardProps) {
+  const isPayable = ['sent', 'overdue'].includes(invoice.status);
+
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-mono text-sm font-medium">{invoice.invoice_number}</span>
+              {getStatusBadge(invoice.status, invoice.due_date)}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Due: {format(parseISO(invoice.due_date), 'd MMM yyyy')}
+            </p>
+            {(invoice.payer_guardian || invoice.payer_student) && (
+              <p className="text-sm text-muted-foreground">
+                {invoice.payer_guardian?.full_name ||
+                  `${invoice.payer_student?.first_name} ${invoice.payer_student?.last_name}`}
+              </p>
+            )}
+          </div>
+
+          <div className="text-right">
+            <p className="text-lg font-bold">
+              {formatCurrency(invoice.total_minor, currencyCode)}
+            </p>
+            <div className="flex items-center gap-2 mt-2">
+              <Link to={`/invoices/${invoice.id}`}>
+                <Button variant="ghost" size="sm">
+                  <Download className="h-4 w-4 mr-1" />
+                  View
+                </Button>
+              </Link>
+              {isPayable && (
+                <Button size="sm" disabled title="Payment coming soon">
+                  <CreditCard className="h-4 w-4 mr-1" />
+                  Pay
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
