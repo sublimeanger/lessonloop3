@@ -421,6 +421,7 @@ export type Database = {
       guardians: {
         Row: {
           created_at: string
+          deleted_at: string | null
           email: string | null
           full_name: string
           id: string
@@ -431,6 +432,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           full_name: string
           id?: string
@@ -441,6 +443,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           full_name?: string
           id?: string
@@ -1122,6 +1125,7 @@ export type Database = {
           paid_at: string
           provider: Database["public"]["Enums"]["payment_provider"]
           provider_reference: string | null
+          updated_at: string | null
         }
         Insert: {
           amount_minor: number
@@ -1134,6 +1138,7 @@ export type Database = {
           paid_at?: string
           provider?: Database["public"]["Enums"]["payment_provider"]
           provider_reference?: string | null
+          updated_at?: string | null
         }
         Update: {
           amount_minor?: number
@@ -1146,6 +1151,7 @@ export type Database = {
           paid_at?: string
           provider?: Database["public"]["Enums"]["payment_provider"]
           provider_reference?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -1393,6 +1399,7 @@ export type Database = {
       students: {
         Row: {
           created_at: string
+          deleted_at: string | null
           dob: string | null
           email: string | null
           first_name: string
@@ -1406,6 +1413,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           dob?: string | null
           email?: string | null
           first_name: string
@@ -1419,6 +1427,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           dob?: string | null
           email?: string | null
           first_name?: string
@@ -1563,6 +1572,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      anonymise_guardian: { Args: { guardian_id: string }; Returns: undefined }
+      anonymise_student: { Args: { student_id: string }; Returns: undefined }
       can_edit_lesson: {
         Args: { _lesson_id: string; _user_id: string }
         Returns: boolean
