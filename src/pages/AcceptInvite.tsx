@@ -10,25 +10,27 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle, XCircle, Music } from 'lucide-react';
 
 interface InviteDetails {
-  id: string;
   email: string;
   role: string;
   org_id: string;
   expires_at: string;
-  organisation?: {
-    name: string;
-  };
+}
+
+interface OrganisationDetails {
+  name: string;
+  org_type: string;
 }
 
 export default function AcceptInvite() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   
   const token = searchParams.get('token');
   
   const [invite, setInvite] = useState<InviteDetails | null>(null);
+  const [organisation, setOrganisation] = useState<OrganisationDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
@@ -50,90 +52,66 @@ export default function AcceptInvite() {
   const fetchInvite = async () => {
     if (!token) return;
     
-    // Fetch invite with org details - need to bypass RLS for public access
-    const { data, error: fetchError } = await supabase
-      .from('invites')
-      .select(`
-        id,
-        email,
-        role,
-        org_id,
-        expires_at,
-        accepted_at
-      `)
-      .eq('token', token)
-      .maybeSingle();
-    
-    if (fetchError || !data) {
-      setError('Invitation not found or has expired');
+    try {
+      const response = await supabase.functions.invoke('invite-get', {
+        body: { token },
+      });
+
+      if (response.error) {
+        setError(response.error.message || 'Failed to fetch invitation');
+        setIsLoading(false);
+        return;
+      }
+
+      const data = response.data;
+      
+      if (data.error) {
+        setError(data.error);
+        setIsLoading(false);
+        return;
+      }
+
+      setInvite(data.invite);
+      setOrganisation(data.organisation);
       setIsLoading(false);
-      return;
-    }
-    
-    if (data.accepted_at) {
-      setError('This invitation has already been accepted');
+    } catch (err: any) {
+      console.error('Error fetching invite:', err);
+      setError('Failed to load invitation');
       setIsLoading(false);
-      return;
     }
-    
-    if (new Date(data.expires_at) < new Date()) {
-      setError('This invitation has expired');
-      setIsLoading(false);
-      return;
-    }
-    
-    // Fetch org name separately
-    const { data: orgData } = await supabase
-      .from('organisations')
-      .select('name')
-      .eq('id', data.org_id)
-      .maybeSingle();
-    
-    setInvite({
-      ...data,
-      organisation: orgData || undefined,
-    } as InviteDetails);
-    setIsLoading(false);
   };
 
-  const acceptInviteForExistingUser = async () => {
-    if (!invite || !user) return;
+  const acceptInvite = async () => {
+    if (!invite || !token) return;
     
     setIsAccepting(true);
     
     try {
-      // Create org membership
-      const { error: membershipError } = await supabase
-        .from('org_memberships')
-        .insert({
-          org_id: invite.org_id,
-          user_id: user.id,
-          role: invite.role as any,
-          status: 'active',
-        });
-      
-      if (membershipError) {
-        if (membershipError.message.includes('duplicate')) {
-          toast({ title: 'Already a member', description: 'You are already a member of this organisation.' });
-        } else {
-          throw membershipError;
-        }
+      const response = await supabase.functions.invoke('invite-accept', {
+        body: { token },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to accept invitation');
       }
+
+      const data = response.data;
       
-      // Mark invite as accepted
-      await supabase
-        .from('invites')
-        .update({ accepted_at: new Date().toISOString() })
-        .eq('id', invite.id);
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      toast({ 
+        title: 'Welcome!', 
+        description: `You've joined ${organisation?.name || 'the organisation'}` 
+      });
       
-      // Update user's current org
-      await supabase
-        .from('profiles')
-        .update({ current_org_id: invite.org_id })
-        .eq('id', user.id);
-      
-      toast({ title: 'Welcome!', description: `You've joined ${invite.organisation?.name || 'the organisation'}` });
-      navigate('/dashboard');
+      // Navigate based on onboarding status
+      if (profile?.has_completed_onboarding) {
+        navigate('/dashboard');
+      } else {
+        navigate('/onboarding');
+      }
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     } finally {
@@ -141,8 +119,8 @@ export default function AcceptInvite() {
     }
   };
 
-  const acceptInviteForNewUser = async () => {
-    if (!invite) return;
+  const signUpAndAccept = async () => {
+    if (!invite || !token) return;
     
     if (password !== confirmPassword) {
       toast({ title: 'Passwords do not match', variant: 'destructive' });
@@ -170,40 +148,37 @@ export default function AcceptInvite() {
       if (signUpError) throw signUpError;
       
       if (authData.user) {
-        // Wait a moment for the profile trigger to create the profile
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait for profile trigger and session to be established
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Create org membership
-        const { error: membershipError } = await supabase
-          .from('org_memberships')
-          .insert({
-            org_id: invite.org_id,
-            user_id: authData.user.id,
-            role: invite.role as any,
-            status: 'active',
-          });
-        
-        if (membershipError) {
-          console.error('Membership error:', membershipError);
+        // Now accept the invite using the edge function
+        const response = await supabase.functions.invoke('invite-accept', {
+          body: { token },
+        });
+
+        if (response.error) {
+          throw new Error(response.error.message || 'Failed to accept invitation');
         }
+
+        const data = response.data;
         
-        // Mark invite as accepted
-        await supabase
-          .from('invites')
-          .update({ accepted_at: new Date().toISOString() })
-          .eq('id', invite.id);
-        
-        // Update profile with org and onboarding complete
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        // Update profile with full name and mark onboarding as complete for invited users
         await supabase
           .from('profiles')
           .update({ 
-            current_org_id: invite.org_id,
-            has_completed_onboarding: true,
             full_name: fullName,
+            has_completed_onboarding: true,
           })
           .eq('id', authData.user.id);
         
-        toast({ title: 'Account created!', description: `Welcome to ${invite.organisation?.name || 'the organisation'}` });
+        toast({ 
+          title: 'Account created!', 
+          description: `Welcome to ${organisation?.name || 'the organisation'}` 
+        });
         navigate('/dashboard');
       }
     } catch (err: any) {
@@ -252,7 +227,7 @@ export default function AcceptInvite() {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               <Music className="h-6 w-6 text-primary" />
             </div>
-            <CardTitle>Join {invite.organisation?.name || 'Organisation'}</CardTitle>
+            <CardTitle>Join {organisation?.name || 'Organisation'}</CardTitle>
             <CardDescription>
               You've been invited to join as a <strong>{invite.role}</strong>
             </CardDescription>
@@ -261,12 +236,12 @@ export default function AcceptInvite() {
             {!emailMatches && (
               <div className="rounded-lg bg-amber-50 p-4 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
                 <p>This invitation was sent to <strong>{invite.email}</strong>, but you're logged in as <strong>{user.email}</strong>.</p>
-                <p className="mt-2">You can still accept it with your current account.</p>
+                <p className="mt-2">Please log out and sign in with the invited email, or ask for a new invitation.</p>
               </div>
             )}
             <Button 
-              onClick={acceptInviteForExistingUser} 
-              disabled={isAccepting} 
+              onClick={acceptInvite} 
+              disabled={isAccepting || !emailMatches} 
               className="w-full"
             >
               {isAccepting ? (
@@ -275,6 +250,15 @@ export default function AcceptInvite() {
                 <><CheckCircle className="mr-2 h-4 w-4" /> Accept Invitation</>
               )}
             </Button>
+            {!emailMatches && (
+              <Button 
+                variant="outline" 
+                onClick={() => supabase.auth.signOut().then(() => window.location.reload())} 
+                className="w-full"
+              >
+                Log out and use correct email
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -289,7 +273,7 @@ export default function AcceptInvite() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Music className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle>Join {invite.organisation?.name || 'Organisation'}</CardTitle>
+          <CardTitle>Join {organisation?.name || 'Organisation'}</CardTitle>
           <CardDescription>
             Create your account to join as a <strong>{invite.role}</strong>
           </CardDescription>
@@ -329,7 +313,7 @@ export default function AcceptInvite() {
             />
           </div>
           <Button 
-            onClick={acceptInviteForNewUser} 
+            onClick={signUpAndAccept} 
             disabled={isAccepting || !fullName || !password} 
             className="w-full"
           >
@@ -341,7 +325,7 @@ export default function AcceptInvite() {
           </Button>
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{' '}
-            <Link to="/login" className="text-primary hover:underline">
+            <Link to={`/login?redirect=/accept-invite?token=${token}`} className="text-primary hover:underline">
               Log in
             </Link>
           </p>
