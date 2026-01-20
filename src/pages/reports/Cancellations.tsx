@@ -1,0 +1,273 @@
+import { useState } from 'react';
+import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Progress } from '@/components/ui/progress';
+import { LoadingState } from '@/components/shared/LoadingState';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { useCancellationReport, exportCancellationToCSV } from '@/hooks/useReports';
+import { useOrg } from '@/contexts/OrgContext';
+import { Download, XCircle, CheckCircle, Calendar, Percent } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+
+const COLORS = ['hsl(var(--primary))', 'hsl(var(--destructive))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
+
+export default function CancellationReport() {
+  const { currentOrg } = useOrg();
+  
+  const lastMonth = subMonths(new Date(), 1);
+  const [startDate, setStartDate] = useState(format(startOfMonth(lastMonth), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(format(endOfMonth(lastMonth), 'yyyy-MM-dd'));
+
+  const { data, isLoading, error } = useCancellationReport(startDate, endDate);
+
+  const handleExport = () => {
+    if (data && currentOrg) {
+      exportCancellationToCSV(data, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'));
+    }
+  };
+
+  const pieData = data ? [
+    { name: 'Completed', value: data.totalCompleted },
+    { name: 'Cancelled', value: data.totalCancelled },
+  ].filter(d => d.value > 0) : [];
+
+  return (
+    <AppLayout>
+      <PageHeader
+        title="Cancellation Rate"
+        description="Analyse lesson cancellations and patterns"
+        breadcrumbs={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Reports', href: '/reports' },
+          { label: 'Cancellations' },
+        ]}
+        actions={
+          data && data.totalScheduled > 0 && (
+            <Button onClick={handleExport} variant="outline" className="gap-2">
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+          )
+        }
+      />
+
+      {/* Date Range */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="start-date">Start Date</Label>
+              <Input
+                id="start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-[180px]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="end-date">End Date</Label>
+              <Input
+                id="end-date"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-[180px]"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const thisMonth = new Date();
+                  setStartDate(format(startOfMonth(thisMonth), 'yyyy-MM-dd'));
+                  setEndDate(format(endOfMonth(thisMonth), 'yyyy-MM-dd'));
+                }}
+              >
+                This Month
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setStartDate(format(startOfMonth(lastMonth), 'yyyy-MM-dd'));
+                  setEndDate(format(endOfMonth(lastMonth), 'yyyy-MM-dd'));
+                }}
+              >
+                Last Month
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {isLoading ? (
+        <LoadingState />
+      ) : error ? (
+        <EmptyState icon={XCircle} title="Error loading report" description={error.message} />
+      ) : !data || data.totalScheduled === 0 ? (
+        <EmptyState
+          icon={Calendar}
+          title="No lessons found"
+          description="There are no lessons in the selected date range."
+        />
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="mb-6 grid gap-4 md:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Total Scheduled
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{data.totalScheduled}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Completed
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-primary">{data.totalCompleted}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-2">
+                  <XCircle className="h-4 w-4" />
+                  Cancelled
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-destructive">{data.totalCancelled}</p>
+              </CardContent>
+            </Card>
+            <Card className={data.cancellationRate > 10 ? 'border-destructive/50' : ''}>
+              <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-2">
+                  <Percent className="h-4 w-4" />
+                  Cancellation Rate
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className={`text-2xl font-bold ${data.cancellationRate > 10 ? 'text-destructive' : data.cancellationRate > 5 ? 'text-yellow-600' : 'text-green-600'}`}>
+                  {data.cancellationRate.toFixed(1)}%
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Pie Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Completion vs Cancellation</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[250px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={2}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {pieData.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* By Reason */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Cancellation Reasons</CardTitle>
+                <CardDescription>Why lessons were cancelled</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {data.byReason.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    No cancellation reason data available
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {data.byReason.map((reason) => (
+                      <div key={reason.reason}>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="font-medium">{reason.reason}</span>
+                          <span className="text-muted-foreground">{reason.count}</span>
+                        </div>
+                        <Progress 
+                          value={(reason.count / data.totalCancelled) * 100} 
+                          className="h-2"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* By Teacher */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Cancellation Rate by Teacher</CardTitle>
+              <CardDescription>Compare cancellation rates across your team</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Teacher</TableHead>
+                    <TableHead className="text-right">Total Lessons</TableHead>
+                    <TableHead className="text-right">Cancelled</TableHead>
+                    <TableHead className="text-right">Rate</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.byTeacher.map((teacher) => (
+                    <TableRow key={teacher.teacherName}>
+                      <TableCell className="font-medium">{teacher.teacherName}</TableCell>
+                      <TableCell className="text-right">{teacher.total}</TableCell>
+                      <TableCell className="text-right text-destructive">{teacher.cancelled}</TableCell>
+                      <TableCell className="text-right">
+                        <span className={teacher.rate > 10 ? 'text-destructive font-medium' : teacher.rate > 5 ? 'text-yellow-600' : 'text-green-600'}>
+                          {teacher.rate.toFixed(1)}%
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </AppLayout>
+  );
+}

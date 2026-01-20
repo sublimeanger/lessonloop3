@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
-import { Calendar, Users, Receipt, Clock, TrendingUp, AlertCircle, Plus } from 'lucide-react';
+import { useDashboardStats } from '@/hooks/useReports';
+import { Calendar, Users, Receipt, Clock, TrendingUp, AlertCircle, Plus, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
@@ -36,6 +37,18 @@ export default function Dashboard() {
 }
 
 function SoloTeacherDashboard({ firstName, greeting }: { firstName: string; greeting: string }) {
+  const { currentOrg } = useOrg();
+  const { data: stats } = useDashboardStats();
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: currentOrg?.currency_code || 'GBP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
   return (
     <AppLayout>
       <PageHeader
@@ -51,8 +64,10 @@ function SoloTeacherDashboard({ firstName, greeting }: { firstName: string; gree
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">No lessons scheduled yet</p>
+            <div className="text-2xl font-bold">{stats?.todayLessons ?? 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats?.todayLessons === 0 ? 'No lessons scheduled' : 'lessons today'}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -61,28 +76,37 @@ function SoloTeacherDashboard({ firstName, greeting }: { firstName: string; gree
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">Add your first student</p>
+            <div className="text-2xl font-bold">{stats?.activeStudents ?? 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats?.activeStudents === 0 ? 'Add your first student' : 'enrolled'}
+            </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Outstanding</CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">£0</div>
-            <p className="text-xs text-muted-foreground">All invoices paid</p>
-          </CardContent>
-        </Card>
+        <Link to="/reports/outstanding">
+          <Card className="cursor-pointer transition-colors hover:bg-muted/50">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Outstanding</CardTitle>
+              <Receipt className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCurrency(stats?.outstandingAmount ?? 0)}</div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                {stats?.outstandingAmount === 0 ? 'All invoices paid' : 'View ageing report'}
+                {(stats?.outstandingAmount ?? 0) > 0 && <ChevronRight className="h-3 w-3" />}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Hours This Week</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">Schedule lessons to track</p>
+            <div className="text-2xl font-bold">{stats?.hoursThisWeek ?? 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats?.hoursThisWeek === 0 ? 'Schedule lessons to track' : 'hours taught'}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -97,14 +121,27 @@ function SoloTeacherDashboard({ firstName, greeting }: { firstName: string; gree
           <CardContent>
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Calendar className="h-10 w-10 text-muted-foreground/40" />
-              <p className="mt-3 font-medium">No lessons scheduled yet</p>
+              <p className="mt-3 font-medium">
+                {stats?.todayLessons === 0 ? 'No lessons scheduled yet' : `${stats?.todayLessons} lessons today`}
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Click "Add Lesson" to schedule your first lesson
+                {stats?.todayLessons === 0 
+                  ? 'Click "Add Lesson" to schedule your first lesson'
+                  : 'View your calendar for details'}
               </p>
               <Link to="/calendar">
                 <Button className="mt-4 gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Lesson
+                  {stats?.todayLessons === 0 ? (
+                    <>
+                      <Plus className="h-4 w-4" />
+                      Add Lesson
+                    </>
+                  ) : (
+                    <>
+                      <Calendar className="h-4 w-4" />
+                      View Calendar
+                    </>
+                  )}
                 </Button>
               </Link>
             </div>
@@ -137,10 +174,10 @@ function SoloTeacherDashboard({ firstName, greeting }: { firstName: string; gree
                   Create Invoice
                 </Button>
               </Link>
-              <Link to="/messages">
+              <Link to="/reports/revenue">
                 <Button variant="outline" className="w-full justify-start gap-2">
-                  <Clock className="h-4 w-4" />
-                  Send Reminder
+                  <TrendingUp className="h-4 w-4" />
+                  Revenue Report
                 </Button>
               </Link>
             </div>
@@ -152,6 +189,18 @@ function SoloTeacherDashboard({ firstName, greeting }: { firstName: string; gree
 }
 
 function AcademyDashboard({ firstName, greeting, orgName }: { firstName: string; greeting: string; orgName?: string }) {
+  const { currentOrg } = useOrg();
+  const { data: stats } = useDashboardStats();
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: currentOrg?.currency_code || 'GBP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
   return (
     <AppLayout>
       <PageHeader
@@ -167,62 +216,75 @@ function AcademyDashboard({ firstName, greeting, orgName }: { firstName: string;
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">Add students to get started</p>
+            <div className="text-2xl font-bold">{stats?.activeStudents ?? 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats?.activeStudents === 0 ? 'Add students to get started' : 'enrolled'}
+            </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Lessons This Week</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">No lessons scheduled</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Outstanding</CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">£0</div>
-            <p className="text-xs text-muted-foreground">All invoices paid</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Revenue MTD</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">£0</div>
-            <p className="text-xs text-muted-foreground">Month to date</p>
-          </CardContent>
-        </Card>
+        <Link to="/reports/lessons">
+          <Card className="cursor-pointer transition-colors hover:bg-muted/50">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Lessons This Week</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats?.lessonsThisWeek ?? 0}</div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                View lessons report <ChevronRight className="h-3 w-3" />
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/reports/outstanding">
+          <Card className="cursor-pointer transition-colors hover:bg-muted/50">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Outstanding</CardTitle>
+              <Receipt className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCurrency(stats?.outstandingAmount ?? 0)}</div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                View ageing report <ChevronRight className="h-3 w-3" />
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/reports/revenue">
+          <Card className="cursor-pointer transition-colors hover:bg-muted/50">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Revenue MTD</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-primary">{formatCurrency(stats?.revenueMTD ?? 0)}</div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                View revenue report <ChevronRight className="h-3 w-3" />
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         {/* Cancellations */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-warning" />
-              Cancellations Needing Action
-            </CardTitle>
-            <CardDescription>Lessons cancelled or needing rescheduling</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <AlertCircle className="h-10 w-10 text-muted-foreground/40" />
-              <p className="mt-3 font-medium">No pending cancellations</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Cancelled lessons will appear here for review
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <Link to="/reports/cancellations">
+          <Card className="cursor-pointer transition-colors hover:bg-muted/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-chart-4" />
+                Cancellation Tracking
+              </CardTitle>
+              <CardDescription>Monitor cancellation rates and patterns</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between py-4">
+                <p className="text-sm text-muted-foreground">View cancellation report</p>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
 
         {/* Quick Actions */}
         <Card>
@@ -250,10 +312,10 @@ function AcademyDashboard({ firstName, greeting, orgName }: { firstName: string;
                   Run Billing
                 </Button>
               </Link>
-              <Link to="/reports">
+              <Link to="/reports/payroll">
                 <Button variant="outline" className="w-full justify-start gap-2">
                   <TrendingUp className="h-4 w-4" />
-                  View Reports
+                  Payroll Report
                 </Button>
               </Link>
             </div>
@@ -270,10 +332,20 @@ function AcademyDashboard({ firstName, greeting, orgName }: { firstName: string;
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <Calendar className="h-10 w-10 text-muted-foreground/40" />
-            <p className="mt-3 font-medium">No lessons today</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Schedule lessons to see them here
+            <p className="mt-3 font-medium">
+              {stats?.todayLessons === 0 ? 'No lessons today' : `${stats?.todayLessons} lessons scheduled`}
             </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {stats?.todayLessons === 0 
+                ? 'Schedule lessons to see them here'
+                : 'View your calendar for details'}
+            </p>
+            <Link to="/calendar">
+              <Button variant="outline" className="mt-4 gap-2">
+                <Calendar className="h-4 w-4" />
+                View Calendar
+              </Button>
+            </Link>
           </div>
         </CardContent>
       </Card>

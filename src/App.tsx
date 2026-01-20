@@ -22,6 +22,10 @@ import Invoices from "./pages/Invoices";
 import InvoiceDetail from "./pages/InvoiceDetail";
 import Reports from "./pages/Reports";
 import PayrollReport from "./pages/reports/Payroll";
+import RevenueReport from "./pages/reports/Revenue";
+import OutstandingReport from "./pages/reports/Outstanding";
+import LessonsDeliveredReport from "./pages/reports/LessonsDelivered";
+import CancellationReport from "./pages/reports/Cancellations";
 import Messages from "./pages/Messages";
 import Settings from "./pages/Settings";
 import AcceptInvite from "./pages/AcceptInvite";
@@ -104,6 +108,26 @@ const App = () => (
               <Route path="/reports/payroll" element={
                 <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
                   <PayrollReport />
+                </RouteGuard>
+              } />
+              <Route path="/reports/revenue" element={
+                <RouteGuard allowedRoles={['owner', 'admin', 'finance']}>
+                  <RevenueReport />
+                </RouteGuard>
+              } />
+              <Route path="/reports/outstanding" element={
+                <RouteGuard allowedRoles={['owner', 'admin', 'finance']}>
+                  <OutstandingReport />
+                </RouteGuard>
+              } />
+              <Route path="/reports/lessons" element={
+                <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
+                  <LessonsDeliveredReport />
+                </RouteGuard>
+              } />
+              <Route path="/reports/cancellations" element={
+                <RouteGuard allowedRoles={['owner', 'admin']}>
+                  <CancellationReport />
                 </RouteGuard>
               } />
               <Route path="/messages" element={<RouteGuard><Messages /></RouteGuard>} />
