@@ -16,6 +16,7 @@ import Dashboard from "./pages/Dashboard";
 import CalendarPage from "./pages/CalendarPage";
 import Students from "./pages/Students";
 import StudentDetail from "./pages/StudentDetail";
+import StudentsImport from "./pages/StudentsImport";
 import Teachers from "./pages/Teachers";
 import Locations from "./pages/Locations";
 import Invoices from "./pages/Invoices";
@@ -87,6 +88,11 @@ const App = () => (
               <Route path="/dashboard" element={<RouteGuard><Dashboard /></RouteGuard>} />
               <Route path="/calendar" element={<RouteGuard><CalendarPage /></RouteGuard>} />
               <Route path="/students" element={<RouteGuard><Students /></RouteGuard>} />
+              <Route path="/students/import" element={
+                <RouteGuard allowedRoles={['owner', 'admin']}>
+                  <StudentsImport />
+                </RouteGuard>
+              } />
               <Route path="/students/:id" element={<RouteGuard><StudentDetail /></RouteGuard>} />
               <Route path="/teachers" element={
                 <RouteGuard allowedRoles={['owner', 'admin']}>
