@@ -1,12 +1,48 @@
 import { Link } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useOrg } from '@/contexts/OrgContext';
-import { Banknote, BarChart3, Clock, Users, TrendingUp, ChevronRight } from 'lucide-react';
+import { Banknote, Clock, TrendingUp, ChevronRight, Calendar, XCircle, MapPin } from 'lucide-react';
 
 const reports = [
+  {
+    id: 'revenue',
+    title: 'Revenue',
+    description: 'Track income from paid invoices over time',
+    icon: TrendingUp,
+    href: '/reports/revenue',
+    status: 'available',
+    roles: ['owner', 'admin', 'finance'],
+  },
+  {
+    id: 'outstanding',
+    title: 'Outstanding Payments',
+    description: 'Ageing report for unpaid invoices (0-7, 8-14, 15-30, 30+ days)',
+    icon: Clock,
+    href: '/reports/outstanding',
+    status: 'available',
+    roles: ['owner', 'admin', 'finance'],
+  },
+  {
+    id: 'lessons',
+    title: 'Lessons Delivered',
+    description: 'Analyse lessons by teacher and location',
+    icon: Calendar,
+    href: '/reports/lessons',
+    status: 'available',
+    roles: ['owner', 'admin', 'teacher'],
+  },
+  {
+    id: 'cancellations',
+    title: 'Cancellation Rate',
+    description: 'Track cancellations and identify patterns',
+    icon: XCircle,
+    href: '/reports/cancellations',
+    status: 'available',
+    roles: ['owner', 'admin'],
+  },
   {
     id: 'payroll',
     title: 'Payroll',
@@ -17,40 +53,13 @@ const reports = [
     roles: ['owner', 'admin', 'teacher'],
   },
   {
-    id: 'revenue',
-    title: 'Revenue',
-    description: 'Track income from invoices and payments over time',
-    icon: TrendingUp,
-    href: '/reports/revenue',
-    status: 'coming_soon',
-    roles: ['owner', 'admin', 'finance'],
-  },
-  {
-    id: 'outstanding',
-    title: 'Outstanding Payments',
-    description: 'View ageing report for unpaid invoices',
-    icon: Clock,
-    href: '/reports/outstanding',
-    status: 'coming_soon',
-    roles: ['owner', 'admin', 'finance'],
-  },
-  {
     id: 'utilisation',
     title: 'Room Utilisation',
-    description: 'Analyse how effectively your teaching spaces are being used',
-    icon: BarChart3,
+    description: 'Analyse how effectively your teaching spaces are used',
+    icon: MapPin,
     href: '/reports/utilisation',
     status: 'coming_soon',
     roles: ['owner', 'admin'],
-  },
-  {
-    id: 'students',
-    title: 'Student Activity',
-    description: 'Track lesson attendance and student engagement',
-    icon: Users,
-    href: '/reports/students',
-    status: 'coming_soon',
-    roles: ['owner', 'admin', 'teacher'],
   },
 ];
 
