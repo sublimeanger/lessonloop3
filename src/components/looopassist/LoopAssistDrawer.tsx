@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useLoopAssist, AIMessage, AIConversation } from '@/hooks/useLoopAssist';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
+import { renderMessageWithChips } from './EntityChip';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -294,7 +295,9 @@ function MessageBubble({ message }: { message: AIMessage }) {
           isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'
         )}
       >
-        <div className="whitespace-pre-wrap">{message.content}</div>
+        <div className="whitespace-pre-wrap">
+          {isUser ? message.content : renderMessageWithChips(message.content)}
+        </div>
       </div>
     </div>
   );
