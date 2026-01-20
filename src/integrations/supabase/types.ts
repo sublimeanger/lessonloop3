@@ -1272,6 +1272,9 @@ export type Database = {
           id: string
           instruments: string[]
           org_id: string
+          pay_rate_type: Database["public"]["Enums"]["pay_rate_type"] | null
+          pay_rate_value: number | null
+          payroll_notes: string | null
           teaching_address: string | null
           updated_at: string
           user_id: string
@@ -1285,6 +1288,9 @@ export type Database = {
           id?: string
           instruments?: string[]
           org_id: string
+          pay_rate_type?: Database["public"]["Enums"]["pay_rate_type"] | null
+          pay_rate_value?: number | null
+          payroll_notes?: string | null
           teaching_address?: string | null
           updated_at?: string
           user_id: string
@@ -1298,6 +1304,9 @@ export type Database = {
           id?: string
           instruments?: string[]
           org_id?: string
+          pay_rate_type?: Database["public"]["Enums"]["pay_rate_type"] | null
+          pay_rate_value?: number | null
+          payroll_notes?: string | null
           teaching_address?: string | null
           updated_at?: string
           user_id?: string
@@ -1457,6 +1466,7 @@ export type Database = {
       location_type: "school" | "studio" | "home" | "online"
       membership_status: "active" | "invited" | "disabled"
       org_type: "solo_teacher" | "studio" | "academy" | "agency"
+      pay_rate_type: "per_lesson" | "hourly" | "percentage"
       payment_method: "card" | "bank_transfer" | "cash" | "other"
       payment_provider: "stripe" | "manual"
       recurrence_pattern: "weekly"
@@ -1616,6 +1626,7 @@ export const Constants = {
       location_type: ["school", "studio", "home", "online"],
       membership_status: ["active", "invited", "disabled"],
       org_type: ["solo_teacher", "studio", "academy", "agency"],
+      pay_rate_type: ["per_lesson", "hourly", "percentage"],
       payment_method: ["card", "bank_transfer", "cash", "other"],
       payment_provider: ["stripe", "manual"],
       recurrence_pattern: ["weekly"],
