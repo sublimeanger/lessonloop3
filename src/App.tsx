@@ -21,6 +21,7 @@ import Locations from "./pages/Locations";
 import Invoices from "./pages/Invoices";
 import InvoiceDetail from "./pages/InvoiceDetail";
 import Reports from "./pages/Reports";
+import PayrollReport from "./pages/reports/Payroll";
 import Messages from "./pages/Messages";
 import Settings from "./pages/Settings";
 import AcceptInvite from "./pages/AcceptInvite";
@@ -98,6 +99,11 @@ const App = () => (
               <Route path="/reports" element={
                 <RouteGuard allowedRoles={['owner', 'admin', 'finance']}>
                   <Reports />
+                </RouteGuard>
+              } />
+              <Route path="/reports/payroll" element={
+                <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
+                  <PayrollReport />
                 </RouteGuard>
               } />
               <Route path="/messages" element={<RouteGuard><Messages /></RouteGuard>} />
