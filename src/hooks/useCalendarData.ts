@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { LessonWithDetails, CalendarFilters } from '@/components/calendar/types';
 import { startOfWeek, endOfWeek, startOfDay, endOfDay, addDays } from 'date-fns';
+
+const LESSONS_PAGE_SIZE = 100;
 
 export function useCalendarData(
   currentDate: Date,
@@ -12,6 +14,7 @@ export function useCalendarData(
   const { currentOrg } = useOrg();
   const [lessons, setLessons] = useState<LessonWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const getDateRange = useCallback(() => {
     if (view === 'day') {
@@ -27,79 +30,123 @@ export function useCalendarData(
   const fetchLessons = useCallback(async () => {
     if (!currentOrg) return;
     
+    // Cancel previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    
     setIsLoading(true);
     const { start, end } = getDateRange();
 
-    let query = supabase
-      .from('lessons')
-      .select(`
-        *,
-        location:locations(name),
-        room:rooms(name)
-      `)
-      .eq('org_id', currentOrg.id)
-      .gte('start_at', start.toISOString())
-      .lte('start_at', end.toISOString())
-      .order('start_at', { ascending: true });
+    try {
+      // Build query with optimized date window using indexed columns
+      let query = supabase
+        .from('lessons')
+        .select(`
+          id, title, start_at, end_at, status, lesson_type, notes_shared, notes_private, 
+          teacher_user_id, location_id, room_id, org_id, recurrence_id, online_meeting_url,
+          created_by, created_at, updated_at,
+          location:locations(id, name),
+          room:rooms(id, name)
+        `)
+        .eq('org_id', currentOrg.id)
+        .gte('start_at', start.toISOString())
+        .lte('start_at', end.toISOString())
+        .order('start_at', { ascending: true })
+        .limit(LESSONS_PAGE_SIZE);
 
-    if (filters.teacher_user_id) {
-      query = query.eq('teacher_user_id', filters.teacher_user_id);
-    }
-    if (filters.location_id) {
-      query = query.eq('location_id', filters.location_id);
-    }
-    if (filters.room_id) {
-      query = query.eq('room_id', filters.room_id);
-    }
+      if (filters.teacher_user_id) {
+        query = query.eq('teacher_user_id', filters.teacher_user_id);
+      }
+      if (filters.location_id) {
+        query = query.eq('location_id', filters.location_id);
+      }
+      if (filters.room_id) {
+        query = query.eq('room_id', filters.room_id);
+      }
 
-    const { data: lessonsData } = await query;
+      const { data: lessonsData, error } = await query;
 
-    if (!lessonsData) {
-      setLessons([]);
-      setIsLoading(false);
-      return;
-    }
+      if (error || !lessonsData) {
+        console.error('Error fetching lessons:', error);
+        setLessons([]);
+        setIsLoading(false);
+        return;
+      }
 
-    // Fetch teacher profiles and participants for each lesson
-    const enrichedLessons: LessonWithDetails[] = await Promise.all(
-      lessonsData.map(async (lesson) => {
-        // Get teacher profile
-        const { data: teacherProfile } = await supabase
+      if (lessonsData.length === 0) {
+        setLessons([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Batch fetch all related data in parallel for performance
+      const lessonIds = lessonsData.map(l => l.id);
+      const teacherIds = [...new Set(lessonsData.map(l => l.teacher_user_id))];
+
+      const [teacherProfiles, participantsData, attendanceData] = await Promise.all([
+        // Batch fetch all teacher profiles
+        supabase
           .from('profiles')
-          .select('full_name, email')
-          .eq('id', lesson.teacher_user_id)
-          .maybeSingle();
-
-        // Get participants
-        const { data: participants } = await supabase
+          .select('id, full_name, email')
+          .in('id', teacherIds),
+        // Batch fetch all participants
+        supabase
           .from('lesson_participants')
           .select(`
-            id,
+            id, lesson_id,
             student:students(id, first_name, last_name)
           `)
-          .eq('lesson_id', lesson.id);
-
-        // Get attendance records
-        const { data: attendance } = await supabase
+          .in('lesson_id', lessonIds),
+        // Batch fetch all attendance records
+        supabase
           .from('attendance_records')
-          .select('student_id, attendance_status')
-          .eq('lesson_id', lesson.id);
+          .select('lesson_id, student_id, attendance_status')
+          .in('lesson_id', lessonIds)
+      ]);
 
-        return {
-          ...lesson,
-          teacher: teacherProfile || undefined,
-          participants: participants as any || [],
-          attendance: attendance || [],
-        };
-      })
-    );
+      // Build lookup maps for efficient access
+      const teacherMap = new Map(
+        (teacherProfiles.data || []).map(t => [t.id, { full_name: t.full_name, email: t.email }])
+      );
+      const participantsMap = new Map<string, typeof participantsData.data>();
+      (participantsData.data || []).forEach(p => {
+        const existing = participantsMap.get(p.lesson_id) || [];
+        participantsMap.set(p.lesson_id, [...existing, p]);
+      });
+      const attendanceMap = new Map<string, typeof attendanceData.data>();
+      (attendanceData.data || []).forEach(a => {
+        const existing = attendanceMap.get(a.lesson_id) || [];
+        attendanceMap.set(a.lesson_id, [...existing, a]);
+      });
 
-    setLessons(enrichedLessons);
-    setIsLoading(false);
+      // Enrich lessons with related data from maps
+      const enrichedLessons: LessonWithDetails[] = lessonsData.map((lesson) => ({
+        ...lesson,
+        teacher: teacherMap.get(lesson.teacher_user_id),
+        participants: participantsMap.get(lesson.id) as any || [],
+        attendance: attendanceMap.get(lesson.id) || [],
+      }));
+
+      setLessons(enrichedLessons);
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') {
+        console.error('Error fetching lessons:', error);
+        setLessons([]);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   }, [currentOrg, getDateRange, filters]);
 
   useEffect(() => {
     fetchLessons();
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [fetchLessons]);
 
   return { lessons, isLoading, refetch: fetchLessons };
@@ -111,72 +158,80 @@ export function useTeachersAndLocations() {
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
   const [rooms, setRooms] = useState<{ id: string; name: string; location_id: string }[]>([]);
   const [students, setStudents] = useState<{ id: string; name: string }[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!currentOrg) return;
 
     const fetchData = async () => {
-      // Fetch teachers (org members with teacher/admin/owner role)
-      const { data: memberships } = await supabase
-        .from('org_memberships')
-        .select('user_id, role')
-        .eq('org_id', currentOrg.id)
-        .eq('status', 'active')
-        .in('role', ['owner', 'admin', 'teacher']);
+      setIsLoading(true);
+      
+      // Fetch all data in parallel for better performance
+      const [membershipsResult, locationResult, roomResult, studentResult] = await Promise.all([
+        supabase
+          .from('org_memberships')
+          .select('user_id, role')
+          .eq('org_id', currentOrg.id)
+          .eq('status', 'active')
+          .in('role', ['owner', 'admin', 'teacher']),
+        supabase
+          .from('locations')
+          .select('id, name')
+          .eq('org_id', currentOrg.id)
+          .order('name'),
+        supabase
+          .from('rooms')
+          .select('id, name, location_id')
+          .eq('org_id', currentOrg.id)
+          .order('name'),
+        supabase
+          .from('students')
+          .select('id, first_name, last_name')
+          .eq('org_id', currentOrg.id)
+          .eq('status', 'active')
+          .is('deleted_at', null)
+          .order('first_name')
+          .limit(500)
+      ]);
 
-      if (memberships) {
-        const teacherList = await Promise.all(
-          memberships.map(async (m) => {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('full_name, email')
-              .eq('id', m.user_id)
-              .maybeSingle();
-            return {
-              id: m.user_id,
-              name: profile?.full_name || profile?.email || 'Unknown',
-            };
-          })
+      // Fetch teacher profiles in a batch
+      if (membershipsResult.data && membershipsResult.data.length > 0) {
+        const userIds = membershipsResult.data.map(m => m.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', userIds);
+
+        const profileMap = new Map(
+          (profiles || []).map(p => [p.id, p])
         );
+
+        const teacherList = membershipsResult.data.map((m) => {
+          const profile = profileMap.get(m.user_id);
+          return {
+            id: m.user_id,
+            name: profile?.full_name || profile?.email || 'Unknown',
+          };
+        });
         setTeachers(teacherList);
+      } else {
+        setTeachers([]);
       }
 
-      // Fetch locations
-      const { data: locationData } = await supabase
-        .from('locations')
-        .select('id, name')
-        .eq('org_id', currentOrg.id)
-        .order('name');
-
-      setLocations(locationData || []);
-
-      // Fetch rooms
-      const { data: roomData } = await supabase
-        .from('rooms')
-        .select('id, name, location_id')
-        .eq('org_id', currentOrg.id)
-        .order('name');
-
-      setRooms(roomData || []);
-
-      // Fetch students
-      const { data: studentData } = await supabase
-        .from('students')
-        .select('id, first_name, last_name')
-        .eq('org_id', currentOrg.id)
-        .eq('status', 'active')
-        .order('first_name');
-
+      setLocations(locationResult.data || []);
+      setRooms(roomResult.data || []);
       setStudents(
-        (studentData || []).map((s) => ({
+        (studentResult.data || []).map((s) => ({
           id: s.id,
           name: `${s.first_name} ${s.last_name}`,
         }))
       );
+      
+      setIsLoading(false);
     };
 
     fetchData();
   }, [currentOrg]);
 
-  return { teachers, locations, rooms, students };
+  return { teachers, locations, rooms, students, isLoading };
 }

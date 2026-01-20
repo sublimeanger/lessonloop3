@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { useDashboardStats } from '@/hooks/useReports';
+import { OnboardingChecklist } from '@/components/shared/OnboardingChecklist';
+import { GridSkeleton } from '@/components/shared/LoadingState';
 import { Calendar, Users, Receipt, Clock, TrendingUp, AlertCircle, Plus, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -38,7 +40,7 @@ export default function Dashboard() {
 
 function SoloTeacherDashboard({ firstName, greeting }: { firstName: string; greeting: string }) {
   const { currentOrg } = useOrg();
-  const { data: stats } = useDashboardStats();
+  const { data: stats, isLoading } = useDashboardStats();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GB', {
@@ -56,8 +58,14 @@ function SoloTeacherDashboard({ firstName, greeting }: { firstName: string; gree
         description="Here's what's happening with your teaching today"
       />
 
+      {/* Onboarding Checklist */}
+      <OnboardingChecklist className="mb-6" />
+
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {isLoading ? (
+        <GridSkeleton count={4} columns={4} />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Today's Lessons</CardTitle>
@@ -109,7 +117,8 @@ function SoloTeacherDashboard({ firstName, greeting }: { firstName: string; gree
             </p>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      )}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         {/* Today's Schedule */}
