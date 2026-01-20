@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { toast } from 'sonner';
+import { parseActionFromResponse, ActionProposalData } from '@/components/looopassist/ActionCard';
 
 export interface AIMessage {
   id: string;
@@ -22,7 +23,7 @@ export interface AIConversation {
 
 export interface AIActionProposal {
   id: string;
-  proposal: Record<string, unknown>;
+  proposal: ActionProposalData;
   status: string;
   result?: Record<string, unknown>;
   created_at: string;
@@ -79,7 +80,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     enabled: !!currentConversationId,
   });
 
-  // Fetch pending action proposals
+  // Fetch pending action proposals for current conversation
   const { data: pendingProposals = [] } = useQuery({
     queryKey: ['ai-proposals', currentConversationId],
     queryFn: async () => {
@@ -91,7 +92,11 @@ export function useLoopAssist(externalPageContext?: PageContext) {
         .eq('status', 'proposed')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data as AIActionProposal[];
+      // Type the proposals correctly
+      return (data || []).map(item => ({
+        ...item,
+        proposal: item.proposal as unknown as ActionProposalData,
+      })) as AIActionProposal[];
     },
     enabled: !!currentConversationId,
   });
@@ -227,21 +232,17 @@ export function useLoopAssist(externalPageContext?: PageContext) {
           content: assistantContent,
         });
 
-        // Check for action proposals in the response
-        if (assistantContent.includes('**Proposed Action:**')) {
-          const actionMatch = assistantContent.match(/\*\*Proposed Action:\*\*\s*(\w+)/);
-          if (actionMatch) {
-            await supabase.from('ai_action_proposals').insert({
-              org_id: currentOrg.id,
-              user_id: user.id,
-              conversation_id: conversationId,
-              proposal: {
-                type: actionMatch[1].toLowerCase().replace(/\s+/g, '_'),
-                description: assistantContent,
-              },
-            });
-            queryClient.invalidateQueries({ queryKey: ['ai-proposals'] });
-          }
+        // Check for structured action proposals in the response
+        const actionData = parseActionFromResponse(assistantContent);
+        if (actionData) {
+          await supabase.from('ai_action_proposals').insert([{
+            org_id: currentOrg.id,
+            user_id: user.id,
+            conversation_id: conversationId,
+            proposal: JSON.parse(JSON.stringify(actionData)),
+            status: 'proposed',
+          }]);
+          queryClient.invalidateQueries({ queryKey: ['ai-proposals'] });
         }
 
         // Update conversation title if first message
@@ -288,6 +289,23 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     onSuccess: (data, variables) => {
       if (variables.action === 'confirm') {
         toast.success(data.result?.message || 'Action executed successfully');
+        
+        // Add result message to conversation
+        if (currentConversationId && currentOrg?.id && user?.id) {
+          const resultMessage = typeof data.result?.message === 'string' 
+            ? data.result.message 
+            : 'Action completed successfully';
+          
+          supabase.from('ai_messages').insert({
+            conversation_id: currentConversationId,
+            org_id: currentOrg.id,
+            user_id: user.id,
+            role: 'assistant',
+            content: `✅ **Action Executed**\n\n${resultMessage}`,
+          }).then(() => {
+            queryClient.invalidateQueries({ queryKey: ['ai-messages', currentConversationId] });
+          });
+        }
       } else {
         toast.info('Action cancelled');
       }
@@ -332,6 +350,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     createConversation: createConversation.mutate,
     sendMessage,
     handleProposal: handleProposal.mutate,
+    handleProposalLoading: handleProposal.isPending,
     deleteConversation: deleteConversation.mutate,
   };
 }
