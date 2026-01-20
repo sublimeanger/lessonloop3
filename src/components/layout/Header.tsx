@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Sparkles, ChevronDown, Building2, Check } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
+import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +14,7 @@ import {
 
 export function Header() {
   const { currentOrg, organisations, setCurrentOrg } = useOrg();
+  const { setIsOpen } = useLoopAssistUI();
   const hasMultipleOrgs = organisations.length > 1;
 
   return (
@@ -69,7 +71,7 @@ export function Header() {
         )}
       </div>
       
-      <Button variant="outline" size="sm" className="gap-2">
+      <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsOpen(true)}>
         <Sparkles className="h-4 w-4" />
         <span className="hidden sm:inline">LoopAssist</span>
       </Button>
