@@ -83,13 +83,14 @@ VITE_SUPABASE_PROJECT_ID=ximxgnkpcswbvfrkkmjq
 
 ### 3.2 Edge Function Secrets
 
-| Secret | Purpose | Required |
-|--------|---------|----------|
-| `SUPABASE_URL` | Database connection | Yes |
-| `SUPABASE_ANON_KEY` | Client auth | Yes |
-| `SUPABASE_SERVICE_ROLE_KEY` | Admin operations | Yes |
-| `SUPABASE_DB_URL` | Direct DB access | Yes |
-| `LOVABLE_API_KEY` | AI model access | Yes |
+| Secret | Purpose | Required By |
+|--------|---------|-------------|
+| `SUPABASE_URL` | Database connection | All edge functions |
+| `SUPABASE_ANON_KEY` | Client auth validation | `invite-accept`, `looopassist-chat` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role for admin operations | `invite-get`, `invite-accept`, `gdpr-export`, `gdpr-delete`, `csv-import-execute` |
+| `SUPABASE_DB_URL` | Direct DB access | Some functions |
+| `LOVABLE_API_KEY` | AI model access | `looopassist-chat`, `csv-import-mapping` |
+| `RESEND_API_KEY` | Email sending via Resend | `send-message`, `send-invoice-email`, `send-invite-email` |
 
 ### 3.3 Managing Secrets
 
