@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -12,7 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Search, Users, Loader2, Mail, Phone } from 'lucide-react';
+import { ListSkeleton } from '@/components/shared/LoadingState';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { Plus, Search, Users, Mail, Phone, Upload } from 'lucide-react';
 
 type StudentStatus = 'active' | 'inactive';
 
@@ -165,26 +167,35 @@ export default function Students() {
         description="Manage your students and their information"
         breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Students' }]}
         actions={
-          <Button onClick={openAddDialog} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Student
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link to="/students/import">
+              <Button variant="outline" className="gap-2">
+                <Upload className="h-4 w-4" />
+                <span className="hidden sm:inline">Import</span>
+              </Button>
+            </Link>
+            <Button onClick={openAddDialog} className="gap-2">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Add Student</span>
+            </Button>
+          </div>
         }
       />
 
       {/* Filters */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center" role="search">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
             placeholder="Search students..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
+            aria-label="Search students"
           />
         </div>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-40" aria-label="Filter by status">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -197,34 +208,30 @@ export default function Students() {
 
       {/* Student List */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+        <ListSkeleton count={5} />
       ) : filteredStudents.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Users className="h-12 w-12 text-muted-foreground/40" />
-            <h3 className="mt-4 text-lg font-medium">No students yet</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {searchQuery ? 'No students match your search.' : 'Click "Add Student" to add your first student.'}
-            </p>
-            {!searchQuery && (
-              <Button onClick={openAddDialog} className="mt-4 gap-2">
-                <Plus className="h-4 w-4" />
-                Add Your First Student
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Users}
+          title={searchQuery ? 'No students found' : 'No students yet'}
+          description={searchQuery ? 'Try adjusting your search terms.' : 'Add your first student to get started with lesson scheduling and billing.'}
+          actionLabel={searchQuery ? undefined : 'Add Your First Student'}
+          onAction={searchQuery ? undefined : openAddDialog}
+          secondaryActionLabel={searchQuery ? undefined : 'Import from CSV'}
+          onSecondaryAction={searchQuery ? undefined : () => window.location.href = '/students/import'}
+        />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2" role="list" aria-label="Students list">
           {filteredStudents.map((student) => (
             <Link
               key={student.id}
               to={`/students/${student.id}`}
-              className="flex items-center gap-4 rounded-lg border bg-card p-4 transition-colors hover:bg-accent"
+              className="flex items-center gap-4 rounded-lg border bg-card p-4 transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              role="listitem"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
+              <div 
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-medium"
+                aria-hidden="true"
+              >
                 {student.first_name[0]}{student.last_name[0]}
               </div>
               <div className="flex-1 min-w-0">
@@ -237,13 +244,15 @@ export default function Students() {
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   {student.email && (
                     <span className="flex items-center gap-1 truncate">
-                      <Mail className="h-3 w-3" />
+                      <Mail className="h-3 w-3" aria-hidden="true" />
+                      <span className="sr-only">Email:</span>
                       {student.email}
                     </span>
                   )}
                   {student.phone && (
                     <span className="flex items-center gap-1">
-                      <Phone className="h-3 w-3" />
+                      <Phone className="h-3 w-3" aria-hidden="true" />
+                      <span className="sr-only">Phone:</span>
                       {student.phone}
                     </span>
                   )}
@@ -253,6 +262,7 @@ export default function Students() {
                 variant="ghost"
                 size="sm"
                 onClick={(e) => { e.preventDefault(); openEditDialog(student); }}
+                aria-label={`Edit ${student.first_name} ${student.last_name}`}
               >
                 Edit
               </Button>
@@ -260,6 +270,7 @@ export default function Students() {
                 variant="ghost"
                 size="sm"
                 onClick={(e) => { e.preventDefault(); toggleStatus(student); }}
+                aria-label={`${student.status === 'active' ? 'Deactivate' : 'Activate'} ${student.first_name} ${student.last_name}`}
               >
                 {student.status === 'active' ? 'Deactivate' : 'Activate'}
               </Button>
@@ -270,22 +281,40 @@ export default function Students() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby="dialog-description">
           <DialogHeader>
             <DialogTitle>{editingStudent ? 'Edit Student' : 'Add Student'}</DialogTitle>
-            <DialogDescription>
+            <DialogDescription id="dialog-description">
               {editingStudent ? 'Update student information.' : 'Add a new student to your organisation.'}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="firstName">First name *</Label>
-                <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Emma" />
+                <Label htmlFor="firstName">
+                  First name <span className="text-destructive" aria-hidden="true">*</span>
+                  <span className="sr-only">(required)</span>
+                </Label>
+                <Input 
+                  id="firstName" 
+                  value={firstName} 
+                  onChange={(e) => setFirstName(e.target.value)} 
+                  placeholder="Emma"
+                  aria-required="true"
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName">Last name *</Label>
-                <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Wilson" />
+                <Label htmlFor="lastName">
+                  Last name <span className="text-destructive" aria-hidden="true">*</span>
+                  <span className="sr-only">(required)</span>
+                </Label>
+                <Input 
+                  id="lastName" 
+                  value={lastName} 
+                  onChange={(e) => setLastName(e.target.value)} 
+                  placeholder="Wilson"
+                  aria-required="true"
+                />
               </div>
             </div>
             <div className="space-y-2">
@@ -310,7 +339,7 @@ export default function Students() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : editingStudent ? 'Update' : 'Add Student'}
+              {isSaving ? 'Saving...' : editingStudent ? 'Update' : 'Add Student'}
             </Button>
           </DialogFooter>
         </DialogContent>
