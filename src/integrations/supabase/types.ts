@@ -249,6 +249,7 @@ export type Database = {
           org_id: string
           phone: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -258,6 +259,7 @@ export type Database = {
           org_id: string
           phone?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -267,6 +269,7 @@ export type Database = {
           org_id?: string
           phone?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -706,6 +709,86 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_requests: {
+        Row: {
+          admin_response: string | null
+          created_at: string
+          guardian_id: string
+          id: string
+          lesson_id: string | null
+          message: string
+          org_id: string
+          request_type: string
+          responded_at: string | null
+          responded_by: string | null
+          status: string
+          student_id: string | null
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          admin_response?: string | null
+          created_at?: string
+          guardian_id: string
+          id?: string
+          lesson_id?: string | null
+          message: string
+          org_id: string
+          request_type: string
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: string
+          student_id?: string | null
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          admin_response?: string | null
+          created_at?: string
+          guardian_id?: string
+          id?: string
+          lesson_id?: string | null
+          message?: string
+          org_id?: string
+          request_type?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: string
+          student_id?: string | null
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_requests_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_requests_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_requests_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_requests_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
             referencedColumns: ["id"]
           },
         ]
@@ -1245,9 +1328,17 @@ export type Database = {
         Returns: boolean
       }
       generate_invoice_number: { Args: { _org_id: string }; Returns: string }
+      get_guardian_ids_for_user: {
+        Args: { _user_id: string }
+        Returns: string[]
+      }
       get_org_role: {
         Args: { _org_id: string; _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_student_ids_for_parent: {
+        Args: { _user_id: string }
+        Returns: string[]
       }
       get_user_id_by_email: { Args: { _email: string }; Returns: string }
       get_user_org_ids: { Args: { _user_id: string }; Returns: string[] }
@@ -1270,12 +1361,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_invoice_payer: {
+        Args: { _invoice_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_org_admin: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
       is_org_member: {
         Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_parent_of_student: {
+        Args: { _student_id: string; _user_id: string }
         Returns: boolean
       }
     }

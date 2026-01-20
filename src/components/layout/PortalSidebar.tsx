@@ -1,20 +1,12 @@
 import {
-  Calendar,
-  Users,
-  GraduationCap,
-  MapPin,
-  Receipt,
-  BarChart3,
-  MessageSquare,
-  Settings,
-  LayoutDashboard,
   Home,
+  Calendar,
   CreditCard,
+  MessageSquare,
   LogOut,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
-import { useAuth, AppRole } from '@/contexts/AuthContext';
-import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Sidebar,
   SidebarContent,
@@ -29,53 +21,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
-interface NavItem {
-  title: string;
-  url: string;
-  icon: React.ComponentType<{ className?: string }>;
-}
-
-const ownerAdminNav: NavItem[] = [
-  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-  { title: 'Calendar', url: '/calendar', icon: Calendar },
-  { title: 'Students', url: '/students', icon: Users },
-  { title: 'Teachers', url: '/teachers', icon: GraduationCap },
-  { title: 'Locations', url: '/locations', icon: MapPin },
-  { title: 'Invoices', url: '/invoices', icon: Receipt },
-  { title: 'Reports', url: '/reports', icon: BarChart3 },
-  { title: 'Messages', url: '/messages', icon: MessageSquare },
-  { title: 'Settings', url: '/settings', icon: Settings },
-];
-
-const teacherNav: NavItem[] = [
-  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-  { title: 'My Calendar', url: '/calendar', icon: Calendar },
-  { title: 'My Students', url: '/students', icon: Users },
-  { title: 'Messages', url: '/messages', icon: MessageSquare },
-];
-
-const parentNav: NavItem[] = [
+const portalNav = [
   { title: 'Home', url: '/portal/home', icon: Home },
   { title: 'Schedule', url: '/portal/schedule', icon: Calendar },
   { title: 'Invoices & Payments', url: '/portal/invoices', icon: CreditCard },
   { title: 'Messages', url: '/portal/messages', icon: MessageSquare },
 ];
-
-function getNavItems(role: AppRole | null): NavItem[] {
-  if (!role) return ownerAdminNav;
-  
-  switch (role) {
-    case 'owner':
-    case 'admin':
-      return ownerAdminNav;
-    case 'teacher':
-      return teacherNav;
-    case 'parent':
-      return parentNav;
-    default:
-      return ownerAdminNav;
-  }
-}
 
 function getInitials(name: string | null | undefined): string {
   if (!name) return '?';
@@ -87,33 +38,19 @@ function getInitials(name: string | null | undefined): string {
     .slice(0, 2);
 }
 
-function getRoleLabel(role: AppRole | null): string {
-  if (!role) return 'User';
-  const labels: Record<AppRole, string> = {
-    owner: 'Owner',
-    admin: 'Admin',
-    teacher: 'Teacher',
-    finance: 'Finance',
-    parent: 'Parent',
-  };
-  return labels[role];
-}
-
-export function AppSidebar() {
+export function PortalSidebar() {
   const { profile, signOut } = useAuth();
-  const { currentRole } = useOrg();
-  const navItems = getNavItems(currentRole);
 
   return (
     <Sidebar className="border-r">
       <SidebarContent className="pt-4">
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Navigation
+            Parent Portal
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {portalNav.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild>
                     <NavLink
@@ -141,10 +78,10 @@ export function AppSidebar() {
           </Avatar>
           <div className="flex-1 overflow-hidden">
             <div className="truncate text-sm font-medium">
-              {profile?.full_name || 'User'}
+              {profile?.full_name || 'Parent'}
             </div>
             <div className="truncate text-xs text-muted-foreground">
-              {getRoleLabel(currentRole)}
+              Parent Portal
             </div>
           </div>
           <Button
