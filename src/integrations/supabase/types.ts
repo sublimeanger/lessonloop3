@@ -1654,15 +1654,35 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_assigned_teacher: {
+        Args: { _org_id: string; _student_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_invoice_payer: {
         Args: { _invoice_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_lesson_teacher: {
+        Args: { _lesson_id: string; _user_id: string }
         Returns: boolean
       }
       is_org_admin: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
+      is_org_finance_team: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_org_member: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_org_scheduler: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_org_staff: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
