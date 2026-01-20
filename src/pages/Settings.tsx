@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrgMembersTab } from '@/components/settings/OrgMembersTab';
 import { SchedulingSettingsTab } from '@/components/settings/SchedulingSettingsTab';
 import AuditLogTab from '@/components/settings/AuditLogTab';
+import { PrivacyTab } from '@/components/settings/PrivacyTab';
 import { useOrg } from '@/contexts/OrgContext';
 
 export default function Settings() {
@@ -38,6 +39,9 @@ export default function Settings() {
           )}
           {(isOrgAdmin || isOrgOwner) && (
             <TabsTrigger value="audit">Audit Log</TabsTrigger>
+          )}
+          {(isOrgAdmin || isOrgOwner) && (
+            <TabsTrigger value="privacy">Privacy & GDPR</TabsTrigger>
           )}
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
@@ -122,6 +126,12 @@ export default function Settings() {
         {(isOrgAdmin || isOrgOwner) && (
           <TabsContent value="audit">
             <AuditLogTab />
+          </TabsContent>
+        )}
+
+        {(isOrgAdmin || isOrgOwner) && (
+          <TabsContent value="privacy">
+            <PrivacyTab />
           </TabsContent>
         )}
 
