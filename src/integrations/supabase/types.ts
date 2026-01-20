@@ -663,42 +663,54 @@ export type Database = {
       message_log: {
         Row: {
           body: string
+          channel: string
           created_at: string
           error_message: string | null
           id: string
           message_type: string
           org_id: string
           recipient_email: string
+          recipient_id: string | null
           recipient_name: string | null
+          recipient_type: string | null
           related_id: string | null
+          sender_user_id: string | null
           sent_at: string | null
           status: string
           subject: string
         }
         Insert: {
           body: string
+          channel?: string
           created_at?: string
           error_message?: string | null
           id?: string
           message_type: string
           org_id: string
           recipient_email: string
+          recipient_id?: string | null
           recipient_name?: string | null
+          recipient_type?: string | null
           related_id?: string | null
+          sender_user_id?: string | null
           sent_at?: string | null
           status?: string
           subject: string
         }
         Update: {
           body?: string
+          channel?: string
           created_at?: string
           error_message?: string | null
           id?: string
           message_type?: string
           org_id?: string
           recipient_email?: string
+          recipient_id?: string | null
           recipient_name?: string | null
+          recipient_type?: string | null
           related_id?: string | null
+          sender_user_id?: string | null
           sent_at?: string | null
           status?: string
           subject?: string
@@ -789,6 +801,47 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_templates: {
+        Row: {
+          body: string
+          channel: string
+          created_at: string
+          id: string
+          name: string
+          org_id: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          channel?: string
+          created_at?: string
+          id?: string
+          name: string
+          org_id: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          name?: string
+          org_id?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_templates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
         ]

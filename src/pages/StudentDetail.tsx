@@ -15,7 +15,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Mail, Phone, Calendar, Edit, Trash2, Plus, UserPlus } from 'lucide-react';
+import { Loader2, Mail, Phone, Calendar, Edit, Trash2, Plus, UserPlus, MessageSquare, Send } from 'lucide-react';
+import { useStudentMessages } from '@/hooks/useMessages';
+import { MessageList } from '@/components/messages/MessageList';
+import { ComposeMessageModal } from '@/components/messages/ComposeMessageModal';
 
 type StudentStatus = 'active' | 'inactive';
 type RelationshipType = 'mother' | 'father' | 'guardian' | 'other';
@@ -76,6 +79,11 @@ export default function StudentDetail() {
   const [relationship, setRelationship] = useState<RelationshipType>('guardian');
   const [isPrimaryPayer, setIsPrimaryPayer] = useState(false);
   const [isNewGuardian, setIsNewGuardian] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [selectedGuardianForMessage, setSelectedGuardianForMessage] = useState<Guardian | null>(null);
+  
+  // Messages hook
+  const { data: messages, isLoading: messagesLoading } = useStudentMessages(id);
 
   const fetchStudent = async () => {
     if (!id || !currentOrg) return;
@@ -301,6 +309,7 @@ export default function StudentDetail() {
           <TabsTrigger value="lessons">Lesson History</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>
+          <TabsTrigger value="messages">Messages</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -470,7 +479,60 @@ export default function StudentDetail() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="messages">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Messages</CardTitle>
+                <CardDescription>Communication history with guardians</CardDescription>
+              </div>
+              <Button
+                size="sm"
+                className="gap-2"
+                onClick={() => {
+                  // Find a guardian with email to message
+                  const guardianWithEmail = guardians.find(sg => sg.guardian?.email);
+                  if (guardianWithEmail?.guardian) {
+                    setSelectedGuardianForMessage(guardianWithEmail.guardian);
+                    setComposeOpen(true);
+                  } else {
+                    setComposeOpen(true);
+                  }
+                }}
+              >
+                <Send className="h-4 w-4" />
+                Send Message
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {guardians.length === 0 ? (
+                <div className="flex flex-col items-center py-8 text-center">
+                  <MessageSquare className="h-10 w-10 text-muted-foreground/40" />
+                  <p className="mt-3 font-medium">Add a guardian first</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Link a guardian with an email to send messages.</p>
+                </div>
+              ) : (
+                <MessageList
+                  messages={messages || []}
+                  isLoading={messagesLoading}
+                  emptyMessage="No messages sent to this student's guardians yet."
+                />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {/* Compose Message Modal */}
+      <ComposeMessageModal
+        open={composeOpen}
+        onOpenChange={setComposeOpen}
+        guardians={guardians.filter(sg => sg.guardian?.email).map(sg => sg.guardian!)}
+        preselectedGuardian={selectedGuardianForMessage || undefined}
+        studentId={student.id}
+        studentName={fullName}
+      />
 
       {/* Add Guardian Dialog */}
       <Dialog open={isGuardianDialogOpen} onOpenChange={setIsGuardianDialogOpen}>
