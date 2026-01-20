@@ -12,7 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, GraduationCap, Loader2, Mail, UserPlus } from 'lucide-react';
+import { Plus, GraduationCap, Loader2, Mail, UserPlus, Users } from 'lucide-react';
+import { useTeacherAssignmentCounts } from '@/hooks/useTeacherAssignments';
 
 interface OrgMember {
   id: string;
@@ -47,6 +48,7 @@ export default function Teachers() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const { counts: assignmentCounts } = useTeacherAssignmentCounts();
   
   // Invite form
   const [inviteEmail, setInviteEmail] = useState('');
@@ -246,6 +248,12 @@ export default function Teachers() {
                         {member.teacher_profile?.instruments && member.teacher_profile.instruments.length > 0 && (
                           <span className="truncate">
                             {member.teacher_profile.instruments.join(', ')}
+                          </span>
+                        )}
+                        {assignmentCounts[member.user_id] > 0 && (
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {assignmentCounts[member.user_id]} student{assignmentCounts[member.user_id] !== 1 ? 's' : ''}
                           </span>
                         )}
                       </div>

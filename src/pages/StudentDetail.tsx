@@ -19,6 +19,7 @@ import { Loader2, Mail, Phone, Calendar, Edit, Trash2, Plus, UserPlus, MessageSq
 import { useStudentMessages } from '@/hooks/useMessages';
 import { MessageList } from '@/components/messages/MessageList';
 import { ComposeMessageModal } from '@/components/messages/ComposeMessageModal';
+import { TeacherAssignmentsPanel } from '@/components/students/TeacherAssignmentsPanel';
 
 type StudentStatus = 'active' | 'inactive';
 type RelationshipType = 'mother' | 'father' | 'guardian' | 'other';
@@ -305,6 +306,7 @@ export default function StudentDetail() {
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="teachers">Teachers</TabsTrigger>
           <TabsTrigger value="guardians">Guardians</TabsTrigger>
           <TabsTrigger value="lessons">Lesson History</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
@@ -389,6 +391,10 @@ export default function StudentDetail() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="teachers">
+          <TeacherAssignmentsPanel studentId={id!} />
         </TabsContent>
 
         <TabsContent value="guardians">

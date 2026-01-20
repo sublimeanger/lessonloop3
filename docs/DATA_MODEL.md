@@ -29,6 +29,9 @@ erDiagram
     students ||--o{ student_guardians : "linked to"
     students ||--o{ attendance_records : "has"
     students ||--o{ invoice_items : "billed for"
+    students ||--o{ student_teacher_assignments : "assigned to"
+    
+    teacher_profiles ||--o{ student_teacher_assignments : "teaches"
     
     guardians ||--o{ student_guardians : "linked to"
     guardians ||--o{ invoices : "pays"
@@ -565,7 +568,25 @@ Extended profile data for teachers.
 
 ---
 
-### 2.10 Audit Table
+### 2.10 Student-Teacher Assignments
+
+#### `student_teacher_assignments`
+Maps students to their assigned teachers (for academies/agencies with scoped access).
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | uuid | No | `gen_random_uuid()` | Primary key |
+| `org_id` | uuid | No | - | Organization FK |
+| `student_id` | uuid | No | - | Student FK |
+| `teacher_user_id` | uuid | No | - | Teacher user FK |
+| `is_primary` | boolean | No | `false` | Primary teacher flag |
+| `created_at` | timestamptz | No | `now()` | Creation timestamp |
+
+**Unique constraint**: `(org_id, student_id, teacher_user_id)`
+
+---
+
+### 2.11 Audit Table
 
 #### `audit_log`
 Immutable audit trail for all changes.
