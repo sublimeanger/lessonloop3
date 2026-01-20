@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
+import { useOrg } from '@/contexts/OrgContext';
 import { LoadingState } from '@/components/shared/LoadingState';
 
 interface RouteGuardProps {
@@ -18,10 +19,12 @@ export function RouteGuard({
   allowedRoles,
   redirectTo = '/login',
 }: RouteGuardProps) {
-  const { user, profile, roles, isLoading } = useAuth();
+  const { user, profile, isLoading: authLoading } = useAuth();
+  const { currentRole, currentOrg, isLoading: orgLoading } = useOrg();
   const location = useLocation();
 
-  if (isLoading) {
+  // Wait for both auth and org context to load
+  if (authLoading || (user && orgLoading)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <LoadingState message="Loading..." />
@@ -41,10 +44,26 @@ export function RouteGuard({
     }
   }
 
-  // Check role-based access
+  // If authenticated but no org/role yet (and not onboarding), redirect to onboarding
+  if (requireAuth && user && profile?.has_completed_onboarding && !currentOrg && !currentRole) {
+    // User has completed onboarding but has no org - could be edge case
+    // Allow them through but they'll see limited content
+  }
+
+  // Check role-based access using currentRole from org membership
   if (allowedRoles && allowedRoles.length > 0) {
-    const hasAllowedRole = allowedRoles.some((role) => roles.includes(role));
+    // If currentRole is still loading or null, we need to wait or deny
+    if (!currentRole) {
+      // No role in current org - redirect appropriately
+      return <Navigate to="/dashboard" replace />;
+    }
+    
+    const hasAllowedRole = allowedRoles.includes(currentRole);
     if (!hasAllowedRole) {
+      // If parent trying to access staff routes, send to portal
+      if (currentRole === 'parent') {
+        return <Navigate to="/portal/home" replace />;
+      }
       return <Navigate to="/dashboard" replace />;
     }
   }
@@ -54,10 +73,11 @@ export function RouteGuard({
 
 // Wrapper for public routes that redirect authenticated users
 export function PublicRoute({ children }: { children: ReactNode }) {
-  const { user, profile, isLoading } = useAuth();
+  const { user, profile, isLoading: authLoading } = useAuth();
+  const { currentRole, isLoading: orgLoading } = useOrg();
   const location = useLocation();
 
-  if (isLoading) {
+  if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <LoadingState message="Loading..." />
@@ -65,12 +85,26 @@ export function PublicRoute({ children }: { children: ReactNode }) {
     );
   }
 
-  // If authenticated, redirect based on onboarding status
+  // If authenticated, redirect based on onboarding status and role
   if (user) {
     const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
     
     if (profile && !profile.has_completed_onboarding) {
       return <Navigate to="/onboarding" replace />;
+    }
+    
+    // Wait for org context if needed
+    if (orgLoading) {
+      return (
+        <div className="flex min-h-screen items-center justify-center">
+          <LoadingState message="Loading..." />
+        </div>
+      );
+    }
+    
+    // Redirect parents to portal, others to dashboard or previous location
+    if (currentRole === 'parent') {
+      return <Navigate to="/portal/home" replace />;
     }
     
     return <Navigate to={from || '/dashboard'} replace />;

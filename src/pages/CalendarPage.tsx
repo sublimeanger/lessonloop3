@@ -3,7 +3,7 @@ import { format, addDays, subDays, addWeeks, subWeeks, startOfWeek } from 'date-
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
+import { useOrg } from '@/contexts/OrgContext';
 import { useCalendarData, useTeachersAndLocations } from '@/hooks/useCalendarData';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
 import { AgendaView } from '@/components/calendar/AgendaView';
@@ -15,7 +15,8 @@ import { Calendar, ChevronLeft, ChevronRight, Plus, List, CalendarDays, LayoutGr
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 export default function CalendarPage() {
-  const { isParent } = useAuth();
+  const { currentRole } = useOrg();
+  const isParent = currentRole === 'parent';
   const { teachers, locations, rooms } = useTeachersAndLocations();
 
   // Calendar state

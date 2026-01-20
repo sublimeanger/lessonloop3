@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,10 +15,18 @@ import { Link } from 'react-router-dom';
 export default function Dashboard() {
   const { profile } = useAuth();
   const { currentOrg, currentRole } = useOrg();
+  const navigate = useNavigate();
   
   const isParent = currentRole === 'parent';
   const isSoloTeacher = currentOrg?.org_type === 'solo_teacher' || currentOrg?.org_type === 'studio';
   const isAcademyOrAgency = currentOrg?.org_type === 'academy' || currentOrg?.org_type === 'agency';
+
+  // Redirect parents to portal
+  useEffect(() => {
+    if (isParent) {
+      navigate('/portal/home', { replace: true });
+    }
+  }, [isParent, navigate]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -27,8 +37,9 @@ export default function Dashboard() {
 
   const firstName = profile?.full_name?.split(' ')[0] || 'there';
 
+  // Don't render anything for parents (they'll be redirected)
   if (isParent) {
-    return <ParentDashboard firstName={firstName} greeting={getGreeting()} />;
+    return null;
   }
 
   if (isAcademyOrAgency) {
@@ -362,49 +373,4 @@ function AcademyDashboard({ firstName, greeting, orgName }: { firstName: string;
   );
 }
 
-function ParentDashboard({ firstName, greeting }: { firstName: string; greeting: string }) {
-  return (
-    <AppLayout>
-      <PageHeader
-        title={`${greeting}, ${firstName}!`}
-        description="View your upcoming lessons and manage payments"
-      />
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Upcoming Lessons */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Upcoming Lessons</CardTitle>
-            <CardDescription>Your scheduled lessons</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <Calendar className="h-10 w-10 text-muted-foreground/40" />
-              <p className="mt-3 font-medium">No upcoming lessons</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Contact your teacher to schedule lessons
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Outstanding Invoices */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Outstanding Invoices</CardTitle>
-            <CardDescription>Invoices awaiting payment</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <Receipt className="h-10 w-10 text-muted-foreground/40" />
-              <p className="mt-3 font-medium">No outstanding invoices</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                You're all paid up!
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </AppLayout>
-  );
-}
+// ParentDashboard removed - parents are now redirected to /portal/home

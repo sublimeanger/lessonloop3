@@ -47,6 +47,14 @@ const ownerAdminNav: NavItem[] = [
   { title: 'Settings', url: '/settings', icon: Settings },
 ];
 
+const financeNav: NavItem[] = [
+  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+  { title: 'Invoices', url: '/invoices', icon: Receipt },
+  { title: 'Reports', url: '/reports', icon: BarChart3 },
+  { title: 'Messages', url: '/messages', icon: MessageSquare },
+  { title: 'Settings', url: '/settings', icon: Settings },
+];
+
 const teacherNav: NavItem[] = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'My Calendar', url: '/calendar', icon: Calendar },
@@ -68,6 +76,8 @@ function getNavItems(role: AppRole | null): NavItem[] {
     case 'owner':
     case 'admin':
       return ownerAdminNav;
+    case 'finance':
+      return financeNav;
     case 'teacher':
       return teacherNav;
     case 'parent':
