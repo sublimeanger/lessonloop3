@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth, AppRole } from './AuthContext';
 
@@ -39,6 +39,8 @@ interface OrgContextType {
   organisations: Organisation[];
   memberships: OrgMembership[];
   isLoading: boolean;
+  hasInitialised: boolean;
+  hasOrgs: boolean;
   setCurrentOrg: (orgId: string) => Promise<void>;
   createOrganisation: (data: CreateOrgData) => Promise<{ org: Organisation | null; error: Error | null }>;
   refreshOrganisations: () => Promise<void>;
@@ -57,12 +59,14 @@ interface CreateOrgData {
 const OrgContext = createContext<OrgContextType | undefined>(undefined);
 
 export function OrgProvider({ children }: { children: ReactNode }) {
-  const { user, profile, updateProfile } = useAuth();
+  const { user, profile, isInitialised: authInitialised } = useAuth();
   const [currentOrg, setCurrentOrgState] = useState<Organisation | null>(null);
   const [currentRole, setCurrentRole] = useState<AppRole | null>(null);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
   const [memberships, setMemberships] = useState<OrgMembership[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasInitialised, setHasInitialised] = useState(false);
+  const mountedRef = useRef(true);
 
   const fetchOrganisations = async () => {
     if (!user) {
@@ -71,10 +75,13 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       setCurrentOrgState(null);
       setCurrentRole(null);
       setIsLoading(false);
+      setHasInitialised(true);
       return;
     }
 
     try {
+      setIsLoading(true);
+      
       // Fetch memberships with organisation details
       const { data: membershipData, error: membershipError } = await supabase
         .from('org_memberships')
@@ -85,9 +92,12 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         .eq('user_id', user.id)
         .eq('status', 'active');
 
+      if (!mountedRef.current) return;
+
       if (membershipError) {
         console.error('Error fetching memberships:', membershipError);
         setIsLoading(false);
+        setHasInitialised(true);
         return;
       }
 
@@ -122,12 +132,13 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         selectedOrg = firstMembership.organisation || null;
         selectedRole = firstMembership.role;
         
-        // Update profile with this org
+        // Update profile with this org (fire and forget)
         if (selectedOrg) {
-          await supabase
+          supabase
             .from('profiles')
             .update({ current_org_id: selectedOrg.id })
-            .eq('id', user.id);
+            .eq('id', user.id)
+            .then(() => {});
         }
       }
 
@@ -136,13 +147,25 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Error in fetchOrganisations:', error);
     } finally {
-      setIsLoading(false);
+      if (mountedRef.current) {
+        setIsLoading(false);
+        setHasInitialised(true);
+      }
     }
   };
 
   useEffect(() => {
-    fetchOrganisations();
-  }, [user, profile?.current_org_id]);
+    mountedRef.current = true;
+    
+    // Only fetch orgs once auth is initialised
+    if (authInitialised) {
+      fetchOrganisations();
+    }
+    
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [user?.id, authInitialised, profile?.current_org_id]);
 
   const setCurrentOrg = async (orgId: string) => {
     const membership = memberships.find((m) => m.org_id === orgId);
@@ -193,6 +216,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
 
   const isOrgAdmin = currentRole === 'owner' || currentRole === 'admin';
   const isOrgOwner = currentRole === 'owner';
+  const hasOrgs = organisations.length > 0;
 
   const value: OrgContextType = {
     currentOrg,
@@ -200,6 +224,8 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     organisations,
     memberships,
     isLoading,
+    hasInitialised,
+    hasOrgs,
     setCurrentOrg,
     createOrganisation,
     refreshOrganisations,
