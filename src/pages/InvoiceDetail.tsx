@@ -11,6 +11,7 @@ import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2, Loa
 import { useOrg } from '@/contexts/OrgContext';
 import { useInvoice, useUpdateInvoiceStatus } from '@/hooks/useInvoices';
 import { useStripePayment } from '@/hooks/useStripePayment';
+import { useInvoicePdf } from '@/hooks/useInvoicePdf';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
@@ -74,6 +75,7 @@ export default function InvoiceDetail() {
   const { data: invoice, isLoading, refetch } = useInvoice(id);
   const updateStatus = useUpdateInvoiceStatus();
   const { initiatePayment, isLoading: isPaymentLoading } = useStripePayment();
+  const { downloadPdf, isLoading: isPdfLoading } = useInvoicePdf();
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [sendModalOpen, setSendModalOpen] = useState(false);
@@ -103,6 +105,12 @@ export default function InvoiceDetail() {
   const handlePayNow = () => {
     if (id) {
       initiatePayment(id);
+    }
+  };
+
+  const handleDownloadPdf = () => {
+    if (invoice) {
+      downloadPdf(invoice.id, invoice.invoice_number);
     }
   };
 
@@ -159,20 +167,35 @@ export default function InvoiceDetail() {
               Back
             </Button>
             {isParent ? (
-              invoice.status !== 'paid' && invoice.status !== 'void' && (
+              <>
                 <Button 
-                  className="gap-2" 
-                  onClick={handlePayNow}
-                  disabled={isPaymentLoading}
+                  variant="outline" 
+                  className="gap-2"
+                  onClick={handleDownloadPdf}
+                  disabled={isPdfLoading}
                 >
-                  {isPaymentLoading ? (
+                  {isPdfLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <CreditCard className="h-4 w-4" />
+                    <Download className="h-4 w-4" />
                   )}
-                  {isPaymentLoading ? 'Processing...' : 'Pay Now'}
+                  {isPdfLoading ? 'Generating...' : 'Download PDF'}
                 </Button>
-              )
+                {invoice.status !== 'paid' && invoice.status !== 'void' && (
+                  <Button 
+                    className="gap-2" 
+                    onClick={handlePayNow}
+                    disabled={isPaymentLoading}
+                  >
+                    {isPaymentLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CreditCard className="h-4 w-4" />
+                    )}
+                    {isPaymentLoading ? 'Processing...' : 'Pay Now'}
+                  </Button>
+                )}
+              </>
             ) : (
               <>
                 {invoice.status === 'draft' && (
@@ -369,9 +392,18 @@ export default function InvoiceDetail() {
                 <CardTitle className="text-base">Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="outline" className="w-full gap-2">
-                  <Download className="h-4 w-4" />
-                  Download PDF
+                <Button 
+                  variant="outline" 
+                  className="w-full gap-2"
+                  onClick={handleDownloadPdf}
+                  disabled={isPdfLoading}
+                >
+                  {isPdfLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  {isPdfLoading ? 'Generating...' : 'Download PDF'}
                 </Button>
                 <Button
                   variant="outline"
