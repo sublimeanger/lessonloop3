@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,12 +9,11 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useDashboardStats } from '@/hooks/useReports';
 import { OnboardingChecklist } from '@/components/shared/OnboardingChecklist';
 import { GridSkeleton } from '@/components/shared/LoadingState';
-import { Calendar, Users, Receipt, Clock, TrendingUp, AlertCircle, Plus, ChevronRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Calendar, Users, Receipt, Clock, TrendingUp, AlertCircle, Plus, ChevronRight, Building2, Loader2 } from 'lucide-react';
 
 export default function Dashboard() {
   const { profile } = useAuth();
-  const { currentOrg, currentRole } = useOrg();
+  const { currentOrg, currentRole, hasOrgs, isLoading: orgLoading, hasInitialised } = useOrg();
   const navigate = useNavigate();
   
   const isParent = currentRole === 'parent';
@@ -40,6 +39,45 @@ export default function Dashboard() {
   // Don't render anything for parents (they'll be redirected)
   if (isParent) {
     return null;
+  }
+
+  // Show loading while org context initialises
+  if (!hasInitialised || orgLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // Handle no organisation state
+  if (!hasOrgs || !currentOrg) {
+    return (
+      <AppLayout>
+        <PageHeader
+          title={`${getGreeting()}, ${firstName}!`}
+          description="Let's get you set up"
+        />
+        <Card className="max-w-md mx-auto mt-8">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+              <Building2 className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <CardTitle>No Organisation Found</CardTitle>
+            <CardDescription>
+              It looks like you haven't set up an organisation yet. Complete the onboarding to get started.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <Button onClick={() => navigate('/onboarding')}>
+              Complete Setup
+            </Button>
+          </CardContent>
+        </Card>
+      </AppLayout>
+    );
   }
 
   if (isAcademyOrAgency) {
@@ -372,5 +410,3 @@ function AcademyDashboard({ firstName, greeting, orgName }: { firstName: string;
     </AppLayout>
   );
 }
-
-// ParentDashboard removed - parents are now redirected to /portal/home

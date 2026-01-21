@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg, OrgType } from '@/contexts/OrgContext';
@@ -48,8 +48,8 @@ const orgTypes: { value: OrgType; label: string; description: string; icon: Reac
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { user, profile, updateProfile, signOut, isLoading: authLoading } = useAuth();
-  const { createOrganisation, refreshOrganisations, isLoading: orgLoading } = useOrg();
+  const { user, profile, updateProfile, signOut, isLoading: authLoading, isInitialised } = useAuth();
+  const { createOrganisation, refreshOrganisations } = useOrg();
   const { toast } = useToast();
   
   const [currentStep, setCurrentStep] = useState(1);
@@ -57,9 +57,9 @@ export default function Onboarding() {
   const [createdOrgId, setCreatedOrgId] = useState<string | null>(null);
   const [createdOrgType, setCreatedOrgType] = useState<OrgType>('solo_teacher');
   
-  // Step 1: Profile - all hooks MUST be before any conditional returns
-  const [fullName, setFullName] = useState(profile?.full_name || '');
-  const [phone, setPhone] = useState(profile?.phone || '');
+  // Step 1: Profile
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   
   // Step 2: Organisation
   const [orgName, setOrgName] = useState('');
@@ -82,23 +82,43 @@ export default function Onboarding() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'teacher'>('teacher');
 
+  // Sync form state with profile when it loads
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name || '');
+      setPhone(profile.phone || '');
+    }
+  }, [profile]);
+
   // Emergency logout handler
   const handleEmergencyLogout = async () => {
     await signOut();
     navigate('/login');
   };
 
-  // If still loading auth after mount, show loading with escape hatch
-  if (authLoading) {
+  // Show loading only during initial auth check
+  if (!isInitialised || authLoading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-muted-foreground">Loading your profile...</p>
-        <Button variant="ghost" size="sm" onClick={handleEmergencyLogout}>
+        <Button variant="ghost" size="sm" onClick={handleEmergencyLogout} className="mt-4">
           Stuck? Click to logout
         </Button>
       </div>
     );
+  }
+
+  // If not authenticated, redirect to login
+  if (!user) {
+    navigate('/login');
+    return null;
+  }
+
+  // If already completed onboarding, redirect to dashboard
+  if (profile?.has_completed_onboarding) {
+    navigate('/dashboard');
+    return null;
   }
 
   const isSoloTeacher = orgType === 'solo_teacher' || orgType === 'studio';
@@ -294,10 +314,16 @@ export default function Onboarding() {
     } else if (currentStep === totalSteps) {
       // Complete onboarding
       setIsLoading(true);
-      await updateProfile({ has_completed_onboarding: true });
-      await refreshOrganisations();
-      setIsLoading(false);
-      navigate('/dashboard');
+      try {
+        await updateProfile({ has_completed_onboarding: true });
+        await refreshOrganisations();
+        navigate('/dashboard');
+      } catch (err) {
+        console.error('Error completing onboarding:', err);
+        toast({ title: 'Error', description: 'Failed to complete onboarding. Please try again.', variant: 'destructive' });
+      } finally {
+        setIsLoading(false);
+      }
     } else {
       setCurrentStep(prev => prev + 1);
     }
@@ -338,7 +364,7 @@ export default function Onboarding() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" value={profile?.email || ''} disabled className="bg-muted" />
+                  <Input id="email" type="email" value={user?.email || profile?.email || ''} disabled className="bg-muted" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone number (optional)</Label>
