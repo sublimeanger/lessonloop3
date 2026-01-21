@@ -48,8 +48,8 @@ const orgTypes: { value: OrgType; label: string; description: string; icon: Reac
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { user, profile, updateProfile } = useAuth();
-  const { createOrganisation, refreshOrganisations } = useOrg();
+  const { user, profile, updateProfile, signOut, isLoading: authLoading } = useAuth();
+  const { createOrganisation, refreshOrganisations, isLoading: orgLoading } = useOrg();
   const { toast } = useToast();
   
   const [currentStep, setCurrentStep] = useState(1);
@@ -57,7 +57,7 @@ export default function Onboarding() {
   const [createdOrgId, setCreatedOrgId] = useState<string | null>(null);
   const [createdOrgType, setCreatedOrgType] = useState<OrgType>('solo_teacher');
   
-  // Step 1: Profile
+  // Step 1: Profile - all hooks MUST be before any conditional returns
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [phone, setPhone] = useState(profile?.phone || '');
   
@@ -81,6 +81,25 @@ export default function Onboarding() {
   const [billingApproach, setBillingApproach] = useState<BillingApproach>('monthly');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'teacher'>('teacher');
+
+  // Emergency logout handler
+  const handleEmergencyLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
+  // If still loading auth after mount, show loading with escape hatch
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-muted-foreground">Loading your profile...</p>
+        <Button variant="ghost" size="sm" onClick={handleEmergencyLogout}>
+          Stuck? Click to logout
+        </Button>
+      </div>
+    );
+  }
 
   const isSoloTeacher = orgType === 'solo_teacher' || orgType === 'studio';
   const isAcademyOrAgency = orgType === 'academy' || orgType === 'agency';
