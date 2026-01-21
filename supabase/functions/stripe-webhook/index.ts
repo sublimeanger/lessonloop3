@@ -109,13 +109,14 @@ async function handleCheckoutCompleted(supabase: any, session: Stripe.Checkout.S
 
   // Record the payment
   const { error: paymentError } = await supabase
-    .from("invoice_payments")
+    .from("payments")
     .insert({
       invoice_id: invoiceId,
       org_id: checkoutSession?.org_id,
       amount_minor: session.amount_total || checkoutSession?.amount_minor,
-      payment_method: "card",
-      reference: `Stripe: ${session.payment_intent}`,
+      method: "card",
+      provider: "stripe",
+      provider_reference: session.payment_intent as string,
       paid_at: new Date().toISOString(),
     });
 
@@ -132,7 +133,7 @@ async function handleCheckoutCompleted(supabase: any, session: Stripe.Checkout.S
     .single();
 
   const { data: payments } = await supabase
-    .from("invoice_payments")
+    .from("payments")
     .select("amount_minor")
     .eq("invoice_id", invoiceId);
 

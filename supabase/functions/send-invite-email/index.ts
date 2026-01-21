@@ -1,11 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
 interface InviteEmailRequest {
   inviteId: string;
@@ -19,9 +15,10 @@ interface InviteEmailRequest {
 
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const corsResponse = handleCorsPreflightRequest(req);
+  if (corsResponse) return corsResponse;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -39,8 +36,8 @@ serve(async (req: Request): Promise<Response> => {
     }: InviteEmailRequest = await req.json();
 
     // Build invite URL
-    const baseUrl = req.headers.get("origin") || "https://lessonloop.app";
-    const inviteUrl = `${baseUrl}/accept-invite?token=${inviteToken}`;
+    const frontendUrl = Deno.env.get("FRONTEND_URL") || req.headers.get("origin") || "https://lessonloop.app";
+    const inviteUrl = `${frontendUrl}/accept-invite?token=${inviteToken}`;
 
     const subject = `You've been invited to join ${orgName}`;
     const body = `
@@ -122,6 +119,7 @@ serve(async (req: Request): Promise<Response> => {
     }
   } catch (error: any) {
     console.error("Error in send-invite-email:", error);
+    const corsHeaders = getCorsHeaders(req);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }

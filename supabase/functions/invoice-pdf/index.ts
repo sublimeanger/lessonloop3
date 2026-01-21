@@ -97,7 +97,7 @@ const handler = async (req: Request): Promise<Response> => {
       .select(`
         *,
         items:invoice_items(*),
-        payments:invoice_payments(*),
+        payments:payments(*),
         payer_guardian:guardians!invoices_payer_guardian_id_fkey(id, full_name, email),
         payer_student:students!invoices_payer_student_id_fkey(id, first_name, last_name, email),
         organisation:organisations(
