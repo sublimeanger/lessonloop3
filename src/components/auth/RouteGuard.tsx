@@ -37,6 +37,15 @@ export function RouteGuard({
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
+  // CRITICAL: If user exists but profile is still null, wait for it
+  if (requireAuth && user && !profile) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <LoadingState message="Loading..." />
+      </div>
+    );
+  }
+
   // Check onboarding completion (except for onboarding page itself)
   // IMPORTANT: Don't wait for orgLoading here - users in onboarding won't have orgs yet
   if (requireAuth && requireOnboarding && profile && !profile.has_completed_onboarding) {
@@ -89,6 +98,7 @@ export function PublicRoute({ children }: { children: ReactNode }) {
   const { currentRole, isLoading: orgLoading } = useOrg();
   const location = useLocation();
 
+  // Wait for auth to fully load (including profile fetch)
   if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -99,15 +109,9 @@ export function PublicRoute({ children }: { children: ReactNode }) {
 
   // If authenticated, redirect based on onboarding status and role
   if (user) {
-    const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
-    
-    // If user hasn't completed onboarding, send them there (don't wait for org)
-    if (profile && !profile.has_completed_onboarding) {
-      return <Navigate to="/onboarding" replace />;
-    }
-    
-    // Wait for org context only if user has completed onboarding
-    if (profile?.has_completed_onboarding && orgLoading) {
+    // CRITICAL: If user exists but profile is still null, wait for it
+    // This prevents premature redirects during profile loading
+    if (!profile) {
       return (
         <div className="flex min-h-screen items-center justify-center">
           <LoadingState message="Loading..." />
@@ -115,7 +119,22 @@ export function PublicRoute({ children }: { children: ReactNode }) {
       );
     }
     
-    // Redirect parents to portal, others to dashboard or previous location
+    // If user hasn't completed onboarding, send them there immediately
+    if (!profile.has_completed_onboarding) {
+      return <Navigate to="/onboarding" replace />;
+    }
+    
+    // User has completed onboarding - wait for org context to determine role
+    if (orgLoading) {
+      return (
+        <div className="flex min-h-screen items-center justify-center">
+          <LoadingState message="Loading..." />
+        </div>
+      );
+    }
+    
+    // Redirect based on role
+    const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
     if (currentRole === 'parent') {
       return <Navigate to="/portal/home" replace />;
     }
