@@ -1,10 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
 // Get frontend URL from environment or use default
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://id-preview--c541d756-90e7-442a-ba85-0c723aeabc14.lovable.app";
@@ -17,16 +14,50 @@ interface InvoiceEmailRequest {
   amount: string;
   dueDate: string;
   orgName: string;
+  orgId: string;
   isReminder: boolean;
   customMessage?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  // Handle CORS preflight
+  const corsResponse = handleCorsPreflightRequest(req);
+  if (corsResponse) return corsResponse;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Authenticate user
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Rate limiting check
+    const rateLimitResult = await checkRateLimit(user.id, "send-invoice-email");
+    if (!rateLimitResult.allowed) {
+      return rateLimitResponse(corsHeaders, rateLimitResult.retryAfterSeconds);
+    }
+
     const {
       invoiceId,
       recipientEmail,
@@ -35,11 +66,13 @@ const handler = async (req: Request): Promise<Response> => {
       amount,
       dueDate,
       orgName,
+      orgId,
       isReminder,
       customMessage,
     }: InvoiceEmailRequest = await req.json();
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
 
     // Build the portal link with invoice ID
     const portalLink = `${FRONTEND_URL}/portal/invoices?invoice=${invoiceId}`;
@@ -99,6 +132,23 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Thank you for your business,<br>${orgName}</p>
         </div>`;
 
+    // Log message to message_log
+    if (orgId && invoiceId) {
+      await supabaseService.from("message_log").insert({
+        org_id: orgId,
+        channel: "email",
+        subject,
+        body: htmlContent,
+        sender_user_id: user.id,
+        recipient_email: recipientEmail,
+        recipient_name: recipientName,
+        recipient_type: "guardian",
+        related_id: invoiceId,
+        message_type: isReminder ? "invoice_reminder" : "invoice",
+        status: resendApiKey ? "pending" : "logged",
+      });
+    }
+
     if (!resendApiKey) {
       console.log("Email logged (RESEND_API_KEY not configured):", { to: recipientEmail, subject });
       return new Response(
@@ -123,6 +173,21 @@ const handler = async (req: Request): Promise<Response> => {
 
     const result = await response.json();
     console.log("Email sent:", result);
+
+    // Update message log status
+    if (orgId && invoiceId) {
+      await supabaseService
+        .from("message_log")
+        .update({
+          status: response.ok ? "sent" : "failed",
+          sent_at: response.ok ? new Date().toISOString() : null,
+          error_message: response.ok ? null : JSON.stringify(result),
+        })
+        .eq("related_id", invoiceId)
+        .eq("message_type", isReminder ? "invoice_reminder" : "invoice")
+        .order("created_at", { ascending: false })
+        .limit(1);
+    }
 
     return new Response(JSON.stringify(result), {
       status: response.ok ? 200 : 500,

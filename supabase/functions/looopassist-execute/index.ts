@@ -1,10 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
 interface ActionProposal {
   id: string;
@@ -21,9 +17,11 @@ interface ActionProposal {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  // Handle CORS preflight
+  const corsResponse = handleCorsPreflightRequest(req);
+  if (corsResponse) return corsResponse;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -165,7 +163,6 @@ async function executeGenerateBillingRun(
     throw new Error("start_date and end_date are required");
   }
 
-  // Fetch lessons in date range that haven't been billed
   const { data: lessons, error: lessonsError } = await supabase
     .from("lessons")
     .select(`
@@ -179,14 +176,12 @@ async function executeGenerateBillingRun(
 
   if (lessonsError) throw lessonsError;
 
-  // Get org settings for VAT
   const { data: org } = await supabase
     .from("organisations")
     .select("vat_enabled, vat_rate, currency_code")
     .eq("id", orgId)
     .single();
 
-  // Get default rate card
   const { data: rateCard } = await supabase
     .from("rate_cards")
     .select("rate_amount")
@@ -194,9 +189,8 @@ async function executeGenerateBillingRun(
     .eq("is_default", true)
     .single();
 
-  const lessonRate = rateCard?.rate_amount ? Math.round(Number(rateCard.rate_amount) * 100) : 3000; // Default £30
+  const lessonRate = rateCard?.rate_amount ? Math.round(Number(rateCard.rate_amount) * 100) : 3000;
 
-  // Group lessons by payer
   const payerMap = new Map<string, { type: 'guardian' | 'student'; id: string; name: string; lessons: any[] }>();
 
   for (const lesson of lessons || []) {
@@ -204,7 +198,6 @@ async function executeGenerateBillingRun(
       const student = participant.students;
       if (!student) continue;
 
-      // Find primary payer guardian or use student as payer
       const primaryGuardian = student.student_guardians?.find((sg: any) => sg.is_primary_payer);
       
       let payerKey: string;
@@ -225,12 +218,10 @@ async function executeGenerateBillingRun(
     }
   }
 
-  // Create invoices for each payer
   let invoicesCreated = 0;
   const invoiceNumbers: string[] = [];
 
   for (const [, payer] of payerMap) {
-    // Generate invoice number
     const { data: invoiceNumber } = await supabase.rpc("generate_invoice_number", { _org_id: orgId });
 
     const subtotal = payer.lessons.length * lessonRate;
@@ -261,7 +252,6 @@ async function executeGenerateBillingRun(
 
     if (invoiceError) throw invoiceError;
 
-    // Create invoice items for each lesson
     const items = payer.lessons.map(({ lesson, student }) => ({
       org_id: orgId,
       invoice_id: invoice.id,
@@ -279,7 +269,6 @@ async function executeGenerateBillingRun(
     invoiceNumbers.push(invoiceNumber);
   }
 
-  // Create billing run record
   await supabase.from("billing_runs").insert({
     org_id: orgId,
     created_by: userId,
@@ -314,7 +303,6 @@ async function executeSendInvoiceReminders(
     throw new Error("invoice_ids are required");
   }
 
-  // Fetch invoices with payer details
   const { data: invoices, error } = await supabase
     .from("invoices")
     .select(`
@@ -341,7 +329,6 @@ async function executeSendInvoiceReminders(
       continue;
     }
 
-    // Log the message (actual email would be sent via send-invoice-email function)
     await supabase.from("message_log").insert({
       org_id: orgId,
       sender_user_id: userId,
@@ -387,7 +374,6 @@ async function executeRescheduleLessons(
     throw new Error("Either shift_minutes or new_start_time is required");
   }
 
-  // Fetch lessons
   const { data: lessons, error } = await supabase
     .from("lessons")
     .select("id, title, start_at, end_at")
@@ -459,7 +445,6 @@ async function executeDraftEmail(
     throw new Error("guardian_id, subject, and body are required");
   }
 
-  // Fetch guardian details
   const { data: guardian, error: guardianError } = await supabase
     .from("guardians")
     .select("id, full_name, email")
@@ -475,7 +460,6 @@ async function executeDraftEmail(
     throw new Error("Guardian has no email address");
   }
 
-  // Create message log entry as draft
   const { data: messageLog, error: msgError } = await supabase
     .from("message_log")
     .insert({
@@ -499,7 +483,6 @@ async function executeDraftEmail(
   return {
     message: `Email draft created for ${guardian.full_name}`,
     draft_id: messageLog.id,
-    recipient: guardian.full_name,
     recipient_email: guardian.email,
   };
 }

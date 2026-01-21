@@ -1,10 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
 interface Invoice {
   id: string;
@@ -126,7 +123,6 @@ async function buildDataContext(supabase: any, orgId: string): Promise<{
   // Build lesson summary with citations
   let lessonSummary = "";
   if ((upcomingLessons || []).length > 0) {
-    // Group by day
     const byDay: Record<string, Lesson[]> = {};
     upcomingLessons.forEach((lesson: Lesson) => {
       const day = lesson.start_at.split("T")[0];
@@ -258,9 +254,11 @@ ACTION TYPES AND PARAMS:
 IMPORTANT: Only include the action block when the user explicitly requests an action. For questions or information requests, respond normally without an action block.`;
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  // Handle CORS preflight
+  const corsResponse = handleCorsPreflightRequest(req);
+  if (corsResponse) return corsResponse;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -286,6 +284,12 @@ serve(async (req) => {
       });
     }
 
+    // Rate limiting check
+    const rateLimitResult = await checkRateLimit(user.id, "looopassist-chat");
+    if (!rateLimitResult.allowed) {
+      return rateLimitResponse(corsHeaders, rateLimitResult.retryAfterSeconds);
+    }
+
     const { messages, context, orgId } = await req.json();
 
     if (!orgId) {
@@ -295,7 +299,7 @@ serve(async (req) => {
       });
     }
 
-    // Verify user has access to this org (RLS will enforce this, but double-check)
+    // Verify user has access to this org
     const { data: membership } = await supabase
       .from("org_memberships")
       .select("role")
@@ -333,7 +337,6 @@ Email: ${student.email || "Not provided"}
 Phone: ${student.phone || "Not provided"}
 Recent lessons: ${recentLessons.length}`;
           
-          // List guardians
           if (guardianLinks.length > 0) {
             pageContextInfo += "\nGuardians:";
             guardianLinks.forEach((link: any) => {
@@ -343,7 +346,6 @@ Recent lessons: ${recentLessons.length}`;
             });
           }
           
-          // Get student's invoices
           const { data: studentInvoices } = await supabase
             .from("invoices")
             .select("id, invoice_number, status, total_minor, due_date")
@@ -405,10 +407,7 @@ Today's scheduled lessons: ${todayLessons.length}`;
       .eq("id", orgId)
       .single();
 
-    // Get user's role for context
     const userRole = membership.role;
-
-    // Build comprehensive data context for Q&A
     const { summary: dataSummary } = await buildDataContext(supabase, orgId);
 
     const orgContext = orgData
@@ -417,7 +416,6 @@ Your role: ${userRole}
 Currency: ${orgData.currency_code}`
       : "";
 
-    // Combine all context
     const fullContext = SYSTEM_PROMPT + orgContext + pageContextInfo + dataSummary;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -462,11 +460,17 @@ Currency: ${orgData.currency_code}`
       });
     }
 
+    // Stream the response back
     return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
     });
   } catch (e) {
-    console.error("LoopAssist error:", e);
+    console.error("LoopAssist chat error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
