@@ -6,6 +6,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// Get frontend URL from environment or use default
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://id-preview--c541d756-90e7-442a-ba85-0c723aeabc14.lovable.app";
+
 interface InvoiceEmailRequest {
   invoiceId: string;
   recipientEmail: string;
@@ -25,6 +28,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const {
+      invoiceId,
       recipientEmail,
       recipientName,
       invoiceNumber,
@@ -36,14 +40,29 @@ const handler = async (req: Request): Promise<Response> => {
     }: InvoiceEmailRequest = await req.json();
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    
+
+    // Build the portal link with invoice ID
+    const portalLink = `${FRONTEND_URL}/portal/invoices?invoice=${invoiceId}`;
+
     const subject = isReminder
       ? `Payment Reminder: Invoice ${invoiceNumber}`
       : `Invoice ${invoiceNumber} from ${orgName}`;
 
+    // Shared button styles
+    const buttonStyle = `
+      display: inline-block;
+      background-color: #2563eb;
+      color: #ffffff;
+      padding: 12px 24px;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      margin: 20px 0;
+    `.replace(/\s+/g, ' ').trim();
+
     const htmlContent = isReminder
-      ? `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #333;">Payment Reminder</h1>
+      ? `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #333; margin-bottom: 20px;">Payment Reminder</h1>
           <p>Dear ${recipientName},</p>
           <p>This is a friendly reminder that payment for the following invoice is due:</p>
           <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -52,11 +71,16 @@ const handler = async (req: Request): Promise<Response> => {
             <p style="margin: 5px 0;"><strong>Due Date:</strong> ${dueDate}</p>
           </div>
           ${customMessage ? `<p>${customMessage}</p>` : ""}
-          <p>Please arrange payment at your earliest convenience.</p>
+          <p style="text-align: center;">
+            <a href="${portalLink}" style="${buttonStyle}">View & Pay Invoice</a>
+          </p>
+          <p style="font-size: 12px; color: #666;">
+            Click the button above to view your invoice and make a payment securely online.
+          </p>
           <p>Thank you,<br>${orgName}</p>
         </div>`
-      : `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #333;">Invoice ${invoiceNumber}</h1>
+      : `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #333; margin-bottom: 20px;">Invoice ${invoiceNumber}</h1>
           <p>Dear ${recipientName},</p>
           <p>Please find below the details of your invoice:</p>
           <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -65,6 +89,12 @@ const handler = async (req: Request): Promise<Response> => {
             <p style="margin: 5px 0;"><strong>Due Date:</strong> ${dueDate}</p>
           </div>
           ${customMessage ? `<p>${customMessage}</p>` : ""}
+          <p style="text-align: center;">
+            <a href="${portalLink}" style="${buttonStyle}">View & Pay Invoice</a>
+          </p>
+          <p style="font-size: 12px; color: #666;">
+            Click the button above to view your invoice and make a payment securely online.
+          </p>
           <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
           <p>Thank you for your business,<br>${orgName}</p>
         </div>`;

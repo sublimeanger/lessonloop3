@@ -36,6 +36,9 @@ export default function PortalInvoices() {
   const { initiatePayment, isLoading: isPaymentLoading } = useStripePayment();
   const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
 
+  // Get highlighted invoice from URL param
+  const highlightedInvoiceId = searchParams.get('invoice');
+
   // Handle payment success/cancel URL params
   useEffect(() => {
     const paymentStatus = searchParams.get('payment');
@@ -46,17 +49,29 @@ export default function PortalInvoices() {
       });
       // Refetch invoices to show updated status
       refetch();
-      // Clear the URL params
-      setSearchParams({});
+      // Clear only payment param, keep invoice if present
+      searchParams.delete('payment');
+      setSearchParams(searchParams);
     } else if (paymentStatus === 'cancelled') {
       toast({
         title: 'Payment Cancelled',
         description: 'You cancelled the payment. No charges were made.',
         variant: 'destructive',
       });
-      setSearchParams({});
+      searchParams.delete('payment');
+      setSearchParams(searchParams);
     }
   }, [searchParams, toast, setSearchParams, refetch]);
+
+  // Scroll to highlighted invoice on mount
+  useEffect(() => {
+    if (highlightedInvoiceId && invoices && !isLoading) {
+      const element = document.getElementById(`invoice-${highlightedInvoiceId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [highlightedInvoiceId, invoices, isLoading]);
 
   const handlePayInvoice = async (invoiceId: string) => {
     setPayingInvoiceId(invoiceId);
@@ -167,6 +182,7 @@ export default function PortalInvoices() {
                     getStatusBadge={getStatusBadge}
                     onPay={handlePayInvoice}
                     isPaying={payingInvoiceId === invoice.id || isPaymentLoading}
+                    isHighlighted={invoice.id === highlightedInvoiceId}
                   />
                 ))}
               </div>
@@ -188,6 +204,7 @@ export default function PortalInvoices() {
                     getStatusBadge={getStatusBadge}
                     onPay={handlePayInvoice}
                     isPaying={payingInvoiceId === invoice.id || isPaymentLoading}
+                    isHighlighted={invoice.id === highlightedInvoiceId}
                   />
                 ))}
               </div>
@@ -214,14 +231,18 @@ interface InvoiceCardProps {
   getStatusBadge: (status: string, dueDate: string) => JSX.Element;
   onPay: (invoiceId: string) => void;
   isPaying: boolean;
+  isHighlighted?: boolean;
 }
 
-function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying }: InvoiceCardProps) {
+function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, isHighlighted }: InvoiceCardProps) {
   const isPayable = ['sent', 'overdue'].includes(invoice.status);
   const isPaid = invoice.status === 'paid';
 
   return (
-    <Card>
+    <Card 
+      id={`invoice-${invoice.id}`}
+      className={isHighlighted ? 'ring-2 ring-primary ring-offset-2 animate-pulse' : ''}
+    >
       <CardContent className="p-4">
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
