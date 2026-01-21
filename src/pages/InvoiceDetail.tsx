@@ -1,16 +1,18 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { format, parseISO, isBefore } from 'date-fns';
+import { useEffect, useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useInvoice, useUpdateInvoiceStatus } from '@/hooks/useInvoices';
+import { useStripePayment } from '@/hooks/useStripePayment';
+import { useToast } from '@/hooks/use-toast';
 import { LoadingState } from '@/components/shared/LoadingState';
-import { useState } from 'react';
 import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
 import { SendInvoiceModal } from '@/components/invoices/SendInvoiceModal';
 import {
@@ -65,15 +67,44 @@ function getStatusBadge(status: InvoiceStatus, dueDate: string) {
 export default function InvoiceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { currentOrg, currentRole } = useOrg();
+  const { toast } = useToast();
   const isParent = currentRole === 'parent';
-  const { data: invoice, isLoading } = useInvoice(id);
+  const { data: invoice, isLoading, refetch } = useInvoice(id);
   const updateStatus = useUpdateInvoiceStatus();
+  const { initiatePayment, isLoading: isPaymentLoading } = useStripePayment();
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
   const [voidConfirmOpen, setVoidConfirmOpen] = useState(false);
+
+  // Handle payment success/cancel URL params
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment');
+    if (paymentStatus === 'success') {
+      toast({
+        title: 'Payment Successful',
+        description: 'Your payment has been processed.',
+      });
+      refetch();
+      setSearchParams({});
+    } else if (paymentStatus === 'cancelled') {
+      toast({
+        title: 'Payment Cancelled',
+        description: 'No charges were made.',
+        variant: 'destructive',
+      });
+      setSearchParams({});
+    }
+  }, [searchParams, toast, setSearchParams, refetch]);
+
+  const handlePayNow = () => {
+    if (id) {
+      initiatePayment(id);
+    }
+  };
 
   const currency = currentOrg?.currency_code || 'GBP';
 
@@ -129,9 +160,17 @@ export default function InvoiceDetail() {
             </Button>
             {isParent ? (
               invoice.status !== 'paid' && invoice.status !== 'void' && (
-                <Button className="gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Pay Now
+                <Button 
+                  className="gap-2" 
+                  onClick={handlePayNow}
+                  disabled={isPaymentLoading}
+                >
+                  {isPaymentLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CreditCard className="h-4 w-4" />
+                  )}
+                  {isPaymentLoading ? 'Processing...' : 'Pay Now'}
                 </Button>
               )
             ) : (
