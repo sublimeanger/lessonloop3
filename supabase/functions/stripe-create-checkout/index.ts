@@ -73,7 +73,7 @@ serve(async (req) => {
 
     // Calculate amount due (total minus any payments)
     const { data: payments } = await supabase
-      .from("invoice_payments")
+      .from("payments")
       .select("amount_minor")
       .eq("invoice_id", invoiceId);
 
