@@ -1072,6 +1072,14 @@ export type Database = {
           currency_code: string
           default_lesson_length_mins: number
           id: string
+          invoice_footer_note: string | null
+          invoice_from_address_line1: string | null
+          invoice_from_address_line2: string | null
+          invoice_from_city: string | null
+          invoice_from_country: string | null
+          invoice_from_name: string | null
+          invoice_from_postcode: string | null
+          logo_url: string | null
           name: string
           org_type: Database["public"]["Enums"]["org_type"]
           timezone: string
@@ -1088,6 +1096,14 @@ export type Database = {
           currency_code?: string
           default_lesson_length_mins?: number
           id?: string
+          invoice_footer_note?: string | null
+          invoice_from_address_line1?: string | null
+          invoice_from_address_line2?: string | null
+          invoice_from_city?: string | null
+          invoice_from_country?: string | null
+          invoice_from_name?: string | null
+          invoice_from_postcode?: string | null
+          logo_url?: string | null
           name: string
           org_type?: Database["public"]["Enums"]["org_type"]
           timezone?: string
@@ -1104,6 +1120,14 @@ export type Database = {
           currency_code?: string
           default_lesson_length_mins?: number
           id?: string
+          invoice_footer_note?: string | null
+          invoice_from_address_line1?: string | null
+          invoice_from_address_line2?: string | null
+          invoice_from_city?: string | null
+          invoice_from_country?: string | null
+          invoice_from_name?: string | null
+          invoice_from_postcode?: string | null
+          logo_url?: string | null
           name?: string
           org_type?: Database["public"]["Enums"]["org_type"]
           timezone?: string
