@@ -356,14 +356,15 @@ pg_dump -h db.ximxgnkpcswbvfrkkmjq.supabase.co \
 
 ### 10.1 Production Checklist
 
-- [ ] Disable auto-confirm email signups
-- [ ] Enable leaked password protection
-- [ ] Configure CORS for production domain only
+- [ ] **Disable auto-confirm email signups** - In Supabase dashboard: Authentication → Settings → Email → Disable "Confirm email"
+- [ ] **Enable leaked password protection** - In Supabase dashboard: Authentication → Settings → Password → Enable "Leaked password protection"  
+- [ ] **Configure ALLOWED_ORIGINS secret** - Set to your production domain(s), comma-separated
+- [ ] **Set FRONTEND_URL secret** - Required for correct portal links in emails
+- [ ] **Configure RESEND_API_KEY** - Required for actual email delivery
 - [ ] Review all RLS policies
 - [ ] Enable database connection SSL
 - [ ] Set up monitoring alerts
-- [ ] Configure rate limiting
-- [ ] Enable WAF (if available)
+- [ ] Rate limiting is now enabled for LoopAssist (30 req/5min) and email sending (20 req/5min)
 
 ### 10.2 Environment Separation
 

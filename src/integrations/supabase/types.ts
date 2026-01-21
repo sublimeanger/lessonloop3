@@ -1279,6 +1279,33 @@ export type Database = {
           },
         ]
       }
+      rate_limits: {
+        Row: {
+          action_type: string
+          created_at: string
+          id: string
+          request_count: number
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          id?: string
+          request_count?: number
+          user_id: string
+          window_start?: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          id?: string
+          request_count?: number
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       recurrence_rules: {
         Row: {
           created_at: string
@@ -1713,6 +1740,16 @@ export type Database = {
         Args: { _lesson_id: string; _user_id: string }
         Returns: boolean
       }
+      check_rate_limit: {
+        Args: {
+          _action_type: string
+          _max_requests: number
+          _user_id: string
+          _window_minutes: number
+        }
+        Returns: boolean
+      }
+      cleanup_rate_limits: { Args: never; Returns: undefined }
       generate_invoice_number: { Args: { _org_id: string }; Returns: string }
       get_guardian_ids_for_user: {
         Args: { _user_id: string }

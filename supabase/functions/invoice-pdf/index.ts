@@ -1,12 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -56,9 +51,11 @@ function getLocaleFromCountry(countryCode: string): string {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  // Handle CORS preflight
+  const corsResponse = handleCorsPreflightRequest(req);
+  if (corsResponse) return corsResponse;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     // Get auth token from header
@@ -314,75 +311,26 @@ const handler = async (req: Request): Promise<Response> => {
       color: lightGray,
     });
 
-    page.drawText("Description", {
-      x: colDesc,
-      y: tableTop,
-      size: 9,
-      font: helveticaBold,
-      color: gray,
-    });
-    page.drawText("Qty", {
-      x: colQty,
-      y: tableTop,
-      size: 9,
-      font: helveticaBold,
-      color: gray,
-    });
-    page.drawText("Rate", {
-      x: colRate,
-      y: tableTop,
-      size: 9,
-      font: helveticaBold,
-      color: gray,
-    });
-    page.drawText("Amount", {
-      x: colAmount,
-      y: tableTop,
-      size: 9,
-      font: helveticaBold,
-      color: gray,
-    });
+    page.drawText("Description", { x: colDesc, y: tableTop, size: 9, font: helveticaBold, color: gray });
+    page.drawText("Qty", { x: colQty, y: tableTop, size: 9, font: helveticaBold, color: gray });
+    page.drawText("Rate", { x: colRate, y: tableTop, size: 9, font: helveticaBold, color: gray });
+    page.drawText("Amount", { x: colAmount, y: tableTop, size: 9, font: helveticaBold, color: gray });
 
     y = tableTop - 25;
 
     // Items
     const items: InvoiceItem[] = invoice.items || [];
     for (const item of items) {
-      // Truncate long descriptions
       let desc = item.description || "";
       if (desc.length > 45) desc = desc.substring(0, 42) + "...";
 
-      page.drawText(desc, {
-        x: colDesc,
-        y,
-        size: 10,
-        font: helvetica,
-        color: black,
-      });
-      page.drawText(String(item.quantity), {
-        x: colQty,
-        y,
-        size: 10,
-        font: helvetica,
-        color: black,
-      });
-      page.drawText(formatCurrency(item.unit_price_minor, currency, locale), {
-        x: colRate,
-        y,
-        size: 10,
-        font: helvetica,
-        color: black,
-      });
+      page.drawText(desc, { x: colDesc, y, size: 10, font: helvetica, color: black });
+      page.drawText(String(item.quantity), { x: colQty, y, size: 10, font: helvetica, color: black });
+      page.drawText(formatCurrency(item.unit_price_minor, currency, locale), { x: colRate, y, size: 10, font: helvetica, color: black });
 
       const amountText = formatCurrency(item.amount_minor, currency, locale);
       const amountWidth = helvetica.widthOfTextAtSize(amountText, 10);
-      page.drawText(amountText, {
-        x: rightMargin - amountWidth,
-        y,
-        size: 10,
-        font: helvetica,
-        color: black,
-      });
+      page.drawText(amountText, { x: rightMargin - amountWidth, y, size: 10, font: helvetica, color: black });
 
       y -= 18;
     }
@@ -400,195 +348,99 @@ const handler = async (req: Request): Promise<Response> => {
     // Totals section
     const totalsX = colRate - 20;
 
-    page.drawText("Subtotal", {
-      x: totalsX,
-      y,
-      size: 10,
-      font: helvetica,
-      color: gray,
-    });
+    page.drawText("Subtotal", { x: totalsX, y, size: 10, font: helvetica, color: gray });
     let subtotalText = formatCurrency(invoice.subtotal_minor, currency, locale);
-    page.drawText(subtotalText, {
-      x: rightMargin - helvetica.widthOfTextAtSize(subtotalText, 10),
-      y,
-      size: 10,
-      font: helvetica,
-      color: black,
-    });
+    page.drawText(subtotalText, { x: rightMargin - helvetica.widthOfTextAtSize(subtotalText, 10), y, size: 10, font: helvetica, color: black });
     y -= 16;
 
-    // VAT if applicable
     if (invoice.tax_minor > 0) {
-      page.drawText(`VAT (${invoice.vat_rate}%)`, {
-        x: totalsX,
-        y,
-        size: 10,
-        font: helvetica,
-        color: gray,
-      });
+      page.drawText(`VAT (${invoice.vat_rate}%)`, { x: totalsX, y, size: 10, font: helvetica, color: gray });
       const taxText = formatCurrency(invoice.tax_minor, currency, locale);
-      page.drawText(taxText, {
-        x: rightMargin - helvetica.widthOfTextAtSize(taxText, 10),
-        y,
-        size: 10,
-        font: helvetica,
-        color: black,
-      });
+      page.drawText(taxText, { x: rightMargin - helvetica.widthOfTextAtSize(taxText, 10), y, size: 10, font: helvetica, color: black });
       y -= 16;
     }
 
-    // Total
-    page.drawText("Total", {
-      x: totalsX,
-      y,
-      size: 11,
-      font: helveticaBold,
-      color: black,
-    });
+    page.drawText("Total", { x: totalsX, y, size: 11, font: helveticaBold, color: black });
     const totalText = formatCurrency(invoice.total_minor, currency, locale);
-    page.drawText(totalText, {
-      x: rightMargin - helveticaBold.widthOfTextAtSize(totalText, 11),
-      y,
-      size: 11,
-      font: helveticaBold,
-      color: black,
-    });
+    page.drawText(totalText, { x: rightMargin - helveticaBold.widthOfTextAtSize(totalText, 11), y, size: 11, font: helveticaBold, color: black });
     y -= 16;
 
-    // Payments and balance due
     const payments: Payment[] = invoice.payments || [];
     const totalPaid = payments.reduce((sum, p) => sum + p.amount_minor, 0);
 
     if (totalPaid > 0) {
-      page.drawText("Paid", {
-        x: totalsX,
-        y,
-        size: 10,
-        font: helvetica,
-        color: rgb(0.13, 0.55, 0.13), // green
-      });
+      page.drawText("Paid", { x: totalsX, y, size: 10, font: helvetica, color: rgb(0.13, 0.55, 0.13) });
       const paidText = `-${formatCurrency(totalPaid, currency, locale)}`;
-      page.drawText(paidText, {
-        x: rightMargin - helvetica.widthOfTextAtSize(paidText, 10),
-        y,
-        size: 10,
-        font: helvetica,
-        color: rgb(0.13, 0.55, 0.13),
-      });
+      page.drawText(paidText, { x: rightMargin - helvetica.widthOfTextAtSize(paidText, 10), y, size: 10, font: helvetica, color: rgb(0.13, 0.55, 0.13) });
       y -= 16;
 
-      // Amount due
       const amountDue = invoice.total_minor - totalPaid;
-      page.drawText("Amount Due", {
-        x: totalsX,
-        y,
-        size: 12,
-        font: helveticaBold,
-        color: darkBlue,
-      });
+      page.drawText("Amount Due", { x: totalsX, y, size: 12, font: helveticaBold, color: darkBlue });
       const dueText = formatCurrency(amountDue, currency, locale);
-      page.drawText(dueText, {
-        x: rightMargin - helveticaBold.widthOfTextAtSize(dueText, 12),
-        y,
-        size: 12,
-        font: helveticaBold,
-        color: darkBlue,
-      });
+      page.drawText(dueText, { x: rightMargin - helveticaBold.widthOfTextAtSize(dueText, 12), y, size: 12, font: helveticaBold, color: darkBlue });
       y -= 20;
     }
 
     // Notes section
     if (invoice.notes) {
       y -= 20;
-      page.drawText("Notes", {
-        x: leftMargin,
-        y,
-        size: 10,
-        font: helveticaBold,
-        color: gray,
-      });
+      page.drawText("Notes", { x: leftMargin, y, size: 10, font: helveticaBold, color: darkBlue });
       y -= 14;
-
-      // Word wrap notes
-      const maxWidth = rightMargin - leftMargin;
-      const words = invoice.notes.split(" ");
-      let line = "";
-      for (const word of words) {
-        const testLine = line ? `${line} ${word}` : word;
-        if (helvetica.widthOfTextAtSize(testLine, 9) > maxWidth) {
-          page.drawText(line, {
-            x: leftMargin,
-            y,
-            size: 9,
-            font: helvetica,
-            color: black,
-          });
-          y -= 12;
-          line = word;
-        } else {
-          line = testLine;
-        }
-      }
-      if (line) {
-        page.drawText(line, {
-          x: leftMargin,
-          y,
-          size: 9,
-          font: helvetica,
-          color: black,
-        });
+      const noteLines = invoice.notes.split("\n").slice(0, 3);
+      for (const line of noteLines) {
+        page.drawText(line.substring(0, 80), { x: leftMargin, y, size: 9, font: helvetica, color: gray });
         y -= 12;
       }
     }
 
-    // Footer
-    const footerY = 50;
+    // Footer note
     if (org?.invoice_footer_note) {
-      const footerWidth = helvetica.widthOfTextAtSize(org.invoice_footer_note, 8);
-      page.drawText(org.invoice_footer_note, {
-        x: (width - footerWidth) / 2,
-        y: footerY,
-        size: 8,
-        font: helvetica,
-        color: gray,
+      const footerY = 50;
+      page.drawLine({
+        start: { x: leftMargin, y: footerY + 15 },
+        end: { x: rightMargin, y: footerY + 15 },
+        thickness: 0.5,
+        color: lightGray,
       });
+      page.drawText(org.invoice_footer_note.substring(0, 100), { x: leftMargin, y: footerY, size: 8, font: helvetica, color: gray });
     }
 
-    // Status watermark for paid/void
+    // Status watermark for paid/void invoices
     if (invoice.status === "paid") {
       page.drawText("PAID", {
-        x: width / 2 - 60,
+        x: width / 2 - 80,
         y: height / 2,
         size: 72,
         font: helveticaBold,
         color: rgb(0.13, 0.55, 0.13),
-        opacity: 0.15,
+        opacity: 0.2,
+        rotate: { angle: -30, type: "degrees" } as any,
       });
     } else if (invoice.status === "void") {
       page.drawText("VOID", {
-        x: width / 2 - 60,
+        x: width / 2 - 80,
         y: height / 2,
         size: 72,
         font: helveticaBold,
-        color: rgb(0.8, 0.1, 0.1),
-        opacity: 0.15,
+        color: rgb(0.8, 0.2, 0.2),
+        opacity: 0.2,
+        rotate: { angle: -30, type: "degrees" } as any,
       });
     }
 
-    // Generate PDF bytes
+    // Serialize PDF
     const pdfBytes = await pdfDoc.save();
 
-    // Return PDF with appropriate headers
     return new Response(new Uint8Array(pdfBytes), {
       status: 200,
       headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${invoice.invoice_number}.pdf"`,
         ...corsHeaders,
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="invoice-${invoice.invoice_number}.pdf"`,
       },
     });
   } catch (error: any) {
-    console.error("Error generating PDF:", error);
+    console.error("PDF generation error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...corsHeaders },

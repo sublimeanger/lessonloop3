@@ -1,15 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const corsResponse = handleCorsPreflightRequest(req);
+  if (corsResponse) return corsResponse;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -26,7 +23,6 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -35,7 +31,6 @@ serve(async (req) => {
       });
     }
 
-    // Get user's current org
     const { data: profile } = await supabase
       .from("profiles")
       .select("current_org_id")
@@ -51,7 +46,6 @@ serve(async (req) => {
 
     const orgId = profile.current_org_id;
 
-    // Check if user is admin/owner
     const { data: membership } = await supabase
       .from("org_memberships")
       .select("role")
@@ -67,7 +61,6 @@ serve(async (req) => {
       });
     }
 
-    // Fetch all data for the org
     const [studentsResult, guardiansResult, lessonsResult, invoicesResult, paymentsResult, orgResult] = await Promise.all([
       supabase.from("students").select("*").eq("org_id", orgId),
       supabase.from("guardians").select("*").eq("org_id", orgId),
@@ -77,69 +70,42 @@ serve(async (req) => {
       supabase.from("organisations").select("name").eq("id", orgId).single(),
     ]);
 
-    const students = studentsResult.data || [];
-    const guardians = guardiansResult.data || [];
-    const lessons = lessonsResult.data || [];
-    const invoices = invoicesResult.data || [];
-    const payments = paymentsResult.data || [];
-    const orgName = orgResult.data?.name || "organisation";
-
-    // Helper to convert array to CSV
     function toCSV(data: Record<string, unknown>[], columns: string[]): string {
       if (data.length === 0) return columns.join(",") + "\n";
-      
       const header = columns.join(",");
       const rows = data.map((row) =>
-        columns
-          .map((col) => {
-            const value = row[col];
-            if (value === null || value === undefined) return "";
-            const str = String(value);
-            // Escape quotes and wrap in quotes if contains comma or newline
-            if (str.includes(",") || str.includes("\n") || str.includes('"')) {
-              return `"${str.replace(/"/g, '""')}"`;
-            }
-            return str;
-          })
-          .join(",")
+        columns.map((col) => {
+          const value = row[col];
+          if (value === null || value === undefined) return "";
+          const str = String(value);
+          if (str.includes(",") || str.includes("\n") || str.includes('"')) {
+            return `"${str.replace(/"/g, '""')}"`;
+          }
+          return str;
+        }).join(",")
       );
       return [header, ...rows].join("\n");
     }
 
-    // Define columns for each entity
-    const studentColumns = ["id", "first_name", "last_name", "email", "phone", "dob", "notes", "status", "created_at", "updated_at", "deleted_at"];
-    const guardianColumns = ["id", "full_name", "email", "phone", "user_id", "created_at", "updated_at", "deleted_at"];
-    const lessonColumns = ["id", "title", "teacher_user_id", "start_at", "end_at", "status", "lesson_type", "location_id", "room_id", "notes_shared", "created_at", "updated_at"];
-    const invoiceColumns = ["id", "invoice_number", "payer_guardian_id", "payer_student_id", "status", "subtotal_minor", "tax_minor", "total_minor", "currency_code", "issue_date", "due_date", "created_at", "updated_at"];
-    const paymentColumns = ["id", "invoice_id", "amount_minor", "currency_code", "method", "provider", "paid_at", "created_at"];
-
-    const studentsCSV = toCSV(students, studentColumns);
-    const guardiansCSV = toCSV(guardians, guardianColumns);
-    const lessonsCSV = toCSV(lessons, lessonColumns);
-    const invoicesCSV = toCSV(invoices, invoiceColumns);
-    const paymentsCSV = toCSV(payments, paymentColumns);
-
-    // Return as JSON with CSV content for each entity
     const exportData = {
-      organisation: orgName,
+      organisation: orgResult.data?.name || "organisation",
       exportedAt: new Date().toISOString(),
       files: {
-        students: studentsCSV,
-        guardians: guardiansCSV,
-        lessons: lessonsCSV,
-        invoices: invoicesCSV,
-        payments: paymentsCSV,
+        students: toCSV(studentsResult.data || [], ["id", "first_name", "last_name", "email", "phone", "dob", "notes", "status", "created_at"]),
+        guardians: toCSV(guardiansResult.data || [], ["id", "full_name", "email", "phone", "created_at"]),
+        lessons: toCSV(lessonsResult.data || [], ["id", "title", "start_at", "end_at", "status", "lesson_type", "created_at"]),
+        invoices: toCSV(invoicesResult.data || [], ["id", "invoice_number", "status", "total_minor", "due_date", "created_at"]),
+        payments: toCSV(paymentsResult.data || [], ["id", "invoice_id", "amount_minor", "method", "paid_at"]),
       },
       counts: {
-        students: students.length,
-        guardians: guardians.length,
-        lessons: lessons.length,
-        invoices: invoices.length,
-        payments: payments.length,
+        students: studentsResult.data?.length || 0,
+        guardians: guardiansResult.data?.length || 0,
+        lessons: lessonsResult.data?.length || 0,
+        invoices: invoicesResult.data?.length || 0,
+        payments: paymentsResult.data?.length || 0,
       },
     };
 
-    // Log to audit
     await supabase.from("audit_log").insert({
       org_id: orgId,
       actor_user_id: user.id,
