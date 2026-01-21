@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, retries = 3): Promise<Profile | null> => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -53,6 +53,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Error fetching profile:', error);
       return null;
     }
+    
+    // Profile might not exist yet due to trigger timing - retry
+    if (!data && retries > 0) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return fetchProfile(userId, retries - 1);
+    }
+    
     return data as Profile | null;
   };
 
