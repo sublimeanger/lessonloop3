@@ -1344,6 +1344,75 @@ export type Database = {
           },
         ]
       }
+      stripe_checkout_sessions: {
+        Row: {
+          amount_minor: number
+          completed_at: string | null
+          created_at: string
+          currency_code: string
+          expires_at: string | null
+          id: string
+          invoice_id: string
+          metadata: Json | null
+          org_id: string
+          payer_email: string | null
+          payer_user_id: string | null
+          status: string
+          stripe_customer_id: string | null
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string
+        }
+        Insert: {
+          amount_minor: number
+          completed_at?: string | null
+          created_at?: string
+          currency_code?: string
+          expires_at?: string | null
+          id?: string
+          invoice_id: string
+          metadata?: Json | null
+          org_id: string
+          payer_email?: string | null
+          payer_user_id?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_session_id: string
+        }
+        Update: {
+          amount_minor?: number
+          completed_at?: string | null
+          created_at?: string
+          currency_code?: string
+          expires_at?: string | null
+          id?: string
+          invoice_id?: string
+          metadata?: Json | null
+          org_id?: string
+          payer_email?: string | null
+          payer_user_id?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stripe_checkout_sessions_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stripe_checkout_sessions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_guardians: {
         Row: {
           created_at: string

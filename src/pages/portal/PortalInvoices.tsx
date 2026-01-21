@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,10 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Receipt, Loader2, Download, CreditCard, AlertCircle } from 'lucide-react';
+import { Receipt, Loader2, Download, CreditCard, AlertCircle, CheckCircle } from 'lucide-react';
 import { format, parseISO, isBefore, startOfToday } from 'date-fns';
 import { useOrg } from '@/contexts/OrgContext';
 import { useParentInvoices } from '@/hooks/useParentPortal';
+import { useStripePayment } from '@/hooks/useStripePayment';
+import { useToast } from '@/hooks/use-toast';
 
 function formatCurrency(amountMinor: number, currencyCode: string = 'GBP'): string {
   return new Intl.NumberFormat('en-GB', {
@@ -27,8 +29,40 @@ function formatCurrency(amountMinor: number, currencyCode: string = 'GBP'): stri
 export default function PortalInvoices() {
   const { currentOrg } = useOrg();
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { toast } = useToast();
 
-  const { data: invoices, isLoading } = useParentInvoices({ status: statusFilter });
+  const { data: invoices, isLoading, refetch } = useParentInvoices({ status: statusFilter });
+  const { initiatePayment, isLoading: isPaymentLoading } = useStripePayment();
+  const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
+
+  // Handle payment success/cancel URL params
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment');
+    if (paymentStatus === 'success') {
+      toast({
+        title: 'Payment Successful',
+        description: 'Your payment has been processed. The invoice will be updated shortly.',
+      });
+      // Refetch invoices to show updated status
+      refetch();
+      // Clear the URL params
+      setSearchParams({});
+    } else if (paymentStatus === 'cancelled') {
+      toast({
+        title: 'Payment Cancelled',
+        description: 'You cancelled the payment. No charges were made.',
+        variant: 'destructive',
+      });
+      setSearchParams({});
+    }
+  }, [searchParams, toast, setSearchParams, refetch]);
+
+  const handlePayInvoice = async (invoiceId: string) => {
+    setPayingInvoiceId(invoiceId);
+    await initiatePayment(invoiceId);
+    setPayingInvoiceId(null);
+  };
 
   const getStatusBadge = (status: string, dueDate: string) => {
     const isOverdue = status === 'sent' && isBefore(parseISO(dueDate), startOfToday());
@@ -131,6 +165,8 @@ export default function PortalInvoices() {
                     invoice={invoice}
                     currencyCode={currentOrg?.currency_code || 'GBP'}
                     getStatusBadge={getStatusBadge}
+                    onPay={handlePayInvoice}
+                    isPaying={payingInvoiceId === invoice.id || isPaymentLoading}
                   />
                 ))}
               </div>
@@ -150,6 +186,8 @@ export default function PortalInvoices() {
                     invoice={invoice}
                     currencyCode={currentOrg?.currency_code || 'GBP'}
                     getStatusBadge={getStatusBadge}
+                    onPay={handlePayInvoice}
+                    isPaying={payingInvoiceId === invoice.id || isPaymentLoading}
                   />
                 ))}
               </div>
@@ -174,10 +212,13 @@ interface InvoiceCardProps {
   };
   currencyCode: string;
   getStatusBadge: (status: string, dueDate: string) => JSX.Element;
+  onPay: (invoiceId: string) => void;
+  isPaying: boolean;
 }
 
-function InvoiceCard({ invoice, currencyCode, getStatusBadge }: InvoiceCardProps) {
+function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying }: InvoiceCardProps) {
   const isPayable = ['sent', 'overdue'].includes(invoice.status);
+  const isPaid = invoice.status === 'paid';
 
   return (
     <Card>
@@ -211,10 +252,24 @@ function InvoiceCard({ invoice, currencyCode, getStatusBadge }: InvoiceCardProps
                 </Button>
               </Link>
               {isPayable && (
-                <Button size="sm" disabled title="Payment coming soon">
-                  <CreditCard className="h-4 w-4 mr-1" />
-                  Pay
+                <Button 
+                  size="sm" 
+                  onClick={() => onPay(invoice.id)}
+                  disabled={isPaying}
+                >
+                  {isPaying ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <CreditCard className="h-4 w-4 mr-1" />
+                  )}
+                  {isPaying ? 'Processing...' : 'Pay Now'}
                 </Button>
+              )}
+              {isPaid && (
+                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Paid
+                </Badge>
               )}
             </div>
           </div>
