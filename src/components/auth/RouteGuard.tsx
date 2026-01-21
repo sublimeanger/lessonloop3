@@ -23,8 +23,8 @@ export function RouteGuard({
   const { currentRole, currentOrg, isLoading: orgLoading } = useOrg();
   const location = useLocation();
 
-  // Wait for both auth and org context to load
-  if (authLoading || (user && orgLoading)) {
+  // Wait for auth to load first
+  if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <LoadingState message="Loading..." />
@@ -38,16 +38,28 @@ export function RouteGuard({
   }
 
   // Check onboarding completion (except for onboarding page itself)
+  // IMPORTANT: Don't wait for orgLoading here - users in onboarding won't have orgs yet
   if (requireAuth && requireOnboarding && profile && !profile.has_completed_onboarding) {
     if (location.pathname !== '/onboarding') {
       return <Navigate to="/onboarding" replace />;
     }
+    // User is on onboarding page and hasn't completed it - let them through
+    return <>{children}</>;
   }
 
-  // If authenticated but no org/role yet (and not onboarding), redirect to onboarding
-  if (requireAuth && user && profile?.has_completed_onboarding && !currentOrg && !currentRole) {
-    // User has completed onboarding but has no org - could be edge case
-    // Allow them through but they'll see limited content
+  // For routes that require onboarding completion, wait for org context
+  if (requireAuth && requireOnboarding && user && orgLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <LoadingState message="Loading..." />
+      </div>
+    );
+  }
+
+  // If authenticated but no org/role yet (and completed onboarding), edge case
+  if (requireAuth && user && profile?.has_completed_onboarding && !currentOrg && !currentRole && !orgLoading) {
+    // User has completed onboarding but has no org - might be data issue
+    // Let them through but they'll see limited content or could redirect to onboarding
   }
 
   // Check role-based access using currentRole from org membership
@@ -89,12 +101,13 @@ export function PublicRoute({ children }: { children: ReactNode }) {
   if (user) {
     const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
     
+    // If user hasn't completed onboarding, send them there (don't wait for org)
     if (profile && !profile.has_completed_onboarding) {
       return <Navigate to="/onboarding" replace />;
     }
     
-    // Wait for org context if needed
-    if (orgLoading) {
+    // Wait for org context only if user has completed onboarding
+    if (profile?.has_completed_onboarding && orgLoading) {
       return (
         <div className="flex min-h-screen items-center justify-center">
           <LoadingState message="Loading..." />
