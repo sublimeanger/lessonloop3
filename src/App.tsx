@@ -132,7 +132,7 @@ const App = () => (
                 </RouteGuard>
               } />
               <Route path="/reports/payroll" element={
-                <RouteGuard allowedRoles={['owner', 'admin']}>
+                <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
                   <PayrollReport />
                 </RouteGuard>
               } />
@@ -147,7 +147,7 @@ const App = () => (
                 </RouteGuard>
               } />
               <Route path="/reports/lessons" element={
-                <RouteGuard allowedRoles={['owner', 'admin']}>
+                <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
                   <LessonsDeliveredReport />
                 </RouteGuard>
               } />

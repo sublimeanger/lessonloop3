@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,9 +13,95 @@ import { SchedulingSettingsTab } from '@/components/settings/SchedulingSettingsT
 import AuditLogTab from '@/components/settings/AuditLogTab';
 import { PrivacyTab } from '@/components/settings/PrivacyTab';
 import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { Loader2 } from 'lucide-react';
 
 export default function Settings() {
-  const { isOrgAdmin, isOrgOwner } = useOrg();
+  const { isOrgAdmin, isOrgOwner, currentOrg, refreshOrganisations } = useOrg();
+  const { profile, updateProfile } = useAuth();
+  const { toast } = useToast();
+  
+  // Profile form state
+  const [profileFirstName, setProfileFirstName] = useState('');
+  const [profileLastName, setProfileLastName] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  
+  // Organisation form state
+  const [orgName, setOrgName] = useState('');
+  const [orgAddress, setOrgAddress] = useState('');
+  const [orgSaving, setOrgSaving] = useState(false);
+
+  // Billing settings state
+  const [vatRegistered, setVatRegistered] = useState(false);
+  const [vatNumber, setVatNumber] = useState('');
+  const [paymentTerms, setPaymentTerms] = useState('14 days');
+
+  // Sync profile data
+  useEffect(() => {
+    if (profile) {
+      const nameParts = (profile.full_name || '').split(' ');
+      setProfileFirstName(nameParts[0] || '');
+      setProfileLastName(nameParts.slice(1).join(' ') || '');
+      setProfilePhone(profile.phone || '');
+      // Email comes from auth, not profile
+    }
+  }, [profile]);
+
+  // Sync org data
+  useEffect(() => {
+    if (currentOrg) {
+      setOrgName(currentOrg.name || '');
+      // Address and billing fields would need to be fetched from org settings if they exist
+    }
+  }, [currentOrg]);
+
+  // Fetch user email
+  useEffect(() => {
+    const getEmail = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data.user?.email) {
+        setProfileEmail(data.user.email);
+      }
+    };
+    getEmail();
+  }, []);
+
+  const handleSaveProfile = async () => {
+    setProfileSaving(true);
+    try {
+      const fullName = `${profileFirstName} ${profileLastName}`.trim();
+      await updateProfile({ full_name: fullName, phone: profilePhone });
+      toast({ title: 'Profile updated', description: 'Your profile has been saved.' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleSaveOrganisation = async () => {
+    if (!currentOrg) return;
+    setOrgSaving(true);
+    try {
+      const { error } = await supabase
+        .from('organisations')
+        .update({ name: orgName })
+        .eq('id', currentOrg.id);
+      
+      if (error) throw error;
+      
+      await refreshOrganisations();
+      toast({ title: 'Organisation updated', description: 'Your organisation has been saved.' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setOrgSaving(false);
+    }
+  };
   
   return (
     <AppLayout>
@@ -28,7 +115,7 @@ export default function Settings() {
       />
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="organisation">Organisation</TabsTrigger>
           {(isOrgAdmin || isOrgOwner) && (
@@ -57,22 +144,48 @@ export default function Settings() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First name</Label>
-                  <Input id="firstName" defaultValue="John" />
+                  <Input 
+                    id="firstName" 
+                    value={profileFirstName}
+                    onChange={(e) => setProfileFirstName(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Last name</Label>
-                  <Input id="lastName" defaultValue="Smith" />
+                  <Input 
+                    id="lastName" 
+                    value={profileLastName}
+                    onChange={(e) => setProfileLastName(e.target.value)}
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue="john@example.com" />
+                <Input 
+                  id="email" 
+                  type="email" 
+                  value={profileEmail} 
+                  disabled 
+                  className="bg-muted"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Email cannot be changed here. Contact support if you need to update it.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone</Label>
-                <Input id="phone" type="tel" defaultValue="+44 7700 900000" />
+                <Input 
+                  id="phone" 
+                  type="tel" 
+                  value={profilePhone}
+                  onChange={(e) => setProfilePhone(e.target.value)}
+                  placeholder="+44 7700 900000"
+                />
               </div>
-              <Button>Save Changes</Button>
+              <Button onClick={handleSaveProfile} disabled={profileSaving}>
+                {profileSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Save Changes
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -86,11 +199,22 @@ export default function Settings() {
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="orgName">Organisation name</Label>
-                <Input id="orgName" defaultValue="Smith Music Academy" />
+                <Input 
+                  id="orgName" 
+                  value={orgName}
+                  onChange={(e) => setOrgName(e.target.value)}
+                  disabled={!isOrgOwner && !isOrgAdmin}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
-                <Input id="address" placeholder="Enter your business address" />
+                <Input 
+                  id="address" 
+                  placeholder="Enter your business address"
+                  value={orgAddress}
+                  onChange={(e) => setOrgAddress(e.target.value)}
+                  disabled={!isOrgOwner && !isOrgAdmin}
+                />
               </div>
               <Separator />
               <div>
@@ -98,15 +222,20 @@ export default function Settings() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Currency</Label>
-                    <Input defaultValue="GBP (£)" disabled />
+                    <Input value={currentOrg?.currency_code || 'GBP'} disabled className="bg-muted" />
                   </div>
                   <div className="space-y-2">
                     <Label>Timezone</Label>
-                    <Input defaultValue="Europe/London" disabled />
+                    <Input value={currentOrg?.timezone || 'Europe/London'} disabled className="bg-muted" />
                   </div>
                 </div>
               </div>
-              <Button>Save Changes</Button>
+              {(isOrgOwner || isOrgAdmin) && (
+                <Button onClick={handleSaveOrganisation} disabled={orgSaving}>
+                  {orgSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Save Changes
+                </Button>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -149,18 +278,41 @@ export default function Settings() {
                     Include VAT on invoices
                   </div>
                 </div>
-                <Switch />
+                <Switch 
+                  checked={vatRegistered}
+                  onCheckedChange={setVatRegistered}
+                  disabled={!isOrgOwner && !isOrgAdmin}
+                />
               </div>
               <Separator />
-              <div className="space-y-2">
-                <Label htmlFor="vatNumber">VAT Number</Label>
-                <Input id="vatNumber" placeholder="GB123456789" />
-              </div>
+              {vatRegistered && (
+                <div className="space-y-2">
+                  <Label htmlFor="vatNumber">VAT Number</Label>
+                  <Input 
+                    id="vatNumber" 
+                    placeholder="GB123456789"
+                    value={vatNumber}
+                    onChange={(e) => setVatNumber(e.target.value)}
+                    disabled={!isOrgOwner && !isOrgAdmin}
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Default Payment Terms</Label>
-                <Input defaultValue="14 days" />
+                <Input 
+                  value={paymentTerms}
+                  onChange={(e) => setPaymentTerms(e.target.value)}
+                  disabled={!isOrgOwner && !isOrgAdmin}
+                />
               </div>
-              <Button>Save Changes</Button>
+              {(isOrgOwner || isOrgAdmin) && (
+                <Button disabled>
+                  Save Changes
+                </Button>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Billing settings are coming soon. These will be saved automatically.
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
