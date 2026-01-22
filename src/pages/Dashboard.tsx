@@ -7,9 +7,11 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { useDashboardStats } from '@/hooks/useReports';
+import { useTeacherDashboardStats } from '@/hooks/useTeacherDashboard';
 import { OnboardingChecklist } from '@/components/shared/OnboardingChecklist';
 import { GridSkeleton } from '@/components/shared/LoadingState';
-import { Calendar, Users, Receipt, Clock, TrendingUp, AlertCircle, Plus, ChevronRight, Building2, Loader2 } from 'lucide-react';
+import { Calendar, Users, Receipt, Clock, TrendingUp, AlertCircle, Plus, ChevronRight, Building2, Loader2, BookOpen } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 
 export default function Dashboard() {
   const { profile } = useAuth();
@@ -17,6 +19,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   
   const isParent = currentRole === 'parent';
+  const isTeacher = currentRole === 'teacher';
   const isSoloTeacher = currentOrg?.org_type === 'solo_teacher' || currentOrg?.org_type === 'studio';
   const isAcademyOrAgency = currentOrg?.org_type === 'academy' || currentOrg?.org_type === 'agency';
 
@@ -78,6 +81,11 @@ export default function Dashboard() {
         </Card>
       </AppLayout>
     );
+  }
+
+  // Teacher view within academy/agency
+  if (isTeacher && isAcademyOrAgency) {
+    return <TeacherDashboard firstName={firstName} greeting={getGreeting()} />;
   }
 
   if (isAcademyOrAgency) {
@@ -407,6 +415,151 @@ function AcademyDashboard({ firstName, greeting, orgName }: { firstName: string;
           </div>
         </CardContent>
       </Card>
+    </AppLayout>
+  );
+}
+
+function TeacherDashboard({ firstName, greeting }: { firstName: string; greeting: string }) {
+  const { data: stats, isLoading } = useTeacherDashboardStats();
+
+  return (
+    <AppLayout>
+      <PageHeader
+        title={`${greeting}, ${firstName}!`}
+        description="Your teaching schedule and students"
+      />
+
+      {/* Stats */}
+      {isLoading ? (
+        <GridSkeleton count={4} columns={4} />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Today's Lessons</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats?.todayLessons ?? 0}</div>
+              <p className="text-xs text-muted-foreground">
+                {stats?.todayLessons === 0 ? 'No lessons today' : 'lessons scheduled'}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">My Students</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats?.myStudentsCount ?? 0}</div>
+              <p className="text-xs text-muted-foreground">assigned to you</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Hours This Week</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats?.hoursThisWeek ?? 0}</div>
+              <p className="text-xs text-muted-foreground">teaching hours</p>
+            </CardContent>
+          </Card>
+          <Link to="/reports/lessons">
+            <Card className="cursor-pointer transition-colors hover:bg-muted/50 h-full">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Lessons This Month</CardTitle>
+                <BookOpen className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats?.lessonsThisMonth ?? 0}</div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  completed <ChevronRight className="h-3 w-3" />
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+      )}
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        {/* Upcoming Lessons */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Upcoming Lessons</CardTitle>
+            <CardDescription>Your next scheduled lessons</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!stats?.upcomingLessons || stats.upcomingLessons.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <Calendar className="h-10 w-10 text-muted-foreground/40" />
+                <p className="mt-3 font-medium">No upcoming lessons</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Check back when new lessons are scheduled
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {stats.upcomingLessons.map((lesson) => (
+                  <div key={lesson.id} className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <p className="font-medium">{lesson.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {format(parseISO(lesson.start_at), 'EEE d MMM, HH:mm')}
+                        {lesson.location_name && ` • ${lesson.location_name}`}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                ))}
+              </div>
+            )}
+            <Link to="/calendar" className="block mt-4">
+              <Button variant="outline" className="w-full gap-2">
+                <Calendar className="h-4 w-4" />
+                View Full Calendar
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>Common tasks at your fingertips</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Link to="/calendar">
+                <Button variant="outline" className="w-full justify-start gap-2">
+                  <Calendar className="h-4 w-4" />
+                  View Calendar
+                </Button>
+              </Link>
+              <Link to="/students">
+                <Button variant="outline" className="w-full justify-start gap-2">
+                  <Users className="h-4 w-4" />
+                  My Students
+                </Button>
+              </Link>
+              <Link to="/reports/lessons">
+                <Button variant="outline" className="w-full justify-start gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  Lessons Report
+                </Button>
+              </Link>
+              <Link to="/reports/payroll">
+                <Button variant="outline" className="w-full justify-start gap-2">
+                  <Receipt className="h-4 w-4" />
+                  My Payroll
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </AppLayout>
   );
 }
