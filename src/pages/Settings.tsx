@@ -12,6 +12,7 @@ import { OrgMembersTab } from '@/components/settings/OrgMembersTab';
 import { SchedulingSettingsTab } from '@/components/settings/SchedulingSettingsTab';
 import AuditLogTab from '@/components/settings/AuditLogTab';
 import { PrivacyTab } from '@/components/settings/PrivacyTab';
+import { RateCardsTab } from '@/components/settings/RateCardsTab';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -234,6 +235,9 @@ export default function Settings() {
           {(isOrgAdmin || isOrgOwner) && (
             <TabsTrigger value="privacy">Privacy & GDPR</TabsTrigger>
           )}
+          {(isOrgAdmin || isOrgOwner) && (
+            <TabsTrigger value="rate-cards">Rate Cards</TabsTrigger>
+          )}
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
         </TabsList>
@@ -365,6 +369,12 @@ export default function Settings() {
         {(isOrgAdmin || isOrgOwner) && (
           <TabsContent value="privacy">
             <PrivacyTab />
+          </TabsContent>
+        )}
+
+        {(isOrgAdmin || isOrgOwner) && (
+          <TabsContent value="rate-cards">
+            <RateCardsTab />
           </TabsContent>
         )}
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths, differenceInMinutes } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -19,10 +19,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, FileText, PoundSterling, Users } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, FileText, PoundSterling, Users, CheckCircle2 } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useUnbilledLessons } from '@/hooks/useInvoices';
 import { useCreateBillingRun } from '@/hooks/useBillingRuns';
+import { useRateCards, findRateForDuration } from '@/hooks/useRateCards';
 import type { Database } from '@/integrations/supabase/types';
 import { formatCurrencyMinor } from '@/lib/utils';
 
@@ -36,6 +38,7 @@ interface BillingRunWizardProps {
 export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) {
   const { currentOrg } = useOrg();
   const createBillingRun = useCreateBillingRun();
+  const { data: rateCards = [], isLoading: loadingRateCards } = useRateCards();
   const [step, setStep] = useState<'config' | 'preview' | 'complete'>('config');
   const lastMonth = subMonths(new Date(), 1);
 
@@ -43,7 +46,6 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
     runType: 'monthly' as BillingRunType,
     startDate: format(startOfMonth(lastMonth), 'yyyy-MM-dd'),
     endDate: format(endOfMonth(lastMonth), 'yyyy-MM-dd'),
-    lessonRate: 30, // Default £30 per lesson
   });
 
   const { data: unbilledLessons = [], isLoading: loadingLessons } = useUnbilledLessons({
@@ -51,10 +53,20 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
     to: config.endDate,
   });
 
+  const hasRateCards = rateCards.length > 0;
+
+  // Calculate lesson rate based on duration
+  const getLessonRate = (lesson: any): number => {
+    const durationMins = differenceInMinutes(new Date(lesson.end_at), new Date(lesson.start_at));
+    return findRateForDuration(durationMins, rateCards, 3000); // fallback £30
+  };
+
   // Group lessons by payer for preview
-  const payerGroups = new Map<string, { name: string; lessonCount: number }>();
+  const payerGroups = new Map<string, { name: string; lessonCount: number; totalMinor: number }>();
 
   unbilledLessons.forEach((lesson: any) => {
+    const lessonRate = getLessonRate(lesson);
+    
     lesson.lesson_participants?.forEach((lp: any) => {
       const student = lp.student;
       if (!student) return;
@@ -72,15 +84,17 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
       if (payerName) {
         const key = payerName;
         if (!payerGroups.has(key)) {
-          payerGroups.set(key, { name: payerName, lessonCount: 0 });
+          payerGroups.set(key, { name: payerName, lessonCount: 0, totalMinor: 0 });
         }
-        payerGroups.get(key)!.lessonCount++;
+        const group = payerGroups.get(key)!;
+        group.lessonCount++;
+        group.totalMinor += lessonRate;
       }
     });
   });
 
   const totalInvoices = payerGroups.size;
-  const totalAmount = unbilledLessons.length * config.lessonRate * 100;
+  const totalAmount = Array.from(payerGroups.values()).reduce((sum, p) => sum + p.totalMinor, 0);
   const currency = currentOrg?.currency_code || 'GBP';
 
   const handleRunTypeChange = (type: BillingRunType) => {
@@ -98,12 +112,17 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
   };
 
   const handleGenerate = async () => {
+    // Calculate average rate from rate cards or use default
+    const defaultRate = rateCards.find(r => r.is_default)?.rate_amount || 
+                        rateCards[0]?.rate_amount || 
+                        3000;
+    
     await createBillingRun.mutateAsync({
       run_type: config.runType,
       start_date: config.startDate,
       end_date: config.endDate,
       generate_invoices: true,
-      lesson_rate_minor: config.lessonRate * 100,
+      lesson_rate_minor: defaultRate,
     });
 
     setStep('complete');
@@ -161,27 +180,45 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Default Lesson Rate (£)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={config.lessonRate}
-                onChange={(e) =>
-                  setConfig((c) => ({ ...c, lessonRate: parseFloat(e.target.value) || 0 }))
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                Rate applied to each lesson. Override with rate cards coming soon.
-              </p>
+            {/* Rate Cards Status */}
+            <div className="rounded-lg border p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium flex items-center gap-2">
+                    <PoundSterling className="h-4 w-4" />
+                    Pricing
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {hasRateCards
+                      ? `Using ${rateCards.length} rate card${rateCards.length !== 1 ? 's' : ''} for pricing`
+                      : 'No rate cards configured - using default £30/lesson'}
+                  </p>
+                </div>
+                {hasRateCards && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Active
+                  </Badge>
+                )}
+              </div>
+              {hasRateCards && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {rateCards.map((card) => (
+                    <Badge key={card.id} variant="outline" className="text-xs">
+                      {card.duration_mins}min: {formatCurrencyMinor(card.rate_amount, card.currency_code)}
+                      {card.is_default && ' (default)'}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button onClick={() => setStep('preview')} disabled={loadingLessons}>
-                {loadingLessons ? (
+              <Button onClick={() => setStep('preview')} disabled={loadingLessons || loadingRateCards}>
+                {(loadingLessons || loadingRateCards) ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Loading...
@@ -246,7 +283,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                       <span className="text-sm font-medium">{payer.name}</span>
                       <span className="text-sm text-muted-foreground">
                         {payer.lessonCount} lesson{payer.lessonCount !== 1 ? 's' : ''} •{' '}
-                        {formatCurrencyMinor(payer.lessonCount * config.lessonRate * 100, currency)}
+                        {formatCurrencyMinor(payer.totalMinor, currency)}
                       </span>
                     </div>
                   ))}
