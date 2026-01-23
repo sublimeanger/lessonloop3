@@ -24,7 +24,7 @@ import {
 import { Download, Shield, UserX, Trash2, AlertTriangle, FileText, Users, Calendar, Receipt } from 'lucide-react';
 import { useGDPRExport, useGDPRDelete, useDeletionCandidates } from '@/hooks/useGDPR';
 import { LoadingState } from '@/components/shared/LoadingState';
-import { format } from 'date-fns';
+import { formatDateUK } from '@/lib/utils';
 
 export function PrivacyTab() {
   const { exportData, isExporting } = useGDPRExport();
@@ -159,7 +159,7 @@ export function PrivacyTab() {
                         <Badge variant="secondary">{student.status}</Badge>
                       </TableCell>
                       <TableCell>
-                        {format(new Date(student.updated_at), 'dd/MM/yyyy')}
+                        {formatDateUK(student.updated_at)}
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button
@@ -226,7 +226,7 @@ export function PrivacyTab() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {format(new Date(guardian.updated_at), 'dd/MM/yyyy')}
+                        {formatDateUK(guardian.updated_at)}
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button

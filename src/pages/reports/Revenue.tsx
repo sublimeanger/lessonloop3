@@ -11,6 +11,7 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useRevenueReport, exportRevenueToCSV } from '@/hooks/useReports';
 import { useOrg } from '@/contexts/OrgContext';
+import { formatCurrency } from '@/lib/utils';
 import { Download, TrendingUp, PoundSterling, FileSpreadsheet, Receipt } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -29,12 +30,7 @@ export default function RevenueReport() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: currentOrg?.currency_code || 'GBP',
-    }).format(amount);
-  };
+  const fmtCurrency = (amount: number) => formatCurrency(amount, currentOrg?.currency_code || 'GBP');
 
   return (
     <AppLayout>
@@ -129,7 +125,7 @@ export default function RevenueReport() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-primary">{formatCurrency(data.totalRevenue)}</p>
+                <p className="text-2xl font-bold text-primary">{fmtCurrency(data.totalRevenue)}</p>
               </CardContent>
             </Card>
             <Card>
@@ -140,7 +136,7 @@ export default function RevenueReport() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">{formatCurrency(data.averageMonthly)}</p>
+                <p className="text-2xl font-bold">{fmtCurrency(data.averageMonthly)}</p>
               </CardContent>
             </Card>
             <Card>
@@ -174,7 +170,7 @@ export default function RevenueReport() {
                       className="text-xs"
                     />
                     <Tooltip 
-                      formatter={(value: number) => [formatCurrency(value), 'Revenue']}
+                      formatter={(value: number) => [fmtCurrency(value), 'Revenue']}
                       labelClassName="font-medium"
                     />
                     <Bar dataKey="paidAmount" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
@@ -203,7 +199,7 @@ export default function RevenueReport() {
                     <TableRow key={month.month}>
                       <TableCell className="font-medium">{month.monthLabel}</TableCell>
                       <TableCell className="text-right">{month.invoiceCount}</TableCell>
-                      <TableCell className="text-right font-medium">{formatCurrency(month.paidAmount)}</TableCell>
+                      <TableCell className="text-right font-medium">{fmtCurrency(month.paidAmount)}</TableCell>
                     </TableRow>
                   ))}
                   <TableRow className="bg-muted/50 font-bold">
@@ -211,7 +207,7 @@ export default function RevenueReport() {
                     <TableCell className="text-right">
                       {data.months.reduce((sum, m) => sum + m.invoiceCount, 0)}
                     </TableCell>
-                    <TableCell className="text-right text-primary">{formatCurrency(data.totalRevenue)}</TableCell>
+                    <TableCell className="text-right text-primary">{fmtCurrency(data.totalRevenue)}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>

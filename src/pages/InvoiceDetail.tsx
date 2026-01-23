@@ -1,5 +1,5 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { format, parseISO, isBefore } from 'date-fns';
+import { parseISO, isBefore } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -27,16 +27,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { Database } from '@/integrations/supabase/types';
+import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
 
 type InvoiceStatus = Database['public']['Enums']['invoice_status'];
-
-function formatCurrency(amountMinor: number, currencyCode: string = 'GBP') {
-  const amount = amountMinor / 100;
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: currencyCode,
-  }).format(amount);
-}
 
 function getStatusBadge(status: InvoiceStatus, dueDate: string) {
   const today = new Date();
@@ -229,7 +222,7 @@ export default function InvoiceDetail() {
               <div>
                 <CardTitle>Invoice Details</CardTitle>
                 <CardDescription>
-                  Created on {format(parseISO(invoice.created_at), 'dd MMMM yyyy')}
+                  Created on {formatDateUK(parseISO(invoice.created_at), 'dd MMMM yyyy')}
                 </CardDescription>
               </div>
               {getStatusBadge(invoice.status, invoice.due_date)}
@@ -246,7 +239,7 @@ export default function InvoiceDetail() {
                   <div>
                     <div className="text-sm font-medium text-muted-foreground">Due Date</div>
                     <div className="mt-1 font-medium">
-                      {format(parseISO(invoice.due_date), 'dd MMMM yyyy')}
+                      {formatDateUK(parseISO(invoice.due_date), 'dd MMMM yyyy')}
                     </div>
                   </div>
                 </div>
@@ -270,16 +263,16 @@ export default function InvoiceDetail() {
                             <div>{item.description}</div>
                             {item.linked_lesson && (
                               <div className="text-xs text-muted-foreground">
-                                {format(parseISO(item.linked_lesson.start_at), 'dd MMM yyyy HH:mm')}
+                                {formatDateUK(parseISO(item.linked_lesson.start_at), 'dd MMM yyyy')} {formatTimeUK(parseISO(item.linked_lesson.start_at))}
                               </div>
                             )}
                           </td>
                           <td className="py-3 text-right">{item.quantity}</td>
                           <td className="py-3 text-right">
-                            {formatCurrency(item.unit_price_minor, currency)}
+                            {formatCurrencyMinor(item.unit_price_minor, currency)}
                           </td>
                           <td className="py-3 text-right font-medium">
-                            {formatCurrency(item.amount_minor, currency)}
+                            {formatCurrencyMinor(item.amount_minor, currency)}
                           </td>
                         </tr>
                       ))}
@@ -291,31 +284,31 @@ export default function InvoiceDetail() {
                   <div className="w-56 space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Subtotal</span>
-                      <span>{formatCurrency(invoice.subtotal_minor, currency)}</span>
+                      <span>{formatCurrencyMinor(invoice.subtotal_minor, currency)}</span>
                     </div>
                     {invoice.tax_minor > 0 && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">
                           VAT ({invoice.vat_rate}%)
                         </span>
-                        <span>{formatCurrency(invoice.tax_minor, currency)}</span>
+                        <span>{formatCurrencyMinor(invoice.tax_minor, currency)}</span>
                       </div>
                     )}
                     <Separator />
                     <div className="flex justify-between font-medium">
                       <span>Total</span>
-                      <span>{formatCurrency(invoice.total_minor, currency)}</span>
+                      <span>{formatCurrencyMinor(invoice.total_minor, currency)}</span>
                     </div>
                     {totalPaid > 0 && (
                       <>
                         <div className="flex justify-between text-sm text-green-600">
                           <span>Paid</span>
-                          <span>-{formatCurrency(totalPaid, currency)}</span>
+                          <span>-{formatCurrencyMinor(totalPaid, currency)}</span>
                         </div>
                         <Separator />
                         <div className="flex justify-between font-bold">
                           <span>Amount Due</span>
-                          <span>{formatCurrency(amountDue, currency)}</span>
+                          <span>{formatCurrencyMinor(amountDue, currency)}</span>
                         </div>
                       </>
                     )}
@@ -352,10 +345,10 @@ export default function InvoiceDetail() {
                         <CheckCircle2 className="h-5 w-5 text-green-600" />
                         <div>
                           <div className="font-medium">
-                            {formatCurrency(payment.amount_minor, currency)}
+                            {formatCurrencyMinor(payment.amount_minor, currency)}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {format(parseISO(payment.paid_at), 'dd MMM yyyy HH:mm')} •{' '}
+                            {formatDateUK(parseISO(payment.paid_at), 'dd MMM yyyy')} {formatTimeUK(parseISO(payment.paid_at))} •{' '}
                             {payment.method.replace('_', ' ')}
                             {payment.provider_reference && ` • ${payment.provider_reference}`}
                           </div>
@@ -377,7 +370,7 @@ export default function InvoiceDetail() {
             <CardContent>
               <div className="text-center">
                 <div className="text-3xl font-bold">
-                  {formatCurrency(amountDue, currency)}
+                  {formatCurrencyMinor(amountDue, currency)}
                 </div>
                 <div className="mt-1 text-sm text-muted-foreground">
                   {amountDue > 0 ? 'Amount due' : 'Fully paid'}

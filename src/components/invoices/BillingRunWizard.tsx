@@ -24,20 +24,13 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useUnbilledLessons } from '@/hooks/useInvoices';
 import { useCreateBillingRun } from '@/hooks/useBillingRuns';
 import type { Database } from '@/integrations/supabase/types';
+import { formatCurrencyMinor } from '@/lib/utils';
 
 type BillingRunType = Database['public']['Enums']['billing_run_type'];
 
 interface BillingRunWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}
-
-function formatCurrency(amountMinor: number, currencyCode: string = 'GBP') {
-  const amount = amountMinor / 100;
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: currencyCode,
-  }).format(amount);
 }
 
 export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) {
@@ -235,7 +228,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {formatCurrency(totalAmount, currency)}
+                    {formatCurrencyMinor(totalAmount, currency)}
                   </div>
                 </CardContent>
               </Card>
@@ -253,7 +246,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                       <span className="text-sm font-medium">{payer.name}</span>
                       <span className="text-sm text-muted-foreground">
                         {payer.lessonCount} lesson{payer.lessonCount !== 1 ? 's' : ''} •{' '}
-                        {formatCurrency(payer.lessonCount * config.lessonRate * 100, currency)}
+                        {formatCurrencyMinor(payer.lessonCount * config.lessonRate * 100, currency)}
                       </span>
                     </div>
                   ))}

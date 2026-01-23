@@ -18,20 +18,13 @@ import { useUpdateInvoiceStatus } from '@/hooks/useInvoices';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { InvoiceWithDetails } from '@/hooks/useInvoices';
+import { formatCurrencyMinor } from '@/lib/utils';
 
 interface SendInvoiceModalProps {
   invoice: InvoiceWithDetails | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   isReminder?: boolean;
-}
-
-function formatCurrency(amountMinor: number, currencyCode: string = 'GBP') {
-  const amount = amountMinor / 100;
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: currencyCode,
-  }).format(amount);
 }
 
 export function SendInvoiceModal({
@@ -83,7 +76,7 @@ export function SendInvoiceModal({
           recipientEmail,
           recipientName,
           invoiceNumber: invoice.invoice_number,
-          amount: formatCurrency(invoice.total_minor, currentOrg.currency_code),
+          amount: formatCurrencyMinor(invoice.total_minor, currentOrg.currency_code),
           dueDate: invoice.due_date,
           orgName: currentOrg.name,
           isReminder,

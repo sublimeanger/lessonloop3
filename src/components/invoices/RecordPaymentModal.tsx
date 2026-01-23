@@ -21,6 +21,7 @@ import { useRecordPayment } from '@/hooks/useInvoices';
 import { useOrg } from '@/contexts/OrgContext';
 import type { InvoiceWithDetails } from '@/hooks/useInvoices';
 import type { Database } from '@/integrations/supabase/types';
+import { formatCurrencyMinor } from '@/lib/utils';
 
 type PaymentMethod = Database['public']['Enums']['payment_method'];
 
@@ -36,14 +37,6 @@ const PAYMENT_METHODS: Array<{ value: PaymentMethod; label: string }> = [
   { value: 'cash', label: 'Cash' },
   { value: 'other', label: 'Other' },
 ];
-
-function formatCurrency(amountMinor: number, currencyCode: string = 'GBP') {
-  const amount = amountMinor / 100;
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: currencyCode,
-  }).format(amount);
-}
 
 export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymentModalProps) {
   const { currentOrg } = useOrg();
@@ -86,7 +79,7 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
             {invoice && (
               <>
                 Invoice {invoice.invoice_number} • Outstanding:{' '}
-                {formatCurrency(outstandingAmount, currency)}
+                {formatCurrencyMinor(outstandingAmount, currency)}
               </>
             )}
           </DialogDescription>
@@ -119,7 +112,7 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
               className="h-auto p-0"
               onClick={() => setAmount((outstandingAmount / 100).toFixed(2))}
             >
-              Pay full amount ({formatCurrency(outstandingAmount, currency)})
+              Pay full amount ({formatCurrencyMinor(outstandingAmount, currency)})
             </Button>
           </div>
 
