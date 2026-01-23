@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useTeachersAndLocations } from '@/hooks/useCalendarData';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
+import { useNotesNotification } from '@/hooks/useNotesNotification';
 import { supabase } from '@/integrations/supabase/client';
 import { LessonWithDetails, LessonFormData, ConflictResult, LessonStatus, LessonType } from './types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -43,10 +44,11 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initialEndDate }: LessonModalProps) {
   const { currentOrg } = useOrg();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const { teachers, locations, rooms, students } = useTeachersAndLocations();
   const { checkConflicts } = useConflictDetection();
+  const { sendNotesNotification } = useNotesNotification();
 
   const [isSaving, setIsSaving] = useState(false);
   const [isCheckingConflicts, setIsCheckingConflicts] = useState(false);
@@ -246,6 +248,21 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
           );
         }
 
+        // Send notification if shared notes were added or changed
+        const notesChanged = notesShared && notesShared !== (lesson.notes_shared || '');
+        if (notesChanged && currentOrg) {
+          const teacherProfile = teachers.find(t => t.id === teacherUserId);
+          sendNotesNotification({
+            lessonId: lesson.id,
+            notesShared,
+            lessonTitle: generateTitle(),
+            lessonDate: format(startAt, 'EEEE, d MMMM yyyy \'at\' HH:mm'),
+            teacherName: teacherProfile?.name || profile?.full_name || 'Your teacher',
+            orgName: currentOrg.name,
+            orgId: currentOrg.id,
+          });
+        }
+
         toast({ title: 'Lesson updated' });
       } else {
         // Create new lesson(s)
@@ -318,6 +335,20 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
                 student_id: studentId,
               }))
             );
+
+            // Send notification if shared notes were added (only for first lesson to avoid spam)
+            if (notesShared && lessonDate === lessonsToCreate[0]) {
+              const teacherProfile = teachers.find(t => t.id === teacherUserId);
+              sendNotesNotification({
+                lessonId: newLesson.id,
+                notesShared,
+                lessonTitle: generateTitle(),
+                lessonDate: format(lessonDate, 'EEEE, d MMMM yyyy \'at\' HH:mm'),
+                teacherName: teacherProfile?.name || profile?.full_name || 'Your teacher',
+                orgName: currentOrg.name,
+                orgId: currentOrg.id,
+              });
+            }
           }
         }
 
