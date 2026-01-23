@@ -18,9 +18,16 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
+interface NotificationPreferences {
+  email_lesson_reminders: boolean;
+  email_invoice_reminders: boolean;
+  email_payment_receipts: boolean;
+  email_marketing: boolean;
+}
+
 export default function Settings() {
   const { isOrgAdmin, isOrgOwner, currentOrg, refreshOrganisations } = useOrg();
-  const { profile, updateProfile } = useAuth();
+  const { profile, updateProfile, user } = useAuth();
   const { toast } = useToast();
   
   // Profile form state
@@ -38,7 +45,18 @@ export default function Settings() {
   // Billing settings state
   const [vatRegistered, setVatRegistered] = useState(false);
   const [vatNumber, setVatNumber] = useState('');
-  const [paymentTerms, setPaymentTerms] = useState('14 days');
+  const [vatRate, setVatRate] = useState('20');
+  const [paymentTermsDays, setPaymentTermsDays] = useState(14);
+  const [billingSaving, setBillingSaving] = useState(false);
+
+  // Notification preferences state
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPreferences>({
+    email_lesson_reminders: true,
+    email_invoice_reminders: true,
+    email_payment_receipts: true,
+    email_marketing: false,
+  });
+  const [notifSaving, setNotifSaving] = useState(false);
 
   // Sync profile data
   useEffect(() => {
@@ -47,17 +65,57 @@ export default function Settings() {
       setProfileFirstName(nameParts[0] || '');
       setProfileLastName(nameParts.slice(1).join(' ') || '');
       setProfilePhone(profile.phone || '');
-      // Email comes from auth, not profile
     }
   }, [profile]);
 
-  // Sync org data
+  // Sync org data including billing fields
   useEffect(() => {
-    if (currentOrg) {
-      setOrgName(currentOrg.name || '');
-      // Address and billing fields would need to be fetched from org settings if they exist
-    }
+    const fetchOrgDetails = async () => {
+      if (!currentOrg) return;
+      
+      const { data } = await supabase
+        .from('organisations')
+        .select('name, address, vat_enabled, vat_rate, vat_registration_number, default_payment_terms_days')
+        .eq('id', currentOrg.id)
+        .single();
+      
+      if (data) {
+        setOrgName(data.name || '');
+        setOrgAddress(data.address || '');
+        setVatRegistered(data.vat_enabled || false);
+        setVatRate(data.vat_rate?.toString() || '20');
+        setVatNumber(data.vat_registration_number || '');
+        setPaymentTermsDays(data.default_payment_terms_days || 14);
+      }
+    };
+    
+    fetchOrgDetails();
   }, [currentOrg]);
+
+  // Fetch notification preferences
+  useEffect(() => {
+    const fetchNotifPrefs = async () => {
+      if (!currentOrg || !user) return;
+      
+      const { data } = await supabase
+        .from('notification_preferences')
+        .select('*')
+        .eq('org_id', currentOrg.id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (data) {
+        setNotifPrefs({
+          email_lesson_reminders: data.email_lesson_reminders,
+          email_invoice_reminders: data.email_invoice_reminders,
+          email_payment_receipts: data.email_payment_receipts,
+          email_marketing: data.email_marketing,
+        });
+      }
+    };
+    
+    fetchNotifPrefs();
+  }, [currentOrg, user]);
 
   // Fetch user email
   useEffect(() => {
@@ -89,7 +147,7 @@ export default function Settings() {
     try {
       const { error } = await supabase
         .from('organisations')
-        .update({ name: orgName })
+        .update({ name: orgName, address: orgAddress })
         .eq('id', currentOrg.id);
       
       if (error) throw error;
@@ -100,6 +158,52 @@ export default function Settings() {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
       setOrgSaving(false);
+    }
+  };
+
+  const handleSaveBilling = async () => {
+    if (!currentOrg) return;
+    setBillingSaving(true);
+    try {
+      const { error } = await supabase
+        .from('organisations')
+        .update({
+          vat_enabled: vatRegistered,
+          vat_rate: vatRegistered ? parseFloat(vatRate) : null,
+          vat_registration_number: vatRegistered ? vatNumber : null,
+          default_payment_terms_days: paymentTermsDays,
+        })
+        .eq('id', currentOrg.id);
+      
+      if (error) throw error;
+      
+      toast({ title: 'Billing settings saved', description: 'Your billing preferences have been updated.' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setBillingSaving(false);
+    }
+  };
+
+  const handleSaveNotifications = async () => {
+    if (!currentOrg || !user) return;
+    setNotifSaving(true);
+    try {
+      const { error } = await supabase
+        .from('notification_preferences')
+        .upsert({
+          org_id: currentOrg.id,
+          user_id: user.id,
+          ...notifPrefs,
+        }, { onConflict: 'org_id,user_id' });
+      
+      if (error) throw error;
+      
+      toast({ title: 'Notifications saved', description: 'Your notification preferences have been updated.' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setNotifSaving(false);
     }
   };
   
@@ -284,35 +388,51 @@ export default function Settings() {
                   disabled={!isOrgOwner && !isOrgAdmin}
                 />
               </div>
-              <Separator />
               {vatRegistered && (
-                <div className="space-y-2">
-                  <Label htmlFor="vatNumber">VAT Number</Label>
-                  <Input 
-                    id="vatNumber" 
-                    placeholder="GB123456789"
-                    value={vatNumber}
-                    onChange={(e) => setVatNumber(e.target.value)}
-                    disabled={!isOrgOwner && !isOrgAdmin}
-                  />
-                </div>
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="vatNumber">VAT Number</Label>
+                    <Input 
+                      id="vatNumber" 
+                      placeholder="GB123456789"
+                      value={vatNumber}
+                      onChange={(e) => setVatNumber(e.target.value)}
+                      disabled={!isOrgOwner && !isOrgAdmin}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vatRate">VAT Rate (%)</Label>
+                    <Input 
+                      id="vatRate" 
+                      type="number"
+                      placeholder="20"
+                      value={vatRate}
+                      onChange={(e) => setVatRate(e.target.value)}
+                      disabled={!isOrgOwner && !isOrgAdmin}
+                    />
+                  </div>
+                </>
               )}
+              <Separator />
               <div className="space-y-2">
-                <Label>Default Payment Terms</Label>
+                <Label htmlFor="paymentTerms">Default Payment Terms (days)</Label>
                 <Input 
-                  value={paymentTerms}
-                  onChange={(e) => setPaymentTerms(e.target.value)}
+                  id="paymentTerms"
+                  type="number"
+                  value={paymentTermsDays}
+                  onChange={(e) => setPaymentTermsDays(parseInt(e.target.value) || 14)}
                   disabled={!isOrgOwner && !isOrgAdmin}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Number of days after invoice issue date for payment to be due
+                </p>
               </div>
               {(isOrgOwner || isOrgAdmin) && (
-                <Button disabled>
+                <Button onClick={handleSaveBilling} disabled={billingSaving}>
+                  {billingSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Save Changes
                 </Button>
               )}
-              <p className="text-xs text-muted-foreground">
-                Billing settings are coming soon. These will be saved automatically.
-              </p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -324,20 +444,50 @@ export default function Settings() {
               <CardDescription>Choose what notifications you receive</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {[
-                { title: 'Lesson reminders', description: 'Get notified before upcoming lessons' },
-                { title: 'Payment received', description: 'When an invoice is paid' },
-                { title: 'New messages', description: 'When you receive a message' },
-                { title: 'Cancellations', description: 'When a lesson is cancelled' },
-              ].map((item) => (
-                <div key={item.title} className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{item.title}</div>
-                    <div className="text-sm text-muted-foreground">{item.description}</div>
-                  </div>
-                  <Switch defaultChecked />
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">Lesson reminders</div>
+                  <div className="text-sm text-muted-foreground">Get notified before upcoming lessons</div>
                 </div>
-              ))}
+                <Switch 
+                  checked={notifPrefs.email_lesson_reminders}
+                  onCheckedChange={(checked) => setNotifPrefs(prev => ({ ...prev, email_lesson_reminders: checked }))}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">Invoice reminders</div>
+                  <div className="text-sm text-muted-foreground">Reminders for unpaid invoices</div>
+                </div>
+                <Switch 
+                  checked={notifPrefs.email_invoice_reminders}
+                  onCheckedChange={(checked) => setNotifPrefs(prev => ({ ...prev, email_invoice_reminders: checked }))}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">Payment receipts</div>
+                  <div className="text-sm text-muted-foreground">Confirmation when an invoice is paid</div>
+                </div>
+                <Switch 
+                  checked={notifPrefs.email_payment_receipts}
+                  onCheckedChange={(checked) => setNotifPrefs(prev => ({ ...prev, email_payment_receipts: checked }))}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">Marketing emails</div>
+                  <div className="text-sm text-muted-foreground">Product updates and tips</div>
+                </div>
+                <Switch 
+                  checked={notifPrefs.email_marketing}
+                  onCheckedChange={(checked) => setNotifPrefs(prev => ({ ...prev, email_marketing: checked }))}
+                />
+              </div>
+              <Button onClick={handleSaveNotifications} disabled={notifSaving}>
+                {notifSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Save Preferences
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

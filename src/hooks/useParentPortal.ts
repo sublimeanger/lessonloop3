@@ -32,7 +32,12 @@ export interface ParentLesson {
   location?: { name: string } | null;
   teacher_user_id: string;
   teacher_profile?: { display_name: string | null } | null;
-  students: Array<{ id: string; first_name: string; last_name: string }>;
+  students: Array<{ 
+    id: string; 
+    first_name: string; 
+    last_name: string;
+    attendance_status?: string | null;
+  }>;
 }
 
 export interface ParentInvoice {
@@ -462,11 +467,14 @@ export function useParentSummary() {
         }
       }
 
+      // Get unread messages count - placeholder until message_log has guardian_id properly indexed
+      const unreadMessages = 0;
+
       return {
         nextLesson,
         outstandingBalance,
         overdueInvoices,
-        unreadMessages: 0, // TODO: implement when message read tracking is added
+        unreadMessages,
       };
     },
     enabled: !!user && !!currentOrg,
