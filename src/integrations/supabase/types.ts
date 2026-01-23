@@ -850,6 +850,7 @@ export type Database = {
           id: string
           message_type: string
           org_id: string
+          read_at: string | null
           recipient_email: string
           recipient_id: string | null
           recipient_name: string | null
@@ -868,6 +869,7 @@ export type Database = {
           id?: string
           message_type: string
           org_id: string
+          read_at?: string | null
           recipient_email: string
           recipient_id?: string | null
           recipient_name?: string | null
@@ -886,6 +888,7 @@ export type Database = {
           id?: string
           message_type?: string
           org_id?: string
+          read_at?: string | null
           recipient_email?: string
           recipient_id?: string | null
           recipient_name?: string | null
@@ -1027,6 +1030,50 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          email_invoice_reminders: boolean
+          email_lesson_reminders: boolean
+          email_marketing: boolean
+          email_payment_receipts: boolean
+          id: string
+          org_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_invoice_reminders?: boolean
+          email_lesson_reminders?: boolean
+          email_marketing?: boolean
+          email_payment_receipts?: boolean
+          id?: string
+          org_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_invoice_reminders?: boolean
+          email_lesson_reminders?: boolean
+          email_marketing?: boolean
+          email_payment_receipts?: boolean
+          id?: string
+          org_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_memberships: {
         Row: {
           created_at: string
@@ -1064,6 +1111,7 @@ export type Database = {
       }
       organisations: {
         Row: {
+          address: string | null
           billing_approach: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures: boolean
           country_code: string
@@ -1071,6 +1119,7 @@ export type Database = {
           created_by: string
           currency_code: string
           default_lesson_length_mins: number
+          default_payment_terms_days: number | null
           id: string
           invoice_footer_note: string | null
           invoice_from_address_line1: string | null
@@ -1088,6 +1137,7 @@ export type Database = {
           vat_registration_number: string | null
         }
         Insert: {
+          address?: string | null
           billing_approach?: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures?: boolean
           country_code?: string
@@ -1095,6 +1145,7 @@ export type Database = {
           created_by: string
           currency_code?: string
           default_lesson_length_mins?: number
+          default_payment_terms_days?: number | null
           id?: string
           invoice_footer_note?: string | null
           invoice_from_address_line1?: string | null
@@ -1112,6 +1163,7 @@ export type Database = {
           vat_registration_number?: string | null
         }
         Update: {
+          address?: string | null
           billing_approach?: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures?: boolean
           country_code?: string
@@ -1119,6 +1171,7 @@ export type Database = {
           created_by?: string
           currency_code?: string
           default_lesson_length_mins?: number
+          default_payment_terms_days?: number | null
           id?: string
           invoice_footer_note?: string | null
           invoice_from_address_line1?: string | null

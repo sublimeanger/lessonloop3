@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -15,11 +15,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Mail, Phone, Calendar, Edit, Trash2, Plus, UserPlus, MessageSquare, Send } from 'lucide-react';
+import { Loader2, Mail, Phone, Calendar, Edit, Trash2, Plus, UserPlus, MessageSquare, Send, Receipt } from 'lucide-react';
 import { useStudentMessages } from '@/hooks/useMessages';
 import { MessageList } from '@/components/messages/MessageList';
 import { ComposeMessageModal } from '@/components/messages/ComposeMessageModal';
 import { TeacherAssignmentsPanel } from '@/components/students/TeacherAssignmentsPanel';
+import { useStudentLessons, useStudentInvoices } from '@/hooks/useStudentDetail';
+import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
 
 type StudentStatus = 'active' | 'inactive';
 type RelationshipType = 'mother' | 'father' | 'guardian' | 'other';
@@ -83,8 +85,10 @@ export default function StudentDetail() {
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedGuardianForMessage, setSelectedGuardianForMessage] = useState<Guardian | null>(null);
   
-  // Messages hook
+  // Data hooks
   const { data: messages, isLoading: messagesLoading } = useStudentMessages(id);
+  const { data: studentLessons, isLoading: lessonsLoading } = useStudentLessons(id);
+  const { data: studentInvoices, isLoading: invoicesLoading } = useStudentInvoices(id);
 
   const fetchStudent = async () => {
     if (!id || !currentOrg) return;
@@ -447,11 +451,51 @@ export default function StudentDetail() {
               <CardDescription>Past and upcoming lessons</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col items-center py-8 text-center">
-                <Calendar className="h-10 w-10 text-muted-foreground/40" />
-                <p className="mt-3 font-medium">No lessons yet</p>
-                <p className="mt-1 text-sm text-muted-foreground">Schedule a lesson to see it here.</p>
-              </div>
+              {lessonsLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : !studentLessons?.length ? (
+                <div className="flex flex-col items-center py-8 text-center">
+                  <Calendar className="h-10 w-10 text-muted-foreground/40" />
+                  <p className="mt-3 font-medium">No lessons yet</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Schedule a lesson to see it here.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {studentLessons.map((sl) => (
+                    <div key={sl.id} className="flex items-center justify-between rounded-lg border p-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {formatDateUK(sl.lesson.start_time)} at {formatTimeUK(sl.lesson.start_time)}
+                          </span>
+                          <Badge variant={
+                            sl.lesson.status === 'completed' ? 'default' :
+                            sl.lesson.status === 'cancelled' ? 'destructive' :
+                            sl.lesson.status === 'scheduled' ? 'secondary' : 'outline'
+                          }>
+                            {sl.lesson.status}
+                          </Badge>
+                          {sl.attendance_status && (
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {sl.attendance_status}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                          {sl.lesson.subject && <span>{sl.lesson.subject}</span>}
+                          {sl.lesson.teacher_name && <span>with {sl.lesson.teacher_name}</span>}
+                          {sl.lesson.location_name && <span>@ {sl.lesson.location_name}</span>}
+                        </div>
+                      </div>
+                      <Link to="/calendar">
+                        <Button variant="ghost" size="sm">View</Button>
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -463,10 +507,44 @@ export default function StudentDetail() {
               <CardDescription>Billing history for this student</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col items-center py-8 text-center">
-                <p className="font-medium">No invoices yet</p>
-                <p className="mt-1 text-sm text-muted-foreground">Invoices will appear here when created.</p>
-              </div>
+              {invoicesLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : !studentInvoices?.length ? (
+                <div className="flex flex-col items-center py-8 text-center">
+                  <Receipt className="h-10 w-10 text-muted-foreground/40" />
+                  <p className="mt-3 font-medium">No invoices yet</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Invoices will appear here when created.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {studentInvoices.map((inv) => (
+                    <div key={inv.id} className="flex items-center justify-between rounded-lg border p-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{inv.invoice_number}</span>
+                          <Badge variant={
+                            inv.status === 'paid' ? 'default' :
+                            inv.status === 'overdue' ? 'destructive' :
+                            inv.status === 'sent' ? 'secondary' : 'outline'
+                          }>
+                            {inv.status}
+                          </Badge>
+                        </div>
+                        <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                          <span>{formatCurrencyMinor(inv.total_amount_pence)}</span>
+                          {inv.due_date && <span>Due: {formatDateUK(inv.due_date)}</span>}
+                          {inv.payer_name && <span>Payer: {inv.payer_name}</span>}
+                        </div>
+                      </div>
+                      <Link to={`/invoices/${inv.id}`}>
+                        <Button variant="ghost" size="sm">View</Button>
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
