@@ -467,8 +467,20 @@ export function useParentSummary() {
         }
       }
 
-      // Get unread messages count - placeholder until message_log has guardian_id properly indexed
-      const unreadMessages = 0;
+      // Get unread messages count from message_log
+      let unreadMessages = 0;
+      if (guardianData) {
+        const { count } = await supabase
+          .from('message_log')
+          .select('id', { count: 'exact', head: true })
+          .eq('org_id', currentOrg.id)
+          .eq('recipient_type', 'guardian')
+          .eq('recipient_id', guardianData.id)
+          .is('read_at', null)
+          .eq('status', 'sent');
+
+        unreadMessages = count || 0;
+      }
 
       return {
         nextLesson,
