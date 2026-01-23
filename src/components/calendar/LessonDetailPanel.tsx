@@ -201,12 +201,23 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
             </div>
           </div>
 
-          {/* Notes */}
+          {/* Shared Notes */}
+          {lesson.notes_shared && (
+            <>
+              <Separator />
+              <div>
+                <h3 className="font-semibold mb-2">Lesson Notes (Shared with Parents)</h3>
+                <p className="text-muted-foreground text-sm whitespace-pre-wrap bg-muted/50 p-3 rounded-md">{lesson.notes_shared}</p>
+              </div>
+            </>
+          )}
+
+          {/* Private Notes */}
           {lesson.notes_private && (
             <>
               <Separator />
               <div>
-                <h3 className="font-semibold mb-2">Private Notes</h3>
+                <h3 className="font-semibold mb-2">Private Notes (Staff Only)</h3>
                 <p className="text-muted-foreground text-sm whitespace-pre-wrap">{lesson.notes_private}</p>
               </div>
             </>
