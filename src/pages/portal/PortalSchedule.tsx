@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar, Clock, MapPin, User, Loader2, MessageSquare } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, Loader2, MessageSquare, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, startOfToday } from 'date-fns';
 import { useParentLessons, useChildrenWithDetails } from '@/hooks/useParentPortal';
 import { RequestModal } from '@/components/portal/RequestModal';
@@ -67,7 +67,35 @@ export default function PortalSchedule() {
     }
   };
 
-  const LessonCard = ({ lesson }: { lesson: typeof lessons extends (infer T)[] ? T : never }) => (
+  const getAttendanceBadge = (status: string | null | undefined) => {
+    switch (status) {
+      case 'present':
+        return (
+          <Badge variant="outline" className="gap-1 border-primary/50 text-primary">
+            <CheckCircle className="h-3 w-3" />
+            Present
+          </Badge>
+        );
+      case 'absent':
+        return (
+          <Badge variant="destructive" className="gap-1">
+            <XCircle className="h-3 w-3" />
+            Absent
+          </Badge>
+        );
+      case 'late':
+        return (
+          <Badge variant="secondary" className="gap-1">
+            <AlertCircle className="h-3 w-3" />
+            Late
+          </Badge>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const LessonCard = ({ lesson, isPast }: { lesson: typeof lessons extends (infer T)[] ? T : never; isPast?: boolean }) => (
     <Card className="overflow-hidden">
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
@@ -101,6 +129,21 @@ export default function PortalSchedule() {
                 </span>
               </div>
             </div>
+
+            {/* Attendance status for past lessons */}
+            {isPast && lesson.students.some(s => s.attendance_status) && (
+              <div className="mt-3 pt-3 border-t">
+                <p className="text-xs font-medium text-muted-foreground mb-2">Attendance</p>
+                <div className="flex flex-wrap gap-2">
+                  {lesson.students.map((student) => (
+                    <div key={student.id} className="flex items-center gap-1.5">
+                      <span className="text-sm">{student.first_name}:</span>
+                      {getAttendanceBadge(student.attendance_status)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {lesson.status === 'scheduled' && (
@@ -181,7 +224,7 @@ export default function PortalSchedule() {
               <h2 className="text-lg font-semibold mb-4">Upcoming Lessons</h2>
               <div className="space-y-3">
                 {upcomingLessons.map((lesson) => (
-                  <LessonCard key={lesson.id} lesson={lesson} />
+                  <LessonCard key={lesson.id} lesson={lesson} isPast={false} />
                 ))}
               </div>
             </div>
@@ -193,7 +236,7 @@ export default function PortalSchedule() {
               <h2 className="text-lg font-semibold mb-4">Past Lessons</h2>
               <div className="space-y-3">
                 {pastLessons.map((lesson) => (
-                  <LessonCard key={lesson.id} lesson={lesson} />
+                  <LessonCard key={lesson.id} lesson={lesson} isPast={true} />
                 ))}
               </div>
             </div>
