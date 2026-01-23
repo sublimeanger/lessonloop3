@@ -27,6 +27,7 @@ import RevenueReport from "./pages/reports/Revenue";
 import OutstandingReport from "./pages/reports/Outstanding";
 import LessonsDeliveredReport from "./pages/reports/LessonsDelivered";
 import CancellationReport from "./pages/reports/Cancellations";
+import UtilisationReport from "./pages/reports/Utilisation";
 import Messages from "./pages/Messages";
 import Settings from "./pages/Settings";
 import AcceptInvite from "./pages/AcceptInvite";
@@ -154,6 +155,11 @@ const App = () => (
               <Route path="/reports/cancellations" element={
                 <RouteGuard allowedRoles={['owner', 'admin']}>
                   <CancellationReport />
+                </RouteGuard>
+              } />
+              <Route path="/reports/utilisation" element={
+                <RouteGuard allowedRoles={['owner', 'admin']}>
+                  <UtilisationReport />
                 </RouteGuard>
               } />
               <Route path="/messages" element={
