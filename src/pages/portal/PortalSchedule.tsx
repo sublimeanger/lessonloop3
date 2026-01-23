@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar, Clock, MapPin, User, Loader2, MessageSquare, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, Loader2, MessageSquare, CheckCircle, XCircle, AlertCircle, FileText } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, startOfToday } from 'date-fns';
 import { useParentLessons, useChildrenWithDetails } from '@/hooks/useParentPortal';
 import { RequestModal } from '@/components/portal/RequestModal';
@@ -142,6 +142,19 @@ export default function PortalSchedule() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Shared notes from teacher */}
+            {lesson.notes_shared && (
+              <div className="mt-3 pt-3 border-t">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
+                  <FileText className="h-3.5 w-3.5" />
+                  Lesson Notes
+                </div>
+                <p className="text-sm bg-muted/50 p-2.5 rounded-md whitespace-pre-wrap">
+                  {lesson.notes_shared}
+                </p>
               </div>
             )}
           </div>

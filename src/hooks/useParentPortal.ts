@@ -32,6 +32,7 @@ export interface ParentLesson {
   location?: { name: string } | null;
   teacher_user_id: string;
   teacher_profile?: { display_name: string | null } | null;
+  notes_shared: string | null;
   students: Array<{ 
     id: string; 
     first_name: string; 
@@ -222,6 +223,7 @@ export function useParentLessons(options?: { studentId?: string; status?: string
             status,
             teacher_user_id,
             location_id,
+            notes_shared,
             location:locations(name)
           )
         `)
@@ -267,6 +269,7 @@ export function useParentLessons(options?: { studentId?: string; status?: string
             location_id: lesson.location_id,
             location: lesson.location,
             teacher_user_id: lesson.teacher_user_id,
+            notes_shared: lesson.notes_shared || null,
             students: [],
           });
         }

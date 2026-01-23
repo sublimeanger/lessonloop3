@@ -63,6 +63,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   const [startTime, setStartTime] = useState('09:00');
   const [durationMins, setDurationMins] = useState(60);
   const [notesPrivate, setNotesPrivate] = useState('');
+  const [notesShared, setNotesShared] = useState('');
   const [status, setStatus] = useState<LessonStatus>('scheduled');
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]);
@@ -84,6 +85,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       setStartTime(format(start, 'HH:mm'));
       setDurationMins(Math.round((end.getTime() - start.getTime()) / 60000));
       setNotesPrivate(lesson.notes_private || '');
+      setNotesShared(lesson.notes_shared || '');
       setStatus(lesson.status);
       setIsRecurring(!!lesson.recurrence_id);
     } else {
@@ -94,6 +96,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       setLocationId(null);
       setRoomId(null);
       setNotesPrivate('');
+      setNotesShared('');
       setStatus('scheduled');
       setIsRecurring(false);
       setRecurrenceDays([]);
@@ -223,6 +226,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
             end_at: endAt.toISOString(),
             title: generateTitle(),
             notes_private: notesPrivate || null,
+            notes_shared: notesShared || null,
             status,
           })
           .eq('id', lesson.id);
@@ -296,6 +300,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
               end_at: lessonEndAt.toISOString(),
               title: generateTitle(),
               notes_private: notesPrivate || null,
+              notes_shared: notesShared || null,
               status: 'scheduled',
               created_by: user.id,
             })
@@ -586,11 +591,21 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
           {/* Notes */}
           <div className="space-y-2">
+            <Label>Shared notes (visible to parents)</Label>
+            <Textarea
+              value={notesShared}
+              onChange={(e) => setNotesShared(e.target.value)}
+              placeholder="Add lesson notes that parents can see..."
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label>Private notes (visible to staff only)</Label>
             <Textarea
               value={notesPrivate}
               onChange={(e) => setNotesPrivate(e.target.value)}
-              placeholder="Add notes about this lesson..."
+              placeholder="Add internal notes about this lesson..."
               rows={2}
             />
           </div>
