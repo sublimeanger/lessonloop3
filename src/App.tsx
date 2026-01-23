@@ -132,7 +132,7 @@ const App = () => (
                 </RouteGuard>
               } />
               <Route path="/reports/payroll" element={
-                <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
+                <RouteGuard allowedRoles={['owner', 'admin', 'teacher', 'finance']}>
                   <PayrollReport />
                 </RouteGuard>
               } />
