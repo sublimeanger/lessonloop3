@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -9,11 +9,13 @@ import { useInvoices, useUpdateInvoiceStatus, type InvoiceFilters, type InvoiceW
 import { InvoiceFiltersBar } from '@/components/invoices/InvoiceFiltersBar';
 import { InvoiceStatsWidget } from '@/components/invoices/InvoiceStatsWidget';
 import { InvoiceList } from '@/components/invoices/InvoiceList';
+import { BulkActionsBar } from '@/components/invoices/BulkActionsBar';
 import { CreateInvoiceModal } from '@/components/invoices/CreateInvoiceModal';
 import { BillingRunWizard } from '@/components/invoices/BillingRunWizard';
 import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
 import { SendInvoiceModal } from '@/components/invoices/SendInvoiceModal';
 import { LoadingState } from '@/components/shared/LoadingState';
+import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,10 +29,15 @@ import {
 
 export default function Invoices() {
   const { currentRole } = useOrg();
+  const { toast } = useToast();
   const isParent = currentRole === 'parent';
   const [filters, setFilters] = useState<InvoiceFilters>({});
   const { data: invoices = [], isLoading } = useInvoices(filters);
   const updateStatus = useUpdateInvoiceStatus();
+
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkSending, setBulkSending] = useState(false);
 
   // Modal states
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -39,11 +46,80 @@ export default function Invoices() {
   const [sendModalInvoice, setSendModalInvoice] = useState<InvoiceWithDetails | null>(null);
   const [reminderModalInvoice, setReminderModalInvoice] = useState<InvoiceWithDetails | null>(null);
   const [voidConfirmInvoice, setVoidConfirmInvoice] = useState<InvoiceWithDetails | null>(null);
+  const [bulkVoidConfirmOpen, setBulkVoidConfirmOpen] = useState(false);
+
+  // Calculate bulk action counts
+  const { draftCount, voidableCount, voidableInvoices } = useMemo(() => {
+    const selected = invoices.filter((inv) => selectedIds.has(inv.id));
+    return {
+      draftCount: selected.filter((inv) => inv.status === 'draft').length,
+      voidableCount: selected.filter((inv) => inv.status !== 'void' && inv.status !== 'paid').length,
+      voidableInvoices: selected.filter((inv) => inv.status !== 'void' && inv.status !== 'paid'),
+    };
+  }, [invoices, selectedIds]);
 
   const handleVoidConfirm = async () => {
     if (!voidConfirmInvoice) return;
     await updateStatus.mutateAsync({ id: voidConfirmInvoice.id, status: 'void' });
     setVoidConfirmInvoice(null);
+  };
+
+  const handleBulkSend = async () => {
+    const drafts = invoices.filter((inv) => selectedIds.has(inv.id) && inv.status === 'draft');
+    if (drafts.length === 0) return;
+
+    setBulkSending(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const invoice of drafts) {
+      try {
+        await updateStatus.mutateAsync({ id: invoice.id, status: 'sent' });
+        successCount++;
+      } catch {
+        failCount++;
+      }
+    }
+
+    setBulkSending(false);
+    setSelectedIds(new Set());
+
+    if (failCount === 0) {
+      toast({ title: 'Invoices sent', description: `${successCount} invoice${successCount !== 1 ? 's' : ''} sent successfully.` });
+    } else {
+      toast({
+        title: 'Some invoices failed',
+        description: `${successCount} sent, ${failCount} failed.`,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleBulkVoidConfirm = async () => {
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const invoice of voidableInvoices) {
+      try {
+        await updateStatus.mutateAsync({ id: invoice.id, status: 'void' });
+        successCount++;
+      } catch {
+        failCount++;
+      }
+    }
+
+    setBulkVoidConfirmOpen(false);
+    setSelectedIds(new Set());
+
+    if (failCount === 0) {
+      toast({ title: 'Invoices voided', description: `${successCount} invoice${successCount !== 1 ? 's' : ''} voided.` });
+    } else {
+      toast({
+        title: 'Some invoices failed',
+        description: `${successCount} voided, ${failCount} failed.`,
+        variant: 'destructive',
+      });
+    }
   };
 
   if (isLoading) {
@@ -86,6 +162,18 @@ export default function Invoices() {
           <InvoiceFiltersBar filters={filters} onFiltersChange={setFilters} />
         )}
 
+        {!isParent && (
+          <BulkActionsBar
+            selectedCount={selectedIds.size}
+            draftCount={draftCount}
+            voidableCount={voidableCount}
+            onBulkSend={handleBulkSend}
+            onBulkVoid={() => setBulkVoidConfirmOpen(true)}
+            onClearSelection={() => setSelectedIds(new Set())}
+            isSending={bulkSending}
+          />
+        )}
+
         {invoices.length === 0 ? (
           <EmptyState
             icon={Receipt}
@@ -105,6 +193,8 @@ export default function Invoices() {
             onMarkPaid={(inv) => setPaymentModalInvoice(inv)}
             onVoid={(inv) => setVoidConfirmInvoice(inv)}
             onSendReminder={(inv) => setReminderModalInvoice(inv)}
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
           />
         )}
       </div>
@@ -129,7 +219,7 @@ export default function Invoices() {
         isReminder
       />
 
-      {/* Void confirmation dialog */}
+      {/* Void confirmation dialog (single) */}
       <AlertDialog open={!!voidConfirmInvoice} onOpenChange={(open) => !open && setVoidConfirmInvoice(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -142,6 +232,24 @@ export default function Invoices() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleVoidConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Void Invoice
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk void confirmation dialog */}
+      <AlertDialog open={bulkVoidConfirmOpen} onOpenChange={setBulkVoidConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Void {voidableCount} Invoice{voidableCount !== 1 ? 's' : ''}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to void {voidableCount} selected invoice{voidableCount !== 1 ? 's' : ''}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkVoidConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Void {voidableCount} Invoice{voidableCount !== 1 ? 's' : ''}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

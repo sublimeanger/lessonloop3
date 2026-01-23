@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +32,8 @@ interface InvoiceListProps {
   onMarkPaid: (invoice: InvoiceWithDetails) => void;
   onVoid: (invoice: InvoiceWithDetails) => void;
   onSendReminder: (invoice: InvoiceWithDetails) => void;
+  selectedIds: Set<string>;
+  onSelectionChange: (ids: Set<string>) => void;
 }
 
 function getStatusBadge(status: InvoiceStatus, dueDate: string) {
@@ -84,10 +87,33 @@ export function InvoiceList({
   onMarkPaid,
   onVoid,
   onSendReminder,
+  selectedIds,
+  onSelectionChange,
 }: InvoiceListProps) {
   const navigate = useNavigate();
   const { currentOrg } = useOrg();
   const currency = currentOrg?.currency_code || 'GBP';
+
+  const allSelected = invoices.length > 0 && invoices.every((inv) => selectedIds.has(inv.id));
+  const someSelected = invoices.some((inv) => selectedIds.has(inv.id)) && !allSelected;
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      onSelectionChange(new Set(invoices.map((inv) => inv.id)));
+    } else {
+      onSelectionChange(new Set());
+    }
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    const next = new Set(selectedIds);
+    if (checked) {
+      next.add(id);
+    } else {
+      next.delete(id);
+    }
+    onSelectionChange(next);
+  };
 
   if (invoices.length === 0) {
     return (
@@ -102,6 +128,15 @@ export function InvoiceList({
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-[40px]">
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={handleSelectAll}
+                aria-label="Select all"
+                className={someSelected ? 'data-[state=checked]:bg-primary data-[state=unchecked]:bg-primary/50' : ''}
+                {...(someSelected ? { 'data-state': 'indeterminate' } : {})}
+              />
+            </TableHead>
             <TableHead>Invoice #</TableHead>
             <TableHead>Payer</TableHead>
             <TableHead>Issue Date</TableHead>
@@ -116,8 +151,16 @@ export function InvoiceList({
             <TableRow
               key={invoice.id}
               className="cursor-pointer"
+              data-selected={selectedIds.has(invoice.id) ? '' : undefined}
               onClick={() => navigate(`/invoices/${invoice.id}`)}
             >
+              <TableCell onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={selectedIds.has(invoice.id)}
+                  onCheckedChange={(checked) => handleSelectOne(invoice.id, !!checked)}
+                  aria-label={`Select invoice ${invoice.invoice_number}`}
+                />
+              </TableCell>
               <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
               <TableCell>{getPayerName(invoice)}</TableCell>
               <TableCell>{formatDateUK(parseISO(invoice.issue_date), 'dd MMM yyyy')}</TableCell>
