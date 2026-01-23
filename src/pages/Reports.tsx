@@ -58,7 +58,7 @@ const reports = [
     description: 'Analyse how effectively your teaching spaces are used',
     icon: MapPin,
     href: '/reports/utilisation',
-    status: 'coming_soon',
+    status: 'available',
     roles: ['owner', 'admin'],
   },
 ];
