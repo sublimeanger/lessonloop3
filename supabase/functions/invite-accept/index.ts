@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
 
     const { data: invite, error: inviteError } = await supabaseAdmin
       .from("invites")
-      .select("id, org_id, email, role, expires_at, accepted_at")
+      .select("id, org_id, email, role, expires_at, accepted_at, related_student_id")
       .eq("token", token)
       .maybeSingle();
 
@@ -78,15 +78,78 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Create org membership
     await supabaseAdmin.from("org_memberships").upsert(
       { org_id: invite.org_id, user_id: user.id, role: invite.role, status: "active" },
       { onConflict: "org_id,user_id" }
     );
 
+    // If this is a parent invite, create/link guardian record
+    if (invite.role === "parent") {
+      // Get user's profile for full_name
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      // Check if guardian already exists for this user in this org
+      const { data: existingGuardian } = await supabaseAdmin
+        .from("guardians")
+        .select("id")
+        .eq("org_id", invite.org_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      let guardianId = existingGuardian?.id;
+
+      if (!guardianId) {
+        // Create guardian record
+        const { data: newGuardian, error: guardianError } = await supabaseAdmin
+          .from("guardians")
+          .insert({
+            org_id: invite.org_id,
+            user_id: user.id,
+            full_name: profile?.full_name || user.email?.split("@")[0] || "Guardian",
+            email: user.email,
+          })
+          .select("id")
+          .single();
+
+        if (guardianError) {
+          console.error("Error creating guardian:", guardianError);
+        } else {
+          guardianId = newGuardian.id;
+        }
+      }
+
+      // Link guardian to student if related_student_id is provided
+      if (guardianId && invite.related_student_id) {
+        // Check if link already exists
+        const { data: existingLink } = await supabaseAdmin
+          .from("student_guardians")
+          .select("id")
+          .eq("guardian_id", guardianId)
+          .eq("student_id", invite.related_student_id)
+          .maybeSingle();
+
+        if (!existingLink) {
+          await supabaseAdmin.from("student_guardians").insert({
+            guardian_id: guardianId,
+            student_id: invite.related_student_id,
+            relationship: "parent",
+            is_primary_payer: true,
+          });
+        }
+      }
+    }
+
+    // Mark invite as accepted
     await supabaseAdmin.from("invites").update({ accepted_at: new Date().toISOString() }).eq("id", invite.id);
 
-    const { data: profile } = await supabaseAdmin.from("profiles").select("current_org_id").eq("id", user.id).maybeSingle();
-    if (profile && !profile.current_org_id) {
+    // Set current org if not set
+    const { data: profileData } = await supabaseAdmin.from("profiles").select("current_org_id").eq("id", user.id).maybeSingle();
+    if (profileData && !profileData.current_org_id) {
       await supabaseAdmin.from("profiles").update({ current_org_id: invite.org_id }).eq("id", user.id);
     }
 

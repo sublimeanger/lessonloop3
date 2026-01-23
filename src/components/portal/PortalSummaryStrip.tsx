@@ -1,7 +1,8 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Calendar, Receipt, AlertCircle, MessageSquare } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
 
 interface SummaryData {
   nextLesson: {
@@ -20,13 +21,6 @@ interface PortalSummaryStripProps {
   data?: SummaryData;
   isLoading?: boolean;
   currencyCode?: string;
-}
-
-function formatCurrency(amountMinor: number, currencyCode: string = 'GBP'): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: currencyCode,
-  }).format(amountMinor / 100);
 }
 
 export function PortalSummaryStrip({ data, isLoading, currencyCode = 'GBP' }: PortalSummaryStripProps) {
@@ -61,8 +55,8 @@ export function PortalSummaryStrip({ data, isLoading, currencyCode = 'GBP' }: Po
             <div>
               <p className="font-semibold truncate">{data.nextLesson.title}</p>
               <p className="text-sm text-muted-foreground">
-                {format(parseISO(data.nextLesson.start_at), 'EEE, d MMM')} at{' '}
-                {format(parseISO(data.nextLesson.start_at), 'HH:mm')}
+                {formatDateUK(parseISO(data.nextLesson.start_at), 'EEE, d MMM')} at{' '}
+                {formatTimeUK(parseISO(data.nextLesson.start_at))}
               </p>
             </div>
           ) : (
@@ -79,7 +73,7 @@ export function PortalSummaryStrip({ data, isLoading, currencyCode = 'GBP' }: Po
             Outstanding Balance
           </div>
           <p className={`text-xl font-bold ${hasBalance ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
-            {hasBalance ? formatCurrency(data?.outstandingBalance || 0, currencyCode) : 'Paid up'}
+            {hasBalance ? formatCurrencyMinor(data?.outstandingBalance || 0, currencyCode) : 'Paid up'}
           </p>
         </CardContent>
       </Card>

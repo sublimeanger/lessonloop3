@@ -13,6 +13,7 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useAuditLog, getActionLabel, getEntityLabel, getChangeDescription, AuditLogEntry } from '@/hooks/useAuditLog';
 import { History, Eye, User, Calendar, FileText } from 'lucide-react';
+import { formatDateUK } from '@/lib/utils';
 
 const ENTITY_TYPES = [
   { value: '', label: 'All Entities' },

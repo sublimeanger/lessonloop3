@@ -7,14 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { usePayroll, exportPayrollToCSV } from '@/hooks/usePayroll';
 import { useOrg } from '@/contexts/OrgContext';
+import { formatCurrency, formatDateUK } from '@/lib/utils';
 import { Download, ChevronDown, ChevronRight, Banknote, Clock, Users, FileSpreadsheet } from 'lucide-react';
-
 export default function PayrollReport() {
   const { currentOrg, currentRole } = useOrg();
   const isAdmin = currentRole === 'owner' || currentRole === 'admin';
@@ -43,19 +42,14 @@ export default function PayrollReport() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: currentOrg?.currency_code || 'GBP',
-    }).format(amount);
-  };
+  const fmtCurrency = (amount: number) => formatCurrency(amount, currentOrg?.currency_code || 'GBP');
 
   const getPayRateLabel = (type: string | null, value: number) => {
     switch (type) {
       case 'per_lesson':
-        return `${formatCurrency(value)} per lesson`;
+        return `${fmtCurrency(value)} per lesson`;
       case 'hourly':
-        return `${formatCurrency(value)}/hr`;
+        return `${fmtCurrency(value)}/hr`;
       case 'percentage':
         return `${value}% of revenue`;
       default:

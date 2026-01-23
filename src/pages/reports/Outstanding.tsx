@@ -9,8 +9,8 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useAgeingReport, exportAgeingToCSV } from '@/hooks/useReports';
 import { useOrg } from '@/contexts/OrgContext';
+import { formatCurrency, formatDateUK } from '@/lib/utils';
 import { Download, Clock, AlertTriangle, CheckCircle, ChevronDown, ChevronRight } from 'lucide-react';
-import { format } from 'date-fns';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -35,12 +35,7 @@ export default function OutstandingReport() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: currentOrg?.currency_code || 'GBP',
-    }).format(amount);
-  };
+  const fmtCurrency = (amount: number) => formatCurrency(amount, currentOrg?.currency_code || 'GBP');
 
   const getBucketIcon = (label: string) => {
     if (label.includes('0-7')) return <CheckCircle className="h-5 w-5 text-primary" />;
@@ -95,7 +90,7 @@ export default function OutstandingReport() {
                 <CardDescription>Total Outstanding</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">{formatCurrency(data.totalOutstanding)}</p>
+                <p className="text-2xl font-bold">{fmtCurrency(data.totalOutstanding)}</p>
                 <p className="text-sm text-muted-foreground">
                   {data.buckets.reduce((sum, b) => sum + b.count, 0)} invoices
                 </p>
@@ -110,7 +105,7 @@ export default function OutstandingReport() {
               </CardHeader>
               <CardContent>
                 <p className={`text-2xl font-bold ${data.totalOverdue > 0 ? 'text-destructive' : ''}`}>
-                  {formatCurrency(data.totalOverdue)}
+                  {fmtCurrency(data.totalOverdue)}
                 </p>
                 <p className="text-sm text-muted-foreground">Past due date</p>
               </CardContent>
@@ -138,7 +133,7 @@ export default function OutstandingReport() {
                       </div>
                       <div className="flex items-center gap-4">
                         <Badge variant={getBucketBadgeVariant(bucket.label)}>
-                          {formatCurrency(bucket.totalAmount)}
+                          {fmtCurrency(bucket.totalAmount)}
                         </Badge>
                         {expandedBuckets.has(bucket.label) ? (
                           <ChevronDown className="h-5 w-5 text-muted-foreground" />
@@ -173,7 +168,7 @@ export default function OutstandingReport() {
                                   </Link>
                                 </TableCell>
                                 <TableCell>{inv.payerName}</TableCell>
-                                <TableCell>{format(new Date(inv.dueDate), 'd MMM yyyy')}</TableCell>
+                                <TableCell>{formatDateUK(inv.dueDate, 'd MMM yyyy')}</TableCell>
                                 <TableCell className="text-right">
                                   {inv.daysOverdue > 0 ? (
                                     <span className="text-destructive">{inv.daysOverdue} days</span>
@@ -182,7 +177,7 @@ export default function OutstandingReport() {
                                   )}
                                 </TableCell>
                                 <TableCell className="text-right font-medium">
-                                  {formatCurrency(inv.totalMinor / 100)}
+                                  {fmtCurrency(inv.totalMinor / 100)}
                                 </TableCell>
                               </TableRow>
                             ))}

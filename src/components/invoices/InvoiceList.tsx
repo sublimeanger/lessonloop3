@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { format, parseISO, isBefore } from 'date-fns';
+import { parseISO, isBefore } from 'date-fns';
 import {
   Table,
   TableBody,
@@ -21,6 +21,7 @@ import { MoreHorizontal, Send, Eye, CreditCard, XCircle, Bell } from 'lucide-rea
 import { useOrg } from '@/contexts/OrgContext';
 import type { InvoiceWithDetails } from '@/hooks/useInvoices';
 import type { Database } from '@/integrations/supabase/types';
+import { formatCurrencyMinor, formatDateUK } from '@/lib/utils';
 
 type InvoiceStatus = Database['public']['Enums']['invoice_status'];
 
@@ -30,14 +31,6 @@ interface InvoiceListProps {
   onMarkPaid: (invoice: InvoiceWithDetails) => void;
   onVoid: (invoice: InvoiceWithDetails) => void;
   onSendReminder: (invoice: InvoiceWithDetails) => void;
-}
-
-function formatCurrency(amountMinor: number, currencyCode: string = 'GBP') {
-  const amount = amountMinor / 100;
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: currencyCode,
-  }).format(amount);
 }
 
 function getStatusBadge(status: InvoiceStatus, dueDate: string) {
@@ -127,11 +120,11 @@ export function InvoiceList({
             >
               <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
               <TableCell>{getPayerName(invoice)}</TableCell>
-              <TableCell>{format(parseISO(invoice.issue_date), 'dd MMM yyyy')}</TableCell>
-              <TableCell>{format(parseISO(invoice.due_date), 'dd MMM yyyy')}</TableCell>
+              <TableCell>{formatDateUK(parseISO(invoice.issue_date), 'dd MMM yyyy')}</TableCell>
+              <TableCell>{formatDateUK(parseISO(invoice.due_date), 'dd MMM yyyy')}</TableCell>
               <TableCell>{getStatusBadge(invoice.status, invoice.due_date)}</TableCell>
               <TableCell className="text-right font-medium">
-                {formatCurrency(invoice.total_minor, currency)}
+                {formatCurrencyMinor(invoice.total_minor, currency)}
               </TableCell>
               <TableCell>
                 <DropdownMenu>

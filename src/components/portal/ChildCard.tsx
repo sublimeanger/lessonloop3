@@ -1,21 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Receipt, Clock, User } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { Calendar, Receipt, Clock } from 'lucide-react';
+import { parseISO } from 'date-fns';
 import { Link } from 'react-router-dom';
 import type { ChildWithDetails } from '@/hooks/useParentPortal';
+import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
 
 interface ChildCardProps {
   child: ChildWithDetails;
   currencyCode?: string;
-}
-
-function formatCurrency(amountMinor: number, currencyCode: string = 'GBP'): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: currencyCode,
-  }).format(amountMinor / 100);
 }
 
 export function ChildCard({ child, currencyCode = 'GBP' }: ChildCardProps) {
@@ -55,8 +49,8 @@ export function ChildCard({ child, currencyCode = 'GBP' }: ChildCardProps) {
             <div>
               <p className="font-medium">{child.next_lesson!.title}</p>
               <p className="text-sm text-muted-foreground">
-                {format(parseISO(child.next_lesson!.start_at), 'EEEE, d MMM')} at{' '}
-                {format(parseISO(child.next_lesson!.start_at), 'HH:mm')}
+                {formatDateUK(parseISO(child.next_lesson!.start_at), 'EEEE, d MMM')} at{' '}
+                {formatTimeUK(parseISO(child.next_lesson!.start_at))}
               </p>
             </div>
           ) : (
@@ -71,7 +65,7 @@ export function ChildCard({ child, currencyCode = 'GBP' }: ChildCardProps) {
             <span>Outstanding</span>
           </div>
           <span className={`font-medium ${hasBalance ? 'text-destructive' : 'text-green-600'}`}>
-            {hasBalance ? formatCurrency(child.outstanding_balance, currencyCode) : 'Paid up'}
+            {hasBalance ? formatCurrencyMinor(child.outstanding_balance, currencyCode) : 'Paid up'}
           </span>
         </div>
 
