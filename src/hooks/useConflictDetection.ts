@@ -1,7 +1,20 @@
-import { format } from 'date-fns';
+import { format, getDay } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { ConflictResult } from '@/components/calendar/types';
+import type { Database } from '@/integrations/supabase/types';
+
+type DayOfWeek = Database['public']['Enums']['day_of_week'];
+
+const DAY_INDEX_TO_NAME: DayOfWeek[] = [
+  'sunday',
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+];
 
 interface ConflictCheckParams {
   start_at: Date;
@@ -44,6 +57,33 @@ export function useConflictDetection() {
           type: 'closure' as any,
           severity,
           message: `This date is marked as closed: ${applicableClosure.reason}`,
+        });
+      }
+    }
+
+    // Check teacher availability blocks
+    const dayOfWeek = DAY_INDEX_TO_NAME[getDay(start_at)];
+    const lessonStartTime = format(start_at, 'HH:mm:ss');
+    const lessonEndTime = format(end_at, 'HH:mm:ss');
+
+    const { data: availabilityBlocks } = await supabase
+      .from('availability_blocks')
+      .select('start_time_local, end_time_local')
+      .eq('org_id', currentOrg.id)
+      .eq('teacher_user_id', teacher_user_id)
+      .eq('day_of_week', dayOfWeek);
+
+    if (availabilityBlocks && availabilityBlocks.length > 0) {
+      // Teacher has availability defined - check if lesson fits
+      const fitsWithinAvailability = availabilityBlocks.some(block => {
+        return lessonStartTime >= block.start_time_local && lessonEndTime <= block.end_time_local;
+      });
+
+      if (!fitsWithinAvailability) {
+        conflicts.push({
+          type: 'availability' as any,
+          severity: 'warning',
+          message: `Lesson is outside teacher's available hours on ${dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1)}`,
         });
       }
     }
