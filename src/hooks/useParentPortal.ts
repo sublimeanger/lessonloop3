@@ -230,6 +230,25 @@ export function useParentLessons(options?: { studentId?: string; status?: string
 
       if (!participants) return [];
 
+      // Get lesson IDs for fetching attendance
+      const lessonIds = [...new Set(participants.map(p => (p.lesson as any)?.id).filter(Boolean))];
+
+      // Fetch attendance records for these lessons and students
+      let attendanceMap = new Map<string, string>(); // key: lessonId-studentId, value: status
+      if (lessonIds.length > 0) {
+        const { data: attendanceRecords } = await supabase
+          .from('attendance_records')
+          .select('lesson_id, student_id, attendance_status')
+          .in('lesson_id', lessonIds)
+          .in('student_id', studentIds);
+
+        if (attendanceRecords) {
+          for (const record of attendanceRecords) {
+            attendanceMap.set(`${record.lesson_id}-${record.student_id}`, record.attendance_status);
+          }
+        }
+      }
+
       // Group by lesson
       const lessonMap = new Map<string, ParentLesson>();
       for (const p of participants) {
@@ -253,10 +272,12 @@ export function useParentLessons(options?: { studentId?: string; status?: string
         }
         const student = p.student as any;
         if (student) {
+          const attendanceStatus = attendanceMap.get(`${lesson.id}-${student.id}`) || null;
           lessonMap.get(lesson.id)!.students.push({
             id: student.id,
             first_name: student.first_name,
             last_name: student.last_name,
+            attendance_status: attendanceStatus,
           });
         }
       }
