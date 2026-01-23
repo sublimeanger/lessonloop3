@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { OrgMembersTab } from '@/components/settings/OrgMembersTab';
 import { SchedulingSettingsTab } from '@/components/settings/SchedulingSettingsTab';
 import AuditLogTab from '@/components/settings/AuditLogTab';
@@ -18,7 +20,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload, X } from 'lucide-react';
 
 interface NotificationPreferences {
   email_lesson_reminders: boolean;
@@ -43,6 +45,12 @@ export default function Settings() {
   const [orgName, setOrgName] = useState('');
   const [orgAddress, setOrgAddress] = useState('');
   const [orgSaving, setOrgSaving] = useState(false);
+  
+  // Branding form state
+  const [invoiceFromName, setInvoiceFromName] = useState('');
+  const [invoiceFooterNote, setInvoiceFooterNote] = useState('');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   // Billing settings state
   const [vatRegistered, setVatRegistered] = useState(false);
@@ -70,14 +78,14 @@ export default function Settings() {
     }
   }, [profile]);
 
-  // Sync org data including billing fields
+  // Sync org data including billing and branding fields
   useEffect(() => {
     const fetchOrgDetails = async () => {
       if (!currentOrg) return;
       
       const { data } = await supabase
         .from('organisations')
-        .select('name, address, vat_enabled, vat_rate, vat_registration_number, default_payment_terms_days')
+        .select('name, address, vat_enabled, vat_rate, vat_registration_number, default_payment_terms_days, invoice_from_name, invoice_footer_note, logo_url')
         .eq('id', currentOrg.id)
         .single();
       
@@ -88,6 +96,9 @@ export default function Settings() {
         setVatRate(data.vat_rate?.toString() || '20');
         setVatNumber(data.vat_registration_number || '');
         setPaymentTermsDays(data.default_payment_terms_days || 14);
+        setInvoiceFromName(data.invoice_from_name || '');
+        setInvoiceFooterNote(data.invoice_footer_note || '');
+        setLogoUrl(data.logo_url || null);
       }
     };
     
@@ -149,7 +160,12 @@ export default function Settings() {
     try {
       const { error } = await supabase
         .from('organisations')
-        .update({ name: orgName, address: orgAddress })
+        .update({ 
+          name: orgName, 
+          address: orgAddress,
+          invoice_from_name: invoiceFromName || null,
+          invoice_footer_note: invoiceFooterNote || null,
+        })
         .eq('id', currentOrg.id);
       
       if (error) throw error;
@@ -160,6 +176,68 @@ export default function Settings() {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
       setOrgSaving(false);
+    }
+  };
+
+  const handleLogoUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !currentOrg) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid file', description: 'Please upload an image file', variant: 'destructive' });
+      return;
+    }
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Logo must be under 2MB', variant: 'destructive' });
+      return;
+    }
+
+    setLogoUploading(true);
+    const fileExt = file.name.split('.').pop();
+    const filePath = `${currentOrg.id}/logo-${Date.now()}.${fileExt}`;
+    
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('org-logos')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('org-logos').getPublicUrl(filePath);
+      const publicUrl = urlData.publicUrl;
+
+      const { error: updateError } = await supabase
+        .from('organisations')
+        .update({ logo_url: publicUrl })
+        .eq('id', currentOrg.id);
+
+      if (updateError) throw updateError;
+
+      setLogoUrl(publicUrl);
+      toast({ title: 'Logo uploaded', description: 'Your logo has been saved.' });
+    } catch (error: any) {
+      toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!currentOrg) return;
+    try {
+      const { error } = await supabase
+        .from('organisations')
+        .update({ logo_url: null })
+        .eq('id', currentOrg.id);
+
+      if (error) throw error;
+
+      setLogoUrl(null);
+      toast({ title: 'Logo removed' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     }
   };
 
@@ -340,6 +418,96 @@ export default function Settings() {
                   </div>
                 </div>
               </div>
+              
+              <Separator />
+              <div>
+                <h4 className="mb-4 text-sm font-medium">Invoice Branding</h4>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Organisation Logo</Label>
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <Avatar className="h-16 w-16 rounded-lg">
+                          {logoUrl ? (
+                            <AvatarImage src={logoUrl} alt="Organisation logo" className="object-contain" />
+                          ) : (
+                            <AvatarFallback className="rounded-lg bg-muted">
+                              {orgName.substring(0, 2).toUpperCase() || 'ORG'}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        {logoUrl && (isOrgOwner || isOrgAdmin) && (
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                            onClick={handleRemoveLogo}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                      {(isOrgOwner || isOrgAdmin) && (
+                        <div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={logoUploading}
+                            onClick={() => document.getElementById('logo-upload')?.click()}
+                          >
+                            {logoUploading ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Upload className="h-4 w-4 mr-2" />
+                            )}
+                            Upload Logo
+                          </Button>
+                          <input
+                            id="logo-upload"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleLogoUpload}
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            PNG or JPG, max 2MB
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="invoiceFromName">Invoice From Name</Label>
+                    <Input 
+                      id="invoiceFromName"
+                      placeholder={orgName || "Your business name"}
+                      value={invoiceFromName}
+                      onChange={(e) => setInvoiceFromName(e.target.value)}
+                      disabled={!isOrgOwner && !isOrgAdmin}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Name shown at top of invoices (defaults to organisation name if empty)
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="invoiceFooterNote">Invoice Footer Note</Label>
+                    <Textarea 
+                      id="invoiceFooterNote"
+                      placeholder="e.g. Payment instructions, terms, thank you message..."
+                      value={invoiceFooterNote}
+                      onChange={(e) => setInvoiceFooterNote(e.target.value)}
+                      disabled={!isOrgOwner && !isOrgAdmin}
+                      rows={3}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Appears at the bottom of every invoice
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
               {(isOrgOwner || isOrgAdmin) && (
                 <Button onClick={handleSaveOrganisation} disabled={orgSaving}>
                   {orgSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
