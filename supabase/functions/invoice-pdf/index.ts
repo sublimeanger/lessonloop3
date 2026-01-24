@@ -360,6 +360,14 @@ const handler = async (req: Request): Promise<Response> => {
       y -= 16;
     }
 
+    // Show credit applied if any
+    if (invoice.credit_applied_minor && invoice.credit_applied_minor > 0) {
+      page.drawText("Make-up Credit", { x: totalsX, y, size: 10, font: helvetica, color: rgb(0.13, 0.55, 0.13) });
+      const creditText = `-${formatCurrency(invoice.credit_applied_minor, currency, locale)}`;
+      page.drawText(creditText, { x: rightMargin - helvetica.widthOfTextAtSize(creditText, 10), y, size: 10, font: helvetica, color: rgb(0.13, 0.55, 0.13) });
+      y -= 16;
+    }
+
     page.drawText("Total", { x: totalsX, y, size: 11, font: helveticaBold, color: black });
     const totalText = formatCurrency(invoice.total_minor, currency, locale);
     page.drawText(totalText, { x: rightMargin - helveticaBold.widthOfTextAtSize(totalText, 11), y, size: 11, font: helveticaBold, color: black });

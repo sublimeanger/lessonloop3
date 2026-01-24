@@ -238,6 +238,7 @@ export function useCreateInvoice() {
           vat_rate: vatRate,
           subtotal_minor: subtotal,
           tax_minor: taxMinor,
+          credit_applied_minor: creditOffsetMinor,
           total_minor: totalMinor,
           currency_code: currentOrg.currency_code,
         })
@@ -258,19 +259,8 @@ export function useCreateInvoice() {
         student_id: item.student_id || null,
       }));
 
-      // Add credit offset as a negative line item if credits are applied
-      if (creditOffsetMinor > 0) {
-        itemsToInsert.push({
-          invoice_id: invoice.id,
-          org_id: currentOrg.id,
-          description: 'Make-up credit applied',
-          quantity: 1,
-          unit_price_minor: -creditOffsetMinor,
-          amount_minor: -creditOffsetMinor,
-          linked_lesson_id: null,
-          student_id: null,
-        });
-      }
+      // Note: Credit is tracked on the invoice record via credit_applied_minor,
+      // not as a separate negative line item
 
       const { error: itemsError } = await supabase
         .from('invoice_items')

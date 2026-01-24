@@ -574,6 +574,7 @@ export type Database = {
       invoices: {
         Row: {
           created_at: string
+          credit_applied_minor: number
           currency_code: string
           due_date: string
           id: string
@@ -592,6 +593,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          credit_applied_minor?: number
           currency_code?: string
           due_date: string
           id?: string
@@ -610,6 +612,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          credit_applied_minor?: number
           currency_code?: string
           due_date?: string
           id?: string
