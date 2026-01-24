@@ -37,11 +37,13 @@ import NotFound from "./pages/NotFound";
 import PortalHome from "./pages/portal/PortalHome";
 import PortalSchedule from "./pages/portal/PortalSchedule";
 import PortalPractice from "./pages/portal/PortalPractice";
+import PortalResources from "./pages/portal/PortalResources";
 import PortalInvoices from "./pages/portal/PortalInvoices";
 import PortalMessages from "./pages/portal/PortalMessages";
 
 // Practice Page
 import Practice from "./pages/Practice";
+import Resources from "./pages/Resources";
 
 const queryClient = new QueryClient();
 
@@ -81,6 +83,11 @@ const App = () => (
               <Route path="/portal/practice" element={
                 <RouteGuard allowedRoles={['parent']}>
                   <PortalPractice />
+                </RouteGuard>
+              } />
+              <Route path="/portal/resources" element={
+                <RouteGuard allowedRoles={['parent']}>
+                  <PortalResources />
                 </RouteGuard>
               } />
               <Route path="/portal/invoices" element={
@@ -179,6 +186,11 @@ const App = () => (
               <Route path="/practice" element={
                 <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
                   <Practice />
+                </RouteGuard>
+              } />
+              <Route path="/resources" element={
+                <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
+                  <Resources />
                 </RouteGuard>
               } />
               <Route path="/settings" element={

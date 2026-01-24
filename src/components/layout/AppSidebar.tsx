@@ -12,6 +12,7 @@ import {
   CreditCard,
   LogOut,
   Music,
+  FolderOpen,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
@@ -43,6 +44,7 @@ const ownerAdminNav: NavItem[] = [
   { title: 'Teachers', url: '/teachers', icon: GraduationCap },
   { title: 'Locations', url: '/locations', icon: MapPin },
   { title: 'Practice', url: '/practice', icon: Music },
+  { title: 'Resources', url: '/resources', icon: FolderOpen },
   { title: 'Invoices', url: '/invoices', icon: Receipt },
   { title: 'Reports', url: '/reports', icon: BarChart3 },
   { title: 'Messages', url: '/messages', icon: MessageSquare },
@@ -62,6 +64,7 @@ const teacherNav: NavItem[] = [
   { title: 'My Calendar', url: '/calendar', icon: Calendar },
   { title: 'My Students', url: '/students', icon: Users },
   { title: 'Practice', url: '/practice', icon: Music },
+  { title: 'Resources', url: '/resources', icon: FolderOpen },
   { title: 'Messages', url: '/messages', icon: MessageSquare },
   { title: 'Settings', url: '/settings', icon: Settings },
 ];
@@ -69,6 +72,8 @@ const teacherNav: NavItem[] = [
 const parentNav: NavItem[] = [
   { title: 'Home', url: '/portal/home', icon: Home },
   { title: 'Schedule', url: '/portal/schedule', icon: Calendar },
+  { title: 'Practice', url: '/portal/practice', icon: Music },
+  { title: 'Resources', url: '/portal/resources', icon: FolderOpen },
   { title: 'Invoices & Payments', url: '/portal/invoices', icon: CreditCard },
   { title: 'Messages', url: '/portal/messages', icon: MessageSquare },
 ];
