@@ -2,16 +2,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { TrendingUp, Target, Calendar } from 'lucide-react';
 import { useParentPracticeAssignments, useWeeklyProgress } from '@/hooks/usePractice';
-import { useOrg } from '@/contexts/OrgContext';
+import { useChildrenStreaks } from '@/hooks/usePracticeStreaks';
+import { StreakBadge } from '@/components/practice/StreakBadge';
 
 export function WeeklyProgressCard() {
   const { data: assignments = [] } = useParentPracticeAssignments();
   const studentIds = [...new Set(assignments.map(a => a.student_id))];
   
-  // Get org from one of the assignments
-  const orgId = assignments[0]?.org_id;
-  
   const { data: progress = [], isLoading } = useWeeklyProgress(studentIds);
+  const { data: streaks = [] } = useChildrenStreaks();
+
+  // Create a map of student streaks
+  const streakMap = new Map(streaks.map(s => [s.student_id, s]));
 
   if (isLoading || studentIds.length === 0) {
     return null;
@@ -26,10 +28,21 @@ export function WeeklyProgressCard() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {progress.map(student => (
+        {progress.map(student => {
+          const streak = streakMap.get(student.studentId);
+          return (
           <div key={student.studentId} className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-medium">{student.studentName}</span>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{student.studentName}</span>
+                {streak && streak.current_streak > 0 && (
+                  <StreakBadge 
+                    currentStreak={streak.current_streak} 
+                    longestStreak={streak.longest_streak}
+                    size="sm" 
+                  />
+                )}
+              </div>
               <span className="text-sm text-muted-foreground">
                 {student.percentComplete}% complete
               </span>
@@ -48,7 +61,8 @@ export function WeeklyProgressCard() {
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </CardContent>
     </Card>
   );

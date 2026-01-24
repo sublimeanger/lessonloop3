@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { usePracticeAssignments, usePracticeLogs, useWeeklyProgress, useAddPracticeFeedback } from '@/hooks/usePractice';
+import { usePracticeStreak } from '@/hooks/usePracticeStreaks';
 import { CreateAssignmentModal } from '@/components/practice/CreateAssignmentModal';
+import { StreakDisplay } from '@/components/practice/StreakBadge';
 import { Plus, Music, Target, Clock, CheckCircle, MessageSquare, Loader2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +25,7 @@ export function StudentPracticePanel({ studentId, studentName }: StudentPractice
   const { data: assignments = [], isLoading: loadingAssignments } = usePracticeAssignments(studentId);
   const { data: logs = [], isLoading: loadingLogs } = usePracticeLogs({ studentId, limit: 20 });
   const { data: weeklyProgress = [] } = useWeeklyProgress([studentId]);
+  const { data: streak } = usePracticeStreak(studentId);
   const addFeedback = useAddPracticeFeedback();
 
   const progress = weeklyProgress[0];
@@ -54,6 +57,19 @@ export function StudentPracticePanel({ studentId, studentName }: StudentPractice
 
   return (
     <div className="space-y-6">
+      {/* Streak Display */}
+      {streak && streak.current_streak > 0 && (
+        <Card>
+          <CardContent className="pt-6">
+            <StreakDisplay
+              currentStreak={streak.current_streak}
+              longestStreak={streak.longest_streak}
+              lastPracticeDate={streak.last_practice_date}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Weekly Progress */}
       {progress && (
         <Card>
