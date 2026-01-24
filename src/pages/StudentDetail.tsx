@@ -20,6 +20,8 @@ import { useStudentMessages } from '@/hooks/useMessages';
 import { MessageList } from '@/components/messages/MessageList';
 import { ComposeMessageModal } from '@/components/messages/ComposeMessageModal';
 import { TeacherAssignmentsPanel } from '@/components/students/TeacherAssignmentsPanel';
+import { MakeUpCreditsPanel } from '@/components/students/MakeUpCreditsPanel';
+import { CreditBalanceBadge } from '@/components/students/CreditBalanceBadge';
 import { useStudentLessons, useStudentInvoices } from '@/hooks/useStudentDetail';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
 
@@ -314,6 +316,7 @@ export default function StudentDetail() {
           <TabsTrigger value="guardians">Guardians</TabsTrigger>
           <TabsTrigger value="lessons">Lesson History</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
+          <TabsTrigger value="credits">Credits</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>
           <TabsTrigger value="messages">Messages</TabsTrigger>
         </TabsList>
@@ -326,7 +329,10 @@ export default function StudentDetail() {
                   <CardTitle>Student Information</CardTitle>
                   <CardDescription>Personal details and contact information</CardDescription>
                 </div>
-                <Badge variant={student.status === 'active' ? 'default' : 'secondary'}>{student.status}</Badge>
+                <div className="flex items-center gap-2">
+                  <CreditBalanceBadge studentId={student.id} />
+                  <Badge variant={student.status === 'active' ? 'default' : 'secondary'}>{student.status}</Badge>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -547,6 +553,10 @@ export default function StudentDetail() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="credits">
+          <MakeUpCreditsPanel studentId={student.id} studentName={fullName} />
         </TabsContent>
 
         <TabsContent value="notes">

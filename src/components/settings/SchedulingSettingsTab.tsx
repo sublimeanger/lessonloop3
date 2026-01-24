@@ -3,6 +3,7 @@ import { format, addDays, eachDayOfInterval, parseISO } from 'date-fns';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useCancellationNoticeSetting } from '@/hooks/useMakeUpCredits';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -57,6 +58,43 @@ const UK_PRESETS = [
     { start: '2025-12-22', end: '2026-01-04', reason: 'Christmas Holiday' }
   ]},
 ];
+
+function CancellationNoticeSetting() {
+  const { noticeHours, updateNoticeHours } = useCancellationNoticeSetting();
+  const [localHours, setLocalHours] = useState(noticeHours);
+
+  useEffect(() => {
+    setLocalHours(noticeHours);
+  }, [noticeHours]);
+
+  return (
+    <div className="space-y-2">
+      <div className="font-medium">Cancellation notice period</div>
+      <div className="text-sm text-muted-foreground">
+        Students who cancel with at least this much notice will receive a make-up credit
+      </div>
+      <div className="flex items-center gap-2 mt-2">
+        <Input
+          type="number"
+          min="0"
+          max="168"
+          value={localHours}
+          onChange={(e) => setLocalHours(parseInt(e.target.value) || 0)}
+          className="w-20"
+        />
+        <span className="text-sm text-muted-foreground">hours</span>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => updateNoticeHours.mutate(localHours)}
+          disabled={localHours === noticeHours || updateNoticeHours.isPending}
+        >
+          Save
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export function SchedulingSettingsTab() {
   const { currentOrg, refreshOrganisations } = useOrg();
@@ -259,7 +297,7 @@ export function SchedulingSettingsTab() {
           </CardTitle>
           <CardDescription>Configure how lesson scheduling works</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <div className="font-medium">Block scheduling on closure dates</div>
@@ -272,6 +310,10 @@ export function SchedulingSettingsTab() {
               onCheckedChange={handleBlockSchedulingChange}
             />
           </div>
+          
+          <Separator />
+          
+          <CancellationNoticeSetting />
         </CardContent>
       </Card>
 
