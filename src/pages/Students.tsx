@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -31,7 +32,8 @@ interface Student {
 }
 
 export default function Students() {
-  const { currentOrg, isOrgAdmin } = useOrg();
+  const { currentOrg, isOrgAdmin, currentRole } = useOrg();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,23 +54,60 @@ export default function Students() {
   const fetchStudents = async () => {
     if (!currentOrg) return;
     setIsLoading(true);
-    const { data, error } = await supabase
-      .from('students')
-      .select('*')
-      .eq('org_id', currentOrg.id)
-      .order('last_name', { ascending: true });
-    
-    if (error) {
-      toast({ title: 'Error loading students', description: error.message, variant: 'destructive' });
+
+    // If teacher role, only fetch assigned students
+    if (currentRole === 'teacher' && user) {
+      const { data: assignments, error: assignError } = await supabase
+        .from('student_teacher_assignments')
+        .select('student_id')
+        .eq('teacher_user_id', user.id);
+
+      if (assignError) {
+        toast({ title: 'Error loading assignments', description: assignError.message, variant: 'destructive' });
+        setIsLoading(false);
+        return;
+      }
+
+      const assignedIds = assignments?.map((a) => a.student_id) || [];
+      
+      if (assignedIds.length === 0) {
+        setStudents([]);
+        setIsLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('org_id', currentOrg.id)
+        .in('id', assignedIds)
+        .order('last_name', { ascending: true });
+
+      if (error) {
+        toast({ title: 'Error loading students', description: error.message, variant: 'destructive' });
+      } else {
+        setStudents((data || []) as Student[]);
+      }
     } else {
-      setStudents((data || []) as Student[]);
+      // Owners/admins see all students
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('org_id', currentOrg.id)
+        .order('last_name', { ascending: true });
+
+      if (error) {
+        toast({ title: 'Error loading students', description: error.message, variant: 'destructive' });
+      } else {
+        setStudents((data || []) as Student[]);
+      }
     }
     setIsLoading(false);
   };
 
   useEffect(() => {
     fetchStudents();
-  }, [currentOrg?.id]);
+  }, [currentOrg?.id, currentRole, user?.id]);
 
   const filteredStudents = students.filter(student => {
     const matchesSearch = `${student.first_name} ${student.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
