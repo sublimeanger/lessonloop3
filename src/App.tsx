@@ -7,11 +7,22 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { OrgProvider } from "@/contexts/OrgContext";
 import { RouteGuard, PublicRoute } from "@/components/auth/RouteGuard";
 
-// Pages
+// Marketing Pages
+import MarketingHome from "./pages/marketing/Home";
+import Features from "./pages/marketing/Features";
+import Pricing from "./pages/marketing/Pricing";
+import About from "./pages/marketing/About";
+import Blog from "./pages/marketing/Blog";
+import Contact from "./pages/marketing/Contact";
+
+// Auth Pages
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import Onboarding from "./pages/Onboarding";
+import AcceptInvite from "./pages/AcceptInvite";
+
+// App Pages
 import Dashboard from "./pages/Dashboard";
 import CalendarPage from "./pages/CalendarPage";
 import Students from "./pages/Students";
@@ -30,8 +41,9 @@ import CancellationReport from "./pages/reports/Cancellations";
 import UtilisationReport from "./pages/reports/Utilisation";
 import Messages from "./pages/Messages";
 import Settings from "./pages/Settings";
-import AcceptInvite from "./pages/AcceptInvite";
 import NotFound from "./pages/NotFound";
+import Practice from "./pages/Practice";
+import Resources from "./pages/Resources";
 
 // Portal Pages
 import PortalHome from "./pages/portal/PortalHome";
@@ -40,10 +52,6 @@ import PortalPractice from "./pages/portal/PortalPractice";
 import PortalResources from "./pages/portal/PortalResources";
 import PortalInvoices from "./pages/portal/PortalInvoices";
 import PortalMessages from "./pages/portal/PortalMessages";
-
-// Practice Page
-import Practice from "./pages/Practice";
-import Resources from "./pages/Resources";
 
 const queryClient = new QueryClient();
 
