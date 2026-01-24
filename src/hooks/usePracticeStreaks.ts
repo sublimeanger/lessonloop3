@@ -63,7 +63,7 @@ export function usePracticeStreaks() {
   });
 }
 
-// Get streaks for children (parent portal)
+// Get streaks for children (parent portal) - properly filtered by guardian linkage
 export function useChildrenStreaks() {
   const { currentOrg } = useOrg();
 
@@ -72,7 +72,32 @@ export function useChildrenStreaks() {
     queryFn: async () => {
       if (!currentOrg?.id) return [];
 
-      // Get student IDs first, then streaks
+      // First get the current user's guardian record and linked students
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      // Get guardian's linked student IDs
+      const { data: guardianLinks, error: guardianError } = await supabase
+        .from('guardians')
+        .select(`
+          id,
+          student_guardians (
+            student_id
+          )
+        `)
+        .eq('user_id', user.id);
+
+      if (guardianError) throw guardianError;
+      if (!guardianLinks || guardianLinks.length === 0) return [];
+
+      // Extract student IDs from guardian links
+      const studentIds = guardianLinks.flatMap(g => 
+        g.student_guardians?.map(sg => sg.student_id) || []
+      );
+
+      if (studentIds.length === 0) return [];
+
+      // Now fetch only streaks for these specific students
       const { data, error } = await supabase
         .from('practice_streaks')
         .select(`
@@ -83,7 +108,8 @@ export function useChildrenStreaks() {
             last_name
           )
         `)
-        .eq('org_id', currentOrg.id);
+        .eq('org_id', currentOrg.id)
+        .in('student_id', studentIds);
 
       if (error) throw error;
       return data;
