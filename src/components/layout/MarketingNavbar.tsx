@@ -38,9 +38,8 @@ export function MarketingNavbar() {
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className={cn(
           "fixed top-0 left-0 right-0 z-50 transition-all duration-500",
-          isScrolled
-            ? "bg-background/80 backdrop-blur-xl border-b border-border/50 shadow-sm"
-            : "bg-transparent"
+          "bg-background/95 backdrop-blur-xl border-b border-border/50",
+          isScrolled && "shadow-sm"
         )}
       >
         <div className="container mx-auto px-6 lg:px-8">
@@ -52,7 +51,7 @@ export function MarketingNavbar() {
                 whileTap={{ scale: 0.98 }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
               >
-                <LogoHorizontal size="md" variant={isScrolled ? "default" : "white"} />
+                <LogoHorizontal size="md" />
               </motion.div>
             </Link>
 
@@ -64,20 +63,15 @@ export function MarketingNavbar() {
                   to={link.href}
                   className={cn(
                     "relative px-5 py-2.5 text-sm font-medium transition-colors rounded-full",
-                    isScrolled
-                      ? "text-foreground/70 hover:text-foreground hover:bg-accent"
-                      : "text-white/80 hover:text-white hover:bg-white/10",
-                    location.pathname === link.href && (isScrolled ? "text-foreground" : "text-white")
+                    "text-foreground/70 hover:text-foreground hover:bg-accent",
+                    location.pathname === link.href && "text-foreground"
                   )}
                 >
                   {link.name}
                   {location.pathname === link.href && (
                     <motion.div
                       layoutId="activeNav"
-                      className={cn(
-                        "absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full",
-                        isScrolled ? "bg-primary" : "bg-white"
-                      )}
+                      className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary"
                       transition={{ type: "spring", stiffness: 380, damping: 30 }}
                     />
                   )}
@@ -90,12 +84,7 @@ export function MarketingNavbar() {
               <Link to="/login">
                 <Button
                   variant="ghost"
-                  className={cn(
-                    "font-medium",
-                    isScrolled
-                      ? "text-foreground hover:bg-accent"
-                      : "text-white hover:bg-white/10"
-                  )}
+                  className="font-medium text-foreground hover:bg-accent"
                 >
                   Sign in
                 </Button>
@@ -106,12 +95,7 @@ export function MarketingNavbar() {
                   whileTap={{ scale: 0.98 }}
                 >
                   <Button
-                    className={cn(
-                      "font-semibold px-6 shadow-lg",
-                      isScrolled
-                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/25"
-                        : "bg-white text-ink hover:bg-white/90 shadow-white/25"
-                    )}
+                    className="font-semibold px-6 shadow-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/25"
                   >
                     Start Free
                     <ChevronRight className="w-4 h-4 ml-1" />
@@ -124,12 +108,7 @@ export function MarketingNavbar() {
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className={cn(
-                "lg:hidden relative z-10 p-2.5 rounded-xl transition-colors",
-                isScrolled || isMobileMenuOpen
-                  ? "text-foreground hover:bg-accent"
-                  : "text-white hover:bg-white/10"
-              )}
+              className="lg:hidden relative z-10 p-2.5 rounded-xl transition-colors text-foreground hover:bg-accent"
               aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
