@@ -207,8 +207,13 @@ const App = () => (
                 </RouteGuard>
               } />
               
-              {/* Redirects */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              {/* Public Marketing Routes */}
+              <Route path="/" element={<MarketingHome />} />
+              <Route path="/features" element={<Features />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/contact" element={<Contact />} />
               
               {/* 404 */}
               <Route path="*" element={<NotFound />} />
