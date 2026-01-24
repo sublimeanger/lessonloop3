@@ -1616,6 +1616,105 @@ export type Database = {
           },
         ]
       }
+      resource_shares: {
+        Row: {
+          id: string
+          org_id: string
+          resource_id: string
+          shared_at: string
+          shared_by: string
+          student_id: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          resource_id: string
+          shared_at?: string
+          shared_by: string
+          student_id: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          resource_id?: string
+          shared_at?: string
+          shared_by?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_shares_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resource_shares_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resource_shares_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resources: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_name: string
+          file_path: string
+          file_size_bytes: number
+          file_type: string
+          id: string
+          org_id: string
+          title: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_name: string
+          file_path: string
+          file_size_bytes: number
+          file_type: string
+          id?: string
+          org_id: string
+          title: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_name?: string
+          file_path?: string
+          file_size_bytes?: number
+          file_type?: string
+          id?: string
+          org_id?: string
+          title?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resources_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rooms: {
         Row: {
           capacity: number | null
