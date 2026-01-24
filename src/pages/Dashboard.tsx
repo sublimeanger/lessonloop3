@@ -10,7 +10,7 @@ import { useDashboardStats } from '@/hooks/useReports';
 import { useTeacherDashboardStats } from '@/hooks/useTeacherDashboard';
 import { OnboardingChecklist } from '@/components/shared/OnboardingChecklist';
 import { GridSkeleton } from '@/components/shared/LoadingState';
-import { Calendar, Users, Receipt, Clock, TrendingUp, AlertCircle, Plus, ChevronRight, Building2, Loader2, BookOpen } from 'lucide-react';
+import { Calendar, Users, Receipt, Clock, TrendingUp, AlertCircle, Plus, ChevronRight, Building2, Loader2, BookOpen, ClipboardList } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 export default function Dashboard() {
@@ -532,6 +532,12 @@ function TeacherDashboard({ firstName, greeting }: { firstName: string; greeting
           </CardHeader>
           <CardContent>
             <div className="grid gap-2 sm:grid-cols-2">
+              <Link to="/register">
+                <Button variant="outline" className="w-full justify-start gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  Take Register
+                </Button>
+              </Link>
               <Link to="/calendar">
                 <Button variant="outline" className="w-full justify-start gap-2">
                   <Calendar className="h-4 w-4" />
@@ -542,12 +548,6 @@ function TeacherDashboard({ firstName, greeting }: { firstName: string; greeting
                 <Button variant="outline" className="w-full justify-start gap-2">
                   <Users className="h-4 w-4" />
                   My Students
-                </Button>
-              </Link>
-              <Link to="/reports/lessons">
-                <Button variant="outline" className="w-full justify-start gap-2">
-                  <BookOpen className="h-4 w-4" />
-                  Lessons Report
                 </Button>
               </Link>
               <Link to="/reports/payroll">

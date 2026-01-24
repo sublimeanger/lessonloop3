@@ -13,6 +13,7 @@ import {
   LogOut,
   Music,
   FolderOpen,
+  ClipboardList,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
@@ -40,6 +41,7 @@ interface NavItem {
 const ownerAdminNav: NavItem[] = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Calendar', url: '/calendar', icon: Calendar },
+  { title: 'Register', url: '/register', icon: ClipboardList },
   { title: 'Students', url: '/students', icon: Users },
   { title: 'Teachers', url: '/teachers', icon: GraduationCap },
   { title: 'Locations', url: '/locations', icon: MapPin },
@@ -62,6 +64,7 @@ const financeNav: NavItem[] = [
 const teacherNav: NavItem[] = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'My Calendar', url: '/calendar', icon: Calendar },
+  { title: 'Register', url: '/register', icon: ClipboardList },
   { title: 'My Students', url: '/students', icon: Users },
   { title: 'Practice', url: '/practice', icon: Music },
   { title: 'Resources', url: '/resources', icon: FolderOpen },
