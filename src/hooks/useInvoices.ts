@@ -191,6 +191,7 @@ export function useCreateInvoice() {
       payer_student_id?: string | null;
       notes?: string;
       vat_rate?: number;
+      credit_ids?: string[]; // IDs of make_up_credits to apply
       items: Array<{
         description: string;
         quantity: number;
@@ -207,7 +208,23 @@ export function useCreateInvoice() {
       );
       const vatRate = data.vat_rate ?? (currentOrg.vat_enabled ? currentOrg.vat_rate : 0);
       const taxMinor = Math.round(subtotal * (vatRate / 100));
-      const totalMinor = subtotal + taxMinor;
+      
+      // Calculate credit offset if credits are being applied
+      let creditOffsetMinor = 0;
+      if (data.credit_ids && data.credit_ids.length > 0) {
+        // Fetch the credit values
+        const { data: credits, error: creditsError } = await supabase
+          .from('make_up_credits')
+          .select('id, credit_value_minor')
+          .in('id', data.credit_ids)
+          .is('redeemed_at', null);
+
+        if (creditsError) throw creditsError;
+        creditOffsetMinor = credits?.reduce((sum, c) => sum + c.credit_value_minor, 0) || 0;
+      }
+
+      // Total after credit is applied (but never below 0)
+      const totalMinor = Math.max(0, subtotal + taxMinor - creditOffsetMinor);
 
       const { data: invoice, error: invoiceError } = await supabase
         .from('invoices')
@@ -229,6 +246,7 @@ export function useCreateInvoice() {
 
       if (invoiceError) throw invoiceError;
 
+      // Build invoice items - include line items plus credit offset line if applicable
       const itemsToInsert = data.items.map((item) => ({
         invoice_id: invoice.id,
         org_id: currentOrg.id,
@@ -240,17 +258,49 @@ export function useCreateInvoice() {
         student_id: item.student_id || null,
       }));
 
+      // Add credit offset as a negative line item if credits are applied
+      if (creditOffsetMinor > 0) {
+        itemsToInsert.push({
+          invoice_id: invoice.id,
+          org_id: currentOrg.id,
+          description: 'Make-up credit applied',
+          quantity: 1,
+          unit_price_minor: -creditOffsetMinor,
+          amount_minor: -creditOffsetMinor,
+          linked_lesson_id: null,
+          student_id: null,
+        });
+      }
+
       const { error: itemsError } = await supabase
         .from('invoice_items')
         .insert(itemsToInsert);
 
       if (itemsError) throw itemsError;
 
+      // Mark credits as redeemed (linked to this invoice via notes/metadata)
+      if (data.credit_ids && data.credit_ids.length > 0) {
+        const { error: redeemError } = await supabase
+          .from('make_up_credits')
+          .update({
+            redeemed_at: new Date().toISOString(),
+            notes: `Applied to invoice ${invoice.invoice_number}`,
+          })
+          .in('id', data.credit_ids);
+
+        if (redeemError) {
+          console.error('Failed to mark credits as redeemed:', redeemError);
+          // Don't throw - invoice is created, credits can be manually managed
+        }
+      }
+
       return invoice;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['available-credits-for-payer'] });
       toast.success('Invoice created');
     },
     onError: (error) => {

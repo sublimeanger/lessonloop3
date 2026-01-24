@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { format, addDays, differenceInMinutes } from 'date-fns';
 import {
@@ -21,12 +21,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Gift } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useCreateInvoice, useUnbilledLessons } from '@/hooks/useInvoices';
 import { useRateCards, findRateForDuration } from '@/hooks/useRateCards';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useAvailableCreditsForPayer, AvailableCredit } from '@/hooks/useAvailableCredits';
+import { Badge } from '@/components/ui/badge';
 
 interface CreateInvoiceModalProps {
   open: boolean;
@@ -71,8 +73,10 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
     to: format(new Date(), 'yyyy-MM-dd'),
   });
   const [selectedLessons, setSelectedLessons] = useState<Set<string>>(new Set());
+  const [selectedCredits, setSelectedCredits] = useState<Set<string>>(new Set());
 
   const { data: unbilledLessons = [] } = useUnbilledLessons(lessonDateRange);
+
   const {
     register,
     handleSubmit,
@@ -97,6 +101,30 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
   });
 
   const payerType = watch('payerType');
+  const payerId = watch('payerId');
+
+  // Fetch available credits for the selected payer
+  const { data: availableCredits = [] } = useAvailableCreditsForPayer(payerType, payerId);
+
+  // Calculate total credit value that can be applied
+  const totalSelectedCredit = useMemo(() => {
+    return availableCredits
+      .filter((c) => selectedCredits.has(c.id))
+      .reduce((sum, c) => sum + c.credit_value_minor, 0);
+  }, [availableCredits, selectedCredits]);
+
+  // Reset selected credits when payer changes
+  useEffect(() => {
+    setSelectedCredits(new Set());
+  }, [payerId, payerType]);
+
+  // Currency formatting helper
+  const formatCurrency = (minor: number) => {
+    return new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: currentOrg?.currency_code || 'GBP',
+    }).format(minor / 100);
+  };
 
   useEffect(() => {
     if (!currentOrg?.id) return;
@@ -123,12 +151,15 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
   }, [currentOrg?.id]);
 
   const onSubmit = async (data: InvoiceFormData) => {
+    const creditIdsToApply = Array.from(selectedCredits);
+    
     if (tab === 'manual') {
       await createInvoice.mutateAsync({
         due_date: data.dueDate,
         payer_guardian_id: data.payerType === 'guardian' ? data.payerId : undefined,
         payer_student_id: data.payerType === 'student' ? data.payerId : undefined,
         notes: data.notes,
+        credit_ids: creditIdsToApply.length > 0 ? creditIdsToApply : undefined,
         items: data.items.map((item) => ({
           description: item.description,
           quantity: item.quantity,
@@ -140,12 +171,12 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
       const selectedLessonData = unbilledLessons.filter((l) => selectedLessons.has(l.id));
       if (selectedLessonData.length === 0) return;
 
-      // For simplicity, use first selected payer
       await createInvoice.mutateAsync({
         due_date: data.dueDate,
         payer_guardian_id: data.payerType === 'guardian' ? data.payerId : undefined,
         payer_student_id: data.payerType === 'student' ? data.payerId : undefined,
         notes: data.notes,
+        credit_ids: creditIdsToApply.length > 0 ? creditIdsToApply : undefined,
         items: selectedLessonData.map((lesson) => {
           // Calculate lesson duration in minutes
           const durationMins = differenceInMinutes(
@@ -172,6 +203,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
 
     reset();
     setSelectedLessons(new Set());
+    setSelectedCredits(new Set());
     onOpenChange(false);
   };
 
@@ -187,6 +219,20 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
 
   const selectAllLessons = () => {
     setSelectedLessons(new Set(unbilledLessons.map((l) => l.id)));
+  };
+
+  const toggleCredit = (creditId: string) => {
+    const newSelected = new Set(selectedCredits);
+    if (newSelected.has(creditId)) {
+      newSelected.delete(creditId);
+    } else {
+      newSelected.add(creditId);
+    }
+    setSelectedCredits(newSelected);
+  };
+
+  const selectAllCredits = () => {
+    setSelectedCredits(new Set(availableCredits.map((c) => c.id)));
   };
 
   return (
@@ -379,6 +425,70 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                 </div>
               </div>
             </TabsContent>
+
+            {/* Credit Application Section */}
+            {payerId && availableCredits.length > 0 && (
+              <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Gift className="h-4 w-4 text-primary" />
+                    <Label className="text-primary font-medium">
+                      Apply Make-Up Credits ({availableCredits.length} available)
+                    </Label>
+                  </div>
+                  {availableCredits.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      onClick={selectAllCredits}
+                      className="text-primary"
+                    >
+                      Select All
+                    </Button>
+                  )}
+                </div>
+
+                <div className="max-h-32 space-y-1 overflow-y-auto">
+                  {availableCredits.map((credit) => (
+                    <label
+                      key={credit.id}
+                      className="flex cursor-pointer items-center gap-2 rounded p-2 hover:bg-primary/10"
+                    >
+                      <Checkbox
+                        checked={selectedCredits.has(credit.id)}
+                        onCheckedChange={() => toggleCredit(credit.id)}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">
+                            {formatCurrency(credit.credit_value_minor)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            for {credit.student?.first_name} {credit.student?.last_name}
+                          </span>
+                        </div>
+                        {credit.expires_at && (
+                          <div className="text-xs text-muted-foreground">
+                            Expires {format(new Date(credit.expires_at), 'dd MMM yyyy')}
+                          </div>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                {totalSelectedCredit > 0 && (
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <span className="text-sm text-muted-foreground">Credit to apply:</span>
+                    <Badge variant="secondary" className="gap-1">
+                      <Gift className="h-3 w-3" />
+                      -{formatCurrency(totalSelectedCredit)}
+                    </Badge>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="notes">Notes (Optional)</Label>
