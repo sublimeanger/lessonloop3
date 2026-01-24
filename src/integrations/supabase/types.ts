@@ -1460,6 +1460,54 @@ export type Database = {
           },
         ]
       }
+      practice_streaks: {
+        Row: {
+          current_streak: number
+          id: string
+          last_practice_date: string | null
+          longest_streak: number
+          org_id: string
+          streak_started_at: string | null
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          current_streak?: number
+          id?: string
+          last_practice_date?: string | null
+          longest_streak?: number
+          org_id: string
+          streak_started_at?: string | null
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          current_streak?: number
+          id?: string
+          last_practice_date?: string | null
+          longest_streak?: number
+          org_id?: string
+          streak_started_at?: string | null
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_streaks_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_streaks_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -2185,6 +2233,7 @@ export type Database = {
         Args: { _student_id: string; _user_id: string }
         Returns: boolean
       }
+      reset_stale_streaks: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "owner" | "admin" | "teacher" | "finance" | "parent"
