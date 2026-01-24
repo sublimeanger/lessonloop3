@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { format, addDays } from 'date-fns';
+import { format, addDays, differenceInMinutes } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useCreateInvoice, useUnbilledLessons } from '@/hooks/useInvoices';
+import { useRateCards, findRateForDuration } from '@/hooks/useRateCards';
 import { Checkbox } from '@/components/ui/checkbox';
 
 interface CreateInvoiceModalProps {
@@ -61,6 +62,7 @@ interface Student {
 export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalProps) {
   const { currentOrg } = useOrg();
   const createInvoice = useCreateInvoice();
+  const { data: rateCards = [] } = useRateCards();
   const [tab, setTab] = useState<'manual' | 'lessons'>('manual');
   const [guardians, setGuardians] = useState<Guardian[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -71,7 +73,6 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
   const [selectedLessons, setSelectedLessons] = useState<Set<string>>(new Set());
 
   const { data: unbilledLessons = [] } = useUnbilledLessons(lessonDateRange);
-
   const {
     register,
     handleSubmit,
@@ -145,12 +146,27 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
         payer_guardian_id: data.payerType === 'guardian' ? data.payerId : undefined,
         payer_student_id: data.payerType === 'student' ? data.payerId : undefined,
         notes: data.notes,
-        items: selectedLessonData.map((lesson) => ({
-          description: lesson.title,
-          quantity: 1,
-          unit_price_minor: (currentOrg?.default_lesson_length_mins || 60) * 50, // Default rate
-          linked_lesson_id: lesson.id,
-        })),
+        items: selectedLessonData.map((lesson) => {
+          // Calculate lesson duration in minutes
+          const durationMins = differenceInMinutes(
+            new Date(lesson.end_at),
+            new Date(lesson.start_at)
+          );
+          // Use rate cards to find correct price
+          const unitPriceMinor = findRateForDuration(durationMins, rateCards);
+          
+          // Get student ID from first participant if available
+          const firstParticipant = lesson.lesson_participants?.[0];
+          const studentId = firstParticipant?.student?.id;
+
+          return {
+            description: lesson.title,
+            quantity: 1,
+            unit_price_minor: unitPriceMinor,
+            linked_lesson_id: lesson.id,
+            student_id: studentId,
+          };
+        }),
       });
     }
 
