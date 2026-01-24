@@ -136,17 +136,17 @@ export function LogoHorizontal({ className, size = 'md', variant = 'default' }: 
         x="58"
         y="32"
         fontFamily="Inter, system-ui, sans-serif"
-        fontSize="24"
+        fontSize="22"
         fontWeight="600"
         fill={textColor}
       >
         Lesson
       </text>
       <text
-        x="134"
+        x="126"
         y="32"
         fontFamily="Inter, system-ui, sans-serif"
-        fontSize="24"
+        fontSize="22"
         fontWeight="600"
         fill={accentColor}
       >
