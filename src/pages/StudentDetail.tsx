@@ -15,13 +15,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Mail, Phone, Calendar, Edit, Trash2, Plus, UserPlus, MessageSquare, Send, Receipt } from 'lucide-react';
+import { Loader2, Mail, Phone, Calendar, Edit, Trash2, Plus, UserPlus, MessageSquare, Send, Receipt, Music } from 'lucide-react';
 import { useStudentMessages } from '@/hooks/useMessages';
 import { MessageList } from '@/components/messages/MessageList';
 import { ComposeMessageModal } from '@/components/messages/ComposeMessageModal';
 import { TeacherAssignmentsPanel } from '@/components/students/TeacherAssignmentsPanel';
 import { MakeUpCreditsPanel } from '@/components/students/MakeUpCreditsPanel';
 import { CreditBalanceBadge } from '@/components/students/CreditBalanceBadge';
+import { StudentPracticePanel } from '@/components/students/StudentPracticePanel';
 import { useStudentLessons, useStudentInvoices } from '@/hooks/useStudentDetail';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
 
@@ -310,11 +311,15 @@ export default function StudentDetail() {
       />
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="teachers">Teachers</TabsTrigger>
           <TabsTrigger value="guardians">Guardians</TabsTrigger>
-          <TabsTrigger value="lessons">Lesson History</TabsTrigger>
+          <TabsTrigger value="lessons">Lessons</TabsTrigger>
+          <TabsTrigger value="practice" className="gap-1.5">
+            <Music className="h-3.5 w-3.5" />
+            Practice
+          </TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="credits">Credits</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>
@@ -553,6 +558,10 @@ export default function StudentDetail() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="practice">
+          <StudentPracticePanel studentId={student.id} studentName={fullName} />
         </TabsContent>
 
         <TabsContent value="credits">
