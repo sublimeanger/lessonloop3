@@ -841,6 +841,83 @@ export type Database = {
           },
         ]
       }
+      make_up_credits: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          credit_value_minor: number
+          expires_at: string | null
+          id: string
+          issued_at: string
+          issued_for_lesson_id: string | null
+          notes: string | null
+          org_id: string
+          redeemed_at: string | null
+          redeemed_lesson_id: string | null
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          credit_value_minor?: number
+          expires_at?: string | null
+          id?: string
+          issued_at?: string
+          issued_for_lesson_id?: string | null
+          notes?: string | null
+          org_id: string
+          redeemed_at?: string | null
+          redeemed_lesson_id?: string | null
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          credit_value_minor?: number
+          expires_at?: string | null
+          id?: string
+          issued_at?: string
+          issued_for_lesson_id?: string | null
+          notes?: string | null
+          org_id?: string
+          redeemed_at?: string | null
+          redeemed_lesson_id?: string | null
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "make_up_credits_issued_for_lesson_id_fkey"
+            columns: ["issued_for_lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_credits_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_credits_redeemed_lesson_id_fkey"
+            columns: ["redeemed_lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_credits_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_log: {
         Row: {
           body: string
@@ -1114,6 +1191,7 @@ export type Database = {
           address: string | null
           billing_approach: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures: boolean
+          cancellation_notice_hours: number
           country_code: string
           created_at: string
           created_by: string
@@ -1140,6 +1218,7 @@ export type Database = {
           address?: string | null
           billing_approach?: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures?: boolean
+          cancellation_notice_hours?: number
           country_code?: string
           created_at?: string
           created_by: string
@@ -1166,6 +1245,7 @@ export type Database = {
           address?: string | null
           billing_approach?: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures?: boolean
+          cancellation_notice_hours?: number
           country_code?: string
           created_at?: string
           created_by?: string

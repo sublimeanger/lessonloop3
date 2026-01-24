@@ -1,17 +1,20 @@
 import { useState } from 'react';
-import { format, parseISO, differenceInMinutes } from 'date-fns';
+import { format, parseISO, differenceInMinutes, differenceInHours } from 'date-fns';
 import { LessonWithDetails, AttendanceStatus } from './types';
 import { RecurringActionDialog, RecurringActionMode } from './RecurringActionDialog';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useMakeUpCredits } from '@/hooks/useMakeUpCredits';
+import { useRateCards, findRateForDuration } from '@/hooks/useRateCards';
 import { supabase } from '@/integrations/supabase/client';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban, Gift } from 'lucide-react';
 
 interface LessonDetailPanelProps {
   lesson: LessonWithDetails | null;
@@ -33,6 +36,9 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
   const { currentOrg } = useOrg();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { createCredit, checkCreditEligibility } = useMakeUpCredits();
+  const { data: rateCards } = useRateCards();
+  
   const [savingAttendance, setSavingAttendance] = useState<string | null>(null);
   const [actionInProgress, setActionInProgress] = useState(false);
   
@@ -43,6 +49,15 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
   // Confirm delete dialog (for non-recurring or after mode selection)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [pendingMode, setPendingMode] = useState<RecurringActionMode | null>(null);
+  
+  // Credit offer dialog state
+  const [creditOfferOpen, setCreditOfferOpen] = useState(false);
+  const [pendingCreditInfo, setPendingCreditInfo] = useState<{
+    studentId: string;
+    studentName: string;
+    creditValue: number;
+    hoursNotice: number;
+  } | null>(null);
 
   if (!lesson) return null;
 
@@ -91,6 +106,30 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
 
       onUpdated();
       toast({ title: 'Attendance recorded' });
+      
+      // Check for make-up credit eligibility on student cancellation
+      if (status === 'cancelled_by_student') {
+        const eligibility = await checkCreditEligibility(lesson.start_at);
+        
+        if (eligibility.eligible) {
+          // Find student name for the dialog
+          const participant = lesson.participants?.find(p => p.student.id === studentId);
+          const studentName = participant 
+            ? `${participant.student.first_name} ${participant.student.last_name}`
+            : 'Student';
+          
+          // Calculate credit value based on lesson duration and rate cards
+          const creditValue = findRateForDuration(duration, rateCards || []);
+          
+          setPendingCreditInfo({
+            studentId,
+            studentName,
+            creditValue,
+            hoursNotice: eligibility.hoursNotice,
+          });
+          setCreditOfferOpen(true);
+        }
+      }
     } catch (error: any) {
       toast({ title: 'Error recording attendance', description: error.message, variant: 'destructive' });
     } finally {
@@ -393,6 +432,77 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Credit Offer Dialog */}
+      <Dialog open={creditOfferOpen} onOpenChange={setCreditOfferOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Gift className="h-5 w-5 text-primary" />
+              Issue Make-Up Credit?
+            </DialogTitle>
+            <DialogDescription>
+              {pendingCreditInfo && (
+                <>
+                  <strong>{pendingCreditInfo.studentName}</strong> cancelled with{' '}
+                  <strong>{pendingCreditInfo.hoursNotice} hours</strong> notice, 
+                  which meets your cancellation policy.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              Would you like to issue a make-up credit for the value of this lesson?
+            </p>
+            {pendingCreditInfo && (
+              <div className="mt-3 p-3 bg-primary/5 rounded-lg">
+                <p className="text-lg font-semibold text-primary">
+                  {new Intl.NumberFormat('en-GB', {
+                    style: 'currency',
+                    currency: currentOrg?.currency_code || 'GBP',
+                  }).format(pendingCreditInfo.creditValue / 100)}
+                </p>
+                <p className="text-xs text-muted-foreground">Credit expires in 3 months</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setCreditOfferOpen(false);
+                setPendingCreditInfo(null);
+              }}
+            >
+              Skip
+            </Button>
+            <Button
+              onClick={async () => {
+                if (pendingCreditInfo) {
+                  await createCredit.mutateAsync({
+                    student_id: pendingCreditInfo.studentId,
+                    issued_for_lesson_id: lesson.id,
+                    credit_value_minor: pendingCreditInfo.creditValue,
+                    expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+                    notes: `Auto-issued for cancelled lesson: ${lesson.title}`,
+                  });
+                  setCreditOfferOpen(false);
+                  setPendingCreditInfo(null);
+                }
+              }}
+              disabled={createCredit.isPending}
+            >
+              {createCredit.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Gift className="h-4 w-4 mr-2" />
+              )}
+              Issue Credit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   );
 }
