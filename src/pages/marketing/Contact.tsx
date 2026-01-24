@@ -1,7 +1,15 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
-import { Mail, Phone, MapPin, MessageSquare, Clock, HelpCircle } from "lucide-react";
+import { Mail, Phone, MapPin, MessageSquare, Clock, HelpCircle, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
 
 const contactMethods = [
   {
@@ -16,7 +24,7 @@ const contactMethods = [
     title: "Live Chat",
     description: "Available Mon-Fri, 9am-5pm",
     value: "Start a conversation",
-    action: "#",
+    action: "/contact",
   },
   {
     icon: Phone,
@@ -27,7 +35,74 @@ const contactMethods = [
   },
 ];
 
+const contactSchema = z.object({
+  firstName: z.string().trim().min(1, "First name is required").max(50, "First name too long"),
+  lastName: z.string().trim().min(1, "Last name is required").max(50, "Last name too long"),
+  email: z.string().trim().email("Invalid email address").max(255, "Email too long"),
+  subject: z.string().min(1, "Please select a subject"),
+  message: z.string().trim().min(10, "Message must be at least 10 characters").max(2000, "Message too long"),
+});
+
+type ContactFormData = z.infer<typeof contactSchema>;
+
 export default function Contact() {
+  const [formData, setFormData] = useState<ContactFormData>({
+    firstName: "",
+    lastName: "",
+    email: "",
+    subject: "",
+    message: "",
+  });
+  const [errors, setErrors] = useState<Partial<Record<keyof ContactFormData, string>>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  const handleChange = (field: keyof ContactFormData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+
+    // Validate form
+    const result = contactSchema.safeParse(formData);
+    if (!result.success) {
+      const fieldErrors: Partial<Record<keyof ContactFormData, string>> = {};
+      result.error.errors.forEach((err) => {
+        const field = err.path[0] as keyof ContactFormData;
+        fieldErrors[field] = err.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase.functions.invoke('send-contact-message', {
+        body: result.data,
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to send message');
+      }
+
+      setIsSuccess(true);
+      toast.success("Message sent! We'll get back to you soon.");
+      setFormData({ firstName: "", lastName: "", email: "", subject: "", message: "" });
+    } catch (error: any) {
+      console.error('Contact form error:', error);
+      toast.error(error.message || "Failed to send message. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <MarketingLayout>
       {/* Header Section */}
@@ -99,69 +174,126 @@ export default function Contact() {
                 Fill out the form below and we'll get back to you as soon as possible.
               </p>
 
-              <form className="space-y-6">
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      First Name
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="John"
-                    />
+              {isSuccess ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="p-8 rounded-2xl bg-success/10 border border-success/20 text-center"
+                >
+                  <CheckCircle className="w-16 h-16 text-success mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-foreground mb-2">Message Sent!</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Thank you for reaching out. We'll get back to you within 24 hours.
+                  </p>
+                  <Button variant="outline" onClick={() => setIsSuccess(false)}>
+                    Send Another Message
+                  </Button>
+                </motion.div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input
+                        id="firstName"
+                        value={formData.firstName}
+                        onChange={(e) => handleChange("firstName", e.target.value)}
+                        placeholder="John"
+                        className={errors.firstName ? "border-destructive" : ""}
+                        disabled={isSubmitting}
+                      />
+                      {errors.firstName && (
+                        <p className="text-sm text-destructive">{errors.firstName}</p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        value={formData.lastName}
+                        onChange={(e) => handleChange("lastName", e.target.value)}
+                        placeholder="Smith"
+                        className={errors.lastName ? "border-destructive" : ""}
+                        disabled={isSubmitting}
+                      />
+                      {errors.lastName && (
+                        <p className="text-sm text-destructive">{errors.lastName}</p>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="Smith"
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => handleChange("email", e.target.value)}
+                      placeholder="john@example.com"
+                      className={errors.email ? "border-destructive" : ""}
+                      disabled={isSubmitting}
                     />
+                    {errors.email && (
+                      <p className="text-sm text-destructive">{errors.email}</p>
+                    )}
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="john@example.com"
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="subject">Subject</Label>
+                    <Select
+                      value={formData.subject}
+                      onValueChange={(value) => handleChange("subject", value)}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger className={errors.subject ? "border-destructive" : ""}>
+                        <SelectValue placeholder="Select a subject" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="General Enquiry">General Enquiry</SelectItem>
+                        <SelectItem value="Sales Question">Sales Question</SelectItem>
+                        <SelectItem value="Technical Support">Technical Support</SelectItem>
+                        <SelectItem value="Partnership Opportunity">Partnership Opportunity</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.subject && (
+                      <p className="text-sm text-destructive">{errors.subject}</p>
+                    )}
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Subject
-                  </label>
-                  <select className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary">
-                    <option>General Enquiry</option>
-                    <option>Sales Question</option>
-                    <option>Technical Support</option>
-                    <option>Partnership Opportunity</option>
-                    <option>Other</option>
-                  </select>
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="message">Message</Label>
+                    <Textarea
+                      id="message"
+                      rows={6}
+                      value={formData.message}
+                      onChange={(e) => handleChange("message", e.target.value)}
+                      placeholder="How can we help you?"
+                      className={errors.message ? "border-destructive" : ""}
+                      disabled={isSubmitting}
+                    />
+                    {errors.message && (
+                      <p className="text-sm text-destructive">{errors.message}</p>
+                    )}
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Message
-                  </label>
-                  <textarea
-                    rows={6}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                    placeholder="How can we help you?"
-                  />
-                </div>
-
-                <Button size="lg" className="w-full font-semibold">
-                  Send Message
-                </Button>
-              </form>
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="w-full font-semibold"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      "Send Message"
+                    )}
+                  </Button>
+                </form>
+              )}
             </motion.div>
 
             {/* Info */}
@@ -213,10 +345,10 @@ export default function Contact() {
                       <h4 className="font-medium mb-1">Need Quick Answers?</h4>
                       <p className="text-sm text-white/60">
                         Check out our{" "}
-                        <a href="/docs" className="text-teal-light hover:underline">
-                          Help Centre
+                        <a href="/pricing" className="text-teal-light hover:underline">
+                          Pricing FAQ
                         </a>{" "}
-                        for FAQs and guides.
+                        for common questions.
                       </p>
                     </div>
                   </div>
