@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { LogoHorizontal } from "@/components/brand/Logo";
+import { LogoWordmark } from "@/components/brand/Logo";
 import { Twitter, Linkedin, Youtube, Instagram } from "lucide-react";
 
 const footerLinks = {
@@ -74,7 +74,7 @@ export function MarketingFooter() {
           <div className="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-12 gap-8 lg:gap-12">
             {/* Brand Column */}
             <motion.div variants={itemVariants} className="col-span-2 md:col-span-6 lg:col-span-4">
-              <LogoHorizontal size="md" variant="white" />
+              <LogoWordmark variant="white" />
               <p className="mt-6 text-white/60 text-base leading-relaxed max-w-sm">
                 Keeping every lesson in the loop. The complete platform for music educators to manage scheduling, billing, and student communication.
               </p>
