@@ -51,7 +51,7 @@ export function MarketingNavbar() {
                 whileTap={{ scale: 0.98 }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
               >
-                <LogoHorizontal size="md" />
+                <LogoHorizontal size="lg" />
               </motion.div>
             </Link>
 
