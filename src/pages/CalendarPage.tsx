@@ -10,6 +10,7 @@ import { AgendaView } from '@/components/calendar/AgendaView';
 import { LessonModal } from '@/components/calendar/LessonModal';
 import { LessonDetailPanel } from '@/components/calendar/LessonDetailPanel';
 import { CalendarFiltersBar } from '@/components/calendar/CalendarFiltersBar';
+import { MarkDayCompleteButton } from '@/components/calendar/MarkDayCompleteButton';
 import { CalendarView, CalendarFilters, LessonWithDetails } from '@/components/calendar/types';
 import { Calendar, ChevronLeft, ChevronRight, Plus, List, CalendarDays, LayoutGrid, Loader2 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -192,6 +193,14 @@ export default function CalendarPage() {
             </Button>
           </div>
           <span className="font-medium min-w-[200px]">{getDateDisplay()}</span>
+          
+          {!isParent && (
+            <MarkDayCompleteButton
+              currentDate={currentDate}
+              lessons={lessons}
+              onComplete={refetch}
+            />
+          )}
         </div>
 
         <div className="flex items-center gap-4">
