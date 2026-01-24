@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { LessonWithDetails, AttendanceStatus } from './types';
+import { RecurringActionDialog, RecurringActionMode } from './RecurringActionDialog';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -9,7 +10,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban } from 'lucide-react';
 
 interface LessonDetailPanelProps {
   lesson: LessonWithDetails | null;
@@ -32,6 +34,15 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
   const { user } = useAuth();
   const { toast } = useToast();
   const [savingAttendance, setSavingAttendance] = useState<string | null>(null);
+  const [actionInProgress, setActionInProgress] = useState(false);
+  
+  // Recurring action dialog state
+  const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
+  const [recurringAction, setRecurringAction] = useState<'cancel' | 'delete'>('cancel');
+  
+  // Confirm delete dialog (for non-recurring or after mode selection)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [pendingMode, setPendingMode] = useState<RecurringActionMode | null>(null);
 
   if (!lesson) return null;
 
@@ -89,6 +100,104 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
 
   const getStudentAttendance = (studentId: string): AttendanceStatus | null => {
     return lesson.attendance?.find(a => a.student_id === studentId)?.attendance_status || null;
+  };
+
+  const isRecurring = !!lesson.recurrence_id;
+
+  const handleCancelClick = () => {
+    if (isRecurring) {
+      setRecurringAction('cancel');
+      setRecurringDialogOpen(true);
+    } else {
+      performCancel('this_only');
+    }
+  };
+
+  const handleDeleteClick = () => {
+    if (isRecurring) {
+      setRecurringAction('delete');
+      setRecurringDialogOpen(true);
+    } else {
+      setConfirmDeleteOpen(true);
+    }
+  };
+
+  const handleRecurringSelect = (mode: RecurringActionMode) => {
+    setRecurringDialogOpen(false);
+    if (recurringAction === 'cancel') {
+      performCancel(mode);
+    } else {
+      setPendingMode(mode);
+      setConfirmDeleteOpen(true);
+    }
+  };
+
+  const performCancel = async (mode: RecurringActionMode) => {
+    if (!lesson) return;
+    setActionInProgress(true);
+
+    try {
+      if (mode === 'this_only') {
+        // Cancel just this lesson
+        const { error } = await supabase
+          .from('lessons')
+          .update({ status: 'cancelled' })
+          .eq('id', lesson.id);
+        if (error) throw error;
+        toast({ title: 'Lesson cancelled' });
+      } else {
+        // Cancel this and all future lessons in series
+        const { error } = await supabase
+          .from('lessons')
+          .update({ status: 'cancelled' })
+          .eq('recurrence_id', lesson.recurrence_id)
+          .gte('start_at', lesson.start_at);
+        if (error) throw error;
+        toast({ title: 'Series cancelled', description: 'This and all future lessons have been cancelled.' });
+      }
+      onUpdated();
+      onClose();
+    } catch (error: any) {
+      toast({ title: 'Error cancelling lesson', description: error.message, variant: 'destructive' });
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
+  const performDelete = async () => {
+    if (!lesson) return;
+    setActionInProgress(true);
+    setConfirmDeleteOpen(false);
+
+    const mode = pendingMode || 'this_only';
+
+    try {
+      if (mode === 'this_only' || !isRecurring) {
+        // Delete just this lesson
+        const { error } = await supabase
+          .from('lessons')
+          .delete()
+          .eq('id', lesson.id);
+        if (error) throw error;
+        toast({ title: 'Lesson deleted' });
+      } else {
+        // Delete this and all future lessons in series
+        const { error } = await supabase
+          .from('lessons')
+          .delete()
+          .eq('recurrence_id', lesson.recurrence_id)
+          .gte('start_at', lesson.start_at);
+        if (error) throw error;
+        toast({ title: 'Series deleted', description: 'This and all future lessons have been deleted.' });
+      }
+      onUpdated();
+      onClose();
+    } catch (error: any) {
+      toast({ title: 'Error deleting lesson', description: error.message, variant: 'destructive' });
+    } finally {
+      setActionInProgress(false);
+      setPendingMode(null);
+    }
   };
 
   return (
@@ -226,14 +335,64 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           <Separator />
 
           {/* Actions */}
-          <div className="flex gap-2">
-            <Button onClick={onEdit} className="flex-1 gap-2">
-              <Edit2 className="h-4 w-4" />
-              Edit Lesson
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Button onClick={onEdit} className="flex-1 gap-2" disabled={actionInProgress}>
+                <Edit2 className="h-4 w-4" />
+                Edit
+              </Button>
+              {lesson.status !== 'cancelled' && (
+                <Button 
+                  variant="outline" 
+                  onClick={handleCancelClick} 
+                  className="flex-1 gap-2"
+                  disabled={actionInProgress}
+                >
+                  {actionInProgress ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                  Cancel
+                </Button>
+              )}
+            </div>
+            <Button 
+              variant="ghost" 
+              onClick={handleDeleteClick} 
+              className="w-full gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+              disabled={actionInProgress}
+            >
+              {actionInProgress ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              Delete Lesson
             </Button>
           </div>
         </div>
       </SheetContent>
+
+      {/* Recurring Action Dialog */}
+      <RecurringActionDialog
+        open={recurringDialogOpen}
+        onClose={() => setRecurringDialogOpen(false)}
+        onSelect={handleRecurringSelect}
+        action={recurringAction}
+      />
+
+      {/* Confirm Delete Dialog */}
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lesson</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingMode === 'this_and_future' 
+                ? 'This will permanently delete this lesson and all future lessons in the series. This action cannot be undone.'
+                : 'This will permanently delete this lesson. This action cannot be undone.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingMode(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={performDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 }
