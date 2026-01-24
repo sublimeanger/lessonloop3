@@ -1,7 +1,13 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Sparkles } from "lucide-react";
+import { ChevronRight, Check, Shield, Clock, CreditCard } from "lucide-react";
+
+const guarantees = [
+  { icon: Clock, text: "14-day free trial" },
+  { icon: CreditCard, text: "No credit card required" },
+  { icon: Shield, text: "Cancel anytime" },
+];
 
 export function CTASection() {
   return (
@@ -9,83 +15,172 @@ export function CTASection() {
       {/* Background */}
       <div className="absolute inset-0 gradient-hero" />
       
-      {/* Animated Orbs */}
+      {/* Animated Mesh */}
       <motion.div
         animate={{
-          scale: [1, 1.3, 1],
-          opacity: [0.2, 0.4, 0.2],
+          scale: [1, 1.2, 1],
+          rotate: [0, 90, 0],
         }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-teal/20 rounded-full blur-[150px]"
+        transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] opacity-30"
+        style={{
+          background: "radial-gradient(circle, hsl(var(--teal) / 0.3) 0%, transparent 60%)",
+          filter: "blur(100px)",
+        }}
       />
       <motion.div
         animate={{
           scale: [1.2, 1, 1.2],
-          opacity: [0.15, 0.3, 0.15],
+          rotate: [90, 0, 90],
         }}
-        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-        className="absolute top-0 right-0 w-[400px] h-[400px] bg-coral/20 rounded-full blur-[100px]"
+        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+        className="absolute top-0 right-0 w-[600px] h-[600px] opacity-20"
+        style={{
+          background: "radial-gradient(circle, hsl(var(--coral) / 0.4) 0%, transparent 60%)",
+          filter: "blur(80px)",
+        }}
       />
 
       <div className="container mx-auto px-6 lg:px-8 relative">
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="max-w-4xl mx-auto text-center"
-        >
-          {/* Icon */}
-          <motion.div
-            initial={{ scale: 0 }}
-            whileInView={{ scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
-            className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-white/10 backdrop-blur-sm border border-white/20 mb-8"
-          >
-            <Sparkles className="w-10 h-10 text-teal-light" />
-          </motion.div>
+        <div className="max-w-5xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            {/* Left Side - Content */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
+                Ready to transform
+                <br />
+                your teaching?
+              </h2>
+              <p className="text-xl text-white/70 mb-8">
+                Join thousands of music educators who've simplified their admin 
+                and reclaimed their time for what matters most — teaching.
+              </p>
 
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
-            Ready to transform
-            <br />
-            your teaching practice?
-          </h2>
-          <p className="text-xl text-white/70 max-w-2xl mx-auto mb-10">
-            Join thousands of music educators who've simplified their admin 
-            and reclaimed their time. Start your free trial today.
-          </p>
+              {/* Social Proof */}
+              <div className="flex items-center gap-4 mb-8">
+                <div className="flex -space-x-3">
+                  {["S", "E", "J", "M", "R"].map((letter, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, scale: 0 }}
+                      whileInView={{ opacity: 1, scale: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.3 + i * 0.1 }}
+                      className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-light to-teal border-2 border-ink flex items-center justify-center text-sm font-bold text-ink"
+                    >
+                      {letter}
+                    </motion.div>
+                  ))}
+                </div>
+                <div className="text-white/80">
+                  <span className="font-semibold text-white">2,000+</span> educators already on board
+                </div>
+              </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/signup">
+              {/* Guarantees */}
+              <div className="flex flex-wrap gap-4">
+                {guarantees.map((item, i) => (
+                  <motion.div
+                    key={item.text}
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.4 + i * 0.1 }}
+                    className="flex items-center gap-2 text-white/70"
+                  >
+                    <div className="w-5 h-5 rounded-full bg-teal/20 flex items-center justify-center">
+                      <Check className="w-3 h-3 text-teal-light" />
+                    </div>
+                    {item.text}
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Right Side - Form Card */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl p-8 lg:p-10">
+                <h3 className="text-2xl font-bold text-white mb-2">
+                  Start your free trial
+                </h3>
+                <p className="text-white/60 mb-6">
+                  No credit card required. Get started in 2 minutes.
+                </p>
+
+                {/* Quick Form */}
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Your name"
+                      className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-teal/50"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="email"
+                      placeholder="Email address"
+                      className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-teal/50"
+                    />
+                  </div>
+                </div>
+
+                <Link to="/signup" className="block">
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Button 
+                      size="xl" 
+                      className="w-full bg-gradient-to-r from-teal to-teal-dark text-white hover:from-teal-dark hover:to-teal font-bold shadow-xl h-14 text-lg"
+                    >
+                      Get Started Free
+                      <ChevronRight className="w-5 h-5 ml-1" />
+                    </Button>
+                  </motion.div>
+                </Link>
+
+                <p className="text-center text-white/40 text-sm mt-4">
+                  By signing up, you agree to our{" "}
+                  <a href="/terms" className="underline hover:text-white/60">Terms</a>
+                  {" "}and{" "}
+                  <a href="/privacy" className="underline hover:text-white/60">Privacy Policy</a>
+                </p>
+              </div>
+
+              {/* Floating Testimonial */}
               <motion.div
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.98 }}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.6 }}
+                className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/10"
               >
-                <Button 
-                  size="xl" 
-                  className="bg-white text-ink hover:bg-white/90 font-bold shadow-2xl shadow-black/20 px-10"
-                >
-                  Start Free Trial
-                  <ChevronRight className="w-5 h-5 ml-1" />
-                </Button>
+                <p className="text-white/70 text-sm italic mb-3">
+                  "Setup took less than 10 minutes. I had my first invoice sent within the hour."
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-coral to-coral-dark flex items-center justify-center text-white font-bold text-xs">
+                    ET
+                  </div>
+                  <div className="text-white/60 text-sm">
+                    Emma T. • Violin Teacher
+                  </div>
+                </div>
               </motion.div>
-            </Link>
-            <Link to="/contact">
-              <Button 
-                size="xl" 
-                variant="ghost" 
-                className="text-white hover:bg-white/10 font-medium"
-              >
-                Talk to Sales
-              </Button>
-            </Link>
+            </motion.div>
           </div>
-
-          <p className="mt-8 text-white/50 text-sm">
-            14-day free trial • No credit card required • Cancel anytime
-          </p>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
