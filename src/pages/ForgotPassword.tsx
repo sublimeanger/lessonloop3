@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { LogoHorizontal } from '@/components/brand/Logo';
 
 export default function ForgotPassword() {
   const { resetPassword } = useAuth();
@@ -44,8 +45,8 @@ export default function ForgotPassword() {
 
   if (emailSent) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-        <Card className="w-full max-w-md">
+      <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
+        <Card className="w-full max-w-md shadow-elevated">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-success/10">
               <CheckCircle2 className="h-6 w-6 text-success" />
@@ -75,11 +76,11 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
+      <Card className="w-full max-w-md shadow-elevated">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <span className="text-xl font-bold text-primary-foreground">L</span>
+          <div className="mx-auto mb-4">
+            <LogoHorizontal size="lg" />
           </div>
           <CardTitle className="text-2xl">Reset your password</CardTitle>
           <CardDescription>
@@ -102,7 +103,7 @@ export default function ForgotPassword() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full gradient-accent shadow-glow-teal hover:opacity-90 transition-opacity" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
