@@ -49,6 +49,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Practice from "./pages/Practice";
 import Resources from "./pages/Resources";
+import DailyRegister from "./pages/DailyRegister";
 
 // Portal Pages
 import PortalHome from "./pages/portal/PortalHome";
@@ -116,6 +117,11 @@ const App = () => (
               
               {/* Protected app routes */}
               <Route path="/dashboard" element={<RouteGuard><Dashboard /></RouteGuard>} />
+              <Route path="/register" element={
+                <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
+                  <DailyRegister />
+                </RouteGuard>
+              } />
               <Route path="/calendar" element={
                 <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
                   <CalendarPage />
