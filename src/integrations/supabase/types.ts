@@ -1327,6 +1327,136 @@ export type Database = {
           },
         ]
       }
+      practice_assignments: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          org_id: string
+          start_date: string
+          status: string
+          student_id: string
+          target_days_per_week: number | null
+          target_minutes_per_day: number | null
+          teacher_user_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          org_id: string
+          start_date?: string
+          status?: string
+          student_id: string
+          target_days_per_week?: number | null
+          target_minutes_per_day?: number | null
+          teacher_user_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          org_id?: string
+          start_date?: string
+          status?: string
+          student_id?: string
+          target_days_per_week?: number | null
+          target_minutes_per_day?: number | null
+          teacher_user_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_assignments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_assignments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      practice_logs: {
+        Row: {
+          assignment_id: string | null
+          created_at: string
+          duration_minutes: number
+          id: string
+          logged_by_user_id: string
+          notes: string | null
+          org_id: string
+          practice_date: string
+          reviewed_at: string | null
+          reviewed_by_user_id: string | null
+          student_id: string
+          teacher_feedback: string | null
+        }
+        Insert: {
+          assignment_id?: string | null
+          created_at?: string
+          duration_minutes: number
+          id?: string
+          logged_by_user_id: string
+          notes?: string | null
+          org_id: string
+          practice_date?: string
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          student_id: string
+          teacher_feedback?: string | null
+        }
+        Update: {
+          assignment_id?: string | null
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          logged_by_user_id?: string
+          notes?: string | null
+          org_id?: string
+          practice_date?: string
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          student_id?: string
+          teacher_feedback?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_logs_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "practice_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_logs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_logs_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

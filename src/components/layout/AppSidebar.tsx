@@ -11,6 +11,7 @@ import {
   Home,
   CreditCard,
   LogOut,
+  Music,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
@@ -41,6 +42,7 @@ const ownerAdminNav: NavItem[] = [
   { title: 'Students', url: '/students', icon: Users },
   { title: 'Teachers', url: '/teachers', icon: GraduationCap },
   { title: 'Locations', url: '/locations', icon: MapPin },
+  { title: 'Practice', url: '/practice', icon: Music },
   { title: 'Invoices', url: '/invoices', icon: Receipt },
   { title: 'Reports', url: '/reports', icon: BarChart3 },
   { title: 'Messages', url: '/messages', icon: MessageSquare },
@@ -59,6 +61,7 @@ const teacherNav: NavItem[] = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'My Calendar', url: '/calendar', icon: Calendar },
   { title: 'My Students', url: '/students', icon: Users },
+  { title: 'Practice', url: '/practice', icon: Music },
   { title: 'Messages', url: '/messages', icon: MessageSquare },
   { title: 'Settings', url: '/settings', icon: Settings },
 ];
