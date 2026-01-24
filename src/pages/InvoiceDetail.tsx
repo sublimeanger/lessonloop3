@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
+import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2, Loader2, Gift } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useInvoice, useUpdateInvoiceStatus } from '@/hooks/useInvoices';
 import { useStripePayment } from '@/hooks/useStripePayment';
@@ -292,6 +292,15 @@ export default function InvoiceDetail() {
                           VAT ({invoice.vat_rate}%)
                         </span>
                         <span>{formatCurrencyMinor(invoice.tax_minor, currency)}</span>
+                      </div>
+                    )}
+                    {invoice.credit_applied_minor > 0 && (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span className="flex items-center gap-1">
+                          <Gift className="h-3 w-3" />
+                          Make-Up Credit
+                        </span>
+                        <span>-{formatCurrencyMinor(invoice.credit_applied_minor, currency)}</span>
                       </div>
                     )}
                     <Separator />
