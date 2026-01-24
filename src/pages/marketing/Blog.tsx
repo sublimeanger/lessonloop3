@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
-import { Calendar, ArrowRight } from "lucide-react";
+import { Calendar } from "lucide-react";
 
 const blogPosts = [
   {
@@ -98,7 +97,7 @@ export default function Blog() {
                 transition={{ delay: index * 0.1, duration: 0.5 }}
                 className="group"
               >
-                <Link to="#" className="block">
+              <div className="block cursor-default">
                   <div className="rounded-2xl border border-border bg-card overflow-hidden hover:border-primary/30 hover:shadow-xl transition-all duration-300">
                     {/* Image Placeholder */}
                     <div className={`aspect-video bg-gradient-to-br ${post.image} relative`}>
@@ -127,14 +126,13 @@ export default function Blog() {
 
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">{post.date}</span>
-                        <span className="flex items-center gap-1 text-sm font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                          Read more
-                          <ArrowRight className="w-4 h-4" />
+                        <span className="px-2 py-1 rounded-full bg-muted text-xs text-muted-foreground">
+                          Coming soon
                         </span>
+                      </div>
                       </div>
                     </div>
                   </div>
-                </Link>
               </motion.article>
             ))}
           </div>

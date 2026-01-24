@@ -8,7 +8,7 @@ const tiers = [
   {
     name: "Solo",
     description: "For independent teachers",
-    price: "£12",
+    price: "£15",
     popular: false,
   },
   {
@@ -18,30 +18,32 @@ const tiers = [
     popular: true,
   },
   {
-    name: "Enterprise",
-    description: "For large organizations",
-    price: "Custom",
+    name: "Agency",
+    description: "For teaching agencies",
+    price: "£99",
     popular: false,
   },
 ];
 
 const features = [
-  { name: "Unlimited students", solo: true, academy: true, enterprise: true },
-  { name: "Drag & drop calendar", solo: true, academy: true, enterprise: true },
-  { name: "Invoice generation", solo: true, academy: true, enterprise: true },
-  { name: "Parent portal", solo: true, academy: true, enterprise: true },
-  { name: "Online payments", solo: true, academy: true, enterprise: true },
-  { name: "Practice tracking", solo: true, academy: true, enterprise: true },
-  { name: "LoopAssist AI", solo: "Basic", academy: true, enterprise: true },
-  { name: "Multiple teachers", solo: false, academy: true, enterprise: true },
-  { name: "Multi-location", solo: false, academy: true, enterprise: true },
-  { name: "Team permissions", solo: false, academy: true, enterprise: true },
-  { name: "Payroll reports", solo: false, academy: true, enterprise: true },
-  { name: "Resource library", solo: "Limited", academy: true, enterprise: true },
-  { name: "Custom branding", solo: false, academy: true, enterprise: true },
-  { name: "API access", solo: false, academy: false, enterprise: true },
-  { name: "Dedicated support", solo: false, academy: false, enterprise: true },
-  { name: "SSO / SAML", solo: false, academy: false, enterprise: true },
+  { name: "Up to 50 students", solo: true, academy: false, agency: false },
+  { name: "Unlimited students", solo: false, academy: true, agency: true },
+  { name: "Drag & drop calendar", solo: true, academy: true, agency: true },
+  { name: "Invoice generation", solo: true, academy: true, agency: true },
+  { name: "Parent portal", solo: true, academy: true, agency: true },
+  { name: "Online payments", solo: true, academy: true, agency: true },
+  { name: "Practice tracking", solo: true, academy: true, agency: true },
+  { name: "LoopAssist AI", solo: false, academy: true, agency: true },
+  { name: "Up to 10 teachers", solo: false, academy: true, agency: false },
+  { name: "Unlimited teachers", solo: false, academy: false, agency: true },
+  { name: "Multi-location", solo: false, academy: true, agency: true },
+  { name: "Team permissions", solo: false, academy: true, agency: true },
+  { name: "Payroll reports", solo: false, academy: true, agency: true },
+  { name: "Resource library", solo: false, academy: true, agency: true },
+  { name: "Custom branding", solo: false, academy: true, agency: true },
+  { name: "API access", solo: false, academy: false, agency: true },
+  { name: "Dedicated account manager", solo: false, academy: false, agency: true },
+  { name: "SSO / SAML", solo: false, academy: false, agency: true },
 ];
 
 function FeatureValue({ value }: { value: boolean | string }) {
@@ -136,7 +138,7 @@ export function FeatureComparison() {
                   <FeatureValue value={feature.academy} />
                 </div>
                 <div className="p-3 lg:p-4 flex items-center justify-center">
-                  <FeatureValue value={feature.enterprise} />
+                  <FeatureValue value={feature.agency} />
                 </div>
               </motion.div>
             ))}
@@ -173,7 +175,7 @@ export function FeatureComparison() {
                 {(showAllMobile ? features : features.slice(0, 8)).map((feature) => {
                   const value = tier.name === "Solo" ? feature.solo 
                     : tier.name === "Academy" ? feature.academy 
-                    : feature.enterprise;
+                    : feature.agency;
                   
                   return (
                     <div key={feature.name} className="flex items-center justify-between text-xs sm:text-sm py-1">

@@ -7,13 +7,11 @@ const footerLinks = {
   product: [
     { name: "Features", href: "/features" },
     { name: "Pricing", href: "/pricing" },
-    { name: "Documentation", href: "/docs" },
-    { name: "Changelog", href: "/blog" },
+    { name: "Blog", href: "/blog" },
   ],
   company: [
     { name: "About", href: "/about" },
     { name: "Blog", href: "/blog" },
-    { name: "Careers", href: "/about" },
     { name: "Contact", href: "/contact" },
   ],
   legal: [
@@ -23,10 +21,8 @@ const footerLinks = {
     { name: "GDPR", href: "/gdpr" },
   ],
   support: [
-    { name: "Help Centre", href: "/docs" },
-    { name: "Community", href: "/community" },
-    { name: "Status", href: "/status" },
-    { name: "API", href: "/docs" },
+    { name: "Help Centre", href: "/contact" },
+    { name: "Contact Us", href: "/contact" },
   ],
 };
 
