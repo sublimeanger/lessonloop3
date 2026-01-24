@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Check, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
+import { useState } from "react";
 
 const tiers = [
   {
@@ -45,31 +46,33 @@ const features = [
 
 function FeatureValue({ value }: { value: boolean | string }) {
   if (value === true) {
-    return <Check className="w-5 h-5 text-success mx-auto" />;
+    return <Check className="w-4 h-4 lg:w-5 lg:h-5 text-success mx-auto" />;
   }
   if (value === false) {
-    return <Minus className="w-5 h-5 text-muted-foreground/50 mx-auto" />;
+    return <Minus className="w-4 h-4 lg:w-5 lg:h-5 text-muted-foreground/50 mx-auto" />;
   }
-  return <span className="text-sm text-muted-foreground">{value}</span>;
+  return <span className="text-xs lg:text-sm text-muted-foreground">{value}</span>;
 }
 
 export function FeatureComparison() {
+  const [showAllMobile, setShowAllMobile] = useState(false);
+
   return (
-    <section className="py-24 lg:py-32 bg-background">
-      <div className="container mx-auto px-6 lg:px-8">
+    <section className="py-16 lg:py-32 bg-background">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-16"
+          className="text-center mb-10 lg:mb-16"
         >
-          <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
+          <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs lg:text-sm font-semibold mb-4">
             Compare Plans
           </span>
-          <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-4">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-foreground mb-3 lg:mb-4">
             Choose your plan
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-sm lg:text-lg text-muted-foreground max-w-2xl mx-auto">
             Start with a 14-day free trial. No credit card required.
           </p>
         </motion.div>
@@ -82,29 +85,29 @@ export function FeatureComparison() {
           className="hidden lg:block"
         >
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
-            {/* Header */}
-            <div className="grid grid-cols-4 border-b border-border">
-              <div className="p-6">
+            {/* Header - Sticky */}
+            <div className="grid grid-cols-4 border-b border-border sticky top-0 bg-card z-10">
+              <div className="p-4 lg:p-6">
                 <p className="text-sm text-muted-foreground">Features</p>
               </div>
               {tiers.map((tier) => (
                 <div
                   key={tier.name}
                   className={cn(
-                    "p-6 text-center",
+                    "p-4 lg:p-6 text-center",
                     tier.popular && "bg-primary/5"
                   )}
                 >
                   {tier.popular && (
-                    <span className="inline-block px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-medium mb-3">
+                    <span className="inline-block px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-medium mb-2 lg:mb-3">
                       Most Popular
                     </span>
                   )}
-                  <h3 className="text-xl font-bold text-foreground">{tier.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-2">{tier.description}</p>
-                  <p className="text-3xl font-bold text-foreground">
+                  <h3 className="text-lg lg:text-xl font-bold text-foreground">{tier.name}</h3>
+                  <p className="text-xs lg:text-sm text-muted-foreground mb-2">{tier.description}</p>
+                  <p className="text-2xl lg:text-3xl font-bold text-foreground">
                     {tier.price}
-                    {tier.price !== "Custom" && <span className="text-sm text-muted-foreground">/mo</span>}
+                    {tier.price !== "Custom" && <span className="text-xs lg:text-sm text-muted-foreground">/mo</span>}
                   </p>
                 </div>
               ))}
@@ -117,22 +120,22 @@ export function FeatureComparison() {
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
-                transition={{ delay: index * 0.02 }}
+                transition={{ delay: Math.min(index * 0.02, 0.3) }}
                 className={cn(
                   "grid grid-cols-4 border-b border-border last:border-0",
                   index % 2 === 0 && "bg-muted/30"
                 )}
               >
-                <div className="p-4 flex items-center">
-                  <span className="text-sm text-foreground">{feature.name}</span>
+                <div className="p-3 lg:p-4 flex items-center">
+                  <span className="text-xs lg:text-sm text-foreground">{feature.name}</span>
                 </div>
-                <div className="p-4 flex items-center justify-center">
+                <div className="p-3 lg:p-4 flex items-center justify-center">
                   <FeatureValue value={feature.solo} />
                 </div>
-                <div className={cn("p-4 flex items-center justify-center", "bg-primary/5")}>
+                <div className={cn("p-3 lg:p-4 flex items-center justify-center", "bg-primary/5")}>
                   <FeatureValue value={feature.academy} />
                 </div>
-                <div className="p-4 flex items-center justify-center">
+                <div className="p-3 lg:p-4 flex items-center justify-center">
                   <FeatureValue value={feature.enterprise} />
                 </div>
               </motion.div>
@@ -141,7 +144,7 @@ export function FeatureComparison() {
         </motion.div>
 
         {/* Mobile cards */}
-        <div className="lg:hidden space-y-6">
+        <div className="lg:hidden space-y-4">
           {tiers.map((tier, tierIndex) => (
             <motion.div
               key={tier.name}
@@ -150,8 +153,8 @@ export function FeatureComparison() {
               viewport={{ once: true }}
               transition={{ delay: tierIndex * 0.1 }}
               className={cn(
-                "bg-card border rounded-2xl p-6",
-                tier.popular ? "border-primary" : "border-border"
+                "bg-card border rounded-xl p-4 sm:p-5",
+                tier.popular ? "border-primary ring-1 ring-primary/20" : "border-border"
               )}
             >
               {tier.popular && (
@@ -159,29 +162,47 @@ export function FeatureComparison() {
                   Most Popular
                 </span>
               )}
-              <h3 className="text-xl font-bold text-foreground">{tier.name}</h3>
-              <p className="text-sm text-muted-foreground mb-2">{tier.description}</p>
-              <p className="text-3xl font-bold text-foreground mb-6">
+              <h3 className="text-lg font-bold text-foreground">{tier.name}</h3>
+              <p className="text-xs text-muted-foreground mb-2">{tier.description}</p>
+              <p className="text-2xl font-bold text-foreground mb-4">
                 {tier.price}
-                {tier.price !== "Custom" && <span className="text-sm text-muted-foreground">/mo</span>}
+                {tier.price !== "Custom" && <span className="text-xs text-muted-foreground">/mo</span>}
               </p>
 
-              <div className="space-y-3">
-                {features.slice(0, 8).map((feature) => {
+              <div className="space-y-2">
+                {(showAllMobile ? features : features.slice(0, 8)).map((feature) => {
                   const value = tier.name === "Solo" ? feature.solo 
                     : tier.name === "Academy" ? feature.academy 
                     : feature.enterprise;
                   
                   return (
-                    <div key={feature.name} className="flex items-center justify-between text-sm">
+                    <div key={feature.name} className="flex items-center justify-between text-xs sm:text-sm py-1">
                       <span className="text-muted-foreground">{feature.name}</span>
                       <FeatureValue value={value} />
                     </div>
                   );
                 })}
               </div>
+
+              {!showAllMobile && features.length > 8 && (
+                <button
+                  onClick={() => setShowAllMobile(true)}
+                  className="w-full mt-4 py-2 text-xs text-primary font-medium hover:underline"
+                >
+                  Show all {features.length} features
+                </button>
+              )}
             </motion.div>
           ))}
+          
+          {showAllMobile && (
+            <button
+              onClick={() => setShowAllMobile(false)}
+              className="w-full py-2 text-xs text-muted-foreground font-medium hover:underline"
+            >
+              Show less
+            </button>
+          )}
         </div>
 
         {/* CTA */}
@@ -189,11 +210,11 @@ export function FeatureComparison() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mt-12"
+          className="text-center mt-8 lg:mt-12"
         >
           <Link
             to="/pricing"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 lg:px-6 lg:py-3 rounded-xl bg-primary text-primary-foreground text-sm lg:text-base font-medium hover:bg-primary/90 transition-colors"
           >
             View full pricing details
           </Link>
