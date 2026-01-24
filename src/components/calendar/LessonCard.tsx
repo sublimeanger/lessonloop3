@@ -2,7 +2,8 @@ import { format, differenceInMinutes, isSameDay, parseISO } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Clock, MapPin, User } from 'lucide-react';
+import { Clock, MapPin, User, Repeat } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface LessonCardProps {
   lesson: LessonWithDetails;
@@ -14,6 +15,7 @@ export function LessonCard({ lesson, onClick, variant = 'calendar' }: LessonCard
   const startTime = parseISO(lesson.start_at);
   const endTime = parseISO(lesson.end_at);
   const duration = differenceInMinutes(endTime, startTime);
+  const isRecurring = !!lesson.recurrence_id;
   
   const statusColors = {
     scheduled: 'bg-primary/10 border-primary/30 hover:bg-primary/20',
@@ -44,6 +46,14 @@ export function LessonCard({ lesson, onClick, variant = 'calendar' }: LessonCard
             <Badge variant="outline" className="text-xs capitalize">
               {lesson.lesson_type}
             </Badge>
+            {isRecurring && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Repeat className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                </TooltipTrigger>
+                <TooltipContent>Recurring series</TooltipContent>
+              </Tooltip>
+            )}
           </div>
           <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
             {lesson.teacher && (
@@ -86,7 +96,10 @@ export function LessonCard({ lesson, onClick, variant = 'calendar' }: LessonCard
         // Height and position will be calculated by parent grid
       }}
     >
-      <div className="font-medium truncate">{lesson.title}</div>
+      <div className="flex items-center gap-1 font-medium truncate">
+        {isRecurring && <Repeat className="h-3 w-3 flex-shrink-0" />}
+        <span className="truncate">{lesson.title}</span>
+      </div>
       {duration >= 30 && (
         <div className="text-muted-foreground truncate">
           {format(startTime, 'HH:mm')} - {format(endTime, 'HH:mm')}
