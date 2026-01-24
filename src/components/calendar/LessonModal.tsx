@@ -23,6 +23,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CalendarIcon, Check, Loader2, AlertCircle, AlertTriangle, X, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RecurringEditDialog, RecurringEditMode } from './RecurringEditDialog';
 
 interface LessonModalProps {
   open: boolean;
@@ -54,6 +55,10 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   const [isCheckingConflicts, setIsCheckingConflicts] = useState(false);
   const [conflicts, setConflicts] = useState<ConflictResult[]>([]);
   const [studentsOpen, setStudentsOpen] = useState(false);
+  
+  // Recurring edit state
+  const [showRecurringDialog, setShowRecurringDialog] = useState(false);
+  const [recurringEditMode, setRecurringEditMode] = useState<RecurringEditMode | null>(null);
 
   // Form state
   const [lessonType, setLessonType] = useState<LessonType>('private');
@@ -114,6 +119,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       }
     }
     setConflicts([]);
+    setRecurringEditMode(null);
   }, [open, lesson, initialDate, initialEndDate, user?.id]);
 
   // Auto-select teacher if only one
@@ -184,7 +190,33 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     }
   };
 
+  // Handle save click - check if we need to show recurring dialog first
+  const handleSaveClick = () => {
+    // If editing a recurring lesson and haven't chosen a mode yet, show dialog
+    if (lesson?.recurrence_id && !recurringEditMode) {
+      setShowRecurringDialog(true);
+      return;
+    }
+    handleSave();
+  };
+
+  // Handle recurring edit mode selection
+  const handleRecurringModeSelect = (mode: RecurringEditMode) => {
+    setRecurringEditMode(mode);
+    setShowRecurringDialog(false);
+    // Proceed with save after mode selection
+    handleSaveWithMode(mode);
+  };
+
   const handleSave = async () => {
+    if (lesson?.recurrence_id && recurringEditMode) {
+      handleSaveWithMode(recurringEditMode);
+    } else {
+      handleSaveWithMode(null);
+    }
+  };
+
+  const handleSaveWithMode = async (editMode: RecurringEditMode | null) => {
     if (!currentOrg || !user) return;
 
     // Validate
@@ -216,39 +248,103 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       const endAt = addMinutes(startAt, durationMins);
 
       if (lesson) {
-        // Update existing lesson
-        const { error } = await supabase
-          .from('lessons')
-          .update({
-            lesson_type: lessonType,
-            teacher_user_id: teacherUserId,
-            location_id: locationId,
-            room_id: roomId,
-            start_at: startAt.toISOString(),
-            end_at: endAt.toISOString(),
-            title: generateTitle(),
-            notes_private: notesPrivate || null,
-            notes_shared: notesShared || null,
-            status,
-          })
-          .eq('id', lesson.id);
-
-        if (error) throw error;
-
-        // Update participants
-        await supabase.from('lesson_participants').delete().eq('lesson_id', lesson.id);
+        // Determine which lessons to update based on edit mode
+        let lessonIdsToUpdate: string[] = [lesson.id];
         
-        if (selectedStudents.length > 0) {
-          await supabase.from('lesson_participants').insert(
-            selectedStudents.map(studentId => ({
-              org_id: currentOrg.id,
-              lesson_id: lesson.id,
-              student_id: studentId,
-            }))
-          );
+        if (editMode === 'this_and_future' && lesson.recurrence_id) {
+          // Get all future lessons in the same series
+          const { data: futureLessons } = await supabase
+            .from('lessons')
+            .select('id, start_at')
+            .eq('recurrence_id', lesson.recurrence_id)
+            .gte('start_at', lesson.start_at)
+            .order('start_at', { ascending: true });
+          
+          if (futureLessons) {
+            lessonIdsToUpdate = futureLessons.map(l => l.id);
+          }
         }
 
-        // Send notification if shared notes were added or changed
+        // Calculate time offset for future lessons (preserving relative time of day)
+        const originalStart = parseISO(lesson.start_at);
+        const originalHour = originalStart.getHours();
+        const originalMinute = originalStart.getMinutes();
+        const [newHour, newMinute] = startTime.split(':').map(Number);
+        const timeOffsetMs = ((newHour - originalHour) * 60 + (newMinute - originalMinute)) * 60 * 1000;
+        const originalDuration = parseISO(lesson.end_at).getTime() - originalStart.getTime();
+        const newDuration = durationMins * 60 * 1000;
+        const durationDiff = newDuration - originalDuration;
+
+        // Update each lesson
+        for (let i = 0; i < lessonIdsToUpdate.length; i++) {
+          const lessonId = lessonIdsToUpdate[i];
+          
+          if (editMode === 'this_and_future' && i > 0) {
+            // For future lessons, only update non-time fields and adjust time relatively
+            // First get the current lesson data
+            const { data: currentLesson } = await supabase
+              .from('lessons')
+              .select('start_at, end_at')
+              .eq('id', lessonId)
+              .single();
+            
+            if (currentLesson) {
+              const currentStart = parseISO(currentLesson.start_at);
+              const newStart = new Date(currentStart.getTime() + timeOffsetMs);
+              const newEnd = new Date(newStart.getTime() + durationMins * 60 * 1000);
+              
+              await supabase
+                .from('lessons')
+                .update({
+                  lesson_type: lessonType,
+                  teacher_user_id: teacherUserId,
+                  location_id: locationId,
+                  room_id: roomId,
+                  start_at: newStart.toISOString(),
+                  end_at: newEnd.toISOString(),
+                  title: generateTitle(),
+                  // Keep individual notes for future lessons
+                })
+                .eq('id', lessonId);
+            }
+          } else {
+            // For the current lesson (or single edit), update everything
+            const { error } = await supabase
+              .from('lessons')
+              .update({
+                lesson_type: lessonType,
+                teacher_user_id: teacherUserId,
+                location_id: locationId,
+                room_id: roomId,
+                start_at: startAt.toISOString(),
+                end_at: endAt.toISOString(),
+                title: generateTitle(),
+                notes_private: notesPrivate || null,
+                notes_shared: notesShared || null,
+                status,
+                // Detach from series if editing this only
+                recurrence_id: editMode === 'this_only' ? null : lesson.recurrence_id,
+              })
+              .eq('id', lessonId);
+
+            if (error) throw error;
+          }
+
+          // Update participants for each lesson
+          await supabase.from('lesson_participants').delete().eq('lesson_id', lessonId);
+          
+          if (selectedStudents.length > 0) {
+            await supabase.from('lesson_participants').insert(
+              selectedStudents.map(studentId => ({
+                org_id: currentOrg.id,
+                lesson_id: lessonId,
+                student_id: studentId,
+              }))
+            );
+          }
+        }
+
+        // Send notification if shared notes were added or changed (only for the main lesson)
         const notesChanged = notesShared && notesShared !== (lesson.notes_shared || '');
         if (notesChanged && currentOrg) {
           const teacherProfile = teachers.find(t => t.id === teacherUserId);
@@ -263,7 +359,12 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
           });
         }
 
-        toast({ title: 'Lesson updated' });
+        const updatedCount = lessonIdsToUpdate.length;
+        toast({ 
+          title: updatedCount > 1 
+            ? `${updatedCount} lessons updated` 
+            : 'Lesson updated' 
+        });
       } else {
         // Create new lesson(s)
         const lessonsToCreate: Date[] = [startAt];
@@ -691,12 +792,19 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave} disabled={isSaving || errors.length > 0}>
+          <Button onClick={handleSaveClick} disabled={isSaving || errors.length > 0}>
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             {lesson ? 'Save Changes' : 'Create Lesson'}
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Recurring Edit Choice Dialog */}
+      <RecurringEditDialog
+        open={showRecurringDialog}
+        onClose={() => setShowRecurringDialog(false)}
+        onSelect={handleRecurringModeSelect}
+      />
     </Dialog>
   );
 }
