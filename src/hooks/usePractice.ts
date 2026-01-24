@@ -341,6 +341,10 @@ export function useLogPractice() {
       queryClient.invalidateQueries({ queryKey: ['practice-logs'] });
       queryClient.invalidateQueries({ queryKey: ['parent-practice-logs'] });
       queryClient.invalidateQueries({ queryKey: ['weekly-progress'] });
+      // Invalidate streak queries so badges update immediately
+      queryClient.invalidateQueries({ queryKey: ['practice-streak'] });
+      queryClient.invalidateQueries({ queryKey: ['practice-streaks'] });
+      queryClient.invalidateQueries({ queryKey: ['children-streaks'] });
     },
   });
 }

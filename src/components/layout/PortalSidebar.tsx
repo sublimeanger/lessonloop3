@@ -5,6 +5,7 @@ import {
   MessageSquare,
   LogOut,
   Music,
+  FolderOpen,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +29,7 @@ const portalNav = [
   { title: 'Home', url: '/portal/home', icon: Home },
   { title: 'Schedule', url: '/portal/schedule', icon: Calendar },
   { title: 'Practice', url: '/portal/practice', icon: Music },
+  { title: 'Resources', url: '/portal/resources', icon: FolderOpen },
   { title: 'Invoices & Payments', url: '/portal/invoices', icon: CreditCard },
   { title: 'Messages', url: '/portal/messages', icon: MessageSquare },
 ];
