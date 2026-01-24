@@ -14,11 +14,16 @@ import Pricing from "./pages/marketing/Pricing";
 import About from "./pages/marketing/About";
 import Blog from "./pages/marketing/Blog";
 import Contact from "./pages/marketing/Contact";
+import Privacy from "./pages/marketing/Privacy";
+import Terms from "./pages/marketing/Terms";
+import GDPR from "./pages/marketing/GDPR";
+import Cookies from "./pages/marketing/Cookies";
 
 // Auth Pages
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Onboarding from "./pages/Onboarding";
 import AcceptInvite from "./pages/AcceptInvite";
 
@@ -214,6 +219,11 @@ const App = () => (
               <Route path="/about" element={<About />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/gdpr" element={<GDPR />} />
+              <Route path="/cookies" element={<Cookies />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               
               {/* 404 */}
               <Route path="*" element={<NotFound />} />

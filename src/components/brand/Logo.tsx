@@ -1,3 +1,4 @@
+import React, { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
 interface LogoProps {
@@ -42,17 +43,21 @@ export function LogoHorizontal({ className, size = 'md' }: LogoProps) {
   );
 }
 
-// Simple text wordmark (no icon)
-export function LogoWordmark({ className, variant = 'default' }: Omit<LogoProps, 'size'>) {
-  const textColor = variant === 'white' ? 'text-white' : 'text-ink';
-  const accentColor = variant === 'white' ? 'text-white/90' : 'text-teal';
-  
-  return (
-    <span className={cn('text-xl font-semibold tracking-tight', className)}>
-      <span className={textColor}>Lesson</span>
-      <span className={accentColor}>Loop</span>
-    </span>
-  );
-}
+// Simple text wordmark (no icon) - forwardRef for framer-motion compatibility
+export const LogoWordmark = forwardRef<HTMLSpanElement, Omit<LogoProps, 'size'>>(
+  ({ className, variant = 'default' }, ref) => {
+    const textColor = variant === 'white' ? 'text-white' : 'text-ink';
+    const accentColor = variant === 'white' ? 'text-white/90' : 'text-teal';
+    
+    return (
+      <span ref={ref} className={cn('text-xl font-semibold tracking-tight', className)}>
+        <span className={textColor}>Lesson</span>
+        <span className={accentColor}>Loop</span>
+      </span>
+    );
+  }
+);
+
+LogoWordmark.displayName = 'LogoWordmark';
 
 export default Logo;
