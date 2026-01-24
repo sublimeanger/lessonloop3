@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { CheckCircle2, Loader2, User, Users, Building, Building2, Clock, PoundSterling, MapPin, UserPlus } from 'lucide-react';
+import { LogoHorizontal } from '@/components/brand/Logo';
 
 type BillingApproach = 'monthly' | 'termly' | 'custom';
 type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
@@ -334,21 +335,26 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-muted/30 p-4">
+    <div className="flex min-h-screen flex-col gradient-hero-light p-4">
       <div className="mx-auto w-full max-w-2xl pt-8">
+        {/* Logo */}
+        <div className="flex justify-center mb-6">
+          <LogoHorizontal size="lg" />
+        </div>
+        
         {/* Progress */}
         <div className="mb-8 flex justify-center gap-1">
           {steps.map((step) => (
             <div
               key={step.id}
               className={`h-2 flex-1 max-w-16 rounded-full transition-colors ${
-                step.id <= currentStep ? 'bg-primary' : 'bg-muted'
+                step.id <= currentStep ? 'gradient-accent' : 'bg-muted'
               }`}
             />
           ))}
         </div>
 
-        <Card>
+        <Card className="shadow-elevated">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">{steps[currentStep - 1]?.title}</CardTitle>
             <CardDescription>{steps[currentStep - 1]?.description}</CardDescription>

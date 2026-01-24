@@ -3,6 +3,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Sparkles, ChevronDown, Building2, Check } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
+import { Logo, LogoWordmark } from '@/components/brand/Logo';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,10 +23,8 @@ export function Header() {
       <div className="flex items-center gap-3">
         <SidebarTrigger className="md:hidden" />
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <span className="text-sm font-bold text-primary-foreground">L</span>
-          </div>
-          <span className="text-lg font-semibold tracking-tight">LessonLoop</span>
+          <Logo size="sm" />
+          <LogoWordmark className="hidden sm:inline-flex" />
         </div>
         
         {/* Org Selector */}
@@ -71,7 +70,7 @@ export function Header() {
         )}
       </div>
       
-      <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsOpen(true)}>
+      <Button variant="outline" size="sm" className="gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary" onClick={() => setIsOpen(true)}>
         <Sparkles className="h-4 w-4" />
         <span className="hidden sm:inline">LoopAssist</span>
       </Button>
