@@ -1,0 +1,394 @@
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
+import { 
+  Sparkles, CreditCard, Clock, Check, ArrowRight, 
+  Users, GraduationCap, Loader2, ExternalLink, AlertTriangle
+} from 'lucide-react';
+import { useSubscription } from '@/hooks/useSubscription';
+import { useSubscriptionCheckout, BillingInterval } from '@/hooks/useSubscriptionCheckout';
+import { PLAN_NAMES } from '@/hooks/useFeatureGate';
+import { useOrg } from '@/contexts/OrgContext';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+
+interface PlanCardProps {
+  plan: 'solo_teacher' | 'academy' | 'agency';
+  name: string;
+  price: { monthly: number; yearly: number };
+  features: string[];
+  limits: { students: number; teachers: number };
+  isCurrentPlan: boolean;
+  isPopular?: boolean;
+  billingInterval: BillingInterval;
+  onSelect: () => void;
+  isLoading: boolean;
+}
+
+function PlanCard({ 
+  plan, 
+  name, 
+  price, 
+  features, 
+  limits,
+  isCurrentPlan, 
+  isPopular,
+  billingInterval,
+  onSelect,
+  isLoading
+}: PlanCardProps) {
+  const currentPrice = billingInterval === 'yearly' 
+    ? Math.round(price.yearly / 12) 
+    : price.monthly;
+  const yearlyDiscount = Math.round((1 - (price.yearly / (price.monthly * 12))) * 100);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="relative"
+    >
+      {isPopular && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+          <Badge className="bg-primary text-primary-foreground shadow-lg">
+            Most Popular
+          </Badge>
+        </div>
+      )}
+      <Card className={cn(
+        'relative overflow-hidden transition-all',
+        isPopular && 'border-primary shadow-lg ring-2 ring-primary/20',
+        isCurrentPlan && 'border-emerald-500/50 bg-emerald-50/50 dark:bg-emerald-950/20'
+      )}>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl">{name}</CardTitle>
+            {isCurrentPlan && (
+              <Badge variant="outline" className="border-emerald-500 text-emerald-600">
+                Current Plan
+              </Badge>
+            )}
+          </div>
+          <div className="mt-4">
+            <div className="flex items-baseline gap-1">
+              <span className="text-4xl font-bold">£{currentPrice}</span>
+              <span className="text-muted-foreground">/month</span>
+            </div>
+            {billingInterval === 'yearly' && yearlyDiscount > 0 && (
+              <p className="text-sm text-emerald-600 mt-1">
+                Save {yearlyDiscount}% with annual billing
+              </p>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-4 text-sm">
+            <div className="flex items-center gap-1.5">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <span>{limits.students === 9999 ? 'Unlimited' : limits.students} students</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <GraduationCap className="h-4 w-4 text-muted-foreground" />
+              <span>{limits.teachers === 9999 ? 'Unlimited' : limits.teachers} teachers</span>
+            </div>
+          </div>
+          
+          <Separator />
+          
+          <ul className="space-y-2">
+            {features.map((feature, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm">
+                <Check className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
+
+          <Button 
+            onClick={onSelect}
+            disabled={isCurrentPlan || isLoading}
+            className="w-full mt-4"
+            variant={isPopular ? 'default' : 'outline'}
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : isCurrentPlan ? (
+              'Current Plan'
+            ) : (
+              <>
+                {isPopular ? 'Upgrade Now' : 'Select Plan'}
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+const PLANS = {
+  solo_teacher: {
+    name: 'Solo Teacher',
+    price: { monthly: 19, yearly: 190 },
+    features: [
+      'Calendar & scheduling',
+      'Student management',
+      'Invoice generation',
+      'Parent portal',
+      'Practice tracking',
+      'LoopAssist AI',
+      'Email support',
+    ],
+    limits: { students: 30, teachers: 1 },
+  },
+  academy: {
+    name: 'Academy',
+    price: { monthly: 49, yearly: 490 },
+    features: [
+      'Everything in Solo Teacher',
+      'Multi-teacher support',
+      'Multi-location management',
+      'Team scheduling',
+      'Payroll reports',
+      'Bulk billing runs',
+      'Custom branding',
+      'Priority support',
+    ],
+    limits: { students: 150, teachers: 10 },
+    isPopular: true,
+  },
+  agency: {
+    name: 'Agency',
+    price: { monthly: 99, yearly: 990 },
+    features: [
+      'Everything in Academy',
+      'Unlimited students & teachers',
+      'API access',
+      'Advanced analytics',
+      'Dedicated account manager',
+      'Custom integrations',
+      'SLA guarantee',
+    ],
+    limits: { students: 9999, teachers: 9999 },
+  },
+};
+
+export function BillingTab() {
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>('monthly');
+  const { 
+    plan, 
+    status, 
+    isTrialing, 
+    trialEndsAt, 
+    trialDaysRemaining,
+    isTrialExpired,
+    isPastDue,
+    limits,
+    stripeSubscriptionId
+  } = useSubscription();
+  const { initiateSubscription, openCustomerPortal, isLoading } = useSubscriptionCheckout();
+  const { isOrgOwner, isOrgAdmin } = useOrg();
+
+  const canManageBilling = isOrgOwner || isOrgAdmin;
+  const hasActiveSubscription = stripeSubscriptionId && status === 'active';
+
+  return (
+    <div className="space-y-8">
+      {/* Current Status Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                Subscription Status
+              </CardTitle>
+              <CardDescription>
+                Manage your LessonLoop subscription
+              </CardDescription>
+            </div>
+            {hasActiveSubscription && canManageBilling && (
+              <Button 
+                variant="outline" 
+                onClick={openCustomerPortal}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <CreditCard className="h-4 w-4 mr-2" />
+                )}
+                Manage Billing
+                <ExternalLink className="h-3 w-3 ml-2" />
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+            <div className="flex items-center gap-4">
+              <div className={cn(
+                'flex h-12 w-12 items-center justify-center rounded-xl',
+                isTrialing ? 'bg-primary/10' : 
+                isPastDue ? 'bg-destructive/10' : 
+                'bg-emerald-500/10'
+              )}>
+                {isTrialing ? (
+                  <Clock className="h-6 w-6 text-primary" />
+                ) : isPastDue ? (
+                  <AlertTriangle className="h-6 w-6 text-destructive" />
+                ) : (
+                  <Sparkles className="h-6 w-6 text-emerald-500" />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-lg">{PLAN_NAMES[plan]}</h3>
+                  <Badge variant={
+                    status === 'active' ? 'default' :
+                    status === 'trialing' ? 'secondary' :
+                    status === 'past_due' ? 'destructive' : 'outline'
+                  }>
+                    {status === 'active' ? 'Active' :
+                     status === 'trialing' ? 'Trial' :
+                     status === 'past_due' ? 'Past Due' :
+                     status === 'cancelled' ? 'Cancelled' : status}
+                  </Badge>
+                </div>
+                {isTrialing && trialEndsAt && (
+                  <p className="text-sm text-muted-foreground">
+                    Trial ends {format(trialEndsAt, 'dd MMM yyyy')} ({trialDaysRemaining} days remaining)
+                  </p>
+                )}
+                {isPastDue && (
+                  <p className="text-sm text-destructive">
+                    Please update your payment method to continue using LessonLoop
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Usage Stats */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="p-4 rounded-lg border">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-muted-foreground">Students</span>
+                <span className="text-sm font-medium">
+                  {limits.maxStudents === 9999 ? 'Unlimited' : `0 / ${limits.maxStudents}`}
+                </span>
+              </div>
+              {limits.maxStudents !== 9999 && (
+                <Progress value={0} className="h-2" />
+              )}
+            </div>
+            <div className="p-4 rounded-lg border">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-muted-foreground">Teachers</span>
+                <span className="text-sm font-medium">
+                  {limits.maxTeachers === 9999 ? 'Unlimited' : `1 / ${limits.maxTeachers}`}
+                </span>
+              </div>
+              {limits.maxTeachers !== 9999 && (
+                <Progress value={(1 / limits.maxTeachers) * 100} className="h-2" />
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Trial Expired Warning */}
+      {isTrialExpired && (
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardContent className="flex items-center gap-4 p-6">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-destructive">Your trial has expired</h3>
+              <p className="text-sm text-muted-foreground">
+                Choose a plan below to continue using LessonLoop and keep all your data.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Plan Selection */}
+      {canManageBilling && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">Choose Your Plan</h2>
+              <p className="text-sm text-muted-foreground">
+                All plans include a 14-day free trial
+              </p>
+            </div>
+            <div className="flex items-center gap-2 p-1 bg-muted rounded-lg">
+              <button
+                onClick={() => setBillingInterval('monthly')}
+                className={cn(
+                  'px-4 py-2 text-sm font-medium rounded-md transition-colors',
+                  billingInterval === 'monthly' 
+                    ? 'bg-background shadow-sm' 
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setBillingInterval('yearly')}
+                className={cn(
+                  'px-4 py-2 text-sm font-medium rounded-md transition-colors',
+                  billingInterval === 'yearly' 
+                    ? 'bg-background shadow-sm' 
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Yearly
+                <Badge variant="secondary" className="ml-2 text-xs">
+                  Save 16%
+                </Badge>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            {(Object.entries(PLANS) as [keyof typeof PLANS, typeof PLANS[keyof typeof PLANS]][]).map(([key, planData]) => (
+              <PlanCard
+                key={key}
+                plan={key}
+                name={planData.name}
+                price={planData.price}
+                features={planData.features}
+                limits={planData.limits}
+                isCurrentPlan={plan === key && !isTrialing}
+                isPopular={'isPopular' in planData && planData.isPopular}
+                billingInterval={billingInterval}
+                onSelect={() => initiateSubscription(key, billingInterval)}
+                isLoading={isLoading}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Non-admin message */}
+      {!canManageBilling && (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-muted-foreground">
+              Contact your organisation owner to manage billing and subscriptions.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
