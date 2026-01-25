@@ -894,6 +894,528 @@ You can proceed despite warnings if needed.
     `,
     keywords: ['conflict', 'overlap', 'fix', 'resolve', 'error'],
   },
+  
+  // Additional Getting Started
+  {
+    id: 'dashboard-overview',
+    title: 'Understanding Your Dashboard',
+    category: 'getting-started',
+    summary: 'A tour of your main dashboard and its features.',
+    content: `
+# Understanding Your Dashboard
+
+## Dashboard Layout
+
+Your dashboard is your command centre, showing everything at a glance.
+
+### Statistics Cards
+
+At the top, you'll see key metrics:
+- **Today's Lessons**: How many lessons are scheduled today
+- **Outstanding**: Total unpaid invoices amount
+- **Active Students**: Number of active students
+
+### Quick Actions
+
+One-click buttons for common tasks:
+- Create a new lesson
+- Add a student
+- Generate invoices
+- Send messages
+
+### Today's Timeline
+
+A visual timeline of your lessons today:
+- Upcoming lessons highlighted
+- Click any lesson to view details
+- Mark attendance directly
+
+### Onboarding Checklist
+
+For new users, a checklist guides you through setup:
+- Add your first student ✓
+- Create a lesson ✓
+- Set up rate cards ✓
+- Generate an invoice ✓
+
+## Tips
+
+- Check your dashboard first thing each day
+- Use quick actions to save time
+- The timeline shows the next 24 hours
+    `,
+    keywords: ['dashboard', 'overview', 'home', 'stats', 'timeline', 'quick actions'],
+  },
+  
+  // Additional Scheduling
+  {
+    id: 'attendance-marking',
+    title: 'Marking Lesson Attendance',
+    category: 'scheduling',
+    summary: 'How to mark students as attended, absent, or cancelled.',
+    content: `
+# Marking Lesson Attendance
+
+## Why Mark Attendance?
+
+Attendance tracking:
+- Ensures accurate billing
+- Tracks student progress
+- Identifies patterns
+- Generates reports
+
+## Marking Individual Lessons
+
+1. Click on a lesson in the calendar
+2. Open the lesson detail panel
+3. For each student, select:
+   - **Attended**: Student was present
+   - **Absent**: Student missed the lesson
+   - **Late Cancel**: Cancelled within notice period
+   - **Cancelled**: Cancelled in advance
+
+## Bulk Marking (End of Day)
+
+Use "Mark Day Complete" on the calendar:
+1. Click the button in the toolbar
+2. All past "Scheduled" lessons become "Completed"
+3. Students default to "Attended"
+
+## Attendance and Billing
+
+- **Attended**: Billed normally
+- **Absent**: Billed (unless make-up credit issued)
+- **Late Cancel**: Billed (policy-dependent)
+- **Cancelled**: Not billed
+
+## Make-Up Credits
+
+When a student misses a lesson with valid notice:
+1. Mark as "Cancelled"
+2. Issue a make-up credit
+3. Credit applies to future lessons
+
+## Reports
+
+View attendance trends in Reports > Cancellations.
+    `,
+    keywords: ['attendance', 'mark', 'complete', 'absent', 'cancel', 'present'],
+  },
+  {
+    id: 'closure-dates',
+    title: 'Managing Closure Dates',
+    category: 'scheduling',
+    summary: 'Set up bank holidays, term breaks, and closures.',
+    content: `
+# Managing Closure Dates
+
+## What Are Closure Dates?
+
+Dates when your teaching business is closed:
+- Bank holidays
+- School half-terms
+- Christmas break
+- Personal holidays
+
+## Adding Closure Dates
+
+1. Go to Settings > Scheduling
+2. Click "Add Closure Date"
+3. Enter date and reason
+4. Choose scope:
+   - All locations
+   - Specific location only
+
+## How Closures Affect Scheduling
+
+When a closure is set:
+- Recurring lessons skip that date
+- Warnings show if scheduling on closure
+- Calendar shows closure indicator
+
+## UK Bank Holidays
+
+LessonLoop includes UK bank holidays by default:
+- New Year's Day
+- Good Friday
+- Easter Monday
+- May bank holidays
+- Christmas Day
+- Boxing Day
+
+## Term Calendars
+
+For academies, set up term dates:
+- Autumn term: Sep - Dec
+- Spring term: Jan - Apr
+- Summer term: Apr - Jul
+
+Lessons outside terms can be blocked or warned.
+    `,
+    keywords: ['closure', 'holiday', 'bank', 'term', 'break', 'closed'],
+  },
+  
+  // Additional Invoicing
+  {
+    id: 'invoice-statuses',
+    title: 'Understanding Invoice Statuses',
+    category: 'invoicing',
+    summary: 'What each invoice status means and how to manage them.',
+    content: `
+# Understanding Invoice Statuses
+
+## Status Types
+
+### Draft
+- Invoice created but not sent
+- Can be edited freely
+- Not visible to parents
+
+### Sent
+- Invoice emailed to parent
+- Visible in parent portal
+- Awaiting payment
+
+### Paid
+- Full payment received
+- No further action needed
+- Archived automatically
+
+### Overdue
+- Past due date
+- No payment received
+- Triggers reminders
+
+### Void
+- Invoice cancelled
+- Not counted in reports
+- Cannot be undone
+
+## Status Flow
+
+\`\`\`
+Draft → Sent → Paid
+         ↓
+       Overdue → Paid
+         ↓
+        Void
+\`\`\`
+
+## Automatic Status Changes
+
+- **Sent → Overdue**: Automatic when due date passes
+- **Sent → Paid**: Automatic when Stripe payment received
+- **Draft → Sent**: When you click "Send"
+
+## Manual Status Changes
+
+- Mark as Paid: Record manual payment
+- Void: Cancel the invoice
+- Resend: Re-email to parent
+    `,
+    keywords: ['status', 'draft', 'sent', 'paid', 'overdue', 'void'],
+  },
+  
+  // Additional Parent Portal
+  {
+    id: 'parent-payments',
+    title: 'How Parents Pay Invoices',
+    category: 'parent-portal',
+    summary: 'The payment process from the parent perspective.',
+    content: `
+# How Parents Pay Invoices
+
+## Receiving an Invoice
+
+Parents are notified when you send an invoice:
+1. Email with invoice summary
+2. "View & Pay" button in email
+3. Link to parent portal
+
+## Viewing in Portal
+
+In the portal, parents see:
+- Invoice number and date
+- Line items (lessons, amounts)
+- Total due
+- Due date
+- Payment status
+
+## Paying with Stripe
+
+1. Click "Pay Now" on invoice
+2. Redirected to secure Stripe checkout
+3. Enter card details
+4. Confirm payment
+5. Receipt sent automatically
+
+## Payment Confirmation
+
+After successful payment:
+- Invoice status updates to "Paid"
+- Parent sees confirmation screen
+- Email receipt sent
+- You're notified
+
+## Other Payment Methods
+
+If parents pay by bank transfer:
+1. They pay to your bank account
+2. You manually record the payment
+3. Status updates to "Paid"
+
+## Failed Payments
+
+If a card payment fails:
+- Parent can retry
+- Invoice stays unpaid
+- You can send a reminder
+    `,
+    keywords: ['payment', 'pay', 'Stripe', 'card', 'portal', 'parent'],
+  },
+  {
+    id: 'parent-practice',
+    title: 'Using the Practice Tracker',
+    category: 'parent-portal',
+    summary: 'How parents and students log practice time.',
+    content: `
+# Using the Practice Tracker
+
+## What is Practice Tracking?
+
+A way for students to:
+- Log daily practice time
+- See assignments from teachers
+- Track progress and streaks
+- Build good habits
+
+## Logging Practice
+
+In the parent portal:
+1. Go to Practice section
+2. Click "Log Practice"
+3. Enter duration (minutes)
+4. Add optional notes
+5. Save
+
+## Practice Streaks
+
+Consecutive practice days build streaks:
+- 🔥 Current streak shown
+- Longest streak recorded
+- Streak badges earned
+- Motivation to continue
+
+## Teacher Assignments
+
+Teachers can set:
+- Specific pieces to practice
+- Target minutes per day
+- Days per week goal
+- Due dates
+
+## Viewing Progress
+
+Parents can see:
+- Weekly practice totals
+- Daily breakdown
+- Historical trends
+- Teacher feedback
+
+## Tips for Success
+
+- Practice at the same time daily
+- Start with small goals (10 mins)
+- Use the timer feature
+- Celebrate streaks!
+    `,
+    keywords: ['practice', 'log', 'timer', 'streak', 'assignment', 'progress'],
+  },
+  
+  // Additional LoopAssist
+  {
+    id: 'loopassist-actions',
+    title: 'LoopAssist Action Confirmations',
+    category: 'loopassist',
+    summary: 'How to review and confirm AI-proposed actions.',
+    content: `
+# LoopAssist Action Confirmations
+
+## Why Confirm Actions?
+
+LoopAssist proposes actions but never executes without your approval. This ensures:
+- You stay in control
+- No accidental changes
+- Opportunity to review
+- Audit trail maintained
+
+## Action Cards
+
+When LoopAssist proposes an action, you'll see a card showing:
+- **Action Type**: What will happen
+- **Affected Items**: Which records/students/invoices
+- **Summary**: What the result will be
+
+## Reviewing Actions
+
+Before confirming:
+- Read the summary carefully
+- Check the affected items
+- Consider any warnings
+- Ask follow-up questions if unsure
+
+## Confirming an Action
+
+Click "Confirm" to:
+1. Execute the action immediately
+2. See the result in chat
+3. Get a success/error message
+4. Action is logged for audit
+
+## Cancelling an Action
+
+Click "Cancel" to:
+- Decline the proposal
+- No changes are made
+- Continue the conversation
+- Ask for something different
+
+## Action Examples
+
+| Request | Action Proposed |
+|---------|-----------------|
+| "Send overdue reminders" | Email X invoices |
+| "Generate January invoices" | Create X invoices for lessons |
+| "Reschedule tomorrow +30min" | Move X lessons forward |
+| "Cancel Friday's lessons" | Cancel X lessons |
+
+## Safety Limits
+
+Some actions have built-in limits:
+- Maximum invoices per run
+- Required fields validation
+- Conflict detection
+- Rate limiting
+    `,
+    keywords: ['action', 'confirm', 'cancel', 'propose', 'execute', 'safe'],
+  },
+  
+  // Additional Troubleshooting
+  {
+    id: 'payment-not-showing',
+    title: 'Payment Made But Invoice Still Unpaid',
+    category: 'troubleshooting',
+    summary: 'What to do when a payment doesn\'t update the invoice.',
+    content: `
+# Payment Made But Invoice Still Unpaid
+
+## Stripe Payments
+
+If a parent paid via Stripe but the invoice shows unpaid:
+
+### Check Stripe Dashboard
+1. The payment may be pending
+2. 3D Secure might need completion
+3. Check for declined cards
+
+### Wait a Few Minutes
+- Webhooks can have slight delays
+- Refresh the page after 2-3 minutes
+- Check your email for notifications
+
+### Still Not Updated?
+Contact support with:
+- Invoice number
+- Approximate payment time
+- Parent's email
+
+## Bank Transfer Payments
+
+Bank transfers don't auto-update. You must:
+1. Receive the payment notification from your bank
+2. Go to the invoice in LessonLoop
+3. Click "Record Payment"
+4. Enter amount and date
+5. Save
+
+## Partial Payments
+
+If the parent paid less than the total:
+- Invoice stays "Sent" (not "Paid")
+- Record the partial payment
+- Remaining balance is shown
+- Follow up for the rest
+
+## Overpayments
+
+If the parent paid more than the total:
+- Apply the overpayment to a different invoice, OR
+- Record as credit for future lessons, OR
+- Refund the difference via your bank
+    `,
+    keywords: ['payment', 'not showing', 'unpaid', 'Stripe', 'bank', 'missing'],
+  },
+  {
+    id: 'cant-login',
+    title: 'Cannot Log In to LessonLoop',
+    category: 'troubleshooting',
+    summary: 'Solutions for login problems.',
+    content: `
+# Cannot Log In to LessonLoop
+
+## Forgot Password
+
+1. Click "Forgot password" on login
+2. Enter your email
+3. Check inbox (and spam)
+4. Click reset link
+5. Set new password
+
+## Email Not Recognised
+
+- Check spelling carefully
+- Try alternative email addresses
+- Contact the person who invited you
+- Check if account was created
+
+## Password Not Working
+
+- Use "Forgot password" to reset
+- Check Caps Lock is off
+- Try a different browser
+- Clear browser cache
+
+## Account Locked
+
+After too many failed attempts:
+- Wait 15 minutes
+- Try again
+- Use password reset if needed
+
+## Browser Issues
+
+Try these steps:
+1. Clear cookies for lessonloop.app
+2. Use a private/incognito window
+3. Try a different browser
+4. Disable browser extensions
+
+## Parent Portal Login
+
+Parents log in at a different URL:
+- Use the link from your invite email
+- Check you're on the portal (not admin)
+- Contact your teacher if stuck
+
+## Still Can't Access?
+
+Contact support with:
+- Your email address
+- When you last logged in
+- Any error messages shown
+    `,
+    keywords: ['login', 'password', 'forgot', 'access', 'locked', 'browser'],
+  },
 ];
 
 // Search helper

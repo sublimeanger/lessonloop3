@@ -142,11 +142,11 @@ export default function Invoices() {
         actions={
           !isParent && (
             <div className="flex gap-2">
-              <Button variant="outline" className="gap-2" onClick={() => setBillingRunOpen(true)}>
+              <Button variant="outline" className="gap-2" onClick={() => setBillingRunOpen(true)} data-tour="billing-run-button">
                 <PlayCircle className="h-4 w-4" />
                 Billing Run
               </Button>
-              <Button className="gap-2" onClick={() => setCreateModalOpen(true)}>
+              <Button className="gap-2" onClick={() => setCreateModalOpen(true)} data-tour="create-invoice-button">
                 <Plus className="h-4 w-4" />
                 Create Invoice
               </Button>
@@ -155,7 +155,7 @@ export default function Invoices() {
         }
       />
 
-      {!isParent && <InvoiceStatsWidget />}
+      {!isParent && <div data-tour="invoice-stats"><InvoiceStatsWidget /></div>}
 
       <div className="mt-6 space-y-4">
         {!isParent && (
@@ -187,15 +187,17 @@ export default function Invoices() {
             onAction={!isParent ? () => setCreateModalOpen(true) : undefined}
           />
         ) : (
-          <InvoiceList
-            invoices={invoices}
-            onSend={(inv) => setSendModalInvoice(inv)}
-            onMarkPaid={(inv) => setPaymentModalInvoice(inv)}
-            onVoid={(inv) => setVoidConfirmInvoice(inv)}
-            onSendReminder={(inv) => setReminderModalInvoice(inv)}
-            selectedIds={selectedIds}
-            onSelectionChange={setSelectedIds}
-          />
+          <div data-tour="invoice-list">
+            <InvoiceList
+              invoices={invoices}
+              onSend={(inv) => setSendModalInvoice(inv)}
+              onMarkPaid={(inv) => setPaymentModalInvoice(inv)}
+              onVoid={(inv) => setVoidConfirmInvoice(inv)}
+              onSendReminder={(inv) => setReminderModalInvoice(inv)}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
+            />
+          </div>
         )}
       </div>
 

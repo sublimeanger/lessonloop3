@@ -170,7 +170,7 @@ export default function CalendarPage() {
         ]}
         actions={
           !isParent && (
-            <Button onClick={() => { setSelectedLesson(null); setSlotDate(undefined); setIsModalOpen(true); }} className="gap-2">
+            <Button onClick={() => { setSelectedLesson(null); setSlotDate(undefined); setIsModalOpen(true); }} className="gap-2" data-tour="create-lesson-button">
               <Plus className="h-4 w-4" />
               New Lesson
             </Button>
@@ -204,15 +204,17 @@ export default function CalendarPage() {
         </div>
 
         <div className="flex items-center gap-4">
-          <CalendarFiltersBar
-            filters={filters}
-            onChange={setFilters}
-            teachers={teachers}
-            locations={locations}
-            rooms={rooms}
-          />
+          <div data-tour="calendar-filters">
+            <CalendarFiltersBar
+              filters={filters}
+              onChange={setFilters}
+              teachers={teachers}
+              locations={locations}
+              rooms={rooms}
+            />
+          </div>
           
-          <ToggleGroup type="single" value={view} onValueChange={(v) => v && setView(v as CalendarView)}>
+          <ToggleGroup type="single" value={view} onValueChange={(v) => v && setView(v as CalendarView)} data-tour="calendar-view-toggle">
             <ToggleGroupItem value="day" aria-label="Day view">
               <CalendarDays className="h-4 w-4" />
             </ToggleGroupItem>
@@ -238,14 +240,16 @@ export default function CalendarPage() {
           onLessonClick={handleLessonClick}
         />
       ) : (
-        <CalendarGrid
-          currentDate={currentDate}
-          view={view}
-          lessons={lessons}
-          onLessonClick={handleLessonClick}
-          onSlotClick={handleSlotClick}
-          onSlotDrag={handleSlotDrag}
-        />
+        <div data-tour="calendar-grid">
+          <CalendarGrid
+            currentDate={currentDate}
+            view={view}
+            lessons={lessons}
+            onLessonClick={handleLessonClick}
+            onSlotClick={handleSlotClick}
+            onSlotDrag={handleSlotDrag}
+          />
+        </div>
       )}
 
       {/* Keyboard shortcuts hint */}
