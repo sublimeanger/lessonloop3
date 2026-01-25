@@ -8,6 +8,7 @@ import { useDashboardStats } from '@/hooks/useReports';
 import { useTeacherDashboardStats } from '@/hooks/useTeacherDashboard';
 import { OnboardingChecklist } from '@/components/shared/OnboardingChecklist';
 import { GridSkeleton } from '@/components/shared/LoadingState';
+import { UpgradeBanner } from '@/components/subscription';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -142,6 +143,11 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
           />
         </motion.div>
 
+        {/* Upgrade Banner */}
+        <motion.div variants={itemVariants}>
+          <UpgradeBanner />
+        </motion.div>
+
         {/* Onboarding Checklist */}
         <motion.div variants={itemVariants}>
           <OnboardingChecklist />
@@ -226,6 +232,11 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
             currencyCode={currentOrg?.currency_code}
             hasStudents={(stats?.activeStudents ?? 0) > 0}
           />
+        </motion.div>
+
+        {/* Upgrade Banner */}
+        <motion.div variants={itemVariants}>
+          <UpgradeBanner />
         </motion.div>
 
         {/* Stats Grid */}
@@ -316,6 +327,11 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
             todayLessons={stats?.todayLessons}
             hasStudents={(stats?.myStudentsCount ?? 0) > 0}
           />
+        </motion.div>
+
+        {/* Upgrade Banner */}
+        <motion.div variants={itemVariants}>
+          <UpgradeBanner variant="compact" />
         </motion.div>
 
         {/* Stats Grid */}

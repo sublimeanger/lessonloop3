@@ -5,6 +5,8 @@ import { useAuth, AppRole } from './AuthContext';
 export type OrgType = 'solo_teacher' | 'studio' | 'academy' | 'agency';
 export type MembershipStatus = 'active' | 'invited' | 'disabled';
 export type BillingApproach = 'monthly' | 'termly' | 'custom';
+export type SubscriptionPlan = 'trial' | 'solo_teacher' | 'academy' | 'agency' | 'custom';
+export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'cancelled' | 'paused';
 
 export interface Organisation {
   id: string;
@@ -21,6 +23,14 @@ export interface Organisation {
   block_scheduling_on_closures: boolean;
   created_by: string;
   created_at: string;
+  // Subscription fields
+  subscription_plan: SubscriptionPlan;
+  subscription_status: SubscriptionStatus;
+  trial_ends_at: string | null;
+  max_students: number;
+  max_teachers: number;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
 }
 
 export interface OrgMembership {
