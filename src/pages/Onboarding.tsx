@@ -6,13 +6,16 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { LogoHorizontal } from '@/components/brand/Logo';
-import { Loader2, LogOut, User, Building2, Users, Network, CheckCircle2 } from 'lucide-react';
+import { Loader2, LogOut, User, Building2, Users, Network, CheckCircle2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PlanSelector, getRecommendedPlan } from '@/components/onboarding/PlanSelector';
+import { OnboardingProgress } from '@/components/onboarding/OnboardingProgress';
 
 type OrgType = 'solo_teacher' | 'studio' | 'academy' | 'agency';
-type Step = 'welcome' | 'loading' | 'success' | 'error';
+type SubscriptionPlan = 'solo_teacher' | 'academy' | 'agency';
+type Step = 'profile' | 'plan' | 'loading' | 'success' | 'error';
 
 const ORG_TYPES = [
   { value: 'solo_teacher' as const, label: 'Solo Teacher', description: 'Independent music teacher', icon: User },
@@ -21,14 +24,20 @@ const ORG_TYPES = [
   { value: 'agency' as const, label: 'Teaching Agency', description: 'Agency managing peripatetic teachers', icon: Network },
 ];
 
+const STEPS = [
+  { id: 'profile', label: 'Your Details' },
+  { id: 'plan', label: 'Choose Plan' },
+];
+
 export default function Onboarding() {
   const navigate = useNavigate();
   const { user, session, signOut, refreshProfile, profile } = useAuth();
   const { toast } = useToast();
   
-  const [step, setStep] = useState<Step>('welcome');
+  const [step, setStep] = useState<Step>('profile');
   const [orgType, setOrgType] = useState<OrgType>('solo_teacher');
   const [fullName, setFullName] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>('academy');
   const [error, setError] = useState<string | null>(null);
   const [profileReady, setProfileReady] = useState(false);
 
@@ -37,7 +46,6 @@ export default function Onboarding() {
     async function ensureProfile() {
       if (!user || !session) return;
       
-      // If profile already exists, we're good
       if (profile) {
         setProfileReady(true);
         return;
@@ -62,7 +70,6 @@ export default function Onboarding() {
         }
       } catch (err) {
         console.warn('[Onboarding] Profile ensure failed:', err);
-        // Continue anyway - the onboarding-setup edge function will also self-heal
       }
       
       setProfileReady(true);
@@ -80,33 +87,48 @@ export default function Onboarding() {
     }
   }, [user, profile]);
 
+  // Update recommended plan when org type changes
+  useEffect(() => {
+    setSelectedPlan(getRecommendedPlan(orgType));
+  }, [orgType]);
+
   const handleLogout = async () => {
     await signOut();
     navigate('/login');
   };
 
-  const handleSubmit = async () => {
-    if (!fullName.trim()) {
-      toast({ title: 'Please enter your name', variant: 'destructive' });
-      return;
+  const handleNext = () => {
+    if (step === 'profile') {
+      if (!fullName.trim()) {
+        toast({ title: 'Please enter your name', variant: 'destructive' });
+        return;
+      }
+      setStep('plan');
+    } else if (step === 'plan') {
+      handleSubmit();
     }
+  };
 
+  const handleBack = () => {
+    if (step === 'plan') {
+      setStep('profile');
+    }
+  };
+
+  const handleSubmit = async () => {
     setStep('loading');
     setError(null);
 
     try {
-      // Get current session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Not logged in');
       }
 
-      // Determine org name based on type
       const orgName = orgType === 'solo_teacher' 
         ? `${fullName.trim()}'s Teaching` 
         : `${fullName.trim()}'s ${ORG_TYPES.find(t => t.value === orgType)?.label || 'Organisation'}`;
 
-      // Call edge function with 15s timeout
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const response = await fetch(`${supabaseUrl}/functions/v1/onboarding-setup`, {
         method: 'POST',
@@ -118,6 +140,7 @@ export default function Onboarding() {
           org_name: orgName,
           org_type: orgType,
           full_name: fullName.trim(),
+          subscription_plan: selectedPlan,
         }),
         signal: AbortSignal.timeout(15000),
       });
@@ -130,9 +153,7 @@ export default function Onboarding() {
       const result = await response.json();
       console.log('[Onboarding] Setup complete:', result);
 
-      // Refresh profile to get updated data
       await refreshProfile();
-
       setStep('success');
     } catch (err) {
       console.error('[Onboarding] Error:', err);
@@ -147,9 +168,11 @@ export default function Onboarding() {
   };
 
   const handleRetry = () => {
-    setStep('welcome');
+    setStep('profile');
     setError(null);
   };
+
+  const currentStepIndex = step === 'profile' ? 0 : step === 'plan' ? 1 : 0;
 
   // Initial loading while ensuring profile exists
   if (!profileReady) {
@@ -174,6 +197,7 @@ export default function Onboarding() {
 
   // Success screen
   if (step === 'success') {
+    const planName = selectedPlan === 'solo_teacher' ? 'Solo Teacher' : selectedPlan === 'academy' ? 'Academy' : 'Agency';
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-4">
         <motion.div
@@ -191,6 +215,9 @@ export default function Onboarding() {
         >
           <h1 className="text-3xl font-bold">You're all set!</h1>
           <p className="mt-2 text-muted-foreground">Welcome to LessonLoop, {fullName}.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Your 14-day {planName} trial has started.
+          </p>
         </motion.div>
         <motion.div
           initial={{ opacity: 0 }}
@@ -224,7 +251,7 @@ export default function Onboarding() {
     );
   }
 
-  // Welcome/form screen
+  // Multi-step form
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -237,77 +264,120 @@ export default function Onboarding() {
       </header>
 
       {/* Main content */}
-      <main className="mx-auto max-w-lg px-4 py-12">
+      <main className="mx-auto max-w-3xl px-4 py-8">
+        {/* Progress indicator */}
+        <OnboardingProgress 
+          steps={STEPS} 
+          currentStep={currentStepIndex} 
+        />
+
         <AnimatePresence mode="wait">
-          <motion.div
-            key="welcome"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-          >
-            <div className="mb-8 text-center">
-              <h1 className="text-3xl font-bold">Welcome to LessonLoop</h1>
-              <p className="mt-2 text-muted-foreground">
-                Let's get your account set up in just a few seconds.
-              </p>
-            </div>
+          {step === 'profile' && (
+            <motion.div
+              key="profile"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="mb-8 text-center">
+                <h1 className="text-3xl font-bold">Welcome to LessonLoop</h1>
+                <p className="mt-2 text-muted-foreground">
+                  Let's get your account set up in just a few seconds.
+                </p>
+              </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Your Details</CardTitle>
-                <CardDescription>Tell us a bit about yourself</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Name input */}
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Your Name</Label>
-                  <Input
-                    id="fullName"
-                    placeholder="Enter your full name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    autoFocus
-                  />
-                </div>
-
-                {/* Org type selection */}
-                <div className="space-y-2">
-                  <Label>How do you teach?</Label>
-                  <div className="grid gap-3">
-                    {ORG_TYPES.map((type) => {
-                      const Icon = type.icon;
-                      const isSelected = orgType === type.value;
-                      return (
-                        <button
-                          key={type.value}
-                          type="button"
-                          onClick={() => setOrgType(type.value)}
-                          className={`flex items-center gap-4 rounded-lg border p-4 text-left transition-colors ${
-                            isSelected
-                              ? 'border-primary bg-primary/5'
-                              : 'border-border hover:border-primary/50'
-                          }`}
-                        >
-                          <div className={`rounded-full p-2 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                            <Icon className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <div className="font-medium">{type.label}</div>
-                            <div className="text-sm text-muted-foreground">{type.description}</div>
-                          </div>
-                        </button>
-                      );
-                    })}
+              <Card>
+                <CardContent className="space-y-6 pt-6">
+                  {/* Name input */}
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Your Name</Label>
+                    <Input
+                      id="fullName"
+                      placeholder="Enter your full name"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      autoFocus
+                    />
                   </div>
-                </div>
 
-                {/* Submit button */}
-                <Button className="w-full" size="lg" onClick={handleSubmit}>
-                  Create My Account
+                  {/* Org type selection */}
+                  <div className="space-y-2">
+                    <Label>How do you teach?</Label>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {ORG_TYPES.map((type) => {
+                        const Icon = type.icon;
+                        const isSelected = orgType === type.value;
+                        return (
+                          <button
+                            key={type.value}
+                            type="button"
+                            onClick={() => setOrgType(type.value)}
+                            className={`flex items-center gap-4 rounded-lg border p-4 text-left transition-colors ${
+                              isSelected
+                                ? 'border-primary bg-primary/5'
+                                : 'border-border hover:border-primary/50'
+                            }`}
+                          >
+                            <div className={`rounded-full p-2 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <div className="font-medium">{type.label}</div>
+                              <div className="text-sm text-muted-foreground">{type.description}</div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Navigation */}
+                  <div className="flex justify-end pt-4">
+                    <Button onClick={handleNext}>
+                      Continue
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {step === 'plan' && (
+            <motion.div
+              key="plan"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="mb-8 text-center">
+                <h1 className="text-3xl font-bold">Choose Your Plan</h1>
+                <p className="mt-2 text-muted-foreground">
+                  Start your 14-day free trial. Upgrade, downgrade, or cancel anytime.
+                </p>
+              </div>
+
+              <PlanSelector
+                selectedPlan={selectedPlan}
+                onSelectPlan={setSelectedPlan}
+                recommendedPlan={getRecommendedPlan(orgType)}
+              />
+
+              {/* Navigation */}
+              <div className="mt-8 flex justify-between">
+                <Button variant="outline" onClick={handleBack}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back
                 </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
+                <Button onClick={handleNext}>
+                  Start Free Trial
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
     </div>
