@@ -369,7 +369,7 @@ export function ProductShowcase() {
                   </div>
                   <div className="flex-1 flex justify-center">
                     <div className="bg-white/10 rounded-lg px-4 py-1 text-xs text-white/40 font-mono">
-                      app.lessonloop.uk/{activeTab}
+                      app.lessonloop.net/{activeTab}
                     </div>
                   </div>
                 </div>
