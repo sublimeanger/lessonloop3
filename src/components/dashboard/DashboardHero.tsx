@@ -71,7 +71,7 @@ export function DashboardHero({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className={cn('relative overflow-hidden rounded-2xl bg-gradient-hero p-6 sm:p-8', className)}
+      className={cn('relative overflow-hidden rounded-2xl gradient-hero p-6 sm:p-8', className)}
     >
       {/* Background decoration */}
       <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
