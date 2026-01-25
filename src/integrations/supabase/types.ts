@@ -1210,9 +1210,16 @@ export type Database = {
           invoice_from_name: string | null
           invoice_from_postcode: string | null
           logo_url: string | null
+          max_students: number
+          max_teachers: number
           name: string
           org_type: Database["public"]["Enums"]["org_type"]
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_plan: Database["public"]["Enums"]["subscription_plan"]
+          subscription_status: Database["public"]["Enums"]["subscription_status"]
           timezone: string
+          trial_ends_at: string | null
           vat_enabled: boolean
           vat_rate: number
           vat_registration_number: string | null
@@ -1237,9 +1244,16 @@ export type Database = {
           invoice_from_name?: string | null
           invoice_from_postcode?: string | null
           logo_url?: string | null
+          max_students?: number
+          max_teachers?: number
           name: string
           org_type?: Database["public"]["Enums"]["org_type"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
+          subscription_status?: Database["public"]["Enums"]["subscription_status"]
           timezone?: string
+          trial_ends_at?: string | null
           vat_enabled?: boolean
           vat_rate?: number
           vat_registration_number?: string | null
@@ -1264,9 +1278,16 @@ export type Database = {
           invoice_from_name?: string | null
           invoice_from_postcode?: string | null
           logo_url?: string | null
+          max_students?: number
+          max_teachers?: number
           name?: string
           org_type?: Database["public"]["Enums"]["org_type"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
+          subscription_status?: Database["public"]["Enums"]["subscription_status"]
           timezone?: string
+          trial_ends_at?: string | null
           vat_enabled?: boolean
           vat_rate?: number
           vat_registration_number?: string | null
@@ -2267,6 +2288,18 @@ export type Database = {
       recurrence_pattern: "weekly"
       relationship_type: "mother" | "father" | "guardian" | "other"
       student_status: "active" | "inactive"
+      subscription_plan:
+        | "trial"
+        | "solo_teacher"
+        | "academy"
+        | "agency"
+        | "custom"
+      subscription_status:
+        | "trialing"
+        | "active"
+        | "past_due"
+        | "cancelled"
+        | "paused"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2427,6 +2460,20 @@ export const Constants = {
       recurrence_pattern: ["weekly"],
       relationship_type: ["mother", "father", "guardian", "other"],
       student_status: ["active", "inactive"],
+      subscription_plan: [
+        "trial",
+        "solo_teacher",
+        "academy",
+        "agency",
+        "custom",
+      ],
+      subscription_status: [
+        "trialing",
+        "active",
+        "past_due",
+        "cancelled",
+        "paused",
+      ],
     },
   },
 } as const
