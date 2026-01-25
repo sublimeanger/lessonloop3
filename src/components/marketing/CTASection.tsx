@@ -5,8 +5,8 @@ import { ChevronRight, Check, Shield, Clock, CreditCard } from "lucide-react";
 
 const guarantees = [
   { icon: Clock, text: "30-day free trial" },
-  { icon: CreditCard, text: "Card required, cancel anytime" },
-  { icon: Shield, text: "No commitment" },
+  { icon: CreditCard, text: "No credit card required" },
+  { icon: Shield, text: "Cancel anytime" },
 ];
 
 export function CTASection() {
