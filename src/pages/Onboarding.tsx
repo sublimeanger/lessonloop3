@@ -23,20 +23,62 @@ const ORG_TYPES = [
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { user, signOut, refreshProfile } = useAuth();
+  const { user, session, signOut, refreshProfile, profile } = useAuth();
   const { toast } = useToast();
   
   const [step, setStep] = useState<Step>('welcome');
   const [orgType, setOrgType] = useState<OrgType>('solo_teacher');
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [profileReady, setProfileReady] = useState(false);
 
-  // Pre-fill name from user metadata if available
+  // Self-healing: ensure profile exists on mount
   useEffect(() => {
-    if (user?.user_metadata?.full_name) {
+    async function ensureProfile() {
+      if (!user || !session) return;
+      
+      // If profile already exists, we're good
+      if (profile) {
+        setProfileReady(true);
+        return;
+      }
+
+      console.log('[Onboarding] Profile missing - calling profile-ensure');
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const response = await fetch(`${supabaseUrl}/functions/v1/profile-ensure`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          signal: AbortSignal.timeout(5000),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('[Onboarding] Profile ensure result:', data.created ? 'created' : 'exists');
+          await refreshProfile();
+        }
+      } catch (err) {
+        console.warn('[Onboarding] Profile ensure failed:', err);
+        // Continue anyway - the onboarding-setup edge function will also self-heal
+      }
+      
+      setProfileReady(true);
+    }
+    
+    ensureProfile();
+  }, [user, session, profile, refreshProfile]);
+
+  // Pre-fill name from user metadata or profile
+  useEffect(() => {
+    if (profile?.full_name) {
+      setFullName(profile.full_name);
+    } else if (user?.user_metadata?.full_name) {
       setFullName(user.user_metadata.full_name);
     }
-  }, [user]);
+  }, [user, profile]);
 
   const handleLogout = async () => {
     await signOut();
@@ -108,6 +150,16 @@ export default function Onboarding() {
     setStep('welcome');
     setError(null);
   };
+
+  // Initial loading while ensuring profile exists
+  if (!profileReady) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-lg font-medium">Preparing your account...</p>
+      </div>
+    );
+  }
 
   // Loading screen
   if (step === 'loading') {
