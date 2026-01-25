@@ -14,6 +14,7 @@ import {
   Music,
   FolderOpen,
   ClipboardList,
+  HelpCircle,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
@@ -51,6 +52,7 @@ const ownerAdminNav: NavItem[] = [
   { title: 'Reports', url: '/reports', icon: BarChart3 },
   { title: 'Messages', url: '/messages', icon: MessageSquare },
   { title: 'Settings', url: '/settings', icon: Settings },
+  { title: 'Help', url: '/help', icon: HelpCircle },
 ];
 
 const financeNav: NavItem[] = [
@@ -59,6 +61,7 @@ const financeNav: NavItem[] = [
   { title: 'Reports', url: '/reports', icon: BarChart3 },
   { title: 'Messages', url: '/messages', icon: MessageSquare },
   { title: 'Settings', url: '/settings', icon: Settings },
+  { title: 'Help', url: '/help', icon: HelpCircle },
 ];
 
 const teacherNav: NavItem[] = [
@@ -70,6 +73,7 @@ const teacherNav: NavItem[] = [
   { title: 'Resources', url: '/resources', icon: FolderOpen },
   { title: 'Messages', url: '/messages', icon: MessageSquare },
   { title: 'Settings', url: '/settings', icon: Settings },
+  { title: 'Help', url: '/help', icon: HelpCircle },
 ];
 
 const parentNav: NavItem[] = [
@@ -127,7 +131,7 @@ export function AppSidebar() {
   const navItems = getNavItems(currentRole);
 
   return (
-    <Sidebar className="border-r">
+    <Sidebar className="border-r" data-tour="sidebar">
       <SidebarContent className="pt-4">
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-medium uppercase tracking-wider text-muted-foreground">

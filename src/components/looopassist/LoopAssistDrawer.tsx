@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,8 @@ import { useLoopAssist, AIMessage, AIConversation } from '@/hooks/useLoopAssist'
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { renderMessageWithChips } from './EntityChip';
 import { ActionCard, stripActionBlock, parseActionFromResponse } from './ActionCard';
+import { MessageFeedback } from './MessageFeedback';
+import { LoopAssistIntroModal, useLoopAssistIntro } from './LoopAssistIntroModal';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -27,6 +29,7 @@ interface LoopAssistDrawerProps {
 
 export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) {
   const { pageContext } = useLoopAssistUI();
+  const { showIntro, setShowIntro, checkAndShowIntro } = useLoopAssistIntro();
   
   // LoopAssist is now FREE for all plans - no blocking!
   const {
@@ -45,6 +48,13 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
 
   const [input, setInput] = useState('');
   const [showConversationList, setShowConversationList] = useState(!currentConversationId);
+
+  // Show intro modal on first open
+  useEffect(() => {
+    if (open) {
+      checkAndShowIntro();
+    }
+  }, [open, checkAndShowIntro]);
 
   const handleSend = async () => {
     if (!input.trim() || isStreaming) return;
@@ -160,7 +170,9 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                 )}
 
                 {messages.map((message) => (
-                  <MessageBubble key={message.id} message={message} />
+                  <div key={message.id} className="group">
+                    <MessageBubble message={message} conversationId={currentConversationId} />
+                  </div>
                 ))}
 
                 {isStreaming && streamingContent && (
@@ -171,6 +183,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                       content: streamingContent,
                       created_at: new Date().toISOString(),
                     }}
+                    conversationId={null}
                   />
                 )}
 
@@ -218,6 +231,9 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
           </>
         )}
       </SheetContent>
+
+      {/* Intro Modal */}
+      <LoopAssistIntroModal open={showIntro} onOpenChange={setShowIntro} />
     </Sheet>
   );
 }
@@ -280,7 +296,7 @@ function ConversationList({
   );
 }
 
-function MessageBubble({ message }: { message: AIMessage }) {
+function MessageBubble({ message, conversationId }: { message: AIMessage; conversationId: string | null }) {
   const isUser = message.role === 'user';
   
   // For assistant messages, strip action blocks from display
@@ -290,7 +306,7 @@ function MessageBubble({ message }: { message: AIMessage }) {
   const hasAction = !isUser && parseActionFromResponse(message.content);
 
   return (
-    <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
+    <div className={cn('flex flex-col', isUser ? 'items-end' : 'items-start')}>
       <div
         className={cn(
           'max-w-[85%] rounded-lg px-3 py-2 text-sm',
@@ -306,6 +322,14 @@ function MessageBubble({ message }: { message: AIMessage }) {
           </div>
         )}
       </div>
+      {/* Feedback buttons for assistant messages */}
+      {!isUser && message.id !== 'streaming' && conversationId && (
+        <MessageFeedback 
+          messageId={message.id} 
+          conversationId={conversationId}
+          className="mt-1 opacity-0 group-hover:opacity-100 hover:opacity-100"
+        />
+      )}
     </div>
   );
 }
