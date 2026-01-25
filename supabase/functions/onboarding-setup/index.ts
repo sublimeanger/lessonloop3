@@ -10,6 +10,7 @@ interface OnboardingRequest {
   org_type: 'solo_teacher' | 'studio' | 'academy' | 'agency';
   full_name: string;
   phone?: string;
+  subscription_plan?: 'solo_teacher' | 'academy' | 'agency';
 }
 
 Deno.serve(async (req) => {
@@ -51,7 +52,7 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body: OnboardingRequest = await req.json();
-    const { org_name, org_type, full_name, phone } = body;
+    const { org_name, org_type, full_name, phone, subscription_plan } = body;
 
     if (!org_name || !org_type || !full_name) {
       return new Response(
@@ -59,6 +60,15 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Determine plan limits
+    const plan = subscription_plan || 'solo_teacher';
+    const planLimits = {
+      solo_teacher: { max_students: 30, max_teachers: 1 },
+      academy: { max_students: 150, max_teachers: 10 },
+      agency: { max_students: 9999, max_teachers: 9999 },
+    };
+    const limits = planLimits[plan] || planLimits.solo_teacher;
 
     // Use service role client to bypass RLS
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
@@ -120,7 +130,10 @@ Deno.serve(async (req) => {
     }
     console.log('[onboarding-setup] Profile ready');
 
-    // Step 2: Create organisation
+    // Step 2: Create organisation with subscription details
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+
     const { error: orgError } = await adminClient
       .from('organisations')
       .insert({
@@ -131,6 +144,11 @@ Deno.serve(async (req) => {
         currency_code: 'GBP',
         timezone: 'Europe/London',
         created_by: user.id,
+        subscription_plan: plan,
+        subscription_status: 'trialing',
+        trial_ends_at: trialEndsAt.toISOString(),
+        max_students: limits.max_students,
+        max_teachers: limits.max_teachers,
       });
 
     if (orgError) {
