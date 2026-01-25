@@ -36,30 +36,39 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Exponential backoff retry for profile fetch
-async function fetchProfileWithRetry(userId: string, maxRetries = 5): Promise<Profile | null> {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
+// Simple profile fetch - single attempt, no retries
+async function fetchProfile(userId: string): Promise<Profile | null> {
+  try {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .maybeSingle();
 
-    if (data) {
-      return data as Profile;
-    }
-
     if (error) {
-      console.warn(`Profile fetch attempt ${attempt + 1} failed:`, error.message);
+      console.warn('Profile fetch failed:', error.message);
+      return null;
     }
-
-    // Exponential backoff: 200ms, 400ms, 800ms, 1600ms, 3200ms
-    const delay = Math.min(200 * Math.pow(2, attempt), 3200);
-    await new Promise(resolve => setTimeout(resolve, delay));
+    return data as Profile | null;
+  } catch (err) {
+    console.warn('Profile fetch exception:', err);
+    return null;
   }
-  
-  console.error('Profile fetch failed after all retries');
-  return null;
+}
+
+// Simple roles fetch - single attempt
+async function fetchRoles(userId: string): Promise<AppRole[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_user_roles', { _user_id: userId });
+    if (error) {
+      console.warn('Roles fetch failed:', error.message);
+      return [];
+    }
+    return (data as AppRole[]) || [];
+  } catch (err) {
+    console.warn('Roles fetch exception:', err);
+    return [];
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -71,24 +80,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isInitialised, setIsInitialised] = useState(false);
   const mountedRef = useRef(true);
 
-  const fetchRoles = async (userId: string): Promise<AppRole[]> => {
-    try {
-      const { data, error } = await supabase.rpc('get_user_roles', { _user_id: userId });
-      if (error) {
-        console.error('Error fetching roles:', error);
-        return [];
-      }
-      return (data as AppRole[]) || [];
-    } catch (err) {
-      console.error('Roles fetch exception:', err);
-      return [];
-    }
-  };
-
   const refreshProfile = async () => {
     if (user) {
       const [profileData, rolesData] = await Promise.all([
-        fetchProfileWithRetry(user.id, 3),
+        fetchProfile(user.id),
         fetchRoles(user.id),
       ]);
       if (mountedRef.current) {
@@ -101,52 +96,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     mountedRef.current = true;
     
-    // Hard timeout to prevent infinite loading - 6 seconds
+    // Hard timeout - 4 seconds max for initial load
     const hardTimeout = setTimeout(() => {
-      if (mountedRef.current && isLoading) {
-        console.warn('Auth hard timeout triggered - forcing completion');
+      if (mountedRef.current && !isInitialised) {
+        console.warn('Auth hard timeout - forcing completion');
         setIsLoading(false);
         setIsInitialised(true);
       }
-    }, 6000);
+    }, 4000);
 
-    // Initial session fetch
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      if (!mountedRef.current) return;
+      
+      console.log('Auth state change:', event);
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+
+      if (newSession?.user) {
+        // Fetch profile and roles in parallel
+        const [profileData, rolesData] = await Promise.all([
+          fetchProfile(newSession.user.id),
+          fetchRoles(newSession.user.id),
+        ]);
+        
+        if (mountedRef.current) {
+          setProfile(profileData);
+          setRoles(rolesData);
+          setIsLoading(false);
+          setIsInitialised(true);
+        }
+      } else {
+        if (mountedRef.current) {
+          setProfile(null);
+          setRoles([]);
+          setIsLoading(false);
+          setIsInitialised(true);
+        }
+      }
+    });
+
+    // Then get initial session
     const initializeAuth = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('getSession error:', error);
-          if (mountedRef.current) {
-            setIsLoading(false);
-            setIsInitialised(true);
-          }
-          return;
         }
         
         if (!mountedRef.current) return;
         
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          const [profileData, rolesData] = await Promise.all([
-            fetchProfileWithRetry(session.user.id, 5),
-            fetchRoles(session.user.id),
-          ]);
-          
-          if (mountedRef.current) {
-            setProfile(profileData);
-            setRoles(rolesData);
-          }
-        }
-        
-        if (mountedRef.current) {
+        // If no session and no auth state change triggered yet, mark as initialised
+        if (!initialSession) {
           setIsLoading(false);
           setIsInitialised(true);
         }
+        // If there IS a session, the onAuthStateChange will handle it
+        
       } catch (err) {
-        console.error('Auth initialization error:', err);
+        console.error('Auth init error:', err);
         if (mountedRef.current) {
           setIsLoading(false);
           setIsInitialised(true);
@@ -154,43 +163,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // Set up auth state listener FIRST (before getSession)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mountedRef.current) return;
-      
-      console.log('Auth state change:', event);
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        // For SIGNED_IN, wait a bit for trigger to create profile
-        if (event === 'SIGNED_IN') {
-          await new Promise(resolve => setTimeout(resolve, 800));
-        }
-        
-        const [profileData, rolesData] = await Promise.all([
-          fetchProfileWithRetry(session.user.id, 5),
-          fetchRoles(session.user.id),
-        ]);
-        
-        if (mountedRef.current) {
-          setProfile(profileData);
-          setRoles(rolesData);
-        }
-      } else {
-        if (mountedRef.current) {
-          setProfile(null);
-          setRoles([]);
-        }
-      }
-      
-      if (mountedRef.current) {
-        setIsLoading(false);
-        setIsInitialised(true);
-      }
-    });
-
-    // Then get initial session
     initializeAuth();
 
     return () => {
@@ -205,19 +177,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
       options: {
-        data: {
-          full_name: fullName,
-        },
+        data: { full_name: fullName },
       },
     });
     return { error: error as Error | null };
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error as Error | null };
   };
 

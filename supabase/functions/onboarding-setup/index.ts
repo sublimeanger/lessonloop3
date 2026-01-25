@@ -28,12 +28,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create Supabase client with user's token for user context
+    // Create Supabase clients
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    // User client to get user info
+    // User client to verify token
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -60,14 +60,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Use service role client to bypass RLS for atomic operations
+    // Use service role client to bypass RLS
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Generate org ID client-side for consistency
+    // Generate org ID
     const orgId = crypto.randomUUID();
     console.log('[onboarding-setup] Creating organisation:', orgId, org_name, org_type);
 
-    // Step 1: Update profile
+    // Step 1: Update profile with name
     const { error: profileError } = await adminClient
       .from('profiles')
       .update({ 
@@ -107,26 +107,21 @@ Deno.serve(async (req) => {
     }
     console.log('[onboarding-setup] Organisation created');
 
-    // Note: The trigger handle_new_organisation will automatically:
-    // - Create org_membership with owner role
-    // - Set current_org_id on profile if null
-    // Give it a moment to complete
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Wait for trigger to complete
+    await new Promise(resolve => setTimeout(resolve, 300));
 
-    // Step 3: Verify the setup completed correctly
-    const { data: verifyProfile } = await adminClient
+    // Step 3: Mark onboarding complete and ensure current_org_id is set
+    const { error: completeError } = await adminClient
       .from('profiles')
-      .select('current_org_id')
-      .eq('id', user.id)
-      .single();
+      .update({ 
+        current_org_id: orgId,
+        has_completed_onboarding: true,
+      })
+      .eq('id', user.id);
 
-    // If trigger didn't set current_org_id, set it manually
-    if (!verifyProfile?.current_org_id) {
-      console.log('[onboarding-setup] Setting current_org_id manually');
-      await adminClient
-        .from('profiles')
-        .update({ current_org_id: orgId })
-        .eq('id', user.id);
+    if (completeError) {
+      console.error('[onboarding-setup] Complete update failed:', completeError);
+      // Non-fatal - org is created, just log it
     }
 
     console.log('[onboarding-setup] Setup complete, org_id:', orgId);
