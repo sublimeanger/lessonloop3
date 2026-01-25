@@ -64,7 +64,7 @@ export default function Privacy() {
 
               <h2 className="text-2xl font-semibold text-foreground mt-8 mb-4">7. Contact Us</h2>
               <p className="text-muted-foreground mb-4">
-                If you have any questions about this Privacy Policy, please contact us at privacy@lessonloop.com.
+                If you have any questions about this Privacy Policy, please contact us at privacy@lessonloop.net.
               </p>
             </div>
           </motion.div>

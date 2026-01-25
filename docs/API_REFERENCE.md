@@ -75,7 +75,7 @@ Sends password reset email.
 ```typescript
 const { error } = await supabase.auth.resetPasswordForEmail(
   'user@example.com',
-  { redirectTo: 'https://app.lessonloop.com/reset-password' }
+  { redirectTo: 'https://app.lessonloop.net/reset-password' }
 );
 ```
 

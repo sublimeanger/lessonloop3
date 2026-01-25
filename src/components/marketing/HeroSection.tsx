@@ -314,7 +314,7 @@ export function HeroSection() {
             </div>
             <div className="flex-1 flex justify-center">
               <div className="bg-white/10 rounded-lg px-4 py-1 text-xs text-white/40 font-mono">
-                app.lessonloop.uk/calendar
+                app.lessonloop.net/calendar
               </div>
             </div>
           </div>

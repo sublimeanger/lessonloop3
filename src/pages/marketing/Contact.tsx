@@ -16,8 +16,8 @@ const contactMethods = [
     icon: Mail,
     title: "Email Us",
     description: "Get a response within 24 hours",
-    value: "hello@lessonloop.com",
-    action: "mailto:hello@lessonloop.com",
+    value: "hello@lessonloop.net",
+    action: "mailto:hello@lessonloop.net",
   },
   {
     icon: MessageSquare,
