@@ -224,34 +224,73 @@ export default function Onboarding() {
           return;
         }
         setIsLoading(true);
+        
+        // Validate session before any database operations
+        console.log('[Onboarding] Step 1: Validating session...');
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (!session || sessionError) {
+          console.error('[Onboarding] No valid session:', sessionError);
+          setStepError('Your session has expired. Please log in again.');
+          setIsLoading(false);
+          await signOut();
+          navigate('/login');
+          return;
+        }
+        console.log('[Onboarding] Session valid, user:', session.user.id);
+        
+        // Refresh session to ensure fresh token
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          console.warn('[Onboarding] Session refresh warning:', refreshError.message);
+        }
+        
         console.log('[Onboarding] Step 1: Starting profile save...');
         
-        // Direct Supabase call with timeout to avoid AuthContext blocking
+        // Use AbortController for proper request cancellation
+        const profileController = new AbortController();
+        const profileTimeoutId = setTimeout(() => profileController.abort(), 10000);
+        
         try {
-          const profilePromise = supabase
+          const { error: profileError } = await supabase
             .from('profiles')
             .update({ 
               full_name: fullName.trim(), 
               phone: phone.trim() || null 
             })
-            .eq('id', user.id);
+            .eq('id', user.id)
+            .abortSignal(profileController.signal);
           
-          const timeoutPromise = new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('Profile save timed out')), 10000)
-          );
-          
-          const { error: profileError } = await Promise.race([profilePromise, timeoutPromise]);
+          clearTimeout(profileTimeoutId);
           
           if (profileError) {
             console.error('[Onboarding] Profile save failed:', profileError);
+            if (profileError.message?.includes('JWT')) {
+              setStepError('Session expired. Please log in again.');
+              await signOut();
+              navigate('/login');
+              return;
+            }
             setStepError(profileError.message);
             setIsLoading(false);
             return;
           }
           console.log('[Onboarding] Step 1: Profile saved successfully');
         } catch (err: any) {
-          console.error('[Onboarding] Profile save timeout/error:', err);
-          setStepError(err.message || 'Failed to save profile. Please try again.');
+          clearTimeout(profileTimeoutId);
+          console.error('[Onboarding] Profile save error:', err);
+          
+          if (err.name === 'AbortError') {
+            setStepError('Profile save timed out. Please check your connection and try again.');
+          } else if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
+            setStepError('Network error. Please check your internet connection and try again.');
+          } else if (err.message?.includes('JWT')) {
+            setStepError('Session expired. Please log in again.');
+            await signOut();
+            navigate('/login');
+            return;
+          } else {
+            setStepError(err.message || 'Failed to save profile. Please try again.');
+          }
           setIsLoading(false);
           return;
         }
@@ -261,8 +300,11 @@ export default function Onboarding() {
         const newOrgId = crypto.randomUUID();
         console.log('[Onboarding] Step 1: Creating organisation:', name, orgType, 'ID:', newOrgId);
         
+        const orgController = new AbortController();
+        const orgTimeoutId = setTimeout(() => orgController.abort(), 10000);
+        
         try {
-          const orgPromise = supabase
+          const { error: orgError } = await supabase
             .from('organisations')
             .insert({
               id: newOrgId,
@@ -272,13 +314,10 @@ export default function Onboarding() {
               currency_code: 'GBP',
               timezone: 'Europe/London',
               created_by: user.id,
-            });
+            })
+            .abortSignal(orgController.signal);
           
-          const timeoutPromise = new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('Organisation creation timed out')), 10000)
-          );
-          
-          const { error: orgError } = await Promise.race([orgPromise, timeoutPromise]);
+          clearTimeout(orgTimeoutId);
           
           if (orgError) {
             console.error('[Onboarding] Org creation failed:', orgError);
@@ -297,8 +336,16 @@ export default function Onboarding() {
           setIsLoading(false);
           setCurrentStep(2);
         } catch (err: any) {
+          clearTimeout(orgTimeoutId);
           console.error('[Onboarding] Org creation error:', err);
-          setStepError(err.message || 'Failed to create organisation. Please try again.');
+          
+          if (err.name === 'AbortError') {
+            setStepError('Organisation creation timed out. Please check your connection and try again.');
+          } else if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
+            setStepError('Network error. Please check your internet connection and try again.');
+          } else {
+            setStepError(err.message || 'Failed to create organisation. Please try again.');
+          }
           setIsLoading(false);
           return;
         }
