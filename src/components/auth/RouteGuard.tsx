@@ -13,26 +13,22 @@ interface RouteGuardProps {
   redirectTo?: string;
 }
 
-// Loading component with timeout and escape hatch
-function AuthLoading({ onLogout, message = 'Loading...' }: { onLogout?: () => void; message?: string }) {
+function AuthLoading({ onLogout }: { onLogout?: () => void }) {
   const [showEscape, setShowEscape] = useState(false);
   
   useEffect(() => {
-    const timer = setTimeout(() => setShowEscape(true), 3000);
+    const timer = setTimeout(() => setShowEscape(true), 2000);
     return () => clearTimeout(timer);
   }, []);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      <p className="text-sm text-muted-foreground">{message}</p>
+      <p className="text-sm text-muted-foreground">Loading...</p>
       {showEscape && onLogout && (
-        <div className="mt-4 flex flex-col items-center gap-2">
-          <p className="text-xs text-muted-foreground">Taking longer than expected?</p>
-          <Button variant="ghost" size="sm" onClick={onLogout}>
-            Logout and try again
-          </Button>
-        </div>
+        <Button variant="ghost" size="sm" onClick={onLogout} className="mt-4">
+          Logout and try again
+        </Button>
       )}
     </div>
   );
@@ -45,13 +41,13 @@ export function RouteGuard({
   allowedRoles,
   redirectTo = '/login',
 }: RouteGuardProps) {
-  const { user, profile, isLoading: authLoading, isInitialised: authInitialised, signOut } = useAuth();
-  const { currentRole, isLoading: orgLoading, hasInitialised: orgInitialised } = useOrg();
+  const { user, profile, isLoading, isInitialised, signOut } = useAuth();
+  const { currentRole, hasInitialised: orgInitialised } = useOrg();
   const location = useLocation();
 
-  // Wait for auth to initialise (with built-in timeout in AuthContext)
-  if (!authInitialised || authLoading) {
-    return <AuthLoading onLogout={signOut} message="Checking authentication..." />;
+  // Wait for auth to initialise (max 4s via hard timeout)
+  if (!isInitialised || isLoading) {
+    return <AuthLoading onLogout={signOut} />;
   }
 
   // Not authenticated - redirect to login
@@ -59,36 +55,26 @@ export function RouteGuard({
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
-  // SPECIAL CASE: Onboarding page - always allow authenticated users through
-  // No profile check, no org check, just auth
+  // SPECIAL: Onboarding page - just need auth, nothing else
   if (location.pathname === '/onboarding' && user) {
     return <>{children}</>;
   }
 
-  // For other protected routes, check profile exists
-  // If user exists but no profile yet (trigger still running), brief wait
-  if (requireAuth && user && !profile) {
-    return <AuthLoading onLogout={signOut} message="Loading your profile..." />;
-  }
-
-  // Check onboarding completion (only if profile exists)
+  // For protected routes, check onboarding status
   if (requireAuth && requireOnboarding && profile && !profile.has_completed_onboarding) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  // For role-restricted routes, wait for org context to initialise
+  // For role-restricted routes
   if (allowedRoles && allowedRoles.length > 0) {
-    // Brief wait for org to initialise
     if (!orgInitialised) {
-      return <AuthLoading onLogout={signOut} message="Loading organisation..." />;
+      return <AuthLoading onLogout={signOut} />;
     }
     
-    // No role means no org membership - redirect to dashboard
     if (!currentRole) {
       return <Navigate to="/dashboard" replace />;
     }
     
-    // Check role access
     if (!allowedRoles.includes(currentRole)) {
       if (currentRole === 'parent') {
         return <Navigate to="/portal/home" replace />;
@@ -100,15 +86,14 @@ export function RouteGuard({
   return <>{children}</>;
 }
 
-// Wrapper for public routes that redirect authenticated users
+// Public route wrapper - redirects authenticated users
 export function PublicRoute({ children }: { children: ReactNode }) {
-  const { user, profile, isLoading: authLoading, isInitialised: authInitialised, signOut } = useAuth();
+  const { user, profile, isLoading, isInitialised } = useAuth();
   const { currentRole } = useOrg();
   const location = useLocation();
 
-  // Wait for auth to initialise
-  if (!authInitialised || authLoading) {
-    return <AuthLoading message="Loading..." />;
+  if (!isInitialised || isLoading) {
+    return <AuthLoading />;
   }
 
   // Not authenticated - show public page
@@ -116,13 +101,12 @@ export function PublicRoute({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  // Authenticated - redirect appropriately
-  // If no profile or not onboarded, go to onboarding
+  // Authenticated but no onboarding - go to onboarding
   if (!profile || !profile.has_completed_onboarding) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  // Get intended destination from state or use role-based default
+  // Authenticated and onboarded - redirect to app
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
   
   if (currentRole === 'parent') {
