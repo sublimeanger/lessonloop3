@@ -283,15 +283,15 @@ export default function Onboarding() {
 
     try {
       if (currentStep === 1) {
-        // Save profile
+        // Save profile and create org via edge function
         if (!fullName.trim()) {
           setStepError('Please enter your full name');
           return;
         }
         setIsLoading(true);
         
-        // Validate session with hard timeout (auth calls don't support AbortController)
-        console.log('[Onboarding] Step 1: Validating session...');
+        // Get session for auth header
+        console.log('[Onboarding] Step 1: Getting session...');
         let session;
         try {
           const result = await withTimeout(
@@ -313,115 +313,51 @@ export default function Onboarding() {
         }
         console.log('[Onboarding] Session valid, user:', session.user.id);
         
-        // Try to refresh session but don't block on failure
-        try {
-          await withTimeout(
-            supabase.auth.refreshSession(),
-            3000,
-            'Session refresh timed out'
-          );
-        } catch (refreshErr) {
-          console.warn('[Onboarding] Session refresh skipped:', refreshErr);
-          // Continue anyway - the session we have should still work
-        }
-        
-        console.log('[Onboarding] Step 1: Starting profile save...');
-        
-        // Use AbortController for proper request cancellation
-        const profileController = new AbortController();
-        const profileTimeoutId = setTimeout(() => profileController.abort(), 10000);
+        // Call edge function instead of direct DB calls
+        const orgNameToUse = orgName.trim() || `${fullName.trim()}'s Music`;
+        console.log('[Onboarding] Step 1: Calling onboarding-setup edge function...');
         
         try {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .update({ 
-              full_name: fullName.trim(), 
-              phone: phone.trim() || null 
-            })
-            .eq('id', user.id)
-            .abortSignal(profileController.signal);
-          
-          clearTimeout(profileTimeoutId);
-          
-          if (profileError) {
-            console.error('[Onboarding] Profile save failed:', profileError);
-            if (profileError.message?.includes('JWT')) {
-              setStepError('Session expired. Please log in again.');
-              await signOut();
-              navigate('/login');
-              return;
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/onboarding-setup`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                org_name: orgNameToUse,
+                org_type: orgType,
+                full_name: fullName.trim(),
+                phone: phone.trim() || null,
+              }),
+              signal: AbortSignal.timeout(15000), // 15 second timeout
             }
-            setStepError(profileError.message);
-            setIsLoading(false);
-            return;
-          }
-          console.log('[Onboarding] Step 1: Profile saved successfully');
-        } catch (err: any) {
-          clearTimeout(profileTimeoutId);
-          console.error('[Onboarding] Profile save error:', err);
+          );
           
-          if (err.name === 'AbortError') {
-            setStepError('Profile save timed out. Please check your connection and try again.');
-          } else if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
-            setStepError('Network error. Please check your internet connection and try again.');
-          } else if (err.message?.includes('JWT')) {
-            setStepError('Session expired. Please log in again.');
-            await signOut();
-            navigate('/login');
-            return;
-          } else {
-            setStepError(err.message || 'Failed to save profile. Please try again.');
-          }
-          setIsLoading(false);
-          return;
-        }
-
-        // Create organisation - generate ID client-side to avoid RLS race condition
-        const name = orgName.trim() || `${fullName.trim()}'s Music`;
-        const newOrgId = crypto.randomUUID();
-        console.log('[Onboarding] Step 1: Creating organisation:', name, orgType, 'ID:', newOrgId);
-        
-        const orgController = new AbortController();
-        const orgTimeoutId = setTimeout(() => orgController.abort(), 10000);
-        
-        try {
-          const { error: orgError } = await supabase
-            .from('organisations')
-            .insert({
-              id: newOrgId,
-              name,
-              org_type: orgType,
-              country_code: 'GB',
-              currency_code: 'GBP',
-              timezone: 'Europe/London',
-              created_by: user.id,
-            })
-            .abortSignal(orgController.signal);
+          const data = await response.json();
+          console.log('[Onboarding] Edge function response:', response.status, data);
           
-          clearTimeout(orgTimeoutId);
-          
-          if (orgError) {
-            console.error('[Onboarding] Org creation failed:', orgError);
-            setStepError(orgError.message || 'Failed to create organisation. Please try again.');
-            setIsLoading(false);
-            return;
+          if (!response.ok) {
+            throw new Error(data.error || `Failed with status ${response.status}`);
           }
           
-          console.log('[Onboarding] Step 1: Organisation created successfully');
-          setCreatedOrgId(newOrgId);
+          console.log('[Onboarding] Step 1: Organisation created successfully, ID:', data.org_id);
+          setCreatedOrgId(data.org_id);
           
-          // Wait briefly for trigger to complete, then refresh org context
-          await new Promise(resolve => setTimeout(resolve, 300));
+          // Refresh org context
           refreshOrganisations().catch(console.error);
           
           setIsLoading(false);
           setCurrentStep(2);
-        } catch (err: any) {
-          clearTimeout(orgTimeoutId);
-          console.error('[Onboarding] Org creation error:', err);
+          return;
           
-          if (err.name === 'AbortError') {
-            setStepError('Organisation creation timed out. Please check your connection and try again.');
+        } catch (err: any) {
+          console.error('[Onboarding] Edge function error:', err);
+          
+          if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+            setStepError('Request timed out. Please check your connection and try again.');
           } else if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
             setStepError('Network error. Please check your internet connection and try again.');
           } else {
