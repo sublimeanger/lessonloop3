@@ -64,11 +64,11 @@ export const FEATURE_NAMES: Record<Feature, string> = {
   parent_portal: 'Parent Portal',
 };
 
-// Human-readable plan names
+// Human-readable plan names - matches new pricing branding
 export const PLAN_NAMES: Record<SubscriptionPlan, string> = {
   trial: 'Trial',
-  solo_teacher: 'Solo Teacher',
-  academy: 'Academy',
+  solo_teacher: 'Teacher',
+  academy: 'Studio',
   agency: 'Agency',
   custom: 'Custom',
 };

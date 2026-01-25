@@ -197,7 +197,7 @@ export default function Onboarding() {
 
   // Success screen
   if (step === 'success') {
-    const planName = selectedPlan === 'solo_teacher' ? 'Solo Teacher' : selectedPlan === 'academy' ? 'Academy' : 'Agency';
+    const planName = selectedPlan === 'solo_teacher' ? 'Teacher' : selectedPlan === 'academy' ? 'Studio' : 'Agency';
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-4">
         <motion.div
@@ -216,7 +216,7 @@ export default function Onboarding() {
           <h1 className="text-3xl font-bold">You're all set!</h1>
           <p className="mt-2 text-muted-foreground">Welcome to LessonLoop, {fullName}.</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Your 14-day {planName} trial has started.
+            Your 30-day {planName} trial has started.
           </p>
         </motion.div>
         <motion.div
@@ -355,7 +355,7 @@ export default function Onboarding() {
               <div className="mb-8 text-center">
                 <h1 className="text-3xl font-bold">Choose Your Plan</h1>
                 <p className="mt-2 text-muted-foreground">
-                  Start your 14-day free trial. Upgrade, downgrade, or cancel anytime.
+                  Start your 30-day free trial. Cancel anytime.
                 </p>
               </div>
 

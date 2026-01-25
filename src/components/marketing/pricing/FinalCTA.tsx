@@ -54,16 +54,16 @@ export function FinalCTA() {
           {/* Trust badges */}
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-success" />
-              <span>No credit card required</span>
+              <Clock className="w-4 h-4 text-success" />
+              <span>30-day free trial</span>
             </div>
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-success" />
-              <span>14-day free trial</span>
+              <CreditCard className="w-4 h-4 text-success" />
+              <span>Card required, cancel anytime</span>
             </div>
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-success" />
-              <span>Cancel anytime</span>
+              <span>No commitment</span>
             </div>
           </div>
         </motion.div>

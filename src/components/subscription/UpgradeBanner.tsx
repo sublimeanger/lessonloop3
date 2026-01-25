@@ -202,7 +202,7 @@ export function UpgradeBanner({
             <p className="text-sm text-muted-foreground">
               {urgency === 'high'
                 ? 'Upgrade now to keep all your data and unlock full features.'
-                : `You have ${trialDaysRemaining} days remaining. Upgrade to ${PLAN_NAMES.solo_teacher} for unlimited access.`}
+                : `You have ${trialDaysRemaining} days remaining. Choose a plan for unlimited access.`}
             </p>
           </div>
           <Button asChild className="shrink-0">
