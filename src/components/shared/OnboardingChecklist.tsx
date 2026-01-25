@@ -80,35 +80,47 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
 
   useEffect(() => {
     const checkStatus = async () => {
-      if (!currentOrg) return;
+      if (!currentOrg) {
+        setIsLoading(false);
+        return;
+      }
       
       setIsLoading(true);
       
-      // Check completion status in parallel
-      const [studentsResult, lessonsResult, invoicesResult, locationsResult] = await Promise.all([
-        supabase
-          .from('students')
-          .select('id', { count: 'exact', head: true })
-          .eq('org_id', currentOrg.id)
-          .eq('status', 'active'),
-        supabase
-          .from('lessons')
-          .select('id', { count: 'exact', head: true })
-          .eq('org_id', currentOrg.id),
-        supabase
-          .from('invoices')
-          .select('id', { count: 'exact', head: true })
-          .eq('org_id', currentOrg.id),
-        supabase
-          .from('locations')
-          .select('id', { count: 'exact', head: true })
-          .eq('org_id', currentOrg.id),
-      ]);
+      try {
+        // Add timeout to prevent indefinite hangs
+        const timeoutPromise = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 5000)
+        );
+        
+        // Check completion status in parallel with timeout
+        const [studentsResult, lessonsResult, invoicesResult, locationsResult] = await Promise.race([
+          Promise.all([
+            supabase
+              .from('students')
+              .select('id', { count: 'exact', head: true })
+              .eq('org_id', currentOrg.id)
+              .eq('status', 'active'),
+            supabase
+              .from('lessons')
+              .select('id', { count: 'exact', head: true })
+              .eq('org_id', currentOrg.id),
+            supabase
+              .from('invoices')
+              .select('id', { count: 'exact', head: true })
+              .eq('org_id', currentOrg.id),
+            supabase
+              .from('locations')
+              .select('id', { count: 'exact', head: true })
+              .eq('org_id', currentOrg.id),
+          ]),
+          timeoutPromise
+        ]);
 
-      const hasStudents = (studentsResult.count || 0) > 0;
-      const hasLessons = (lessonsResult.count || 0) > 0;
-      const hasInvoices = (invoicesResult.count || 0) > 0;
-      const hasLocations = (locationsResult.count || 0) > 0;
+        const hasStudents = (studentsResult.count || 0) > 0;
+        const hasLessons = (lessonsResult.count || 0) > 0;
+        const hasInvoices = (invoicesResult.count || 0) > 0;
+        const hasLocations = (locationsResult.count || 0) > 0;
 
       const checklistItems: ChecklistItem[] = [
         {
@@ -148,11 +160,17 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
       setItems(checklistItems);
       setIsLoading(false);
       
-      // Show celebration when all complete
-      const allComplete = checklistItems.every(item => item.completed);
-      if (allComplete && checklistItems.length > 0) {
-        setShowCelebration(true);
-        setTimeout(() => setIsDismissed(true), 3000);
+        // Show celebration when all complete
+        const allComplete = checklistItems.every(item => item.completed);
+        if (allComplete && checklistItems.length > 0) {
+          setShowCelebration(true);
+          setTimeout(() => setIsDismissed(true), 3000);
+        }
+      } catch (error) {
+        console.warn('Checklist check failed:', error);
+        setItems([]); // Hide checklist if queries fail
+      } finally {
+        setIsLoading(false);
       }
     };
 
