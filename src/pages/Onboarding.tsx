@@ -224,33 +224,61 @@ export default function Onboarding() {
           return;
         }
         setIsLoading(true);
-        console.log('[Onboarding] Saving profile...');
+        console.log('[Onboarding] Step 1: Starting profile save...');
         
-        // Use skipRefresh=true to avoid blocking on profile re-fetch
-        const { error: profileError } = await updateProfile({ 
-          full_name: fullName.trim(), 
-          phone: phone.trim() || null 
-        }, true);
-        
-        if (profileError) {
-          console.error('[Onboarding] Profile save failed:', profileError);
-          setStepError(profileError.message);
+        // Direct Supabase call with timeout to avoid AuthContext blocking
+        try {
+          const profilePromise = supabase
+            .from('profiles')
+            .update({ 
+              full_name: fullName.trim(), 
+              phone: phone.trim() || null 
+            })
+            .eq('id', user.id);
+          
+          const timeoutPromise = new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Profile save timed out')), 10000)
+          );
+          
+          const { error: profileError } = await Promise.race([profilePromise, timeoutPromise]);
+          
+          if (profileError) {
+            console.error('[Onboarding] Profile save failed:', profileError);
+            setStepError(profileError.message);
+            setIsLoading(false);
+            return;
+          }
+          console.log('[Onboarding] Step 1: Profile saved successfully');
+        } catch (err: any) {
+          console.error('[Onboarding] Profile save timeout/error:', err);
+          setStepError(err.message || 'Failed to save profile. Please try again.');
           setIsLoading(false);
           return;
         }
-        console.log('[Onboarding] Profile saved successfully');
 
-        // Create organisation with timeout protection
+        // Create organisation directly with timeout protection
         const name = orgName.trim() || `${fullName.trim()}'s Music`;
-        console.log('[Onboarding] Creating organisation:', name, orgType);
+        console.log('[Onboarding] Step 1: Creating organisation:', name, orgType);
         
         try {
-          const createPromise = createOrganisation({ name, org_type: orgType });
+          const orgPromise = supabase
+            .from('organisations')
+            .insert({
+              name,
+              org_type: orgType,
+              country_code: 'GB',
+              currency_code: 'GBP',
+              timezone: 'Europe/London',
+              created_by: user.id,
+            })
+            .select()
+            .single();
+          
           const timeoutPromise = new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('Organisation creation timed out. Please try again.')), 15000)
+            setTimeout(() => reject(new Error('Organisation creation timed out')), 10000)
           );
           
-          const { org, error: orgError } = await Promise.race([createPromise, timeoutPromise]);
+          const { data: org, error: orgError } = await Promise.race([orgPromise, timeoutPromise]);
           
           if (orgError || !org) {
             console.error('[Onboarding] Org creation failed:', orgError);
@@ -258,13 +286,18 @@ export default function Onboarding() {
             setIsLoading(false);
             return;
           }
-          console.log('[Onboarding] Organisation created:', org.id);
+          
+          console.log('[Onboarding] Step 1: Organisation created:', org.id);
           setCreatedOrgId(org.id);
+          
+          // Refresh org context in background (don't await)
+          refreshOrganisations().catch(console.error);
+          
           setIsLoading(false);
           setCurrentStep(2);
-        } catch (timeoutError: any) {
-          console.error('[Onboarding] Org creation timeout:', timeoutError);
-          setStepError(timeoutError.message || 'Organisation creation timed out. Please try again.');
+        } catch (err: any) {
+          console.error('[Onboarding] Org creation error:', err);
+          setStepError(err.message || 'Failed to create organisation. Please try again.');
           setIsLoading(false);
           return;
         }
