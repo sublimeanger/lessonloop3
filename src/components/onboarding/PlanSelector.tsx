@@ -1,12 +1,14 @@
 import { motion } from 'framer-motion';
 import { Check, Sparkles, Users, Building2, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, formatLimit } from '@/lib/pricing-config';
+import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, formatLimit, TRIAL_DAYS, DB_PLAN_MAP } from '@/lib/pricing-config';
 
-type SubscriptionPlan = 'solo_teacher' | 'academy' | 'agency';
+// Database subscription plan type (what gets stored)
+type DbSubscriptionPlan = 'solo_teacher' | 'academy' | 'agency';
 
 interface PlanOption {
-  value: SubscriptionPlan;
+  value: PlanKey;
+  dbValue: DbSubscriptionPlan; // The value to use when saving to database
   name: string;
   tagline: string;
   price: string;
@@ -18,8 +20,8 @@ interface PlanOption {
 }
 
 const PLAN_ICONS: Record<PlanKey, React.ElementType> = {
-  solo_teacher: Users,
-  academy: Building2,
+  teacher: Users,
+  studio: Building2,
   agency: Crown,
 };
 
@@ -28,6 +30,7 @@ const PLANS: PlanOption[] = PLAN_ORDER.map((key) => {
   const config = PRICING_CONFIG[key];
   return {
     value: key,
+    dbValue: DB_PLAN_MAP[key] as DbSubscriptionPlan,
     name: config.name,
     tagline: config.tagline,
     price: `£${config.price.monthly}`,
@@ -36,20 +39,39 @@ const PLANS: PlanOption[] = PLAN_ORDER.map((key) => {
     highlighted: config.isPopular,
     recommended: config.isPopular,
     features: [
-      `Up to ${formatLimit(config.limits.students)} students`,
-      config.limits.teachers > 1 ? `Up to ${formatLimit(config.limits.teachers)} teachers` : 'Single teacher',
-      ...config.features.slice(1, 5), // Take 4 more features
+      formatLimit(config.limits.students) === 'Unlimited' 
+        ? 'Unlimited students' 
+        : `Up to ${formatLimit(config.limits.students)} students`,
+      config.limits.teachers > 1 
+        ? config.limits.teachers >= 9999 
+          ? 'Unlimited teachers' 
+          : `Up to ${formatLimit(config.limits.teachers)} teachers`
+        : 'Single teacher',
+      ...config.features.slice(2, 6), // Take 4 more features
     ],
   };
 });
 
 interface PlanSelectorProps {
-  selectedPlan: SubscriptionPlan;
-  onSelectPlan: (plan: SubscriptionPlan) => void;
-  recommendedPlan?: SubscriptionPlan;
+  selectedPlan: DbSubscriptionPlan;
+  onSelectPlan: (plan: DbSubscriptionPlan) => void;
+  recommendedPlan?: DbSubscriptionPlan;
 }
 
 export function PlanSelector({ selectedPlan, onSelectPlan, recommendedPlan }: PlanSelectorProps) {
+  // Map db plan to display plan for comparison
+  const getDisplayPlanKey = (dbPlan: DbSubscriptionPlan): PlanKey => {
+    const map: Record<DbSubscriptionPlan, PlanKey> = {
+      solo_teacher: 'teacher',
+      academy: 'studio',
+      agency: 'agency',
+    };
+    return map[dbPlan];
+  };
+
+  const selectedDisplayPlan = getDisplayPlanKey(selectedPlan);
+  const recommendedDisplayPlan = recommendedPlan ? getDisplayPlanKey(recommendedPlan) : undefined;
+
   return (
     <div className="space-y-6">
       {/* Trial banner */}
@@ -59,15 +81,15 @@ export function PlanSelector({ selectedPlan, onSelectPlan, recommendedPlan }: Pl
         className="flex items-center justify-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary"
       >
         <Sparkles className="h-4 w-4" />
-        <span>14-day free trial • No credit card required</span>
+        <span>{TRIAL_DAYS}-day free trial • Card required, cancel anytime</span>
       </motion.div>
 
       {/* Plan cards */}
       <div className="grid gap-4 md:grid-cols-3">
         {PLANS.map((plan, index) => {
           const Icon = plan.icon;
-          const isSelected = selectedPlan === plan.value;
-          const isRecommended = recommendedPlan === plan.value || plan.recommended;
+          const isSelected = selectedDisplayPlan === plan.value;
+          const isRecommended = recommendedDisplayPlan === plan.value || plan.recommended;
 
           return (
             <motion.button
@@ -76,7 +98,7 @@ export function PlanSelector({ selectedPlan, onSelectPlan, recommendedPlan }: Pl
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
               type="button"
-              onClick={() => onSelectPlan(plan.value)}
+              onClick={() => onSelectPlan(plan.dbValue)}
               className={cn(
                 'relative flex flex-col rounded-xl border-2 p-5 text-left transition-all duration-200',
                 isSelected
@@ -149,7 +171,7 @@ export function PlanSelector({ selectedPlan, onSelectPlan, recommendedPlan }: Pl
 
       {/* Plan comparison link */}
       <p className="text-center text-sm text-muted-foreground">
-        All plans include core scheduling, billing, and parent portal features.{' '}
+        All plans include LoopAssist AI, parent portal, and core features.{' '}
         <a href="/pricing" target="_blank" className="text-primary hover:underline">
           Compare plans in detail →
         </a>
@@ -159,7 +181,7 @@ export function PlanSelector({ selectedPlan, onSelectPlan, recommendedPlan }: Pl
 }
 
 // Helper to get recommended plan based on org type
-export function getRecommendedPlan(orgType: string): SubscriptionPlan {
+export function getRecommendedPlan(orgType: string): 'solo_teacher' | 'academy' | 'agency' {
   switch (orgType) {
     case 'solo_teacher':
       return 'solo_teacher';

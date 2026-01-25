@@ -3,28 +3,53 @@ import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
-// Price IDs for each plan - these would be created in Stripe Dashboard
-// TODO: Replace with actual Stripe Price IDs from your Stripe Dashboard
+// Trial period in days
+const TRIAL_DAYS = 30;
+
+// Price IDs for each plan - set via environment variables in Stripe Dashboard
+// Map supports both old (solo_teacher/academy) and new (teacher/studio) plan keys
 const PLAN_PRICES: Record<string, { monthly: string; yearly: string }> = {
-  solo_teacher: {
-    monthly: Deno.env.get("STRIPE_PRICE_SOLO_MONTHLY") || "price_solo_monthly",
-    yearly: Deno.env.get("STRIPE_PRICE_SOLO_YEARLY") || "price_solo_yearly",
+  // New plan keys
+  teacher: {
+    monthly: Deno.env.get("STRIPE_PRICE_TEACHER_MONTHLY") || Deno.env.get("STRIPE_PRICE_SOLO_MONTHLY") || "price_teacher_monthly",
+    yearly: Deno.env.get("STRIPE_PRICE_TEACHER_YEARLY") || Deno.env.get("STRIPE_PRICE_SOLO_YEARLY") || "price_teacher_yearly",
   },
-  academy: {
-    monthly: Deno.env.get("STRIPE_PRICE_ACADEMY_MONTHLY") || "price_academy_monthly",
-    yearly: Deno.env.get("STRIPE_PRICE_ACADEMY_YEARLY") || "price_academy_yearly",
+  studio: {
+    monthly: Deno.env.get("STRIPE_PRICE_STUDIO_MONTHLY") || Deno.env.get("STRIPE_PRICE_ACADEMY_MONTHLY") || "price_studio_monthly",
+    yearly: Deno.env.get("STRIPE_PRICE_STUDIO_YEARLY") || Deno.env.get("STRIPE_PRICE_ACADEMY_YEARLY") || "price_studio_yearly",
   },
   agency: {
     monthly: Deno.env.get("STRIPE_PRICE_AGENCY_MONTHLY") || "price_agency_monthly",
     yearly: Deno.env.get("STRIPE_PRICE_AGENCY_YEARLY") || "price_agency_yearly",
   },
+  // Legacy plan key mappings
+  solo_teacher: {
+    monthly: Deno.env.get("STRIPE_PRICE_TEACHER_MONTHLY") || Deno.env.get("STRIPE_PRICE_SOLO_MONTHLY") || "price_teacher_monthly",
+    yearly: Deno.env.get("STRIPE_PRICE_TEACHER_YEARLY") || Deno.env.get("STRIPE_PRICE_SOLO_YEARLY") || "price_teacher_yearly",
+  },
+  academy: {
+    monthly: Deno.env.get("STRIPE_PRICE_STUDIO_MONTHLY") || Deno.env.get("STRIPE_PRICE_ACADEMY_MONTHLY") || "price_studio_monthly",
+    yearly: Deno.env.get("STRIPE_PRICE_STUDIO_YEARLY") || Deno.env.get("STRIPE_PRICE_ACADEMY_YEARLY") || "price_studio_yearly",
+  },
 };
 
-// Plan limits - must match src/lib/pricing-config.ts
+// Plan limits - now all unlimited students
 const PLAN_LIMITS: Record<string, { max_students: number; max_teachers: number }> = {
-  solo_teacher: { max_students: 30, max_teachers: 1 },
-  academy: { max_students: 150, max_teachers: 10 },
+  teacher: { max_students: 9999, max_teachers: 1 },
+  studio: { max_students: 9999, max_teachers: 5 },
   agency: { max_students: 9999, max_teachers: 9999 },
+  // Legacy mappings
+  solo_teacher: { max_students: 9999, max_teachers: 1 },
+  academy: { max_students: 9999, max_teachers: 5 },
+};
+
+// Map new plan keys to database enum values
+const DB_PLAN_MAP: Record<string, string> = {
+  teacher: 'solo_teacher',
+  studio: 'academy',
+  agency: 'agency',
+  solo_teacher: 'solo_teacher',
+  academy: 'academy',
 };
 
 serve(async (req) => {
@@ -66,7 +91,9 @@ serve(async (req) => {
       throw new Error("orgId and plan are required");
     }
 
-    if (!["solo_teacher", "academy", "agency"].includes(plan)) {
+    // Validate plan (support both old and new plan keys)
+    const validPlans = ["teacher", "studio", "agency", "solo_teacher", "academy"];
+    if (!validPlans.includes(plan)) {
       throw new Error("Invalid plan");
     }
 
@@ -91,7 +118,7 @@ serve(async (req) => {
     // Fetch org details
     const { data: org, error: orgError } = await supabase
       .from("organisations")
-      .select("id, name, stripe_customer_id, stripe_subscription_id, subscription_plan")
+      .select("id, name, stripe_customer_id, stripe_subscription_id, subscription_plan, subscription_status")
       .eq("id", orgId)
       .single();
 
@@ -131,7 +158,7 @@ serve(async (req) => {
     }
 
     // If org already has an active subscription, redirect to customer portal instead
-    if (org.stripe_subscription_id) {
+    if (org.stripe_subscription_id && org.subscription_status === 'active') {
       const portalSession = await stripe.billingPortal.sessions.create({
         customer: customerId,
         return_url: successUrl || `${req.headers.get("origin")}/settings?tab=billing`,
@@ -155,12 +182,20 @@ serve(async (req) => {
       throw new Error("Invalid plan configuration");
     }
 
+    // Get plan limits
+    const planLimits = PLAN_LIMITS[plan] || PLAN_LIMITS.teacher;
+    const dbPlanKey = DB_PLAN_MAP[plan] || plan;
+
     // Build success/cancel URLs
     const baseUrl = successUrl?.split("?")[0] || `${req.headers.get("origin")}/settings`;
     const finalSuccessUrl = `${baseUrl}?tab=billing&subscription=success`;
     const finalCancelUrl = cancelUrl || `${baseUrl}?tab=billing&subscription=cancelled`;
 
-    // Create Stripe Checkout Session for subscription
+    // Determine if user should get a trial
+    // Only new users (on trial plan with no previous subscription) get the 30-day trial
+    const isNewUser = org.subscription_plan === "trial" && !org.stripe_subscription_id;
+
+    // Create Stripe Checkout Session for subscription with 30-day trial
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
@@ -176,18 +211,25 @@ serve(async (req) => {
       subscription_data: {
         metadata: {
           lessonloop_org_id: orgId,
-          lessonloop_plan: plan,
-          max_students: PLAN_LIMITS[plan].max_students.toString(),
-          max_teachers: PLAN_LIMITS[plan].max_teachers.toString(),
+          lessonloop_plan: dbPlanKey,
+          max_students: planLimits.max_students.toString(),
+          max_teachers: planLimits.max_teachers.toString(),
         },
-        trial_period_days: org.subscription_plan === "trial" ? 0 : undefined, // No additional trial if already trialing
+        // 30-day trial for new users with card upfront
+        trial_period_days: isNewUser ? TRIAL_DAYS : undefined,
+        trial_settings: isNewUser ? {
+          end_behavior: {
+            missing_payment_method: 'cancel'
+          }
+        } : undefined,
       },
       metadata: {
         lessonloop_org_id: orgId,
-        lessonloop_plan: plan,
+        lessonloop_plan: dbPlanKey,
       },
       allow_promotion_codes: true,
       billing_address_collection: "required",
+      payment_method_collection: "always", // Always collect card for trial
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes
     });
 

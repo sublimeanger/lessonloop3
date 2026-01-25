@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,12 +12,32 @@ import {
 import { useSubscription } from '@/hooks/useSubscription';
 import { useSubscriptionCheckout, BillingInterval } from '@/hooks/useSubscriptionCheckout';
 import { useUsageCounts } from '@/hooks/useUsageCounts';
-import { PLAN_NAMES } from '@/hooks/useFeatureGate';
 import { LimitReached } from '@/components/subscription/FeatureGate';
 import { useOrg } from '@/contexts/OrgContext';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, formatLimit } from '@/lib/pricing-config';
+import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, formatLimit, TRIAL_DAYS, DB_PLAN_MAP } from '@/lib/pricing-config';
+
+// Database plan types
+type DbSubscriptionPlan = 'solo_teacher' | 'academy' | 'agency';
+
+// Map display plan keys to database plan keys
+const DISPLAY_TO_DB_PLAN: Record<PlanKey, DbSubscriptionPlan> = {
+  teacher: 'solo_teacher',
+  studio: 'academy',
+  agency: 'agency',
+};
+
+// Human-readable plan names (for status display)
+const PLAN_NAMES: Record<string, string> = {
+  trial: 'Trial',
+  solo_teacher: 'Teacher',
+  teacher: 'Teacher',
+  academy: 'Studio',
+  studio: 'Studio',
+  agency: 'Agency',
+  custom: 'Custom',
+};
 
 interface PlanCardProps {
   plan: PlanKey;
@@ -93,11 +112,11 @@ function PlanCard({
           <div className="flex gap-4 text-sm">
             <div className="flex items-center gap-1.5">
               <Users className="h-4 w-4 text-muted-foreground" />
-              <span>{limits.students === 9999 ? 'Unlimited' : limits.students} students</span>
+              <span>{limits.students >= 9999 ? 'Unlimited' : limits.students} students</span>
             </div>
             <div className="flex items-center gap-1.5">
               <GraduationCap className="h-4 w-4 text-muted-foreground" />
-              <span>{limits.teachers === 9999 ? 'Unlimited' : limits.teachers} teachers</span>
+              <span>{limits.teachers >= 9999 ? 'Unlimited' : limits.teachers} teachers</span>
             </div>
           </div>
           
@@ -178,6 +197,18 @@ export function BillingTab() {
   const canManageBilling = isOrgOwner || isOrgAdmin;
   const hasActiveSubscription = stripeSubscriptionId && status === 'active';
 
+  // Map current database plan to display plan key
+  const getCurrentDisplayPlan = (): PlanKey | null => {
+    const map: Record<string, PlanKey> = {
+      solo_teacher: 'teacher',
+      academy: 'studio',
+      agency: 'agency',
+    };
+    return map[plan] || null;
+  };
+
+  const currentDisplayPlan = getCurrentDisplayPlan();
+
   return (
     <div className="space-y-8">
       {/* Current Status Card */}
@@ -229,7 +260,7 @@ export function BillingTab() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-lg">{PLAN_NAMES[plan]}</h3>
+                  <h3 className="font-semibold text-lg">{PLAN_NAMES[plan] || plan}</h3>
                   <Badge variant={
                     status === 'active' ? 'default' :
                     status === 'trialing' ? 'secondary' :
@@ -345,7 +376,7 @@ export function BillingTab() {
             <div>
               <h2 className="text-xl font-semibold">Choose Your Plan</h2>
               <p className="text-sm text-muted-foreground">
-                All plans include a 14-day free trial
+                All plans include a {TRIAL_DAYS}-day free trial with card
               </p>
             </div>
             <div className="flex items-center gap-2 p-1 bg-muted rounded-lg">
@@ -371,14 +402,14 @@ export function BillingTab() {
               >
                 Yearly
                 <Badge variant="secondary" className="ml-2 text-xs">
-                  Save 16%
+                  Save 17%
                 </Badge>
               </button>
             </div>
           </div>
 
           <div className="grid gap-6 md:grid-cols-3">
-            {(Object.entries(PLANS) as [keyof typeof PLANS, typeof PLANS[keyof typeof PLANS]][]).map(([key, planData]) => (
+            {(Object.entries(PLANS) as [PlanKey, typeof PLANS[PlanKey]][]).map(([key, planData]) => (
               <PlanCard
                 key={key}
                 plan={key}
@@ -386,10 +417,10 @@ export function BillingTab() {
                 price={planData.price}
                 features={planData.features}
                 limits={planData.limits}
-                isCurrentPlan={plan === key && !isTrialing}
+                isCurrentPlan={currentDisplayPlan === key && !isTrialing}
                 isPopular={'isPopular' in planData && planData.isPopular}
                 billingInterval={billingInterval}
-                onSelect={() => initiateSubscription(key, billingInterval)}
+                onSelect={() => initiateSubscription(DISPLAY_TO_DB_PLAN[key], billingInterval)}
                 isLoading={isLoading}
               />
             ))}

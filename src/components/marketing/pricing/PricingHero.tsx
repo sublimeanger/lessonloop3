@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Sparkles, Star, Users } from "lucide-react";
 import { BillingToggle } from "./BillingToggle";
+import { TRIAL_DAYS } from "@/lib/pricing-config";
 
 interface PricingHeroProps {
   isAnnual: boolean;
@@ -146,7 +147,7 @@ export function PricingHero({ isAnnual, onToggle }: PricingHeroProps) {
             
             <div className="flex items-center gap-1.5">
               <span className="text-success font-medium">✓</span>
-              <span>14-day free trial</span>
+              <span>{TRIAL_DAYS}-day free trial</span>
             </div>
           </motion.div>
         </motion.div>
