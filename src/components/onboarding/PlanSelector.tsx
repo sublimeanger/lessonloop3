@@ -81,7 +81,7 @@ export function PlanSelector({ selectedPlan, onSelectPlan, recommendedPlan }: Pl
         className="flex items-center justify-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary"
       >
         <Sparkles className="h-4 w-4" />
-        <span>{TRIAL_DAYS}-day free trial • Card required, cancel anytime</span>
+        <span>{TRIAL_DAYS}-day free trial • No card required</span>
       </motion.div>
 
       {/* Plan cards */}
