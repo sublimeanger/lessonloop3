@@ -13,6 +13,7 @@ interface TourContextType {
   completedTours: TourName[];
   hasCompletedTour: (tourName: TourName) => boolean;
   resetTours: () => void;
+  toursLoaded: boolean;
 }
 
 const TourContext = createContext<TourContextType | null>(null);
@@ -179,6 +180,7 @@ export function TourProvider({ children }: TourProviderProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [currentTour, setCurrentTour] = useState<TourName | null>(null);
   const [completedTours, setCompletedTours] = useState<TourName[]>([]);
+  const [toursLoaded, setToursLoaded] = useState(false);
   const [steps, setSteps] = useState<Step[]>([]);
 
   // Load completed tours from localStorage (could also be from DB)
@@ -192,6 +194,7 @@ export function TourProvider({ children }: TourProviderProps) {
           setCompletedTours([]);
         }
       }
+      setToursLoaded(true);
     }
   }, [user]);
 
@@ -234,16 +237,16 @@ export function TourProvider({ children }: TourProviderProps) {
     const { status, action, type } = data;
     const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED];
 
-    // Handle finished or skipped statuses
+    // Handle finished or skipped statuses - save completion for both
     if (finishedStatuses.includes(status as typeof STATUS.FINISHED | typeof STATUS.SKIPPED)) {
-      if (currentTour && status === STATUS.FINISHED) {
+      if (currentTour) {
         saveTourCompletion(currentTour);
       }
       endTour();
       return;
     }
 
-    // Handle close button click or skip action
+    // Handle close button click or skip action (before status changes)
     if (action === ACTIONS.CLOSE || action === ACTIONS.SKIP) {
       if (currentTour) {
         saveTourCompletion(currentTour);
@@ -262,6 +265,7 @@ export function TourProvider({ children }: TourProviderProps) {
         completedTours,
         hasCompletedTour,
         resetTours,
+        toursLoaded,
       }}
     >
       {children}
