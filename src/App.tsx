@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OrgProvider } from "@/contexts/OrgContext";
+import { TourProvider } from "@/components/tours/TourProvider";
 import { RouteGuard, PublicRoute } from "@/components/auth/RouteGuard";
 
 // Marketing Pages
@@ -50,6 +51,7 @@ import NotFound from "./pages/NotFound";
 import Practice from "./pages/Practice";
 import Resources from "./pages/Resources";
 import DailyRegister from "./pages/DailyRegister";
+import Help from "./pages/Help";
 
 // Portal Pages
 import PortalHome from "./pages/portal/PortalHome";
@@ -67,8 +69,9 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <OrgProvider>
-            <Toaster />
-            <Sonner />
+            <TourProvider>
+              <Toaster />
+              <Sonner />
             <Routes>
               {/* Public auth routes */}
               <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
@@ -217,6 +220,11 @@ const App = () => (
                   <Settings />
                 </RouteGuard>
               } />
+              <Route path="/help" element={
+                <RouteGuard>
+                  <Help />
+                </RouteGuard>
+              } />
               
               {/* Public Marketing Routes */}
               <Route path="/" element={<MarketingHome />} />
@@ -234,6 +242,7 @@ const App = () => (
               {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </TourProvider>
           </OrgProvider>
         </AuthProvider>
       </BrowserRouter>

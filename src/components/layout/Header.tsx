@@ -70,7 +70,13 @@ export function Header() {
         )}
       </div>
       
-      <Button variant="outline" size="sm" className="gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary" onClick={() => setIsOpen(true)}>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        className="gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary" 
+        onClick={() => setIsOpen(true)}
+        data-tour="loopassist-button"
+      >
         <Sparkles className="h-4 w-4" />
         <span className="hidden sm:inline">LoopAssist</span>
       </Button>

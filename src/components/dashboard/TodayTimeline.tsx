@@ -167,7 +167,7 @@ export function TodayTimeline({ className }: TodayTimelineProps) {
   const activeLessons = lessons?.filter(l => l.status !== 'cancelled') || [];
   
   return (
-    <Card className={cn('overflow-hidden', className)}>
+    <Card className={cn('overflow-hidden', className)} data-tour="today-timeline">
       <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">

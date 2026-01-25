@@ -158,7 +158,7 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
           {isLoading ? (
             <GridSkeleton count={4} columns={4} />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-tour="stat-cards">
               <StatCard
                 title="Today's Lessons"
                 value={stats?.todayLessons ?? 0}

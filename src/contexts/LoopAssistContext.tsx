@@ -5,6 +5,8 @@ import { PageContext } from '@/hooks/useLoopAssist';
 interface LoopAssistContextType {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  openDrawer: () => void;
+  closeDrawer: () => void;
   pageContext: PageContext;
   setPageContext: (context: PageContext) => void;
 }
@@ -37,8 +39,11 @@ export function LoopAssistProvider({ children }: { children: ReactNode }) {
     }
   }, [location.pathname]);
 
+  const openDrawer = () => setIsOpen(true);
+  const closeDrawer = () => setIsOpen(false);
+
   return (
-    <LoopAssistContext.Provider value={{ isOpen, setIsOpen, pageContext, setPageContext }}>
+    <LoopAssistContext.Provider value={{ isOpen, setIsOpen, openDrawer, closeDrawer, pageContext, setPageContext }}>
       {children}
     </LoopAssistContext.Provider>
   );
