@@ -61,8 +61,18 @@ export function RouteGuard({
   }
 
   // For protected routes, check onboarding status
-  if (requireAuth && requireOnboarding && profile && !profile.has_completed_onboarding) {
-    return <Navigate to="/onboarding" replace />;
+  // Only redirect to onboarding if we HAVE a profile AND it shows incomplete onboarding
+  // If profile is null (fetch failed/slow), don't redirect - it will retry in background
+  if (requireAuth && requireOnboarding) {
+    if (profile === null) {
+      // Profile is still loading or failed - show loading state briefly
+      // The AuthContext will retry the fetch
+      console.warn('Profile is null after auth init - waiting for retry');
+      return <AuthLoading onLogout={signOut} />;
+    }
+    if (!profile.has_completed_onboarding) {
+      return <Navigate to="/onboarding" replace />;
+    }
   }
 
   // For role-restricted routes

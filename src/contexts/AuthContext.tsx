@@ -36,39 +36,65 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Simple profile fetch - single attempt, no retries
+// Profile fetch with 3s timeout
 async function fetchProfile(userId: string): Promise<Profile | null> {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
+  const start = Date.now();
+  const timeoutPromise = new Promise<null>((resolve) => 
+    setTimeout(() => {
+      console.warn(`Profile fetch timeout after 3s`);
+      resolve(null);
+    }, 3000)
+  );
+  
+  const fetchPromise = (async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
 
-    if (error) {
-      console.warn('Profile fetch failed:', error.message);
+      console.log(`Profile fetch took ${Date.now() - start}ms`);
+      if (error) {
+        console.warn('Profile fetch failed:', error.message);
+        return null;
+      }
+      return data as Profile | null;
+    } catch (err) {
+      console.warn(`Profile fetch exception after ${Date.now() - start}ms:`, err);
       return null;
     }
-    return data as Profile | null;
-  } catch (err) {
-    console.warn('Profile fetch exception:', err);
-    return null;
-  }
+  })();
+  
+  return Promise.race([fetchPromise, timeoutPromise]);
 }
 
-// Simple roles fetch - single attempt
+// Roles fetch with 3s timeout
 async function fetchRoles(userId: string): Promise<AppRole[]> {
-  try {
-    const { data, error } = await supabase.rpc('get_user_roles', { _user_id: userId });
-    if (error) {
-      console.warn('Roles fetch failed:', error.message);
+  const start = Date.now();
+  const timeoutPromise = new Promise<AppRole[]>((resolve) => 
+    setTimeout(() => {
+      console.warn(`Roles fetch timeout after 3s`);
+      resolve([]);
+    }, 3000)
+  );
+  
+  const fetchPromise = (async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_user_roles', { _user_id: userId });
+      console.log(`Roles fetch took ${Date.now() - start}ms`);
+      if (error) {
+        console.warn('Roles fetch failed:', error.message);
+        return [];
+      }
+      return (data as AppRole[]) || [];
+    } catch (err) {
+      console.warn(`Roles fetch exception after ${Date.now() - start}ms:`, err);
       return [];
     }
-    return (data as AppRole[]) || [];
-  } catch (err) {
-    console.warn('Roles fetch exception:', err);
-    return [];
-  }
+  })();
+  
+  return Promise.race([fetchPromise, timeoutPromise]);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -92,6 +118,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
   };
+
+  // Retry profile fetch if missing after init
+  useEffect(() => {
+    if (isInitialised && user && !profile) {
+      console.log('Profile missing after init - retrying fetch');
+      const retryTimer = setTimeout(() => {
+        refreshProfile();
+      }, 500);
+      return () => clearTimeout(retryTimer);
+    }
+  }, [isInitialised, user, profile]);
 
   useEffect(() => {
     mountedRef.current = true;
