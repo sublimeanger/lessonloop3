@@ -12,7 +12,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, MapPin, ChevronDown, Loader2, Building, Trash2, Edit, DoorOpen } from 'lucide-react';
+import { useFeatureGate } from '@/hooks/useFeatureGate';
+import { FeatureGate } from '@/components/subscription';
+import { Plus, MapPin, ChevronDown, Loader2, Building, Trash2, Edit, DoorOpen, Lock, Sparkles } from 'lucide-react';
 
 type LocationType = 'school' | 'studio' | 'home' | 'online';
 
@@ -38,6 +40,7 @@ interface Location {
 export default function Locations() {
   const { currentOrg, isOrgAdmin } = useOrg();
   const { toast } = useToast();
+  const { hasAccess: hasMultiLocation, requiredPlanName } = useFeatureGate('multi_location');
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedLocations, setExpandedLocations] = useState<Set<string>>(new Set());

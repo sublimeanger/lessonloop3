@@ -12,7 +12,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, GraduationCap, Loader2, Mail, UserPlus, Users } from 'lucide-react';
+import { LimitReached } from '@/components/subscription';
+import { useUsageCounts } from '@/hooks/useUsageCounts';
+import { Plus, GraduationCap, Loader2, Mail, UserPlus, Users, Lock } from 'lucide-react';
 import { useTeacherAssignmentCounts } from '@/hooks/useTeacherAssignments';
 
 interface OrgMember {
@@ -43,6 +45,7 @@ export default function Teachers() {
   const { currentOrg, isOrgAdmin } = useOrg();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { counts, limits, canAddTeacher, usage } = useUsageCounts();
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,6 +113,16 @@ export default function Teachers() {
   const handleInvite = async () => {
     if (!inviteEmail.trim() || !currentOrg) {
       toast({ title: 'Email required', variant: 'destructive' });
+      return;
+    }
+    
+    // Check teacher limit for teacher role invites
+    if (inviteRole === 'teacher' && !canAddTeacher) {
+      toast({ 
+        title: 'Teacher limit reached', 
+        description: `You've reached your limit of ${limits.maxTeachers} teachers. Upgrade your plan to add more.`,
+        variant: 'destructive' 
+      });
       return;
     }
     
