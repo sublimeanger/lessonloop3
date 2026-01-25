@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,9 +13,13 @@ import {
   ChevronLeft,
   Loader2,
   Sparkles,
+  Lock,
+  ArrowRight,
 } from 'lucide-react';
 import { useLoopAssist, AIMessage, AIConversation } from '@/hooks/useLoopAssist';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
+import { useFeatureGate } from '@/hooks/useFeatureGate';
+import { useSubscription } from '@/hooks/useSubscription';
 import { renderMessageWithChips } from './EntityChip';
 import { ActionCard, stripActionBlock, parseActionFromResponse } from './ActionCard';
 import { cn } from '@/lib/utils';
@@ -27,6 +32,11 @@ interface LoopAssistDrawerProps {
 
 export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) {
   const { pageContext } = useLoopAssistUI();
+  const { hasAccess: hasLoopAssist, requiredPlanName } = useFeatureGate('loop_assist');
+  const { isTrialExpired, status } = useSubscription();
+  
+  // Block access if trial expired or subscription cancelled
+  const isBlocked = isTrialExpired || status === 'cancelled' || !hasLoopAssist;
   
   const {
     conversations,
@@ -108,7 +118,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
         </SheetHeader>
 
         {/* Context indicator */}
-        {pageContext.type !== 'general' && (
+        {!isBlocked && pageContext.type !== 'general' && (
           <div className="border-b bg-muted/50 px-4 py-2">
             <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Context:</span>
@@ -120,7 +130,29 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
           </div>
         )}
 
-        {showConversationList ? (
+        {/* Blocked state - show upgrade prompt */}
+        {isBlocked ? (
+          <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <Lock className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="mb-2 text-lg font-semibold">LoopAssist AI</h3>
+            <p className="mb-6 max-w-sm text-sm text-muted-foreground">
+              {isTrialExpired 
+                ? 'Your trial has expired. Upgrade to continue using LoopAssist AI.'
+                : status === 'cancelled'
+                ? 'Your subscription has been cancelled. Resubscribe to access LoopAssist AI.'
+                : `LoopAssist AI requires the ${requiredPlanName} plan or higher.`}
+            </p>
+            <Button asChild>
+              <Link to="/settings?tab=billing">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Upgrade Now
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        ) : showConversationList ? (
           <ConversationList
             conversations={conversations}
             onSelect={handleSelectConversation}

@@ -4,22 +4,23 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
 // Price IDs for each plan - these would be created in Stripe Dashboard
-// Using placeholder values - replace with actual Stripe Price IDs
+// TODO: Replace with actual Stripe Price IDs from your Stripe Dashboard
 const PLAN_PRICES: Record<string, { monthly: string; yearly: string }> = {
   solo_teacher: {
-    monthly: "price_solo_monthly", // Replace with actual Stripe Price ID
-    yearly: "price_solo_yearly",
+    monthly: Deno.env.get("STRIPE_PRICE_SOLO_MONTHLY") || "price_solo_monthly",
+    yearly: Deno.env.get("STRIPE_PRICE_SOLO_YEARLY") || "price_solo_yearly",
   },
   academy: {
-    monthly: "price_academy_monthly",
-    yearly: "price_academy_yearly",
+    monthly: Deno.env.get("STRIPE_PRICE_ACADEMY_MONTHLY") || "price_academy_monthly",
+    yearly: Deno.env.get("STRIPE_PRICE_ACADEMY_YEARLY") || "price_academy_yearly",
   },
   agency: {
-    monthly: "price_agency_monthly",
-    yearly: "price_agency_yearly",
+    monthly: Deno.env.get("STRIPE_PRICE_AGENCY_MONTHLY") || "price_agency_monthly",
+    yearly: Deno.env.get("STRIPE_PRICE_AGENCY_YEARLY") || "price_agency_yearly",
   },
 };
 
+// Plan limits - must match src/lib/pricing-config.ts
 const PLAN_LIMITS: Record<string, { max_students: number; max_teachers: number }> = {
   solo_teacher: { max_students: 30, max_teachers: 1 },
   academy: { max_students: 150, max_teachers: 10 },
