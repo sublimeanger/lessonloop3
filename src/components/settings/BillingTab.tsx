@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useSubscriptionCheckout, BillingInterval } from '@/hooks/useSubscriptionCheckout';
+import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { PLAN_NAMES } from '@/hooks/useFeatureGate';
 import { useOrg } from '@/contexts/OrgContext';
 import { cn } from '@/lib/utils';
@@ -193,6 +194,7 @@ export function BillingTab() {
     stripeSubscriptionId
   } = useSubscription();
   const { initiateSubscription, openCustomerPortal, isLoading } = useSubscriptionCheckout();
+  const { counts, usage } = useUsageCounts();
   const { isOrgOwner, isOrgAdmin } = useOrg();
 
   const canManageBilling = isOrgOwner || isOrgAdmin;
@@ -280,23 +282,35 @@ export function BillingTab() {
             <div className="p-4 rounded-lg border">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-muted-foreground">Students</span>
-                <span className="text-sm font-medium">
-                  {limits.maxStudents === 9999 ? 'Unlimited' : `0 / ${limits.maxStudents}`}
+                <span className={cn(
+                  'text-sm font-medium',
+                  usage.isStudentNearLimit && 'text-warning'
+                )}>
+                  {limits.maxStudents >= 9999 ? 'Unlimited' : `${counts.students} / ${limits.maxStudents}`}
                 </span>
               </div>
-              {limits.maxStudents !== 9999 && (
-                <Progress value={0} className="h-2" />
+              {limits.maxStudents < 9999 && (
+                <Progress 
+                  value={usage.studentsPercentage} 
+                  className={cn('h-2', usage.isStudentNearLimit && '[&>div]:bg-warning')} 
+                />
               )}
             </div>
             <div className="p-4 rounded-lg border">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-muted-foreground">Teachers</span>
-                <span className="text-sm font-medium">
-                  {limits.maxTeachers === 9999 ? 'Unlimited' : `1 / ${limits.maxTeachers}`}
+                <span className={cn(
+                  'text-sm font-medium',
+                  usage.isTeacherNearLimit && 'text-warning'
+                )}>
+                  {limits.maxTeachers >= 9999 ? 'Unlimited' : `${counts.teachers} / ${limits.maxTeachers}`}
                 </span>
               </div>
-              {limits.maxTeachers !== 9999 && (
-                <Progress value={(1 / limits.maxTeachers) * 100} className="h-2" />
+              {limits.maxTeachers < 9999 && (
+                <Progress 
+                  value={usage.teachersPercentage} 
+                  className={cn('h-2', usage.isTeacherNearLimit && '[&>div]:bg-warning')} 
+                />
               )}
             </div>
           </div>

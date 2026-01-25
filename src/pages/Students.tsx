@@ -15,7 +15,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { Plus, Search, Users, Mail, Phone, Upload } from 'lucide-react';
+import { LimitReached } from '@/components/subscription';
+import { useUsageCounts } from '@/hooks/useUsageCounts';
+import { Plus, Search, Users, Mail, Phone, Upload, Lock } from 'lucide-react';
 
 type StudentStatus = 'active' | 'inactive';
 
@@ -35,6 +37,7 @@ export default function Students() {
   const { currentOrg, isOrgAdmin, currentRole } = useOrg();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { counts, limits, canAddStudent, usage } = useUsageCounts();
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -117,6 +120,14 @@ export default function Students() {
   });
 
   const openAddDialog = () => {
+    if (!canAddStudent) {
+      toast({ 
+        title: 'Student limit reached', 
+        description: `You've reached your limit of ${limits.maxStudents} students. Upgrade your plan to add more.`,
+        variant: 'destructive' 
+      });
+      return;
+    }
     setEditingStudent(null);
     setFirstName('');
     setLastName('');
@@ -213,7 +224,8 @@ export default function Students() {
                 <span className="hidden sm:inline">Import</span>
               </Button>
             </Link>
-            <Button onClick={openAddDialog} className="gap-2">
+            <Button onClick={openAddDialog} className="gap-2" disabled={!canAddStudent}>
+              {!canAddStudent && <Lock className="h-4 w-4" />}
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Add Student</span>
             </Button>
