@@ -43,6 +43,16 @@ const commonInstruments = [
   'Saxophone', 'Clarinet', 'Cello', 'Trumpet', 'Theory'
 ];
 
+// Helper to wrap any promise with a hard timeout
+const withTimeout = <T,>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error(errorMessage)), ms)
+    )
+  ]);
+};
+
 export default function Onboarding() {
   const navigate = useNavigate();
   const { user, profile, updateProfile, signOut, isLoading: authLoading, isInitialised } = useAuth();
@@ -137,15 +147,70 @@ export default function Onboarding() {
     setStepError(null);
   };
 
+  // Debug skip - bypass onboarding entirely for testing
+  const handleDebugSkip = async () => {
+    try {
+      setIsLoading(true);
+      setStepError(null);
+      const newOrgId = crypto.randomUUID();
+      
+      console.log('[Onboarding] Debug skip: creating test org...');
+      
+      // Create test org with timeout
+      const orgController = new AbortController();
+      const orgTimeout = setTimeout(() => orgController.abort(), 8000);
+      
+      await supabase.from('organisations').insert({
+        id: newOrgId,
+        name: 'Test Organisation',
+        org_type: 'solo_teacher',
+        country_code: 'GB',
+        currency_code: 'GBP',
+        timezone: 'Europe/London',
+        created_by: user!.id,
+      }).abortSignal(orgController.signal);
+      
+      clearTimeout(orgTimeout);
+      
+      // Wait for trigger
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log('[Onboarding] Debug skip: marking onboarding complete...');
+      
+      // Mark onboarding complete
+      const profileController = new AbortController();
+      const profileTimeout = setTimeout(() => profileController.abort(), 8000);
+      
+      await supabase.from('profiles')
+        .update({ has_completed_onboarding: true, current_org_id: newOrgId })
+        .eq('id', user!.id)
+        .abortSignal(profileController.signal);
+      
+      clearTimeout(profileTimeout);
+      
+      // Refresh and navigate
+      await refreshOrganisations();
+      clearDraft();
+      navigate('/dashboard');
+    } catch (err: any) {
+      console.error('[Onboarding] Debug skip failed:', err);
+      setStepError(`Debug skip failed: ${err.message}. Try logging out.`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Loading state
   if (!isInitialised || authLoading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-muted-foreground">Loading your profile...</p>
-        <Button variant="ghost" size="sm" onClick={handleLogout} className="mt-4">
-          Stuck? Click to logout
-        </Button>
+        <div className="flex gap-2 mt-4">
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
+            Stuck? Logout
+          </Button>
+        </div>
       </div>
     );
   }
@@ -225,12 +290,22 @@ export default function Onboarding() {
         }
         setIsLoading(true);
         
-        // Validate session before any database operations
+        // Validate session with hard timeout (auth calls don't support AbortController)
         console.log('[Onboarding] Step 1: Validating session...');
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (!session || sessionError) {
-          console.error('[Onboarding] No valid session:', sessionError);
-          setStepError('Your session has expired. Please log in again.');
+        let session;
+        try {
+          const result = await withTimeout(
+            supabase.auth.getSession(),
+            5000,
+            'Session check timed out'
+          );
+          session = result.data.session;
+          if (!session || result.error) {
+            throw new Error(result.error?.message || 'No valid session');
+          }
+        } catch (err: any) {
+          console.error('[Onboarding] Session validation failed:', err.message);
+          setStepError('Session check failed. Please log in again.');
           setIsLoading(false);
           await signOut();
           navigate('/login');
@@ -238,10 +313,16 @@ export default function Onboarding() {
         }
         console.log('[Onboarding] Session valid, user:', session.user.id);
         
-        // Refresh session to ensure fresh token
-        const { error: refreshError } = await supabase.auth.refreshSession();
-        if (refreshError) {
-          console.warn('[Onboarding] Session refresh warning:', refreshError.message);
+        // Try to refresh session but don't block on failure
+        try {
+          await withTimeout(
+            supabase.auth.refreshSession(),
+            3000,
+            'Session refresh timed out'
+          );
+        } catch (refreshErr) {
+          console.warn('[Onboarding] Session refresh skipped:', refreshErr);
+          // Continue anyway - the session we have should still work
         }
         
         console.log('[Onboarding] Step 1: Starting profile save...');
@@ -588,6 +669,20 @@ export default function Onboarding() {
                 disabled={isLoading}
               />
               <p className="text-xs text-muted-foreground">This appears on invoices and messages</p>
+            </div>
+            
+            {/* Debug skip button */}
+            <div className="pt-4 border-t">
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={handleDebugSkip}
+                disabled={isLoading}
+                className="w-full text-muted-foreground"
+              >
+                Skip to Dashboard (Debug)
+              </Button>
             </div>
           </div>
         </OnboardingStep>
