@@ -1,15 +1,19 @@
 // Shared CORS configuration for production hardening
-// Uses ALLOWED_ORIGINS env var or defaults to the preview URL
+// Uses ALLOWED_ORIGINS env var or defaults to known Lovable domains
 
-const DEFAULT_ORIGIN = "https://id-preview--c541d756-90e7-442a-ba85-0c723aeabc14.lovable.app";
+const DEFAULT_ORIGINS = [
+  "https://id-preview--c541d756-90e7-442a-ba85-0c723aeabc14.lovable.app",
+  "https://lessonloop3.lovable.app",
+  "*.lovable.app",
+  "*.lovableproject.com",
+];
 
 function getAllowedOrigins(): string[] {
   const envOrigins = Deno.env.get("ALLOWED_ORIGINS");
   if (envOrigins) {
     return envOrigins.split(",").map((o) => o.trim()).filter(Boolean);
   }
-  // Default to preview URL if not configured
-  return [DEFAULT_ORIGIN];
+  return DEFAULT_ORIGINS;
 }
 
 export function getCorsHeaders(req: Request): Record<string, string> {
