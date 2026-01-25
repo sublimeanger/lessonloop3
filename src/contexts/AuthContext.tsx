@@ -119,16 +119,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Retry profile fetch if missing after init
+  // Self-healing: ensure profile exists via edge function if missing
+  const ensureProfileExists = async (accessToken: string): Promise<boolean> => {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/profile-ensure`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(5000),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[Auth] Profile ensure result:', data.created ? 'created' : 'exists');
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.warn('[Auth] Profile ensure failed:', err);
+      return false;
+    }
+  };
+
+  // Retry profile fetch if missing after init, with self-healing
   useEffect(() => {
-    if (isInitialised && user && !profile) {
-      console.log('Profile missing after init - retrying fetch');
-      const retryTimer = setTimeout(() => {
-        refreshProfile();
-      }, 500);
+    if (isInitialised && user && !profile && session) {
+      console.log('[Auth] Profile missing after init - attempting recovery');
+      
+      const recoverProfile = async () => {
+        // First try to ensure profile exists
+        const success = await ensureProfileExists(session.access_token);
+        if (success && mountedRef.current) {
+          // Now fetch the profile again
+          await refreshProfile();
+        }
+      };
+      
+      const retryTimer = setTimeout(recoverProfile, 500);
       return () => clearTimeout(retryTimer);
     }
-  }, [isInitialised, user, profile]);
+  }, [isInitialised, user, profile, session]);
 
   useEffect(() => {
     mountedRef.current = true;

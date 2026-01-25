@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { Loader2 } from 'lucide-react';
@@ -13,13 +13,27 @@ interface RouteGuardProps {
   redirectTo?: string;
 }
 
-function AuthLoading({ onLogout }: { onLogout?: () => void }) {
+function AuthLoading({ onLogout, onForceRedirect }: { onLogout?: () => void; onForceRedirect?: () => void }) {
   const [showEscape, setShowEscape] = useState(false);
+  const [forceTimeout, setForceTimeout] = useState(false);
   
   useEffect(() => {
-    const timer = setTimeout(() => setShowEscape(true), 2000);
-    return () => clearTimeout(timer);
+    const escapeTimer = setTimeout(() => setShowEscape(true), 2000);
+    // Force redirect after 8 seconds to prevent infinite hang
+    const forceTimer = setTimeout(() => setForceTimeout(true), 8000);
+    return () => {
+      clearTimeout(escapeTimer);
+      clearTimeout(forceTimer);
+    };
   }, []);
+
+  // After 8 seconds, force redirect to onboarding as safe default
+  useEffect(() => {
+    if (forceTimeout && onForceRedirect) {
+      console.warn('[RouteGuard] Force timeout reached - redirecting');
+      onForceRedirect();
+    }
+  }, [forceTimeout, onForceRedirect]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4">
@@ -44,10 +58,21 @@ export function RouteGuard({
   const { user, profile, isLoading, isInitialised, signOut } = useAuth();
   const { currentRole, hasInitialised: orgInitialised } = useOrg();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleForceRedirect = () => {
+    // If we have a user but profile load failed, go to onboarding
+    // Onboarding will self-heal and create profile if needed
+    if (user) {
+      navigate('/onboarding', { replace: true });
+    } else {
+      navigate('/login', { replace: true });
+    }
+  };
 
   // Wait for auth to initialise (max 4s via hard timeout)
   if (!isInitialised || isLoading) {
-    return <AuthLoading onLogout={signOut} />;
+    return <AuthLoading onLogout={signOut} onForceRedirect={handleForceRedirect} />;
   }
 
   // Not authenticated - redirect to login
@@ -61,14 +86,12 @@ export function RouteGuard({
   }
 
   // For protected routes, check onboarding status
-  // Only redirect to onboarding if we HAVE a profile AND it shows incomplete onboarding
-  // If profile is null (fetch failed/slow), don't redirect - it will retry in background
   if (requireAuth && requireOnboarding) {
+    // If profile is null after auth init, treat as needing onboarding
+    // The onboarding page will self-heal and create profile if needed
     if (profile === null) {
-      // Profile is still loading or failed - show loading state briefly
-      // The AuthContext will retry the fetch
-      console.warn('Profile is null after auth init - waiting for retry');
-      return <AuthLoading onLogout={signOut} />;
+      console.warn('[RouteGuard] Profile is null - redirecting to onboarding for self-heal');
+      return <Navigate to="/onboarding" replace />;
     }
     if (!profile.has_completed_onboarding) {
       return <Navigate to="/onboarding" replace />;
@@ -78,7 +101,7 @@ export function RouteGuard({
   // For role-restricted routes
   if (allowedRoles && allowedRoles.length > 0) {
     if (!orgInitialised) {
-      return <AuthLoading onLogout={signOut} />;
+      return <AuthLoading onLogout={signOut} onForceRedirect={handleForceRedirect} />;
     }
     
     if (!currentRole) {

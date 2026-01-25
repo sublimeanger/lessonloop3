@@ -61,29 +61,64 @@ Deno.serve(async (req) => {
     }
 
     // Use service role client to bypass RLS
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
 
     // Generate org ID
     const orgId = crypto.randomUUID();
     console.log('[onboarding-setup] Creating organisation:', orgId, org_name, org_type);
 
-    // Step 1: Update profile with name
-    const { error: profileError } = await adminClient
+    // Step 0: Ensure profile exists (self-healing for edge cases)
+    const { data: existingProfile } = await adminClient
       .from('profiles')
-      .update({ 
-        full_name,
-        phone: phone || null,
-      })
-      .eq('id', user.id);
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
 
-    if (profileError) {
-      console.error('[onboarding-setup] Profile update failed:', profileError);
-      return new Response(
-        JSON.stringify({ error: `Profile update failed: ${profileError.message}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!existingProfile) {
+      console.log('[onboarding-setup] Profile missing - creating it');
+      const { error: createProfileError } = await adminClient
+        .from('profiles')
+        .insert({
+          id: user.id,
+          email: user.email,
+          full_name,
+          phone: phone || null,
+          has_completed_onboarding: false,
+        });
+      
+      if (createProfileError && createProfileError.code !== '23505') {
+        console.error('[onboarding-setup] Profile creation failed:', createProfileError);
+        return new Response(
+          JSON.stringify({ error: `Profile creation failed: ${createProfileError.message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Ensure owner role exists
+      await adminClient
+        .from('user_roles')
+        .upsert({ user_id: user.id, role: 'owner' }, { onConflict: 'user_id,role' });
+    } else {
+      // Step 1: Update existing profile with name
+      const { error: profileError } = await adminClient
+        .from('profiles')
+        .update({ 
+          full_name,
+          phone: phone || null,
+        })
+        .eq('id', user.id);
+
+      if (profileError) {
+        console.error('[onboarding-setup] Profile update failed:', profileError);
+        return new Response(
+          JSON.stringify({ error: `Profile update failed: ${profileError.message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
-    console.log('[onboarding-setup] Profile updated');
+    console.log('[onboarding-setup] Profile ready');
 
     // Step 2: Create organisation
     const { error: orgError } = await adminClient
