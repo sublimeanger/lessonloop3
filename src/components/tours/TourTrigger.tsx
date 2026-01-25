@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
  */
 export function TourTrigger() {
   const location = useLocation();
-  const { startTour, hasCompletedTour, isRunning } = useTour();
+  const { startTour, hasCompletedTour, isRunning, toursLoaded } = useTour();
   const { user } = useAuth();
   const [hasNavigated, setHasNavigated] = useState(false);
 
@@ -22,8 +22,8 @@ export function TourTrigger() {
   }, [location.pathname]);
 
   useEffect(() => {
-    // Don't trigger tours during another tour or if not logged in
-    if (isRunning || !user || !hasNavigated) return;
+    // Don't trigger tours during another tour, if not logged in, or if tours haven't loaded yet
+    if (isRunning || !user || !hasNavigated || !toursLoaded) return;
 
     // Delay tour start to ensure page is rendered and check for open dialogs
     const timer = setTimeout(() => {
@@ -54,7 +54,7 @@ export function TourTrigger() {
     }, 1500); // Slightly longer delay to allow modals to register
 
     return () => clearTimeout(timer);
-  }, [location.pathname, hasCompletedTour, startTour, isRunning, user, hasNavigated]);
+  }, [location.pathname, hasCompletedTour, startTour, isRunning, user, hasNavigated, toursLoaded]);
 
   return null;
 }
