@@ -16,6 +16,7 @@ import AuditLogTab from '@/components/settings/AuditLogTab';
 import { PrivacyTab } from '@/components/settings/PrivacyTab';
 import { RateCardsTab } from '@/components/settings/RateCardsTab';
 import { TeacherAvailabilityTab } from '@/components/settings/TeacherAvailabilityTab';
+import { BillingTab } from '@/components/settings/BillingTab';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -553,72 +554,78 @@ export default function Settings() {
         </TabsContent>
 
         <TabsContent value="billing">
-          <Card>
-            <CardHeader>
-              <CardTitle>Billing Settings</CardTitle>
-              <CardDescription>Manage invoicing and payment preferences</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">VAT Registered</div>
-                  <div className="text-sm text-muted-foreground">
-                    Include VAT on invoices
+          <div className="space-y-8">
+            {/* Subscription Management */}
+            <BillingTab />
+            
+            {/* Invoice Settings */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Invoice Settings</CardTitle>
+                <CardDescription>Manage invoicing and payment preferences</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">VAT Registered</div>
+                    <div className="text-sm text-muted-foreground">
+                      Include VAT on invoices
+                    </div>
                   </div>
+                  <Switch 
+                    checked={vatRegistered}
+                    onCheckedChange={setVatRegistered}
+                    disabled={!isOrgOwner && !isOrgAdmin}
+                  />
                 </div>
-                <Switch 
-                  checked={vatRegistered}
-                  onCheckedChange={setVatRegistered}
-                  disabled={!isOrgOwner && !isOrgAdmin}
-                />
-              </div>
-              {vatRegistered && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="vatNumber">VAT Number</Label>
-                    <Input 
-                      id="vatNumber" 
-                      placeholder="GB123456789"
-                      value={vatNumber}
-                      onChange={(e) => setVatNumber(e.target.value)}
-                      disabled={!isOrgOwner && !isOrgAdmin}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="vatRate">VAT Rate (%)</Label>
-                    <Input 
-                      id="vatRate" 
-                      type="number"
-                      placeholder="20"
-                      value={vatRate}
-                      onChange={(e) => setVatRate(e.target.value)}
-                      disabled={!isOrgOwner && !isOrgAdmin}
-                    />
-                  </div>
-                </>
-              )}
-              <Separator />
-              <div className="space-y-2">
-                <Label htmlFor="paymentTerms">Default Payment Terms (days)</Label>
-                <Input 
-                  id="paymentTerms"
-                  type="number"
-                  value={paymentTermsDays}
-                  onChange={(e) => setPaymentTermsDays(parseInt(e.target.value) || 14)}
-                  disabled={!isOrgOwner && !isOrgAdmin}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Number of days after invoice issue date for payment to be due
-                </p>
-              </div>
-              {(isOrgOwner || isOrgAdmin) && (
-                <Button onClick={handleSaveBilling} disabled={billingSaving}>
-                  {billingSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Save Changes
-                </Button>
-              )}
-            </CardContent>
-          </Card>
+                {vatRegistered && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="vatNumber">VAT Number</Label>
+                      <Input 
+                        id="vatNumber" 
+                        placeholder="GB123456789"
+                        value={vatNumber}
+                        onChange={(e) => setVatNumber(e.target.value)}
+                        disabled={!isOrgOwner && !isOrgAdmin}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="vatRate">VAT Rate (%)</Label>
+                      <Input 
+                        id="vatRate" 
+                        type="number"
+                        placeholder="20"
+                        value={vatRate}
+                        onChange={(e) => setVatRate(e.target.value)}
+                        disabled={!isOrgOwner && !isOrgAdmin}
+                      />
+                    </div>
+                  </>
+                )}
+                <Separator />
+                <div className="space-y-2">
+                  <Label htmlFor="paymentTerms">Default Payment Terms (days)</Label>
+                  <Input 
+                    id="paymentTerms"
+                    type="number"
+                    value={paymentTermsDays}
+                    onChange={(e) => setPaymentTermsDays(parseInt(e.target.value) || 14)}
+                    disabled={!isOrgOwner && !isOrgAdmin}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Number of days after invoice issue date for payment to be due
+                  </p>
+                </div>
+                {(isOrgOwner || isOrgAdmin) && (
+                  <Button onClick={handleSaveBilling} disabled={billingSaving}>
+                    {billingSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Save Changes
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="notifications">
