@@ -225,31 +225,49 @@ export default function Onboarding() {
         }
         setIsLoading(true);
         console.log('[Onboarding] Saving profile...');
+        
+        // Use skipRefresh=true to avoid blocking on profile re-fetch
         const { error: profileError } = await updateProfile({ 
           full_name: fullName.trim(), 
           phone: phone.trim() || null 
-        });
+        }, true);
+        
         if (profileError) {
           console.error('[Onboarding] Profile save failed:', profileError);
           setStepError(profileError.message);
           setIsLoading(false);
           return;
         }
+        console.log('[Onboarding] Profile saved successfully');
 
-        // Create organisation
+        // Create organisation with timeout protection
         const name = orgName.trim() || `${fullName.trim()}'s Music`;
         console.log('[Onboarding] Creating organisation:', name, orgType);
-        const { org, error: orgError } = await createOrganisation({ name, org_type: orgType });
-        if (orgError || !org) {
-          console.error('[Onboarding] Org creation failed:', orgError);
-          setStepError(orgError?.message || 'Failed to create organisation. Please try again.');
+        
+        try {
+          const createPromise = createOrganisation({ name, org_type: orgType });
+          const timeoutPromise = new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Organisation creation timed out. Please try again.')), 15000)
+          );
+          
+          const { org, error: orgError } = await Promise.race([createPromise, timeoutPromise]);
+          
+          if (orgError || !org) {
+            console.error('[Onboarding] Org creation failed:', orgError);
+            setStepError(orgError?.message || 'Failed to create organisation. Please try again.');
+            setIsLoading(false);
+            return;
+          }
+          console.log('[Onboarding] Organisation created:', org.id);
+          setCreatedOrgId(org.id);
+          setIsLoading(false);
+          setCurrentStep(2);
+        } catch (timeoutError: any) {
+          console.error('[Onboarding] Org creation timeout:', timeoutError);
+          setStepError(timeoutError.message || 'Organisation creation timed out. Please try again.');
           setIsLoading(false);
           return;
         }
-        console.log('[Onboarding] Organisation created:', org.id);
-        setCreatedOrgId(org.id);
-        setIsLoading(false);
-        setCurrentStep(2);
       } else if (currentStep === 2 && isSoloTeacher && createdOrgId) {
         // Save teaching profile
         if (instruments.length === 0) {

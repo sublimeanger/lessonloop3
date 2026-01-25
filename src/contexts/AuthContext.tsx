@@ -26,7 +26,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
-  updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
+  updateProfile: (updates: Partial<Profile>, skipRefresh?: boolean) => Promise<{ error: Error | null }>;
   refreshProfile: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
   isOwnerOrAdmin: boolean;
@@ -238,7 +238,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const updateProfile = async (updates: Partial<Profile>) => {
+  const updateProfile = async (updates: Partial<Profile>, skipRefresh = false) => {
     if (!user) return { error: new Error('No user logged in') };
 
     const { error } = await supabase
@@ -246,7 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .update(updates)
       .eq('id', user.id);
 
-    if (!error) {
+    if (!error && !skipRefresh) {
       await refreshProfile();
     }
     return { error: error as Error | null };
