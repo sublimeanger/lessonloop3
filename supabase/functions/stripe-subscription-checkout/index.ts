@@ -191,11 +191,8 @@ serve(async (req) => {
     const finalSuccessUrl = `${baseUrl}?tab=billing&subscription=success`;
     const finalCancelUrl = cancelUrl || `${baseUrl}?tab=billing&subscription=cancelled`;
 
-    // Determine if user should get a trial
-    // Only new users (on trial plan with no previous subscription) get the 30-day trial
-    const isNewUser = org.subscription_plan === "trial" && !org.stripe_subscription_id;
-
-    // Create Stripe Checkout Session for subscription with 30-day trial
+    // Create Stripe Checkout Session for subscription
+    // No Stripe trial - trial is handled in-app, subscription starts immediately when upgrading
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
@@ -215,13 +212,7 @@ serve(async (req) => {
           max_students: planLimits.max_students.toString(),
           max_teachers: planLimits.max_teachers.toString(),
         },
-        // 30-day trial for new users with card upfront
-        trial_period_days: isNewUser ? TRIAL_DAYS : undefined,
-        trial_settings: isNewUser ? {
-          end_behavior: {
-            missing_payment_method: 'cancel'
-          }
-        } : undefined,
+        // No trial_period_days - trial is handled in-app, not via Stripe
       },
       metadata: {
         lessonloop_org_id: orgId,
@@ -229,7 +220,6 @@ serve(async (req) => {
       },
       allow_promotion_codes: true,
       billing_address_collection: "required",
-      payment_method_collection: "always", // Always collect card for trial
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes
     });
 

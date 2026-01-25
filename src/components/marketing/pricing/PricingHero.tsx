@@ -97,8 +97,8 @@ export function PricingHero({ isAnnual, onToggle }: PricingHeroProps) {
             transition={{ delay: 0.3, duration: 0.6 }}
             className="text-lg lg:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
           >
-            Start free, upgrade when you're ready. No hidden fees, no surprises.
-            Cancel anytime.
+            Start free for 30 days. No credit card required.
+            Cancel anytime, no hidden fees.
           </motion.p>
           
           {/* Billing toggle */}

@@ -59,11 +59,11 @@ export function FinalCTA() {
             </div>
             <div className="flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-success" />
-              <span>Card required, cancel anytime</span>
+              <span>No credit card required</span>
             </div>
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-success" />
-              <span>No commitment</span>
+              <span>Cancel anytime</span>
             </div>
           </div>
         </motion.div>
