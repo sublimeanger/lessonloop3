@@ -9,73 +9,40 @@ import { ValueCalculator } from "@/components/marketing/pricing/ValueCalculator"
 import { PricingFAQ } from "@/components/marketing/pricing/PricingFAQ";
 import { EnterpriseCTA } from "@/components/marketing/pricing/EnterpriseCTA";
 import { FinalCTA } from "@/components/marketing/pricing/FinalCTA";
+import { PRICING_CONFIG, PLAN_ORDER, type PlanKey } from "@/lib/pricing-config";
 
-const plans = [
-  {
-    name: "Solo Teacher",
-    description: "Perfect for independent music educators building their private studio",
-    monthlyPrice: 15,
-    annualPrice: 150, // 2 months free
-    icon: User,
-    color: "teal" as const,
-    popular: false,
-    highlight: "Includes 14-day free trial",
-    features: [
-      "Up to 50 students",
-      "Unlimited lessons",
-      "Invoicing & payments",
-      "Parent portal access",
-      "Email support",
-      "Practice tracking",
-      "Basic reporting",
-      "Calendar sync",
-    ],
-  },
-  {
-    name: "Academy",
-    description: "For music schools, teaching studios, and growing teams",
-    monthlyPrice: 49,
-    annualPrice: 490, // 2 months free
-    icon: Building2,
-    color: "coral" as const,
-    popular: true,
-    highlight: "Everything you need to scale",
-    features: [
-      "Unlimited students",
-      "Up to 10 teachers",
-      "Multi-location support",
-      "Advanced scheduling",
-      "Bulk invoicing",
-      "LoopAssist AI copilot",
-      "Priority support",
-      "Custom branding",
-      "Advanced reporting",
-      "Resource library",
-    ],
-  },
-  {
-    name: "Agency",
-    description: "For teaching agencies and large multi-site academies",
-    monthlyPrice: 99,
-    annualPrice: 990, // 2 months free
-    icon: Crown,
-    color: "teal" as const,
-    popular: false,
-    highlight: "White-glove service included",
-    features: [
-      "Everything in Academy",
-      "Unlimited teachers",
-      "Teacher payroll",
-      "API access",
-      "Dedicated account manager",
-      "SLA guarantee",
-      "Custom integrations",
-      "White-label options",
-      "On-site training",
-      "SSO / SAML",
-    ],
-  },
-];
+const PLAN_ICONS: Record<PlanKey, typeof User> = {
+  solo_teacher: User,
+  academy: Building2,
+  agency: Crown,
+};
+
+const PLAN_COLORS: Record<PlanKey, "teal" | "coral"> = {
+  solo_teacher: "teal",
+  academy: "coral",
+  agency: "teal",
+};
+
+const PLAN_HIGHLIGHTS: Record<PlanKey, string> = {
+  solo_teacher: "Includes 14-day free trial",
+  academy: "Everything you need to scale",
+  agency: "White-glove service included",
+};
+
+const plans = PLAN_ORDER.map((key) => {
+  const config = PRICING_CONFIG[key];
+  return {
+    name: config.name,
+    description: config.tagline,
+    monthlyPrice: config.price.monthly,
+    annualPrice: config.price.yearly,
+    icon: PLAN_ICONS[key],
+    color: PLAN_COLORS[key],
+    popular: config.isPopular || false,
+    highlight: PLAN_HIGHLIGHTS[key],
+    features: config.marketingFeatures,
+  };
+});
 
 export default function Pricing() {
   const [isAnnual, setIsAnnual] = useState(false);

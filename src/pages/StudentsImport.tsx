@@ -1,9 +1,10 @@
 import { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, FileSpreadsheet, ArrowRight, Check, AlertCircle, Loader2, Wand2, ChevronDown, Users } from "lucide-react";
+import { Upload, FileSpreadsheet, ArrowRight, Check, AlertCircle, Loader2, Wand2, ChevronDown, Users, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/contexts/OrgContext";
 import { useToast } from "@/hooks/use-toast";
+import { useUsageCounts } from "@/hooks/useUsageCounts";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ export default function StudentsImport() {
   const navigate = useNavigate();
   const { currentOrg } = useOrg();
   const { toast } = useToast();
+  const { counts, limits, canAddStudent } = useUsageCounts();
 
   const [step, setStep] = useState<Step>("upload");
   const [file, setFile] = useState<File | null>(null);
@@ -211,6 +213,11 @@ export default function StudentsImport() {
     const mapped = mappings.filter(m => m.target_field).map(m => m.target_field);
     return required.every(r => mapped.includes(r));
   }, [mappings, targetFields]);
+
+  // Check student limit capacity
+  const remainingCapacity = limits.maxStudents - counts.students;
+  const willExceedLimit = rows.length > remainingCapacity;
+  const canProceedWithImport = requiredFieldsMapped && !willExceedLimit;
 
   // Execute import
   const executeImport = useCallback(async () => {
@@ -445,6 +452,19 @@ export default function StudentsImport() {
                 </Alert>
               )}
 
+              {/* Capacity warning */}
+              {willExceedLimit && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Student limit exceeded</AlertTitle>
+                  <AlertDescription>
+                    Your CSV has {rows.length} rows, but you can only add {remainingCapacity} more student{remainingCapacity !== 1 ? 's' : ''} on your current plan 
+                    ({counts.students} / {limits.maxStudents} used). 
+                    <a href="/settings?tab=billing" className="ml-1 underline">Upgrade your plan</a> or reduce the number of rows in your CSV.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* Lesson import options */}
               {mappings.some(m => ["lesson_day", "lesson_time", "instrument"].includes(m.target_field || "")) && (
                 <div className="p-4 border rounded-lg space-y-4">
@@ -481,7 +501,7 @@ export default function StudentsImport() {
                 </Button>
                 <Button
                   onClick={() => setStep("preview")}
-                  disabled={!requiredFieldsMapped}
+                  disabled={!canProceedWithImport}
                 >
                   Continue to Preview
                   <ArrowRight className="ml-2 h-4 w-4" />

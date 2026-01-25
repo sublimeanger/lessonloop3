@@ -141,6 +141,16 @@ export default function Locations() {
       return;
     }
     
+    // Check multi-location gate when adding (not editing)
+    if (!editingLocation && !hasMultiLocation && locations.length >= 1) {
+      toast({ 
+        title: 'Multi-location requires upgrade', 
+        description: `Upgrade to the ${requiredPlanName} plan to add additional locations.`,
+        variant: 'destructive' 
+      });
+      return;
+    }
+    
     setIsSaving(true);
     const data = {
       name: locName.trim(),
@@ -249,6 +259,9 @@ export default function Locations() {
     }
   };
 
+  // Solo Teacher: Allow only 1 location, additional locations need upgrade
+  const canAddLocation = hasMultiLocation || locations.length === 0;
+
   return (
     <AppLayout>
       <PageHeader
@@ -257,13 +270,27 @@ export default function Locations() {
         breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Locations' }]}
         actions={
           isOrgAdmin && (
-            <Button onClick={() => openLocationDialog()} className="gap-2">
+            <Button 
+              onClick={() => openLocationDialog()} 
+              className="gap-2"
+              disabled={!canAddLocation}
+            >
+              {!canAddLocation && <Lock className="h-4 w-4" />}
               <Plus className="h-4 w-4" />
               Add Location
             </Button>
           )
         }
       />
+
+      {/* Multi-location upgrade prompt for Solo Teacher */}
+      {!hasMultiLocation && locations.length >= 1 && (
+        <div className="mb-6">
+          <FeatureGate feature="multi_location">
+            <div />
+          </FeatureGate>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">

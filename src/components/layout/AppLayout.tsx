@@ -4,6 +4,7 @@ import { Header } from './Header';
 import { AppSidebar } from './AppSidebar';
 import { LoopAssistProvider, useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { LoopAssistDrawer } from '@/components/looopassist/LoopAssistDrawer';
+import { TrialExpiredModal, TrialExpiredBanner } from '@/components/subscription';
 import { useOrg } from '@/contexts/OrgContext';
 
 interface AppLayoutProps {
@@ -19,6 +20,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
   
   return (
     <div className="flex min-h-screen w-full flex-col">
+      <TrialExpiredBanner />
       <Header />
       <div className="flex flex-1">
         <AppSidebar />
@@ -29,6 +31,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
       {showLoopAssist && (
         <LoopAssistDrawer open={isOpen} onOpenChange={setIsOpen} />
       )}
+      <TrialExpiredModal />
     </div>
   );
 }

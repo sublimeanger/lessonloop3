@@ -14,8 +14,10 @@ import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { LimitReached } from '@/components/subscription';
 import { useUsageCounts } from '@/hooks/useUsageCounts';
+import { Progress } from '@/components/ui/progress';
 import { Plus, GraduationCap, Loader2, Mail, UserPlus, Users, Lock } from 'lucide-react';
 import { useTeacherAssignmentCounts } from '@/hooks/useTeacherAssignments';
+import { cn } from '@/lib/utils';
 
 interface OrgMember {
   id: string;
@@ -204,13 +206,47 @@ export default function Teachers() {
         breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Teachers' }]}
         actions={
           isOrgAdmin && (
-            <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
+            <Button 
+              onClick={() => setIsDialogOpen(true)} 
+              className="gap-2"
+              disabled={!canAddTeacher}
+            >
+              {!canAddTeacher && <Lock className="h-4 w-4" />}
               <Plus className="h-4 w-4" />
               Invite Teacher
             </Button>
           )
         }
       />
+
+      {/* Usage indicator */}
+      {limits.maxTeachers < 9999 && (
+        <div className="mb-6 p-4 rounded-lg border bg-card">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">Teacher Usage</span>
+            <span className={cn(
+              'text-sm',
+              usage.isTeacherNearLimit && 'text-amber-600 font-medium',
+              usage.isTeacherAtLimit && 'text-destructive font-medium'
+            )}>
+              {counts.teachers} / {limits.maxTeachers}
+            </span>
+          </div>
+          <Progress 
+            value={usage.teachersPercentage} 
+            className={cn(
+              'h-2',
+              usage.isTeacherNearLimit && '[&>div]:bg-amber-500',
+              usage.isTeacherAtLimit && '[&>div]:bg-destructive'
+            )} 
+          />
+          {usage.isTeacherAtLimit && (
+            <p className="text-xs text-muted-foreground mt-2">
+              You've reached your teacher limit. <a href="/settings?tab=billing" className="text-primary underline">Upgrade</a> to add more.
+            </p>
+          )}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">

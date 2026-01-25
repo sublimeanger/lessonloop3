@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Check, Sparkles, Users, Building2, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, formatLimit } from '@/lib/pricing-config';
 
 type SubscriptionPlan = 'solo_teacher' | 'academy' | 'agency';
 
@@ -16,57 +17,31 @@ interface PlanOption {
   recommended?: boolean;
 }
 
-const PLANS: PlanOption[] = [
-  {
-    value: 'solo_teacher',
-    name: 'Solo Teacher',
-    tagline: 'Perfect for independent music teachers',
-    price: '£9',
+const PLAN_ICONS: Record<PlanKey, React.ElementType> = {
+  solo_teacher: Users,
+  academy: Building2,
+  agency: Crown,
+};
+
+// Build PLANS from centralized config
+const PLANS: PlanOption[] = PLAN_ORDER.map((key) => {
+  const config = PRICING_CONFIG[key];
+  return {
+    value: key,
+    name: config.name,
+    tagline: config.tagline,
+    price: `£${config.price.monthly}`,
     priceNote: '/month',
-    icon: Users,
+    icon: PLAN_ICONS[key],
+    highlighted: config.isPopular,
+    recommended: config.isPopular,
     features: [
-      'Up to 30 students',
-      'Unlimited lessons',
-      'Invoicing & payments',
-      'Parent portal',
-      'Practice tracking',
+      `Up to ${formatLimit(config.limits.students)} students`,
+      config.limits.teachers > 1 ? `Up to ${formatLimit(config.limits.teachers)} teachers` : 'Single teacher',
+      ...config.features.slice(1, 5), // Take 4 more features
     ],
-  },
-  {
-    value: 'academy',
-    name: 'Academy',
-    tagline: 'For studios and music schools',
-    price: '£29',
-    priceNote: '/month',
-    icon: Building2,
-    highlighted: true,
-    recommended: true,
-    features: [
-      'Up to 150 students',
-      'Up to 10 teachers',
-      'Multi-location support',
-      'LoopAssist AI copilot',
-      'Advanced reporting',
-      'Custom branding',
-    ],
-  },
-  {
-    value: 'agency',
-    name: 'Agency',
-    tagline: 'For teaching agencies at scale',
-    price: '£79',
-    priceNote: '/month',
-    icon: Crown,
-    features: [
-      'Unlimited students',
-      'Unlimited teachers',
-      'Payroll management',
-      'White-label portal',
-      'Priority support',
-      'API access',
-    ],
-  },
-];
+  };
+});
 
 interface PlanSelectorProps {
   selectedPlan: SubscriptionPlan;

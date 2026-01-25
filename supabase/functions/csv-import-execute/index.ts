@@ -136,6 +136,31 @@ serve(async (req) => {
     // Use service role for inserts to bypass RLS during bulk import
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Check student limit before import
+    const { data: org } = await supabase
+      .from("organisations")
+      .select("max_students")
+      .eq("id", orgId)
+      .single();
+    
+    const { count: currentStudentCount } = await supabase
+      .from("students")
+      .select("*", { count: "exact", head: true })
+      .eq("org_id", orgId)
+      .is("deleted_at", null);
+    
+    const maxStudents = org?.max_students || 50;
+    const remainingCapacity = maxStudents - (currentStudentCount || 0);
+    
+    if (rows.length > remainingCapacity) {
+      return new Response(JSON.stringify({ 
+        error: `Import would exceed student limit. You have capacity for ${remainingCapacity} more student${remainingCapacity !== 1 ? 's' : ''}, but CSV contains ${rows.length} rows. Upgrade your plan to add more students.`
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const result: ImportResult = {
       studentsCreated: 0,
       guardiansCreated: 0,

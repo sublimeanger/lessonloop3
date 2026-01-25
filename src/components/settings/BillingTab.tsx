@@ -14,12 +14,14 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { useSubscriptionCheckout, BillingInterval } from '@/hooks/useSubscriptionCheckout';
 import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { PLAN_NAMES } from '@/hooks/useFeatureGate';
+import { LimitReached } from '@/components/subscription/FeatureGate';
 import { useOrg } from '@/contexts/OrgContext';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, formatLimit } from '@/lib/pricing-config';
 
 interface PlanCardProps {
-  plan: 'solo_teacher' | 'academy' | 'agency';
+  plan: PlanKey;
   name: string;
   price: { monthly: number; yearly: number };
   features: string[];
@@ -133,52 +135,28 @@ function PlanCard({
   );
 }
 
-const PLANS = {
-  solo_teacher: {
-    name: 'Solo Teacher',
-    price: { monthly: 19, yearly: 190 },
-    features: [
-      'Calendar & scheduling',
-      'Student management',
-      'Invoice generation',
-      'Parent portal',
-      'Practice tracking',
-      'LoopAssist AI',
-      'Email support',
-    ],
-    limits: { students: 30, teachers: 1 },
-  },
-  academy: {
-    name: 'Academy',
-    price: { monthly: 49, yearly: 490 },
-    features: [
-      'Everything in Solo Teacher',
-      'Multi-teacher support',
-      'Multi-location management',
-      'Team scheduling',
-      'Payroll reports',
-      'Bulk billing runs',
-      'Custom branding',
-      'Priority support',
-    ],
-    limits: { students: 150, teachers: 10 },
-    isPopular: true,
-  },
-  agency: {
-    name: 'Agency',
-    price: { monthly: 99, yearly: 990 },
-    features: [
-      'Everything in Academy',
-      'Unlimited students & teachers',
-      'API access',
-      'Advanced analytics',
-      'Dedicated account manager',
-      'Custom integrations',
-      'SLA guarantee',
-    ],
-    limits: { students: 9999, teachers: 9999 },
-  },
-};
+// Use centralized pricing config
+const PLANS = Object.fromEntries(
+  PLAN_ORDER.map((key) => {
+    const config = PRICING_CONFIG[key];
+    return [
+      key,
+      {
+        name: config.name,
+        price: config.price,
+        features: config.features,
+        limits: config.limits,
+        isPopular: config.isPopular,
+      },
+    ];
+  })
+) as Record<PlanKey, {
+  name: string;
+  price: { monthly: number; yearly: number };
+  features: string[];
+  limits: { students: number; teachers: number };
+  isPopular?: boolean;
+}>;
 
 export function BillingTab() {
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('monthly');
@@ -284,7 +262,8 @@ export function BillingTab() {
                 <span className="text-sm text-muted-foreground">Students</span>
                 <span className={cn(
                   'text-sm font-medium',
-                  usage.isStudentNearLimit && 'text-warning'
+                  usage.isStudentNearLimit && 'text-amber-600',
+                  usage.isStudentAtLimit && 'text-destructive'
                 )}>
                   {limits.maxStudents >= 9999 ? 'Unlimited' : `${counts.students} / ${limits.maxStudents}`}
                 </span>
@@ -292,7 +271,11 @@ export function BillingTab() {
               {limits.maxStudents < 9999 && (
                 <Progress 
                   value={usage.studentsPercentage} 
-                  className={cn('h-2', usage.isStudentNearLimit && '[&>div]:bg-warning')} 
+                  className={cn(
+                    'h-2',
+                    usage.isStudentNearLimit && '[&>div]:bg-amber-500',
+                    usage.isStudentAtLimit && '[&>div]:bg-destructive'
+                  )} 
                 />
               )}
             </div>
@@ -301,7 +284,8 @@ export function BillingTab() {
                 <span className="text-sm text-muted-foreground">Teachers</span>
                 <span className={cn(
                   'text-sm font-medium',
-                  usage.isTeacherNearLimit && 'text-warning'
+                  usage.isTeacherNearLimit && 'text-amber-600',
+                  usage.isTeacherAtLimit && 'text-destructive'
                 )}>
                   {limits.maxTeachers >= 9999 ? 'Unlimited' : `${counts.teachers} / ${limits.maxTeachers}`}
                 </span>
@@ -309,11 +293,31 @@ export function BillingTab() {
               {limits.maxTeachers < 9999 && (
                 <Progress 
                   value={usage.teachersPercentage} 
-                  className={cn('h-2', usage.isTeacherNearLimit && '[&>div]:bg-warning')} 
+                  className={cn(
+                    'h-2',
+                    usage.isTeacherNearLimit && '[&>div]:bg-amber-500',
+                    usage.isTeacherAtLimit && '[&>div]:bg-destructive'
+                  )} 
                 />
               )}
             </div>
           </div>
+
+          {/* Limit Reached Warnings */}
+          {usage.isStudentAtLimit && (
+            <LimitReached 
+              limitType="students"
+              currentCount={counts.students}
+              maxCount={limits.maxStudents}
+            />
+          )}
+          {usage.isTeacherAtLimit && (
+            <LimitReached 
+              limitType="teachers"
+              currentCount={counts.teachers}
+              maxCount={limits.maxTeachers}
+            />
+          )}
         </CardContent>
       </Card>
 
