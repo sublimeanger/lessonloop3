@@ -41,10 +41,17 @@ export default function Onboarding() {
   const [error, setError] = useState<string | null>(null);
   const [profileReady, setProfileReady] = useState(false);
 
-  // Self-healing: ensure profile exists on mount
+  // Self-healing: ensure profile exists on mount, redirect if already completed
   useEffect(() => {
     async function ensureProfile() {
       if (!user || !session) return;
+      
+      // If profile exists and onboarding is complete, redirect to dashboard
+      if (profile?.has_completed_onboarding) {
+        console.log('[Onboarding] Already completed - redirecting to dashboard');
+        navigate('/dashboard', { replace: true });
+        return;
+      }
       
       if (profile) {
         setProfileReady(true);
@@ -67,6 +74,19 @@ export default function Onboarding() {
           const data = await response.json();
           console.log('[Onboarding] Profile ensure result:', data.created ? 'created' : 'exists');
           await refreshProfile();
+          
+          // After refresh, re-fetch profile to check if onboarding was already completed
+          const { data: freshProfile } = await supabase
+            .from('profiles')
+            .select('has_completed_onboarding')
+            .eq('id', user.id)
+            .single();
+          
+          if (freshProfile?.has_completed_onboarding) {
+            console.log('[Onboarding] Already completed after refresh - redirecting to dashboard');
+            navigate('/dashboard', { replace: true });
+            return;
+          }
         }
       } catch (err) {
         console.warn('[Onboarding] Profile ensure failed:', err);
@@ -76,7 +96,7 @@ export default function Onboarding() {
     }
     
     ensureProfile();
-  }, [user, session, profile, refreshProfile]);
+  }, [user, session, profile, refreshProfile, navigate]);
 
   // Pre-fill name from user metadata or profile
   useEffect(() => {
