@@ -46,7 +46,7 @@ async function sendStreakEmail(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: `${orgName} <notifications@lessonloop.app>`,
+        from: `${orgName} <notifications@lessonloop.net>`,
         to: [recipientEmail],
         subject: `${milestone.emoji} ${studentName} hit a ${milestone.streak}-day streak!`,
         html: `

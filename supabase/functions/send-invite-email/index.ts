@@ -74,7 +74,7 @@ serve(async (req: Request): Promise<Response> => {
       const resend = new Resend(resendApiKey);
 
       const emailResponse = await resend.emails.send({
-        from: "LessonLoop <noreply@resend.dev>",
+        from: "LessonLoop <noreply@lessonloop.net>",
         to: [recipientEmail],
         subject,
         html: body,
