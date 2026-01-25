@@ -102,8 +102,8 @@ export function SecuritySection() {
 
             <p className="text-sm text-muted-foreground">
               Questions about security? Contact our team at{" "}
-              <a href="mailto:security@lessonloop.app" className="text-primary hover:underline">
-                security@lessonloop.app
+              <a href="mailto:security@lessonloop.net" className="text-primary hover:underline">
+                security@lessonloop.net
               </a>
             </p>
           </motion.div>

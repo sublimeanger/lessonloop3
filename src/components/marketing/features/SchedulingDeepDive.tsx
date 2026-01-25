@@ -129,7 +129,7 @@ export function SchedulingDeepDive() {
                 </div>
                 <div className="flex-1 flex justify-center">
                   <div className="px-4 py-1 bg-background rounded-md text-xs text-muted-foreground">
-                    lessonloop.app/calendar
+                    lessonloop.net/calendar
                   </div>
                 </div>
               </div>

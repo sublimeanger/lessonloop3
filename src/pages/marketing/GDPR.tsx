@@ -88,10 +88,10 @@ export default function GDPR() {
                     To make a data request or exercise any of your rights, please contact our Data Protection team. We will respond within 30 days.
                   </p>
                   <a 
-                    href="mailto:dpo@lessonloop.com" 
+                    href="mailto:dpo@lessonloop.net" 
                     className="inline-flex items-center gap-2 text-primary font-medium hover:underline"
                   >
-                    dpo@lessonloop.com
+                    dpo@lessonloop.net
                   </a>
                 </div>
               </div>

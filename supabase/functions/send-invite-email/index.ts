@@ -36,7 +36,7 @@ serve(async (req: Request): Promise<Response> => {
     }: InviteEmailRequest = await req.json();
 
     // Build invite URL
-    const frontendUrl = Deno.env.get("FRONTEND_URL") || req.headers.get("origin") || "https://lessonloop.app";
+    const frontendUrl = Deno.env.get("FRONTEND_URL") || req.headers.get("origin") || "https://lessonloop.net";
     const inviteUrl = `${frontendUrl}/accept-invite?token=${inviteToken}`;
 
     const subject = `You've been invited to join ${orgName}`;

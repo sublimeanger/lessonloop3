@@ -465,7 +465,7 @@ export default function About() {
                   </div>
                   <div>
                     <div className="text-sm text-white/50">Email us anytime</div>
-                    <div className="font-semibold">hello@lessonloop.com</div>
+                    <div className="font-semibold">hello@lessonloop.net</div>
                   </div>
                 </div>
                 

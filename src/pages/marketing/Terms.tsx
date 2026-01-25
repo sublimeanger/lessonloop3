@@ -69,7 +69,7 @@ export default function Terms() {
 
               <h2 className="text-2xl font-semibold text-foreground mt-8 mb-4">9. Contact Us</h2>
               <p className="text-muted-foreground mb-4">
-                If you have any questions about these Terms, please contact us at legal@lessonloop.com.
+                If you have any questions about these Terms, please contact us at legal@lessonloop.net.
               </p>
             </div>
           </motion.div>
