@@ -17,6 +17,7 @@ import { PrivacyTab } from '@/components/settings/PrivacyTab';
 import { RateCardsTab } from '@/components/settings/RateCardsTab';
 import { TeacherAvailabilityTab } from '@/components/settings/TeacherAvailabilityTab';
 import { BillingTab } from '@/components/settings/BillingTab';
+import { HelpToursTab } from '@/components/settings/HelpToursTab';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -321,6 +322,7 @@ export default function Settings() {
           <TabsTrigger value="availability">Availability</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="help-tours">Help & Tours</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
@@ -681,6 +683,10 @@ export default function Settings() {
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="help-tours">
+          <HelpToursTab />
         </TabsContent>
       </Tabs>
     </AppLayout>

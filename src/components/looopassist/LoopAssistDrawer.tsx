@@ -120,7 +120,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
 
         {/* Context indicator */}
         {pageContext.type !== 'general' && (
-          <div className="border-b bg-muted/50 px-4 py-2">
+          <div className="border-b bg-muted/50 px-4 py-2" data-tour="loopassist-context">
             <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Context:</span>
               <Badge variant="secondary" className="capitalize">
@@ -150,7 +150,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                       <p className="text-sm">How can I help you today?</p>
                     </div>
                     {suggestedPrompts.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2" data-tour="loopassist-prompts">
                         {suggestedPrompts.map((prompt, i) => (
                           <Button
                             key={i}
@@ -209,7 +209,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
             </ScrollArea>
 
             {/* Input */}
-            <div className="border-t p-4">
+            <div className="border-t p-4" data-tour="loopassist-input">
               <div className="flex gap-2">
                 <Input
                   value={input}

@@ -224,7 +224,7 @@ export default function Students() {
                 <span className="hidden sm:inline">Import</span>
               </Button>
             </Link>
-            <Button onClick={openAddDialog} className="gap-2" disabled={!canAddStudent}>
+            <Button onClick={openAddDialog} className="gap-2" disabled={!canAddStudent} data-tour="add-student-button">
               {!canAddStudent && <Lock className="h-4 w-4" />}
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Add Student</span>
@@ -234,7 +234,7 @@ export default function Students() {
       />
 
       {/* Filters */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center" role="search">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center" role="search" data-tour="student-filters">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
@@ -271,7 +271,7 @@ export default function Students() {
           onSecondaryAction={searchQuery ? undefined : () => window.location.href = '/students/import'}
         />
       ) : (
-        <div className="space-y-2" role="list" aria-label="Students list">
+        <div className="space-y-2" role="list" aria-label="Students list" data-tour="student-list">
           {filteredStudents.map((student) => (
             <Link
               key={student.id}

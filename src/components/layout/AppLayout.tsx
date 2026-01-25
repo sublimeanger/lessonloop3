@@ -5,6 +5,7 @@ import { AppSidebar } from './AppSidebar';
 import { LoopAssistProvider, useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { LoopAssistDrawer } from '@/components/looopassist/LoopAssistDrawer';
 import { TrialExpiredModal, TrialExpiredBanner } from '@/components/subscription';
+import { TourTrigger } from '@/components/tours/TourTrigger';
 import { useOrg } from '@/contexts/OrgContext';
 
 interface AppLayoutProps {
@@ -32,6 +33,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
         <LoopAssistDrawer open={isOpen} onOpenChange={setIsOpen} />
       )}
       <TrialExpiredModal />
+      <TourTrigger />
     </div>
   );
 }
