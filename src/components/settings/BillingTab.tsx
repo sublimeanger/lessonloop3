@@ -376,7 +376,7 @@ export function BillingTab() {
             <div>
               <h2 className="text-xl font-semibold">Choose Your Plan</h2>
               <p className="text-sm text-muted-foreground">
-                All plans include a {TRIAL_DAYS}-day free trial with card
+                Start free for {TRIAL_DAYS} days. No credit card required.
               </p>
             </div>
             <div className="flex items-center gap-2 p-1 bg-muted rounded-lg">

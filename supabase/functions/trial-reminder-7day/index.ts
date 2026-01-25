@@ -54,7 +54,7 @@ serve(async (req) => {
 
       try {
         await resend.emails.send({
-          from: "LessonLoop <hello@lessonloop.com>",
+          from: "LessonLoop <hello@lessonloop.net>",
           to: [profile.email],
           subject: "One week left in your LessonLoop trial! 🎵",
           html: `
@@ -80,7 +80,7 @@ serve(async (req) => {
               </p>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="https://lessonloop.app/settings?tab=billing" 
+                <a href="https://lessonloop.net/settings?tab=billing" 
                    style="background: #14b8a6; color: white; padding: 12px 24px; 
                           text-decoration: none; border-radius: 8px; font-weight: bold;">
                   Add Payment Method
