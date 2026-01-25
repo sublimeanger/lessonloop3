@@ -234,15 +234,20 @@ export function TourProvider({ children }: TourProviderProps) {
     const { status, action, type } = data;
     const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED];
 
+    // Handle finished or skipped statuses
     if (finishedStatuses.includes(status as typeof STATUS.FINISHED | typeof STATUS.SKIPPED)) {
       if (currentTour && status === STATUS.FINISHED) {
         saveTourCompletion(currentTour);
       }
       endTour();
+      return;
     }
 
-    // Handle close button click
-    if (action === ACTIONS.CLOSE) {
+    // Handle close button click or skip action
+    if (action === ACTIONS.CLOSE || action === ACTIONS.SKIP) {
+      if (currentTour) {
+        saveTourCompletion(currentTour);
+      }
       endTour();
     }
   }, [currentTour, endTour, saveTourCompletion]);
