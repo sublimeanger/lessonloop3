@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { User, Users, Building, Building2, Clock } from 'lucide-react';
+import { User, Users, Building, Building2, Clock, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LogoHorizontal } from '@/components/brand/Logo';
 import type { OrgType } from '@/contexts/OrgContext';
@@ -8,6 +8,7 @@ interface OnboardingWelcomeProps {
   selectedType: OrgType;
   onSelectType: (type: OrgType) => void;
   onContinue: () => void;
+  onLogout: () => void;
   userName?: string;
 }
 
@@ -18,9 +19,16 @@ const orgTypes: { value: OrgType; label: string; description: string; icon: Reac
   { value: 'agency', label: 'Agency', description: 'Managing teachers for clients', icon: <Building2 className="h-6 w-6" /> },
 ];
 
-export function OnboardingWelcome({ selectedType, onSelectType, onContinue, userName }: OnboardingWelcomeProps) {
+export function OnboardingWelcome({ selectedType, onSelectType, onContinue, onLogout, userName }: OnboardingWelcomeProps) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12 gradient-hero-light">
+    <div className="relative flex min-h-screen flex-col items-center justify-center px-4 py-12 gradient-hero-light">
+      {/* Logout button - always accessible */}
+      <div className="absolute top-4 right-4">
+        <Button variant="ghost" size="sm" onClick={onLogout} className="text-muted-foreground hover:text-foreground">
+          <LogOut className="h-4 w-4 mr-2" />
+          Logout
+        </Button>
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

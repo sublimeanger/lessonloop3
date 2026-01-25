@@ -256,41 +256,42 @@ export default function Onboarding() {
           return;
         }
 
-        // Create organisation directly with timeout protection
+        // Create organisation - generate ID client-side to avoid RLS race condition
         const name = orgName.trim() || `${fullName.trim()}'s Music`;
-        console.log('[Onboarding] Step 1: Creating organisation:', name, orgType);
+        const newOrgId = crypto.randomUUID();
+        console.log('[Onboarding] Step 1: Creating organisation:', name, orgType, 'ID:', newOrgId);
         
         try {
           const orgPromise = supabase
             .from('organisations')
             .insert({
+              id: newOrgId,
               name,
               org_type: orgType,
               country_code: 'GB',
               currency_code: 'GBP',
               timezone: 'Europe/London',
               created_by: user.id,
-            })
-            .select()
-            .single();
+            });
           
           const timeoutPromise = new Promise<never>((_, reject) => 
             setTimeout(() => reject(new Error('Organisation creation timed out')), 10000)
           );
           
-          const { data: org, error: orgError } = await Promise.race([orgPromise, timeoutPromise]);
+          const { error: orgError } = await Promise.race([orgPromise, timeoutPromise]);
           
-          if (orgError || !org) {
+          if (orgError) {
             console.error('[Onboarding] Org creation failed:', orgError);
-            setStepError(orgError?.message || 'Failed to create organisation. Please try again.');
+            setStepError(orgError.message || 'Failed to create organisation. Please try again.');
             setIsLoading(false);
             return;
           }
           
-          console.log('[Onboarding] Step 1: Organisation created:', org.id);
-          setCreatedOrgId(org.id);
+          console.log('[Onboarding] Step 1: Organisation created successfully');
+          setCreatedOrgId(newOrgId);
           
-          // Refresh org context in background (don't await)
+          // Wait briefly for trigger to complete, then refresh org context
+          await new Promise(resolve => setTimeout(resolve, 300));
           refreshOrganisations().catch(console.error);
           
           setIsLoading(false);
@@ -455,6 +456,7 @@ export default function Onboarding() {
         selectedType={orgType}
         onSelectType={setOrgType}
         onContinue={handleWelcomeContinue}
+        onLogout={handleLogout}
         userName={profile?.full_name || fullName}
       />
     );
