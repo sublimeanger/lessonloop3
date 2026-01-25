@@ -1,0 +1,56 @@
+name: Trial Lifecycle Emails
+
+on:
+  schedule:
+    # Run daily at 9:00 AM UK time (UTC+0 in winter, UTC+1 in summer)
+    # Using 9:00 UTC to cover most of the year
+    - cron: '0 9 * * *'
+  workflow_dispatch: # Allow manual trigger for testing
+
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+jobs:
+  send-trial-reminders:
+    name: Send Trial Reminder Emails
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Send 7-day reminder
+        run: |
+          curl -X POST "${{ env.SUPABASE_URL }}/functions/v1/trial-reminder-7day" \
+            -H "Authorization: Bearer ${{ env.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            --fail-with-body || echo "7-day reminder completed (may have no recipients)"
+
+      - name: Send 3-day reminder
+        run: |
+          curl -X POST "${{ env.SUPABASE_URL }}/functions/v1/trial-reminder-3day" \
+            -H "Authorization: Bearer ${{ env.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            --fail-with-body || echo "3-day reminder completed (may have no recipients)"
+
+      - name: Send 1-day reminder
+        run: |
+          curl -X POST "${{ env.SUPABASE_URL }}/functions/v1/trial-reminder-1day" \
+            -H "Authorization: Bearer ${{ env.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            --fail-with-body || echo "1-day reminder completed (may have no recipients)"
+
+      - name: Process expired trials
+        run: |
+          curl -X POST "${{ env.SUPABASE_URL }}/functions/v1/trial-expired" \
+            -H "Authorization: Bearer ${{ env.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            --fail-with-body || echo "Expired trials processed (may have no recipients)"
+
+      - name: Send winback emails (7 days post-expiry)
+        run: |
+          curl -X POST "${{ env.SUPABASE_URL }}/functions/v1/trial-winback" \
+            -H "Authorization: Bearer ${{ env.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            --fail-with-body || echo "Winback emails completed (may have no recipients)"
+
+      - name: Log completion
+        run: echo "Trial lifecycle emails processed at $(date -u)"
