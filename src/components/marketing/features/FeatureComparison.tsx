@@ -3,47 +3,37 @@ import { Check, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import { PRICING_CONFIG, PLAN_ORDER, TRIAL_DAYS } from "@/lib/pricing-config";
 
-const tiers = [
-  {
-    name: "Solo",
-    description: "For independent teachers",
-    price: "£15",
-    popular: false,
-  },
-  {
-    name: "Academy",
-    description: "For music schools",
-    price: "£49",
-    popular: true,
-  },
-  {
-    name: "Agency",
-    description: "For teaching agencies",
-    price: "£99",
-    popular: false,
-  },
-];
+const tiers = PLAN_ORDER.map((key) => {
+  const config = PRICING_CONFIG[key];
+  return {
+    name: config.name,
+    description: config.tagline.replace('For ', 'For ').split('.')[0],
+    price: `£${config.price.monthly}`,
+    popular: config.isPopular || false,
+  };
+});
 
 const features = [
-  { name: "Up to 50 students", solo: true, academy: false, agency: false },
-  { name: "Unlimited students", solo: false, academy: true, agency: true },
-  { name: "Drag & drop calendar", solo: true, academy: true, agency: true },
-  { name: "Invoice generation", solo: true, academy: true, agency: true },
-  { name: "Parent portal", solo: true, academy: true, agency: true },
-  { name: "Online payments", solo: true, academy: true, agency: true },
-  { name: "Practice tracking", solo: true, academy: true, agency: true },
-  { name: "LoopAssist AI", solo: false, academy: true, agency: true },
-  { name: "Up to 10 teachers", solo: false, academy: true, agency: false },
-  { name: "Unlimited teachers", solo: false, academy: false, agency: true },
-  { name: "Multi-location", solo: false, academy: true, agency: true },
-  { name: "Team permissions", solo: false, academy: true, agency: true },
-  { name: "Payroll reports", solo: false, academy: true, agency: true },
-  { name: "Resource library", solo: false, academy: true, agency: true },
-  { name: "Custom branding", solo: false, academy: true, agency: true },
-  { name: "API access", solo: false, academy: false, agency: true },
-  { name: "Dedicated account manager", solo: false, academy: false, agency: true },
-  { name: "SSO / SAML", solo: false, academy: false, agency: true },
+  { name: "Unlimited students", teacher: true, studio: true, agency: true },
+  { name: "Drag & drop calendar", teacher: true, studio: true, agency: true },
+  { name: "Invoice generation", teacher: true, studio: true, agency: true },
+  { name: "Parent portal", teacher: true, studio: true, agency: true },
+  { name: "Online payments", teacher: true, studio: true, agency: true },
+  { name: "Practice tracking", teacher: true, studio: true, agency: true },
+  { name: "LoopAssist AI", teacher: true, studio: true, agency: true },
+  { name: "Resource library", teacher: true, studio: true, agency: true },
+  { name: "Up to 5 teachers", teacher: false, studio: true, agency: false },
+  { name: "Unlimited teachers", teacher: false, studio: false, agency: true },
+  { name: "Multi-location", teacher: false, studio: true, agency: true },
+  { name: "Team permissions", teacher: false, studio: true, agency: true },
+  { name: "Payroll reports", teacher: false, studio: true, agency: true },
+  { name: "Custom branding", teacher: false, studio: true, agency: true },
+  { name: "Priority support", teacher: false, studio: true, agency: true },
+  { name: "API access", teacher: false, studio: false, agency: true },
+  { name: "Dedicated account manager", teacher: false, studio: false, agency: true },
+  { name: "SSO / SAML", teacher: false, studio: false, agency: true },
 ];
 
 function FeatureValue({ value }: { value: boolean | string }) {
@@ -75,7 +65,7 @@ export function FeatureComparison() {
             Choose your plan
           </h2>
           <p className="text-sm lg:text-lg text-muted-foreground max-w-2xl mx-auto">
-            Start with a 14-day free trial. No credit card required.
+            Start with a {TRIAL_DAYS}-day free trial. Cancel anytime.
           </p>
         </motion.div>
 
@@ -132,10 +122,10 @@ export function FeatureComparison() {
                   <span className="text-xs lg:text-sm text-foreground">{feature.name}</span>
                 </div>
                 <div className="p-3 lg:p-4 flex items-center justify-center">
-                  <FeatureValue value={feature.solo} />
+                  <FeatureValue value={feature.teacher} />
                 </div>
                 <div className={cn("p-3 lg:p-4 flex items-center justify-center", "bg-primary/5")}>
-                  <FeatureValue value={feature.academy} />
+                  <FeatureValue value={feature.studio} />
                 </div>
                 <div className="p-3 lg:p-4 flex items-center justify-center">
                   <FeatureValue value={feature.agency} />
@@ -173,8 +163,8 @@ export function FeatureComparison() {
 
               <div className="space-y-2">
                 {(showAllMobile ? features : features.slice(0, 8)).map((feature) => {
-                  const value = tier.name === "Solo" ? feature.solo 
-                    : tier.name === "Academy" ? feature.academy 
+                  const value = tier.name === "Teacher" ? feature.teacher 
+                    : tier.name === "Studio" ? feature.studio 
                     : feature.agency;
                   
                   return (

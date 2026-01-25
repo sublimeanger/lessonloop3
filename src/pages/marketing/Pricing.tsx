@@ -9,23 +9,23 @@ import { ValueCalculator } from "@/components/marketing/pricing/ValueCalculator"
 import { PricingFAQ } from "@/components/marketing/pricing/PricingFAQ";
 import { EnterpriseCTA } from "@/components/marketing/pricing/EnterpriseCTA";
 import { FinalCTA } from "@/components/marketing/pricing/FinalCTA";
-import { PRICING_CONFIG, PLAN_ORDER, type PlanKey } from "@/lib/pricing-config";
+import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, TRIAL_DAYS } from "@/lib/pricing-config";
 
 const PLAN_ICONS: Record<PlanKey, typeof User> = {
-  solo_teacher: User,
-  academy: Building2,
+  teacher: User,
+  studio: Building2,
   agency: Crown,
 };
 
 const PLAN_COLORS: Record<PlanKey, "teal" | "coral"> = {
-  solo_teacher: "teal",
-  academy: "coral",
+  teacher: "teal",
+  studio: "coral",
   agency: "teal",
 };
 
 const PLAN_HIGHLIGHTS: Record<PlanKey, string> = {
-  solo_teacher: "Includes 14-day free trial",
-  academy: "Everything you need to scale",
+  teacher: `Includes ${TRIAL_DAYS}-day free trial`,
+  studio: "Everything you need to scale",
   agency: "White-glove service included",
 };
 
