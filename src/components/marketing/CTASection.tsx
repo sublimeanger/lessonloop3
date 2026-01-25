@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { ChevronRight, Check, Shield, Clock, CreditCard } from "lucide-react";
 
 const guarantees = [
-  { icon: Clock, text: "14-day free trial" },
-  { icon: CreditCard, text: "No credit card required" },
-  { icon: Shield, text: "Cancel anytime" },
+  { icon: Clock, text: "30-day free trial" },
+  { icon: CreditCard, text: "Card required, cancel anytime" },
+  { icon: Shield, text: "No commitment" },
 ];
 
 export function CTASection() {
@@ -111,10 +111,10 @@ export function CTASection() {
             >
               <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl p-8 lg:p-10">
                 <h3 className="text-2xl font-bold text-white mb-2">
-                  Start your free trial
+                  Start your 30-day trial
                 </h3>
                 <p className="text-white/60 mb-6">
-                  No credit card required. Get started in 2 minutes.
+                  Try free for 30 days. Cancel anytime.
                 </p>
 
                 {/* Quick Form */}

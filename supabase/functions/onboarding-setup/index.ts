@@ -1,9 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+
+const TRIAL_DAYS = 30;
 
 interface OnboardingRequest {
   org_name: string;
@@ -15,9 +14,10 @@ interface OnboardingRequest {
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflightResponse = handleCorsPreflightRequest(req);
+  if (preflightResponse) return preflightResponse;
+  
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     // Get auth token from request
@@ -61,11 +61,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Determine plan limits
+    // Determine plan limits - unlimited students for all plans
     const plan = subscription_plan || 'solo_teacher';
     const planLimits = {
-      solo_teacher: { max_students: 30, max_teachers: 1 },
-      academy: { max_students: 150, max_teachers: 10 },
+      solo_teacher: { max_students: 9999, max_teachers: 1 },
+      academy: { max_students: 9999, max_teachers: 5 },
       agency: { max_students: 9999, max_teachers: 9999 },
     };
     const limits = planLimits[plan] || planLimits.solo_teacher;
@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
 
     // Step 2: Create organisation with subscription details
     const trialEndsAt = new Date();
-    trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+    trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS);
 
     const { error: orgError } = await adminClient
       .from('organisations')

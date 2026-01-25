@@ -33,19 +33,20 @@ export interface SubscriptionState {
   stripeSubscriptionId: string | null;
 }
 
+// Unlimited students for all paid plans - matches pricing-config.ts
 const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
   trial: {
-    maxStudents: 10,
+    maxStudents: 9999, // Unlimited during trial
     maxTeachers: 1,
     hasAdvancedReports: false,
     hasMultiLocation: false,
     hasCustomBranding: false,
     hasAPIAccess: false,
-    hasLoopAssist: true, // Allow during trial
+    hasLoopAssist: true,
     hasPrioritySupport: false,
   },
   solo_teacher: {
-    maxStudents: 30,
+    maxStudents: 9999, // Unlimited
     maxTeachers: 1,
     hasAdvancedReports: true,
     hasMultiLocation: false,
@@ -55,8 +56,8 @@ const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
     hasPrioritySupport: false,
   },
   academy: {
-    maxStudents: 150,
-    maxTeachers: 10,
+    maxStudents: 9999, // Unlimited
+    maxTeachers: 5,    // Studio plan: 5 included
     hasAdvancedReports: true,
     hasMultiLocation: true,
     hasCustomBranding: true,

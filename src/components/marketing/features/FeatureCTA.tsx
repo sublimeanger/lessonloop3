@@ -44,7 +44,7 @@ export function FeatureCTA() {
 
           <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
             Join thousands of music educators who've reclaimed their time. 
-            Start your free trial today—no credit card required.
+            Start your 30-day free trial today.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
@@ -69,19 +69,19 @@ export function FeatureCTA() {
               <div className="w-5 h-5 rounded-full bg-success/20 flex items-center justify-center">
                 <div className="w-2 h-2 rounded-full bg-success" />
               </div>
-              14-day free trial
+              30-day free trial
             </div>
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 rounded-full bg-success/20 flex items-center justify-center">
                 <div className="w-2 h-2 rounded-full bg-success" />
               </div>
-              No credit card required
+              Card required, cancel anytime
             </div>
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 rounded-full bg-success/20 flex items-center justify-center">
                 <div className="w-2 h-2 rounded-full bg-success" />
               </div>
-              Cancel anytime
+              No commitment
             </div>
           </div>
         </motion.div>

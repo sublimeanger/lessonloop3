@@ -291,7 +291,7 @@ export function HeroSection() {
               <span className="text-sm ml-1.5">4.9/5 rating</span>
             </div>
             <div className="w-px h-5 bg-white/20 hidden sm:block" />
-            <span className="text-sm">Free 14-day trial</span>
+            <span className="text-sm">30-day free trial</span>
           </motion.div>
         </div>
       </div>

@@ -14,11 +14,11 @@ const faqs = [
     items: [
       {
         question: "Is there a free trial?",
-        answer: "Yes! All plans include a 14-day free trial with full access to all features. No credit card required to start. You can explore everything LessonLoop offers before making any commitment.",
+        answer: "Yes! All plans include a 30-day free trial with full access to all features. We require a card upfront, but you won't be charged until the trial ends—and you can cancel anytime.",
       },
       {
         question: "What happens after my trial ends?",
-        answer: "At the end of your trial, you'll be prompted to choose a plan. If you don't subscribe, your account will be paused (not deleted), and you can pick up right where you left off when you're ready.",
+        answer: "Your subscription will automatically start at the end of the 30-day trial. You can cancel anytime before it ends through your account settings. If you cancel, your account will be paused (not deleted), and you can pick up right where you left off when you're ready.",
       },
     ],
   },
