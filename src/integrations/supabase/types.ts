@@ -1995,6 +1995,9 @@ export type Database = {
       students: {
         Row: {
           created_at: string
+          default_location_id: string | null
+          default_rate_card_id: string | null
+          default_teacher_user_id: string | null
           deleted_at: string | null
           dob: string | null
           email: string | null
@@ -2009,6 +2012,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          default_location_id?: string | null
+          default_rate_card_id?: string | null
+          default_teacher_user_id?: string | null
           deleted_at?: string | null
           dob?: string | null
           email?: string | null
@@ -2023,6 +2029,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          default_location_id?: string | null
+          default_rate_card_id?: string | null
+          default_teacher_user_id?: string | null
           deleted_at?: string | null
           dob?: string | null
           email?: string | null
@@ -2036,6 +2045,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "students_default_location_id_fkey"
+            columns: ["default_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_default_rate_card_id_fkey"
+            columns: ["default_rate_card_id"]
+            isOneToOne: false
+            referencedRelation: "rate_cards"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "students_org_id_fkey"
             columns: ["org_id"]

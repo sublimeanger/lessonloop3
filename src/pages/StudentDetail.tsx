@@ -25,6 +25,7 @@ import { CreditBalanceBadge } from '@/components/students/CreditBalanceBadge';
 import { StudentPracticePanel } from '@/components/students/StudentPracticePanel';
 import { useStudentLessons, useStudentInvoices } from '@/hooks/useStudentDetail';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
+import { TeachingDefaultsCard } from '@/components/students/TeachingDefaultsCard';
 
 type StudentStatus = 'active' | 'inactive';
 type RelationshipType = 'mother' | 'father' | 'guardian' | 'other';
@@ -38,6 +39,9 @@ interface Student {
   dob: string | null;
   notes: string | null;
   status: StudentStatus;
+  default_location_id: string | null;
+  default_teacher_user_id: string | null;
+  default_rate_card_id: string | null;
 }
 
 interface Guardian {
@@ -406,6 +410,17 @@ export default function StudentDetail() {
               )}
             </CardContent>
           </Card>
+          
+          {/* Teaching Defaults Card */}
+          <div className="mt-6">
+            <TeachingDefaultsCard
+              studentId={student.id}
+              defaultLocationId={student.default_location_id}
+              defaultTeacherUserId={student.default_teacher_user_id}
+              defaultRateCardId={student.default_rate_card_id}
+              onUpdate={fetchStudent}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="teachers">

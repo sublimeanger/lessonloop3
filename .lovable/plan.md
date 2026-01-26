@@ -161,12 +161,12 @@ User clicks "Add Student"
 
 ## Implementation Order
 
-1. **Phase 1 - Database**: Add new columns to students table
-2. **Phase 2 - Wizard Component**: Build `StudentWizard.tsx` with all steps
-3. **Phase 3 - Integration**: Replace dialog in `Students.tsx`, update saves
-4. **Phase 4 - Defaults**: Update `LessonModal.tsx` to use student defaults
-5. **Phase 5 - Detail Page**: Show defaults on student overview
-6. **Phase 6 - Polish**: Edit wizard variant, CSV import updates
+1. ~~**Phase 1 - Database**: Add new columns to students table~~ ✅ DONE
+2. ~~**Phase 2 - Wizard Component**: Build `StudentWizard.tsx` with all steps~~ ✅ DONE
+3. ~~**Phase 3 - Integration**: Replace dialog in `Students.tsx`, update saves~~ ✅ DONE
+4. **Phase 4 - Defaults**: Update `LessonModal.tsx` to use student defaults (TODO)
+5. ~~**Phase 5 - Detail Page**: Show defaults on student overview~~ ✅ DONE
+6. **Phase 6 - Polish**: Edit wizard variant, CSV import updates (FUTURE)
 
 ---
 
