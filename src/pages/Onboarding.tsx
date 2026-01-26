@@ -41,13 +41,21 @@ export default function Onboarding() {
   const [error, setError] = useState<string | null>(null);
   const [profileReady, setProfileReady] = useState(false);
 
-  // Self-healing: ensure profile exists on mount, redirect if already completed
+  // Self-healing: ensure profile exists on mount
+  // Note: We allow users who have completed onboarding to access this page
+  // if they explicitly navigate here (e.g. to create additional orgs in future)
+  // Only redirect if they arrive here without explicit intent (e.g. from RouteGuard)
   useEffect(() => {
     async function ensureProfile() {
       if (!user || !session) return;
       
-      // If profile exists and onboarding is complete, redirect to dashboard
-      if (profile?.has_completed_onboarding) {
+      // Check if user was explicitly sent here or navigated directly
+      const searchParams = new URLSearchParams(window.location.search);
+      const isNewOrg = searchParams.get('new') === 'true';
+      
+      // If profile exists and onboarding is complete, and user didn't explicitly request new org
+      // redirect them to dashboard (they probably hit this page accidentally)
+      if (profile?.has_completed_onboarding && !isNewOrg) {
         console.log('[Onboarding] Already completed - redirecting to dashboard');
         navigate('/dashboard', { replace: true });
         return;
@@ -82,7 +90,7 @@ export default function Onboarding() {
             .eq('id', user.id)
             .single();
           
-          if (freshProfile?.has_completed_onboarding) {
+          if (freshProfile?.has_completed_onboarding && !isNewOrg) {
             console.log('[Onboarding] Already completed after refresh - redirecting to dashboard');
             navigate('/dashboard', { replace: true });
             return;
