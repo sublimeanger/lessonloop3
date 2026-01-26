@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OrgProvider } from "@/contexts/OrgContext";
+import { LoopAssistProvider } from "@/contexts/LoopAssistContext";
 import { TourProvider } from "@/components/tours/TourProvider";
 import { RouteGuard, PublicRoute } from "@/components/auth/RouteGuard";
 
@@ -69,9 +70,10 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <OrgProvider>
-            <TourProvider>
-              <Toaster />
-              <Sonner />
+            <LoopAssistProvider>
+              <TourProvider>
+                <Toaster />
+                <Sonner />
             <Routes>
               {/* Public auth routes */}
               <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
@@ -242,7 +244,8 @@ const App = () => (
               {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-            </TourProvider>
+              </TourProvider>
+            </LoopAssistProvider>
           </OrgProvider>
         </AuthProvider>
       </BrowserRouter>
