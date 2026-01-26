@@ -1,13 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
@@ -15,8 +12,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { LimitReached } from '@/components/subscription';
 import { useUsageCounts } from '@/hooks/useUsageCounts';
+import { StudentWizard } from '@/components/students/StudentWizard';
 import { Plus, Search, Users, Mail, Phone, Upload, Lock } from 'lucide-react';
 
 type StudentStatus = 'active' | 'inactive';
@@ -34,25 +31,15 @@ interface Student {
 }
 
 export default function Students() {
-  const { currentOrg, isOrgAdmin, currentRole } = useOrg();
+  const { currentOrg, currentRole } = useOrg();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { counts, limits, canAddStudent, usage } = useUsageCounts();
+  const { limits, canAddStudent } = useUsageCounts();
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | StudentStatus>('all');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  
-  // Form state
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [dob, setDob] = useState('');
-  const [notes, setNotes] = useState('');
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
 
   const fetchStudents = async () => {
     if (!currentOrg) return;
@@ -119,7 +106,7 @@ export default function Students() {
     return matchesSearch && matchesStatus;
   });
 
-  const openAddDialog = () => {
+  const openAddWizard = () => {
     if (!canAddStudent) {
       toast({ 
         title: 'Student limit reached', 
@@ -128,72 +115,7 @@ export default function Students() {
       });
       return;
     }
-    setEditingStudent(null);
-    setFirstName('');
-    setLastName('');
-    setEmail('');
-    setPhone('');
-    setDob('');
-    setNotes('');
-    setIsDialogOpen(true);
-  };
-
-  const openEditDialog = (student: Student) => {
-    setEditingStudent(student);
-    setFirstName(student.first_name);
-    setLastName(student.last_name);
-    setEmail(student.email || '');
-    setPhone(student.phone || '');
-    setDob(student.dob || '');
-    setNotes(student.notes || '');
-    setIsDialogOpen(true);
-  };
-
-  const handleSave = async () => {
-    if (!firstName.trim() || !lastName.trim()) {
-      toast({ title: 'Name required', description: 'Please enter first and last name.', variant: 'destructive' });
-      return;
-    }
-    if (!currentOrg) return;
-
-    setIsSaving(true);
-    
-    const studentData = {
-      first_name: firstName.trim(),
-      last_name: lastName.trim(),
-      email: email.trim() || null,
-      phone: phone.trim() || null,
-      dob: dob || null,
-      notes: notes.trim() || null,
-    };
-
-    if (editingStudent) {
-      const { error } = await supabase
-        .from('students')
-        .update(studentData)
-        .eq('id', editingStudent.id);
-      
-      if (error) {
-        toast({ title: 'Error updating student', description: error.message, variant: 'destructive' });
-      } else {
-        toast({ title: 'Student updated' });
-        setIsDialogOpen(false);
-        fetchStudents();
-      }
-    } else {
-      const { error } = await supabase
-        .from('students')
-        .insert({ ...studentData, org_id: currentOrg.id });
-      
-      if (error) {
-        toast({ title: 'Error adding student', description: error.message, variant: 'destructive' });
-      } else {
-        toast({ title: 'Student added' });
-        setIsDialogOpen(false);
-        fetchStudents();
-      }
-    }
-    setIsSaving(false);
+    setIsWizardOpen(true);
   };
 
   const toggleStatus = async (student: Student) => {
@@ -224,7 +146,7 @@ export default function Students() {
                 <span className="hidden sm:inline">Import</span>
               </Button>
             </Link>
-            <Button onClick={openAddDialog} className="gap-2" disabled={!canAddStudent} data-tour="add-student-button">
+            <Button onClick={openAddWizard} className="gap-2" disabled={!canAddStudent} data-tour="add-student-button">
               {!canAddStudent && <Lock className="h-4 w-4" />}
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Add Student</span>
@@ -266,7 +188,7 @@ export default function Students() {
           title={searchQuery ? 'No students found' : 'No students yet'}
           description={searchQuery ? 'Try adjusting your search terms.' : 'Add your first student to get started with lesson scheduling and billing.'}
           actionLabel={searchQuery ? undefined : 'Add Your First Student'}
-          onAction={searchQuery ? undefined : openAddDialog}
+          onAction={searchQuery ? undefined : openAddWizard}
           secondaryActionLabel={searchQuery ? undefined : 'Import from CSV'}
           onSecondaryAction={searchQuery ? undefined : () => window.location.href = '/students/import'}
         />
@@ -312,14 +234,6 @@ export default function Students() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={(e) => { e.preventDefault(); openEditDialog(student); }}
-                aria-label={`Edit ${student.first_name} ${student.last_name}`}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
                 onClick={(e) => { e.preventDefault(); toggleStatus(student); }}
                 aria-label={`${student.status === 'active' ? 'Deactivate' : 'Activate'} ${student.first_name} ${student.last_name}`}
               >
@@ -330,71 +244,12 @@ export default function Students() {
         </div>
       )}
 
-      {/* Add/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent aria-describedby="dialog-description">
-          <DialogHeader>
-            <DialogTitle>{editingStudent ? 'Edit Student' : 'Add Student'}</DialogTitle>
-            <DialogDescription id="dialog-description">
-              {editingStudent ? 'Update student information.' : 'Add a new student to your organisation.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">
-                  First name <span className="text-destructive" aria-hidden="true">*</span>
-                  <span className="sr-only">(required)</span>
-                </Label>
-                <Input 
-                  id="firstName" 
-                  value={firstName} 
-                  onChange={(e) => setFirstName(e.target.value)} 
-                  placeholder="Emma"
-                  aria-required="true"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName">
-                  Last name <span className="text-destructive" aria-hidden="true">*</span>
-                  <span className="sr-only">(required)</span>
-                </Label>
-                <Input 
-                  id="lastName" 
-                  value={lastName} 
-                  onChange={(e) => setLastName(e.target.value)} 
-                  placeholder="Wilson"
-                  aria-required="true"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="emma@example.com" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+44 7700 900000" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dob">Date of birth</Label>
-                <Input id="dob" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Input id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Grade 5 piano, preparing for exam..." />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? 'Saving...' : editingStudent ? 'Update' : 'Add Student'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Student Creation Wizard */}
+      <StudentWizard 
+        open={isWizardOpen} 
+        onOpenChange={setIsWizardOpen}
+        onSuccess={fetchStudents}
+      />
     </AppLayout>
   );
 }
