@@ -5,29 +5,25 @@ import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Component that triggers tours based on route and completion state.
- * Place this in AppLayout to auto-start tours on first visit to pages.
- * 
- * IMPORTANT: Tours only trigger ONCE per page per session to avoid annoyance.
- * They check for open dialogs/modals to avoid blocking user interactions.
+ * Tours only auto-start ONCE ever (persisted in localStorage).
+ * Session tracking prevents re-attempts within a session.
  */
 export function TourTrigger() {
   const location = useLocation();
   const { startTour, hasCompletedTour, isRunning, toursLoaded } = useTour();
   const { user } = useAuth();
   
-  // Track which pages have already been checked THIS SESSION to avoid re-triggering
-  const checkedPagesRef = useRef<Set<string>>(new Set());
+  // Track which tours we've already ATTEMPTED to start this session
+  // This prevents re-triggering if effect re-runs due to dependency changes
+  const attemptedToursRef = useRef<Set<TourName>>(new Set());
 
   useEffect(() => {
-    const path = location.pathname;
-    
-    // Don't trigger if: running another tour, not logged in, tours not loaded, or already checked this page
-    if (isRunning || !user || !toursLoaded || checkedPagesRef.current.has(path)) {
+    // Wait for all prerequisites
+    if (isRunning || !user || !toursLoaded) {
       return;
     }
 
-    // Mark this page as checked for this session
-    checkedPagesRef.current.add(path);
+    const path = location.pathname;
 
     // Map paths to tours
     const pathToTour: Record<string, TourName> = {
@@ -39,24 +35,43 @@ export function TourTrigger() {
 
     const tourName = pathToTour[path];
     
-    // Only proceed if there's a tour for this page AND user hasn't completed it
-    if (!tourName || hasCompletedTour(tourName)) {
+    // No tour for this page
+    if (!tourName) {
       return;
     }
 
-    // Delay tour start to ensure page is rendered and check for open dialogs
+    // Already attempted this tour this session (regardless of outcome)
+    if (attemptedToursRef.current.has(tourName)) {
+      return;
+    }
+
+    // Already completed this tour (persisted in localStorage)
+    if (hasCompletedTour(tourName)) {
+      // Mark as attempted so we don't re-check
+      attemptedToursRef.current.add(tourName);
+      return;
+    }
+
+    // Mark as attempted BEFORE the timeout
+    attemptedToursRef.current.add(tourName);
+
+    // Delay to ensure page is rendered and check for open dialogs
     const timer = setTimeout(() => {
-      // Check if any dialog/modal is currently open (Radix UI pattern)
+      // Check if any dialog/modal is currently open
       const hasOpenDialog = document.querySelector('[data-state="open"][role="dialog"]') !== null;
       const hasOpenSheet = document.querySelector('[data-state="open"][data-vaul-drawer]') !== null;
       const hasOpenAlertDialog = document.querySelector('[data-state="open"][role="alertdialog"]') !== null;
       
-      // Don't start tour if any modal is open
       if (hasOpenDialog || hasOpenSheet || hasOpenAlertDialog) {
+        // Remove from attempted so we can try again later
+        attemptedToursRef.current.delete(tourName);
         return;
       }
 
-      startTour(tourName);
+      // Final check - tour might have been completed while we waited
+      if (!hasCompletedTour(tourName)) {
+        startTour(tourName);
+      }
     }, 1500);
 
     return () => clearTimeout(timer);
