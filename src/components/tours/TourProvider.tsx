@@ -198,14 +198,17 @@ export function TourProvider({ children }: TourProviderProps) {
     }
   }, [user]);
 
-  // Save completed tours
+  // Save completed tours - use functional update to avoid stale closures
   const saveTourCompletion = useCallback((tourName: TourName) => {
     if (user) {
-      const updated = [...completedTours, tourName];
-      setCompletedTours(updated);
-      localStorage.setItem(`lessonloop_tours_${user.id}`, JSON.stringify(updated));
+      setCompletedTours(prev => {
+        if (prev.includes(tourName)) return prev;
+        const updated = [...prev, tourName];
+        localStorage.setItem(`lessonloop_tours_${user.id}`, JSON.stringify(updated));
+        return updated;
+      });
     }
-  }, [user, completedTours]);
+  }, [user]);
 
   const startTour = useCallback((tourName: TourName) => {
     const tourStepConfig = tourSteps[tourName];
