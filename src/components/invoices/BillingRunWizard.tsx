@@ -135,7 +135,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-xl mx-4 sm:mx-auto">
         <DialogHeader>
           <DialogTitle>Billing Run</DialogTitle>
           <DialogDescription>

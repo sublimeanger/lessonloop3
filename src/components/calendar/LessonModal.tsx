@@ -498,7 +498,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-auto">
         <DialogHeader>
           <DialogTitle>{lesson ? 'Edit Lesson' : 'New Lesson'}</DialogTitle>
         </DialogHeader>
