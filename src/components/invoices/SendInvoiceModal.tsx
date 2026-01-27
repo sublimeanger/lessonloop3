@@ -53,23 +53,7 @@ export function SendInvoiceModal({
     setIsSending(true);
 
     try {
-      // Create message log entry
-      const { error: logError } = await supabase.from('message_log').insert({
-        org_id: currentOrg.id,
-        recipient_email: recipientEmail,
-        recipient_name: recipientName,
-        message_type: isReminder ? 'invoice_reminder' : 'invoice',
-        subject: isReminder
-          ? `Payment Reminder: Invoice ${invoice.invoice_number}`
-          : `Invoice ${invoice.invoice_number} from ${currentOrg.name}`,
-        body: customMessage || getDefaultMessage(),
-        related_id: invoice.id,
-        status: 'pending',
-      });
-
-      if (logError) throw logError;
-
-      // Call edge function to send email
+      // Call edge function to send email - it handles message logging with service role
       const { error: sendError } = await supabase.functions.invoke('send-invoice-email', {
         body: {
           invoiceId: invoice.id,
@@ -79,28 +63,13 @@ export function SendInvoiceModal({
           amount: formatCurrencyMinor(invoice.total_minor, currentOrg.currency_code),
           dueDate: invoice.due_date,
           orgName: currentOrg.name,
+          orgId: currentOrg.id,
           isReminder,
           customMessage,
         },
       });
 
-      if (sendError) {
-        // Update message log to failed
-        await supabase
-          .from('message_log')
-          .update({ status: 'failed', error_message: sendError.message })
-          .eq('related_id', invoice.id)
-          .eq('status', 'pending');
-
-        throw sendError;
-      }
-
-      // Update message log to sent
-      await supabase
-        .from('message_log')
-        .update({ status: 'sent', sent_at: new Date().toISOString() })
-        .eq('related_id', invoice.id)
-        .eq('status', 'pending');
+      if (sendError) throw sendError;
 
       // Update invoice status to sent if it was a draft
       if (invoice.status === 'draft') {
