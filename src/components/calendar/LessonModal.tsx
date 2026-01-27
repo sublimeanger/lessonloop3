@@ -181,6 +181,26 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     if (lessonType === 'private') {
       setSelectedStudents([studentId]);
       setStudentsOpen(false);
+      
+      // Auto-populate teaching defaults for new private lessons only
+      if (!lesson) {
+        const student = students.find(s => s.id === studentId);
+        if (student) {
+          // Only populate if field is currently empty and the default exists in available options
+          if (!teacherUserId && student.default_teacher_user_id) {
+            const teacherExists = teachers.some(t => t.id === student.default_teacher_user_id);
+            if (teacherExists) {
+              setTeacherUserId(student.default_teacher_user_id);
+            }
+          }
+          if (!locationId && student.default_location_id) {
+            const locationExists = locations.some(l => l.id === student.default_location_id);
+            if (locationExists) {
+              setLocationId(student.default_location_id);
+            }
+          }
+        }
+      }
     } else {
       setSelectedStudents(prev => 
         prev.includes(studentId)

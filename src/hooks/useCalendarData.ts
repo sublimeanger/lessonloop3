@@ -157,7 +157,13 @@ export function useTeachersAndLocations() {
   const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([]);
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
   const [rooms, setRooms] = useState<{ id: string; name: string; location_id: string }[]>([]);
-  const [students, setStudents] = useState<{ id: string; name: string }[]>([]);
+  const [students, setStudents] = useState<{ 
+    id: string; 
+    name: string; 
+    default_location_id: string | null;
+    default_teacher_user_id: string | null;
+    default_rate_card_id: string | null;
+  }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -186,7 +192,7 @@ export function useTeachersAndLocations() {
           .order('name'),
         supabase
           .from('students')
-          .select('id, first_name, last_name')
+          .select('id, first_name, last_name, default_location_id, default_teacher_user_id, default_rate_card_id')
           .eq('org_id', currentOrg.id)
           .eq('status', 'active')
           .is('deleted_at', null)
@@ -224,6 +230,9 @@ export function useTeachersAndLocations() {
         (studentResult.data || []).map((s) => ({
           id: s.id,
           name: `${s.first_name} ${s.last_name}`,
+          default_location_id: s.default_location_id,
+          default_teacher_user_id: s.default_teacher_user_id,
+          default_rate_card_id: s.default_rate_card_id,
         }))
       );
       
