@@ -201,7 +201,7 @@ export default function About() {
               className="relative order-1 lg:order-2"
             >
               {/* Decorative grid background */}
-              <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--muted)/0.5)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--muted)/0.5)_1px,transparent_1px)] bg-[size:24px_24px] rounded-3xl" />
+              <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--muted)/0.5)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--muted)/0.5)_1px,transparent_1px)] bg-[size:16px_16px] sm:bg-[size:24px_24px] rounded-3xl" />
               
               {/* Main card */}
               <div className="relative bg-gradient-to-br from-teal via-teal-dark to-ink rounded-3xl p-8 lg:p-12 shadow-xl overflow-hidden">

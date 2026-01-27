@@ -46,7 +46,7 @@ export default function Cookies() {
               Last updated: January 2025
             </p>
 
-            <div className="prose prose-slate max-w-none mb-12">
+            <div className="prose prose-slate dark:prose-invert max-w-none mb-12">
               <h2 className="text-2xl font-semibold text-foreground mt-8 mb-4">What Are Cookies?</h2>
               <p className="text-muted-foreground mb-4">
                 Cookies are small text files that are placed on your device when you visit a website. They are widely used to make websites work more efficiently and to provide information to the site owners.

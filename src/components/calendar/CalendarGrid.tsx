@@ -177,24 +177,24 @@ export function CalendarGrid({
           {days.map((day) => {
             const closure = getClosureForDay(day);
             return (
-              <div
-                key={day.toISOString()}
-                className={cn(
-                  'flex-1 text-center py-3 border-l',
-                  isSameDay(day, new Date()) && 'bg-primary/5',
-                  closure && 'bg-amber-50 dark:bg-amber-950/20'
-                )}
-              >
-                <div className="text-sm text-muted-foreground">{format(day, 'EEE')}</div>
-                <div className={cn(
-                  'text-lg font-semibold',
-                  isSameDay(day, new Date()) && 'text-primary'
-                )}>
-                  {format(day, 'd')}
-                </div>
-                {closure && (
-                  <Badge variant="outline" className="text-[10px] px-1 py-0 mt-1 bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
-                    {closure.reason}
+                <div
+                  key={day.toISOString()}
+                  className={cn(
+                    'flex-1 text-center py-3 border-l',
+                    isSameDay(day, new Date()) && 'bg-primary/5',
+                    closure && 'bg-warning/10 dark:bg-warning/5'
+                  )}
+                >
+                  <div className="text-sm text-muted-foreground">{format(day, 'EEE')}</div>
+                  <div className={cn(
+                    'text-lg font-semibold',
+                    isSameDay(day, new Date()) && 'text-primary'
+                  )}>
+                    {format(day, 'd')}
+                  </div>
+                  {closure && (
+                    <Badge variant="outline" className="text-[10px] px-1 py-0 mt-1 bg-warning/20 text-warning-foreground dark:bg-warning/30 dark:text-warning">
+                      {closure.reason}
                   </Badge>
                 )}
               </div>
@@ -230,7 +230,7 @@ export function CalendarGrid({
                 className={cn(
                   'flex-1 relative border-l',
                   isSameDay(day, new Date()) && 'bg-primary/5',
-                  closure && 'bg-amber-50/50 dark:bg-amber-950/10'
+                  closure && 'bg-warning/5 dark:bg-warning/5'
                 )}
                 onMouseDown={(e) => handleMouseDown(e, day)}
                 onClick={(e) => handleSlotClick(e, day)}
@@ -250,11 +250,21 @@ export function CalendarGrid({
                   return (
                     <div
                       key={lesson.id}
-                      className="absolute left-1 right-1"
+                      className="absolute left-1 right-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded"
                       style={{ top, height }}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${lesson.title} - ${format(parseISO(lesson.start_at), 'HH:mm')}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         onLessonClick(lesson);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onLessonClick(lesson);
+                        }
                       }}
                     >
                       <LessonCard lesson={lesson} onClick={() => onLessonClick(lesson)} />

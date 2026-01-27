@@ -92,7 +92,7 @@ export default function PortalInvoices() {
       case 'sent':
         return <Badge variant="default">Awaiting Payment</Badge>;
       case 'paid':
-        return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">Paid</Badge>;
+        return <Badge variant="secondary" className="bg-success/10 text-success dark:bg-success/20 dark:text-success">Paid</Badge>;
       case 'overdue':
         return <Badge variant="destructive">Overdue</Badge>;
       case 'void':
@@ -118,14 +118,14 @@ export default function PortalInvoices() {
 
       {/* Outstanding Summary */}
       {totalOutstanding > 0 && (
-        <Card className="mb-6 border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20">
+        <Card className="mb-6 border-warning/30 dark:border-warning/40 bg-warning/10 dark:bg-warning/10">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <AlertCircle className="h-5 w-5 text-amber-600" />
+                <AlertCircle className="h-5 w-5 text-warning" />
                 <div>
                   <p className="font-medium">Outstanding Balance</p>
-                  <p className="text-2xl font-bold text-amber-600">
+                  <p className="text-2xl font-bold text-warning">
                     {formatCurrency(totalOutstanding, currentOrg?.currency_code || 'GBP')}
                   </p>
                 </div>
@@ -287,7 +287,7 @@ function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, i
                 </Button>
               )}
               {isPaid && (
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                <Badge variant="secondary" className="bg-success/10 text-success dark:bg-success/20">
                   <CheckCircle className="h-3 w-3 mr-1" />
                   Paid
                 </Badge>
