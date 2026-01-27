@@ -21,7 +21,7 @@ export default function Privacy() {
               Last updated: January 2025
             </p>
 
-            <div className="prose prose-slate max-w-none">
+            <div className="prose prose-slate dark:prose-invert max-w-none">
               <h2 className="text-2xl font-semibold text-foreground mt-8 mb-4">1. Introduction</h2>
               <p className="text-muted-foreground mb-4">
                 LessonLoop ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our music lesson scheduling and billing platform.

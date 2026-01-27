@@ -21,7 +21,7 @@ export default function Terms() {
               Last updated: January 2025
             </p>
 
-            <div className="prose prose-slate max-w-none">
+            <div className="prose prose-slate dark:prose-invert max-w-none">
               <h2 className="text-2xl font-semibold text-foreground mt-8 mb-4">1. Acceptance of Terms</h2>
               <p className="text-muted-foreground mb-4">
                 By accessing or using LessonLoop, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our service.

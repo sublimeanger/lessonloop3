@@ -166,10 +166,11 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
                   variant="outline"
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
+                  aria-describedby="file-format-hint"
                 >
                   Browse files
                 </Button>
-                <p className="text-xs text-muted-foreground mt-2">
+                <p id="file-format-hint" className="text-xs text-muted-foreground mt-2">
                   PDF, images, audio, video, Word docs up to 50MB
                 </p>
               </>

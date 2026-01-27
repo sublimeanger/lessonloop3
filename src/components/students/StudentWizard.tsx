@@ -273,7 +273,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-auto">
         <DialogHeader>
           <DialogTitle>
             {currentStep === 'success' ? 'Student Created!' : 'Add Student'}
@@ -317,7 +317,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
                 {index < STEPS.length - 1 && (
                   <div 
                     className={cn(
-                      "mx-2 h-0.5 w-16 sm:w-24",
+                      "mx-1 sm:mx-2 h-0.5 w-8 sm:w-16 md:w-24 hidden xs:block",
                       (typeof currentStep === 'number' && typeof step === 'number' && currentStep > step)
                         ? "bg-primary"
                         : "bg-muted-foreground/30"

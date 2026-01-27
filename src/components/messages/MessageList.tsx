@@ -4,6 +4,13 @@ import { Mail, MessageSquare, Clock, User, CheckCircle, AlertCircle } from 'luci
 import { format, parseISO } from 'date-fns';
 import type { MessageLogEntry } from '@/hooks/useMessages';
 
+// Strip HTML tags from message body for preview
+function stripHtml(html: string): string {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || '';
+}
+
 interface MessageListProps {
   messages: MessageLogEntry[];
   isLoading?: boolean;
@@ -94,7 +101,7 @@ export function MessageList({ messages, isLoading, emptyMessage = 'No messages y
                 </div>
 
                 <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                  {message.body}
+                  {stripHtml(message.body)}
                 </p>
 
                 <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">

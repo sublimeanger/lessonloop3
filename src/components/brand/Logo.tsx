@@ -50,7 +50,11 @@ export const LogoWordmark = forwardRef<HTMLSpanElement, Omit<LogoProps, 'size'>>
     const accentColor = variant === 'white' ? 'text-white/90' : 'text-teal';
     
     return (
-      <span ref={ref} className={cn('text-xl font-semibold tracking-tight', className)}>
+      <span 
+        ref={ref} 
+        className={cn('text-xl font-semibold tracking-tight', className)}
+        aria-label="LessonLoop"
+      >
         <span className={textColor}>Lesson</span>
         <span className={accentColor}>Loop</span>
       </span>

@@ -140,14 +140,15 @@ const tourSteps: Record<TourName, Step[]> = {
   ],
 };
 
-// Custom styles for Joyride
+// Custom styles for Joyride - using CSS variable values for theme awareness
+// Note: Joyride doesn't support CSS variables directly, so we use computed HSL values
 const joyrideStyles = {
   options: {
-    primaryColor: 'hsl(174 100% 38%)',
-    textColor: 'hsl(220 60% 12%)',
-    backgroundColor: '#ffffff',
-    arrowColor: '#ffffff',
-    overlayColor: 'rgba(10, 22, 40, 0.5)',
+    primaryColor: 'hsl(174, 100%, 38%)',
+    textColor: 'hsl(220, 60%, 12%)',
+    backgroundColor: 'hsl(0, 0%, 100%)',
+    arrowColor: 'hsl(0, 0%, 100%)',
+    overlayColor: 'hsla(220, 60%, 10%, 0.5)',
     zIndex: 10000,
   },
   tooltip: {
@@ -158,16 +159,16 @@ const joyrideStyles = {
     padding: '0.5rem 0',
   },
   buttonNext: {
-    backgroundColor: 'hsl(174 100% 38%)',
+    backgroundColor: 'hsl(174, 100%, 38%)',
     borderRadius: '0.375rem',
     padding: '0.5rem 1rem',
   },
   buttonBack: {
-    color: 'hsl(220 40% 35%)',
+    color: 'hsl(220, 40%, 35%)',
     marginRight: '0.5rem',
   },
   buttonSkip: {
-    color: 'hsl(220 40% 35%)',
+    color: 'hsl(220, 40%, 35%)',
   },
 };
 
