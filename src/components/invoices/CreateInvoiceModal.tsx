@@ -237,7 +237,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto mx-4 sm:mx-auto">
         <DialogHeader>
           <DialogTitle>Create Invoice</DialogTitle>
           <DialogDescription>
