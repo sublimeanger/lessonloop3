@@ -57,17 +57,27 @@ export function TeachingDefaultsStep({ data, onChange }: TeachingDefaultsStepPro
       // Fetch teachers (org_memberships with role teacher or owner/admin who teach)
       const { data: members } = await supabase
         .from('org_memberships')
-        .select('user_id, profiles(full_name)')
+        .select('user_id')
         .eq('org_id', currentOrg.id)
         .in('role', ['owner', 'admin', 'teacher'])
         .eq('status', 'active');
       
-      const teacherList = (members || [])
-        .filter((m: any) => m.profiles?.full_name)
-        .map((m: any) => ({
-          user_id: m.user_id,
-          full_name: m.profiles.full_name,
-        }));
+      // Fetch profiles separately for the member user_ids
+      let teacherList: Teacher[] = [];
+      if (members && members.length > 0) {
+        const userIds = members.map(m => m.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', userIds);
+        
+        teacherList = (profiles || [])
+          .filter(p => p.full_name)
+          .map(p => ({
+            user_id: p.id,
+            full_name: p.full_name!,
+          }));
+      }
       
       // Fetch rate cards
       const { data: rates } = await supabase
