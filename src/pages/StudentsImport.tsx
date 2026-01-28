@@ -409,18 +409,18 @@ export default function StudentsImport() {
     }
   }, [dryRunResult, previewTab]);
 
-  // Get confidence badge variant
+  // Get confidence badge variant - amber for <70%, green for >=70%
   const getConfidenceBadge = (confidence: number, hasTarget: boolean) => {
     if (!hasTarget) return null;
     
-    if (confidence >= 0.8) {
+    if (confidence >= 0.7) {
       return (
         <Badge variant="default" className="bg-green-500/90 hover:bg-green-500">
           <CheckCircle2 className="h-3 w-3 mr-1" />
           {Math.round(confidence * 100)}%
         </Badge>
       );
-    } else if (confidence >= 0.5) {
+    } else {
       return (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -430,21 +430,7 @@ export default function StudentsImport() {
             </Badge>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Low confidence - please verify this mapping</p>
-          </TooltipContent>
-        </Tooltip>
-      );
-    } else {
-      return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge variant="destructive" className="animate-pulse">
-              <XCircle className="h-3 w-3 mr-1" />
-              {Math.round(confidence * 100)}%
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Very low confidence - this mapping needs review</p>
+            <p>Uncertain mapping ({Math.round(confidence * 100)}%) - please double-check</p>
           </TooltipContent>
         </Tooltip>
       );
@@ -637,7 +623,7 @@ export default function StudentsImport() {
                   </TableHeader>
                   <TableBody>
                     {mappings.map((mapping, idx) => (
-                      <TableRow key={mapping.csv_header} className={mapping.confidence < 0.5 && mapping.target_field ? "bg-destructive/5" : mapping.confidence < 0.7 && mapping.target_field ? "bg-amber-500/5" : ""}>
+                      <TableRow key={mapping.csv_header} className={mapping.confidence < 0.7 && mapping.target_field ? "bg-amber-500/5" : ""}>
                         <TableCell className="font-medium">{mapping.csv_header}</TableCell>
                         <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
                           {rows.slice(0, 2).map(r => r[idx]).filter(Boolean).join(", ") || "(empty)"}
