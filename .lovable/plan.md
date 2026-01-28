@@ -1,322 +1,277 @@
 
-# Full Audit and Testing Plan: Recent Implementations
+
+# Enterprise Audit: Critical Issues Identified
 
 ## Executive Summary
 
-This plan covers comprehensive testing of the following recent implementations:
-1. **LessonModal conflict detection** (screen bounce issue)
-2. **FirstRunExperience** (archetype-specific onboarding)
-3. **UrgentActionsBar** (time-sensitive alerts)
-4. **ContextualHints** (replacement for janky tours)
-5. **OnboardingChecklist** (org-type awareness)
-6. **LoopAssist ProactiveWelcome** (first-run messages)
-7. **ParentReschedulePolicySetting** (scheduling policy management)
-8. **EmptyState preview images** (visual previews)
+This audit uncovered **12 distinct issues** across the codebase, categorized by severity. The most critical finding is that the **LoopAssist "Complete Lessons" action is broken** because the frontend `ActionCard` component doesn't recognize the `complete_lessons` action type, causing the action to silently fail.
 
 ---
 
-## Issue 1: Screen Bounce in LessonModal
+## Critical Issues (P0 - Must Fix)
 
-### Root Cause Analysis
+### Issue 1: LoopAssist Complete Lessons Action Does Nothing
 
-The screen bounce occurs due to the conflict detection effect in `LessonModal.tsx` (lines 157-181):
+**Root Cause**: Type mismatch between backend and frontend
+
+| Component | Supports `complete_lessons`? |
+|-----------|------------------------------|
+| Backend (`looopassist-execute/index.ts` line 114) | Yes |
+| System Prompt (`looopassist-chat/index.ts` line 544) | Yes |
+| Frontend (`ActionCard.tsx` line 16) | **NO** |
+
+**The `ActionProposalData` interface is missing 4 action types:**
 
 ```typescript
-useEffect(() => {
-  if (!open || !teacherUserId || !selectedDate) return;
+// Current (broken):
+action_type: 'generate_billing_run' | 'send_invoice_reminders' | 'reschedule_lessons' | 'draft_email';
 
-  const timeoutId = setTimeout(async () => {
-    setIsCheckingConflicts(true);  // ← This triggers re-render
-    // ... async conflict checks
-    setConflicts(results);         // ← Another re-render
-    setIsCheckingConflicts(false); // ← Third re-render
-  }, 500);
-  // ...
-}, [open, teacherUserId, selectedDate, startTime, durationMins, roomId, selectedStudents, lesson?.id, checkConflicts]);
+// Should be:
+action_type: 
+  | 'generate_billing_run' 
+  | 'send_invoice_reminders' 
+  | 'reschedule_lessons' 
+  | 'draft_email'
+  | 'mark_attendance'      // MISSING
+  | 'cancel_lesson'        // MISSING  
+  | 'complete_lessons'     // MISSING - user reported this
+  | 'send_progress_report'; // MISSING
 ```
 
-**Problems identified:**
-1. Multiple state updates cause layout shifts
-2. The `Loader2` spinner appears/disappears causing content jump (line 823-827)
-3. Conflicts Alert components have variable heights that push content around (lines 830-850)
-
-### Proposed Fixes
-
-| Issue | Fix |
-|-------|-----|
-| Layout shift on loading | Reserve fixed height for conflict section |
-| Multiple re-renders | Batch state updates using `unstable_batchedUpdates` or combine states |
-| Content jump | Use `min-h` on conflict area to prevent collapse |
-| Debounce too short | Increase from 500ms to 800ms to reduce flicker |
-
-### Files to Modify
-
-- `src/components/calendar/LessonModal.tsx`
-
----
-
-## Test Plan: FirstRunExperience
-
-### Component: `src/components/dashboard/FirstRunExperience.tsx`
-
-| Test Case | Steps | Expected Result |
-|-----------|-------|-----------------|
-| Solo teacher path | Sign up as solo teacher, no students | Shows "Add your first student" step |
-| Solo teacher progression | Add a student | Shows "Schedule a lesson" step |
-| Studio path | Sign up as studio, no locations | Shows "Set up your studio" step |
-| Academy path | Sign up as academy | Shows "Set up locations" step |
-| Agency path | Sign up as agency | Shows "Add client schools" step |
-| Skip button | Click "Skip setup" | Marks first_run_completed = true |
-| Dismiss button | Click X | Hides overlay (temporary) |
-| Step indicators | Complete steps | Progress bar fills correctly |
-
-### Files to Test
-
-- `src/hooks/useFirstRunExperience.ts`
-- `src/components/dashboard/FirstRunExperience.tsx`
-- Database: `profiles.first_run_completed`, `profiles.first_run_path`
-
----
-
-## Test Plan: UrgentActionsBar
-
-### Component: `src/components/dashboard/UrgentActionsBar.tsx`
-
-| Test Case | Steps | Expected Result |
-|-----------|-------|-----------------|
-| No urgent actions | Fresh org with no data | Bar doesn't render |
-| Unmarked lessons | Create lesson in past, don't mark | Shows "X unmarked lessons" |
-| Overdue invoices | Create invoice 8+ days past due | Shows "X overdue invoices" (error severity) |
-| Pending requests | Have pending message_request | Shows "X pending requests" |
-| Unreviewed practice | Have practice_log without reviewed_at | Shows "X practice logs to review" |
-| Dismiss button | Click X | Bar hides for session |
-| Link navigation | Click action chip | Navigates to correct page |
-| Role filtering | Login as teacher | Only sees teacher-relevant actions |
-| Role filtering | Login as finance | Only sees finance-relevant actions |
-
-### Files to Test
-
-- `src/hooks/useUrgentActions.ts`
-- `src/components/dashboard/UrgentActionsBar.tsx`
-
----
-
-## Test Plan: ContextualHints
-
-### Component: `src/components/shared/ContextualHint.tsx`
-
-| Test Case | Steps | Expected Result |
-|-----------|-------|-----------------|
-| First visit | Open Calendar page first time | Shows hint for calendar-grid |
-| Dismiss on click | Click hint | Hint disappears, saved to localStorage |
-| Not shown twice | Reload Calendar page | Hint doesn't reappear |
-| Position accuracy | Hint on Students page | Positioned correctly near target |
-| Auto-dismiss | Wait 5 seconds | Hint fades out automatically |
-| Reset in Settings | Reset hints in Settings > Help | All hints reset |
-| Multiple hints | Pages with multiple hints | Only one shows at a time |
-
-### Files to Test
-
-- `src/hooks/useContextualHints.ts`
-- `src/components/shared/ContextualHint.tsx`
-- `src/pages/CalendarPage.tsx` (integration)
-- `src/pages/Students.tsx` (integration)
-- `src/pages/Invoices.tsx` (integration)
-
----
-
-## Test Plan: OnboardingChecklist
-
-### Component: `src/components/shared/OnboardingChecklist.tsx`
-
-| Test Case | Steps | Expected Result |
-|-----------|-------|-----------------|
-| Solo checklist items | Sign up as solo_teacher | Shows: Add student → Schedule lesson → Add location → Create invoice |
-| Studio checklist items | Sign up as studio | Shows: Set up studio → Invite teacher → Add students → Run billing |
-| Academy checklist items | Sign up as academy | Shows: Set up locations → Invite team → Enrol students → Schedule lessons |
-| Agency checklist items | Sign up as agency | Shows: Add client schools → Invite teachers → Set scheduling policy → Add students |
-| Progress tracking | Complete one step | Progress ring updates, item marked complete |
-| Celebration | Complete all steps | Shows celebration animation, auto-dismisses |
-| Dismiss button | Click X | Hides checklist |
-| Timeout protection | Slow network | Doesn't hang indefinitely (5s timeout) |
-
-### Files to Test
-
-- `src/components/shared/OnboardingChecklist.tsx`
-
----
-
-## Test Plan: LoopAssist ProactiveWelcome
-
-### Component: `src/components/looopassist/ProactiveWelcome.tsx`
-
-| Test Case | Steps | Expected Result |
-|-----------|-------|-----------------|
-| Solo teacher message | Open LoopAssist as new solo teacher | Shows "Help me add my first student" prompts |
-| Studio message | Open LoopAssist as new studio | Shows "Help me set up my studio location" prompts |
-| Academy message | Open LoopAssist as new academy | Shows "Help me set up multiple locations" prompts |
-| Agency message | Open LoopAssist as new agency | Shows "Configure parent scheduling permissions" prompts |
-| Dismiss functionality | Click X or use prompt | Message dismissed, stored in localStorage |
-| Not shown again | Reopen LoopAssist | Welcome message doesn't reappear |
-| With existing data | Org has students + locations | No proactive message shown |
-| Prompt click | Click suggested prompt | Input populated, message dismissed |
-
-### Files to Test
-
-- `src/hooks/useLoopAssistFirstRun.ts`
-- `src/components/looopassist/ProactiveWelcome.tsx`
-- `src/components/looopassist/LoopAssistDrawer.tsx`
-
----
-
-## Test Plan: Parent Reschedule Policy
-
-### Component: `src/components/settings/SchedulingSettingsTab.tsx`
-
-| Test Case | Steps | Expected Result |
-|-----------|-------|-----------------|
-| Default value | New org | Shows "Request only" selected |
-| Solo teacher default | Signup as solo_teacher | Default is "Self-service" |
-| Agency default | Signup as agency | Default is "Disabled" |
-| Change policy | Select "Self-service" | Saves to DB, shows success toast |
-| Change policy | Select "Disabled" | Saves to DB, shows success toast |
-| Loading state | Click option | Shows loader on selected option |
-| Error handling | Network error | Reverts to previous value, shows error toast |
-| UI responsiveness | On mobile | Radio options stack properly |
-
-### Files to Test
-
-- `src/components/settings/SchedulingSettingsTab.tsx`
-- `supabase/functions/onboarding-setup/index.ts` (default setting)
-
----
-
-## Test Plan: EmptyState Preview Images
-
-### Component: `src/components/shared/EmptyState.tsx`
-
-| Test Case | Steps | Expected Result |
-|-----------|-------|-----------------|
-| Students preview | Open Students page with no students | Shows students-preview.svg |
-| Calendar preview | Open Calendar with no lessons | Shows calendar-preview.svg |
-| Invoices preview | Open Invoices with no invoices | Shows invoices-preview.svg |
-| Fallback | Remove image | Still shows icon-based empty state |
-| Accessibility | Screen reader | Alt text read correctly |
-| Image loading | Slow network | Graceful loading/fallback |
-
-### Files to Test
-
-- `src/components/shared/EmptyState.tsx`
-- `public/previews/students-preview.svg`
-- `public/previews/calendar-preview.svg`
-- `public/previews/invoices-preview.svg`
-
----
-
-## Priority Fixes Required
-
-### Critical (Must Fix)
-
-1. **LessonModal screen bounce** - User-facing UX issue
-   - Add fixed min-height to conflict section
-   - Batch state updates to reduce re-renders
-   - Increase debounce timeout
-
-### High Priority
-
-2. **ContextualHint positioning** - Verify hints appear in correct positions on all viewport sizes
-3. **FirstRunExperience edge cases** - Test all org types thoroughly
-4. **UrgentActionsBar role filtering** - Ensure proper role-based visibility
-
-### Medium Priority
-
-5. **OnboardingChecklist timeout** - Verify 5s timeout works correctly
-6. **LoopAssist proactive message persistence** - Verify localStorage handling
-7. **EmptyState image loading** - Add loading states for slow networks
-
----
-
-## Technical Implementation for Screen Bounce Fix
+**Also missing icons and labels:**
 
 ```typescript
-// LessonModal.tsx - Line 157-181 replacement
+// ACTION_ICONS needs:
+mark_attendance: ClipboardCheck,
+cancel_lesson: XCircle,
+complete_lessons: CheckCircle2,
+send_progress_report: FileText,
 
-const [conflictState, setConflictState] = useState<{
-  isChecking: boolean;
-  conflicts: ConflictResult[];
-}>({ isChecking: false, conflicts: [] });
-
-useEffect(() => {
-  if (!open || !teacherUserId || !selectedDate) return;
-
-  const timeoutId = setTimeout(async () => {
-    setConflictState(prev => ({ ...prev, isChecking: true }));
-    
-    const results = await checkConflicts({...params});
-    
-    // Single state update instead of three
-    setConflictState({ isChecking: false, conflicts: results });
-  }, 800); // Increased from 500ms
-
-  return () => clearTimeout(timeoutId);
-}, [dependencies]);
+// ACTION_LABELS needs:
+mark_attendance: 'Mark Attendance',
+cancel_lesson: 'Cancel Lesson',
+complete_lessons: 'Mark Lessons Complete',
+send_progress_report: 'Send Progress Report',
 ```
 
+**Files to Fix:**
+- `src/components/looopassist/ActionCard.tsx`
+
+---
+
+## High Priority Issues (P1)
+
+### Issue 2: X and + Buttons Too Close Together (Site-Wide)
+
+This is a systemic UX issue affecting multiple components. The problem occurs in two patterns:
+
+**Pattern A: Sheet/Dialog Close Button Collision**
+
+In `src/components/ui/sheet.tsx` line 60:
 ```typescript
-// Add fixed height container for conflicts section
-<div className="min-h-[80px]"> {/* Reserve space */}
-  {conflictState.isChecking && (
-    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-      <Loader2 className="h-4 w-4 animate-spin" />
-      Checking for conflicts...
-    </div>
-  )}
-  {/* Error/Warning alerts */}
-</div>
+<SheetPrimitive.Close className="absolute right-4 top-4 ...">
+```
+
+This positions the built-in close button at `right-4 top-4` (16px from edges). When custom components add header actions like `LoopAssistDrawer.tsx` line 127:
+```typescript
+<Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleNewConversation}>
+  <Plus className="h-4 w-4" />
+</Button>
+```
+
+Both buttons end up at the same position, causing overlap/proximity issues.
+
+**Pattern B: Icon-Only Buttons with Minimal Gap**
+
+Multiple places use `gap-1` or `gap-2` for icon buttons which is too tight:
+
+| Location | Current | Issue |
+|----------|---------|-------|
+| `DailyRegister.tsx` line 77 | `gap-1` | Navigation arrows touching calendar button |
+| `ActionCard.tsx` line 120 | `gap-2` | Confirm/Cancel buttons cramped on mobile |
+| `TeacherAvailabilityTab.tsx` line 212 | `ml-1` | Delete X inside badge, hard to tap |
+| `LoopAssistDrawer.tsx` line 249 | `gap-2` | Send and input too close |
+
+**Recommended Minimum Spacing:**
+- Icon buttons: `gap-3` (12px)
+- Touch targets: 44x44px minimum
+- Badge inline actions: Separate button, not embedded
+
+**Files to Fix:**
+- `src/components/ui/sheet.tsx` - Remove built-in close OR add padding-right to content
+- `src/components/looopassist/LoopAssistDrawer.tsx` - Increase header button spacing
+- `src/pages/DailyRegister.tsx` - Change `gap-1` to `gap-2`
+- `src/components/looopassist/ActionCard.tsx` - Increase footer `gap-2` to `gap-3`
+- `src/components/settings/TeacherAvailabilityTab.tsx` - Move delete to separate button
+
+---
+
+### Issue 3: Dialog Close Button Conflicts with Custom Headers
+
+The base `DialogContent` component in `src/components/ui/dialog.tsx` line 45 includes an automatic close button:
+
+```typescript
+<DialogPrimitive.Close className="absolute right-4 top-4 ...">
+  <X className="h-4 w-4" />
+</DialogPrimitive.Close>
+```
+
+Many dialogs add their own header content in the same area, causing visual collision.
+
+**Solution Options:**
+1. Add `pr-10` padding to DialogHeader to account for close button
+2. Create `DialogContentWithoutClose` variant
+3. Update all custom dialog headers to respect the reserved space
+
+---
+
+## Medium Priority Issues (P2)
+
+### Issue 4: LoopAssist Proactive Alerts Not Fetching Correct Data
+
+In `useUrgentActions.ts`, the "unmarked lessons" query may return lessons that are already completed because it checks `status = 'scheduled'` but doesn't account for lessons that were scheduled but later marked complete.
+
+**Verify Query Logic:**
+```typescript
+// Should ensure we're getting PAST lessons that are STILL scheduled
+.eq('status', 'scheduled')
+.lt('end_at', now)
 ```
 
 ---
 
-## Test Execution Order
+### Issue 5: FirstRunExperience Path Detection Edge Cases
 
-1. **Screen bounce fix** - Implement and verify
-2. **FirstRunExperience** - All org type paths
-3. **ContextualHints** - Positioning and persistence
-4. **UrgentActionsBar** - Role-based filtering
-5. **OnboardingChecklist** - Org-type specific items
-6. **LoopAssist ProactiveWelcome** - Message display and dismissal
-7. **ParentReschedulePolicySetting** - Save/load functionality
-8. **EmptyState previews** - Image rendering
+The `useFirstRunExperience.ts` hook uses `org_type` to determine the onboarding path, but there's no fallback if `org_type` is null or undefined, which could happen during org creation.
+
+**Add Fallback:**
+```typescript
+const orgType = currentOrg?.org_type || 'solo_teacher';
+```
 
 ---
 
-## Manual Testing Checklist
+### Issue 6: OnboardingChecklist TypeScript Warning
 
-### Desktop (1920x1080)
-- [ ] LessonModal opens without bounce
-- [ ] FirstRunExperience shows correct path
-- [ ] UrgentActionsBar displays when actions exist
-- [ ] ContextualHints appear once per feature
-- [ ] OnboardingChecklist shows org-specific items
-- [ ] LoopAssist shows proactive welcome
-- [ ] Settings policy selector works
+Line 162 in `OnboardingChecklist.tsx`:
+```typescript
+// @ts-ignore - new column
+hasPolicyConfigured: currentOrg.parent_reschedule_policy !== 'request_only',
+```
 
-### Mobile (390x844)
-- [ ] LessonModal scrollable, no bounce
-- [ ] FirstRunExperience readable on small screen
-- [ ] UrgentActionsBar chips wrap correctly
-- [ ] ContextualHints positioned correctly
-- [ ] OnboardingChecklist responsive
-- [ ] LoopAssist drawer full-width
-- [ ] Settings radio buttons stacked
+This indicates the types aren't synced. The `parent_reschedule_policy` column was added in the migration but the TypeScript types haven't updated.
+
+**Note**: This may auto-resolve after types regeneration, but should be verified.
 
 ---
 
-## Browser Testing
+### Issue 7: ContextualHint Target Selector Missing on Some Pages
 
-Test in:
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Mobile Safari (iOS)
-- Chrome Mobile (Android)
+The Calendar page uses:
+```typescript
+targetSelector="[data-hint='calendar-grid']"
+```
+
+But need to verify the actual grid component has this attribute applied.
+
+---
+
+## Low Priority Issues (P3)
+
+### Issue 8: Sheet Close Button Hidden Behind Custom Content
+
+In LoopAssistDrawer, the `SheetContent` has a custom header at line 109 that uses `px-4 py-3`. The built-in close button from Sheet component is also rendered, but since the drawer has `p-0` override, positioning may be off.
+
+---
+
+### Issue 9: UrgentActionsBar Role Filtering Not Fully Implemented
+
+The `useUrgentActions.ts` hook filters actions based on role, but the filtering logic for "practice logs to review" doesn't check if the current user is the assigned teacher for those students.
+
+---
+
+### Issue 10: EmptyState Preview Images Lack Loading States
+
+The SVG previews in `EmptyState.tsx` are loaded synchronously. On slow connections, there may be a flash.
+
+---
+
+### Issue 11: Missing Keyboard Navigation on Some Interactive Elements
+
+The Calendar lesson cards are navigable (fixed in recent audit), but:
+- LoopAssist conversation list items lack keyboard focus styling
+- ActionCard entity badges should have proper focus indicators
+
+---
+
+### Issue 12: Inconsistent Button Size for Touch Targets
+
+Some icon buttons use `size="icon"` (40x40) while others use `size="icon-sm"` (32x32). For mobile, 32x32 is below the recommended 44x44 minimum touch target.
+
+---
+
+## Technical Implementation Plan
+
+### Phase 1: Critical Fix (LoopAssist Actions)
+
+**File: `src/components/looopassist/ActionCard.tsx`**
+
+1. Update `ActionProposalData` interface to include all 8 action types
+2. Add missing icons: `ClipboardCheck`, `XCircle`, `CheckCircle2`
+3. Add missing labels for all action types
+4. Add missing entity color for `lesson` type
+
+### Phase 2: Button Spacing Standardization
+
+1. Create design system constants for button spacing:
+   - `ICON_BUTTON_GAP = 'gap-3'` (12px)
+   - `TOUCH_SAFE_SIZE = 'h-10 w-10'` (40px minimum)
+
+2. Update affected components:
+   - `LoopAssistDrawer.tsx` header: Add `gap-3` between title and + button
+   - `DailyRegister.tsx`: Change `gap-1` to `gap-2`
+   - `ActionCard.tsx` footer: Change `gap-2` to `gap-3`
+   - `TeacherAvailabilityTab.tsx`: Move delete button outside badge
+
+3. Sheet component options:
+   - Option A: Remove automatic close button, require explicit SheetClose
+   - Option B: Add `hideCloseButton` prop to SheetContent
+   - Option C: Add `pr-12` to all custom sheet headers
+
+### Phase 3: Type Safety
+
+1. Verify TypeScript types are regenerated from Supabase
+2. Remove all `@ts-ignore` comments once types are correct
+
+### Phase 4: Verification
+
+1. Test all 8 LoopAssist action types end-to-end
+2. Verify touch targets on mobile devices
+3. Visual regression test button spacing on all affected pages
+
+---
+
+## Files Requiring Changes
+
+| File | Changes | Priority |
+|------|---------|----------|
+| `src/components/looopassist/ActionCard.tsx` | Add 4 missing action types, icons, labels | P0 |
+| `src/components/ui/sheet.tsx` | Add `hideCloseButton` prop or increase spacing | P1 |
+| `src/components/looopassist/LoopAssistDrawer.tsx` | Increase header button gap, fix close collision | P1 |
+| `src/pages/DailyRegister.tsx` | Change `gap-1` to `gap-2` | P1 |
+| `src/components/settings/TeacherAvailabilityTab.tsx` | Move delete button outside badge | P1 |
+| `src/components/ui/dialog.tsx` | Add padding to account for close button | P2 |
+| `src/components/shared/OnboardingChecklist.tsx` | Remove @ts-ignore after types sync | P2 |
+
+---
+
+## Expected Outcomes
+
+After implementing these fixes:
+
+1. **LoopAssist actions will work** - Users can confirm "mark lessons complete" and other actions
+2. **Consistent button spacing** - 12px minimum gap between icon buttons
+3. **No close button collisions** - Clear separation between dismiss and action buttons
+4. **Touch-friendly UI** - 40px minimum touch targets on mobile
+5. **Type-safe code** - No @ts-ignore hacks for database columns
+
