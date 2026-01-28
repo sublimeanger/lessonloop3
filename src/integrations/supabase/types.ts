@@ -2307,7 +2307,51 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      teacher_profiles_public: {
+        Row: {
+          bio: string | null
+          created_at: string | null
+          employment_type: Database["public"]["Enums"]["employment_type"] | null
+          id: string | null
+          instruments: string[] | null
+          org_id: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string | null
+          employment_type?:
+            | Database["public"]["Enums"]["employment_type"]
+            | null
+          id?: string | null
+          instruments?: string[] | null
+          org_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string | null
+          employment_type?:
+            | Database["public"]["Enums"]["employment_type"]
+            | null
+          id?: string | null
+          instruments?: string[] | null
+          org_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_profiles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       anonymise_guardian: { Args: { guardian_id: string }; Returns: undefined }
