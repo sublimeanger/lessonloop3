@@ -174,74 +174,76 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   }, [locationId, rooms]);
 
   // Check conflicts on key field changes with debounce
-  // Uses refs to track current check ID and avoid stale closure issues
+  // Simplified approach: memoize key to prevent duplicate checks
+  const conflictCheckKey = useMemo(() => {
+    if (!open || !teacherUserId || !selectedDate) return null;
+    const sortedStudents = [...selectedStudents].sort().join(',');
+    return `${teacherUserId}-${format(selectedDate, 'yyyy-MM-dd')}-${startTime}-${durationMins}-${roomId || 'none'}-${locationId || 'none'}-${sortedStudents}-${lesson?.id || 'new'}`;
+  }, [open, teacherUserId, selectedDate, startTime, durationMins, roomId, locationId, selectedStudents, lesson?.id]);
+
   useEffect(() => {
-    // Early return if prerequisites not met
-    if (!open || !teacherUserId || !selectedDate) {
+    // Early return if no valid key
+    if (!conflictCheckKey) {
       setConflictState({ isChecking: false, conflicts: [] });
       return;
     }
 
-    // Create a unique key for this check to detect duplicate configurations
-    const sortedStudents = [...selectedStudents].sort().join(',');
-    const checkKey = `${teacherUserId}-${format(selectedDate, 'yyyy-MM-dd')}-${startTime}-${durationMins}-${roomId || 'none'}-${sortedStudents}-${lesson?.id || 'new'}`;
-    
     // Skip if we already checked this exact configuration
-    if (checkKey === lastCheckKeyRef.current) {
+    if (conflictCheckKey === lastCheckKeyRef.current) {
       return;
     }
 
-    // Mark this configuration as being processed
-    lastCheckKeyRef.current = checkKey;
+    // Mark as processing
+    lastCheckKeyRef.current = conflictCheckKey;
     const thisCheckId = ++conflictCheckRef.current;
-    
-    // Track if this effect is still active
     let isCancelled = false;
     
-    // Show checking state immediately
+    // Show loading immediately
     setConflictState({ isChecking: true, conflicts: [] });
     
-    // Debounce the actual check
-    const debounceTimer = setTimeout(async () => {
+    // Debounced check
+    const debounceTimer = setTimeout(() => {
       if (isCancelled) return;
       
-      const [hour, minute] = startTime.split(':').map(Number);
-      const localDateTime = setMinutes(setHours(startOfDay(selectedDate), hour), minute);
-      const startAtUtc = fromZonedTime(localDateTime, orgTimezone);
-      const endAtUtc = addMinutes(startAtUtc, durationMins);
+      const runCheck = async () => {
+        const [hour, minute] = startTime.split(':').map(Number);
+        const localDateTime = setMinutes(setHours(startOfDay(selectedDate), hour), minute);
+        const startAtUtc = fromZonedTime(localDateTime, orgTimezone);
+        const endAtUtc = addMinutes(startAtUtc, durationMins);
 
-      try {
-        const results = await checkConflicts({
-          start_at: startAtUtc,
-          end_at: endAtUtc,
-          teacher_user_id: teacherUserId,
-          room_id: roomId,
-          location_id: locationId,
-          student_ids: selectedStudents,
-          exclude_lesson_id: lesson?.id,
-        });
-
-        // Only update if this is still the active check and not cancelled
-        if (!isCancelled && conflictCheckRef.current === thisCheckId) {
-          setConflictState({ isChecking: false, conflicts: results });
-        }
-      } catch (error) {
-        console.error('Conflict check failed:', error);
-        if (!isCancelled && conflictCheckRef.current === thisCheckId) {
-          setConflictState({ 
-            isChecking: false, 
-            conflicts: [{
-              type: 'teacher',
-              severity: 'warning',
-              message: 'Unable to check conflicts. Please verify manually.',
-            }]
+        try {
+          const results = await checkConflicts({
+            start_at: startAtUtc,
+            end_at: endAtUtc,
+            teacher_user_id: teacherUserId,
+            room_id: roomId,
+            location_id: locationId,
+            student_ids: selectedStudents,
+            exclude_lesson_id: lesson?.id,
           });
-        }
-      }
-    }, 400);
 
-    // Hard timeout fallback - uses thisCheckId to verify this is still the active check
-    // No stale closure on conflictState since we only check the ref
+          if (!isCancelled && conflictCheckRef.current === thisCheckId) {
+            setConflictState({ isChecking: false, conflicts: results });
+          }
+        } catch (error) {
+          console.error('Conflict check failed:', error);
+          if (!isCancelled && conflictCheckRef.current === thisCheckId) {
+            setConflictState({ 
+              isChecking: false, 
+              conflicts: [{
+                type: 'teacher',
+                severity: 'warning',
+                message: 'Unable to check conflicts. Please verify manually.',
+              }]
+            });
+          }
+        }
+      };
+      
+      runCheck();
+    }, 350);
+
+    // Hard timeout failsafe (5 seconds)
     const hardTimeout = setTimeout(() => {
       if (!isCancelled && conflictCheckRef.current === thisCheckId) {
         setConflictState({ 
@@ -253,14 +255,14 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
           }]
         });
       }
-    }, 8000);
+    }, 5000);
 
     return () => {
       isCancelled = true;
       clearTimeout(debounceTimer);
       clearTimeout(hardTimeout);
     };
-  }, [open, teacherUserId, selectedDate, startTime, durationMins, roomId, selectedStudents, lesson?.id, checkConflicts, orgTimezone, locationId]);
+  }, [conflictCheckKey, checkConflicts, startTime, selectedDate, orgTimezone, durationMins, teacherUserId, roomId, locationId, selectedStudents, lesson?.id]);
 
   const generateTitle = () => {
     if (selectedStudents.length === 0) return 'New Lesson';
