@@ -174,24 +174,26 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   }, [locationId, rooms]);
 
   // Check conflicts on key field changes with debounce
-  // CRITICAL: Use refs to track check state to prevent infinite loops
+  // CRITICAL: Set lastCheckKeyRef IMMEDIATELY to prevent duplicate checks during debounce
   useEffect(() => {
     if (!open || !teacherUserId || !selectedDate) return;
 
-    // Create a unique key for this check to detect stale results
+    // Create a unique key for this check to detect duplicate configurations
     const checkKey = `${teacherUserId}-${selectedDate.toISOString()}-${startTime}-${durationMins}-${roomId}-${selectedStudents.join(',')}-${lesson?.id}`;
     
-    // Don't re-check if we already have results for this exact configuration
+    // Don't re-check if we already have a pending or completed check for this configuration
     if (checkKey === lastCheckKeyRef.current) {
       return;
     }
 
+    // IMMEDIATELY mark this key as being processed to prevent duplicate debounces
+    lastCheckKeyRef.current = checkKey;
     const currentCheck = ++conflictCheckRef.current;
     
+    // Mark as checking immediately (not in timeout) to show UI feedback
+    setConflictState(prev => ({ ...prev, isChecking: true }));
+    
     const timeoutId = setTimeout(async () => {
-      // Mark as checking but DO NOT clear existing conflicts
-      setConflictState(prev => ({ ...prev, isChecking: true }));
-      
       const [hour, minute] = startTime.split(':').map(Number);
       
       // Build the date/time in the org's timezone, then convert to UTC for storage
@@ -211,7 +213,6 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
       // Only update state if this is still the most recent check
       if (conflictCheckRef.current === currentCheck) {
-        lastCheckKeyRef.current = checkKey;
         setConflictState({ 
           isChecking: false, 
           conflicts: results
