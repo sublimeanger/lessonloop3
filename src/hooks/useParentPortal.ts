@@ -423,6 +423,7 @@ export function useParentSummary() {
           outstandingBalance: 0,
           overdueInvoices: 0,
           unreadMessages: 0,
+          oldestUnpaidInvoiceId: null,
         };
       }
 
@@ -437,6 +438,7 @@ export function useParentSummary() {
       let nextLesson = null;
       let outstandingBalance = 0;
       let overdueInvoices = 0;
+      let oldestUnpaidInvoiceId: string | null = null;
 
       if (guardianData) {
         // Get student IDs
@@ -478,16 +480,19 @@ export function useParentSummary() {
           }
         }
 
-        // Outstanding invoices
+        // Outstanding invoices - fetch with due_date to find oldest
         const { data: invoices } = await supabase
           .from('invoices')
-          .select('total_minor, status')
+          .select('id, total_minor, status, due_date')
           .eq('payer_guardian_id', guardianData.id)
-          .in('status', ['sent', 'overdue']);
+          .in('status', ['sent', 'overdue'])
+          .order('due_date', { ascending: true });
 
-        if (invoices) {
+        if (invoices && invoices.length > 0) {
           outstandingBalance = invoices.reduce((sum, inv) => sum + inv.total_minor, 0);
           overdueInvoices = invoices.filter(inv => inv.status === 'overdue').length;
+          // First invoice is oldest (sorted by due_date ascending)
+          oldestUnpaidInvoiceId = invoices[0].id;
         }
       }
 
@@ -511,6 +516,7 @@ export function useParentSummary() {
         outstandingBalance,
         overdueInvoices,
         unreadMessages,
+        oldestUnpaidInvoiceId,
       };
     },
     enabled: !!user && !!currentOrg,

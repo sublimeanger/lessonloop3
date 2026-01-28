@@ -178,13 +178,29 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
 
   console.log(`Processing completed checkout for invoice: ${invoiceId}`);
 
+  const paymentIntentId = session.payment_intent as string;
+
+  // DOUBLE PAYMENT GUARD: Check if payment with this provider_reference already exists
+  if (paymentIntentId) {
+    const { data: existingPayment } = await supabase
+      .from("payments")
+      .select("id")
+      .eq("provider_reference", paymentIntentId)
+      .maybeSingle();
+
+    if (existingPayment) {
+      console.log(`Payment already recorded for payment_intent: ${paymentIntentId}, skipping duplicate`);
+      return;
+    }
+  }
+
   // Update our checkout session record
   const { error: updateSessionError } = await supabase
     .from("stripe_checkout_sessions")
     .update({
       status: "completed",
       completed_at: new Date().toISOString(),
-      stripe_payment_intent_id: session.payment_intent,
+      stripe_payment_intent_id: paymentIntentId,
     })
     .eq("stripe_session_id", session.id);
 
@@ -208,11 +224,16 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
       amount_minor: session.amount_total || checkoutSession?.amount_minor,
       method: "card",
       provider: "stripe",
-      provider_reference: session.payment_intent as string,
+      provider_reference: paymentIntentId,
       paid_at: new Date().toISOString(),
     });
 
   if (paymentError) {
+    // Check if it's a duplicate key error (another safety net)
+    if (paymentError.code === '23505') {
+      console.log(`Duplicate payment prevented by database constraint for: ${paymentIntentId}`);
+      return;
+    }
     console.error("Failed to record payment:", paymentError);
     return;
   }

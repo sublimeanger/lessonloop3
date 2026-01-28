@@ -12,9 +12,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban, Gift } from 'lucide-react';
+import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban, Gift, AlertTriangle } from 'lucide-react';
 
 interface LessonDetailPanelProps {
   lesson: LessonWithDetails | null;
@@ -58,6 +60,11 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
     creditValue: number;
     hoursNotice: number;
   } | null>(null);
+
+  // Cancellation confirmation with reason
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState('');
+  const [cancelMode, setCancelMode] = useState<RecurringActionMode>('this_only');
 
   if (!lesson) return null;
 
@@ -143,12 +150,19 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
 
   const isRecurring = !!lesson.recurrence_id;
 
+  // Calculate hours until lesson for late cancellation warning
+  const hoursUntilLesson = differenceInHours(startTime, new Date());
+  const cancellationNoticeHours = (currentOrg as any)?.cancellation_notice_hours || 24;
+  const isLateCancellation = hoursUntilLesson < cancellationNoticeHours && hoursUntilLesson >= 0;
+
   const handleCancelClick = () => {
     if (isRecurring) {
       setRecurringAction('cancel');
       setRecurringDialogOpen(true);
     } else {
-      performCancel('this_only');
+      // Show cancel confirmation dialog with reason input
+      setCancelMode('this_only');
+      setCancelDialogOpen(true);
     }
   };
 
@@ -164,23 +178,33 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
   const handleRecurringSelect = (mode: RecurringActionMode) => {
     setRecurringDialogOpen(false);
     if (recurringAction === 'cancel') {
-      performCancel(mode);
+      // Show cancel confirmation dialog with reason input
+      setCancelMode(mode);
+      setCancelDialogOpen(true);
     } else {
       setPendingMode(mode);
       setConfirmDeleteOpen(true);
     }
   };
 
-  const performCancel = async (mode: RecurringActionMode) => {
-    if (!lesson) return;
+  const performCancel = async () => {
+    if (!lesson || !user) return;
     setActionInProgress(true);
+    setCancelDialogOpen(false);
 
     try {
-      if (mode === 'this_only') {
+      const cancelData = {
+        status: 'cancelled' as const,
+        cancellation_reason: cancellationReason || null,
+        cancelled_by: user.id,
+        cancelled_at: new Date().toISOString(),
+      };
+
+      if (cancelMode === 'this_only') {
         // Cancel just this lesson
         const { error } = await supabase
           .from('lessons')
-          .update({ status: 'cancelled' })
+          .update(cancelData)
           .eq('id', lesson.id);
         if (error) throw error;
         toast({ title: 'Lesson cancelled' });
@@ -188,12 +212,13 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         // Cancel this and all future lessons in series
         const { error } = await supabase
           .from('lessons')
-          .update({ status: 'cancelled' })
+          .update(cancelData)
           .eq('recurrence_id', lesson.recurrence_id)
           .gte('start_at', lesson.start_at);
         if (error) throw error;
         toast({ title: 'Series cancelled', description: 'This and all future lessons have been cancelled.' });
       }
+      setCancellationReason('');
       onUpdated();
       onClose();
     } catch (error: any) {
@@ -412,6 +437,66 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         onSelect={handleRecurringSelect}
         action={recurringAction}
       />
+
+      {/* Cancel Confirmation Dialog with Reason */}
+      <Dialog open={cancelDialogOpen} onOpenChange={(open) => {
+        setCancelDialogOpen(open);
+        if (!open) setCancellationReason('');
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Ban className="h-5 w-5" />
+              Cancel Lesson
+            </DialogTitle>
+            <DialogDescription>
+              {cancelMode === 'this_and_future' 
+                ? 'This will cancel this lesson and all future lessons in the series.'
+                : 'This will mark the lesson as cancelled.'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {/* Late Cancellation Warning */}
+          {isLateCancellation && (
+            <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-700 dark:text-amber-400">Late Cancellation Notice</p>
+                <p className="text-muted-foreground mt-1">
+                  This lesson starts in {hoursUntilLesson} hours. Your policy requires {cancellationNoticeHours} hours notice.
+                  Students may not receive a make-up credit for late cancellations.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="cancellation-reason">Cancellation Reason (optional)</Label>
+            <Textarea
+              id="cancellation-reason"
+              placeholder="e.g., Student illness, teacher unavailable, weather..."
+              value={cancellationReason}
+              onChange={(e) => setCancellationReason(e.target.value)}
+              rows={2}
+            />
+            <p className="text-xs text-muted-foreground">This will be recorded for your records and can be viewed in the audit log.</p>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+              Keep Lesson
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={performCancel}
+              disabled={actionInProgress}
+            >
+              {actionInProgress ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Ban className="h-4 w-4 mr-2" />}
+              Cancel Lesson
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirm Delete Dialog */}
       <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
