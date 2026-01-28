@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, FileSpreadsheet, ArrowRight, Check, AlertCircle, Loader2, Wand2, ChevronDown, Users, AlertTriangle } from "lucide-react";
+import { Upload, FileSpreadsheet, ArrowRight, Check, AlertCircle, Loader2, Wand2, Users, AlertTriangle, Download, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/contexts/OrgContext";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface TargetField {
   name: string;
@@ -27,6 +29,35 @@ interface ColumnMapping {
   csv_header: string;
   target_field: string | null;
   confidence: number;
+}
+
+interface RowStatus {
+  row: number;
+  name: string;
+  status: "ready" | "duplicate_csv" | "duplicate_db" | "invalid";
+  duplicateOf?: number;
+  existingStudentId?: string;
+  matchType?: string;
+  errors?: string[];
+}
+
+interface ValidationResult {
+  valid: number;
+  duplicatesInCsv: { row: number; duplicateOf: number; name: string }[];
+  duplicatesInDatabase: { row: number; existingStudentId: string; name: string; matchType: string }[];
+  errors: { row: number; errors: string[] }[];
+}
+
+interface DryRunResult {
+  dryRun: true;
+  validation: ValidationResult;
+  preview: {
+    studentsToCreate: number;
+    studentsToSkip: number;
+    guardiansToCreate: number;
+    lessonsToCreate: number;
+  };
+  rowStatuses: RowStatus[];
 }
 
 interface ImportResult {
@@ -44,7 +75,7 @@ export default function StudentsImport() {
   const navigate = useNavigate();
   const { currentOrg } = useOrg();
   const { toast } = useToast();
-  const { counts, limits, canAddStudent } = useUsageCounts();
+  const { counts, limits } = useUsageCounts();
 
   const [step, setStep] = useState<Step>("upload");
   const [file, setFile] = useState<File | null>(null);
@@ -58,6 +89,11 @@ export default function StudentsImport() {
   const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([]);
   const [selectedTeacher, setSelectedTeacher] = useState<string>("");
   const [importLessons, setImportLessons] = useState(false);
+  
+  // New state for dry-run validation
+  const [dryRunResult, setDryRunResult] = useState<DryRunResult | null>(null);
+  const [previewTab, setPreviewTab] = useState<"all" | "issues" | "ready">("all");
+  const [skipDuplicates, setSkipDuplicates] = useState(true);
 
   // Parse CSV content
   const parseCSV = useCallback((content: string): { headers: string[]; rows: string[][] } => {
@@ -219,12 +255,12 @@ export default function StudentsImport() {
   const willExceedLimit = rows.length > remainingCapacity;
   const canProceedWithImport = requiredFieldsMapped && !willExceedLimit;
 
-  // Execute import
-  const executeImport = useCallback(async () => {
+  // Execute dry-run validation
+  const executeDryRun = useCallback(async () => {
     if (!currentOrg) return;
 
-    setStep("importing");
     setIsLoading(true);
+    setDryRunResult(null);
 
     try {
       const { data: session } = await supabase.auth.getSession();
@@ -243,6 +279,63 @@ export default function StudentsImport() {
             ),
             orgId: currentOrg.id,
             teacherUserId: importLessons ? selectedTeacher : undefined,
+            dryRun: true,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Validation failed");
+      }
+
+      const result = await response.json() as DryRunResult;
+      setDryRunResult(result);
+      setStep("preview");
+
+    } catch (error: any) {
+      toast({
+        title: "Validation failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentOrg, transformedRows, mappings, selectedTeacher, importLessons, toast]);
+
+  // Execute actual import
+  const executeImport = useCallback(async () => {
+    if (!currentOrg || !dryRunResult) return;
+
+    setStep("importing");
+    setIsLoading(true);
+
+    try {
+      // Determine which rows to import based on user selection
+      const rowsToImport = dryRunResult.rowStatuses
+        .filter(s => s.status === "ready" || (!skipDuplicates && (s.status === "duplicate_csv" || s.status === "duplicate_db")))
+        .map(s => s.row - 1);
+
+      const { data: session } = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/csv-import-execute`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            rows: transformedRows,
+            mappings: Object.fromEntries(
+              mappings.filter(m => m.target_field).map(m => [m.csv_header, m.target_field])
+            ),
+            orgId: currentOrg.id,
+            teacherUserId: importLessons ? selectedTeacher : undefined,
+            dryRun: false,
+            skipDuplicates,
+            rowsToImport,
           }),
         }
       );
@@ -271,7 +364,151 @@ export default function StudentsImport() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentOrg, transformedRows, mappings, selectedTeacher, importLessons, toast]);
+  }, [currentOrg, transformedRows, mappings, selectedTeacher, importLessons, skipDuplicates, dryRunResult, toast]);
+
+  // Download failed rows as CSV
+  const downloadFailedRows = useCallback(() => {
+    if (!importResult) return;
+
+    const failedDetails = importResult.details.filter(d => d.status === "error" || d.status === "skipped");
+    if (failedDetails.length === 0) return;
+
+    const csvHeaders = [...headers, "Import Error"];
+    const csvRows = failedDetails.map(detail => {
+      const originalRow = rows[detail.row - 1] || [];
+      return [...originalRow, detail.error || "Unknown error"];
+    });
+
+    const csvContent = [
+      csvHeaders.map(h => `"${h.replace(/"/g, '""')}"`).join(","),
+      ...csvRows.map(row => row.map(cell => `"${(cell || "").replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `failed-imports-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [importResult, headers, rows]);
+
+  // Get filtered row statuses for tabs
+  const filteredRowStatuses = useMemo(() => {
+    if (!dryRunResult) return [];
+    
+    switch (previewTab) {
+      case "issues":
+        return dryRunResult.rowStatuses.filter(s => s.status !== "ready");
+      case "ready":
+        return dryRunResult.rowStatuses.filter(s => s.status === "ready");
+      default:
+        return dryRunResult.rowStatuses;
+    }
+  }, [dryRunResult, previewTab]);
+
+  // Get confidence badge variant
+  const getConfidenceBadge = (confidence: number, hasTarget: boolean) => {
+    if (!hasTarget) return null;
+    
+    if (confidence >= 0.8) {
+      return (
+        <Badge variant="default" className="bg-green-500/90 hover:bg-green-500">
+          <CheckCircle2 className="h-3 w-3 mr-1" />
+          {Math.round(confidence * 100)}%
+        </Badge>
+      );
+    } else if (confidence >= 0.5) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Badge variant="secondary" className="bg-amber-500/20 text-amber-700 border-amber-500/30 hover:bg-amber-500/30">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              {Math.round(confidence * 100)}%
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Low confidence - please verify this mapping</p>
+          </TooltipContent>
+        </Tooltip>
+      );
+    } else {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Badge variant="destructive" className="animate-pulse">
+              <XCircle className="h-3 w-3 mr-1" />
+              {Math.round(confidence * 100)}%
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Very low confidence - this mapping needs review</p>
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+  };
+
+  // Get status badge for row
+  const getStatusBadge = (status: RowStatus) => {
+    switch (status.status) {
+      case "ready":
+        return (
+          <Badge variant="default" className="bg-green-500/90">
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Ready
+          </Badge>
+        );
+      case "duplicate_csv":
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="secondary" className="bg-amber-500/20 text-amber-700 border-amber-500/30">
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Dup of #{status.duplicateOf}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>This row is a duplicate of row {status.duplicateOf} in your CSV</p>
+            </TooltipContent>
+          </Tooltip>
+        );
+      case "duplicate_db":
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="secondary" className="bg-amber-500/20 text-amber-700 border-amber-500/30">
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Exists
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>A student with this {status.matchType} already exists in your database</p>
+            </TooltipContent>
+          </Tooltip>
+        );
+      case "invalid":
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="destructive">
+                <XCircle className="h-3 w-3 mr-1" />
+                Invalid
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <ul className="list-disc list-inside">
+                {status.errors?.map((err, i) => (
+                  <li key={i}>{err}</li>
+                ))}
+              </ul>
+            </TooltipContent>
+          </Tooltip>
+        );
+    }
+  };
 
   return (
     <AppLayout>
@@ -370,7 +607,7 @@ export default function StudentsImport() {
                 Review Column Mappings
               </CardTitle>
               <CardDescription>
-                LoopAssist has suggested mappings based on your data. Adjust as needed.
+                LoopAssist has suggested mappings based on your data. Review low-confidence mappings (amber/red) carefully.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -395,12 +632,12 @@ export default function StudentsImport() {
                       <TableHead>CSV Column</TableHead>
                       <TableHead>Sample Data</TableHead>
                       <TableHead>Map To</TableHead>
-                      <TableHead className="w-24">Confidence</TableHead>
+                      <TableHead className="w-28">Confidence</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {mappings.map((mapping, idx) => (
-                      <TableRow key={mapping.csv_header}>
+                      <TableRow key={mapping.csv_header} className={mapping.confidence < 0.5 && mapping.target_field ? "bg-destructive/5" : mapping.confidence < 0.7 && mapping.target_field ? "bg-amber-500/5" : ""}>
                         <TableCell className="font-medium">{mapping.csv_header}</TableCell>
                         <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
                           {rows.slice(0, 2).map(r => r[idx]).filter(Boolean).join(", ") || "(empty)"}
@@ -430,11 +667,7 @@ export default function StudentsImport() {
                           </Select>
                         </TableCell>
                         <TableCell>
-                          {mapping.target_field && (
-                            <Badge variant={mapping.confidence > 0.7 ? "default" : "secondary"}>
-                              {Math.round(mapping.confidence * 100)}%
-                            </Badge>
-                          )}
+                          {getConfidenceBadge(mapping.confidence, !!mapping.target_field)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -500,99 +733,194 @@ export default function StudentsImport() {
                   Back
                 </Button>
                 <Button
-                  onClick={() => setStep("preview")}
-                  disabled={!canProceedWithImport}
+                  onClick={executeDryRun}
+                  disabled={!canProceedWithImport || isLoading}
                 >
-                  Continue to Preview
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Validating...
+                    </>
+                  ) : (
+                    <>
+                      Continue to Preview
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
                 </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Step 3: Preview */}
-        {step === "preview" && (
+        {/* Step 3: Preview with Validation */}
+        {step === "preview" && dryRunResult && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Preview Import
+                Validation Results
               </CardTitle>
               <CardDescription>
-                Review the data to be imported. {rows.length} records will be processed.
+                Review the validation results before importing. Duplicates and errors are highlighted.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-3 gap-4">
-                <Card>
+              {/* Validation summary */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="bg-green-500/10 border-green-500/20">
                   <CardContent className="pt-4">
-                    <div className="text-2xl font-bold">{rows.length}</div>
-                    <div className="text-sm text-muted-foreground">Students</div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      <div>
+                        <div className="text-2xl font-bold text-green-700">{dryRunResult.validation.valid}</div>
+                        <div className="text-sm text-green-600">Ready to import</div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="bg-amber-500/10 border-amber-500/20">
                   <CardContent className="pt-4">
-                    <div className="text-2xl font-bold">
-                      {transformedRows.filter(r => r.guardian_name).length}
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-amber-600" />
+                      <div>
+                        <div className="text-2xl font-bold text-amber-700">{dryRunResult.validation.duplicatesInCsv.length}</div>
+                        <div className="text-sm text-amber-600">Duplicates in CSV</div>
+                      </div>
                     </div>
-                    <div className="text-sm text-muted-foreground">Guardians</div>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="bg-amber-500/10 border-amber-500/20">
                   <CardContent className="pt-4">
-                    <div className="text-2xl font-bold">
-                      {importLessons ? transformedRows.filter(r => r.lesson_day && r.lesson_time).length : 0}
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-amber-600" />
+                      <div>
+                        <div className="text-2xl font-bold text-amber-700">{dryRunResult.validation.duplicatesInDatabase.length}</div>
+                        <div className="text-sm text-amber-600">Already in database</div>
+                      </div>
                     </div>
-                    <div className="text-sm text-muted-foreground">Lessons</div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-destructive/10 border-destructive/20">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2">
+                      <XCircle className="h-5 w-5 text-destructive" />
+                      <div>
+                        <div className="text-2xl font-bold text-destructive">{dryRunResult.validation.errors.length}</div>
+                        <div className="text-sm text-destructive">Invalid rows</div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
 
-              <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">#</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Guardian</TableHead>
-                      {importLessons && <TableHead>Lesson</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {transformedRows.slice(0, 20).map((row, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
-                        <TableCell className="font-medium">
-                          {row.first_name} {row.last_name}
-                        </TableCell>
-                        <TableCell>{row.email || "—"}</TableCell>
-                        <TableCell>{row.guardian_name || "—"}</TableCell>
-                        {importLessons && (
-                          <TableCell>
-                            {row.lesson_day && row.lesson_time
-                              ? `${row.lesson_day} ${row.lesson_time}`
-                              : "—"}
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              {/* Import preview counts */}
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <h4 className="font-medium mb-2">Import Preview</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Students:</span>{" "}
+                    <span className="font-medium">{dryRunResult.preview.studentsToCreate}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Guardians:</span>{" "}
+                    <span className="font-medium">{dryRunResult.preview.guardiansToCreate}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Lessons:</span>{" "}
+                    <span className="font-medium">{dryRunResult.preview.lessonsToCreate}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Skipped:</span>{" "}
+                    <span className="font-medium">{dryRunResult.preview.studentsToSkip}</span>
+                  </div>
+                </div>
               </div>
 
-              {rows.length > 20 && (
-                <p className="text-sm text-muted-foreground text-center">
-                  Showing first 20 of {rows.length} records
-                </p>
+              {/* Duplicate handling options */}
+              {(dryRunResult.validation.duplicatesInCsv.length > 0 || dryRunResult.validation.duplicatesInDatabase.length > 0) && (
+                <div className="p-4 border rounded-lg space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="skip-duplicates"
+                      checked={skipDuplicates}
+                      onCheckedChange={(checked) => setSkipDuplicates(!!checked)}
+                    />
+                    <Label htmlFor="skip-duplicates">Skip duplicate records (recommended)</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground ml-6">
+                    {skipDuplicates 
+                      ? "Duplicate rows will be skipped. Only new students will be imported."
+                      : "Warning: Duplicate rows will be imported, creating new student records."}
+                  </p>
+                </div>
               )}
+
+              {/* Tabbed row list */}
+              <Tabs value={previewTab} onValueChange={(v) => setPreviewTab(v as any)}>
+                <TabsList>
+                  <TabsTrigger value="all">
+                    All Records ({dryRunResult.rowStatuses.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="issues" className="text-amber-600">
+                    Issues ({dryRunResult.rowStatuses.filter(s => s.status !== "ready").length})
+                  </TabsTrigger>
+                  <TabsTrigger value="ready" className="text-green-600">
+                    Ready ({dryRunResult.validation.valid})
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value={previewTab} className="mt-4">
+                  <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12">#</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Guardian</TableHead>
+                          <TableHead className="w-32">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredRowStatuses.slice(0, 50).map((status) => {
+                          const row = transformedRows[status.row - 1];
+                          return (
+                            <TableRow 
+                              key={status.row}
+                              className={
+                                status.status === "invalid" ? "bg-destructive/5" :
+                                status.status !== "ready" ? "bg-amber-500/5" : ""
+                              }
+                            >
+                              <TableCell className="text-muted-foreground">{status.row}</TableCell>
+                              <TableCell className="font-medium">{status.name}</TableCell>
+                              <TableCell>{row?.email || "—"}</TableCell>
+                              <TableCell>{row?.guardian_name || "—"}</TableCell>
+                              <TableCell>{getStatusBadge(status)}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  {filteredRowStatuses.length > 50 && (
+                    <p className="text-sm text-muted-foreground text-center mt-2">
+                      Showing first 50 of {filteredRowStatuses.length} records
+                    </p>
+                  )}
+                </TabsContent>
+              </Tabs>
 
               <div className="flex justify-between">
                 <Button variant="outline" onClick={() => setStep("mapping")}>
                   Back to Mapping
                 </Button>
-                <Button onClick={executeImport} disabled={isLoading}>
+                <Button 
+                  onClick={executeImport} 
+                  disabled={isLoading || dryRunResult.validation.valid === 0}
+                >
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -601,7 +929,7 @@ export default function StudentsImport() {
                   ) : (
                     <>
                       <Check className="mr-2 h-4 w-4" />
-                      Confirm Import
+                      Import {skipDuplicates ? dryRunResult.validation.valid : (dryRunResult.validation.valid + dryRunResult.validation.duplicatesInCsv.length + dryRunResult.validation.duplicatesInDatabase.length)} Students
                     </>
                   )}
                 </Button>
@@ -617,7 +945,7 @@ export default function StudentsImport() {
               <Loader2 className="h-12 w-12 mx-auto mb-4 text-primary animate-spin" />
               <h3 className="text-lg font-medium mb-2">Importing data...</h3>
               <p className="text-sm text-muted-foreground">
-                Please wait while we process {rows.length} records
+                Please wait while we process your records
               </p>
               <Progress className="mt-6 max-w-md mx-auto" value={undefined} />
             </CardContent>
@@ -675,12 +1003,25 @@ export default function StudentsImport() {
                   <AlertTitle>{importResult.errors.length} Errors</AlertTitle>
                   <AlertDescription>
                     <ul className="list-disc list-inside text-sm mt-2 max-h-[150px] overflow-y-auto">
-                      {importResult.errors.map((err, i) => (
+                      {importResult.errors.slice(0, 10).map((err, i) => (
                         <li key={i}>{err}</li>
                       ))}
+                      {importResult.errors.length > 10 && (
+                        <li className="text-muted-foreground">...and {importResult.errors.length - 10} more</li>
+                      )}
                     </ul>
                   </AlertDescription>
                 </Alert>
+              )}
+
+              {/* Download failed rows */}
+              {importResult.details.some(d => d.status === "error" || d.status === "skipped") && (
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={downloadFailedRows}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download Failed/Skipped Rows
+                  </Button>
+                </div>
               )}
 
               <div className="flex justify-center gap-4">
@@ -691,6 +1032,7 @@ export default function StudentsImport() {
                   setRows([]);
                   setMappings([]);
                   setImportResult(null);
+                  setDryRunResult(null);
                 }}>
                   Import More
                 </Button>
