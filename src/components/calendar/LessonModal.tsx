@@ -53,8 +53,11 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   const { sendNotesNotification } = useNotesNotification();
 
   const [isSaving, setIsSaving] = useState(false);
-  const [isCheckingConflicts, setIsCheckingConflicts] = useState(false);
-  const [conflicts, setConflicts] = useState<ConflictResult[]>([]);
+  // Consolidated conflict state to prevent multiple re-renders causing layout shifts
+  const [conflictState, setConflictState] = useState<{
+    isChecking: boolean;
+    conflicts: ConflictResult[];
+  }>({ isChecking: false, conflicts: [] });
   const [studentsOpen, setStudentsOpen] = useState(false);
   
   // Recurring edit state
@@ -136,7 +139,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
         setDurationMins(Math.max(15, Math.min(duration, 180)));
       }
     }
-    setConflicts([]);
+    setConflictState({ isChecking: false, conflicts: [] });
     setRecurringEditMode(null);
   }, [open, lesson, initialDate, initialEndDate, user?.id]);
 
@@ -153,12 +156,13 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     return rooms.filter(r => r.location_id === locationId);
   }, [locationId, rooms]);
 
-  // Check conflicts on key field changes
+  // Check conflicts on key field changes with debounce
   useEffect(() => {
     if (!open || !teacherUserId || !selectedDate) return;
 
+    // Increased debounce from 500ms to 800ms to reduce flicker
     const timeoutId = setTimeout(async () => {
-      setIsCheckingConflicts(true);
+      setConflictState(prev => ({ ...prev, isChecking: true }));
       const [hour, minute] = startTime.split(':').map(Number);
       const startAt = setMinutes(setHours(startOfDay(selectedDate), hour), minute);
       const endAt = addMinutes(startAt, durationMins);
@@ -173,9 +177,9 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
         exclude_lesson_id: lesson?.id,
       });
 
-      setConflicts(results);
-      setIsCheckingConflicts(false);
-    }, 500);
+      // Single state update to prevent layout shifts
+      setConflictState({ isChecking: false, conflicts: results });
+    }, 800);
 
     return () => clearTimeout(timeoutId);
   }, [open, teacherUserId, selectedDate, startTime, durationMins, roomId, selectedStudents, lesson?.id, checkConflicts]);
@@ -268,7 +272,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     }
 
     // Check for blocking conflicts
-    const blockingConflicts = conflicts.filter(c => c.severity === 'error');
+    const blockingConflicts = conflictState.conflicts.filter(c => c.severity === 'error');
     if (blockingConflicts.length > 0) {
       toast({ 
         title: 'Cannot save due to conflicts', 
@@ -511,8 +515,8 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     );
   };
 
-  const errors = conflicts.filter(c => c.severity === 'error');
-  const warnings = conflicts.filter(c => c.severity === 'warning');
+  const errors = conflictState.conflicts.filter(c => c.severity === 'error');
+  const warnings = conflictState.conflicts.filter(c => c.severity === 'warning');
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -819,35 +823,37 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
             </div>
           )}
 
-          {/* Conflict alerts */}
-          {isCheckingConflicts && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Checking for conflicts...
-            </div>
-          )}
-          
-          {errors.length > 0 && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {errors.map((e, i) => (
-                  <div key={i}>{e.message}</div>
-                ))}
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {warnings.length > 0 && (
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                {warnings.map((w, i) => (
-                  <div key={i}>{w.message}</div>
-                ))}
-              </AlertDescription>
-            </Alert>
-          )}
+          {/* Conflict alerts - fixed min-height to prevent layout shifts */}
+          <div className="min-h-[60px]">
+            {conflictState.isChecking && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Checking for conflicts...
+              </div>
+            )}
+            
+            {!conflictState.isChecking && errors.length > 0 && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {errors.map((e, i) => (
+                    <div key={i}>{e.message}</div>
+                  ))}
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {!conflictState.isChecking && warnings.length > 0 && (
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  {warnings.map((w, i) => (
+                    <div key={i}>{w.message}</div>
+                  ))}
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
         </div>
 
         <DialogFooter>
