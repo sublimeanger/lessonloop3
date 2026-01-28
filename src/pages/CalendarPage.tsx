@@ -12,6 +12,7 @@ import { LessonDetailPanel } from '@/components/calendar/LessonDetailPanel';
 import { CalendarFiltersBar } from '@/components/calendar/CalendarFiltersBar';
 import { MarkDayCompleteButton } from '@/components/calendar/MarkDayCompleteButton';
 import { CalendarView, CalendarFilters, LessonWithDetails } from '@/components/calendar/types';
+import { ContextualHint } from '@/components/shared/ContextualHint';
 import { Calendar, ChevronLeft, ChevronRight, Plus, List, CalendarDays, LayoutGrid, Loader2 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
@@ -240,7 +241,7 @@ export default function CalendarPage() {
           onLessonClick={handleLessonClick}
         />
       ) : (
-        <div data-tour="calendar-grid">
+        <div data-tour="calendar-grid" data-hint="calendar-grid">
           <CalendarGrid
             currentDate={currentDate}
             view={view}
@@ -249,6 +250,14 @@ export default function CalendarPage() {
             onSlotClick={handleSlotClick}
             onSlotDrag={handleSlotDrag}
           />
+          {!isParent && (
+            <ContextualHint
+              id="calendar-create-lesson"
+              message="Click any time slot to create a lesson, or drag to set the duration"
+              position="top"
+              targetSelector="[data-hint='calendar-grid']"
+            />
+          )}
         </div>
       )}
 

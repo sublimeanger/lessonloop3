@@ -3,6 +3,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ContextualHint } from '@/components/shared/ContextualHint';
 import { Receipt, Plus, PlayCircle } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useInvoices, useUpdateInvoiceStatus, type InvoiceFilters, type InvoiceWithDetails } from '@/hooks/useInvoices';
@@ -185,9 +186,11 @@ export default function Invoices() {
             }
             actionLabel={!isParent ? 'Create First Invoice' : undefined}
             onAction={!isParent ? () => setCreateModalOpen(true) : undefined}
+            previewImage={!isParent ? '/previews/invoices-preview.svg' : undefined}
+            previewAlt="Example invoice list"
           />
         ) : (
-          <div data-tour="invoice-list">
+          <div data-tour="invoice-list" data-hint="invoice-list">
             <InvoiceList
               invoices={invoices}
               onSend={(inv) => setSendModalInvoice(inv)}
@@ -197,6 +200,14 @@ export default function Invoices() {
               selectedIds={selectedIds}
               onSelectionChange={setSelectedIds}
             />
+            {!isParent && (
+              <ContextualHint
+                id="invoice-actions"
+                message="Use 'Billing Run' to generate invoices automatically from delivered lessons"
+                position="top"
+                targetSelector="[data-tour='billing-run-button']"
+              />
+            )}
           </div>
         )}
       </div>
