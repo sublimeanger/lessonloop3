@@ -186,7 +186,6 @@ export function useFirstRunExperience(): FirstRunState & {
       }
 
       // Check if first run is already completed
-      // @ts-ignore - first_run_completed is new column
       const firstRunCompleted = profile?.first_run_completed;
       if (firstRunCompleted) {
         setState(prev => ({ ...prev, isFirstRun: false, isLoading: false }));

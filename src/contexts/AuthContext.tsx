@@ -13,6 +13,8 @@ interface Profile {
   current_org_id: string | null;
   created_at: string;
   updated_at: string;
+  first_run_completed?: boolean;
+  first_run_path?: string | null;
 }
 
 interface AuthContextType {
@@ -36,14 +38,14 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Profile fetch with 3s timeout
+// Profile fetch with 5s timeout (increased from 3s for slow connections)
 async function fetchProfile(userId: string): Promise<Profile | null> {
   const start = Date.now();
   const timeoutPromise = new Promise<null>((resolve) => 
     setTimeout(() => {
-      console.warn(`Profile fetch timeout after 3s`);
+      console.warn(`Profile fetch timeout after 5s`);
       resolve(null);
-    }, 3000)
+    }, 5000)
   );
   
   const fetchPromise = (async () => {
@@ -54,7 +56,9 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
         .eq('id', userId)
         .maybeSingle();
 
-      console.log(`Profile fetch took ${Date.now() - start}ms`);
+      if (import.meta.env.DEV) {
+        console.log(`Profile fetch took ${Date.now() - start}ms`);
+      }
       if (error) {
         console.warn('Profile fetch failed:', error.message);
         return null;
@@ -69,20 +73,22 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
   return Promise.race([fetchPromise, timeoutPromise]);
 }
 
-// Roles fetch with 3s timeout
+// Roles fetch with 5s timeout (increased from 3s for slow connections)
 async function fetchRoles(userId: string): Promise<AppRole[]> {
   const start = Date.now();
   const timeoutPromise = new Promise<AppRole[]>((resolve) => 
     setTimeout(() => {
-      console.warn(`Roles fetch timeout after 3s`);
+      console.warn(`Roles fetch timeout after 5s`);
       resolve([]);
-    }, 3000)
+    }, 5000)
   );
   
   const fetchPromise = (async () => {
     try {
       const { data, error } = await supabase.rpc('get_user_roles', { _user_id: userId });
-      console.log(`Roles fetch took ${Date.now() - start}ms`);
+      if (import.meta.env.DEV) {
+        console.log(`Roles fetch took ${Date.now() - start}ms`);
+      }
       if (error) {
         console.warn('Roles fetch failed:', error.message);
         return [];
@@ -105,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialised, setIsInitialised] = useState(false);
   const mountedRef = useRef(true);
+  const fetchingRef = useRef(false); // Prevent duplicate fetches
 
   const refreshProfile = async () => {
     if (user) {
@@ -179,11 +186,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mountedRef.current) return;
       
-      console.log('Auth state change:', event);
+      // Only log in dev
+      if (import.meta.env.DEV) {
+        console.log('Auth state change:', event);
+      }
+      
       setSession(newSession);
       setUser(newSession?.user ?? null);
 
       if (newSession?.user) {
+        // Prevent duplicate fetches from INITIAL_SESSION + getSession race
+        if (fetchingRef.current) {
+          return;
+        }
+        fetchingRef.current = true;
+        
         // Fetch profile and roles in parallel
         const [profileData, rolesData] = await Promise.all([
           fetchProfile(newSession.user.id),
@@ -196,6 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsLoading(false);
           setIsInitialised(true);
         }
+        fetchingRef.current = false;
       } else {
         if (mountedRef.current) {
           setProfile(null);
