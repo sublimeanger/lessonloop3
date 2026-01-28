@@ -1,139 +1,258 @@
-# LessonLoop System Audit - COMPLETE ✅
 
-## Executive Summary
-Comprehensive system audit completed. All critical business flows verified production-ready.
+# Comprehensive System Hardening & E2E Validation Plan
 
----
+## Overview
 
-## 1. Scheduling System - VERIFIED ✅
-
-| Issue | Fix | Status |
-|-------|-----|--------|
-| Time labels showing wrong minutes | `${hour.toString().padStart(2, '0')}:00` | ✅ |
-| Infinite conflict check loop | Set `lastCheckKeyRef.current` before setTimeout | ✅ |
-| Button stuck on "Checking..." | Proper state management with refs | ✅ |
-| Conflicts not blocking saves | Student conflicts → error severity | ✅ |
-| Flickering conflict state | Single state update consolidation | ✅ |
+With the database cleared and security hardened, this plan covers systematic end-to-end testing plus additional hardening measures to ensure LessonLoop is production-bulletproof.
 
 ---
 
-## 2. LoopAssist AI Operations - VERIFIED ✅
+## Phase 1: End-to-End User Journey Testing
 
-All 8 action types aligned across frontend, backend, and AI prompt:
-- ✅ `generate_billing_run`
-- ✅ `send_invoice_reminders`
-- ✅ `reschedule_lessons`
-- ✅ `draft_email`
-- ✅ `mark_attendance` (was missing)
-- ✅ `cancel_lesson` (was missing)
-- ✅ `complete_lessons` (P0 fix - was failing silently)
-- ✅ `send_progress_report` (was missing)
+### 1.1 New User Signup → Onboarding → Dashboard
 
----
+**Test Flow:**
+1. Navigate to `/signup` and create a new account
+2. Verify auto-login redirects to `/onboarding`
+3. Complete profile step (name, org type selection)
+4. Select subscription plan → Start Free Trial
+5. Confirm redirect to `/dashboard`
+6. Verify FirstRunExperience overlay appears
 
-## 3. Business Logic Guards - VERIFIED ✅
-
-### Payment Reconciliation
-- ✅ Auto-status update when invoice fully paid
-- ✅ Maximum payment capped to outstanding balance
-- ✅ Provider reference tracking for Stripe reconciliation
-
-### Makeup Credit Integrity
-- ✅ Only unredeemed credits can be applied (`redeemed_at IS NULL`)
-- ✅ Credit offset never goes below £0
-- ✅ Credits linked to invoice via notes for audit trail
-- ✅ Duration-aware valuation based on rate cards
-
-### Cancellation Tracking
-- ✅ Policy-based eligibility (`cancellation_notice_hours`)
-- ✅ Timezone-safe calculations with `parseISO`
-- ✅ Student vs teacher cancellation differentiated
+**Validation Points:**
+- Profile created in `profiles` table
+- Organisation created with 30-day trial
+- `org_memberships` links user as `owner`
+- `has_completed_onboarding = true`
 
 ---
 
-## 4. Parent Portal - VERIFIED ✅
+### 1.2 First Student Creation
 
-- ✅ Role-based authentication (RouteGuard → `/portal/*`)
-- ✅ Guardian linkage via `student_guardians` junction table
-- ✅ Financial data scoped to `payer_guardian_id`
-- ✅ Message requests system for rescheduling/cancellation
-- ✅ Outstanding balance calculations
+**Test Flow:**
+1. Open StudentWizard from quick actions
+2. Enter student details (name, email, DOB)
+3. Create new guardian with email and phone
+4. Set teaching defaults (location, teacher, rate card)
+5. Verify success screen shows created data
 
----
-
-## 5. Data Integrity - VERIFIED ✅
-
-### Orphaned Record Prevention
-- ✅ GDPR soft-delete path (`deleted_at`, status = `inactive`)
-- ✅ Admin cleanup edge function for broken sessions
-- ✅ Automated migration cleanups for orphan memberships
-
-### Audit Trail
-- ✅ All CUD operations logged with before/after state
-- ✅ Actor tracking via `actor_user_id`
-- ✅ Entity linking for drill-down
+**Validation Points:**
+- Student record in `students` table
+- Guardian record in `guardians` table
+- Junction record in `student_guardians` with `is_primary_payer = true`
+- Teaching defaults populated on student record
 
 ---
 
-## 6. UI/UX Polish - VERIFIED ✅
+### 1.3 First Lesson Scheduling
 
-- ✅ Button spacing standardized (`gap-3`, 40px touch targets)
-- ✅ Sheet/Dialog close button collision prevention
-- ✅ Null safety with fallbacks in FirstRunExperience
-- ✅ No @ts-ignore in codebase
+**Test Flow:**
+1. Open Calendar and click time slot
+2. Select created student → verify defaults auto-populate
+3. Set lesson type, duration, and notes
+4. Enable recurring (weekly for 4 weeks)
+5. Save → verify lessons appear on calendar
 
----
-
-## Database Status
-
-| Table | Records | Status |
-|-------|---------|--------|
-| Invoices | 2 | ✅ |
-| Payments | 0 | Ready |
-| Makeup Credits | 0 | Ready |
-| Cancelled Lessons | 0 | Ready |
-| Message Requests | 0 | Ready |
-| Portal Guardians | 0 | Ready for invites |
+**Validation Points:**
+- Lessons created with `recurrence_id` linking series
+- `lesson_participants` junction records created
+- Conflict detection shows "No conflicts"
+- Closure date warnings display if applicable
 
 ---
 
-## Files Audited
+### 1.4 Invoice Creation & Payment
 
-### Scheduling
-- `src/components/calendar/CalendarGrid.tsx`
-- `src/components/calendar/LessonModal.tsx`
-- `src/hooks/useConflictDetection.ts`
+**Test Flow:**
+1. Navigate to Invoices → Create Invoice
+2. Select "From Lessons" tab
+3. Choose date range covering scheduled lessons
+4. Select lessons and verify payer auto-selected
+5. Apply any make-up credits (if present)
+6. Generate invoice → verify in list
 
-### LoopAssist
-- `src/components/looopassist/ActionCard.tsx`
-- `supabase/functions/looopassist-execute/index.ts`
-- `supabase/functions/looopassist-chat/index.ts`
+**Validation Points:**
+- Invoice with status `draft`
+- `invoice_items` linked to lessons
+- Lessons marked as billed (`billing_run_id` populated)
+- Credit offset calculated correctly
 
-### Business Logic
-- `src/hooks/useInvoices.ts`
-- `src/hooks/useMakeUpCredits.ts`
-- `src/hooks/useParentPortal.ts`
-- `src/components/invoices/RecordPaymentModal.tsx`
-- `src/components/calendar/LessonDetailPanel.tsx`
-
-### Data Integrity
-- `supabase/functions/gdpr-delete/index.ts`
-- `supabase/functions/admin-cleanup/index.ts`
-- `src/components/settings/PrivacyTab.tsx`
-
-### UI Components
-- `src/components/ui/sheet.tsx`
-- `src/components/ui/dialog.tsx`
-- `src/components/dashboard/FirstRunExperience.tsx`
-- `src/components/shared/OnboardingChecklist.tsx`
+**Payment Recording:**
+1. Open invoice detail
+2. Click "Record Payment"
+3. Enter full amount → verify status changes to `paid`
+4. Test partial payment → verify status remains `sent` with payment recorded
 
 ---
 
-## Status: PRODUCTION READY 🚀
+## Phase 2: Parent Portal Validation
 
-All critical pain points addressed:
-1. ✅ Invoicing that doesn't balance → Payment reconciliation guards
-2. ✅ Makeup credit chaos → Redemption locking + audit linking
-3. ✅ Rescheduling friction → Policy-based eligibility + message requests
-4. ✅ Parent portal invisibility → Full portal with role gating
-5. ✅ Multi-family confusion → Guardian linkage via junction tables
+### 2.1 Guardian Invitation Flow
+
+**Test Flow:**
+1. From Settings → Org Members, invite guardian email with `parent` role
+2. Accept invite via magic link
+3. Login as guardian
+4. Verify redirect to `/portal/home`
+
+**Validation Points:**
+- Invite token created and sent
+- New user gets `parent` role in `org_memberships`
+- RouteGuard correctly restricts to portal routes
+
+---
+
+### 2.2 Portal Feature Testing
+
+**Test Items:**
+- View upcoming lessons for linked children
+- View outstanding invoices with correct balances
+- Submit reschedule/cancellation requests
+- Practice timer functionality
+- Message sending to teacher
+
+---
+
+## Phase 3: Performance & Resilience Hardening
+
+### 3.1 Query Performance Optimisation
+
+**Current State:** Hooks use default React Query settings
+
+**Improvements:**
+| Area | Change |
+|------|--------|
+| Dashboard queries | Add `staleTime: 30000` (30s) to reduce refetches |
+| Calendar lessons | Add prefetching for adjacent weeks |
+| Invoice list | Add pagination with limit 50 |
+| Student list | Add virtual scrolling for 100+ students |
+
+---
+
+### 3.2 Network Resilience
+
+**Improvements:**
+- Add exponential backoff to all mutations
+- Add offline detection banner with retry mechanism
+- Add request timeout handling (30s max)
+
+---
+
+### 3.3 Graceful Degradation
+
+**Improvements:**
+- Wrap major dashboard sections in ErrorBoundary (already done at App level)
+- Add skeleton loaders for all data-dependent components
+- Add retry buttons on failed data fetches
+
+---
+
+## Phase 4: Observability & Monitoring
+
+### 4.1 Error Tracking
+
+**Implementation:**
+- Add client-side error logging to edge function
+- Log: error message, stack trace, user ID, route, timestamp
+- Store in `error_logs` table for admin review
+
+---
+
+### 4.2 Health Metrics Dashboard (Optional)
+
+**Track:**
+- Active users (last 24h)
+- Failed payments count
+- Edge function error rates
+- Overdue invoice count
+
+---
+
+## Phase 5: Data Integrity Safeguards
+
+### 5.1 Orphaned Record Prevention
+
+**Already Implemented:**
+- Cascade deletes on FK relationships
+- GDPR soft-delete with `deleted_at`
+- Admin cleanup edge function
+
+**Additional Check:**
+- Add scheduled job to detect orphaned `lesson_participants` without lessons
+- Add scheduled job to detect `invoice_items` without parent invoices
+
+---
+
+### 5.2 Payment Reconciliation Guards
+
+**Already Implemented:**
+- Double-payment protection in webhook
+- Payment amount capped to outstanding balance
+- Provider reference deduplication
+
+**Additional Check:**
+- Add warning when payment exceeds invoice total (should cap at outstanding)
+- Add audit log entry for overpayment attempts
+
+---
+
+## Testing Order
+
+```text
+1. Signup & Onboarding
+   │
+   ├── Create Organisation
+   │   ├── Verify trial dates
+   │   └── Verify role assignment
+   │
+2. Core Data Setup
+   │
+   ├── Add Location
+   ├── Add Rate Card
+   ├── Create Student + Guardian
+   │
+3. Scheduling
+   │
+   ├── Create Single Lesson
+   ├── Create Recurring Series
+   ├── Test Conflict Detection
+   │
+4. Billing
+   │
+   ├── Run Billing Wizard
+   ├── Manual Invoice
+   ├── Record Payment
+   ├── Verify Status Updates
+   │
+5. Parent Portal
+   │
+   ├── Invite Guardian
+   ├── Portal Login
+   ├── View Invoices
+   └── Submit Request
+```
+
+---
+
+## Technical Implementation Summary
+
+| Category | Items |
+|----------|-------|
+| **E2E Tests** | 5 major user journeys to validate manually via browser |
+| **Query Optimisation** | Add `staleTime` to 6 key hooks |
+| **Error Handling** | Already have ErrorBoundary, add retry buttons to empty states |
+| **Audit** | Payment overpayment warning |
+| **Monitoring** | Optional error logging table |
+
+---
+
+## First Testing Step
+
+Start with the core signup flow:
+
+1. Go to `/signup`
+2. Create account with test email
+3. Complete onboarding as Solo Teacher
+4. Verify dashboard loads with FirstRunExperience
+
+This validates authentication, profile creation, organisation setup, and the complete onboarding self-healing flow in one journey.
