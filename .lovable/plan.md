@@ -9,7 +9,7 @@ With the database cleared and security hardened, this plan covers systematic end
 
 ## Phase 1: End-to-End User Journey Testing
 
-### 1.1 New User Signup → Onboarding → Dashboard
+### 1.1 New User Signup → Onboarding → Dashboard ✅ PASSED
 
 **Test Flow:**
 1. Navigate to `/signup` and create a new account
@@ -20,14 +20,14 @@ With the database cleared and security hardened, this plan covers systematic end
 6. Verify FirstRunExperience overlay appears
 
 **Validation Points:**
-- Profile created in `profiles` table
-- Organisation created with 30-day trial
-- `org_memberships` links user as `owner`
-- `has_completed_onboarding = true`
+- ✅ Profile created in `profiles` table
+- ✅ Organisation created with 30-day trial
+- ✅ `org_memberships` links user as `owner`
+- ✅ `has_completed_onboarding = true`
 
 ---
 
-### 1.2 First Student Creation
+### 1.2 First Student Creation ✅ PASSED
 
 **Test Flow:**
 1. Open StudentWizard from quick actions
@@ -37,14 +37,14 @@ With the database cleared and security hardened, this plan covers systematic end
 5. Verify success screen shows created data
 
 **Validation Points:**
-- Student record in `students` table
-- Guardian record in `guardians` table
-- Junction record in `student_guardians` with `is_primary_payer = true`
-- Teaching defaults populated on student record
+- ✅ Student record in `students` table
+- ✅ Guardian record in `guardians` table
+- ✅ Junction record in `student_guardians` with `is_primary_payer = true`
+- ✅ Teaching defaults populated on student record
 
 ---
 
-### 1.3 First Lesson Scheduling
+### 1.3 First Lesson Scheduling 🔄 IN PROGRESS
 
 **Test Flow:**
 1. Open Calendar and click time slot
@@ -53,11 +53,7 @@ With the database cleared and security hardened, this plan covers systematic end
 4. Enable recurring (weekly for 4 weeks)
 5. Save → verify lessons appear on calendar
 
-**Validation Points:**
-- Lessons created with `recurrence_id` linking series
-- `lesson_participants` junction records created
-- Conflict detection shows "No conflicts"
-- Closure date warnings display if applicable
+**Status:** Conflict detection running - needs manual verification
 
 ---
 
