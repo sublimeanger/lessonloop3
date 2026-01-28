@@ -20,6 +20,50 @@ interface ImportRow {
   instrument?: string;
 }
 
+interface DuplicateInfo {
+  row: number;
+  name: string;
+  isDbDuplicate: boolean;
+  dbMatchType: "name" | "email" | null;
+  existingStudentId: string | null;
+  isCsvDuplicate: boolean;
+  csvDuplicateOf: number | null;
+}
+
+interface ValidationError {
+  row: number;
+  errors: string[];
+}
+
+interface ValidationResult {
+  valid: number;
+  duplicatesInCsv: { row: number; duplicateOf: number; name: string }[];
+  duplicatesInDatabase: { row: number; existingStudentId: string; name: string; matchType: string }[];
+  errors: ValidationError[];
+}
+
+interface DryRunResult {
+  dryRun: true;
+  validation: ValidationResult;
+  preview: {
+    studentsToCreate: number;
+    studentsToSkip: number;
+    guardiansToCreate: number;
+    lessonsToCreate: number;
+  };
+  rowStatuses: RowStatus[];
+}
+
+interface RowStatus {
+  row: number;
+  name: string;
+  status: "ready" | "duplicate_csv" | "duplicate_db" | "invalid";
+  duplicateOf?: number;
+  existingStudentId?: string;
+  matchType?: string;
+  errors?: string[];
+}
+
 interface ImportResult {
   studentsCreated: number;
   guardiansCreated: number;
@@ -69,6 +113,197 @@ function parseDayOfWeek(day: string): number | null {
   return days[day.toLowerCase().trim()] || null;
 }
 
+// Validate email format
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+// Validate a single row
+function validateRow(row: ImportRow): string[] {
+  const errors: string[] = [];
+  
+  if (!row.first_name?.trim()) {
+    errors.push("Missing first_name");
+  }
+  if (!row.last_name?.trim()) {
+    errors.push("Missing last_name");
+  }
+  if (row.email && !isValidEmail(row.email.trim())) {
+    errors.push("Invalid email format");
+  }
+  if (row.guardian_email && !isValidEmail(row.guardian_email.trim())) {
+    errors.push("Invalid guardian email format");
+  }
+  if (row.dob) {
+    const parsed = parseDate(row.dob);
+    if (!parsed) {
+      errors.push("Invalid date format for DOB (use DD/MM/YYYY)");
+    }
+  }
+  if (row.lesson_time) {
+    const parsed = parseTime(row.lesson_time);
+    if (!parsed) {
+      errors.push("Invalid time format (use HH:MM)");
+    }
+  }
+  if (row.lesson_day) {
+    const parsed = parseDayOfWeek(row.lesson_day);
+    if (!parsed) {
+      errors.push("Invalid day of week");
+    }
+  }
+  
+  return errors;
+}
+
+// Detect duplicates in CSV and database
+async function detectDuplicates(
+  rows: ImportRow[],
+  orgId: string,
+  supabase: any
+): Promise<{ duplicates: DuplicateInfo[]; validation: ValidationResult }> {
+  // Fetch existing students
+  const { data: existingStudents } = await supabase
+    .from("students")
+    .select("id, first_name, last_name, email")
+    .eq("org_id", orgId)
+    .is("deleted_at", null);
+
+  // Build lookup maps
+  const nameMap = new Map<string, string>();
+  const emailMap = new Map<string, string>();
+  
+  existingStudents?.forEach((s: any) => {
+    const nameKey = `${s.first_name?.toLowerCase().trim()}|${s.last_name?.toLowerCase().trim()}`;
+    nameMap.set(nameKey, s.id);
+    if (s.email) emailMap.set(s.email.toLowerCase().trim(), s.id);
+  });
+
+  // Track duplicates within CSV
+  const csvNamesSeen = new Map<string, number>();
+  const csvEmailsSeen = new Map<string, number>();
+  
+  const duplicates: DuplicateInfo[] = [];
+  const validation: ValidationResult = {
+    valid: 0,
+    duplicatesInCsv: [],
+    duplicatesInDatabase: [],
+    errors: [],
+  };
+
+  rows.forEach((row, idx) => {
+    const firstName = row.first_name?.toLowerCase().trim() || "";
+    const lastName = row.last_name?.toLowerCase().trim() || "";
+    const nameKey = `${firstName}|${lastName}`;
+    const email = row.email?.toLowerCase().trim() || "";
+    const displayName = `${row.first_name || ""} ${row.last_name || ""}`.trim();
+    
+    // Check database duplicates
+    const dbMatchByName = nameMap.get(nameKey);
+    const dbMatchByEmail = email ? emailMap.get(email) : undefined;
+    const isDbDuplicate = !!(dbMatchByName || dbMatchByEmail);
+    
+    // Check CSV duplicates
+    const csvDuplicateOfByName = csvNamesSeen.get(nameKey);
+    const csvDuplicateOfByEmail = email ? csvEmailsSeen.get(email) : undefined;
+    const csvDuplicateOf = csvDuplicateOfByName !== undefined ? csvDuplicateOfByName : csvDuplicateOfByEmail;
+    const isCsvDuplicate = csvDuplicateOf !== undefined;
+    
+    // Record this row for future duplicate checks
+    if (!csvNamesSeen.has(nameKey) && firstName && lastName) {
+      csvNamesSeen.set(nameKey, idx);
+    }
+    if (!csvEmailsSeen.has(email) && email) {
+      csvEmailsSeen.set(email, idx);
+    }
+    
+    // Validate the row
+    const rowErrors = validateRow(row);
+    
+    const duplicateInfo: DuplicateInfo = {
+      row: idx + 1,
+      name: displayName,
+      isDbDuplicate,
+      dbMatchType: dbMatchByName ? "name" : dbMatchByEmail ? "email" : null,
+      existingStudentId: dbMatchByName || dbMatchByEmail || null,
+      isCsvDuplicate,
+      csvDuplicateOf: csvDuplicateOf !== undefined ? csvDuplicateOf + 1 : null,
+    };
+    
+    duplicates.push(duplicateInfo);
+    
+    // Populate validation summary
+    if (rowErrors.length > 0) {
+      validation.errors.push({ row: idx + 1, errors: rowErrors });
+    } else if (isCsvDuplicate) {
+      validation.duplicatesInCsv.push({
+        row: idx + 1,
+        duplicateOf: (csvDuplicateOf || 0) + 1,
+        name: displayName,
+      });
+    } else if (isDbDuplicate) {
+      validation.duplicatesInDatabase.push({
+        row: idx + 1,
+        existingStudentId: duplicateInfo.existingStudentId || "",
+        name: displayName,
+        matchType: duplicateInfo.dbMatchType || "name",
+      });
+    } else {
+      validation.valid++;
+    }
+  });
+
+  return { duplicates, validation };
+}
+
+// Build row statuses for UI
+function buildRowStatuses(
+  rows: ImportRow[],
+  duplicates: DuplicateInfo[],
+  validation: ValidationResult
+): RowStatus[] {
+  return rows.map((row, idx) => {
+    const dup = duplicates[idx];
+    const displayName = `${row.first_name || ""} ${row.last_name || ""}`.trim();
+    const rowValidationErrors = validation.errors.find(e => e.row === idx + 1);
+    
+    if (rowValidationErrors) {
+      return {
+        row: idx + 1,
+        name: displayName,
+        status: "invalid" as const,
+        errors: rowValidationErrors.errors,
+      };
+    }
+    
+    if (dup.isCsvDuplicate) {
+      return {
+        row: idx + 1,
+        name: displayName,
+        status: "duplicate_csv" as const,
+        duplicateOf: dup.csvDuplicateOf || undefined,
+      };
+    }
+    
+    if (dup.isDbDuplicate) {
+      return {
+        row: idx + 1,
+        name: displayName,
+        status: "duplicate_db" as const,
+        existingStudentId: dup.existingStudentId || undefined,
+        matchType: dup.dbMatchType || undefined,
+      };
+    }
+    
+    return {
+      row: idx + 1,
+      name: displayName,
+      status: "ready" as const,
+    };
+  });
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   const corsResponse = handleCorsPreflightRequest(req);
@@ -108,7 +343,7 @@ serve(async (req) => {
       return rateLimitResponse(corsHeaders, rateLimitResult.retryAfterSeconds);
     }
 
-    const { rows, mappings, orgId, teacherUserId } = await req.json();
+    const { rows, mappings, orgId, teacherUserId, dryRun, skipDuplicates, rowsToImport } = await req.json();
 
     if (!orgId || !rows || !Array.isArray(rows) || !mappings) {
       return new Response(JSON.stringify({ error: "Missing required parameters" }), {
@@ -136,6 +371,56 @@ serve(async (req) => {
     // Use service role for inserts to bypass RLS during bulk import
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Detect duplicates
+    const { duplicates, validation } = await detectDuplicates(rows, orgId, supabase);
+    const rowStatuses = buildRowStatuses(rows, duplicates, validation);
+
+    // DRY RUN MODE - return validation results without committing
+    if (dryRun) {
+      // Count guardians and lessons to create
+      const guardiansToCreate = new Set<string>();
+      const lessonsCount = rows.filter((row: ImportRow, idx: number) => {
+        const status = rowStatuses[idx];
+        if (status.status !== "ready") return false;
+        return row.lesson_day && row.lesson_time && teacherUserId;
+      }).length;
+      
+      rows.forEach((row: ImportRow, idx: number) => {
+        const status = rowStatuses[idx];
+        if (status.status === "ready" && row.guardian_name?.trim()) {
+          const guardianKey = row.guardian_email?.toLowerCase().trim() || row.guardian_name.toLowerCase().trim();
+          guardiansToCreate.add(guardianKey);
+        }
+      });
+
+      const dryRunResult: DryRunResult = {
+        dryRun: true,
+        validation,
+        preview: {
+          studentsToCreate: validation.valid,
+          studentsToSkip: validation.duplicatesInCsv.length + validation.duplicatesInDatabase.length,
+          guardiansToCreate: guardiansToCreate.size,
+          lessonsToCreate: lessonsCount,
+        },
+        rowStatuses,
+      };
+
+      return new Response(JSON.stringify(dryRunResult), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // EXECUTE MODE - actually import the data
+    
+    // Determine which rows to import
+    const rowIndicesToImport = rowsToImport
+      ? new Set(rowsToImport as number[])
+      : new Set(
+          rowStatuses
+            .filter(s => s.status === "ready" || (!skipDuplicates && (s.status === "duplicate_csv" || s.status === "duplicate_db")))
+            .map(s => s.row - 1)
+        );
+
     // Check student limit before import
     const { data: org } = await supabase
       .from("organisations")
@@ -152,9 +437,9 @@ serve(async (req) => {
     const maxStudents = org?.max_students || 50;
     const remainingCapacity = maxStudents - (currentStudentCount || 0);
     
-    if (rows.length > remainingCapacity) {
+    if (rowIndicesToImport.size > remainingCapacity) {
       return new Response(JSON.stringify({ 
-        error: `Import would exceed student limit. You have capacity for ${remainingCapacity} more student${remainingCapacity !== 1 ? 's' : ''}, but CSV contains ${rows.length} rows. Upgrade your plan to add more students.`
+        error: `Import would exceed student limit. You have capacity for ${remainingCapacity} more student${remainingCapacity !== 1 ? 's' : ''}, but trying to import ${rowIndicesToImport.size} rows. Upgrade your plan to add more students.`
       }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -172,6 +457,24 @@ serve(async (req) => {
 
     // Process each row
     for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
+      // Skip rows not marked for import
+      if (!rowIndicesToImport.has(rowIdx)) {
+        const row = rows[rowIdx] as ImportRow;
+        const studentName = `${row.first_name || ""} ${row.last_name || ""}`.trim() || "Unknown";
+        const status = rowStatuses[rowIdx];
+        result.details.push({
+          row: rowIdx + 1,
+          student: studentName,
+          status: "skipped",
+          error: status.status === "duplicate_csv" 
+            ? `Duplicate of row ${status.duplicateOf}` 
+            : status.status === "duplicate_db"
+            ? `Already exists in database`
+            : status.errors?.join(", "),
+        });
+        continue;
+      }
+
       const row = rows[rowIdx] as ImportRow;
       
       try {
@@ -380,6 +683,8 @@ serve(async (req) => {
         links_created: result.linksCreated,
         lessons_created: result.lessonsCreated,
         error_count: result.errors.length,
+        rows_processed: rows.length,
+        rows_imported: rowIndicesToImport.size,
       },
     });
 
