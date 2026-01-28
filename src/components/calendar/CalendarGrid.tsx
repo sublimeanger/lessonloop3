@@ -41,6 +41,7 @@ export function CalendarGrid({
   const [dragEnd, setDragEnd] = useState<number | null>(null);
   const [closures, setClosures] = useState<ClosureInfo[]>([]);
   const gridRef = useRef<HTMLDivElement>(null);
+  const timeGridRef = useRef<HTMLDivElement>(null); // Separate ref for accurate Y positioning
 
   const days = useMemo(() => {
     if (view === 'day') {
@@ -100,7 +101,7 @@ export function CalendarGrid({
 
   const handleMouseDown = (e: React.MouseEvent, day: Date) => {
     if (e.button !== 0) return;
-    const rect = gridRef.current?.getBoundingClientRect();
+    const rect = timeGridRef.current?.getBoundingClientRect();
     if (!rect) return;
     
     const y = e.clientY - rect.top;
@@ -113,8 +114,8 @@ export function CalendarGrid({
   };
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDragging || !gridRef.current) return;
-    const rect = gridRef.current.getBoundingClientRect();
+    if (!isDragging || !timeGridRef.current) return;
+    const rect = timeGridRef.current.getBoundingClientRect();
     const y = Math.max(0, e.clientY - rect.top);
     setDragEnd(y);
   }, [isDragging]);
@@ -152,7 +153,7 @@ export function CalendarGrid({
     // Only trigger if not dragging
     if (isDragging) return;
     
-    const rect = gridRef.current?.getBoundingClientRect();
+    const rect = timeGridRef.current?.getBoundingClientRect();
     if (!rect) return;
     
     const y = e.clientY - rect.top;
@@ -203,7 +204,7 @@ export function CalendarGrid({
         </div>
 
         {/* Time grid */}
-        <div className="flex">
+        <div className="flex" ref={timeGridRef}>
           {/* Time labels */}
           <div className="w-16 shrink-0">
             {HOURS.map((hour) => (
