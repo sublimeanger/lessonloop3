@@ -1,109 +1,107 @@
 
-# Mobile Responsiveness Audit and Fix Plan
+
+# Mobile Dialog Polish Plan
 
 ## Problem Summary
-The application has multiple forms and layouts that use fixed two-column grids (`grid-cols-2`) without responsive breakpoints, causing content to appear cramped, cut-off, or "janky" on mobile devices.
 
-## Issues Identified
+The Add Student wizard (and other modals) appear "janky" on mobile because:
 
-### 1. Student Wizard (High Priority)
-The main wizard visible in your screenshot has these issues:
-- **StudentInfoStep.tsx**: First/Last name fields and Email/Phone fields use fixed `grid-cols-2`
-- **GuardianStep.tsx**: New guardian email/phone fields and relationship/primary-payer fields use fixed `grid-cols-2`
-- **TeachingDefaultsStep.tsx**: Already responsive (uses full-width fields)
-- **StudentWizard.tsx**: Step indicator connectors hidden on mobile (uses `hidden xs:block` class which is not a valid Tailwind breakpoint)
+1. **Base Dialog margin issue**: The `mx-4 sm:mx-auto` class on DialogContent doesn't work with fixed positioning + `w-full` + `translate-x-[-50%]`. Margins are applied but don't constrain the actual width.
 
-### 2. Other Modals and Forms
-- **LessonModal.tsx**: Location/Room selection uses fixed `grid-cols-2`
-- **CreateAssignmentModal.tsx**: Minutes/Days and Start/End date fields use fixed `grid-cols-2`
-- **CreateInvoiceModal.tsx**: Already responsive (uses `sm:grid-cols-2`)
-- **StudentDetail.tsx**: Edit mode name/email/phone fields and guardian relationship/payer fields use fixed `grid-cols-2`
+2. **Step indicator layout**: On mobile (without connectors), the 3 steps still use `justify-between` which spreads icons across the full width with too much space.
 
-### 3. Dashboard Components
-- **QuickActionsGrid.tsx**: Fixed `grid-cols-2` on all screens (works but could be tighter)
-- **Dashboard stat cards**: Already responsive (`sm:grid-cols-2 lg:grid-cols-4`)
+3. **Step label text wrapping**: Labels like "Teaching Setup" may wrap awkwardly on very small screens.
 
 ---
 
-## Implementation Plan
+## Solution
 
-### Step 1: Fix Student Wizard Forms
-**StudentInfoStep.tsx** - Make grids stack on mobile:
+### 1. Fix Base Dialog Component
 
-| Line | Current | Fixed |
-|------|---------|-------|
-| 26 | `grid grid-cols-2 gap-4` | `grid grid-cols-1 sm:grid-cols-2 gap-4` |
-| 62 | `grid grid-cols-2 gap-4` | `grid grid-cols-1 sm:grid-cols-2 gap-4` |
+Update `src/components/ui/dialog.tsx` to use proper mobile-safe width constraints:
 
-### Step 2: Fix Guardian Step Forms
-**GuardianStep.tsx** - Make grids responsive:
+**Current (line 39)**:
+```css
+fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] ...
+```
 
-| Line | Current | Fixed |
-|------|---------|-------|
-| 137 | `grid grid-cols-2 gap-4` | `grid grid-cols-1 sm:grid-cols-2 gap-4` |
-| 163 | `grid grid-cols-2 gap-4` | `grid grid-cols-1 sm:grid-cols-2 gap-4` |
+**Fixed**:
+```css
+fixed left-4 right-4 top-[50%] z-50 grid w-auto max-w-lg translate-y-[-50%] sm:left-[50%] sm:right-auto sm:w-full sm:translate-x-[-50%] ...
+```
 
-### Step 3: Fix Wizard Step Indicator
-**StudentWizard.tsx** - Fix the step connector visibility:
+This uses `left-4 right-4` on mobile (which respects the 16px edge gaps) and reverts to centered positioning on `sm:` and above.
 
-| Line | Current | Fixed |
-|------|---------|-------|
-| 320 | `hidden xs:block` | `hidden sm:block` |
+### 2. Fix Student Wizard Step Indicator
 
-The `xs:` breakpoint is not a default Tailwind class. Change to `sm:block` to show connectors on small screens and above.
+Update `src/components/students/StudentWizard.tsx` step indicator layout:
 
-### Step 4: Fix Lesson Modal
-**LessonModal.tsx** - Make location/room grid responsive:
+**Current (line 290)**:
+```jsx
+<div className="flex items-center justify-between py-4 px-2">
+```
 
-| Line | Current | Fixed |
-|------|---------|-------|
-| 653 | `grid grid-cols-2 gap-3` | `grid grid-cols-1 sm:grid-cols-2 gap-3` |
+**Fixed**:
+```jsx
+<div className="flex items-center justify-center gap-4 sm:justify-between py-4 px-2">
+```
 
-### Step 5: Fix Practice Assignment Modal
-**CreateAssignmentModal.tsx** - Make target and date grids responsive:
+On mobile, this centers the step icons with consistent gaps instead of spreading them edge-to-edge.
 
-| Line | Current | Fixed |
-|------|---------|-------|
-| 159 | `grid grid-cols-2 gap-4` | `grid grid-cols-1 sm:grid-cols-2 gap-4` |
-| 184 | `grid grid-cols-2 gap-4` | `grid grid-cols-1 sm:grid-cols-2 gap-4` |
+### 3. Shorten Mobile Step Labels
 
-### Step 6: Fix Student Detail Page
-**StudentDetail.tsx** - Make edit mode forms responsive:
+Update step labels to use abbreviated text on very small screens:
 
-| Line | Current | Fixed |
-|------|---------|-------|
-| 350 | `grid grid-cols-2 gap-4` | `grid grid-cols-1 sm:grid-cols-2 gap-4` |
-| 360 | `grid grid-cols-2 gap-4` | `grid grid-cols-1 sm:grid-cols-2 gap-4` |
-| 701 | `grid grid-cols-2 gap-4` | `grid grid-cols-1 sm:grid-cols-2 gap-4` |
+**Current (line 310-315)**:
+```jsx
+<span className="mt-2 text-xs font-medium text-center">
+  {label}
+</span>
+```
+
+**Fixed**:
+```jsx
+<span className="mt-2 text-xs font-medium text-center max-w-[60px] sm:max-w-none truncate">
+  {label}
+</span>
+```
+
+This constrains the label width on mobile to prevent awkward wrapping.
 
 ---
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/components/students/wizard/StudentInfoStep.tsx` | 2 grid fixes |
-| `src/components/students/wizard/GuardianStep.tsx` | 2 grid fixes |
-| `src/components/students/StudentWizard.tsx` | 1 breakpoint fix |
-| `src/components/calendar/LessonModal.tsx` | 1 grid fix |
-| `src/components/practice/CreateAssignmentModal.tsx` | 2 grid fixes |
-| `src/pages/StudentDetail.tsx` | 3 grid fixes |
-
-**Total: 11 changes across 6 files**
+| File | Change |
+|------|--------|
+| `src/components/ui/dialog.tsx` | Fix base DialogContent positioning for mobile |
+| `src/components/students/StudentWizard.tsx` | Center step indicator on mobile + truncate labels |
 
 ---
 
-## Technical Notes
+## Technical Details
 
-- The fix pattern is consistent: change `grid-cols-2` to `grid-cols-1 sm:grid-cols-2`
-- This makes fields stack vertically on mobile (under 640px) and side-by-side on small screens and above
-- The `sm:` breakpoint (640px) aligns with Tailwind's mobile-first responsive design
-- No functional changes; purely CSS class modifications
-- All existing desktop layouts remain unchanged
+The key insight is that with `position: fixed`, you cannot use margins to create edge gaps. Instead, you must use `left: 16px; right: 16px` to pin the element with proper gaps, then override with centered positioning on larger screens.
+
+```text
+Mobile (before):
++------------------------------------------+
+|  [========== DIALOG ===========]  <- Full width, margins don't work
++------------------------------------------+
+
+Mobile (after):
++------------------------------------------+
+|    [======= DIALOG =======]    <- 16px gaps on left and right
++------------------------------------------+
+```
+
+---
 
 ## Expected Result
+
 After implementation:
-- All wizard forms will stack fields vertically on mobile
-- No text overflow or cut-off inputs
-- Professional, usable forms on all screen sizes
-- Step indicators will show connectors on tablets and desktops
+- All dialogs will have proper 16px edge margins on mobile
+- Step indicator will be visually balanced on small screens
+- No text overflow or awkward wrapping in wizard steps
+- Desktop layout remains unchanged
+
