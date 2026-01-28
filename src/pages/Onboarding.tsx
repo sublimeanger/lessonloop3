@@ -150,7 +150,7 @@ export default function Onboarding() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        throw new Error('Not logged in');
+        throw new Error('Not logged in. Please refresh and try again.');
       }
 
       const orgName = orgType === 'solo_teacher' 
@@ -158,24 +158,45 @@ export default function Onboarding() {
         : `${fullName.trim()}'s ${ORG_TYPES.find(t => t.value === orgType)?.label || 'Organisation'}`;
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const response = await fetch(`${supabaseUrl}/functions/v1/onboarding-setup`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          org_name: orgName,
-          org_type: orgType,
-          full_name: fullName.trim(),
-          subscription_plan: selectedPlan,
-        }),
-        signal: AbortSignal.timeout(15000),
-      });
+      
+      // Longer timeout for slow mobile networks
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      
+      let response: Response;
+      try {
+        response = await fetch(`${supabaseUrl}/functions/v1/onboarding-setup`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            org_name: orgName,
+            org_type: orgType,
+            full_name: fullName.trim(),
+            subscription_plan: selectedPlan,
+          }),
+          signal: controller.signal,
+        });
+      } catch (fetchErr) {
+        // Handle network errors with clearer messages
+        if (fetchErr instanceof Error) {
+          if (fetchErr.name === 'AbortError' || fetchErr.message === 'Load failed') {
+            throw new Error('Network timeout. Please check your connection and try again.');
+          }
+          if (fetchErr.message.includes('Failed to fetch') || fetchErr.message.includes('NetworkError')) {
+            throw new Error('Unable to connect. Please check your internet connection.');
+          }
+        }
+        throw fetchErr;
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || `Request failed with status ${response.status}`);
+        throw new Error(data.error || `Server error (${response.status}). Please try again.`);
       }
 
       const result = await response.json();
@@ -185,7 +206,7 @@ export default function Onboarding() {
       setStep('success');
     } catch (err) {
       console.error('[Onboarding] Error:', err);
-      const message = err instanceof Error ? err.message : 'Something went wrong';
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
       setError(message);
       setStep('error');
     }
@@ -196,8 +217,15 @@ export default function Onboarding() {
   };
 
   const handleRetry = () => {
-    setStep('profile');
+    // Don't reset the form - just go back to plan step so they can retry
+    setStep('plan');
     setError(null);
+  };
+
+  const handleRetrySubmit = () => {
+    // Retry the submission directly without going back to the form
+    setError(null);
+    handleSubmit();
   };
 
   const currentStepIndex = step === 'profile' ? 0 : step === 'plan' ? 1 : 0;
@@ -262,18 +290,29 @@ export default function Onboarding() {
 
   // Error screen
   if (step === 'error') {
+    const isNetworkError = error?.includes('Network') || error?.includes('connection') || error?.includes('timeout');
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-4">
-        <div className="text-center">
+        <div className="text-center max-w-sm">
           <h1 className="text-2xl font-bold text-destructive">Setup Failed</h1>
           <p className="mt-2 text-muted-foreground">{error || 'Something went wrong'}</p>
+          {isNetworkError && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Tip: Make sure you have a stable internet connection.
+            </p>
+          )}
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={handleLogout}>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          <Button onClick={handleRetrySubmit} className="w-full">
+            Try Again
+          </Button>
+          <Button variant="outline" onClick={handleRetry} className="w-full">
+            Edit Details
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="w-full">
             <LogOut className="mr-2 h-4 w-4" />
             Logout
           </Button>
-          <Button onClick={handleRetry}>Try Again</Button>
         </div>
       </div>
     );
