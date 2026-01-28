@@ -381,8 +381,8 @@ async function checkStudentConflicts(
         for (const student of students) {
           conflicts.push({
             type: 'student',
-            severity: 'warning',
-            message: `${student.first_name} ${student.last_name} has another lesson at this time`,
+            severity: 'error',
+            message: `${student.first_name} ${student.last_name} already has a lesson at this time`,
             entity_name: `${student.first_name} ${student.last_name}`,
           });
         }

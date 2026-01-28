@@ -247,7 +247,7 @@ export function CalendarGrid({
                 style={{ height: HOUR_HEIGHT }}
               >
                 <span className="absolute -top-2.5 right-2 text-xs text-muted-foreground">
-                  {format(setHours(new Date(), hour), 'HH:mm')}
+                  {`${hour.toString().padStart(2, '0')}:00`}
                 </span>
               </div>
             ))}
