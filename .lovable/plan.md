@@ -44,7 +44,7 @@ With the database cleared and security hardened, this plan covers systematic end
 
 ---
 
-### 1.3 First Lesson Scheduling 🔄 IN PROGRESS
+### 1.3 First Lesson Scheduling 🔧 FIX APPLIED
 
 **Test Flow:**
 1. Open Calendar and click time slot
@@ -53,7 +53,12 @@ With the database cleared and security hardened, this plan covers systematic end
 4. Enable recurring (weekly for 4 weeks)
 5. Save → verify lessons appear on calendar
 
-**Status:** Conflict detection running - needs manual verification
+**Bug Found & Fixed:**
+- Conflict detection was getting stuck in "Checking..." state
+- Root cause: Race conditions in useEffect cleanup and state management
+- Fix: Simplified debounce logic, added hard 8-second timeout fallback, improved checkKey stability
+
+**Status:** Fix deployed - needs retest
 
 ---
 
