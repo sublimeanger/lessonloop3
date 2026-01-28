@@ -23,7 +23,7 @@ export function StudentInfoStep({ data, onChange }: StudentInfoStepProps) {
   
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="wizard-firstName">
             First name <span className="text-destructive" aria-hidden="true">*</span>
@@ -59,7 +59,7 @@ export function StudentInfoStep({ data, onChange }: StudentInfoStepProps) {
         />
       </div>
       
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="wizard-email">Email (optional)</Label>
           <Input

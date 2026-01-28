@@ -317,7 +317,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
                 {index < STEPS.length - 1 && (
                   <div 
                     className={cn(
-                      "mx-1 sm:mx-2 h-0.5 w-8 sm:w-16 md:w-24 hidden xs:block",
+                      "mx-1 sm:mx-2 h-0.5 w-8 sm:w-16 md:w-24 hidden sm:block",
                       (typeof currentStep === 'number' && typeof step === 'number' && currentStep > step)
                         ? "bg-primary"
                         : "bg-muted-foreground/30"

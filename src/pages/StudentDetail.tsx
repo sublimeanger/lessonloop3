@@ -347,7 +347,7 @@ export default function StudentDetail() {
             <CardContent>
               {isEditing ? (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>First name</Label>
                       <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
@@ -357,7 +357,7 @@ export default function StudentDetail() {
                       <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Email</Label>
                       <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -698,7 +698,7 @@ export default function StudentDetail() {
               </div>
             )}
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Relationship</Label>
                 <Select value={relationship} onValueChange={(v) => setRelationship(v as RelationshipType)}>
