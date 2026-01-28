@@ -4,6 +4,8 @@
 const DEFAULT_ORIGINS = [
   "https://id-preview--c541d756-90e7-442a-ba85-0c723aeabc14.lovable.app",
   "https://lessonloop3.lovable.app",
+  "https://lessonloop.net",
+  "https://www.lessonloop.net",
   "*.lovable.app",
   "*.lovableproject.com",
 ];
