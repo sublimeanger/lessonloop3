@@ -1,273 +1,314 @@
 
-# LoopAssist World-Class Upgrade Plan
+# Rock-Steady System Hardening Plan
 
-## Executive Summary
+## Research Summary: What Goes Wrong in Music School Software
 
-LoopAssist is currently a solid AI assistant, but has significant room to become truly world-class. This plan addresses immediate issues (markdown formatting) and introduces substantial capability upgrades to make it a genuine differentiator.
+Based on extensive research into My Music Staff, TutorBird, Fons, and teacher forums, here are the critical failure points that cause real damage to music businesses:
 
----
+### The Big Five Pain Points
 
-## Current State Assessment
-
-### What Works Well
-- Context-aware (detects current page, student, invoice)
-- Streaming responses for fast feedback
-- Action proposals with confirm/cancel workflow
-- Entity citations that link to records
-- Rate limiting and security controls
-
-### Critical Gaps Identified
-
-1. **Formatting Issue**: Responses use markdown bold (`**text**`) when plain text is preferred
-2. **Limited Actions**: Only 4 actions implemented (billing run, reminders, reschedule, draft email) vs 6+ documented
-3. **No Metrics Persistence**: Feedback (thumbs up/down) shows toast but doesnt save to database
-4. **Shallow Context**: Misses attendance history, practice streaks, rate cards, cancellations
-5. **No Proactive Insights**: User must always ask; AI never surfaces issues unprompted
-6. **No Quick Actions from Chat**: Cant execute common one-liners without full action proposal
-7. **Limited Student Intelligence**: Misses practice data, lesson history, notes for student pages
+1. **Invoicing That Doesn't Add Up** - Balance brought forward is wrong, credits get lost, teachers are out of pocket
+2. **Makeup Credit Chaos** - Credits expire silently, get misapplied, or are simply forgotten
+3. **Rescheduling Friction** - Parents can't self-serve, back-and-forth messages waste everyone's time
+4. **Parent Portal Invisibility** - Parents feel like they're "paying into a void" with no visibility into progress
+5. **Multi-Family Confusion** - Divorced parents, multiple guardians, unclear who gets billed vs who gets notified
 
 ---
 
-## Implementation Plan
+## Part 1: Scheduling & Calendar Hardening
 
-### Phase 1: Fix Formatting + Enhanced Context
+### 1.1 Conflict Detection Gaps to Fix
 
-**Goal**: Plain text responses and richer data for smarter answers
+**Current State:** Good basic detection for teacher/room/student conflicts
 
-#### 1.1 Update System Prompt
-File: `supabase/functions/looopassist-chat/index.ts`
+**Missing Edge Cases:**
+- Student has a lesson at School A, parent tries to book at School B at same time (different org but same student)
+- Buffer time between lessons (teacher needs 15 min to travel between locations)
+- Room capacity for group lessons (room fits 6, group has 8 students)
+- Holiday pattern warnings (every Monday in August is bank holiday but user is booking full term)
 
-Add formatting directive to SYSTEM_PROMPT:
-- NEVER use markdown formatting (no `**bold**`, `_italic_`, `#headings`, bullet points with `-`)
-- Write in plain conversational text
-- Use line breaks for separation, not special characters
-- Keep responses natural and readable
+**Hardening Actions:**
+| Gap | Fix |
+|-----|-----|
+| Travel buffer | Add `buffer_minutes_between_locations` to org settings; if teacher has lesson at Location A ending at 10:00 and new lesson at Location B starts at 10:15, warn if buffer is 30 min |
+| Room capacity | Add `max_capacity` to rooms table; validate group lesson student count against room capacity |
+| Closure pattern detection | When creating recurring series, check each date against closures and surface warnings upfront ("3 of your 12 lessons fall on closure dates") |
 
-#### 1.2 Expand Data Context
-File: `supabase/functions/looopassist-chat/index.ts`
+### 1.2 Recurring Lesson Robustness
 
-Add to `buildDataContext` function:
-- Recent cancellations (last 7 days) with reasons
-- Attendance summary (completion rate this month)
-- Rate cards (default rates for context)
-- Payment summary (received this week, methods)
-- Practice streaks for student context
-- Teacher workload summary (lesson counts)
+**Current State:** Basic weekly recurrence with end date
 
----
+**Missing:**
+- Fortnightly/bi-weekly patterns (very common for beginners)
+- "Every Monday and Wednesday" patterns (multi-day per week)
+- Skip specific dates without breaking series
+- Term-based recurrence (lessons during term time only)
 
-### Phase 2: Implement Missing Actions
+**Hardening Actions:**
+| Feature | Implementation |
+|---------|----------------|
+| Interval weeks | Add `interval_weeks` option (1=weekly, 2=fortnightly) to recurrence UI |
+| Multi-day | Already supported in schema (`days_of_week` array) but UI only allows one day - enable multi-select |
+| Skip dates | Add `exception_dates` array to recurrence_rules; skip generation for those dates |
+| Term-aware | Use closure dates as exclusions when generating series |
 
-**Goal**: Complete the action toolkit so LoopAssist can do more
+### 1.3 Cancellation Flow Hardening
 
-#### 2.1 Add `mark_attendance` Action
-File: `supabase/functions/looopassist-execute/index.ts`
+**Current State:** Basic cancel with optional makeup credit
 
-New function `executeMarkAttendance`:
-- Accept lesson_id and attendance records
-- Mark individual students as present/absent/late
-- Update lesson status if all marked
-- Log to audit trail
+**Missing:**
+- Cancellation reason tracking (needed for disputes)
+- Differentiate teacher vs student vs school cancellation (affects credit policy)
+- Late cancellation warning before commit ("This is within 24 hours - no makeup credit will be issued")
+- Automatic parent notification on teacher cancellation
 
-#### 2.2 Add `cancel_lesson` Action
-New action type for cancelling lessons:
-- Accept lesson_ids and reason
-- Update lesson status to cancelled
-- Optionally notify participants
-- Issue make-up credits if configured
-
-#### 2.3 Add `complete_lessons` Action
-Bulk completion for end-of-day:
-- Accept lesson_ids
-- Mark all as completed
-- Great for "Mark all today's lessons as complete"
-
-#### 2.4 Add `send_progress_report` Action
-Student progress communication:
-- Accept student_id, guardian_id
-- Generate summary of recent lessons, attendance, practice
-- Create draft or send directly
-
-#### 2.5 Update System Prompt
-Add these new action types to the SYSTEM_PROMPT with proper parameters and trigger phrases.
+**Hardening Actions:**
+| Feature | Implementation |
+|---------|----------------|
+| Cancellation reason | Add `cancellation_reason` and `cancelled_by` columns to lessons table |
+| Policy enforcement | Show clear warning in UI: "Cancelling with less than 24 hours notice - your cancellation policy means no credit will be issued" |
+| Auto-notify | When teacher cancels, trigger notification to all participants' guardians |
 
 ---
 
-### Phase 3: Metrics + Learning
+## Part 2: Invoicing & Payment Hardening
 
-**Goal**: Track what works and improve over time
+### 2.1 The "Ledger Never Lies" Principle
 
-#### 3.1 Create `ai_interaction_metrics` Table
-Migration to create:
-- id (uuid)
-- org_id (uuid)
-- message_id (uuid, references ai_messages)
-- conversation_id (uuid)
-- user_id (uuid)
-- feedback (text: helpful/not_helpful)
-- response_time_ms (integer)
-- action_proposed (boolean)
-- action_executed (boolean)
-- created_at (timestamptz)
+The #1 complaint is invoices that don't match what actually happened. The fix is event-based ledger tracking.
 
-#### 3.2 Update MessageFeedback Component
-File: `src/components/looopassist/MessageFeedback.tsx`
+**Current State:** Invoices created manually or via billing run, credits tracked separately
 
-Persist feedback to database:
-- Insert into ai_interaction_metrics on thumbs click
-- Track which messages get positive/negative feedback
-- Optional: free-text feedback for "not helpful"
+**Missing:**
+- No "audit trail" showing exactly how a total was calculated
+- Credits can be redeemed without linking to specific invoice line
+- Partial payments don't show remaining balance clearly
+- Mid-term enrollments cause pro-rata confusion
 
-#### 3.3 Log Response Metrics
-File: `src/hooks/useLoopAssist.ts`
+**Hardening Actions:**
+| Issue | Solution |
+|-------|----------|
+| Audit trail | Add `line_item_audit` field to invoice_items storing source lesson_id, rate_card_id, and calculation method |
+| Credit linkage | Already storing `credit_applied_minor` on invoice - ensure this links to specific credit IDs in metadata |
+| Balance visibility | Add `amount_paid_minor` and `balance_due_minor` computed fields to invoice queries |
+| Pro-rata | When billing run encounters mid-term start, calculate pro-rata with clear notes: "5 of 10 lessons (started mid-term)" |
 
-Track performance:
-- Measure time from message send to first chunk
-- Log whether action was proposed
-- Log whether proposed action was executed or cancelled
+### 2.2 Overdue Invoice Escalation
 
----
+**Current State:** Invoice status changes to "overdue" but no automatic action
 
-### Phase 4: Proactive Intelligence
+**Missing:**
+- Configurable reminder schedule (7 days overdue, 14 days, 30 days)
+- Escalation actions (email at 7d, text at 14d, pause lessons at 30d)
+- Late fee calculation option
 
-**Goal**: LoopAssist surfaces issues without being asked
+**Hardening Actions:**
+| Feature | Implementation |
+|---------|----------------|
+| Reminder schedule | Add `overdue_reminder_days` array to org settings (e.g., [7, 14, 30]) |
+| Scheduled job | Create edge function triggered by cron to send reminders at configured intervals |
+| Auto-pause option | Add `auto_pause_lessons_after_days` setting; if set, mark student as inactive when threshold reached |
 
-#### 4.1 Opening Message Intelligence
-File: `src/components/looopassist/LoopAssistDrawer.tsx`
+### 2.3 Payment Reconciliation Safety
 
-When drawer opens with no active conversation:
-- Fetch quick stats (overdue count, today's lessons, cancellations)
-- Show proactive alert cards:
-  - "3 invoices are overdue - want me to send reminders?"
-  - "2 lessons were cancelled this week without rescheduling"
-  - "Lesson with [Student] is in 30 minutes"
+**Current State:** Manual payments recorded, Stripe payments via webhook
 
-#### 4.2 Context-Aware Suggestions
-File: `src/components/looopassist/LoopAssistDrawer.tsx`
+**Potential Failure Points:**
+- Webhook fails, payment recorded in Stripe but not in LessonLoop
+- Double payment recorded (webhook retry)
+- Partial payment leaves invoice in ambiguous state
 
-Improve `getSuggestedPrompts` function:
-- On student page with overdue invoice: "Send payment reminder for this student"
-- On calendar with past lessons unmarked: "Mark yesterday's lessons as complete"
-- On invoices page: "Show me aging report" or "What's our collection rate?"
-
-#### 4.3 Smart Alerts Badge
-File: `src/components/layout/Header.tsx` (or sidebar)
-
-Show badge on LoopAssist button when issues exist:
-- Red dot if critical (overdue invoices 30+ days)
-- Number badge for action items
+**Hardening Actions:**
+| Issue | Solution |
+|-------|----------|
+| Webhook reliability | Already using idempotent `stripe_session_id` key - add retry logic and dead-letter logging |
+| Double payment guard | Check for existing payment with same `provider_reference` before inserting |
+| Partial payment clarity | Ensure invoice status remains "sent" until fully paid, add `partially_paid` badge in UI when payments < total |
 
 ---
 
-### Phase 5: Enhanced Student Context
+## Part 3: Parent Portal Hardening
 
-**Goal**: When viewing a student, LoopAssist knows everything
+### 3.1 What Parents Actually Need (In Order of Priority)
 
-#### 5.1 Deep Student Context Fetch
-File: `supabase/functions/looopassist-chat/index.ts`
+Based on research, parents want:
+1. **Next lesson at a glance** - When, where, with whom
+2. **Pay outstanding balance** - One tap, no hunting
+3. **See what to practice** - Clear assignments from teacher
+4. **Request changes** - Cancel/reschedule without email back-and-forth
+5. **Track progress** - Visual evidence of improvement
 
-When `context.type === 'student'`:
-- Lesson history (last 10 lessons with attendance)
-- Practice streaks and recent logs
-- All linked guardians with contact info
-- All invoices (paid, outstanding, overdue)
-- Teacher assignments
-- Notes and flags
-- Make-up credits available
+**Current State Assessment:**
+| Need | Current | Gap |
+|------|---------|-----|
+| Next lesson | ChildCard shows next_lesson | Good |
+| Pay invoice | Stripe checkout flow exists | Need prominent "Pay Now" button on home |
+| Practice | PracticeTimer + assignments exist | Need clearer "This Week's Focus" section |
+| Request changes | RequestModal for messages | Need one-tap "Request Reschedule" on each lesson |
+| Progress | Practice streak badges | Need visual progress indicator (lessons completed, level progression) |
 
-#### 5.2 Student-Specific Actions
-Enable natural requests like:
-- "Draft a progress update for [Student]'s parents"
-- "How many lessons has [Student] had this term?"
-- "What's [Student]'s practice streak?"
-- "Issue a make-up credit for the missed lesson"
+### 3.2 Self-Service Rescheduling
+
+**Current State:** Parent sends message request, admin responds manually
+
+**The Problem:** Too much friction - parents just don't show up instead
+
+**Hardening Solution:**
+1. When parent clicks "Request Reschedule" on a lesson:
+   - System checks makeup credit eligibility automatically
+   - If eligible, show available slots (filtered by same teacher, same duration)
+   - Parent picks new slot
+   - System validates conflicts
+   - Request submitted with proposed new time
+   - Admin can approve with one click (lesson moved automatically)
+
+2. If within cancellation window but no credit:
+   - Show clear message: "Cancelling now means no makeup credit per [Studio] policy"
+   - Still allow request but mark as "late cancellation"
+
+### 3.3 Payment Visibility & Urgency
+
+**Current State:** Invoices page exists, but parents may not check it
+
+**Missing:**
+- Outstanding balance prominently displayed on home
+- "Pay Now" button on summary strip
+- Overdue indicator with urgency styling
+- Payment history for disputes
+
+**Hardening Actions:**
+| Feature | Implementation |
+|---------|----------------|
+| Prominent balance | Already in PortalSummaryStrip - add "Pay Now" button directly next to balance |
+| Overdue styling | If overdueInvoices > 0, change balance badge to destructive red with "OVERDUE" label |
+| Payment history | Add "Payments" tab showing all historical payments with dates and methods |
+
+### 3.4 Multi-Guardian Support
+
+**Current State:** Primary payer designated, but only one guardian gets communications
+
+**The Problem:** Divorced parents, grandparents who pay - need flexible notification
+
+**Hardening Solution:**
+| Role | Receives |
+|------|----------|
+| Primary Payer | Invoices, payment reminders, billing communications |
+| All Linked Guardians | Lesson notes, practice reminders, schedule changes |
+| Student (if email exists) | Practice reminders, lesson notes (age-appropriate) |
+
+Add `notification_preferences` to student_guardians table:
+- `receives_billing: boolean`
+- `receives_schedule: boolean`
+- `receives_practice: boolean`
 
 ---
 
-### Phase 6: Quick Commands
+## Part 4: Data Integrity Guards
 
-**Goal**: One-liner commands that execute instantly (no action card needed)
+### 4.1 Prevent Orphaned Records
 
-#### 6.1 Implement Quick Command Recognition
-File: `supabase/functions/looopassist-chat/index.ts`
+**Potential Issues:**
+- Delete student but lessons still reference them
+- Delete guardian but they're the primary payer on open invoices
+- Delete teacher but they have future lessons
 
-Detect simple commands that can be answered immediately:
-- "How many students do I have?" - just answer
-- "What's outstanding?" - summarise without action card
-- "Total revenue this month?" - calculate and respond
+**Hardening Actions:**
+| Scenario | Guard |
+|----------|-------|
+| Delete student | Check for future lessons, unpaid invoices - block with message if exist |
+| Delete guardian | Check if primary payer on unpaid invoices - require reassignment first |
+| Delete teacher | Check for future lessons - require reassignment first |
+| Delete location | Check for future lessons at that location - require move first |
 
-Criteria for quick response (no action card):
-- Read-only query
-- Single number or short list answer
-- No user confirmation needed
+These should be soft-deletes with validation, not hard blocks. UI should guide user through resolution.
+
+### 4.2 Audit Trail Completeness
+
+**Current State:** Basic audit_log table exists
+
+**Missing Logged Events:**
+- Invoice sent (currently just created)
+- Payment recorded
+- Lesson rescheduled (old time, new time)
+- Student status changed
+- Guardian removed from student
+
+**Hardening:** Ensure all state-changing operations log to audit trail with before/after values.
 
 ---
 
-## Files to Modify
+## Implementation Priority
+
+### Phase 1: Critical Safety (Week 1)
+1. Cancellation reason tracking on lessons
+2. Double payment guard in webhook
+3. Prominent "Pay Now" on portal home
+4. Overdue badge styling
+
+### Phase 2: Friction Reduction (Week 2)
+1. Self-service reschedule request with slot picker
+2. Multi-guardian notification preferences
+3. "This Week's Focus" practice section on portal
+
+### Phase 3: Advanced Robustness (Week 3)
+1. Travel buffer warnings in conflict detection
+2. Room capacity validation
+3. Closure pattern warnings for recurring series
+4. Overdue reminder automation
+
+---
+
+## Technical Changes Summary
+
+### Database Migrations Needed
+
+```text
+1. lessons table:
+   - Add: cancellation_reason TEXT
+   - Add: cancelled_by UUID (references profiles)
+   - Add: cancelled_at TIMESTAMPTZ
+
+2. rooms table:
+   - Add: max_capacity INTEGER DEFAULT 10
+
+3. organisations table:
+   - Add: buffer_minutes_between_locations INTEGER DEFAULT 0
+   - Add: overdue_reminder_days INTEGER[] DEFAULT '{7, 14, 30}'
+   - Add: auto_pause_lessons_after_days INTEGER
+
+4. student_guardians table:
+   - Add: receives_billing BOOLEAN DEFAULT true (for primary payer only)
+   - Add: receives_schedule BOOLEAN DEFAULT true
+   - Add: receives_practice BOOLEAN DEFAULT true
+
+5. recurrence_rules table:
+   - Add: exception_dates DATE[]
+```
+
+### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `supabase/functions/looopassist-chat/index.ts` | Update SYSTEM_PROMPT (plain text), expand buildDataContext, deep student context |
-| `supabase/functions/looopassist-execute/index.ts` | Add mark_attendance, cancel_lesson, complete_lessons, send_progress_report |
-| `src/components/looopassist/MessageFeedback.tsx` | Persist feedback to ai_interaction_metrics |
-| `src/components/looopassist/LoopAssistDrawer.tsx` | Proactive alerts, smarter suggested prompts, alert badge |
-| `src/hooks/useLoopAssist.ts` | Track response time, action metrics |
-| New migration | Create ai_interaction_metrics table |
-
----
-
-## Technical Details
-
-### Updated SYSTEM_PROMPT (Key Addition)
-
-```text
-RESPONSE FORMATTING:
-- Write in plain text only
-- NEVER use markdown syntax: no **, no _, no #, no - bullets
-- Use natural paragraph breaks for readability
-- Entity citations [Invoice:X] are the only special syntax allowed
-- Be conversational and direct
-```
-
-### New Actions for SYSTEM_PROMPT
-
-```text
-5. mark_attendance - Record attendance for a lesson
-   params: { "lesson_id": "...", "records": [{"student_id": "...", "status": "present|absent|late"}] }
-
-6. cancel_lesson - Cancel scheduled lessons
-   params: { "lesson_ids": ["..."], "reason": "...", "notify": true|false, "issue_credit": true|false }
-
-7. complete_lessons - Mark lessons as completed
-   params: { "lesson_ids": ["..."] }
-
-8. send_progress_report - Generate and send progress report
-   params: { "student_id": "...", "period": "week|month|term", "send_immediately": true|false }
-```
-
-### Proactive Alerts Data Structure
-
-```typescript
-interface ProactiveAlert {
-  type: 'overdue' | 'cancellation' | 'upcoming' | 'unmarked';
-  severity: 'info' | 'warning' | 'urgent';
-  message: string;
-  suggestedAction?: string;
-  count?: number;
-}
-```
+| `src/hooks/useConflictDetection.ts` | Add travel buffer check, room capacity validation |
+| `src/components/calendar/LessonDetailPanel.tsx` | Add cancellation reason prompt, parent notification trigger |
+| `src/pages/portal/PortalHome.tsx` | Add "Pay Now" button to summary, overdue styling |
+| `src/pages/portal/PortalSchedule.tsx` | Add one-tap reschedule with slot picker |
+| `src/components/portal/PortalSummaryStrip.tsx` | Overdue urgency styling |
+| `supabase/functions/stripe-webhook/index.ts` | Add double payment guard |
+| New: `src/components/portal/RescheduleSlotPicker.tsx` | Self-service slot selection |
+| New: `supabase/functions/overdue-reminders/index.ts` | Scheduled reminder emails |
 
 ---
 
 ## Expected Outcome
 
-After implementation, LoopAssist will:
+After implementation:
 
-1. Respond in clean, readable plain text (no markdown symbols)
-2. Execute 8+ action types covering full workflow
-3. Track user feedback to identify improvement areas
-4. Proactively alert users to issues when they open the drawer
-5. Know everything about a student when viewing their profile
-6. Answer simple questions instantly without action cards
+1. **No more "my books don't balance"** - Every charge linked to a lesson or explicit fee event
+2. **Cancellations are crystal clear** - Who cancelled, when, why, and what credits were issued
+3. **Parents can self-serve** - Reschedule requests with proposed times, not open-ended messages
+4. **Payments are impossible to miss** - Prominent balance + one-tap pay + urgency styling
+5. **Multi-family scenarios work** - Right person gets right notification
+6. **Nothing breaks when deleting** - Validation prevents orphaned records
 
-This transforms LoopAssist from "helpful chatbot" to "indispensable AI operations manager" that genuinely saves time and catches issues before they become problems.
+This transforms the system from "works most of the time" to "rock solid for real-world UK music teaching."
