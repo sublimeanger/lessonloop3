@@ -47,6 +47,11 @@ export default function PortalSchedule() {
   });
   const createRequest = useCreateMessageRequest();
 
+  // P0 Fix: Enforce parent reschedule policy
+  const reschedulePolicy = currentOrg?.parent_reschedule_policy || 'request_only';
+  const canReschedule = reschedulePolicy !== 'admin_locked';
+  const showSlotPicker = reschedulePolicy === 'self_service';
+
   const handleStudentChange = (value: string) => {
     if (value) {
       setSearchParams({ student: value });
@@ -226,23 +231,28 @@ export default function PortalSchedule() {
             )}
           </div>
 
-          {lesson.status === 'scheduled' && !isPast && (
+          {lesson.status === 'scheduled' && !isPast && canReschedule && (
             <div className="flex flex-col gap-1">
-              {/* One-tap reschedule button */}
+              {/* Reschedule button - shows slot picker or request form based on policy */}
               <Button
                 variant="outline"
                 size="sm"
                 className="gap-1"
-                onClick={() => handleRescheduleClick({
-                  id: lesson.id,
-                  title: lesson.title,
-                  start_at: lesson.start_at,
-                  end_at: lesson.end_at,
-                  teacher_user_id: lesson.teacher_user_id,
-                })}
+                onClick={() => showSlotPicker 
+                  ? handleRescheduleClick({
+                      id: lesson.id,
+                      title: lesson.title,
+                      start_at: lesson.start_at,
+                      end_at: lesson.end_at,
+                      teacher_user_id: lesson.teacher_user_id,
+                    })
+                  : handleRequestChange({ id: lesson.id, title: lesson.title })
+                }
               >
                 <CalendarClock className="h-4 w-4" />
-                <span className="hidden sm:inline">Reschedule</span>
+                <span className="hidden sm:inline">
+                  {showSlotPicker ? 'Reschedule' : 'Request Change'}
+                </span>
               </Button>
               {/* Message button */}
               <Button

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format, addDays, subDays, isToday, isBefore, endOfDay } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -10,6 +10,8 @@ import { MarkDayCompleteButton } from '@/components/calendar/MarkDayCompleteButt
 import { useRegisterData } from '@/hooks/useRegisterData';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { LoadingState } from '@/components/shared/LoadingState';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOrg } from '@/contexts/OrgContext';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -24,7 +26,30 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function DailyRegister() {
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const { data: lessons, isLoading, refetch } = useRegisterData(selectedDate);
+  const { user } = useAuth();
+  const { currentRole } = useOrg();
+  
+  // P1 Fix: Auto-filter to teacher's own lessons, persist via URL/localStorage
+  const [teacherFilter, setTeacherFilter] = useState<string | null>(() => {
+    // Initialize from localStorage for persistence
+    const stored = localStorage.getItem('register_teacher_filter');
+    return stored || null;
+  });
+
+  // Set default teacher filter for teachers on first load
+  useEffect(() => {
+    if (currentRole === 'teacher' && user?.id && !teacherFilter) {
+      setTeacherFilter(user.id);
+      localStorage.setItem('register_teacher_filter', user.id);
+    }
+  }, [currentRole, user?.id, teacherFilter]);
+
+  const { data: allLessons, isLoading, refetch } = useRegisterData(selectedDate);
+  
+  // Filter lessons by teacher if filter is set
+  const lessons = allLessons?.filter(lesson => 
+    !teacherFilter || lesson.teacher_user_id === teacherFilter
+  );
 
   const goToPrevDay = () => setSelectedDate(prev => subDays(prev, 1));
   const goToNextDay = () => setSelectedDate(prev => addDays(prev, 1));

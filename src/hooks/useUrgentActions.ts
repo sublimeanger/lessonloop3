@@ -116,20 +116,21 @@ export function useUrgentActions() {
             .eq('org_id', currentOrg.id)
             .is('reviewed_at', null);
 
-          // If teacher, only show their students' practice
+          // P1 Fix: Only show active students' practice logs
           if (isTeacher && !isAdmin) {
-            // Get teacher's assigned students first
+            // Get teacher's assigned students - filter for active students only
             const { data: assignments } = await supabase
               .from('student_teacher_assignments')
-              .select('student_id')
+              .select('student_id, students!inner(id, status)')
               .eq('teacher_user_id', user.id)
-              .eq('org_id', currentOrg.id);
+              .eq('org_id', currentOrg.id)
+              .eq('students.status', 'active');
 
             const studentIds = assignments?.map(a => a.student_id) || [];
             if (studentIds.length > 0) {
               query = query.in('student_id', studentIds);
             } else {
-              // No students assigned, skip this query
+              // No active students assigned, skip this query
               query = null;
             }
           }

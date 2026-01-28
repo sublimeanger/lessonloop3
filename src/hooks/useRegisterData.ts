@@ -16,6 +16,7 @@ export interface RegisterLesson {
   location_name: string | null;
   room_name: string | null;
   recurrence_id: string | null;
+  teacher_user_id: string; // Added for client-side filtering
   participants: Array<{
     student_id: string;
     student_name: string;
@@ -51,6 +52,7 @@ export function useRegisterData(date: Date) {
           recurrence_id,
           location_id,
           room_id,
+          teacher_user_id,
           lesson_participants (
             student_id,
             students (
@@ -129,6 +131,7 @@ export function useRegisterData(date: Date) {
           notes_shared: lesson.notes_shared,
           notes_private: lesson.notes_private,
           recurrence_id: lesson.recurrence_id,
+          teacher_user_id: lesson.teacher_user_id,
           location_name: lesson.location_id ? locationMap.get(lesson.location_id) || null : null,
           room_name: lesson.room_id ? roomMap.get(lesson.room_id) || null : null,
           participants,
