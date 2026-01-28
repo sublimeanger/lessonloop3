@@ -32,13 +32,24 @@ export function MessageFeedback({ messageId, conversationId, className }: Messag
 
     setIsSubmitting(true);
     try {
-      // Log feedback to ai_interaction_metrics (when table exists)
-      // For now, just update local state
-      // This will be enhanced when the metrics table is created
+      // Persist feedback to ai_interaction_metrics table
+      const { error } = await supabase.from('ai_interaction_metrics').insert({
+        org_id: currentOrg.id,
+        message_id: messageId,
+        conversation_id: conversationId,
+        user_id: user.id,
+        feedback: newFeedback,
+      });
+
+      if (error) {
+        console.error('Failed to save feedback:', error);
+        // Still show visual feedback even if save fails
+      }
       
-      // Visual feedback only for now
       if (newFeedback === 'helpful') {
         toast.success('Thanks for your feedback!', { duration: 2000 });
+      } else {
+        toast('Feedback recorded. We will work on improving.', { duration: 2000 });
       }
     } catch (error) {
       console.error('Failed to submit feedback:', error);

@@ -41,6 +41,25 @@ interface Guardian {
   email: string | null;
 }
 
+interface AttendanceRecord {
+  attendance_status: string;
+  cancellation_reason?: string | null;
+  students: { first_name: string; last_name: string } | null;
+}
+
+interface RateCard {
+  name: string;
+  rate_amount: number;
+  duration_mins: number;
+  is_default: boolean;
+}
+
+interface Payment {
+  amount_minor: number;
+  method: string;
+  paid_at: string;
+}
+
 // Build comprehensive context for Q&A
 async function buildDataContext(supabase: any, orgId: string): Promise<{
   summary: string;
@@ -50,6 +69,10 @@ async function buildDataContext(supabase: any, orgId: string): Promise<{
   const todayStr = today.toISOString().split("T")[0];
   const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
   const weekFromNowStr = weekFromNow.toISOString().split("T")[0];
+  const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const weekAgoStr = weekAgo.toISOString().split("T")[0];
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const monthStartStr = monthStart.toISOString().split("T")[0];
 
   // Fetch overdue and outstanding invoices
   const { data: overdueInvoices } = await supabase
@@ -94,6 +117,75 @@ async function buildDataContext(supabase: any, orgId: string): Promise<{
     .eq("org_id", orgId)
     .order("full_name", { ascending: true })
     .limit(50);
+
+  // NEW: Fetch recent cancellations (last 7 days)
+  const { data: recentCancellations } = await supabase
+    .from("lessons")
+    .select(`
+      id, title, start_at, status,
+      lesson_participants(students(first_name, last_name))
+    `)
+    .eq("org_id", orgId)
+    .eq("status", "cancelled")
+    .gte("start_at", `${weekAgoStr}T00:00:00`)
+    .order("start_at", { ascending: false })
+    .limit(10);
+
+  // NEW: Fetch attendance summary (this month)
+  const { data: monthlyLessons } = await supabase
+    .from("lessons")
+    .select("id, status")
+    .eq("org_id", orgId)
+    .gte("start_at", `${monthStartStr}T00:00:00`)
+    .lte("start_at", `${todayStr}T23:59:59`);
+
+  const completedCount = (monthlyLessons || []).filter((l: Lesson) => l.status === "completed").length;
+  const cancelledCount = (monthlyLessons || []).filter((l: Lesson) => l.status === "cancelled").length;
+  const totalMonthly = monthlyLessons?.length || 0;
+  const completionRate = totalMonthly > 0 ? Math.round((completedCount / totalMonthly) * 100) : 0;
+
+  // NEW: Fetch rate cards
+  const { data: rateCards } = await supabase
+    .from("rate_cards")
+    .select("name, rate_amount, duration_mins, is_default")
+    .eq("org_id", orgId)
+    .order("is_default", { ascending: false })
+    .limit(5);
+
+  // NEW: Fetch recent payments (last 7 days)
+  const { data: recentPayments } = await supabase
+    .from("payments")
+    .select("amount_minor, method, paid_at")
+    .eq("org_id", orgId)
+    .gte("paid_at", `${weekAgoStr}T00:00:00`)
+    .order("paid_at", { ascending: false })
+    .limit(20);
+
+  // NEW: Fetch teacher workload
+  const { data: teacherLessons } = await supabase
+    .from("lessons")
+    .select("teacher_user_id")
+    .eq("org_id", orgId)
+    .eq("status", "scheduled")
+    .gte("start_at", `${todayStr}T00:00:00`)
+    .lte("start_at", `${weekFromNowStr}T23:59:59`);
+
+  const teacherCounts = new Map<string, number>();
+  (teacherLessons || []).forEach((l: { teacher_user_id: string }) => {
+    teacherCounts.set(l.teacher_user_id, (teacherCounts.get(l.teacher_user_id) || 0) + 1);
+  });
+
+  // NEW: Fetch unmarked past lessons (yesterday and before)
+  const yesterdayStr = new Date(today.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+  const { data: unmarkedLessons } = await supabase
+    .from("lessons")
+    .select("id, title, start_at")
+    .eq("org_id", orgId)
+    .eq("status", "scheduled")
+    .lt("start_at", `${todayStr}T00:00:00`)
+    .gte("start_at", `${weekAgoStr}T00:00:00`)
+    .order("start_at", { ascending: false })
+    .limit(20);
 
   // Build invoice summary with citations
   let invoiceSummary = "";
@@ -169,8 +261,63 @@ async function buildDataContext(supabase: any, orgId: string): Promise<{
     }
   }
 
+  // NEW: Build cancellations summary
+  let cancellationSummary = "";
+  if ((recentCancellations || []).length > 0) {
+    cancellationSummary += `\n\nRECENT CANCELLATIONS (last 7 days): ${recentCancellations.length}`;
+    recentCancellations.slice(0, 5).forEach((l: any) => {
+      const date = new Date(l.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+      const studentNames = l.lesson_participants?.map((p: any) => 
+        p.students ? `${p.students.first_name} ${p.students.last_name}` : ""
+      ).filter(Boolean).join(", ") || "Unknown";
+      cancellationSummary += `\n- ${date}: ${l.title} with ${studentNames}`;
+    });
+  }
+
+  // NEW: Build attendance/performance summary
+  let performanceSummary = `\n\nTHIS MONTH PERFORMANCE:`;
+  performanceSummary += `\n- Lessons scheduled: ${totalMonthly}`;
+  performanceSummary += `\n- Completed: ${completedCount} (${completionRate}% completion rate)`;
+  performanceSummary += `\n- Cancelled: ${cancelledCount}`;
+
+  // NEW: Build rate cards summary
+  let rateCardSummary = "";
+  if ((rateCards || []).length > 0) {
+    rateCardSummary += `\n\nRATE CARDS:`;
+    rateCards.forEach((rc: RateCard) => {
+      rateCardSummary += `\n- ${rc.name}: £${rc.rate_amount.toFixed(2)} (${rc.duration_mins} mins)${rc.is_default ? " [DEFAULT]" : ""}`;
+    });
+  }
+
+  // NEW: Build payments summary
+  let paymentSummary = "";
+  if ((recentPayments || []).length > 0) {
+    const totalReceived = recentPayments.reduce((sum: number, p: Payment) => sum + p.amount_minor, 0);
+    const methodCounts: Record<string, number> = {};
+    recentPayments.forEach((p: Payment) => {
+      methodCounts[p.method] = (methodCounts[p.method] || 0) + 1;
+    });
+    paymentSummary += `\n\nPAYMENTS RECEIVED (last 7 days):`;
+    paymentSummary += `\n- Total: £${(totalReceived / 100).toFixed(2)} from ${recentPayments.length} payments`;
+    paymentSummary += `\n- Methods: ${Object.entries(methodCounts).map(([m, c]) => `${m} (${c})`).join(", ")}`;
+  }
+
+  // NEW: Unmarked lessons alert
+  let unmarkedSummary = "";
+  if ((unmarkedLessons || []).length > 0) {
+    unmarkedSummary += `\n\nUNMARKED PAST LESSONS (${unmarkedLessons.length}):`;
+    unmarkedLessons.slice(0, 5).forEach((l: any) => {
+      const date = new Date(l.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+      unmarkedSummary += `\n- [Lesson:${l.id}] ${date}: ${l.title}`;
+    });
+    if (unmarkedLessons.length > 5) {
+      unmarkedSummary += `\n... and ${unmarkedLessons.length - 5} more unmarked lessons`;
+    }
+  }
+
   return {
-    summary: invoiceSummary + lessonSummary + studentSummary + guardianSummary,
+    summary: invoiceSummary + lessonSummary + studentSummary + guardianSummary + 
+             cancellationSummary + performanceSummary + rateCardSummary + paymentSummary + unmarkedSummary,
     entities: {
       invoices: overdueInvoices || [],
       lessons: upcomingLessons || [],
@@ -180,6 +327,160 @@ async function buildDataContext(supabase: any, orgId: string): Promise<{
   };
 }
 
+// Build deep student context when viewing a specific student
+async function buildStudentContext(supabase: any, orgId: string, studentId: string): Promise<string> {
+  // Fetch student with all related data
+  const { data: student } = await supabase
+    .from("students")
+    .select(`
+      *, 
+      student_guardians(*, guardians(*))
+    `)
+    .eq("id", studentId)
+    .single();
+
+  if (!student) return "";
+
+  let context = `\n\nDEEP STUDENT CONTEXT for [Student:${student.id}] ${student.first_name} ${student.last_name}:`;
+  context += `\nStatus: ${student.status}`;
+  context += `\nEmail: ${student.email || "Not provided"}`;
+  context += `\nPhone: ${student.phone || "Not provided"}`;
+  if (student.date_of_birth) context += `\nDOB: ${student.date_of_birth}`;
+  if (student.notes) context += `\nNotes: ${student.notes}`;
+
+  // Guardians
+  const guardianLinks = student.student_guardians || [];
+  if (guardianLinks.length > 0) {
+    context += "\n\nGuardians:";
+    guardianLinks.forEach((link: any) => {
+      if (link.guardians) {
+        context += `\n  - [Guardian:${link.guardians.id}] ${link.guardians.full_name} (${link.relationship})`;
+        if (link.guardians.email) context += ` - ${link.guardians.email}`;
+        if (link.is_primary_payer) context += " [PRIMARY PAYER]";
+      }
+    });
+  }
+
+  // Recent lessons (last 10)
+  const { data: recentLessons } = await supabase
+    .from("lesson_participants")
+    .select(`
+      lessons(id, title, start_at, status, notes_shared)
+    `)
+    .eq("student_id", studentId)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (recentLessons && recentLessons.length > 0) {
+    context += `\n\nRecent Lessons (${recentLessons.length}):`;
+    recentLessons.forEach((lp: any) => {
+      if (lp.lessons) {
+        const date = new Date(lp.lessons.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+        context += `\n  - [Lesson:${lp.lessons.id}] ${date}: ${lp.lessons.title} (${lp.lessons.status})`;
+      }
+    });
+  }
+
+  // Attendance records
+  const { data: attendance } = await supabase
+    .from("attendance_records")
+    .select("attendance_status, recorded_at, cancellation_reason")
+    .eq("student_id", studentId)
+    .order("recorded_at", { ascending: false })
+    .limit(20);
+
+  if (attendance && attendance.length > 0) {
+    const statusCounts: Record<string, number> = {};
+    attendance.forEach((a: AttendanceRecord) => {
+      statusCounts[a.attendance_status] = (statusCounts[a.attendance_status] || 0) + 1;
+    });
+    context += `\n\nAttendance Summary (last ${attendance.length} records):`;
+    Object.entries(statusCounts).forEach(([status, count]) => {
+      context += `\n  - ${status}: ${count}`;
+    });
+  }
+
+  // Practice streaks
+  const { data: practiceStreak } = await supabase
+    .from("practice_streaks")
+    .select("current_streak, longest_streak, last_practice_date")
+    .eq("student_id", studentId)
+    .single();
+
+  if (practiceStreak) {
+    context += `\n\nPractice Stats:`;
+    context += `\n  - Current streak: ${practiceStreak.current_streak} days`;
+    context += `\n  - Longest streak: ${practiceStreak.longest_streak} days`;
+    if (practiceStreak.last_practice_date) {
+      context += `\n  - Last practice: ${practiceStreak.last_practice_date}`;
+    }
+  }
+
+  // Recent practice logs
+  const { data: practiceLogs } = await supabase
+    .from("practice_logs")
+    .select("practice_date, duration_minutes, notes")
+    .eq("student_id", studentId)
+    .order("practice_date", { ascending: false })
+    .limit(7);
+
+  if (practiceLogs && practiceLogs.length > 0) {
+    const totalMins = practiceLogs.reduce((sum: number, p: { duration_minutes: number }) => sum + p.duration_minutes, 0);
+    context += `\n\nRecent Practice (last 7 entries, ${totalMins} mins total):`;
+    practiceLogs.slice(0, 3).forEach((p: any) => {
+      context += `\n  - ${p.practice_date}: ${p.duration_minutes} mins`;
+    });
+  }
+
+  // Invoices
+  const { data: studentInvoices } = await supabase
+    .from("invoices")
+    .select("id, invoice_number, status, total_minor, due_date")
+    .or(`payer_student_id.eq.${studentId}`)
+    .eq("org_id", orgId)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (studentInvoices && studentInvoices.length > 0) {
+    const overdueCount = studentInvoices.filter((i: Invoice) => i.status === "overdue").length;
+    const outstandingCount = studentInvoices.filter((i: Invoice) => i.status === "sent").length;
+    context += `\n\nInvoices (${studentInvoices.length} total, ${overdueCount} overdue, ${outstandingCount} outstanding):`;
+    studentInvoices.slice(0, 5).forEach((inv: Invoice) => {
+      context += `\n  - [Invoice:${inv.invoice_number}] ${inv.status} £${(inv.total_minor / 100).toFixed(2)}`;
+    });
+  }
+
+  // Make-up credits
+  const { data: credits } = await supabase
+    .from("make_up_credits")
+    .select("id, credit_value_minor, expires_at, redeemed_at")
+    .eq("student_id", studentId)
+    .is("redeemed_at", null)
+    .order("expires_at", { ascending: true });
+
+  if (credits && credits.length > 0) {
+    const totalCredit = credits.reduce((sum: number, c: { credit_value_minor: number }) => sum + c.credit_value_minor, 0);
+    context += `\n\nAvailable Make-up Credits: ${credits.length} (£${(totalCredit / 100).toFixed(2)} value)`;
+  }
+
+  // Teacher assignments
+  const { data: assignments } = await supabase
+    .from("practice_assignments")
+    .select("title, status, start_date, end_date")
+    .eq("student_id", studentId)
+    .eq("status", "active")
+    .limit(5);
+
+  if (assignments && assignments.length > 0) {
+    context += `\n\nActive Practice Assignments:`;
+    assignments.forEach((a: any) => {
+      context += `\n  - ${a.title}`;
+    });
+  }
+
+  return context;
+}
+
 const SYSTEM_PROMPT = `You are LoopAssist, an AI copilot for LessonLoop - a UK-centric music lesson scheduling and invoicing platform.
 
 You help music teachers, academy owners, and administrators with:
@@ -187,6 +488,14 @@ You help music teachers, academy owners, and administrators with:
 - Drafting emails to parents/guardians
 - Proposing actions like creating invoices, scheduling lessons, or sending reminders
 - Providing insights about revenue, attendance, and business metrics
+
+CRITICAL - RESPONSE FORMATTING:
+- Write in plain text only
+- NEVER use markdown syntax: no ** for bold, no _ for italic, no # for headings, no - for bullet points
+- Use natural paragraph breaks for readability
+- Entity citations [Invoice:X] [Student:X] etc are the only special syntax allowed
+- Be conversational and direct
+- Keep responses concise and helpful
 
 CRITICAL - ENTITY CITATIONS:
 When referencing specific entities, ALWAYS use these citation formats:
@@ -204,22 +513,35 @@ Guidelines:
 - When answering questions, cite specific entities using the formats above
 - When proposing actions, clearly describe what will happen
 - For read-only questions, provide helpful answers based on the context
-- If you don't have enough information, ask clarifying questions
+- If you dont have enough information, ask clarifying questions
+
+QUICK ANSWERS:
+For simple read-only queries, respond immediately without an action block:
+- "How many students do I have?" - just answer with the number
+- "Whats outstanding?" - summarise the totals
+- "Total revenue this month?" - calculate and respond
+- "Whats my completion rate?" - answer from the data
+
+Only use action proposals for write operations that need confirmation.
 
 CRITICAL - ACTION PROPOSALS:
-When the user requests an action (send reminders, generate invoices, reschedule, draft email), you MUST respond with a structured action proposal.
+When the user requests an action (send reminders, generate invoices, reschedule, draft email, mark attendance, cancel lessons, complete lessons), you MUST respond with a structured action proposal.
 
 The user's request indicates they want to take action when they say things like:
 - "Send reminders", "Remind", "Chase up"
 - "Generate invoices", "Create billing run", "Bill for"
 - "Reschedule", "Move lessons", "Shift"
 - "Draft email", "Write to", "Send message to"
+- "Mark attendance", "Record who attended"
+- "Cancel lesson", "Cancel todays lesson"
+- "Complete lessons", "Mark as done", "Mark all as complete"
+- "Send progress report", "Update parents on progress"
 
 When proposing an action, respond with normal text PLUS a JSON block in this exact format:
 
 \`\`\`action
 {
-  "action_type": "generate_billing_run" | "send_invoice_reminders" | "reschedule_lessons" | "draft_email",
+  "action_type": "generate_billing_run" | "send_invoice_reminders" | "reschedule_lessons" | "draft_email" | "mark_attendance" | "cancel_lesson" | "complete_lessons" | "send_progress_report",
   "description": "Human-readable description of what will happen",
   "entities": [
     {"type": "invoice", "id": "...", "label": "..."},
@@ -250,6 +572,22 @@ ACTION TYPES AND PARAMS:
 4. draft_email - Draft an email to a guardian about a student
    params: { "guardian_id": "...", "student_id": "...", "tone": "formal" | "friendly" | "concerned", "subject": "...", "body": "..." }
    entities: List the guardian and student involved
+
+5. mark_attendance - Record attendance for a lesson
+   params: { "lesson_id": "...", "records": [{"student_id": "...", "status": "present" | "absent" | "late"}] }
+   entities: List the lesson and students being marked
+
+6. cancel_lesson - Cancel scheduled lessons
+   params: { "lesson_ids": ["..."], "reason": "...", "notify": true | false, "issue_credit": true | false }
+   entities: List lessons that will be cancelled
+
+7. complete_lessons - Mark lessons as completed
+   params: { "lesson_ids": ["..."] }
+   entities: List lessons that will be marked complete
+
+8. send_progress_report - Generate and send progress report to guardian
+   params: { "student_id": "...", "guardian_id": "...", "period": "week" | "month" | "term", "send_immediately": true | false }
+   entities: List the student and guardian involved
 
 IMPORTANT: Only include the action block when the user explicitly requests an action. For questions or information requests, respond normally without an action block.`;
 
@@ -319,47 +657,8 @@ serve(async (req) => {
     let pageContextInfo = "";
     if (context) {
       if (context.type === "student" && context.id) {
-        const { data: student } = await supabase
-          .from("students")
-          .select(`
-            *, 
-            student_guardians(*, guardians(*)),
-            lesson_participants(lessons(id, title, start_at, status))
-          `)
-          .eq("id", context.id)
-          .single();
-        if (student) {
-          const recentLessons = student.lesson_participants?.slice(0, 5) || [];
-          const guardianLinks = student.student_guardians || [];
-          pageContextInfo = `\n\nCURRENT PAGE - Student: [Student:${student.id}] ${student.first_name} ${student.last_name}
-Status: ${student.status}
-Email: ${student.email || "Not provided"}
-Phone: ${student.phone || "Not provided"}
-Recent lessons: ${recentLessons.length}`;
-          
-          if (guardianLinks.length > 0) {
-            pageContextInfo += "\nGuardians:";
-            guardianLinks.forEach((link: any) => {
-              if (link.guardians) {
-                pageContextInfo += `\n  - [Guardian:${link.guardians.id}] ${link.guardians.full_name} (${link.relationship})`;
-              }
-            });
-          }
-          
-          const { data: studentInvoices } = await supabase
-            .from("invoices")
-            .select("id, invoice_number, status, total_minor, due_date")
-            .eq("payer_student_id", student.id)
-            .order("created_at", { ascending: false })
-            .limit(5);
-          
-          if (studentInvoices && studentInvoices.length > 0) {
-            pageContextInfo += "\nRecent invoices:";
-            studentInvoices.forEach((inv: any) => {
-              pageContextInfo += `\n  - [Invoice:${inv.invoice_number}] ${inv.status} £${(inv.total_minor / 100).toFixed(2)}`;
-            });
-          }
-        }
+        // Use deep student context for student pages
+        pageContextInfo = await buildStudentContext(supabase, orgId, context.id);
       } else if (context.type === "invoice" && context.id) {
         const { data: invoice } = await supabase
           .from("invoices")
@@ -393,9 +692,23 @@ Items: ${invoice.invoice_items?.length || 0}`;
           .lte("start_at", `${today}T23:59:59`)
           .eq("org_id", orgId)
           .eq("status", "scheduled");
-        if (todayLessons) {
+        
+        // Also check for unmarked past lessons
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+        const { data: yesterdayUnmarked } = await supabase
+          .from("lessons")
+          .select("id, title, start_at")
+          .eq("org_id", orgId)
+          .eq("status", "scheduled")
+          .gte("start_at", `${yesterday}T00:00:00`)
+          .lt("start_at", `${today}T00:00:00`);
+
+        if (todayLessons || yesterdayUnmarked) {
           pageContextInfo = `\n\nCURRENT PAGE - Calendar view
-Today's scheduled lessons: ${todayLessons.length}`;
+Todays scheduled lessons: ${todayLessons?.length || 0}`;
+          if (yesterdayUnmarked && yesterdayUnmarked.length > 0) {
+            pageContextInfo += `\nUnmarked lessons from yesterday: ${yesterdayUnmarked.length} (may need completing)`;
+          }
         }
       }
     }
@@ -460,17 +773,11 @@ Currency: ${orgData.currency_code}`
       });
     }
 
-    // Stream the response back
     return new Response(response.body, {
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
-    console.error("LoopAssist chat error:", e);
+    console.error("LoopAssist error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

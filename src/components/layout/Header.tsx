@@ -3,6 +3,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Sparkles, ChevronDown, Building2, Check } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
+import { useProactiveAlerts } from '@/hooks/useProactiveAlerts';
 import { Logo, LogoWordmark } from '@/components/brand/Logo';
 import {
   DropdownMenu,
@@ -12,10 +13,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 export function Header() {
   const { currentOrg, organisations, setCurrentOrg } = useOrg();
   const { setIsOpen } = useLoopAssistUI();
+  const { totalActionable, hasCritical } = useProactiveAlerts();
   const hasMultipleOrgs = organisations.length > 1;
 
   return (
@@ -73,12 +76,27 @@ export function Header() {
       <Button 
         variant="outline" 
         size="sm" 
-        className="gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary" 
+        className={cn(
+          "gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary relative",
+          hasCritical && "border-destructive/50 hover:border-destructive"
+        )}
         onClick={() => setIsOpen(true)}
         data-tour="loopassist-button"
       >
         <Sparkles className="h-4 w-4" />
         <span className="hidden sm:inline">LoopAssist</span>
+        
+        {/* Alert badge */}
+        {totalActionable > 0 && (
+          <span
+            className={cn(
+              "absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-destructive-foreground",
+              hasCritical ? "bg-destructive" : "bg-warning"
+            )}
+          >
+            {totalActionable > 9 ? '9+' : totalActionable}
+          </span>
+        )}
       </Button>
     </header>
   );
