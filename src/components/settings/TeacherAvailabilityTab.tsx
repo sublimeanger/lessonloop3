@@ -206,19 +206,20 @@ export function TeacherAvailabilityTab() {
                     ) : (
                       <div className="flex flex-wrap gap-2">
                         {day.blocks.map(block => (
-                          <Badge
-                            key={block.id}
-                            variant="secondary"
-                            className="flex items-center gap-1"
-                          >
-                            {formatTime(block.start_time_local)} - {formatTime(block.end_time_local)}
-                            <button
+                          <div key={block.id} className="flex items-center gap-1">
+                            <Badge variant="secondary">
+                              {formatTime(block.start_time_local)} - {formatTime(block.end_time_local)}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
                               onClick={() => setDeleteAvailabilityId(block.id)}
-                              className="ml-1 rounded-full p-0.5 hover:bg-destructive/20"
                             >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </Badge>
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span className="sr-only">Remove time slot</span>
+                            </Button>
+                          </div>
                         ))}
                       </div>
                     )}
