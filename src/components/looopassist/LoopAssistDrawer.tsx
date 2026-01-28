@@ -16,10 +16,12 @@ import {
 import { useLoopAssist, AIMessage, AIConversation } from '@/hooks/useLoopAssist';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { useProactiveAlerts } from '@/hooks/useProactiveAlerts';
+import { useLoopAssistFirstRun } from '@/hooks/useLoopAssistFirstRun';
 import { renderMessageWithChips } from './EntityChip';
 import { ActionCard, stripActionBlock, parseActionFromResponse } from './ActionCard';
 import { MessageFeedback } from './MessageFeedback';
 import { ProactiveAlerts } from './ProactiveAlerts';
+import { ProactiveWelcome } from './ProactiveWelcome';
 import { LoopAssistIntroModal, useLoopAssistIntro } from './LoopAssistIntroModal';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -33,6 +35,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
   const { pageContext } = useLoopAssistUI();
   const { showIntro, setShowIntro, checkAndShowIntro } = useLoopAssistIntro();
   const { alerts } = useProactiveAlerts();
+  const { proactiveMessage, dismissProactiveMessage } = useLoopAssistFirstRun();
   
   const {
     conversations,
@@ -154,32 +157,50 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
               <div className="space-y-4 py-4">
                 {messages.length === 0 && !isStreaming && (
                   <div className="space-y-4">
+                    {/* First-run proactive welcome for new orgs */}
+                    {proactiveMessage && (
+                      <ProactiveWelcome
+                        title={proactiveMessage.title}
+                        message={proactiveMessage.message}
+                        suggestedPrompts={proactiveMessage.suggestedPrompts}
+                        onPromptClick={(prompt) => {
+                          dismissProactiveMessage();
+                          handleSuggestedPrompt(prompt);
+                        }}
+                        onDismiss={dismissProactiveMessage}
+                      />
+                    )}
+
                     {/* Proactive alerts when opening fresh */}
-                    {showProactiveAlerts && (
+                    {!proactiveMessage && showProactiveAlerts && (
                       <ProactiveAlerts 
                         alerts={alerts} 
                         onSuggestedAction={handleSuggestedPrompt}
                       />
                     )}
 
-                    <div className="text-center text-muted-foreground">
-                      <Sparkles className="mx-auto mb-2 h-8 w-8 text-primary/50" />
-                      <p className="text-sm">How can I help you today?</p>
-                    </div>
-                    {suggestedPrompts.length > 0 && (
-                      <div className="flex flex-wrap gap-2" data-tour="loopassist-prompts">
-                        {suggestedPrompts.map((prompt, i) => (
-                          <Button
-                            key={i}
-                            variant="outline"
-                            size="sm"
-                            className="h-auto whitespace-normal text-left text-xs"
-                            onClick={() => handleSuggestedPrompt(prompt)}
-                          >
-                            {prompt}
-                          </Button>
-                        ))}
-                      </div>
+                    {!proactiveMessage && (
+                      <>
+                        <div className="text-center text-muted-foreground">
+                          <Sparkles className="mx-auto mb-2 h-8 w-8 text-primary/50" />
+                          <p className="text-sm">How can I help you today?</p>
+                        </div>
+                        {suggestedPrompts.length > 0 && (
+                          <div className="flex flex-wrap gap-2" data-tour="loopassist-prompts">
+                            {suggestedPrompts.map((prompt, i) => (
+                              <Button
+                                key={i}
+                                variant="outline"
+                                size="sm"
+                                className="h-auto whitespace-normal text-left text-xs"
+                                onClick={() => handleSuggestedPrompt(prompt)}
+                              >
+                                {prompt}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 )}

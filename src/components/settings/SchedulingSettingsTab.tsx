@@ -96,6 +96,101 @@ function CancellationNoticeSetting() {
   );
 }
 
+type ReschedulePolicy = 'self_service' | 'request_only' | 'admin_locked';
+
+function ParentReschedulePolicySetting() {
+  const { currentOrg, refreshOrganisations } = useOrg();
+  const { toast } = useToast();
+  const [policy, setPolicy] = useState<ReschedulePolicy>(
+    (currentOrg?.parent_reschedule_policy as ReschedulePolicy) || 'request_only'
+  );
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (currentOrg?.parent_reschedule_policy) {
+      setPolicy(currentOrg.parent_reschedule_policy as ReschedulePolicy);
+    }
+  }, [currentOrg?.parent_reschedule_policy]);
+
+  const handlePolicyChange = async (newPolicy: ReschedulePolicy) => {
+    if (!currentOrg) return;
+    setPolicy(newPolicy);
+    setIsSaving(true);
+
+    const { error } = await supabase
+      .from('organisations')
+      .update({ parent_reschedule_policy: newPolicy })
+      .eq('id', currentOrg.id);
+
+    setIsSaving(false);
+
+    if (error) {
+      toast({ title: 'Error saving setting', variant: 'destructive' });
+      setPolicy((currentOrg.parent_reschedule_policy as ReschedulePolicy) || 'request_only');
+    } else {
+      toast({ title: 'Parent rescheduling policy updated' });
+      refreshOrganisations();
+    }
+  };
+
+  const policies: { value: ReschedulePolicy; label: string; description: string }[] = [
+    {
+      value: 'self_service',
+      label: 'Self-service',
+      description: 'Parents can view available slots and propose new times. You approve with one click.',
+    },
+    {
+      value: 'request_only',
+      label: 'Request only',
+      description: 'Parents send a message request. You handle scheduling manually.',
+    },
+    {
+      value: 'admin_locked',
+      label: 'Disabled',
+      description: 'Parents cannot request reschedules through the portal. They must contact you directly.',
+    },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className="font-medium">Parent rescheduling</div>
+        <div className="text-sm text-muted-foreground">
+          How should parents request lesson changes through the portal?
+        </div>
+      </div>
+      <div className="space-y-3">
+        {policies.map((p) => (
+          <label
+            key={p.value}
+            className={cn(
+              'flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors',
+              policy === p.value ? 'border-primary bg-primary/5' : 'hover:bg-accent'
+            )}
+          >
+            <input
+              type="radio"
+              name="reschedule-policy"
+              value={p.value}
+              checked={policy === p.value}
+              onChange={() => handlePolicyChange(p.value)}
+              disabled={isSaving}
+              className="mt-1"
+            />
+            <div className="flex-1">
+              <div className="font-medium">{p.label}</div>
+              <div className="text-sm text-muted-foreground">{p.description}</div>
+            </div>
+            {isSaving && policy === p.value && (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function SchedulingSettingsTab() {
   const { currentOrg, refreshOrganisations } = useOrg();
   const { user } = useAuth();
@@ -314,6 +409,10 @@ export function SchedulingSettingsTab() {
           <Separator />
           
           <CancellationNoticeSetting />
+          
+          <Separator />
+          
+          <ParentReschedulePolicySetting />
         </CardContent>
       </Card>
 

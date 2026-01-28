@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ContextualHint } from '@/components/shared/ContextualHint';
 import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { StudentWizard } from '@/components/students/StudentWizard';
 import { Plus, Search, Users, Mail, Phone, Upload, Lock } from 'lucide-react';
@@ -191,9 +192,17 @@ export default function Students() {
           onAction={searchQuery ? undefined : openAddWizard}
           secondaryActionLabel={searchQuery ? undefined : 'Import from CSV'}
           onSecondaryAction={searchQuery ? undefined : () => window.location.href = '/students/import'}
+          previewImage={searchQuery ? undefined : '/previews/students-preview.svg'}
+          previewAlt="Example student list"
         />
       ) : (
-        <div className="space-y-2" role="list" aria-label="Students list" data-tour="student-list">
+        <div className="space-y-2" role="list" aria-label="Students list" data-tour="student-list" data-hint="student-list">
+          <ContextualHint
+            id="student-click-to-view"
+            message="Click any student to view their details, lessons, and invoices"
+            position="top"
+            targetSelector="[data-hint='student-list']"
+          />
           {filteredStudents.map((student) => (
             <Link
               key={student.id}
