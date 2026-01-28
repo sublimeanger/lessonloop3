@@ -884,6 +884,7 @@ export type Database = {
           name: string
           notes: string | null
           org_id: string
+          parent_reschedule_policy_override: string | null
           postcode: string | null
           updated_at: string
         }
@@ -899,6 +900,7 @@ export type Database = {
           name: string
           notes?: string | null
           org_id: string
+          parent_reschedule_policy_override?: string | null
           postcode?: string | null
           updated_at?: string
         }
@@ -914,6 +916,7 @@ export type Database = {
           name?: string
           notes?: string | null
           org_id?: string
+          parent_reschedule_policy_override?: string | null
           postcode?: string | null
           updated_at?: string
         }
@@ -1300,6 +1303,7 @@ export type Database = {
           name: string
           org_type: Database["public"]["Enums"]["org_type"]
           overdue_reminder_days: number[] | null
+          parent_reschedule_policy: string | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_plan: Database["public"]["Enums"]["subscription_plan"]
@@ -1337,6 +1341,7 @@ export type Database = {
           name: string
           org_type?: Database["public"]["Enums"]["org_type"]
           overdue_reminder_days?: number[] | null
+          parent_reschedule_policy?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
@@ -1374,6 +1379,7 @@ export type Database = {
           name?: string
           org_type?: Database["public"]["Enums"]["org_type"]
           overdue_reminder_days?: number[] | null
+          parent_reschedule_policy?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
@@ -1626,6 +1632,8 @@ export type Database = {
           created_at: string
           current_org_id: string | null
           email: string | null
+          first_run_completed: boolean | null
+          first_run_path: string | null
           full_name: string | null
           has_completed_onboarding: boolean
           id: string
@@ -1636,6 +1644,8 @@ export type Database = {
           created_at?: string
           current_org_id?: string | null
           email?: string | null
+          first_run_completed?: boolean | null
+          first_run_path?: string | null
           full_name?: string | null
           has_completed_onboarding?: boolean
           id: string
@@ -1646,6 +1656,8 @@ export type Database = {
           created_at?: string
           current_org_id?: string | null
           email?: string | null
+          first_run_completed?: boolean | null
+          first_run_path?: string | null
           full_name?: string | null
           has_completed_onboarding?: boolean
           id?: string

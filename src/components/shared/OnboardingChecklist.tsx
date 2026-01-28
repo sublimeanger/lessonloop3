@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   CheckCircle2, Circle, Users, Calendar, Receipt, 
-  Building, ChevronRight, X, Sparkles, PartyPopper
+  Building, ChevronRight, X, Sparkles, PartyPopper, 
+  UserPlus, Settings, FileText
 } from 'lucide-react';
-import { useOrg } from '@/contexts/OrgContext';
+import { useOrg, OrgType } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +26,34 @@ interface OnboardingChecklistProps {
   onDismiss?: () => void;
   className?: string;
 }
+
+// Org-type specific checklist configurations
+const CHECKLIST_CONFIG: Record<OrgType, { id: string; title: string; description: string; href: string; icon: React.ElementType; checkKey: string }[]> = {
+  solo_teacher: [
+    { id: 'add-student', title: 'Add your first student', description: 'Start managing your student roster', href: '/students', icon: Users, checkKey: 'hasStudents' },
+    { id: 'schedule-lesson', title: 'Schedule a lesson', description: 'Create your first lesson in the calendar', href: '/calendar', icon: Calendar, checkKey: 'hasLessons' },
+    { id: 'add-location', title: 'Add a teaching location', description: 'Set up your teaching venues', href: '/locations', icon: Building, checkKey: 'hasLocations' },
+    { id: 'create-invoice', title: 'Create your first invoice', description: 'Bill your students for lessons', href: '/invoices', icon: Receipt, checkKey: 'hasInvoices' },
+  ],
+  studio: [
+    { id: 'add-location', title: 'Set up your studio', description: 'Add your teaching location with rooms', href: '/locations', icon: Building, checkKey: 'hasLocations' },
+    { id: 'invite-teacher', title: 'Invite a teacher', description: 'Build your team', href: '/teachers', icon: UserPlus, checkKey: 'hasTeachers' },
+    { id: 'add-student', title: 'Add students', description: 'Start enrolling students', href: '/students', icon: Users, checkKey: 'hasStudents' },
+    { id: 'run-billing', title: 'Run your first billing', description: 'Generate invoices for lessons', href: '/invoices', icon: Receipt, checkKey: 'hasInvoices' },
+  ],
+  academy: [
+    { id: 'add-locations', title: 'Set up locations', description: 'Add your teaching venues and rooms', href: '/locations', icon: Building, checkKey: 'hasLocations' },
+    { id: 'invite-team', title: 'Invite your team', description: 'Add teachers and admin staff', href: '/teachers', icon: UserPlus, checkKey: 'hasTeachers' },
+    { id: 'add-students', title: 'Enrol students', description: 'Add students individually or import', href: '/students', icon: Users, checkKey: 'hasStudents' },
+    { id: 'schedule-lessons', title: 'Schedule lessons', description: 'Create your timetable', href: '/calendar', icon: Calendar, checkKey: 'hasLessons' },
+  ],
+  agency: [
+    { id: 'add-client-sites', title: 'Add client schools', description: 'Set up schools where teachers work', href: '/locations', icon: Building, checkKey: 'hasLocations' },
+    { id: 'invite-teachers', title: 'Invite teachers', description: 'Build your team of peripatetic teachers', href: '/teachers', icon: UserPlus, checkKey: 'hasTeachers' },
+    { id: 'configure-policy', title: 'Set scheduling policy', description: 'Control how parents request changes', href: '/settings', icon: Settings, checkKey: 'hasPolicyConfigured' },
+    { id: 'add-students', title: 'Add students', description: 'Enrol students at client sites', href: '/students', icon: Users, checkKey: 'hasStudents' },
+  ],
+};
 
 // Animated progress ring
 function ProgressRing({ progress, size = 48 }: { progress: number; size?: number }) {
@@ -94,7 +123,7 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
         );
         
         // Check completion status in parallel with timeout
-        const [studentsResult, lessonsResult, invoicesResult, locationsResult] = await Promise.race([
+        const [studentsResult, lessonsResult, invoicesResult, locationsResult, teachersResult] = await Promise.race([
           Promise.all([
             supabase
               .from('students')
@@ -113,49 +142,38 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
               .from('locations')
               .select('id', { count: 'exact', head: true })
               .eq('org_id', currentOrg.id),
+            supabase
+              .from('org_memberships')
+              .select('id', { count: 'exact', head: true })
+              .eq('org_id', currentOrg.id)
+              .eq('status', 'active')
+              .in('role', ['teacher', 'admin']),
           ]),
           timeoutPromise
         ]);
 
-        const hasStudents = (studentsResult.count || 0) > 0;
-        const hasLessons = (lessonsResult.count || 0) > 0;
-        const hasInvoices = (invoicesResult.count || 0) > 0;
-        const hasLocations = (locationsResult.count || 0) > 0;
+        const completionStatus: Record<string, boolean> = {
+          hasStudents: (studentsResult.count || 0) > 0,
+          hasLessons: (lessonsResult.count || 0) > 0,
+          hasInvoices: (invoicesResult.count || 0) > 0,
+          hasLocations: (locationsResult.count || 0) > 0,
+          hasTeachers: (teachersResult.count || 0) > 1, // More than just owner
+          // @ts-ignore - new column
+          hasPolicyConfigured: currentOrg.parent_reschedule_policy !== 'request_only', // Changed from default
+        };
 
-      const checklistItems: ChecklistItem[] = [
-        {
-          id: 'add-student',
-          title: 'Add your first student',
-          description: 'Start managing your student roster',
-          href: '/students',
-          icon: Users,
-          completed: hasStudents,
-        },
-        {
-          id: 'schedule-lesson',
-          title: 'Schedule a lesson',
-          description: 'Create your first lesson in the calendar',
-          href: '/calendar',
-          icon: Calendar,
-          completed: hasLessons,
-        },
-        {
-          id: 'add-location',
-          title: 'Add a teaching location',
-          description: 'Set up your teaching venues',
-          href: '/locations',
-          icon: Building,
-          completed: hasLocations,
-        },
-        {
-          id: 'create-invoice',
-          title: 'Create your first invoice',
-          description: 'Bill your students for lessons',
-          href: '/invoices',
-          icon: Receipt,
-          completed: hasInvoices,
-        },
-      ];
+        // Get org-specific checklist config
+        const orgType = currentOrg.org_type;
+        const config = CHECKLIST_CONFIG[orgType] || CHECKLIST_CONFIG.solo_teacher;
+
+        const checklistItems: ChecklistItem[] = config.map(item => ({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          href: item.href,
+          icon: item.icon,
+          completed: completionStatus[item.checkKey] || false,
+        }));
 
       setItems(checklistItems);
       setIsLoading(false);
