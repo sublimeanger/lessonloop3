@@ -2,6 +2,7 @@ import { PortalLayout } from '@/components/layout/PortalLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PortalSummaryStrip } from '@/components/portal/PortalSummaryStrip';
 import { ChildCard } from '@/components/portal/ChildCard';
+import { ThisWeekFocus } from '@/components/portal/ThisWeekFocus';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -47,30 +48,40 @@ export default function PortalHome() {
         currencyCode={currentOrg?.currency_code || 'GBP'}
       />
 
-      {/* Children Cards */}
-      <h2 className="text-lg font-semibold mb-4">Your Children</h2>
-      {childrenLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      {/* Main Content Grid */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Children Cards - 2/3 width on large screens */}
+        <div className="lg:col-span-2">
+          <h2 className="text-lg font-semibold mb-4">Your Children</h2>
+          {childrenLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : !children || children.length === 0 ? (
+            <div className="rounded-lg border bg-card p-8 text-center">
+              <p className="text-muted-foreground">No students linked to your account yet.</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Please contact the school or teacher if you believe this is an error.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {children.map((child) => (
+                <ChildCard
+                  key={child.id}
+                  child={child}
+                  currencyCode={currentOrg?.currency_code || 'GBP'}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      ) : !children || children.length === 0 ? (
-        <div className="rounded-lg border bg-card p-8 text-center">
-          <p className="text-muted-foreground">No students linked to your account yet.</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Please contact the school or teacher if you believe this is an error.
-          </p>
+
+        {/* This Week's Focus - 1/3 width on large screens */}
+        <div className="lg:col-span-1">
+          <ThisWeekFocus />
         </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {children.map((child) => (
-            <ChildCard
-              key={child.id}
-              child={child}
-              currencyCode={currentOrg?.currency_code || 'GBP'}
-            />
-          ))}
-        </div>
-      )}
+      </div>
 
       <RequestModal open={requestModalOpen} onOpenChange={setRequestModalOpen} />
     </PortalLayout>

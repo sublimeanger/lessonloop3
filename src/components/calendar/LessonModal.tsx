@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { format, addMinutes, setHours, setMinutes, startOfDay, parseISO } from 'date-fns';
+import { format, addMinutes, setHours, setMinutes, startOfDay, parseISO, addWeeks } from 'date-fns';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useTeachersAndLocations } from '@/hooks/useCalendarData';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { useNotesNotification } from '@/hooks/useNotesNotification';
+import { useClosurePatternCheck, formatClosureConflicts } from '@/hooks/useClosurePatternCheck';
 import { supabase } from '@/integrations/supabase/client';
 import { LessonWithDetails, LessonFormData, ConflictResult, LessonStatus, LessonType } from './types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -75,6 +76,23 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]);
   const [recurrenceEndDate, setRecurrenceEndDate] = useState<Date | null>(null);
+
+  // Calculate total lessons for closure pattern check
+  const estimatedTotalLessons = useMemo(() => {
+    if (!isRecurring || recurrenceDays.length === 0) return 0;
+    // Estimate based on 12 weeks if no end date
+    const endDate = recurrenceEndDate || addWeeks(selectedDate, 12);
+    const weeksDiff = Math.ceil((endDate.getTime() - selectedDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    return Math.max(1, Math.ceil(weeksDiff / 1) * recurrenceDays.length);
+  }, [isRecurring, recurrenceDays, recurrenceEndDate, selectedDate]);
+
+  // Check for closure date conflicts in recurring series
+  const closureCheck = useClosurePatternCheck(
+    isRecurring && recurrenceDays.length > 0 ? selectedDate : null,
+    1, // intervalWeeks - always 1 for now
+    estimatedTotalLessons,
+    locationId
+  );
 
   // Initialize form when modal opens
   useEffect(() => {
@@ -736,6 +754,28 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
                       </PopoverContent>
                     </Popover>
                   </div>
+
+                  {/* Closure pattern warnings */}
+                  {closureCheck.hasConflicts && (
+                    <Alert className="border-secondary bg-secondary/10">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        <p className="font-medium">{closureCheck.warningMessage}</p>
+                        <p className="text-xs mt-1 text-muted-foreground">
+                          These lessons will be skipped automatically.
+                        </p>
+                        {closureCheck.conflicts.length <= 5 && (
+                          <ul className="text-xs mt-2 space-y-0.5 text-muted-foreground">
+                            {closureCheck.conflicts.map((c, i) => (
+                              <li key={i}>
+                                • {format(c.date, 'EEE, d MMM')}: {c.reason}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
               )}
             </div>

@@ -12,10 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar, Clock, MapPin, User, Loader2, MessageSquare, CheckCircle, XCircle, AlertCircle, FileText } from 'lucide-react';
-import { format, parseISO, isAfter, isBefore, startOfToday } from 'date-fns';
-import { useParentLessons, useChildrenWithDetails } from '@/hooks/useParentPortal';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Calendar, Clock, MapPin, User, Loader2, MessageSquare, CheckCircle, XCircle, AlertCircle, FileText, CalendarClock } from 'lucide-react';
+import { format, parseISO, isAfter, isBefore, startOfToday, differenceInHours } from 'date-fns';
+import { useParentLessons, useChildrenWithDetails, useCreateMessageRequest } from '@/hooks/useParentPortal';
+import { useOrg } from '@/contexts/OrgContext';
 import { RequestModal } from '@/components/portal/RequestModal';
+import { RescheduleSlotPicker } from '@/components/portal/RescheduleSlotPicker';
+import { useToast } from '@/hooks/use-toast';
 
 export default function PortalSchedule() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -23,12 +27,25 @@ export default function PortalSchedule() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'scheduled' | 'completed' | 'cancelled'>('all');
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<{ id: string; title: string } | null>(null);
+  
+  // Reschedule slot picker state
+  const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
+  const [rescheduleLesson, setRescheduleLesson] = useState<{
+    id: string;
+    title: string;
+    start_at: string;
+    end_at: string;
+    teacher_user_id: string;
+  } | null>(null);
 
+  const { currentOrg } = useOrg();
+  const { toast } = useToast();
   const { data: children } = useChildrenWithDetails();
-  const { data: lessons, isLoading } = useParentLessons({
+  const { data: lessons, isLoading, refetch: refetchLessons } = useParentLessons({
     studentId: studentFilter || undefined,
     status: statusFilter === 'all' ? undefined : statusFilter,
   });
+  const createRequest = useCreateMessageRequest();
 
   const handleStudentChange = (value: string) => {
     if (value) {
@@ -41,6 +58,56 @@ export default function PortalSchedule() {
   const handleRequestChange = (lesson: { id: string; title: string }) => {
     setSelectedLesson(lesson);
     setRequestModalOpen(true);
+  };
+
+  // Handle one-tap reschedule with slot picker
+  const handleRescheduleClick = (lesson: {
+    id: string;
+    title: string;
+    start_at: string;
+    end_at: string;
+    teacher_user_id: string;
+  }) => {
+    setRescheduleLesson(lesson);
+    setRescheduleModalOpen(true);
+  };
+
+  // Check if cancellation is within notice period
+  const isWithinNoticeWindow = (startAt: string): boolean => {
+    const noticeHours = currentOrg?.cancellation_notice_hours || 24;
+    const lessonStart = parseISO(startAt);
+    const hoursUntil = differenceInHours(lessonStart, new Date());
+    return hoursUntil < noticeHours;
+  };
+
+  // Handle slot selection from picker
+  const handleSlotSelect = async (slot: { proposedStart: Date; proposedEnd: Date }) => {
+    if (!rescheduleLesson || !currentOrg) return;
+
+    const isLate = isWithinNoticeWindow(rescheduleLesson.start_at);
+    
+    try {
+      await createRequest.mutateAsync({
+        request_type: 'reschedule',
+        subject: `Reschedule Request: ${rescheduleLesson.title}`,
+        message: `I would like to reschedule my lesson from ${format(parseISO(rescheduleLesson.start_at), 'EEEE, d MMMM \'at\' HH:mm')} to:\n\n**Proposed new time:** ${format(slot.proposedStart, 'EEEE, d MMMM \'at\' HH:mm')} - ${format(slot.proposedEnd, 'HH:mm')}\n\n${isLate ? '⚠️ Note: This is a late cancellation request.' : ''}`,
+        lesson_id: rescheduleLesson.id,
+      });
+
+      toast({
+        title: 'Reschedule request sent',
+        description: 'The admin will review and confirm your new time.',
+      });
+
+      setRescheduleModalOpen(false);
+      setRescheduleLesson(null);
+    } catch (error) {
+      toast({
+        title: 'Failed to send request',
+        description: 'Please try again or contact support.',
+        variant: 'destructive',
+      });
+    }
   };
 
   // Split lessons into upcoming and past
@@ -159,14 +226,33 @@ export default function PortalSchedule() {
             )}
           </div>
 
-          {lesson.status === 'scheduled' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleRequestChange({ id: lesson.id, title: lesson.title })}
-            >
-              <MessageSquare className="h-4 w-4" />
-            </Button>
+          {lesson.status === 'scheduled' && !isPast && (
+            <div className="flex flex-col gap-1">
+              {/* One-tap reschedule button */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                onClick={() => handleRescheduleClick({
+                  id: lesson.id,
+                  title: lesson.title,
+                  start_at: lesson.start_at,
+                  end_at: lesson.end_at,
+                  teacher_user_id: lesson.teacher_user_id,
+                })}
+              >
+                <CalendarClock className="h-4 w-4" />
+                <span className="hidden sm:inline">Reschedule</span>
+              </Button>
+              {/* Message button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleRequestChange({ id: lesson.id, title: lesson.title })}
+              >
+                <MessageSquare className="h-4 w-4" />
+              </Button>
+            </div>
           )}
         </div>
       </CardContent>
@@ -264,6 +350,32 @@ export default function PortalSchedule() {
         lessonId={selectedLesson?.id}
         lessonTitle={selectedLesson?.title}
       />
+
+      {/* Reschedule Slot Picker Modal */}
+      <Dialog open={rescheduleModalOpen} onOpenChange={setRescheduleModalOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Request Reschedule</DialogTitle>
+          </DialogHeader>
+          {rescheduleLesson && currentOrg && (
+            <RescheduleSlotPicker
+              lessonId={rescheduleLesson.id}
+              lessonTitle={rescheduleLesson.title}
+              originalStart={rescheduleLesson.start_at}
+              originalEnd={rescheduleLesson.end_at}
+              teacherUserId={rescheduleLesson.teacher_user_id}
+              orgId={currentOrg.id}
+              onSlotSelect={handleSlotSelect}
+              onCancel={() => {
+                setRescheduleModalOpen(false);
+                setRescheduleLesson(null);
+              }}
+              isLateCancel={isWithinNoticeWindow(rescheduleLesson.start_at)}
+              cancellationNoticeHours={currentOrg.cancellation_notice_hours || 24}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </PortalLayout>
   );
 }
