@@ -1,8 +1,12 @@
 import { Card, CardContent } from '@/components/ui/card';
-import { Calendar, Receipt, AlertCircle, MessageSquare } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Calendar, Receipt, AlertCircle, MessageSquare, CreditCard, Loader2 } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
+import { useStripePayment } from '@/hooks/useStripePayment';
+import { useState } from 'react';
 
 interface SummaryData {
   nextLesson: {
@@ -15,6 +19,7 @@ interface SummaryData {
   outstandingBalance: number;
   overdueInvoices: number;
   unreadMessages: number;
+  oldestUnpaidInvoiceId?: string | null;
 }
 
 interface PortalSummaryStripProps {
@@ -24,6 +29,16 @@ interface PortalSummaryStripProps {
 }
 
 export function PortalSummaryStrip({ data, isLoading, currencyCode = 'GBP' }: PortalSummaryStripProps) {
+  const { initiatePayment, isLoading: isPaymentLoading } = useStripePayment();
+  const [isInitiatingPayment, setIsInitiatingPayment] = useState(false);
+
+  const handlePayNow = async () => {
+    if (!data?.oldestUnpaidInvoiceId) return;
+    setIsInitiatingPayment(true);
+    await initiatePayment(data.oldestUnpaidInvoiceId);
+    // Note: page will redirect to Stripe, so we don't need to reset state
+  };
+
   if (isLoading) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
@@ -41,6 +56,7 @@ export function PortalSummaryStrip({ data, isLoading, currencyCode = 'GBP' }: Po
 
   const hasOverdue = (data?.overdueInvoices || 0) > 0;
   const hasBalance = (data?.outstandingBalance || 0) > 0;
+  const canPay = hasBalance && data?.oldestUnpaidInvoiceId;
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
@@ -65,31 +81,63 @@ export function PortalSummaryStrip({ data, isLoading, currencyCode = 'GBP' }: Po
         </CardContent>
       </Card>
 
-      {/* Outstanding Balance */}
-      <Card className={hasBalance ? 'border-amber-200 dark:border-amber-800' : ''}>
+      {/* Outstanding Balance - Enhanced with Pay Now */}
+      <Card className={hasOverdue ? 'border-destructive bg-destructive/5' : hasBalance ? 'border-amber-200 dark:border-amber-800' : ''}>
         <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-            <Receipt className="h-4 w-4" />
-            Outstanding Balance
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Receipt className="h-4 w-4" />
+              Outstanding Balance
+            </div>
+            {hasOverdue && (
+              <Badge variant="destructive" className="text-xs font-semibold">
+                OVERDUE
+              </Badge>
+            )}
           </div>
-          <p className={`text-xl font-bold ${hasBalance ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
-            {hasBalance ? formatCurrencyMinor(data?.outstandingBalance || 0, currencyCode) : 'Paid up'}
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className={`text-xl font-bold ${hasOverdue ? 'text-destructive' : hasBalance ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
+              {hasBalance ? formatCurrencyMinor(data?.outstandingBalance || 0, currencyCode) : 'Paid up'}
+            </p>
+            {canPay && (
+              <Button 
+                size="sm" 
+                variant={hasOverdue ? "destructive" : "default"}
+                onClick={handlePayNow}
+                disabled={isPaymentLoading || isInitiatingPayment}
+                className="gap-1.5"
+              >
+                {(isPaymentLoading || isInitiatingPayment) ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <CreditCard className="h-3.5 w-3.5" />
+                )}
+                Pay Now
+              </Button>
+            )}
+          </div>
+          {hasOverdue && (
+            <p className="text-xs text-destructive mt-1 font-medium">
+              {data?.overdueInvoices} invoice{data?.overdueInvoices !== 1 ? 's' : ''} past due date
+            </p>
+          )}
         </CardContent>
       </Card>
 
-      {/* Overdue Invoices */}
-      <Card className={hasOverdue ? 'border-destructive' : ''}>
+      {/* Overdue Invoices - Enhanced urgency */}
+      <Card className={hasOverdue ? 'border-destructive bg-destructive/5' : ''}>
         <CardContent className="p-4">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-            <AlertCircle className="h-4 w-4" />
+            <AlertCircle className={`h-4 w-4 ${hasOverdue ? 'text-destructive' : ''}`} />
             Overdue Invoices
           </div>
           <p className={`text-xl font-bold ${hasOverdue ? 'text-destructive' : ''}`}>
             {data?.overdueInvoices || 0}
           </p>
-          {hasOverdue && (
-            <p className="text-xs text-destructive">Action required</p>
+          {hasOverdue ? (
+            <p className="text-xs text-destructive font-medium">Action required</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">All up to date</p>
           )}
         </CardContent>
       </Card>

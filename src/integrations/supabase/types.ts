@@ -567,6 +567,7 @@ export type Database = {
       invoice_items: {
         Row: {
           amount_minor: number
+          calculation_notes: string | null
           created_at: string
           description: string
           id: string
@@ -574,11 +575,13 @@ export type Database = {
           linked_lesson_id: string | null
           org_id: string
           quantity: number
+          source_rate_card_id: string | null
           student_id: string | null
           unit_price_minor: number
         }
         Insert: {
           amount_minor: number
+          calculation_notes?: string | null
           created_at?: string
           description: string
           id?: string
@@ -586,11 +589,13 @@ export type Database = {
           linked_lesson_id?: string | null
           org_id: string
           quantity?: number
+          source_rate_card_id?: string | null
           student_id?: string | null
           unit_price_minor: number
         }
         Update: {
           amount_minor?: number
+          calculation_notes?: string | null
           created_at?: string
           description?: string
           id?: string
@@ -598,6 +603,7 @@ export type Database = {
           linked_lesson_id?: string | null
           org_id?: string
           quantity?: number
+          source_rate_card_id?: string | null
           student_id?: string | null
           unit_price_minor?: number
         }
@@ -621,6 +627,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_source_rate_card_id_fkey"
+            columns: ["source_rate_card_id"]
+            isOneToOne: false
+            referencedRelation: "rate_cards"
             referencedColumns: ["id"]
           },
           {
@@ -762,6 +775,9 @@ export type Database = {
       }
       lessons: {
         Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           created_at: string
           created_by: string
           end_at: string
@@ -781,6 +797,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           created_by: string
           end_at: string
@@ -800,6 +819,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           created_by?: string
           end_at?: string
@@ -1253,8 +1275,10 @@ export type Database = {
       organisations: {
         Row: {
           address: string | null
+          auto_pause_lessons_after_days: number | null
           billing_approach: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures: boolean
+          buffer_minutes_between_locations: number | null
           cancellation_notice_hours: number
           country_code: string
           created_at: string
@@ -1275,6 +1299,7 @@ export type Database = {
           max_teachers: number
           name: string
           org_type: Database["public"]["Enums"]["org_type"]
+          overdue_reminder_days: number[] | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_plan: Database["public"]["Enums"]["subscription_plan"]
@@ -1287,8 +1312,10 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          auto_pause_lessons_after_days?: number | null
           billing_approach?: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures?: boolean
+          buffer_minutes_between_locations?: number | null
           cancellation_notice_hours?: number
           country_code?: string
           created_at?: string
@@ -1309,6 +1336,7 @@ export type Database = {
           max_teachers?: number
           name: string
           org_type?: Database["public"]["Enums"]["org_type"]
+          overdue_reminder_days?: number[] | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
@@ -1321,8 +1349,10 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          auto_pause_lessons_after_days?: number | null
           billing_approach?: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures?: boolean
+          buffer_minutes_between_locations?: number | null
           cancellation_notice_hours?: number
           country_code?: string
           created_at?: string
@@ -1343,6 +1373,7 @@ export type Database = {
           max_teachers?: number
           name?: string
           org_type?: Database["public"]["Enums"]["org_type"]
+          overdue_reminder_days?: number[] | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
@@ -1707,6 +1738,7 @@ export type Database = {
           created_at: string
           days_of_week: number[]
           end_date: string | null
+          exception_dates: string[] | null
           id: string
           interval_weeks: number
           org_id: string
@@ -1718,6 +1750,7 @@ export type Database = {
           created_at?: string
           days_of_week?: number[]
           end_date?: string | null
+          exception_dates?: string[] | null
           id?: string
           interval_weeks?: number
           org_id: string
@@ -1729,6 +1762,7 @@ export type Database = {
           created_at?: string
           days_of_week?: number[]
           end_date?: string | null
+          exception_dates?: string[] | null
           id?: string
           interval_weeks?: number
           org_id?: string
@@ -1851,6 +1885,7 @@ export type Database = {
           created_at: string
           id: string
           location_id: string
+          max_capacity: number | null
           name: string
           org_id: string
           updated_at: string
@@ -1860,6 +1895,7 @@ export type Database = {
           created_at?: string
           id?: string
           location_id: string
+          max_capacity?: number | null
           name: string
           org_id: string
           updated_at?: string
@@ -1869,6 +1905,7 @@ export type Database = {
           created_at?: string
           id?: string
           location_id?: string
+          max_capacity?: number | null
           name?: string
           org_id?: string
           updated_at?: string
@@ -1966,6 +2003,9 @@ export type Database = {
           id: string
           is_primary_payer: boolean
           org_id: string
+          receives_billing: boolean | null
+          receives_practice: boolean | null
+          receives_schedule: boolean | null
           relationship: Database["public"]["Enums"]["relationship_type"]
           student_id: string
         }
@@ -1975,6 +2015,9 @@ export type Database = {
           id?: string
           is_primary_payer?: boolean
           org_id: string
+          receives_billing?: boolean | null
+          receives_practice?: boolean | null
+          receives_schedule?: boolean | null
           relationship?: Database["public"]["Enums"]["relationship_type"]
           student_id: string
         }
@@ -1984,6 +2027,9 @@ export type Database = {
           id?: string
           is_primary_payer?: boolean
           org_id?: string
+          receives_billing?: boolean | null
+          receives_practice?: boolean | null
+          receives_schedule?: boolean | null
           relationship?: Database["public"]["Enums"]["relationship_type"]
           student_id?: string
         }

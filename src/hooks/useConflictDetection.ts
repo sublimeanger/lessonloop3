@@ -1,4 +1,4 @@
-import { format, getDay } from 'date-fns';
+import { format, getDay, differenceInMinutes, addMinutes, subMinutes } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { ConflictResult } from '@/components/calendar/types';
@@ -105,15 +105,19 @@ export function useConflictDetection() {
       });
     }
 
-    // Check teacher lesson overlap
+    // Check teacher lesson overlap WITH travel buffer
+    const bufferMinutes = (currentOrg as any).buffer_minutes_between_locations || 0;
+    const bufferedStart = bufferMinutes > 0 ? subMinutes(start_at, bufferMinutes) : start_at;
+    const bufferedEnd = bufferMinutes > 0 ? addMinutes(end_at, bufferMinutes) : end_at;
+
     let teacherQuery = supabase
       .from('lessons')
-      .select('id, title, start_at, end_at')
+      .select('id, title, start_at, end_at, location_id')
       .eq('org_id', currentOrg.id)
       .eq('teacher_user_id', teacher_user_id)
       .neq('status', 'cancelled')
-      .lt('start_at', end_at.toISOString())
-      .gt('end_at', start_at.toISOString());
+      .lt('start_at', bufferedEnd.toISOString())
+      .gt('end_at', bufferedStart.toISOString());
 
     if (exclude_lesson_id) {
       teacherQuery = teacherQuery.neq('id', exclude_lesson_id);
@@ -122,15 +126,51 @@ export function useConflictDetection() {
     const { data: teacherLessons } = await teacherQuery;
 
     if (teacherLessons && teacherLessons.length > 0) {
-      conflicts.push({
-        type: 'teacher',
-        severity: 'error',
-        message: `Teacher already has a lesson at this time: ${teacherLessons[0].title}`,
+      // Check if it's a direct overlap or just a buffer issue
+      const directOverlap = teacherLessons.find(l => {
+        const lStart = new Date(l.start_at);
+        const lEnd = new Date(l.end_at);
+        return lStart < end_at && lEnd > start_at;
       });
+
+      if (directOverlap) {
+        conflicts.push({
+          type: 'teacher',
+          severity: 'error',
+          message: `Teacher already has a lesson at this time: ${directOverlap.title}`,
+        });
+      } else if (bufferMinutes > 0) {
+        // It's a buffer issue - check if at different locations
+        const bufferConflict = teacherLessons.find(l => l.location_id !== location_id);
+        if (bufferConflict) {
+          conflicts.push({
+            type: 'teacher',
+            severity: 'warning',
+            message: `Teacher needs ${bufferMinutes} min travel buffer between locations. Next lesson: ${bufferConflict.title}`,
+          });
+        }
+      }
     }
 
-    // Check room overlap
+    // Check room overlap AND capacity
     if (room_id) {
+      // Get room capacity
+      const { data: room } = await supabase
+        .from('rooms')
+        .select('name, max_capacity')
+        .eq('id', room_id)
+        .single();
+
+      // Check capacity for group lessons
+      if (room && room.max_capacity && student_ids.length > room.max_capacity) {
+        conflicts.push({
+          type: 'room',
+          severity: 'error',
+          message: `Room "${room.name}" has a capacity of ${room.max_capacity} students, but ${student_ids.length} are assigned`,
+        });
+      }
+
+      // Check booking conflicts
       let roomQuery = supabase
         .from('lessons')
         .select('id, title, start_at, end_at')
