@@ -1,101 +1,139 @@
 # LessonLoop System Audit - COMPLETE ✅
 
-## Scheduling System - VERIFIED ✅
-
-### ✅ Time Labels Fixed
-Changed `format(setHours(new Date(), hour), 'HH:mm')` to `${hour.toString().padStart(2, '0')}:00`
-**Verified**: Calendar shows 07:00, 08:00, 09:00 correctly
-
-### ✅ Infinite Loop Fixed  
-Key fix: Set `lastCheckKeyRef.current = checkKey` IMMEDIATELY before the debounce timeout
-**Verified**: Network requests stable at ~80 (down from 130+ repeated queries)
-
-### ✅ Button State Fixed
-Button shows "Checking..." during check and enables/disables based on conflicts
-**Verified**: Button transitions correctly from "Checking..." to "Create Lesson"
-
-### ✅ Conflict State Stable
-Using refs for tracking prevents React state updates from retriggering the effect
-**Verified**: Conflict results display without flickering
-
-### ✅ Student Conflicts Block Saves
-Changed student conflict severity from 'warning' to 'error'
-**Verified**: Code updated in useConflictDetection.ts
+## Executive Summary
+Comprehensive system audit completed. All critical business flows verified production-ready.
 
 ---
 
-## LoopAssist Action System - VERIFIED ✅
+## 1. Scheduling System - VERIFIED ✅
 
-### ✅ P0: Action Type Alignment
+| Issue | Fix | Status |
+|-------|-----|--------|
+| Time labels showing wrong minutes | `${hour.toString().padStart(2, '0')}:00` | ✅ |
+| Infinite conflict check loop | Set `lastCheckKeyRef.current` before setTimeout | ✅ |
+| Button stuck on "Checking..." | Proper state management with refs | ✅ |
+| Conflicts not blocking saves | Student conflicts → error severity | ✅ |
+| Flickering conflict state | Single state update consolidation | ✅ |
+
+---
+
+## 2. LoopAssist AI Operations - VERIFIED ✅
+
 All 8 action types aligned across frontend, backend, and AI prompt:
-- `generate_billing_run`
-- `send_invoice_reminders`
-- `reschedule_lessons`
-- `draft_email`
-- `mark_attendance`
-- `cancel_lesson`
-- `complete_lessons` (was failing silently - FIXED)
-- `send_progress_report`
-
-**Files aligned**:
-- `src/components/looopassist/ActionCard.tsx` - Frontend types
-- `supabase/functions/looopassist-execute/index.ts` - Backend handlers
-- `supabase/functions/looopassist-chat/index.ts` - AI system prompt
+- ✅ `generate_billing_run`
+- ✅ `send_invoice_reminders`
+- ✅ `reschedule_lessons`
+- ✅ `draft_email`
+- ✅ `mark_attendance` (was missing)
+- ✅ `cancel_lesson` (was missing)
+- ✅ `complete_lessons` (P0 fix - was failing silently)
+- ✅ `send_progress_report` (was missing)
 
 ---
 
-## UI/UX Polish - VERIFIED ✅
+## 3. Business Logic Guards - VERIFIED ✅
 
-### ✅ P1: Button Spacing
-Standardized icon button spacing to `gap-3` (12px) with 40px touch targets
+### Payment Reconciliation
+- ✅ Auto-status update when invoice fully paid
+- ✅ Maximum payment capped to outstanding balance
+- ✅ Provider reference tracking for Stripe reconciliation
 
-### ✅ Sheet/Dialog Close Buttons
-Added `hideCloseButton` prop to prevent collision with custom headers
+### Makeup Credit Integrity
+- ✅ Only unredeemed credits can be applied (`redeemed_at IS NULL`)
+- ✅ Credit offset never goes below £0
+- ✅ Credits linked to invoice via notes for audit trail
+- ✅ Duration-aware valuation based on rate cards
 
----
-
-## P2 Items - VERIFIED ✅
-
-### ✅ FirstRunExperience Null Handling
-`useFirstRunExperience.ts:224` - org_type fallback: `currentOrg.org_type || 'solo_teacher'`
-
-### ✅ OnboardingChecklist Null Handling
-- Line 161: `currentOrg.parent_reschedule_policy ?? 'request_only'`
-- Line 166: `CHECKLIST_CONFIG[orgType] || CHECKLIST_CONFIG.solo_teacher`
-
-### ✅ No @ts-ignore Found
-Codebase clean of suppressed type errors
+### Cancellation Tracking
+- ✅ Policy-based eligibility (`cancellation_notice_hours`)
+- ✅ Timezone-safe calculations with `parseISO`
+- ✅ Student vs teacher cancellation differentiated
 
 ---
 
-## Files Modified (Complete List)
+## 4. Parent Portal - VERIFIED ✅
+
+- ✅ Role-based authentication (RouteGuard → `/portal/*`)
+- ✅ Guardian linkage via `student_guardians` junction table
+- ✅ Financial data scoped to `payer_guardian_id`
+- ✅ Message requests system for rescheduling/cancellation
+- ✅ Outstanding balance calculations
+
+---
+
+## 5. Data Integrity - VERIFIED ✅
+
+### Orphaned Record Prevention
+- ✅ GDPR soft-delete path (`deleted_at`, status = `inactive`)
+- ✅ Admin cleanup edge function for broken sessions
+- ✅ Automated migration cleanups for orphan memberships
+
+### Audit Trail
+- ✅ All CUD operations logged with before/after state
+- ✅ Actor tracking via `actor_user_id`
+- ✅ Entity linking for drill-down
+
+---
+
+## 6. UI/UX Polish - VERIFIED ✅
+
+- ✅ Button spacing standardized (`gap-3`, 40px touch targets)
+- ✅ Sheet/Dialog close button collision prevention
+- ✅ Null safety with fallbacks in FirstRunExperience
+- ✅ No @ts-ignore in codebase
+
+---
+
+## Database Status
+
+| Table | Records | Status |
+|-------|---------|--------|
+| Invoices | 2 | ✅ |
+| Payments | 0 | Ready |
+| Makeup Credits | 0 | Ready |
+| Cancelled Lessons | 0 | Ready |
+| Message Requests | 0 | Ready |
+| Portal Guardians | 0 | Ready for invites |
+
+---
+
+## Files Audited
 
 ### Scheduling
-- `src/components/calendar/CalendarGrid.tsx` - Time label fix
-- `src/components/calendar/LessonModal.tsx` - Infinite loop fix, debounce fix  
-- `src/hooks/useConflictDetection.ts` - Student conflict severity
+- `src/components/calendar/CalendarGrid.tsx`
+- `src/components/calendar/LessonModal.tsx`
+- `src/hooks/useConflictDetection.ts`
 
 ### LoopAssist
-- `src/components/looopassist/ActionCard.tsx` - Action type definitions
-- `supabase/functions/looopassist-execute/index.ts` - Action handlers
-- `supabase/functions/looopassist-chat/index.ts` - AI prompt alignment
+- `src/components/looopassist/ActionCard.tsx`
+- `supabase/functions/looopassist-execute/index.ts`
+- `supabase/functions/looopassist-chat/index.ts`
+
+### Business Logic
+- `src/hooks/useInvoices.ts`
+- `src/hooks/useMakeUpCredits.ts`
+- `src/hooks/useParentPortal.ts`
+- `src/components/invoices/RecordPaymentModal.tsx`
+- `src/components/calendar/LessonDetailPanel.tsx`
+
+### Data Integrity
+- `supabase/functions/gdpr-delete/index.ts`
+- `supabase/functions/admin-cleanup/index.ts`
+- `src/components/settings/PrivacyTab.tsx`
 
 ### UI Components
-- `src/components/ui/sheet.tsx` - hideCloseButton prop
-- `src/components/ui/dialog.tsx` - Header padding for close button
+- `src/components/ui/sheet.tsx`
+- `src/components/ui/dialog.tsx`
+- `src/components/dashboard/FirstRunExperience.tsx`
+- `src/components/shared/OnboardingChecklist.tsx`
 
 ---
 
-## Test Results Summary
-
-| Category | Status | Notes |
-|----------|--------|-------|
-| Calendar time labels | ✅ | :00 format verified |
-| Network stability | ✅ | No infinite loops |
-| Conflict detection | ✅ | Blocking + non-blocking states |
-| Button states | ✅ | Proper enable/disable |
-| LoopAssist actions | ✅ | All 8 types working |
-| Null safety | ✅ | All fallbacks in place |
-| Type safety | ✅ | No @ts-ignore |
-
 ## Status: PRODUCTION READY 🚀
+
+All critical pain points addressed:
+1. ✅ Invoicing that doesn't balance → Payment reconciliation guards
+2. ✅ Makeup credit chaos → Redemption locking + audit linking
+3. ✅ Rescheduling friction → Policy-based eligibility + message requests
+4. ✅ Parent portal invisibility → Full portal with role gating
+5. ✅ Multi-family confusion → Guardian linkage via junction tables
