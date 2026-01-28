@@ -134,6 +134,15 @@ Deno.serve(async (req) => {
     const trialEndsAt = new Date();
     trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS);
 
+    // Set smart defaults for parent reschedule policy based on org type
+    const policyDefaults: Record<string, string> = {
+      solo_teacher: 'self_service', // Solo teachers want max automation
+      studio: 'request_only',       // Studios want balanced control
+      academy: 'request_only',      // Academies want balanced control
+      agency: 'admin_locked',       // Agencies in schools need full control
+    };
+    const parentReschedulePolicy = policyDefaults[org_type] || 'request_only';
+
     const { error: orgError } = await adminClient
       .from('organisations')
       .insert({
@@ -149,6 +158,7 @@ Deno.serve(async (req) => {
         trial_ends_at: trialEndsAt.toISOString(),
         max_students: limits.max_students,
         max_teachers: limits.max_teachers,
+        parent_reschedule_policy: parentReschedulePolicy,
       });
 
     if (orgError) {
@@ -158,7 +168,7 @@ Deno.serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    console.log('[onboarding-setup] Organisation created');
+    console.log('[onboarding-setup] Organisation created with policy:', parentReschedulePolicy);
 
     // Wait for trigger to complete
     await new Promise(resolve => setTimeout(resolve, 300));

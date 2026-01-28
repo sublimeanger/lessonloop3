@@ -15,7 +15,9 @@ import {
   StatCard, 
   DashboardHero, 
   TodayTimeline, 
-  QuickActionsGrid 
+  QuickActionsGrid,
+  FirstRunExperience,
+  UrgentActionsBar,
 } from '@/components/dashboard';
 import { 
   Calendar, Users, Receipt, Clock, TrendingUp, 
@@ -143,6 +145,16 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
           />
         </motion.div>
 
+        {/* First Run Experience */}
+        <motion.div variants={itemVariants}>
+          <FirstRunExperience />
+        </motion.div>
+
+        {/* Urgent Actions Bar */}
+        <motion.div variants={itemVariants}>
+          <UrgentActionsBar />
+        </motion.div>
+
         {/* Upgrade Banner */}
         <motion.div variants={itemVariants}>
           <UpgradeBanner />
@@ -232,6 +244,16 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
             currencyCode={currentOrg?.currency_code}
             hasStudents={(stats?.activeStudents ?? 0) > 0}
           />
+        </motion.div>
+
+        {/* First Run Experience */}
+        <motion.div variants={itemVariants}>
+          <FirstRunExperience />
+        </motion.div>
+
+        {/* Urgent Actions Bar */}
+        <motion.div variants={itemVariants}>
+          <UrgentActionsBar />
         </motion.div>
 
         {/* Upgrade Banner */}
@@ -327,6 +349,11 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
             todayLessons={stats?.todayLessons}
             hasStudents={(stats?.myStudentsCount ?? 0) > 0}
           />
+        </motion.div>
+
+        {/* Urgent Actions Bar */}
+        <motion.div variants={itemVariants}>
+          <UrgentActionsBar />
         </motion.div>
 
         {/* Upgrade Banner */}

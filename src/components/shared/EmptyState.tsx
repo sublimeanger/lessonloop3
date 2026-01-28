@@ -14,6 +14,9 @@ interface EmptyStateProps {
   children?: ReactNode;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
+  // New: Visual preview of what the populated state looks like
+  previewImage?: string;
+  previewAlt?: string;
 }
 
 export function EmptyState({
@@ -27,6 +30,8 @@ export function EmptyState({
   children,
   size = 'md',
   className,
+  previewImage,
+  previewAlt,
 }: EmptyStateProps) {
   const sizes = {
     sm: {
@@ -64,6 +69,17 @@ export function EmptyState({
       role="status"
       aria-label={title}
     >
+      {/* Preview image if provided */}
+      {previewImage && (
+        <div className="mb-4 w-full max-w-xs opacity-60">
+          <img 
+            src={previewImage} 
+            alt={previewAlt || 'Preview of what this will look like'} 
+            className="w-full h-auto rounded-lg"
+          />
+        </div>
+      )}
+      
       <div 
         className={cn(
           'mx-auto flex items-center justify-center rounded-full bg-muted transition-transform',
