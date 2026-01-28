@@ -70,10 +70,23 @@ export function useUpdateMessageRequest() {
     }) => {
       if (!currentOrg) throw new Error('No organisation');
 
-      const updateData: Record<string, unknown> = { status };
+      const updateData: Record<string, unknown> = { 
+        status,
+        responded_at: new Date().toISOString(),
+      };
       if (adminResponse) {
         updateData.admin_response = adminResponse;
       }
+
+      // Get the request first to find the guardian for notification
+      const { data: request, error: fetchError } = await supabase
+        .from('message_requests')
+        .select('guardian_id, subject, guardians(email, full_name)')
+        .eq('id', requestId)
+        .eq('org_id', currentOrg.id)
+        .single();
+
+      if (fetchError) throw fetchError;
 
       const { error } = await supabase
         .from('message_requests')
@@ -82,10 +95,35 @@ export function useUpdateMessageRequest() {
         .eq('org_id', currentOrg.id);
 
       if (error) throw error;
+
+      // P2 Fix: Log notification to message_log when request is updated
+      const guardian = request.guardians as { email: string | null; full_name: string } | null;
+      if (guardian?.email && (status === 'approved' || status === 'declined')) {
+        const statusMessage = status === 'approved' 
+          ? 'Your request has been approved.'
+          : 'Your request has been declined.';
+        
+        await supabase.from('message_log').insert({
+          org_id: currentOrg.id,
+          recipient_email: guardian.email,
+          recipient_name: guardian.full_name,
+          recipient_type: 'guardian',
+          recipient_id: request.guardian_id,
+          subject: `Update: ${request.subject}`,
+          body: `${statusMessage}${adminResponse ? `\n\nResponse: ${adminResponse}` : ''}`,
+          message_type: 'request_update',
+          status: 'sent',
+          sent_at: new Date().toISOString(),
+          related_id: requestId,
+        });
+      }
+
+      return { status, guardianNotified: !!guardian?.email };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-message-requests'] });
-      toast({ title: 'Request updated', description: 'The request status has been updated.' });
+      const notifyMsg = data.guardianNotified ? ' Parent has been notified.' : '';
+      toast({ title: 'Request updated', description: `The request status has been updated.${notifyMsg}` });
     },
     onError: (error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });

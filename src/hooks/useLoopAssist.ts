@@ -290,7 +290,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
       if (variables.action === 'confirm') {
         toast.success(data.result?.message || 'Action executed successfully');
         
-        // Add result message to conversation
+        // Add result message to conversation and scroll to bottom
         if (currentConversationId && currentOrg?.id && user?.id) {
           const resultMessage = typeof data.result?.message === 'string' 
             ? data.result.message 
@@ -304,6 +304,13 @@ export function useLoopAssist(externalPageContext?: PageContext) {
             content: `✅ **Action Executed**\n\n${resultMessage}`,
           }).then(() => {
             queryClient.invalidateQueries({ queryKey: ['ai-messages', currentConversationId] });
+            // P2 Fix: Scroll to bottom after action completion
+            setTimeout(() => {
+              const messagesContainer = document.querySelector('[data-loop-assist-messages]');
+              if (messagesContainer) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+              }
+            }, 100);
           });
         }
       } else {

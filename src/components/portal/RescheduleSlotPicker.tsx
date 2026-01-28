@@ -112,14 +112,13 @@ export function RescheduleSlotPicker({
       b => b.day_of_week.toLowerCase() === dayName
     ) || [];
 
-    if (dayBlocks.length === 0) {
-      // Default availability: 9am-6pm
-      dayBlocks.push({
-        id: 'default',
-        start_time_local: '09:00',
-        end_time_local: '18:00',
-        day_of_week: dayName,
-      } as any);
+    // P2 Fix: Don't use hardcoded fallback - if no availability configured, show empty
+    // Only use fallback if we're still loading or haven't fetched yet
+    const hasConfiguredAvailability = availabilityBlocks && availabilityBlocks.length > 0;
+    
+    if (dayBlocks.length === 0 && !hasConfiguredAvailability) {
+      // No availability configured at all - return empty to show message
+      return [];
     }
 
     const slots: AvailableSlot[] = [];
@@ -239,7 +238,11 @@ export function RescheduleSlotPicker({
             ) : availableSlots.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p>No available slots on this date.</p>
-                <p className="text-sm mt-1">Try selecting a different day.</p>
+                <p className="text-sm mt-1">
+                  {availabilityBlocks && availabilityBlocks.length === 0 
+                    ? 'Teacher availability has not been configured. Please contact your teacher to arrange a new time.'
+                    : 'Try selecting a different day.'}
+                </p>
               </div>
             ) : (
               <ScrollArea className="h-64">

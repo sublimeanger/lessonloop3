@@ -89,7 +89,9 @@ export function useCreateBillingRun() {
       const billedLessonIds = new Set(billedItems?.map((i) => i.linked_lesson_id) || []);
       const unbilledLessons = lessons?.filter((l) => !billedLessonIds.has(l.id)) || [];
 
-      // Group lessons by payer (guardian or adult student)
+      // P0 Fix: Group lessons by payer with deduplication to prevent duplicate invoices
+      // Use a Set to track lesson IDs already added to each payer to prevent counting
+      // the same lesson multiple times for multi-student lessons
       const payerGroups = new Map<
         string,
         {
@@ -98,6 +100,7 @@ export function useCreateBillingRun() {
           payerName: string;
           payerEmail: string | null;
           lessons: typeof unbilledLessons;
+          addedLessonIds: Set<string>; // Track which lessons are already added
         }
       >();
 
@@ -120,9 +123,15 @@ export function useCreateBillingRun() {
                 payerName: primaryGuardian.full_name,
                 payerEmail: primaryGuardian.email,
                 lessons: [],
+                addedLessonIds: new Set(),
               });
             }
-            payerGroups.get(key)!.lessons.push(lesson);
+            const group = payerGroups.get(key)!;
+            // Only add lesson if not already added for this payer (deduplication)
+            if (!group.addedLessonIds.has(lesson.id)) {
+              group.lessons.push(lesson);
+              group.addedLessonIds.add(lesson.id);
+            }
           } else if (student.email) {
             // Adult student pays for themselves
             const key = `student-${student.id}`;
@@ -133,9 +142,14 @@ export function useCreateBillingRun() {
                 payerName: `${student.first_name} ${student.last_name}`,
                 payerEmail: student.email,
                 lessons: [],
+                addedLessonIds: new Set(),
               });
             }
-            payerGroups.get(key)!.lessons.push(lesson);
+            const group = payerGroups.get(key)!;
+            if (!group.addedLessonIds.has(lesson.id)) {
+              group.lessons.push(lesson);
+              group.addedLessonIds.add(lesson.id);
+            }
           }
         });
       });

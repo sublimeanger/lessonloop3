@@ -609,10 +609,11 @@ async function executeCancelLesson(
     throw new Error("lesson_ids are required");
   }
 
+  // P0 Fix: Include end_at for duration-aware credit calculation
   const { data: lessons, error } = await supabase
     .from("lessons")
     .select(`
-      id, title, start_at, status,
+      id, title, start_at, end_at, status,
       lesson_participants(student_id, students(id, first_name, last_name))
     `)
     .eq("org_id", orgId)
@@ -620,6 +621,13 @@ async function executeCancelLesson(
     .eq("status", "scheduled");
 
   if (error) throw error;
+
+  // Fetch all rate cards for duration-aware credit calculation
+  const { data: rateCards } = await supabase
+    .from("rate_cards")
+    .select("id, duration_minutes, rate_amount, is_default")
+    .eq("org_id", orgId)
+    .order("duration_minutes", { ascending: true });
 
   let cancelledCount = 0;
   let creditsIssued = 0;
@@ -640,25 +648,35 @@ async function executeCancelLesson(
     cancelledCount++;
     results.push(`${lesson.title}: Cancelled`);
 
-    // Issue make-up credits if requested
+    // Issue make-up credits if requested - now with duration-aware pricing
     if (issueCredit && lesson.lesson_participants) {
+      // Calculate lesson duration in minutes
+      const lessonStart = new Date(lesson.start_at);
+      const lessonEnd = new Date(lesson.end_at);
+      const durationMins = Math.round((lessonEnd.getTime() - lessonStart.getTime()) / 60000);
+
+      // Find rate card matching duration, or use default
+      let creditValue = 3000; // fallback
+      if (rateCards && rateCards.length > 0) {
+        // Find exact match or closest lower duration
+        const matchingCard = rateCards.find((rc: { duration_minutes: number }) => rc.duration_minutes === durationMins) ||
+          rateCards.filter((rc: { duration_minutes: number }) => rc.duration_minutes <= durationMins).pop() ||
+          rateCards.find((rc: { is_default: boolean }) => rc.is_default) ||
+          rateCards[0];
+        
+        if (matchingCard?.rate_amount) {
+          creditValue = Math.round(Number(matchingCard.rate_amount) * 100);
+        }
+      }
+
       for (const participant of lesson.lesson_participants) {
         if (participant.students) {
-          const { data: rateCard } = await supabase
-            .from("rate_cards")
-            .select("rate_amount")
-            .eq("org_id", orgId)
-            .eq("is_default", true)
-            .single();
-
-          const creditValue = rateCard?.rate_amount ? Math.round(Number(rateCard.rate_amount) * 100) : 3000;
-
           await supabase.from("make_up_credits").insert({
             org_id: orgId,
             student_id: participant.student_id,
             issued_for_lesson_id: lesson.id,
             credit_value_minor: creditValue,
-            notes: `Issued for cancelled lesson: ${lesson.title}`,
+            notes: `Issued for cancelled ${durationMins}min lesson: ${lesson.title}`,
             created_by: userId,
           });
           creditsIssued++;
