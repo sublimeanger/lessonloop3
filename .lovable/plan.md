@@ -1,69 +1,61 @@
 
-# Remaining UI Polish Fixes
+# Fix: Add Custom Domain to CORS Allowlist
 
-## Overview
+## Problem
 
-This plan completes the UI polish audit by addressing the remaining gaps in modal mobile margins. All three main dialog components need edge spacing for small mobile screens.
+The signup flow works, but the onboarding wizard fails at the "Start Free Trial" step when accessed from `lessonloop.net` (the custom published domain).
 
----
+**Why it fails:**
+- The `onboarding-setup` edge function uses a strict CORS policy
+- The allowlist only includes Lovable preview/published URLs
+- `lessonloop.net` is not in the allowlist
+- The browser blocks the POST request after the preflight check
 
-## Files to Update
+## Solution
 
-### 1. CreateInvoiceModal.tsx (Line 240)
+Add `lessonloop.net` (and `www.lessonloop.net`) to the CORS allowlist.
+
+### File: `supabase/functions/_shared/cors.ts`
+
 **Current:**
-```tsx
-<DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-```
-**Change to:**
-```tsx
-<DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto mx-4 sm:mx-auto">
-```
-
-### 2. BillingRunWizard.tsx (Line 138)
-**Current:**
-```tsx
-<DialogContent className="max-w-xl">
-```
-**Change to:**
-```tsx
-<DialogContent className="max-w-xl mx-4 sm:mx-auto">
+```typescript
+const DEFAULT_ORIGINS = [
+  "https://id-preview--c541d756-90e7-442a-ba85-0c723aeabc14.lovable.app",
+  "https://lessonloop3.lovable.app",
+  "*.lovable.app",
+  "*.lovableproject.com",
+];
 ```
 
-### 3. LessonModal.tsx (Line 501)
-**Current:**
-```tsx
-<DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+**Updated:**
+```typescript
+const DEFAULT_ORIGINS = [
+  "https://id-preview--c541d756-90e7-442a-ba85-0c723aeabc14.lovable.app",
+  "https://lessonloop3.lovable.app",
+  "https://lessonloop.net",
+  "https://www.lessonloop.net",
+  "*.lovable.app",
+  "*.lovableproject.com",
+];
 ```
-**Change to:**
-```tsx
-<DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-auto">
-```
-
----
-
-## GDPR.tsx Status
-
-After review, `GDPR.tsx` does **not** use the `prose` class - it uses individual Tailwind text classes (`text-foreground`, `text-muted-foreground`). These are already theme-aware and work correctly in dark mode. No changes needed.
 
 ---
 
 ## Technical Details
 
-The `mx-4 sm:mx-auto` pattern ensures:
-- **Mobile (< 640px)**: 16px margin on each side, preventing edge-to-edge dialogs
-- **Tablet/Desktop (>= 640px)**: Auto margins centre the dialog as normal
+| Item | Detail |
+|------|--------|
+| Root cause | CORS policy missing custom domain |
+| Fix location | `supabase/functions/_shared/cors.ts` |
+| Impact | All edge functions use this shared file |
+| Deployment | Automatic on save |
 
-This is a minimal, non-breaking change that improves touch target spacing on mobile devices.
+## After Approval
+
+1. Update the CORS file with the new origins
+2. Edge functions will redeploy automatically
+3. You can retry signup from `lessonloop.net`
 
 ---
 
-## Summary
-
-| File | Change |
-|------|--------|
-| `CreateInvoiceModal.tsx` | Add mobile edge margins |
-| `BillingRunWizard.tsx` | Add mobile edge margins |
-| `LessonModal.tsx` | Add mobile edge margins |
-| `GDPR.tsx` | No change needed (already theme-aware) |
-
-**Total: 3 single-line edits**
+**One-line change, full fix.**
