@@ -158,8 +158,7 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
           hasInvoices: (invoicesResult.count || 0) > 0,
           hasLocations: (locationsResult.count || 0) > 0,
           hasTeachers: (teachersResult.count || 0) > 1, // More than just owner
-          // @ts-ignore - new column
-          hasPolicyConfigured: currentOrg.parent_reschedule_policy !== 'request_only', // Changed from default
+          hasPolicyConfigured: (currentOrg.parent_reschedule_policy ?? 'request_only') !== 'request_only', // Changed from default
         };
 
         // Get org-specific checklist config

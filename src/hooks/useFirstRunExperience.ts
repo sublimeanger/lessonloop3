@@ -221,7 +221,7 @@ export function useFirstRunExperience(): FirstRunState & {
         const hasLocations = (locationsResult.count || 0) > 0;
         const hasTeachers = (teachersResult.count || 0) > 1; // More than just owner
 
-        const orgType = currentOrg.org_type;
+        const orgType = currentOrg.org_type || 'solo_teacher';
         const path = getPathFromOrgType(orgType);
         const steps = getStepsForOrgType(orgType);
 

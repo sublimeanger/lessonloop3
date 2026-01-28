@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   Loader2,
   Sparkles,
+  X,
 } from 'lucide-react';
 import { useLoopAssist, AIMessage, AIConversation } from '@/hooks/useLoopAssist';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
@@ -105,7 +106,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col p-0 sm:max-w-md">
+      <SheetContent className="flex w-full flex-col p-0 sm:max-w-md" hideCloseButton>
         <SheetHeader className="border-b px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -124,9 +125,17 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                 <SheetTitle>LoopAssist</SheetTitle>
               </div>
             </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleNewConversation}>
-              <Plus className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleNewConversation}>
+                <Plus className="h-4 w-4" />
+              </Button>
+              <SheetClose asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </Button>
+              </SheetClose>
+            </div>
           </div>
         </SheetHeader>
 
@@ -246,7 +255,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
 
             {/* Input */}
             <div className="border-t p-4" data-tour="loopassist-input">
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -300,8 +309,16 @@ function ConversationList({
             {conversations.map((conv) => (
               <div
                 key={conv.id}
-                className="group flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-colors hover:bg-accent"
+                role="button"
+                tabIndex={0}
+                className="group flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 onClick={() => onSelect(conv.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onSelect(conv.id);
+                  }
+                }}
               >
                 <div className="flex items-center gap-3 overflow-hidden">
                   <MessageSquare className="h-4 w-4 shrink-0 text-muted-foreground" />

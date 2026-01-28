@@ -2,7 +2,18 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle, Loader2, FileText, Mail, Calendar, Receipt } from 'lucide-react';
+import { 
+  CheckCircle, 
+  XCircle, 
+  Loader2, 
+  FileText, 
+  Mail, 
+  Calendar, 
+  Receipt,
+  ClipboardCheck,
+  CheckCircle2,
+  Ban,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -13,7 +24,15 @@ export interface ActionEntity {
 }
 
 export interface ActionProposalData {
-  action_type: 'generate_billing_run' | 'send_invoice_reminders' | 'reschedule_lessons' | 'draft_email';
+  action_type: 
+    | 'generate_billing_run' 
+    | 'send_invoice_reminders' 
+    | 'reschedule_lessons' 
+    | 'draft_email'
+    | 'mark_attendance'
+    | 'cancel_lesson'
+    | 'complete_lessons'
+    | 'send_progress_report';
   description: string;
   entities: ActionEntity[];
   params: Record<string, unknown>;
@@ -27,25 +46,33 @@ interface ActionCardProps {
   isLoading?: boolean;
 }
 
-const ACTION_ICONS = {
+const ACTION_ICONS: Record<string, typeof FileText> = {
   generate_billing_run: Receipt,
   send_invoice_reminders: Mail,
   reschedule_lessons: Calendar,
   draft_email: FileText,
+  mark_attendance: ClipboardCheck,
+  cancel_lesson: Ban,
+  complete_lessons: CheckCircle2,
+  send_progress_report: FileText,
 };
 
-const ACTION_LABELS = {
+const ACTION_LABELS: Record<string, string> = {
   generate_billing_run: 'Generate Billing Run',
   send_invoice_reminders: 'Send Invoice Reminders',
   reschedule_lessons: 'Reschedule Lessons',
   draft_email: 'Draft Email',
+  mark_attendance: 'Mark Attendance',
+  cancel_lesson: 'Cancel Lesson',
+  complete_lessons: 'Mark Lessons Complete',
+  send_progress_report: 'Send Progress Report',
 };
 
 const ENTITY_COLORS: Record<string, string> = {
-  invoice: 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200',
-  student: 'bg-blue-100 text-blue-800 hover:bg-blue-200',
-  lesson: 'bg-purple-100 text-purple-800 hover:bg-purple-200',
-  guardian: 'bg-amber-100 text-amber-800 hover:bg-amber-200',
+  invoice: 'bg-success/10 text-success hover:bg-success/20 dark:bg-success/20 dark:text-success dark:hover:bg-success/30',
+  student: 'bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30',
+  lesson: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+  guardian: 'bg-warning/10 text-warning hover:bg-warning/20 dark:bg-warning/20 dark:text-warning dark:hover:bg-warning/30',
 };
 
 export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoading }: ActionCardProps) {
@@ -99,11 +126,19 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
                 <Badge
                   key={`${entity.type}-${entity.id}-${i}`}
                   variant="secondary"
+                  tabIndex={0}
+                  role="button"
                   className={cn(
-                    'cursor-pointer text-xs transition-colors',
+                    'cursor-pointer text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
                     ENTITY_COLORS[entity.type]
                   )}
                   onClick={() => handleEntityClick(entity)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleEntityClick(entity);
+                    }
+                  }}
                 >
                   {entity.label}
                 </Badge>
@@ -117,7 +152,7 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
           </div>
         )}
       </CardContent>
-      <CardFooter className="gap-2 pt-2">
+      <CardFooter className="gap-3 pt-2">
         <Button
           size="sm"
           onClick={handleConfirm}
