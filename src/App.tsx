@@ -8,6 +8,7 @@ import { OrgProvider } from "@/contexts/OrgContext";
 import { LoopAssistProvider } from "@/contexts/LoopAssistContext";
 import { TourProvider } from "@/components/tours/TourProvider";
 import { RouteGuard, PublicRoute } from "@/components/auth/RouteGuard";
+import { ScrollToTop } from "@/components/shared/ScrollToTop";
 
 // Marketing Pages
 import MarketingHome from "./pages/marketing/Home";
@@ -72,6 +73,7 @@ const App = () => (
           <OrgProvider>
             <LoopAssistProvider>
               <TourProvider>
+                <ScrollToTop />
                 <Toaster />
                 <Sonner />
             <Routes>
