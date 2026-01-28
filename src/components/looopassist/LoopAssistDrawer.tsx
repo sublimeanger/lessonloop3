@@ -15,9 +15,11 @@ import {
 } from 'lucide-react';
 import { useLoopAssist, AIMessage, AIConversation } from '@/hooks/useLoopAssist';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
+import { useProactiveAlerts } from '@/hooks/useProactiveAlerts';
 import { renderMessageWithChips } from './EntityChip';
 import { ActionCard, stripActionBlock, parseActionFromResponse } from './ActionCard';
 import { MessageFeedback } from './MessageFeedback';
+import { ProactiveAlerts } from './ProactiveAlerts';
 import { LoopAssistIntroModal, useLoopAssistIntro } from './LoopAssistIntroModal';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -30,8 +32,8 @@ interface LoopAssistDrawerProps {
 export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) {
   const { pageContext } = useLoopAssistUI();
   const { showIntro, setShowIntro, checkAndShowIntro } = useLoopAssistIntro();
+  const { alerts } = useProactiveAlerts();
   
-  // LoopAssist is now FREE for all plans - no blocking!
   const {
     conversations,
     currentConversationId,
@@ -89,7 +91,14 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     handleProposal({ proposalId, action: 'cancel' });
   };
 
-  const suggestedPrompts = getSuggestedPrompts(pageContext.type);
+  const handleSuggestedPrompt = (prompt: string) => {
+    setInput(prompt);
+  };
+
+  const suggestedPrompts = getSuggestedPrompts(pageContext.type, alerts);
+
+  // Determine if we should show proactive alerts (new conversation with no messages)
+  const showProactiveAlerts = !currentConversationId && messages.length === 0 && !isStreaming && alerts.length > 0;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -145,6 +154,14 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
               <div className="space-y-4 py-4">
                 {messages.length === 0 && !isStreaming && (
                   <div className="space-y-4">
+                    {/* Proactive alerts when opening fresh */}
+                    {showProactiveAlerts && (
+                      <ProactiveAlerts 
+                        alerts={alerts} 
+                        onSuggestedAction={handleSuggestedPrompt}
+                      />
+                    )}
+
                     <div className="text-center text-muted-foreground">
                       <Sparkles className="mx-auto mb-2 h-8 w-8 text-primary/50" />
                       <p className="text-sm">How can I help you today?</p>
@@ -157,9 +174,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                             variant="outline"
                             size="sm"
                             className="h-auto whitespace-normal text-left text-xs"
-                            onClick={() => {
-                              setInput(prompt);
-                            }}
+                            onClick={() => handleSuggestedPrompt(prompt)}
                           >
                             {prompt}
                           </Button>
@@ -334,32 +349,49 @@ function MessageBubble({ message, conversationId }: { message: AIMessage; conver
   );
 }
 
-function getSuggestedPrompts(contextType: string): string[] {
+import { ProactiveAlert } from '@/hooks/useProactiveAlerts';
+
+function getSuggestedPrompts(contextType: string, alerts: ProactiveAlert[]): string[] {
+  // Context-aware suggestions based on current page AND active alerts
+  const basePrompts: string[] = [];
+
+  // Add alert-driven suggestions first (most relevant)
+  const hasOverdue = alerts.some(a => a.type === 'overdue');
+  const hasUnmarked = alerts.some(a => a.type === 'unmarked');
+
   switch (contextType) {
     case 'calendar':
-      return [
-        "What lessons do I have today?",
-        "Reschedule tomorrow's lessons by 30 minutes",
-        "Any cancellations this week?",
-      ];
+      if (hasUnmarked) {
+        basePrompts.push("Mark yesterday's lessons as complete");
+      }
+      basePrompts.push("What lessons do I have today?");
+      basePrompts.push("Reschedule tomorrow's lessons by 30 minutes");
+      break;
     case 'student':
-      return [
-        "Draft a progress update email for this student",
-        "Show lesson history for this student",
-        "Send invoice reminders for this student",
-      ];
+      basePrompts.push("Draft a progress update for this student's parents");
+      basePrompts.push("Show lesson history for this student");
+      if (hasOverdue) {
+        basePrompts.push("Send invoice reminder for this student");
+      }
+      basePrompts.push("What is this student's practice streak?");
+      break;
     case 'invoice':
-      return [
-        "Send a payment reminder for this invoice",
-        "Show payment history",
-        "Draft a follow-up email",
-      ];
+      basePrompts.push("Send a payment reminder for this invoice");
+      basePrompts.push("Show payment history");
+      basePrompts.push("Draft a follow-up email");
+      break;
     default:
-      return [
-        "Send reminders for all overdue invoices",
-        "Generate invoices for last month",
-        "Show me outstanding invoices",
-        "Draft an email to a parent",
-      ];
+      if (hasOverdue) {
+        basePrompts.push("Send reminders for all overdue invoices");
+      }
+      if (hasUnmarked) {
+        basePrompts.push("Mark all past lessons as complete");
+      }
+      basePrompts.push("Generate invoices for last month");
+      basePrompts.push("Show me outstanding invoices");
+      basePrompts.push("What's my completion rate this month?");
+      break;
   }
+
+  return basePrompts.slice(0, 4); // Max 4 suggestions
 }

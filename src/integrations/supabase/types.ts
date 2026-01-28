@@ -100,6 +100,67 @@ export type Database = {
           },
         ]
       }
+      ai_interaction_metrics: {
+        Row: {
+          action_executed: boolean | null
+          action_proposed: boolean | null
+          conversation_id: string | null
+          created_at: string
+          feedback: string | null
+          id: string
+          message_id: string | null
+          org_id: string
+          response_time_ms: number | null
+          user_id: string
+        }
+        Insert: {
+          action_executed?: boolean | null
+          action_proposed?: boolean | null
+          conversation_id?: string | null
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          message_id?: string | null
+          org_id: string
+          response_time_ms?: number | null
+          user_id: string
+        }
+        Update: {
+          action_executed?: boolean | null
+          action_proposed?: boolean | null
+          conversation_id?: string | null
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          message_id?: string | null
+          org_id?: string
+          response_time_ms?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_interaction_metrics_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_interaction_metrics_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "ai_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_interaction_metrics_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_messages: {
         Row: {
           content: string
