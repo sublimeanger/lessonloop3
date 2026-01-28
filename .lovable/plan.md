@@ -1,211 +1,205 @@
 
+# LoopAssist World-Class Upgrade Plan
 
-# Enhanced CSV Import System - Complete Plan
+## Executive Summary
 
-## Overview
-
-This plan upgrades the existing CSV import flow with four major enhancements to make migrating from other platforms bulletproof:
-
-1. **Confidence Highlighting** - Visual indicators for uncertain AI mappings
-2. **Duplicate Detection** - Check both within CSV and against existing database records
-3. **Dry-Run Preview Mode** - Show exactly what will happen before committing
-4. **Error Row Export** - Download failed rows for quick fixes and re-import
+LoopAssist is currently a solid AI assistant, but has significant room to become truly world-class. This plan addresses immediate issues (markdown formatting) and introduces substantial capability upgrades to make it a genuine differentiator.
 
 ---
 
-## Current System Summary
+## Current State Assessment
 
-The existing system already has:
-- AI-powered column mapping (Gemini via Lovable AI)
-- Heuristic fallback if AI unavailable
-- Guardian deduplication by email
-- Confidence scores returned by AI
-- Basic preview showing counts
+### What Works Well
+- Context-aware (detects current page, student, invoice)
+- Streaming responses for fast feedback
+- Action proposals with confirm/cancel workflow
+- Entity citations that link to records
+- Rate limiting and security controls
 
-What's missing:
-- No visual distinction for low-confidence mappings
-- No duplicate student detection (within CSV or database)
-- Preview shows counts only, not validation issues
-- No way to export/re-import failed rows
+### Critical Gaps Identified
+
+1. **Formatting Issue**: Responses use markdown bold (`**text**`) when plain text is preferred
+2. **Limited Actions**: Only 4 actions implemented (billing run, reminders, reschedule, draft email) vs 6+ documented
+3. **No Metrics Persistence**: Feedback (thumbs up/down) shows toast but doesnt save to database
+4. **Shallow Context**: Misses attendance history, practice streaks, rate cards, cancellations
+5. **No Proactive Insights**: User must always ask; AI never surfaces issues unprompted
+6. **No Quick Actions from Chat**: Cant execute common one-liners without full action proposal
+7. **Limited Student Intelligence**: Misses practice data, lesson history, notes for student pages
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Confidence Highlighting
+### Phase 1: Fix Formatting + Enhanced Context
 
-**Goal**: Make low-confidence mappings visually obvious so users know which columns to double-check.
+**Goal**: Plain text responses and richer data for smarter answers
 
-**Changes to `src/pages/StudentsImport.tsx`**:
+#### 1.1 Update System Prompt
+File: `supabase/functions/looopassist-chat/index.ts`
 
-| Line Range | Change |
-|------------|--------|
-| ~432-437 | Update the confidence Badge to show amber/destructive variants for low confidence |
+Add formatting directive to SYSTEM_PROMPT:
+- NEVER use markdown formatting (no `**bold**`, `_italic_`, `#headings`, bullet points with `-`)
+- Write in plain conversational text
+- Use line breaks for separation, not special characters
+- Keep responses natural and readable
 
-**Logic**:
-- Confidence ≥ 80%: Green badge (default variant)
-- Confidence 50-79%: Amber/warning badge with "Needs Review" tooltip
-- Confidence < 50%: Red badge with exclamation icon
+#### 1.2 Expand Data Context
+File: `supabase/functions/looopassist-chat/index.ts`
 
-**UI Enhancement**:
-```text
-+---------------------------+-------------+-----------------+------------+
-| CSV Column                | Sample Data | Map To          | Confidence |
-+---------------------------+-------------+-----------------+------------+
-| Student Name              | John Doe    | first_name ▼    | [95%] ✓    |
-| Parent Contact            | jane@...    | guardian_email ▼| [62%] ⚠    | <- Amber with warning icon
-| Misc Notes                | Piano...    | — Skip —        | [—]        |
-+---------------------------+-------------+-----------------+------------+
-```
+Add to `buildDataContext` function:
+- Recent cancellations (last 7 days) with reasons
+- Attendance summary (completion rate this month)
+- Rate cards (default rates for context)
+- Payment summary (received this week, methods)
+- Practice streaks for student context
+- Teacher workload summary (lesson counts)
 
 ---
 
-### Phase 2: Duplicate Detection (Within CSV + Database)
+### Phase 2: Implement Missing Actions
 
-**Goal**: Before import, detect students that already exist (by name/email match) and rows that are duplicates within the CSV itself.
+**Goal**: Complete the action toolkit so LoopAssist can do more
 
-#### Backend Changes
+#### 2.1 Add `mark_attendance` Action
+File: `supabase/functions/looopassist-execute/index.ts`
 
-**Update `supabase/functions/csv-import-execute/index.ts`**:
+New function `executeMarkAttendance`:
+- Accept lesson_id and attendance records
+- Mark individual students as present/absent/late
+- Update lesson status if all marked
+- Log to audit trail
 
-Add a new optional parameter `dryRun: boolean`. When true:
-- Perform all validation (including duplicate checks)
-- Return detailed results without committing any data
-- Include duplicate detection results
+#### 2.2 Add `cancel_lesson` Action
+New action type for cancelling lessons:
+- Accept lesson_ids and reason
+- Update lesson status to cancelled
+- Optionally notify participants
+- Issue make-up credits if configured
 
-Add duplicate detection logic:
-1. Fetch existing students from database for the org (name + email combinations)
-2. For each CSV row, check:
-   - Does a student with same `first_name + last_name` exist?
-   - Does a student with same `email` exist?
-   - Is this row a duplicate of another row in the CSV?
+#### 2.3 Add `complete_lessons` Action
+Bulk completion for end-of-day:
+- Accept lesson_ids
+- Mark all as completed
+- Great for "Mark all today's lessons as complete"
 
-**New Response Fields**:
-```json
-{
-  "dryRun": true,
-  "validation": {
-    "valid": 42,
-    "duplicatesInCsv": [
-      { "row": 5, "duplicateOf": 2, "name": "John Doe" }
-    ],
-    "duplicatesInDatabase": [
-      { "row": 8, "existingStudentId": "uuid", "name": "Jane Smith", "matchType": "name" }
-    ],
-    "errors": [
-      { "row": 12, "error": "Invalid email format" }
-    ]
-  },
-  "preview": {
-    "studentsToCreate": 40,
-    "studentsToSkip": 5,
-    "guardiansToCreate": 35,
-    "lessonsToCreate": 40
-  }
-}
-```
+#### 2.4 Add `send_progress_report` Action
+Student progress communication:
+- Accept student_id, guardian_id
+- Generate summary of recent lessons, attendance, practice
+- Create draft or send directly
 
-#### Frontend Changes
-
-**Update `src/pages/StudentsImport.tsx`**:
-
-1. Add new state for dry-run results
-2. When user clicks "Continue to Preview", call `csv-import-execute` with `dryRun: true`
-3. Display validation results in the preview step with clear categories:
-   - Ready to import (green)
-   - Duplicate in CSV (amber) - with option to skip
-   - Already exists in database (amber) - with option to skip or update
-   - Invalid data (red) - must fix
-
-**New UI Section in Preview Step**:
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ 📊 Validation Results                                        │
-├─────────────────────────────────────────────────────────────┤
-│ ✓ Ready to import:           42 students                    │
-│ ⚠ Duplicates in CSV:          2 (will skip)                 │
-│ ⚠ Already in database:        3 (will skip)                 │
-│ ✗ Invalid data:               1 (see errors below)          │
-├─────────────────────────────────────────────────────────────┤
-│ ☐ Import duplicates anyway (create new records)             │
-│ ☐ Update existing students with new data                    │
-└─────────────────────────────────────────────────────────────┘
-```
+#### 2.5 Update System Prompt
+Add these new action types to the SYSTEM_PROMPT with proper parameters and trigger phrases.
 
 ---
 
-### Phase 3: Enhanced Dry-Run Preview
+### Phase 3: Metrics + Learning
 
-**Goal**: Show exactly what will be created/updated before committing, with row-level validation status.
+**Goal**: Track what works and improve over time
 
-**Update Preview Table in `src/pages/StudentsImport.tsx`**:
+#### 3.1 Create `ai_interaction_metrics` Table
+Migration to create:
+- id (uuid)
+- org_id (uuid)
+- message_id (uuid, references ai_messages)
+- conversation_id (uuid)
+- user_id (uuid)
+- feedback (text: helpful/not_helpful)
+- response_time_ms (integer)
+- action_proposed (boolean)
+- action_executed (boolean)
+- created_at (timestamptz)
 
-Add a "Status" column showing validation result for each row:
+#### 3.2 Update MessageFeedback Component
+File: `src/components/looopassist/MessageFeedback.tsx`
 
-```text
-+----+----------------+----------------+----------------+------------+
-| #  | Name           | Email          | Guardian       | Status     |
-+----+----------------+----------------+----------------+------------+
-| 1  | John Doe       | john@test.com  | Jane Doe       | ✓ Ready    |
-| 2  | Jane Smith     | jane@test.com  | —              | ⚠ Exists   |
-| 3  | Bob Wilson     | invalid-email  | —              | ✗ Invalid  |
-| 4  | John Doe       | john2@test.com | —              | ⚠ Dup of #1|
-+----+----------------+----------------+----------------+------------+
-```
+Persist feedback to database:
+- Insert into ai_interaction_metrics on thumbs click
+- Track which messages get positive/negative feedback
+- Optional: free-text feedback for "not helpful"
 
-**Add Tabs to Preview**:
-- "All Records" - full list with status
-- "Issues Only" - filtered to show problems
-- "Ready to Import" - filtered to show clean records
+#### 3.3 Log Response Metrics
+File: `src/hooks/useLoopAssist.ts`
+
+Track performance:
+- Measure time from message send to first chunk
+- Log whether action was proposed
+- Log whether proposed action was executed or cancelled
 
 ---
 
-### Phase 4: Error Row Export
+### Phase 4: Proactive Intelligence
 
-**Goal**: Allow users to download failed/problem rows as a new CSV for fixing and re-import.
+**Goal**: LoopAssist surfaces issues without being asked
 
-**Add to Complete Step in `src/pages/StudentsImport.tsx`**:
+#### 4.1 Opening Message Intelligence
+File: `src/components/looopassist/LoopAssistDrawer.tsx`
 
-1. Store the original CSV headers and rows that failed
-2. Add "Download Failed Rows" button that generates a CSV with:
-   - Original column headers
-   - Only the rows that had errors
-   - An additional "Error" column explaining what went wrong
+When drawer opens with no active conversation:
+- Fetch quick stats (overdue count, today's lessons, cancellations)
+- Show proactive alert cards:
+  - "3 invoices are overdue - want me to send reminders?"
+  - "2 lessons were cancelled this week without rescheduling"
+  - "Lesson with [Student] is in 30 minutes"
 
-**Implementation**:
-```typescript
-const downloadFailedRows = () => {
-  const failedRows = importResult.details
-    .filter(d => d.status === 'error')
-    .map(d => {
-      const originalRow = rows[d.row - 1];
-      return [...originalRow, d.error];
-    });
-  
-  const csv = [
-    [...headers, 'Import Error'],
-    ...failedRows
-  ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-  
-  // Trigger download
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  // ... download logic
-};
-```
+#### 4.2 Context-Aware Suggestions
+File: `src/components/looopassist/LoopAssistDrawer.tsx`
 
-**UI**:
-```text
-┌────────────────────────────────────────────────────────────────┐
-│ ⚠ 3 Errors                                                     │
-│                                                                │
-│ • Row 5: Invalid email format                                  │
-│ • Row 12: Missing required field: last_name                    │
-│ • Row 18: Invalid date format for DOB                          │
-│                                                                │
-│ [📥 Download Failed Rows]  [📥 Download Full Report]           │
-└────────────────────────────────────────────────────────────────┘
-```
+Improve `getSuggestedPrompts` function:
+- On student page with overdue invoice: "Send payment reminder for this student"
+- On calendar with past lessons unmarked: "Mark yesterday's lessons as complete"
+- On invoices page: "Show me aging report" or "What's our collection rate?"
+
+#### 4.3 Smart Alerts Badge
+File: `src/components/layout/Header.tsx` (or sidebar)
+
+Show badge on LoopAssist button when issues exist:
+- Red dot if critical (overdue invoices 30+ days)
+- Number badge for action items
+
+---
+
+### Phase 5: Enhanced Student Context
+
+**Goal**: When viewing a student, LoopAssist knows everything
+
+#### 5.1 Deep Student Context Fetch
+File: `supabase/functions/looopassist-chat/index.ts`
+
+When `context.type === 'student'`:
+- Lesson history (last 10 lessons with attendance)
+- Practice streaks and recent logs
+- All linked guardians with contact info
+- All invoices (paid, outstanding, overdue)
+- Teacher assignments
+- Notes and flags
+- Make-up credits available
+
+#### 5.2 Student-Specific Actions
+Enable natural requests like:
+- "Draft a progress update for [Student]'s parents"
+- "How many lessons has [Student] had this term?"
+- "What's [Student]'s practice streak?"
+- "Issue a make-up credit for the missed lesson"
+
+---
+
+### Phase 6: Quick Commands
+
+**Goal**: One-liner commands that execute instantly (no action card needed)
+
+#### 6.1 Implement Quick Command Recognition
+File: `supabase/functions/looopassist-chat/index.ts`
+
+Detect simple commands that can be answered immediately:
+- "How many students do I have?" - just answer
+- "What's outstanding?" - summarise without action card
+- "Total revenue this month?" - calculate and respond
+
+Criteria for quick response (no action card):
+- Read-only query
+- Single number or short list answer
+- No user confirmation needed
 
 ---
 
@@ -213,121 +207,67 @@ const downloadFailedRows = () => {
 
 | File | Changes |
 |------|---------|
-| `src/pages/StudentsImport.tsx` | Add confidence highlighting, dry-run state, validation UI, error export |
-| `supabase/functions/csv-import-execute/index.ts` | Add dry-run mode, duplicate detection logic |
-
----
-
-## User Flow After Implementation
-
-```text
-1. Upload CSV
-   ↓
-2. Review AI Mappings
-   • Low-confidence mappings highlighted in amber
-   • User adjusts as needed
-   ↓
-3. Click "Continue to Preview"
-   • System performs dry-run validation
-   • Checks for duplicates (in CSV and database)
-   • Validates all data formats
-   ↓
-4. Review Validation Results
-   • See which rows are ready, duplicates, or invalid
-   • Toggle "skip duplicates" or "import anyway"
-   • Switch between All/Issues/Ready tabs
-   ↓
-5. Click "Confirm Import"
-   • Only valid, non-duplicate rows are imported
-   ↓
-6. View Results
-   • See success counts
-   • Download failed rows as CSV for fixing
-   • Re-import failed rows after correction
-```
+| `supabase/functions/looopassist-chat/index.ts` | Update SYSTEM_PROMPT (plain text), expand buildDataContext, deep student context |
+| `supabase/functions/looopassist-execute/index.ts` | Add mark_attendance, cancel_lesson, complete_lessons, send_progress_report |
+| `src/components/looopassist/MessageFeedback.tsx` | Persist feedback to ai_interaction_metrics |
+| `src/components/looopassist/LoopAssistDrawer.tsx` | Proactive alerts, smarter suggested prompts, alert badge |
+| `src/hooks/useLoopAssist.ts` | Track response time, action metrics |
+| New migration | Create ai_interaction_metrics table |
 
 ---
 
 ## Technical Details
 
-### Duplicate Detection Algorithm
+### Updated SYSTEM_PROMPT (Key Addition)
 
-```typescript
-// In csv-import-execute edge function
-
-async function detectDuplicates(rows: ImportRow[], orgId: string, supabase: any) {
-  // 1. Fetch existing students
-  const { data: existingStudents } = await supabase
-    .from('students')
-    .select('id, first_name, last_name, email')
-    .eq('org_id', orgId)
-    .is('deleted_at', null);
-
-  // 2. Build lookup maps
-  const nameMap = new Map<string, string>(); // "john|doe" -> studentId
-  const emailMap = new Map<string, string>(); // "john@test.com" -> studentId
-  
-  existingStudents?.forEach(s => {
-    const nameKey = `${s.first_name?.toLowerCase()}|${s.last_name?.toLowerCase()}`;
-    nameMap.set(nameKey, s.id);
-    if (s.email) emailMap.set(s.email.toLowerCase(), s.id);
-  });
-
-  // 3. Check each CSV row
-  const csvNamesSeen = new Map<string, number>(); // nameKey -> first row index
-  const results = rows.map((row, idx) => {
-    const nameKey = `${row.first_name?.toLowerCase()}|${row.last_name?.toLowerCase()}`;
-    
-    // Check database duplicates
-    const dbMatchById = nameMap.get(nameKey);
-    const dbMatchByEmail = row.email ? emailMap.get(row.email.toLowerCase()) : null;
-    
-    // Check CSV duplicates
-    const csvDuplicateOf = csvNamesSeen.get(nameKey);
-    if (csvDuplicateOf === undefined) {
-      csvNamesSeen.set(nameKey, idx);
-    }
-    
-    return {
-      row: idx + 1,
-      isDbDuplicate: !!(dbMatchById || dbMatchByEmail),
-      dbMatchType: dbMatchById ? 'name' : dbMatchByEmail ? 'email' : null,
-      existingStudentId: dbMatchById || dbMatchByEmail,
-      isCsvDuplicate: csvDuplicateOf !== undefined,
-      csvDuplicateOf: csvDuplicateOf !== undefined ? csvDuplicateOf + 1 : null,
-    };
-  });
-  
-  return results;
-}
+```text
+RESPONSE FORMATTING:
+- Write in plain text only
+- NEVER use markdown syntax: no **, no _, no #, no - bullets
+- Use natural paragraph breaks for readability
+- Entity citations [Invoice:X] are the only special syntax allowed
+- Be conversational and direct
 ```
 
-### Confidence Badge Styling
+### New Actions for SYSTEM_PROMPT
 
-```tsx
-<Badge 
-  variant={
-    mapping.confidence >= 0.8 ? "default" : 
-    mapping.confidence >= 0.5 ? "secondary" : 
-    "destructive"
-  }
-  className={mapping.confidence < 0.7 ? "animate-pulse" : ""}
->
-  {mapping.confidence < 0.7 && <AlertTriangle className="h-3 w-3 mr-1" />}
-  {Math.round(mapping.confidence * 100)}%
-</Badge>
+```text
+5. mark_attendance - Record attendance for a lesson
+   params: { "lesson_id": "...", "records": [{"student_id": "...", "status": "present|absent|late"}] }
+
+6. cancel_lesson - Cancel scheduled lessons
+   params: { "lesson_ids": ["..."], "reason": "...", "notify": true|false, "issue_credit": true|false }
+
+7. complete_lessons - Mark lessons as completed
+   params: { "lesson_ids": ["..."] }
+
+8. send_progress_report - Generate and send progress report
+   params: { "student_id": "...", "period": "week|month|term", "send_immediately": true|false }
+```
+
+### Proactive Alerts Data Structure
+
+```typescript
+interface ProactiveAlert {
+  type: 'overdue' | 'cancellation' | 'upcoming' | 'unmarked';
+  severity: 'info' | 'warning' | 'urgent';
+  message: string;
+  suggestedAction?: string;
+  count?: number;
+}
 ```
 
 ---
 
 ## Expected Outcome
 
-After implementation, users migrating from other platforms will:
+After implementation, LoopAssist will:
 
-1. **Trust the AI mappings** - Clear visual feedback on which columns need review
-2. **Avoid accidental duplicates** - System catches duplicates before import
-3. **Know exactly what will happen** - Detailed preview with per-row validation
-4. **Quickly fix errors** - Download problem rows, fix in Excel, re-import
+1. Respond in clean, readable plain text (no markdown symbols)
+2. Execute 8+ action types covering full workflow
+3. Track user feedback to identify improvement areas
+4. Proactively alert users to issues when they open the drawer
+5. Know everything about a student when viewing their profile
+6. Answer simple questions instantly without action cards
 
-This makes the CSV import truly "bulletproof" for migration scenarios.
-
+This transforms LoopAssist from "helpful chatbot" to "indispensable AI operations manager" that genuinely saves time and catches issues before they become problems.
