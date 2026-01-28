@@ -23,6 +23,11 @@ export interface Organisation {
   block_scheduling_on_closures: boolean;
   created_by: string;
   created_at: string;
+  // Hardening fields
+  cancellation_notice_hours?: number;
+  buffer_minutes_between_locations?: number | null;
+  overdue_reminder_days?: number[] | null;
+  auto_pause_lessons_after_days?: number | null;
   // Subscription fields
   subscription_plan: SubscriptionPlan;
   subscription_status: SubscriptionStatus;
