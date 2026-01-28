@@ -54,12 +54,11 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   const { sendNotesNotification } = useNotesNotification();
 
   const [isSaving, setIsSaving] = useState(false);
-  // Consolidated conflict state - NEVER clear conflicts while checking, only replace
+  // Conflict state - only UI display, check tracking is done via refs
   const [conflictState, setConflictState] = useState<{
     isChecking: boolean;
     conflicts: ConflictResult[];
-    lastCheckKey: string;
-  }>({ isChecking: false, conflicts: [], lastCheckKey: '' });
+  }>({ isChecking: false, conflicts: [] });
   const [studentsOpen, setStudentsOpen] = useState(false);
   
   // Recurring edit state
@@ -82,8 +81,9 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]);
   const [recurrenceEndDate, setRecurrenceEndDate] = useState<Date | null>(null);
 
-  // Track the current conflict check to avoid stale updates
+  // Track the current conflict check to avoid stale updates - use refs to prevent re-renders
   const conflictCheckRef = useRef<number>(0);
+  const lastCheckKeyRef = useRef<string>('');
 
   // Get org timezone, default to Europe/London
   const orgTimezone = currentOrg?.timezone || 'Europe/London';
@@ -154,9 +154,10 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
         setDurationMins(Math.max(15, Math.min(duration, 180)));
       }
     }
-    setConflictState({ isChecking: false, conflicts: [], lastCheckKey: '' });
+    setConflictState({ isChecking: false, conflicts: [] });
     setRecurringEditMode(null);
     conflictCheckRef.current = 0;
+    lastCheckKeyRef.current = '';
   }, [open, lesson, initialDate, initialEndDate, user?.id, orgTimezone, currentOrg?.default_lesson_length_mins]);
 
   // Auto-select teacher if only one
@@ -173,7 +174,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   }, [locationId, rooms]);
 
   // Check conflicts on key field changes with debounce
-  // CRITICAL: Never clear conflicts while checking - only replace when new results arrive
+  // CRITICAL: Use refs to track check state to prevent infinite loops
   useEffect(() => {
     if (!open || !teacherUserId || !selectedDate) return;
 
@@ -181,7 +182,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     const checkKey = `${teacherUserId}-${selectedDate.toISOString()}-${startTime}-${durationMins}-${roomId}-${selectedStudents.join(',')}-${lesson?.id}`;
     
     // Don't re-check if we already have results for this exact configuration
-    if (checkKey === conflictState.lastCheckKey && !conflictState.isChecking) {
+    if (checkKey === lastCheckKeyRef.current) {
       return;
     }
 
@@ -210,16 +211,16 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
       // Only update state if this is still the most recent check
       if (conflictCheckRef.current === currentCheck) {
+        lastCheckKeyRef.current = checkKey;
         setConflictState({ 
           isChecking: false, 
-          conflicts: results,
-          lastCheckKey: checkKey 
+          conflicts: results
         });
       }
     }, 600);
 
     return () => clearTimeout(timeoutId);
-  }, [open, teacherUserId, selectedDate, startTime, durationMins, roomId, selectedStudents, lesson?.id, checkConflicts, orgTimezone, conflictState.lastCheckKey, conflictState.isChecking]);
+  }, [open, teacherUserId, selectedDate, startTime, durationMins, roomId, selectedStudents, lesson?.id, checkConflicts, orgTimezone, locationId]);
 
   const generateTitle = () => {
     if (selectedStudents.length === 0) return 'New Lesson';
