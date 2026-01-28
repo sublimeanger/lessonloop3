@@ -287,7 +287,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
         
         {/* Step indicator */}
         {currentStep !== 'success' && (
-          <div className="flex items-center justify-between py-4 px-2">
+          <div className="flex items-center justify-center gap-4 sm:justify-between py-4 px-2">
             {STEPS.map(({ step, label, icon: Icon }, index) => (
               <div key={step} className="flex items-center">
                 <div className="flex flex-col items-center">
@@ -308,7 +308,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
                     )}
                   </div>
                   <span className={cn(
-                    "mt-2 text-xs font-medium text-center",
+                    "mt-2 text-xs font-medium text-center max-w-[60px] sm:max-w-none truncate",
                     currentStep === step ? "text-primary" : "text-muted-foreground"
                   )}>
                     {label}
