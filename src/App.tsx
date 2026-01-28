@@ -9,6 +9,7 @@ import { LoopAssistProvider } from "@/contexts/LoopAssistContext";
 import { TourProvider } from "@/components/tours/TourProvider";
 import { RouteGuard, PublicRoute } from "@/components/auth/RouteGuard";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 
 // Marketing Pages
 import MarketingHome from "./pages/marketing/Home";
@@ -66,16 +67,17 @@ import PortalMessages from "./pages/portal/PortalMessages";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <OrgProvider>
-            <LoopAssistProvider>
-              <TourProvider>
-                <ScrollToTop />
-                <Toaster />
-                <Sonner />
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <OrgProvider>
+              <LoopAssistProvider>
+                <TourProvider>
+                  <ScrollToTop />
+                  <Toaster />
+                  <Sonner />
             <Routes>
               {/* Public auth routes */}
               <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
@@ -246,13 +248,14 @@ const App = () => (
               {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-              </TourProvider>
-            </LoopAssistProvider>
-          </OrgProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+                </TourProvider>
+              </LoopAssistProvider>
+            </OrgProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
