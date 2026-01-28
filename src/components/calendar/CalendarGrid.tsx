@@ -26,6 +26,7 @@ const HOUR_HEIGHT = 60; // pixels per hour
 const START_HOUR = 7;
 const END_HOUR = 21;
 const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
+const TIME_GUTTER_WIDTH = 64; // 16 * 4 = 64px (w-16)
 
 export function CalendarGrid({ 
   currentDate, 
@@ -41,7 +42,11 @@ export function CalendarGrid({
   const [dragEnd, setDragEnd] = useState<number | null>(null);
   const [closures, setClosures] = useState<ClosureInfo[]>([]);
   const gridRef = useRef<HTMLDivElement>(null);
-  const timeGridRef = useRef<HTMLDivElement>(null); // Separate ref for accurate Y positioning
+  const dayColumnsRef = useRef<HTMLDivElement>(null); // Ref ONLY for day columns (excludes time gutter)
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  
+  // Track if this was a drag operation to prevent click from firing
+  const wasDragging = useRef(false);
 
   const days = useMemo(() => {
     if (view === 'day') {
@@ -99,26 +104,46 @@ export function CalendarGrid({
     return { hour: Math.min(Math.max(hour, START_HOUR), END_HOUR), minute: minute % 60 };
   };
 
+  /**
+   * Get Y position relative to the day columns grid (excludes header)
+   * This is the accurate calculation that accounts for:
+   * 1. The dayColumnsRef bounding rect (excludes time gutter)
+   * 2. Scroll position within the ScrollArea
+   */
+  const getAccurateY = (e: React.MouseEvent): number => {
+    if (!dayColumnsRef.current) return 0;
+    const rect = dayColumnsRef.current.getBoundingClientRect();
+    return e.clientY - rect.top;
+  };
+
   const handleMouseDown = (e: React.MouseEvent, day: Date) => {
     if (e.button !== 0) return;
-    const rect = timeGridRef.current?.getBoundingClientRect();
-    if (!rect) return;
     
-    const y = e.clientY - rect.top;
+    const y = getAccurateY(e);
+    if (y < 0) return; // Click was above the grid (in header)
+    
     const { hour, minute } = getTimeFromY(y);
     const startDate = setMinutes(setHours(startOfDay(day), hour), minute);
     
     setDragStart({ date: startDate, y });
     setDragEnd(y + 30); // Default 30 min
     setIsDragging(true);
+    wasDragging.current = false;
   };
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDragging || !timeGridRef.current) return;
-    const rect = timeGridRef.current.getBoundingClientRect();
-    const y = Math.max(0, e.clientY - rect.top);
-    setDragEnd(y);
-  }, [isDragging]);
+    if (!isDragging || !dayColumnsRef.current) return;
+    
+    const y = getAccurateY(e);
+    const clampedY = Math.max(0, y);
+    
+    // If we've moved more than 10px, this is a drag operation
+    if (dragStart && Math.abs(clampedY - dragStart.y) > 10) {
+      wasDragging.current = true;
+    }
+    
+    setDragEnd(clampedY);
+  }, [isDragging, dragStart]);
 
   const handleMouseUp = useCallback(() => {
     if (!isDragging || !dragStart || dragEnd === null) {
@@ -128,21 +153,24 @@ export function CalendarGrid({
       return;
     }
 
-    const startY = Math.min(dragStart.y, dragEnd);
-    const endY = Math.max(dragStart.y, dragEnd);
-    
-    const { hour: startHour, minute: startMin } = getTimeFromY(startY);
-    const { hour: endHour, minute: endMin } = getTimeFromY(endY);
-    
-    const startDate = setMinutes(setHours(startOfDay(dragStart.date), startHour), startMin);
-    let endDate = setMinutes(setHours(startOfDay(dragStart.date), endHour), endMin);
-    
-    // Minimum 15 min duration
-    if (differenceInMinutes(endDate, startDate) < 15) {
-      endDate = new Date(startDate.getTime() + 30 * 60 * 1000);
+    // Only trigger drag callback if we actually dragged (moved significantly)
+    if (wasDragging.current) {
+      const startY = Math.min(dragStart.y, dragEnd);
+      const endY = Math.max(dragStart.y, dragEnd);
+      
+      const { hour: startHour, minute: startMin } = getTimeFromY(startY);
+      const { hour: endHour, minute: endMin } = getTimeFromY(endY);
+      
+      const startDate = setMinutes(setHours(startOfDay(dragStart.date), startHour), startMin);
+      let endDate = setMinutes(setHours(startOfDay(dragStart.date), endHour), endMin);
+      
+      // Minimum 15 min duration
+      if (differenceInMinutes(endDate, startDate) < 15) {
+        endDate = new Date(startDate.getTime() + 30 * 60 * 1000);
+      }
+      
+      onSlotDrag(startDate, endDate);
     }
-    
-    onSlotDrag(startDate, endDate);
     
     setIsDragging(false);
     setDragStart(null);
@@ -150,13 +178,18 @@ export function CalendarGrid({
   }, [isDragging, dragStart, dragEnd, onSlotDrag]);
 
   const handleSlotClick = (e: React.MouseEvent, day: Date) => {
-    // Only trigger if not dragging
+    // Don't trigger if we were dragging
+    if (wasDragging.current) {
+      wasDragging.current = false;
+      return;
+    }
+    
+    // Don't trigger if still in drag mode
     if (isDragging) return;
     
-    const rect = timeGridRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    const y = getAccurateY(e);
+    if (y < 0) return; // Click was above the grid
     
-    const y = e.clientY - rect.top;
     const { hour, minute } = getTimeFromY(y);
     const clickDate = setMinutes(setHours(startOfDay(day), hour), minute);
     
@@ -164,7 +197,7 @@ export function CalendarGrid({
   };
 
   return (
-    <ScrollArea className="h-[calc(100vh-280px)]">
+    <ScrollArea className="h-[calc(100vh-280px)]" ref={scrollAreaRef}>
       <div 
         ref={gridRef}
         className="relative select-none"
@@ -204,7 +237,7 @@ export function CalendarGrid({
         </div>
 
         {/* Time grid */}
-        <div className="flex" ref={timeGridRef}>
+        <div className="flex">
           {/* Time labels */}
           <div className="w-16 shrink-0">
             {HOURS.map((hour) => (
@@ -220,72 +253,74 @@ export function CalendarGrid({
             ))}
           </div>
 
-          {/* Day columns */}
-          {days.map((day) => {
-            const dayLessons = lessons.filter(l => isSameDay(parseISO(l.start_at), day));
-            const closure = getClosureForDay(day);
-            
-            return (
-              <div
-                key={day.toISOString()}
-                className={cn(
-                  'flex-1 relative border-l',
-                  isSameDay(day, new Date()) && 'bg-primary/5',
-                  closure && 'bg-warning/5 dark:bg-warning/5'
-                )}
-                onMouseDown={(e) => handleMouseDown(e, day)}
-                onClick={(e) => handleSlotClick(e, day)}
-              >
-                {/* Hour grid lines */}
-                {HOURS.map((hour) => (
-                  <div
-                    key={hour}
-                    className="border-b border-dashed border-muted"
-                    style={{ height: HOUR_HEIGHT }}
-                  />
-                ))}
-
-                {/* Lessons */}
-                {dayLessons.map((lesson) => {
-                  const { top, height } = getLessonPosition(lesson);
-                  return (
+          {/* Day columns - THIS ref is used for accurate click position */}
+          <div ref={dayColumnsRef} className="flex flex-1">
+            {days.map((day) => {
+              const dayLessons = lessons.filter(l => isSameDay(parseISO(l.start_at), day));
+              const closure = getClosureForDay(day);
+              
+              return (
+                <div
+                  key={day.toISOString()}
+                  className={cn(
+                    'flex-1 relative border-l',
+                    isSameDay(day, new Date()) && 'bg-primary/5',
+                    closure && 'bg-warning/5 dark:bg-warning/5'
+                  )}
+                  onMouseDown={(e) => handleMouseDown(e, day)}
+                  onClick={(e) => handleSlotClick(e, day)}
+                >
+                  {/* Hour grid lines */}
+                  {HOURS.map((hour) => (
                     <div
-                      key={lesson.id}
-                      className="absolute left-1 right-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded"
-                      style={{ top, height }}
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`${lesson.title} - ${format(parseISO(lesson.start_at), 'HH:mm')}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onLessonClick(lesson);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
+                      key={hour}
+                      className="border-b border-dashed border-muted"
+                      style={{ height: HOUR_HEIGHT }}
+                    />
+                  ))}
+
+                  {/* Lessons */}
+                  {dayLessons.map((lesson) => {
+                    const { top, height } = getLessonPosition(lesson);
+                    return (
+                      <div
+                        key={lesson.id}
+                        className="absolute left-1 right-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded"
+                        style={{ top, height }}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`${lesson.title} - ${format(parseISO(lesson.start_at), 'HH:mm')}`}
+                        onClick={(e) => {
                           e.stopPropagation();
                           onLessonClick(lesson);
-                        }
-                      }}
-                    >
-                      <LessonCard lesson={lesson} onClick={() => onLessonClick(lesson)} />
-                    </div>
-                  );
-                })}
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onLessonClick(lesson);
+                          }
+                        }}
+                      >
+                        <LessonCard lesson={lesson} onClick={() => onLessonClick(lesson)} />
+                      </div>
+                    );
+                  })}
 
-                {/* Drag selection overlay */}
-                {isDragging && dragStart && dragEnd !== null && isSameDay(dragStart.date, day) && (
-                  <div
-                    className="absolute left-1 right-1 bg-primary/20 border-2 border-primary border-dashed rounded"
-                    style={{
-                      top: Math.min(dragStart.y, dragEnd),
-                      height: Math.abs(dragEnd - dragStart.y),
-                    }}
-                  />
-                )}
-              </div>
-            );
-          })}
+                  {/* Drag selection overlay */}
+                  {isDragging && dragStart && dragEnd !== null && isSameDay(dragStart.date, day) && (
+                    <div
+                      className="absolute left-1 right-1 bg-primary/20 border-2 border-primary border-dashed rounded"
+                      style={{
+                        top: Math.min(dragStart.y, dragEnd),
+                        height: Math.abs(dragEnd - dragStart.y),
+                      }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </ScrollArea>

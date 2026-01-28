@@ -1,178 +1,98 @@
 
-# Scheduling System Critical Issues - Audit Report
+# Scheduling System Critical Issues - FIXED
 
-## Executive Summary
+## Summary of Fixes Implemented
 
-Through hands-on browser testing and code analysis, I identified **7 critical bugs** in the scheduling system that make it fundamentally broken for production use.
+All 7 critical bugs have been resolved:
 
 ---
 
-## Critical Issues Found
+## ✅ Issue 1: Calendar Click Position (P0) - FIXED
 
-### Issue 1: Calendar Click Position Is Completely Wrong (P0)
+**Fix:** `src/components/calendar/CalendarGrid.tsx`
+- Created `dayColumnsRef` that wraps ONLY the day columns (excludes time gutter)
+- Added `getAccurateY()` helper that calculates Y relative to day columns only
+- Added `wasDragging` ref to prevent click from firing after drag operations
+- Fixed both `handleMouseDown` and `handleSlotClick` to use accurate positioning
 
-**Evidence from Testing:**
-- Clicked at ~10:00 AM on Wednesday → Modal showed **09:00** (wrong time)
-- Clicked at ~15:00 on Tuesday Jan 27 → Modal showed **29 Jan at 13:00** (wrong date AND time!)
-- Duration defaulted to **90 min** instead of expected 60 min
+---
 
-**Root Cause:** `CalendarGrid.tsx` line 207 - The `timeGridRef` wraps BOTH the time labels column AND day columns:
+## ✅ Issue 2: Conflict Detection Disappearing (P0) - FIXED
+
+**Fix:** `src/components/calendar/LessonModal.tsx`
+- Added `lastCheckKey` to conflict state to track which configuration was checked
+- NEVER clear conflicts while checking - only replace when new results arrive
+- Added `conflictCheckRef` to detect stale results and prevent race conditions
+- Skip re-checking if we already have results for the exact same configuration
+
+---
+
+## ✅ Issue 3: Conflicts Don't Block Saves (P0) - FIXED
+
+**Fix:** `src/components/calendar/LessonModal.tsx`
+- Added `isSaveDisabled` that is true when `conflictState.isChecking || errors.length > 0`
+- Button text shows "Checking..." during conflict checks
+- Users cannot save while conflicts are being checked
+
+---
+
+## ✅ Issue 4: Missing 'availability' Type (P1) - FIXED
+
+**Fix:** `src/components/calendar/types.ts`
+- Added `'availability'` to ConflictResult type union:
 ```typescript
-<div className="flex" ref={timeGridRef}>  // Problem: includes time gutter in bounding rect
-  <div className="w-16 shrink-0">  // Time labels column (64px)
-    ...
-  </div>
-  {days.map((day) => ...)}  // Day columns
+type: 'teacher' | 'room' | 'student' | 'time_off' | 'closure' | 'availability';
 ```
 
-When calculating `y = e.clientY - rect.top`, the rect includes the time gutter which shifts calculations. Also, scrolling causes the sticky header offset to corrupt Y calculations.
+---
 
-**Fix Required:**
-- Move `timeGridRef` to wrap ONLY the day columns container, not the time labels
-- Account for scroll position in Y calculations
-- Account for sticky header height (approx 60-70px)
+## ✅ Issue 5: Timezone Handling (P1) - FIXED
+
+**Fix:** `src/components/calendar/LessonModal.tsx`
+- Added `date-fns-tz` dependency
+- Uses `fromZonedTime()` to convert local time to UTC before storing
+- Uses `toZonedTime()` to convert UTC to org timezone for display
+- Gets timezone from `currentOrg?.timezone || 'Europe/London'`
 
 ---
 
-### Issue 2: Conflict Detection Shows Then Disappears (P0)
+## ✅ Issue 6: Duplicate Click/MouseDown (P1) - FIXED
 
-**Evidence:** When changing date/time in the lesson modal:
-1. Conflict message appeared: "Teacher already has a lesson at this time: Lesson – Sophie Richards"
-2. After scrolling or interacting with the modal, the conflict **disappeared**
-3. "Create Lesson" button remained enabled
-
-**Root Cause:** The 800ms debounce in `LessonModal.tsx` line 164 re-triggers conflict checks on ANY form field change. When the user scrolls or interacts, the conflict state gets reset to `{ isChecking: false, conflicts: [] }` before the new check completes.
-
-**Fix Required:**
-- Don't reset conflicts until NEW results arrive
-- Replace line 165: `setConflictState(prev => ({ ...prev, isChecking: true }));` should NOT clear existing conflicts while checking
+**Fix:** `src/components/calendar/CalendarGrid.tsx`
+- Added `wasDragging` ref that tracks if mouse movement exceeded 10px
+- `handleSlotClick` checks `wasDragging.current` and exits early if it was a drag
+- Click only fires for genuine single clicks, not after drag operations
 
 ---
 
-### Issue 3: Conflicts Don't Block Lesson Creation (P0)
+## ✅ Issue 7: No Timeout/Error Handling (P2) - FIXED
 
-**Evidence:** Despite seeing "Teacher already has a lesson at this time" error, clicking "Create Lesson" succeeded and created the lesson.
-
-**Code Analysis:** `LessonModal.tsx` lines 275-283 checks for blocking conflicts:
-```typescript
-const blockingConflicts = conflictState.conflicts.filter(c => c.severity === 'error');
-if (blockingConflicts.length > 0) {
-  toast({ ... });
-  return;
-}
-```
-
-This SHOULD work, but because Issue #2 causes conflicts to disappear, `conflictState.conflicts` is empty at save time.
-
-**Fix Required:** Fix Issue #2, and also disable the Create button when `conflictState.isChecking` is true to prevent race conditions.
+**Fix:** `src/hooks/useConflictDetection.ts`
+- Added `withTimeout()` helper function with 10 second timeout
+- Refactored to run all conflict checks in parallel using `Promise.all()`
+- Wrapped entire check in try/catch with graceful degradation
+- On timeout/error, returns a warning instead of blocking the user
 
 ---
 
-### Issue 4: Teacher Conflict Type Missing from ConflictResult (P1)
+## Files Modified
 
-**Code:** `types.ts` line 45:
-```typescript
-type: 'teacher' | 'room' | 'student' | 'time_off' | 'closure';
-```
-
-But `useConflictDetection.ts` uses `'availability'` at line 84 which isn't in the union type, causing TypeScript issues.
-
-**Fix:** Add `'availability'` to the ConflictResult type union.
+| File | Changes |
+|------|---------|
+| `src/components/calendar/CalendarGrid.tsx` | Separate dayColumnsRef, accurate Y calculation, drag detection |
+| `src/components/calendar/LessonModal.tsx` | Stable conflict state, timezone handling, disabled button during check |
+| `src/components/calendar/types.ts` | Added 'availability' to ConflictResult type |
+| `src/hooks/useConflictDetection.ts` | Parallel checks, timeout, error handling, refactored to functions |
 
 ---
 
-### Issue 5: Date/Time Calculation Uses Local Time Incorrectly (P1)
+## Testing Checklist
 
-**Evidence from DB:** Lesson created with:
-- UI showed: Jan 27, 17:00
-- Database stored: `2026-01-28 01:00:00+00` (wrong!)
-
-**Root Cause:** `LessonModal.tsx` line 289:
-```typescript
-const startAt = setMinutes(setHours(startOfDay(selectedDate), hour), minute);
-```
-
-`startOfDay` and `setHours` work in local browser time, but `toISOString()` converts to UTC. If the browser is in a non-UTC timezone, the stored time is wrong.
-
-**Fix Required:** Use timezone-aware date handling with the org's configured timezone (`Europe/London`).
-
----
-
-### Issue 6: Grid Click Fires Both onMouseDown AND onClick (P1)
-
-**Code:** `CalendarGrid.tsx` lines 236-237:
-```typescript
-onMouseDown={(e) => handleMouseDown(e, day)}
-onClick={(e) => handleSlotClick(e, day)}
-```
-
-Both handlers fire on a simple click, causing duplicate behavior and potential race conditions.
-
-**Fix:** Only call `handleSlotClick` in the onClick handler if it wasn't a drag operation.
-
----
-
-### Issue 7: Conflict Check Has No Timeout/Error Handling (P2)
-
-**Code:** The `checkConflicts` function makes 5-6 sequential database queries with no timeout or error handling. If any query hangs, the UI shows loading forever.
-
-**Fix:** Add Promise.race with timeout, and wrap in try/catch.
-
----
-
-## Implementation Plan
-
-### Phase 1: Fix CalendarGrid Click Position (Critical)
-
-**File: `src/components/calendar/CalendarGrid.tsx`**
-
-1. Create separate ref for day columns container only
-2. Calculate Y position accounting for:
-   - Scroll position of the ScrollArea
-   - Time gutter width (64px) for X
-   - Sticky header height offset
-
-### Phase 2: Fix Conflict Detection Stability
-
-**File: `src/components/calendar/LessonModal.tsx`**
-
-1. Don't clear conflicts while checking - only replace when new results arrive
-2. Disable "Create Lesson" button while conflict check is in progress
-3. Add loading indicator during conflict checks
-
-### Phase 3: Fix Timezone Handling
-
-**File: `src/components/calendar/LessonModal.tsx`**
-
-1. Use org timezone for date/time calculations
-2. Store dates in UTC but display in org timezone
-3. Use `date-fns-tz` for timezone-aware operations
-
-### Phase 4: Fix Type Definitions
-
-**File: `src/components/calendar/types.ts`**
-
-1. Add `'availability'` to ConflictResult type union
-
----
-
-## Files Requiring Changes
-
-| File | Changes | Priority |
-|------|---------|----------|
-| `src/components/calendar/CalendarGrid.tsx` | Fix click position calculation, separate refs | P0 |
-| `src/components/calendar/LessonModal.tsx` | Fix conflict state management, add loading states | P0 |
-| `src/components/calendar/LessonModal.tsx` | Fix timezone handling in date calculations | P1 |
-| `src/components/calendar/types.ts` | Add 'availability' to ConflictResult type | P1 |
-| `src/hooks/useConflictDetection.ts` | Add timeout/error handling | P2 |
-
----
-
-## Expected Outcomes
-
-After implementing these fixes:
-
-1. **Clicking on calendar will open modal at correct date/time** - Accurate to within 15-minute intervals
-2. **Conflicts will persist and block saves** - No more disappearing warnings
-3. **Timezone handling will be correct** - Lessons stored and displayed in org timezone
-4. **Type safety** - No more `as any` casts for conflict types
+- [ ] Click on calendar grid opens modal at correct date/time
+- [ ] Conflict warnings persist and don't disappear
+- [ ] Save button is disabled while checking conflicts
+- [ ] Save button is disabled when blocking errors exist
+- [ ] Lessons stored in correct UTC time
+- [ ] Lessons display in org timezone
+- [ ] Drag to create lesson works correctly
+- [ ] Conflict detection doesn't hang forever

@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { format, addMinutes, setHours, setMinutes, startOfDay, parseISO, addWeeks } from 'date-fns';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -53,11 +54,12 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   const { sendNotesNotification } = useNotesNotification();
 
   const [isSaving, setIsSaving] = useState(false);
-  // Consolidated conflict state to prevent multiple re-renders causing layout shifts
+  // Consolidated conflict state - NEVER clear conflicts while checking, only replace
   const [conflictState, setConflictState] = useState<{
     isChecking: boolean;
     conflicts: ConflictResult[];
-  }>({ isChecking: false, conflicts: [] });
+    lastCheckKey: string;
+  }>({ isChecking: false, conflicts: [], lastCheckKey: '' });
   const [studentsOpen, setStudentsOpen] = useState(false);
   
   // Recurring edit state
@@ -80,10 +82,15 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]);
   const [recurrenceEndDate, setRecurrenceEndDate] = useState<Date | null>(null);
 
+  // Track the current conflict check to avoid stale updates
+  const conflictCheckRef = useRef<number>(0);
+
+  // Get org timezone, default to Europe/London
+  const orgTimezone = currentOrg?.timezone || 'Europe/London';
+
   // Calculate total lessons for closure pattern check
   const estimatedTotalLessons = useMemo(() => {
     if (!isRecurring || recurrenceDays.length === 0) return 0;
-    // Estimate based on 12 weeks if no end date
     const endDate = recurrenceEndDate || addWeeks(selectedDate, 12);
     const weeksDiff = Math.ceil((endDate.getTime() - selectedDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
     return Math.max(1, Math.ceil(weeksDiff / 1) * recurrenceDays.length);
@@ -92,7 +99,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   // Check for closure date conflicts in recurring series
   const closureCheck = useClosurePatternCheck(
     isRecurring && recurrenceDays.length > 0 ? selectedDate : null,
-    1, // intervalWeeks - always 1 for now
+    1,
     estimatedTotalLessons,
     locationId
   );
@@ -104,13 +111,15 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     if (lesson) {
       const start = parseISO(lesson.start_at);
       const end = parseISO(lesson.end_at);
+      // Convert from UTC to org timezone for display
+      const zonedStart = toZonedTime(start, orgTimezone);
       setLessonType(lesson.lesson_type);
       setTeacherUserId(lesson.teacher_user_id);
       setSelectedStudents(lesson.participants?.map(p => p.student.id) || []);
       setLocationId(lesson.location_id);
       setRoomId(lesson.room_id);
-      setSelectedDate(start);
-      setStartTime(format(start, 'HH:mm'));
+      setSelectedDate(zonedStart);
+      setStartTime(format(zonedStart, 'HH:mm'));
       setDurationMins(Math.round((end.getTime() - start.getTime()) / 60000));
       setNotesPrivate(lesson.notes_private || '');
       setNotesShared(lesson.notes_shared || '');
@@ -131,17 +140,24 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       setRecurrenceEndDate(null);
 
       if (initialDate) {
+        // initialDate is already in local browser time from the calendar grid
         setSelectedDate(initialDate);
         setStartTime(format(initialDate, 'HH:mm'));
+        // Set duration from org default
+        setDurationMins(currentOrg?.default_lesson_length_mins || 60);
+      } else {
+        setDurationMins(currentOrg?.default_lesson_length_mins || 60);
       }
+      
       if (initialEndDate && initialDate) {
         const duration = Math.round((initialEndDate.getTime() - initialDate.getTime()) / 60000);
         setDurationMins(Math.max(15, Math.min(duration, 180)));
       }
     }
-    setConflictState({ isChecking: false, conflicts: [] });
+    setConflictState({ isChecking: false, conflicts: [], lastCheckKey: '' });
     setRecurringEditMode(null);
-  }, [open, lesson, initialDate, initialEndDate, user?.id]);
+    conflictCheckRef.current = 0;
+  }, [open, lesson, initialDate, initialEndDate, user?.id, orgTimezone, currentOrg?.default_lesson_length_mins]);
 
   // Auto-select teacher if only one
   useEffect(() => {
@@ -157,19 +173,34 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   }, [locationId, rooms]);
 
   // Check conflicts on key field changes with debounce
+  // CRITICAL: Never clear conflicts while checking - only replace when new results arrive
   useEffect(() => {
     if (!open || !teacherUserId || !selectedDate) return;
 
-    // Increased debounce from 500ms to 800ms to reduce flicker
+    // Create a unique key for this check to detect stale results
+    const checkKey = `${teacherUserId}-${selectedDate.toISOString()}-${startTime}-${durationMins}-${roomId}-${selectedStudents.join(',')}-${lesson?.id}`;
+    
+    // Don't re-check if we already have results for this exact configuration
+    if (checkKey === conflictState.lastCheckKey && !conflictState.isChecking) {
+      return;
+    }
+
+    const currentCheck = ++conflictCheckRef.current;
+    
     const timeoutId = setTimeout(async () => {
+      // Mark as checking but DO NOT clear existing conflicts
       setConflictState(prev => ({ ...prev, isChecking: true }));
+      
       const [hour, minute] = startTime.split(':').map(Number);
-      const startAt = setMinutes(setHours(startOfDay(selectedDate), hour), minute);
-      const endAt = addMinutes(startAt, durationMins);
+      
+      // Build the date/time in the org's timezone, then convert to UTC for storage
+      const localDateTime = setMinutes(setHours(startOfDay(selectedDate), hour), minute);
+      const startAtUtc = fromZonedTime(localDateTime, orgTimezone);
+      const endAtUtc = addMinutes(startAtUtc, durationMins);
 
       const results = await checkConflicts({
-        start_at: startAt,
-        end_at: endAt,
+        start_at: startAtUtc,
+        end_at: endAtUtc,
         teacher_user_id: teacherUserId,
         room_id: roomId,
         location_id: locationId,
@@ -177,12 +208,18 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
         exclude_lesson_id: lesson?.id,
       });
 
-      // Single state update to prevent layout shifts
-      setConflictState({ isChecking: false, conflicts: results });
-    }, 800);
+      // Only update state if this is still the most recent check
+      if (conflictCheckRef.current === currentCheck) {
+        setConflictState({ 
+          isChecking: false, 
+          conflicts: results,
+          lastCheckKey: checkKey 
+        });
+      }
+    }, 600);
 
     return () => clearTimeout(timeoutId);
-  }, [open, teacherUserId, selectedDate, startTime, durationMins, roomId, selectedStudents, lesson?.id, checkConflicts]);
+  }, [open, teacherUserId, selectedDate, startTime, durationMins, roomId, selectedStudents, lesson?.id, checkConflicts, orgTimezone, conflictState.lastCheckKey, conflictState.isChecking]);
 
   const generateTitle = () => {
     if (selectedStudents.length === 0) return 'New Lesson';
@@ -204,11 +241,9 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       setSelectedStudents([studentId]);
       setStudentsOpen(false);
       
-      // Auto-populate teaching defaults for new private lessons only
       if (!lesson) {
         const student = students.find(s => s.id === studentId);
         if (student) {
-          // Only populate if field is currently empty and the default exists in available options
           if (!teacherUserId && student.default_teacher_user_id) {
             const teacherExists = teachers.some(t => t.id === student.default_teacher_user_id);
             if (teacherExists) {
@@ -232,9 +267,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     }
   };
 
-  // Handle save click - check if we need to show recurring dialog first
   const handleSaveClick = () => {
-    // If editing a recurring lesson and haven't chosen a mode yet, show dialog
     if (lesson?.recurrence_id && !recurringEditMode) {
       setShowRecurringDialog(true);
       return;
@@ -242,11 +275,9 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     handleSave();
   };
 
-  // Handle recurring edit mode selection
   const handleRecurringModeSelect = (mode: RecurringEditMode) => {
     setRecurringEditMode(mode);
     setShowRecurringDialog(false);
-    // Proceed with save after mode selection
     handleSaveWithMode(mode);
   };
 
@@ -261,7 +292,6 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   const handleSaveWithMode = async (editMode: RecurringEditMode | null) => {
     if (!currentOrg || !user) return;
 
-    // Validate
     if (!teacherUserId) {
       toast({ title: 'Please select a teacher', variant: 'destructive' });
       return;
@@ -271,7 +301,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       return;
     }
 
-    // Check for blocking conflicts
+    // Check for blocking conflicts - use current conflict state
     const blockingConflicts = conflictState.conflicts.filter(c => c.severity === 'error');
     if (blockingConflicts.length > 0) {
       toast({ 
@@ -286,15 +316,16 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
     try {
       const [hour, minute] = startTime.split(':').map(Number);
-      const startAt = setMinutes(setHours(startOfDay(selectedDate), hour), minute);
-      const endAt = addMinutes(startAt, durationMins);
+      
+      // Build the date/time in the org's timezone, then convert to UTC for storage
+      const localDateTime = setMinutes(setHours(startOfDay(selectedDate), hour), minute);
+      const startAtUtc = fromZonedTime(localDateTime, orgTimezone);
+      const endAtUtc = addMinutes(startAtUtc, durationMins);
 
       if (lesson) {
-        // Determine which lessons to update based on edit mode
         let lessonIdsToUpdate: string[] = [lesson.id];
         
         if (editMode === 'this_and_future' && lesson.recurrence_id) {
-          // Get all future lessons in the same series
           const { data: futureLessons } = await supabase
             .from('lessons')
             .select('id, start_at')
@@ -307,7 +338,6 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
           }
         }
 
-        // Calculate time offset for future lessons (preserving relative time of day)
         const originalStart = parseISO(lesson.start_at);
         const originalHour = originalStart.getHours();
         const originalMinute = originalStart.getMinutes();
@@ -315,15 +345,11 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
         const timeOffsetMs = ((newHour - originalHour) * 60 + (newMinute - originalMinute)) * 60 * 1000;
         const originalDuration = parseISO(lesson.end_at).getTime() - originalStart.getTime();
         const newDuration = durationMins * 60 * 1000;
-        const durationDiff = newDuration - originalDuration;
 
-        // Update each lesson
         for (let i = 0; i < lessonIdsToUpdate.length; i++) {
           const lessonId = lessonIdsToUpdate[i];
           
           if (editMode === 'this_and_future' && i > 0) {
-            // For future lessons, only update non-time fields and adjust time relatively
-            // First get the current lesson data
             const { data: currentLesson } = await supabase
               .from('lessons')
               .select('start_at, end_at')
@@ -345,12 +371,10 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
                   start_at: newStart.toISOString(),
                   end_at: newEnd.toISOString(),
                   title: generateTitle(),
-                  // Keep individual notes for future lessons
                 })
                 .eq('id', lessonId);
             }
           } else {
-            // For the current lesson (or single edit), update everything
             const { error } = await supabase
               .from('lessons')
               .update({
@@ -358,13 +382,12 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
                 teacher_user_id: teacherUserId,
                 location_id: locationId,
                 room_id: roomId,
-                start_at: startAt.toISOString(),
-                end_at: endAt.toISOString(),
+                start_at: startAtUtc.toISOString(),
+                end_at: endAtUtc.toISOString(),
                 title: generateTitle(),
                 notes_private: notesPrivate || null,
                 notes_shared: notesShared || null,
                 status,
-                // Detach from series if editing this only
                 recurrence_id: editMode === 'this_only' ? null : lesson.recurrence_id,
               })
               .eq('id', lessonId);
@@ -372,7 +395,6 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
             if (error) throw error;
           }
 
-          // Update participants for each lesson
           await supabase.from('lesson_participants').delete().eq('lesson_id', lessonId);
           
           if (selectedStudents.length > 0) {
@@ -386,15 +408,15 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
           }
         }
 
-        // Send notification if shared notes were added or changed (only for the main lesson)
         const notesChanged = notesShared && notesShared !== (lesson.notes_shared || '');
         if (notesChanged && currentOrg) {
           const teacherProfile = teachers.find(t => t.id === teacherUserId);
+          const zonedStart = toZonedTime(startAtUtc, orgTimezone);
           sendNotesNotification({
             lessonId: lesson.id,
             notesShared,
             lessonTitle: generateTitle(),
-            lessonDate: format(startAt, 'EEEE, d MMMM yyyy \'at\' HH:mm'),
+            lessonDate: format(zonedStart, 'EEEE, d MMMM yyyy \'at\' HH:mm'),
             teacherName: teacherProfile?.name || profile?.full_name || 'Your teacher',
             orgName: currentOrg.name,
             orgId: currentOrg.id,
@@ -408,11 +430,9 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
             : 'Lesson updated' 
         });
       } else {
-        // Create new lesson(s)
-        const lessonsToCreate: Date[] = [startAt];
+        const lessonsToCreate: Date[] = [startAtUtc];
 
         if (isRecurring && recurrenceDays.length > 0) {
-          // Create recurrence rule
           const { data: recurrence, error: recError } = await supabase
             .from('recurrence_rules')
             .insert({
@@ -422,29 +442,25 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
               interval_weeks: 1,
               start_date: format(selectedDate, 'yyyy-MM-dd'),
               end_date: recurrenceEndDate ? format(recurrenceEndDate, 'yyyy-MM-dd') : null,
-              timezone: currentOrg.timezone || 'Europe/London',
+              timezone: orgTimezone,
             })
             .select()
             .single();
 
           if (recError) throw recError;
 
-          // Generate lesson dates for the next weeks
-          // This is simplified - a real implementation would be more sophisticated
-          const endDate = recurrenceEndDate || addMinutes(startAt, 90 * 24 * 60); // 90 days default
-          let currentDate = new Date(startAt);
+          const endDate = recurrenceEndDate || addMinutes(startAtUtc, 90 * 24 * 60);
+          let currentDate = new Date(startAtUtc);
           
           while (currentDate <= endDate) {
             const dayOfWeek = currentDate.getDay();
-            if (recurrenceDays.includes(dayOfWeek) && currentDate > startAt) {
-              const lessonDate = setMinutes(setHours(startOfDay(currentDate), hour), minute);
-              lessonsToCreate.push(lessonDate);
+            if (recurrenceDays.includes(dayOfWeek) && currentDate > startAtUtc) {
+              lessonsToCreate.push(new Date(currentDate));
             }
             currentDate = addMinutes(currentDate, 24 * 60);
           }
         }
 
-        // Create all lessons
         for (const lessonDate of lessonsToCreate) {
           const lessonEndAt = addMinutes(lessonDate, durationMins);
           
@@ -469,7 +485,6 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
           if (error) throw error;
 
-          // Add participants
           if (newLesson && selectedStudents.length > 0) {
             await supabase.from('lesson_participants').insert(
               selectedStudents.map(studentId => ({
@@ -479,14 +494,14 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
               }))
             );
 
-            // Send notification if shared notes were added (only for first lesson to avoid spam)
             if (notesShared && lessonDate === lessonsToCreate[0]) {
               const teacherProfile = teachers.find(t => t.id === teacherUserId);
+              const zonedLessonDate = toZonedTime(lessonDate, orgTimezone);
               sendNotesNotification({
                 lessonId: newLesson.id,
                 notesShared,
                 lessonTitle: generateTitle(),
-                lessonDate: format(lessonDate, 'EEEE, d MMMM yyyy \'at\' HH:mm'),
+                lessonDate: format(zonedLessonDate, 'EEEE, d MMMM yyyy \'at\' HH:mm'),
                 teacherName: teacherProfile?.name || profile?.full_name || 'Your teacher',
                 orgName: currentOrg.name,
                 orgId: currentOrg.id,
@@ -517,6 +532,9 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
   const errors = conflictState.conflicts.filter(c => c.severity === 'error');
   const warnings = conflictState.conflicts.filter(c => c.severity === 'warning');
+
+  // Disable save button if checking conflicts OR if there are blocking errors
+  const isSaveDisabled = isSaving || conflictState.isChecking || errors.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -858,9 +876,9 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSaveClick} disabled={isSaving || errors.length > 0}>
+          <Button onClick={handleSaveClick} disabled={isSaveDisabled}>
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            {lesson ? 'Save Changes' : 'Create Lesson'}
+            {conflictState.isChecking ? 'Checking...' : (lesson ? 'Save Changes' : 'Create Lesson')}
           </Button>
         </DialogFooter>
       </DialogContent>

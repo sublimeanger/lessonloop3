@@ -66,7 +66,7 @@ export interface LessonFormData {
 }
 
 export interface ConflictResult {
-  type: 'teacher' | 'room' | 'student' | 'time_off' | 'closure';
+  type: 'teacher' | 'room' | 'student' | 'time_off' | 'closure' | 'availability';
   severity: 'error' | 'warning';
   message: string;
   entity_name?: string;
