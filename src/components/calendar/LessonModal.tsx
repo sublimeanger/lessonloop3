@@ -650,7 +650,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
           </div>
 
           {/* Location & Room */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Location</Label>
               <Select value={locationId || 'none'} onValueChange={(v) => { setLocationId(v === 'none' ? null : v); setRoomId(null); }}>

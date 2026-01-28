@@ -134,7 +134,7 @@ export function GuardianStep({ data, onChange }: GuardianStepProps) {
                   placeholder="Sarah Wilson"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="new-guardian-email">Email</Label>
                   <Input
@@ -160,7 +160,7 @@ export function GuardianStep({ data, onChange }: GuardianStepProps) {
           )}
           
           {/* Relationship & Primary Payer */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Relationship</Label>
               <Select
