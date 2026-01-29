@@ -1,251 +1,202 @@
 
-# Google Calendar and Apple Calendar Integration
 
-## Overview
-Add bidirectional calendar synchronization allowing LessonLoop users to sync their lessons with Google Calendar and Apple Calendar (via iCal/CalDAV). This is a tier-gated feature (listed in pricing config for Teacher plan and above).
+# Fix OAuth Redirects, Calendar Connection Feedback & Demo Data Population
 
----
+## Summary
 
-## Architecture Decision
-
-### Sync Strategy: Two-Way with Primary Source
-- **LessonLoop is the primary source of truth** for lesson data
-- **Push to external calendars**: When lessons are created/updated/deleted in LessonLoop, changes push to connected calendars
-- **Pull for free/busy only**: External calendar events create "blocked" time slots for conflict detection, but don't create lessons
-
-### Why This Approach?
-1. Prevents data corruption from external edits
-2. Maintains billing and attendance integrity
-3. Simpler conflict resolution
-4. Users can still see their personal commitments when scheduling
+This plan addresses three distinct issues:
+1. **OAuth Signup Redirect Bug** - Google/Apple sign-up redirects to homepage instead of onboarding
+2. **Calendar Connection Feedback** - No success confirmation when connecting Google Calendar
+3. **Demo Data Population** - Create comprehensive data for `jamie@searchflare.co.uk` to showcase calendar sync
 
 ---
 
-## Database Schema Changes
+## Issue 1: OAuth Signup Redirects to Homepage
 
-### New Table: `calendar_connections`
-Stores OAuth tokens and sync metadata per user.
+### The Problem
+When a new user signs up with Google or Apple, the OAuth redirect is set to `window.location.origin` (the homepage `/`). After authentication, the user lands on `/` which is the marketing homepage, not a protected route, so no redirect logic kicks in to send them to `/onboarding`.
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ calendar_connections                                        │
-├─────────────────────────────────────────────────────────────┤
-│ id              UUID PRIMARY KEY                            │
-│ user_id         UUID REFERENCES auth.users(id)              │
-│ org_id          UUID REFERENCES organisations(id)           │
-│ provider        TEXT ('google' | 'apple')                   │
-│ calendar_id     TEXT (external calendar identifier)         │
-│ calendar_name   TEXT                                        │
-│ access_token    TEXT (encrypted)                            │
-│ refresh_token   TEXT (encrypted)                            │
-│ token_expires_at TIMESTAMPTZ                                │
-│ sync_enabled    BOOLEAN DEFAULT true                        │
-│ last_sync_at    TIMESTAMPTZ                                 │
-│ sync_status     TEXT ('active'|'error'|'disconnected')      │
-│ created_at      TIMESTAMPTZ                                 │
-│ updated_at      TIMESTAMPTZ                                 │
-└─────────────────────────────────────────────────────────────┘
+### Root Cause
+In `Login.tsx` and `Signup.tsx`:
+```typescript
+const { error } = await lovable.auth.signInWithOAuth('google', {
+  redirect_uri: window.location.origin, // Returns to "/"
+});
 ```
 
-### New Table: `calendar_event_mappings`
-Links LessonLoop lessons to external calendar events for sync tracking.
+The homepage (`/`) is a public marketing page (`MarketingHome`), not wrapped in `PublicRoute`. When a newly authenticated user lands there, there's no guard to redirect them to `/onboarding`.
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ calendar_event_mappings                                     │
-├─────────────────────────────────────────────────────────────┤
-│ id                UUID PRIMARY KEY                          │
-│ connection_id     UUID REFERENCES calendar_connections(id)  │
-│ lesson_id         UUID REFERENCES lessons(id)               │
-│ external_event_id TEXT                                      │
-│ sync_status       TEXT ('synced'|'pending'|'failed')        │
-│ last_synced_at    TIMESTAMPTZ                               │
-│ error_message     TEXT                                      │
-│ created_at        TIMESTAMPTZ                               │
-└─────────────────────────────────────────────────────────────┘
-```
+### Solution
+Change the redirect URI to explicitly target `/login` (which IS wrapped in `PublicRoute`). After OAuth completes and the user is authenticated, `PublicRoute` will detect:
+- User is authenticated
+- Profile is missing or `has_completed_onboarding` is false
+- Redirect to `/onboarding`
 
-### New Table: `external_busy_blocks`
-Stores free/busy data pulled from external calendars for conflict detection.
+### Files to Modify
+- `src/pages/Login.tsx`: Lines 28-29 and 44-45
+- `src/pages/Signup.tsx`: Lines 29-30 and 45-46
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ external_busy_blocks                                        │
-├─────────────────────────────────────────────────────────────┤
-│ id              UUID PRIMARY KEY                            │
-│ connection_id   UUID REFERENCES calendar_connections(id)    │
-│ user_id         UUID                                        │
-│ org_id          UUID                                        │
-│ start_at        TIMESTAMPTZ                                 │
-│ end_at          TIMESTAMPTZ                                 │
-│ title           TEXT (optional, for display)                │
-│ source_event_id TEXT                                        │
-│ fetched_at      TIMESTAMPTZ                                 │
-└─────────────────────────────────────────────────────────────┘
+### Code Changes
+```typescript
+// Change from:
+redirect_uri: window.location.origin,
+
+// To:
+redirect_uri: `${window.location.origin}/login`,
 ```
 
 ---
 
-## Edge Functions (Backend)
+## Issue 2: No Success Feedback for Google Calendar Connection
 
-### 1. `calendar-oauth-start`
-Initiates OAuth flow for Google Calendar.
-- Generates state token, stores in session
-- Redirects to Google OAuth consent screen
-- Scopes: `calendar.events`, `calendar.readonly`
+### The Problem
+After completing Google Calendar OAuth, the user is redirected to `/settings?calendar_connected=google` but there's no visible feedback - they're just on the settings page.
 
-### 2. `calendar-oauth-callback`
-Handles OAuth callback from Google.
-- Exchanges code for tokens
-- Stores encrypted tokens in `calendar_connections`
-- Fetches user's calendar list for selection
+### Root Cause
+The `useCalendarConnections` hook handles the query parameter and shows a toast, but this happens ONLY if the user lands on a page that uses this hook. The Settings page must be on the Calendar Integrations tab for this to work.
 
-### 3. `calendar-sync-lesson`
-Pushes lesson changes to connected calendars.
-- Called via database trigger on `lessons` INSERT/UPDATE/DELETE
-- Creates/updates/deletes events in external calendar
-- Updates `calendar_event_mappings`
+Looking at the callback edge function, it redirects to:
+```typescript
+return Response.redirect(`${redirectUri}?calendar_connected=google`);
+```
 
-### 4. `calendar-fetch-busy`
-Pulls free/busy data from external calendars.
-- Scheduled job (every 15 minutes) or on-demand
-- Fetches next 14 days of events
-- Stores in `external_busy_blocks` table
-- Used by conflict detection
+The issue is that `redirectUri` comes from the OAuth start state, which uses `/settings?tab=calendar`. The query parameter handling in `useCalendarConnections` then shows the toast, but the UX still feels abrupt.
 
-### 5. `calendar-disconnect`
-Revokes OAuth tokens and removes connection.
-- Deletes all synced events from external calendar (optional)
-- Cleans up mapping records
+### Solution
+1. Enhance the callback flow to show a dedicated success toast
+2. Ensure the Settings page opens on the correct tab
+3. Add a brief "Connected!" badge animation to the calendar card
 
-### 6. `calendar-ical-feed`
-Generates a read-only iCal (.ics) feed URL for Apple Calendar.
-- Token-based authentication (unique URL per user)
-- Returns all lessons in iCal format
-- Enables Apple Calendar subscription
+### Files to Modify
+- `src/hooks/useCalendarConnections.ts`: Enhance the URL parameter handling to show a more prominent success message
+- `src/components/settings/CalendarIntegrationsTab.tsx`: Add a "just connected" animation state
 
----
+### Code Changes
 
-## Apple Calendar Strategy
+**In `useCalendarConnections.ts`** (lines 152-165):
+```typescript
+if (calendarConnected) {
+  toast({ 
+    title: 'Google Calendar connected successfully!', 
+    description: 'Your lessons will now sync automatically. You can manage this connection below.',
+    duration: 5000,
+  });
+  // Clean up URL and ensure we stay on calendar tab
+  const url = new URL(window.location.href);
+  url.searchParams.delete('calendar_connected');
+  url.searchParams.set('tab', 'calendar'); // Ensure tab stays visible
+  window.history.replaceState({}, '', url.toString());
+  refetch();
+}
+```
 
-Apple Calendar doesn't have a simple OAuth API like Google. Two approaches:
-
-### Option A: iCal Feed (Read-Only) - Recommended for MVP
-- Generate a unique iCal feed URL per user
-- Users subscribe to this URL in Apple Calendar
-- One-way sync (LessonLoop → Apple Calendar)
-- No push notifications, relies on calendar app refresh (typically 15-60 min)
-
-### Option B: CalDAV Integration (Full Sync) - Future
-- Requires users to provide Apple ID app-specific password
-- More complex to implement
-- Full two-way sync possible
-
-**MVP Recommendation**: Implement iCal feed for Apple Calendar.
+**In `CalendarIntegrationsTab.tsx`**:
+Add a state to detect "just connected" and show a subtle highlight/animation on the Google Calendar card for a few seconds.
 
 ---
 
-## Frontend Components
+## Issue 3: Demo Data Population for jamie@searchflare.co.uk
 
-### 1. `CalendarIntegrationsTab.tsx` (Settings)
-New tab in Settings page:
-- "Connect Google Calendar" button with OAuth flow
-- "Get Apple Calendar Link" for iCal subscription URL
-- Connected calendar status display
-- Sync toggle and last sync timestamp
-- Disconnect button
+### Account Details
+- **User ID**: `29ae9f1e-c528-40ea-b9e8-84c2f03b15a9`
+- **Org ID**: `ab483977-e53b-450a-ab1b-b64c921cae9b`
+- **Email**: `jamie@searchflare.co.uk`
+- **Name**: Jamie McKaye
+- **Current Data**: 0 students, 0 lessons, 0 invoices
 
-### 2. Update Conflict Detection Hook
-Modify `useConflictDetection.ts`:
-- Query `external_busy_blocks` table
-- Add "External calendar conflict" as a new conflict type
-- Display as warning (not blocking error)
+### Data to Create
 
-### 3. Calendar Grid Enhancement
-Optional visual indicator for external busy blocks:
-- Render as semi-transparent overlay on calendar grid
-- Tooltip: "Busy (Personal Calendar)"
+#### Students (15 students - mix of ages and instruments)
+| First Name | Last Name | Instrument | Age Range | Status |
+|------------|-----------|------------|-----------|--------|
+| Oliver | Thompson | Piano | 8-10 | active |
+| Sophie | Williams | Violin | 12-14 | active |
+| Jack | Brown | Guitar | 10-12 | active |
+| Emily | Davies | Piano | 14-16 | active |
+| Harry | Wilson | Drums | 11-13 | active |
+| Amelia | Taylor | Flute | 9-11 | active |
+| George | Anderson | Piano | 7-9 | active |
+| Isabella | Thomas | Cello | 13-15 | active |
+| Noah | Roberts | Guitar | 15-17 | active |
+| Mia | Johnson | Violin | 10-12 | active |
+| Oscar | Evans | Saxophone | 12-14 | active |
+| Charlotte | Lewis | Piano | 8-10 | active |
+| Alfie | Walker | Drums | 14-16 | active |
+| Lily | Hall | Clarinet | 11-13 | active |
+| Freddie | Green | Guitar | 9-11 | active |
 
----
+#### Guardians (one per student for simplicity)
+Create 15 guardians with realistic UK names, linking each to their respective student.
 
-## Security Considerations
+#### Lessons (40+ lessons)
+- **Past lessons** (20): Spread over the last 4 weeks, all marked `completed`
+- **Today's lessons** (3-4): For demo timeline
+- **Future lessons** (15-20): Next 3 weeks
+- All lessons assigned to Jamie (the teacher/owner)
+- Mix of 30-minute and 45-minute slots
+- Spread across Monday-Friday, 3pm-7pm (typical after-school slots)
 
-1. **Token Encryption**: Store OAuth tokens encrypted at rest using Supabase Vault
-2. **RLS Policies**: Users can only access their own calendar connections
-3. **iCal Feed Security**: Use long random tokens in feed URLs, allow regeneration
-4. **Scope Limitation**: Request minimum necessary Google scopes
-5. **Token Refresh**: Implement automatic token refresh before expiration
+#### Invoices (8-10 invoices)
+- 3-4 **paid** invoices (for past lessons)
+- 2-3 **sent** invoices (pending payment)
+- 1-2 **overdue** invoices (for demo of outstanding reports)
+- 1 **draft** invoice
 
----
+#### Rate Cards
+- Piano: £35/30min, £50/45min
+- Guitar: £32/30min, £45/45min
+- Violin/Cello: £38/30min, £55/45min
+- Drums: £40/45min
+- Wind instruments: £35/30min, £50/45min
 
-## API Keys Required
+### Database Migration Approach
+Create an edge function `seed-demo-data` that can be called to populate this data, OR use a direct SQL migration. The edge function approach is safer as it can be re-run without creating duplicates.
 
-### Google Calendar API
-- `GOOGLE_CLIENT_ID` - OAuth client ID
-- `GOOGLE_CLIENT_SECRET` - OAuth client secret
+### Files to Create
+- `supabase/functions/seed-demo-data/index.ts`: Edge function to populate demo data
 
-These will need to be added as secrets and the Google Cloud Console project configured with:
-- Calendar API enabled
-- OAuth consent screen configured
-- Authorized redirect URI set
-
----
-
-## Implementation Phases
-
-### Phase 1: Database & iCal Feed (Apple Calendar)
-1. Create database tables with migrations
-2. Implement `calendar-ical-feed` edge function
-3. Add CalendarIntegrationsTab to Settings
-4. Display iCal subscription URL for users
-
-### Phase 2: Google Calendar OAuth
-1. Configure Google Cloud Console project
-2. Implement OAuth start/callback edge functions
-3. Store tokens securely
-4. Add Google Calendar connect UI
-
-### Phase 3: Push Sync (LessonLoop → Google)
-1. Implement `calendar-sync-lesson` edge function
-2. Create database trigger on lessons table
-3. Handle recurring lesson series
-
-### Phase 4: Free/Busy Pull
-1. Implement `calendar-fetch-busy` edge function
-2. Create scheduled cron job
-3. Integrate with conflict detection
-4. Add visual indicators to calendar grid
+### Implementation Notes
+- All data will be scoped to org_id `ab483977-e53b-450a-ab1b-b64c921cae9b`
+- The teacher_user_id for all lessons will be `29ae9f1e-c528-40ea-b9e8-84c2f03b15a9` (Jamie)
+- Use realistic UK phone numbers and email patterns
+- Lesson times in Europe/London timezone
 
 ---
 
-## Files to Create
+## Google Verification Clarification
 
-| File | Purpose |
-|------|---------|
-| `src/components/settings/CalendarIntegrationsTab.tsx` | Settings UI for calendar connections |
-| `src/hooks/useCalendarConnections.ts` | Hook for managing calendar connections |
-| `supabase/functions/calendar-ical-feed/index.ts` | iCal feed generation |
-| `supabase/functions/calendar-oauth-start/index.ts` | Google OAuth initiation |
-| `supabase/functions/calendar-oauth-callback/index.ts` | OAuth callback handler |
-| `supabase/functions/calendar-sync-lesson/index.ts` | Push lesson changes to Google |
-| `supabase/functions/calendar-fetch-busy/index.ts` | Pull free/busy data |
-| `supabase/functions/calendar-disconnect/index.ts` | Revoke and cleanup |
+You're correct that the Google verification video does **NOT** need to show:
+- The Google Login button for app authentication (uses non-sensitive scopes)
 
-## Files to Modify
+The video **MUST** show:
+1. **Settings > Calendar Integrations** page
+2. Click "Connect" on Google Calendar
+3. The Google OAuth consent screen (showing sensitive scopes: calendar.events, calendar.readonly)
+4. Successful redirect back showing "Connected" status
+5. Creating/editing a lesson and seeing it sync to Google Calendar
+6. External calendar events appearing as busy blocks
 
-| File | Changes |
-|------|---------|
-| `src/pages/Settings.tsx` | Add "Calendar Sync" tab |
-| `src/hooks/useConflictDetection.ts` | Query external_busy_blocks |
-| `src/components/calendar/CalendarGrid.tsx` | Optional busy block overlay |
-| `src/lib/pricing-config.ts` | Already lists "Calendar sync" as feature |
+The populated demo data will make this flow look professional with actual lessons to sync.
 
 ---
 
-## Technical Notes
+## Technical Implementation Order
 
-- **Timezone Handling**: All external events converted to UTC, then to org timezone for display
-- **Rate Limiting**: Google Calendar API has quotas; implement exponential backoff
-- **Graceful Degradation**: If sync fails, lessons still work; show sync error badge
-- **Audit Logging**: Log all calendar sync actions to audit_log table
+1. **Fix OAuth redirect** (quick win - 5 minutes)
+2. **Enhance calendar connection feedback** (10 minutes)
+3. **Create and run demo data population** (30 minutes)
+
+---
+
+## Testing Checklist
+
+After implementation:
+- [ ] Sign up with a new Google account - should land on /onboarding
+- [ ] Sign up with a new Apple account - should land on /onboarding
+- [ ] Connect Google Calendar - should see success toast and badge
+- [ ] Verify demo data appears in jamie@searchflare.co.uk account
+- [ ] Dashboard shows today's lessons
+- [ ] Calendar shows 4+ weeks of lessons
+- [ ] Invoices page shows mix of statuses
+- [ ] Reports show meaningful data
 
