@@ -13,7 +13,8 @@ export type Feature =
   | 'billing_runs'
   | 'resource_library'
   | 'practice_tracking'
-  | 'parent_portal';
+  | 'parent_portal'
+  | 'calendar_sync';
 
 // Define which features are available on each plan
 const FEATURE_MATRIX: Record<Feature, SubscriptionPlan[]> = {
@@ -30,6 +31,7 @@ const FEATURE_MATRIX: Record<Feature, SubscriptionPlan[]> = {
   resource_library: ['trial', 'solo_teacher', 'academy', 'agency', 'custom'],
   practice_tracking: ['trial', 'solo_teacher', 'academy', 'agency', 'custom'],
   parent_portal: ['trial', 'solo_teacher', 'academy', 'agency', 'custom'],
+  calendar_sync: ['solo_teacher', 'academy', 'agency', 'custom'],
 };
 
 // Define minimum plan required for each feature (for upgrade prompts)
@@ -46,6 +48,7 @@ const FEATURE_MIN_PLAN: Record<Feature, SubscriptionPlan> = {
   resource_library: 'trial',
   practice_tracking: 'trial',
   parent_portal: 'trial',
+  calendar_sync: 'solo_teacher',
 };
 
 // Human-readable feature names
@@ -62,6 +65,7 @@ export const FEATURE_NAMES: Record<Feature, string> = {
   resource_library: 'Resource Library',
   practice_tracking: 'Practice Tracking',
   parent_portal: 'Parent Portal',
+  calendar_sync: 'Calendar Sync',
 };
 
 // Human-readable plan names - matches new pricing branding

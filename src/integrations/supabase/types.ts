@@ -431,6 +431,116 @@ export type Database = {
           },
         ]
       }
+      calendar_connections: {
+        Row: {
+          access_token: string | null
+          calendar_id: string | null
+          calendar_name: string | null
+          created_at: string
+          ical_token: string | null
+          id: string
+          last_sync_at: string | null
+          org_id: string
+          provider: string
+          refresh_token: string | null
+          sync_enabled: boolean
+          sync_status: string
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          calendar_id?: string | null
+          calendar_name?: string | null
+          created_at?: string
+          ical_token?: string | null
+          id?: string
+          last_sync_at?: string | null
+          org_id: string
+          provider: string
+          refresh_token?: string | null
+          sync_enabled?: boolean
+          sync_status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          calendar_id?: string | null
+          calendar_name?: string | null
+          created_at?: string
+          ical_token?: string | null
+          id?: string
+          last_sync_at?: string | null
+          org_id?: string
+          provider?: string
+          refresh_token?: string | null
+          sync_enabled?: boolean
+          sync_status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_connections_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calendar_event_mappings: {
+        Row: {
+          connection_id: string
+          created_at: string
+          error_message: string | null
+          external_event_id: string
+          id: string
+          last_synced_at: string | null
+          lesson_id: string
+          sync_status: string
+        }
+        Insert: {
+          connection_id: string
+          created_at?: string
+          error_message?: string | null
+          external_event_id: string
+          id?: string
+          last_synced_at?: string | null
+          lesson_id: string
+          sync_status?: string
+        }
+        Update: {
+          connection_id?: string
+          created_at?: string
+          error_message?: string | null
+          external_event_id?: string
+          id?: string
+          last_synced_at?: string | null
+          lesson_id?: string
+          sync_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_event_mappings_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_event_mappings_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       closure_dates: {
         Row: {
           applies_to_all_locations: boolean
@@ -472,6 +582,57 @@ export type Database = {
           },
           {
             foreignKeyName: "closure_dates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      external_busy_blocks: {
+        Row: {
+          connection_id: string
+          end_at: string
+          fetched_at: string
+          id: string
+          org_id: string
+          source_event_id: string | null
+          start_at: string
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          connection_id: string
+          end_at: string
+          fetched_at?: string
+          id?: string
+          org_id: string
+          source_event_id?: string | null
+          start_at: string
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          connection_id?: string
+          end_at?: string
+          fetched_at?: string
+          id?: string
+          org_id?: string
+          source_event_id?: string | null
+          start_at?: string
+          title?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_busy_blocks_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_busy_blocks_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
@@ -2370,6 +2531,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_rate_limits: { Args: never; Returns: undefined }
+      generate_ical_token: { Args: never; Returns: string }
       generate_invoice_number: { Args: { _org_id: string }; Returns: string }
       get_guardian_ids_for_user: {
         Args: { _user_id: string }
