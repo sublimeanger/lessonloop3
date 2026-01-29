@@ -18,6 +18,7 @@ import { RateCardsTab } from '@/components/settings/RateCardsTab';
 import { TeacherAvailabilityTab } from '@/components/settings/TeacherAvailabilityTab';
 import { BillingTab } from '@/components/settings/BillingTab';
 import { HelpToursTab } from '@/components/settings/HelpToursTab';
+import { CalendarIntegrationsTab } from '@/components/settings/CalendarIntegrationsTab';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -320,6 +321,7 @@ export default function Settings() {
             <TabsTrigger value="rate-cards">Rate Cards</TabsTrigger>
           )}
           <TabsTrigger value="availability">Availability</TabsTrigger>
+          <TabsTrigger value="calendar">Calendar Sync</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="help-tours">Help & Tours</TabsTrigger>
@@ -553,6 +555,10 @@ export default function Settings() {
 
         <TabsContent value="availability">
           <TeacherAvailabilityTab />
+        </TabsContent>
+
+        <TabsContent value="calendar">
+          <CalendarIntegrationsTab />
         </TabsContent>
 
         <TabsContent value="billing">

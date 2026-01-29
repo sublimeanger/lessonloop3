@@ -57,6 +57,7 @@ export function useConflictDetection() {
         timeOffResult,
         teacherLessonsResult,
         roomResult,
+        externalCalendarResult,
       ] = await withTimeout(
         Promise.all([
           // Check closure dates
@@ -77,12 +78,21 @@ export function useConflictDetection() {
           ),
           // Check room overlap and capacity
           room_id ? checkRoomConflicts(currentOrg.id, room_id, start_at, end_at, student_ids, exclude_lesson_id) : Promise.resolve([]),
+          // Check external calendar busy blocks
+          checkExternalBusyBlocks(currentOrg.id, teacher_user_id, start_at, end_at),
         ]),
         CONFLICT_CHECK_TIMEOUT,
         'Conflict check timed out'
       );
 
-      conflicts.push(...closureResult, ...availabilityResult, ...timeOffResult, ...teacherLessonsResult, ...roomResult);
+      conflicts.push(
+        ...closureResult, 
+        ...availabilityResult, 
+        ...timeOffResult, 
+        ...teacherLessonsResult, 
+        ...roomResult,
+        ...externalCalendarResult
+      );
 
       // Check student overlaps (can be slower, so we do it separately but still with timeout)
       if (student_ids.length > 0) {
@@ -388,6 +398,41 @@ async function checkStudentConflicts(
         }
       }
     }
+  }
+
+  return conflicts;
+}
+
+/**
+ * Check external calendar busy blocks
+ */
+async function checkExternalBusyBlocks(
+  orgId: string,
+  teacherUserId: string,
+  startAt: Date,
+  endAt: Date
+): Promise<ConflictResult[]> {
+  const conflicts: ConflictResult[] = [];
+
+  const { data: busyBlocks } = await supabase
+    .from('external_busy_blocks')
+    .select('id, title, start_at, end_at')
+    .eq('org_id', orgId)
+    .eq('user_id', teacherUserId)
+    .lt('start_at', endAt.toISOString())
+    .gt('end_at', startAt.toISOString());
+
+  if (busyBlocks && busyBlocks.length > 0) {
+    // Group overlapping blocks to avoid duplicate warnings
+    const overlappingBlock = busyBlocks[0];
+    const title = overlappingBlock.title || 'Busy';
+    
+    conflicts.push({
+      type: 'external_calendar',
+      severity: 'warning',
+      message: `Teacher has an external calendar event: ${title}`,
+      entity_name: title,
+    });
   }
 
   return conflicts;
