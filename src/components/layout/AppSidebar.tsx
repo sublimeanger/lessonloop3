@@ -16,6 +16,7 @@ import {
   ClipboardList,
   HelpCircle,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -128,7 +129,13 @@ function getRoleLabel(role: AppRole | null): string {
 export function AppSidebar() {
   const { profile, signOut } = useAuth();
   const { currentRole } = useOrg();
+  const navigate = useNavigate();
   const navItems = getNavItems(currentRole);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <Sidebar className="border-r" data-tour="sidebar">
@@ -176,7 +183,7 @@ export function AppSidebar() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={signOut}
+            onClick={handleSignOut}
             className="h-8 w-8 shrink-0"
             title="Sign out"
           >

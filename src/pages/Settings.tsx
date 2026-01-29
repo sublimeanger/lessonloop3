@@ -1,4 +1,5 @@
 import { useState, useEffect, ChangeEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +34,9 @@ interface NotificationPreferences {
 }
 
 export default function Settings() {
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'profile';
+  
   const { isOrgAdmin, isOrgOwner, currentOrg, refreshOrganisations } = useOrg();
   const { profile, updateProfile, user } = useAuth();
   const { toast } = useToast();
@@ -301,7 +305,7 @@ export default function Settings() {
         ]}
       />
 
-      <Tabs defaultValue="profile" className="space-y-6">
+      <Tabs defaultValue={initialTab} className="space-y-6">
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="organisation">Organisation</TabsTrigger>

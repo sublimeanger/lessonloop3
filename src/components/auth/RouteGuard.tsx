@@ -122,9 +122,10 @@ export function RouteGuard({
 // Public route wrapper - redirects authenticated users
 export function PublicRoute({ children }: { children: ReactNode }) {
   const { user, profile, isLoading, isInitialised } = useAuth();
-  const { currentRole } = useOrg();
+  const { currentRole, hasInitialised: orgInitialised } = useOrg();
   const location = useLocation();
 
+  // Still loading auth - show loading state
   if (!isInitialised || isLoading) {
     return <AuthLoading />;
   }
@@ -134,12 +135,19 @@ export function PublicRoute({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  // Authenticated but no onboarding - go to onboarding
-  if (!profile || !profile.has_completed_onboarding) {
+  // Authenticated - wait for profile to load (profile is null when truly missing, loading shows spinner)
+  // If profile is still loading (isLoading was true), we'd have returned above
+  // If profile is null after auth init, user needs onboarding
+  if (profile === null || !profile.has_completed_onboarding) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  // Authenticated and onboarded - redirect to app
+  // Wait for org context to initialise before role-based redirects
+  if (!orgInitialised) {
+    return <AuthLoading />;
+  }
+
+  // Authenticated and onboarded - redirect to appropriate dashboard
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
   
   if (currentRole === 'parent') {

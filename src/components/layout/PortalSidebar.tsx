@@ -7,6 +7,7 @@ import {
   Music,
   FolderOpen,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
@@ -47,6 +48,12 @@ function getInitials(name: string | null | undefined): string {
 export function PortalSidebar() {
   const { profile, signOut } = useAuth();
   const { data: unreadCount } = useUnreadMessagesCount();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <Sidebar className="border-r">
@@ -104,7 +111,7 @@ export function PortalSidebar() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={signOut}
+            onClick={handleSignOut}
             className="h-8 w-8 shrink-0"
             title="Sign out"
           >
