@@ -25,7 +25,7 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     const { error } = await lovable.auth.signInWithOAuth('google', {
-      redirect_uri: window.location.origin,
+      redirect_uri: `${window.location.origin}/login`,
     });
     setIsGoogleLoading(false);
     
@@ -41,7 +41,7 @@ export default function Login() {
   const handleAppleLogin = async () => {
     setIsAppleLoading(true);
     const { error } = await lovable.auth.signInWithOAuth('apple', {
-      redirect_uri: window.location.origin,
+      redirect_uri: `${window.location.origin}/login`,
     });
     setIsAppleLoading(false);
     
