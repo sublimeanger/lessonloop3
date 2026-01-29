@@ -213,11 +213,14 @@ export function useCalendarConnections() {
     const calendarError = params.get('calendar_error');
 
     if (calendarConnected) {
-      toast({ 
-        title: '✓ Google Calendar connected successfully!', 
-        description: 'Your lessons will now sync automatically. Manage your connection below.',
-        duration: 6000,
-      });
+      // Slight delay to ensure toast system is ready after redirect
+      setTimeout(() => {
+        toast({ 
+          title: '✓ Google Calendar connected successfully!', 
+          description: 'Your lessons will now sync automatically. Manage your connection below.',
+          duration: 8000,
+        });
+      }, 500);
       // Clean up URL but keep on calendar tab
       const url = new URL(window.location.href);
       url.searchParams.delete('calendar_connected');
