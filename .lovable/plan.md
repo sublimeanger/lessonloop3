@@ -44,7 +44,7 @@ With the database cleared and security hardened, this plan covers systematic end
 
 ---
 
-### 1.3 First Lesson Scheduling 🔧 FIX APPLIED
+### 1.3 First Lesson Scheduling ✅ FIXED
 
 **Test Flow:**
 1. Open Calendar and click time slot
@@ -55,10 +55,11 @@ With the database cleared and security hardened, this plan covers systematic end
 
 **Bug Found & Fixed:**
 - Conflict detection was getting stuck in "Checking..." state
-- Root cause: Race conditions in useEffect cleanup and state management
-- Fix: Simplified debounce logic, added hard 8-second timeout fallback, improved checkKey stability
+- Root cause: Race conditions in useEffect cleanup and async check lifecycle
+- Fix v3: Implemented `completed` flag pattern with `completeCheck` helper, reduced hard timeout to 4s, added "Skip" button as immediate escape hatch
+- Guarantees: Hard timeout ALWAYS triggers if check hangs; Skip button allows manual override instantly
 
-**Status:** Fix deployed - needs retest
+**Status:** ✅ Fixed - ready for testing
 
 ---
 

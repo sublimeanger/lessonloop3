@@ -182,9 +182,10 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   }, [open, teacherUserId, selectedDate, startTime, durationMins, roomId, locationId, selectedStudents, lesson?.id]);
 
   useEffect(() => {
-    // Early return if no valid key
+    // Early return if no valid key - clear state
     if (!conflictCheckKey) {
       setConflictState({ isChecking: false, conflicts: [] });
+      lastCheckKeyRef.current = '';
       return;
     }
 
@@ -193,72 +194,73 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       return;
     }
 
-    // Mark as processing
+    // Mark as processing and increment check counter
     lastCheckKeyRef.current = conflictCheckKey;
     const thisCheckId = ++conflictCheckRef.current;
-    let isCancelled = false;
+    let completed = false;
+    
+    // Helper to safely update state only if this check is still active
+    const completeCheck = (conflicts: ConflictResult[]) => {
+      if (completed) return;
+      completed = true;
+      setConflictState({ isChecking: false, conflicts });
+    };
     
     // Show loading immediately
     setConflictState({ isChecking: true, conflicts: [] });
     
-    // Debounced check
-    const debounceTimer = setTimeout(() => {
-      if (isCancelled) return;
+    // Hard timeout failsafe - ALWAYS fires if check takes too long
+    // This is the ultimate safeguard against hung queries
+    const hardTimeout = setTimeout(() => {
+      if (!completed) {
+        console.warn('Conflict check hard timeout triggered');
+        completeCheck([{
+          type: 'teacher',
+          severity: 'warning',
+          message: 'Conflict check timed out. Please verify manually.',
+        }]);
+      }
+    }, 4000);
+    
+    // Debounced async check
+    const debounceTimer = setTimeout(async () => {
+      if (completed) return;
       
-      const runCheck = async () => {
+      try {
         const [hour, minute] = startTime.split(':').map(Number);
         const localDateTime = setMinutes(setHours(startOfDay(selectedDate), hour), minute);
         const startAtUtc = fromZonedTime(localDateTime, orgTimezone);
         const endAtUtc = addMinutes(startAtUtc, durationMins);
 
-        try {
-          const results = await checkConflicts({
-            start_at: startAtUtc,
-            end_at: endAtUtc,
-            teacher_user_id: teacherUserId,
-            room_id: roomId,
-            location_id: locationId,
-            student_ids: selectedStudents,
-            exclude_lesson_id: lesson?.id,
-          });
+        const results = await checkConflicts({
+          start_at: startAtUtc,
+          end_at: endAtUtc,
+          teacher_user_id: teacherUserId,
+          room_id: roomId,
+          location_id: locationId,
+          student_ids: selectedStudents,
+          exclude_lesson_id: lesson?.id,
+        });
 
-          if (!isCancelled && conflictCheckRef.current === thisCheckId) {
-            setConflictState({ isChecking: false, conflicts: results });
-          }
-        } catch (error) {
-          console.error('Conflict check failed:', error);
-          if (!isCancelled && conflictCheckRef.current === thisCheckId) {
-            setConflictState({ 
-              isChecking: false, 
-              conflicts: [{
-                type: 'teacher',
-                severity: 'warning',
-                message: 'Unable to check conflicts. Please verify manually.',
-              }]
-            });
-          }
+        // Only update if this is still the active check
+        if (conflictCheckRef.current === thisCheckId) {
+          completeCheck(results);
         }
-      };
-      
-      runCheck();
-    }, 350);
-
-    // Hard timeout failsafe (5 seconds)
-    const hardTimeout = setTimeout(() => {
-      if (!isCancelled && conflictCheckRef.current === thisCheckId) {
-        setConflictState({ 
-          isChecking: false, 
-          conflicts: [{
+      } catch (error) {
+        console.error('Conflict check failed:', error);
+        if (conflictCheckRef.current === thisCheckId) {
+          completeCheck([{
             type: 'teacher',
             severity: 'warning',
-            message: 'Conflict check timed out. Please verify manually.',
-          }]
-        });
+            message: 'Unable to check conflicts. Please verify manually.',
+          }]);
+        }
       }
-    }, 5000);
+    }, 300);
 
     return () => {
-      isCancelled = true;
+      // On cleanup, mark completed to prevent stale updates
+      completed = true;
       clearTimeout(debounceTimer);
       clearTimeout(hardTimeout);
     };
@@ -887,9 +889,27 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
           {/* Conflict alerts - fixed min-height to prevent layout shifts */}
           <div className="min-h-[60px]">
             {conflictState.isChecking && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Checking for conflicts...
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Checking for conflicts...
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => setConflictState({ 
+                    isChecking: false, 
+                    conflicts: [{
+                      type: 'teacher',
+                      severity: 'warning',
+                      message: 'Conflict check skipped. Please verify manually.',
+                    }]
+                  })}
+                >
+                  Skip
+                </Button>
               </div>
             )}
             
