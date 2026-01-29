@@ -10,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 import { LogoHorizontal } from '@/components/brand/Logo';
 import { Separator } from '@/components/ui/separator';
 import { GoogleIcon } from '@/components/icons/GoogleIcon';
+import { AppleIcon } from '@/components/icons/AppleIcon';
 import { lovable } from '@/integrations/lovable';
 
 export default function Login() {
@@ -19,6 +20,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
 
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
@@ -30,6 +32,22 @@ export default function Login() {
     if (error) {
       toast({
         title: 'Google sign in failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleAppleLogin = async () => {
+    setIsAppleLoading(true);
+    const { error } = await lovable.auth.signInWithOAuth('apple', {
+      redirect_uri: window.location.origin,
+    });
+    setIsAppleLoading(false);
+    
+    if (error) {
+      toast({
+        title: 'Apple sign in failed',
         description: error.message,
         variant: 'destructive',
       });
@@ -77,7 +95,7 @@ export default function Login() {
             variant="outline"
             className="w-full"
             onClick={handleGoogleLogin}
-            disabled={isLoading || isGoogleLoading}
+            disabled={isLoading || isGoogleLoading || isAppleLoading}
           >
             {isGoogleLoading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -85,6 +103,21 @@ export default function Login() {
               <GoogleIcon className="mr-2 h-5 w-5" />
             )}
             Continue with Google
+          </Button>
+          
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handleAppleLogin}
+            disabled={isLoading || isGoogleLoading || isAppleLoading}
+          >
+            {isAppleLoading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <AppleIcon className="mr-2 h-5 w-5" />
+            )}
+            Continue with Apple
           </Button>
           
           <div className="relative">
@@ -133,7 +166,7 @@ export default function Login() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full gradient-accent shadow-glow-teal hover:opacity-90 transition-opacity" disabled={isLoading || isGoogleLoading}>
+            <Button type="submit" className="w-full gradient-accent shadow-glow-teal hover:opacity-90 transition-opacity" disabled={isLoading || isGoogleLoading || isAppleLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
