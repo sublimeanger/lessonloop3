@@ -87,7 +87,7 @@ const parentNav: NavItem[] = [
 ];
 
 function getNavItems(role: AppRole | null): NavItem[] {
-  if (!role) return ownerAdminNav;
+  if (!role) return []; // Empty until role is known - prevents showing admin nav during loading
   
   switch (role) {
     case 'owner':
