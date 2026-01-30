@@ -289,10 +289,10 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       if (!lesson) {
         const student = students.find(s => s.id === studentId);
         if (student) {
-          if (!teacherUserId && student.default_teacher_user_id) {
-            const teacherExists = teachers.some(t => t.id === student.default_teacher_user_id);
+          if (!teacherUserId && student.default_teacher_id) {
+            const teacherExists = teachers.some(t => t.id === student.default_teacher_id);
             if (teacherExists) {
-              setTeacherUserId(student.default_teacher_user_id);
+              setTeacherUserId(student.default_teacher_id);
             }
           }
           if (!locationId && student.default_location_id) {

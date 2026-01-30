@@ -466,30 +466,81 @@ serve(async (req) => {
     // PRE-PROCESS: Build caches for teachers, locations, and rate cards
     // This prevents creating duplicates during import
     
-    // Fetch existing teachers
-    const { data: existingMemberships } = await supabase
-      .from("org_memberships")
-      .select("user_id, role")
-      .eq("org_id", orgId)
-      .eq("status", "active")
-      .in("role", ["owner", "admin", "teacher"]);
+    // Fetch existing teachers from the NEW teachers table
+    const { data: existingTeachers } = await supabase
+      .from("teachers")
+      .select("id, display_name, email, user_id")
+      .eq("org_id", orgId);
     
-    const { data: existingProfiles } = await supabase
-      .from("profiles")
-      .select("id, full_name, email");
+    // Build teacher lookup by name (case insensitive) - now returns teacher.id (not user_id)
+    const teacherById = new Map<string, { id: string; userId: string | null }>();
+    const teacherByName = new Map<string, string>(); // name → teacher.id
+    const teacherByEmail = new Map<string, string>(); // email → teacher.id
+    const createdTeachers = new Map<string, string>(); // normalized name → teacher.id
     
-    // Build teacher lookup by name (case insensitive)
-    const teacherByName = new Map<string, string>();
-    const createdTeachers = new Map<string, string>();
-    existingMemberships?.forEach((m: any) => {
-      const profile = existingProfiles?.find((p: any) => p.id === m.user_id);
-      if (profile?.full_name) {
-        teacherByName.set(profile.full_name.toLowerCase().trim(), m.user_id);
-        // Also match by first part of name (e.g., "Amy B" → "Amy Brown")
-        const shortName = profile.full_name.split(" ").map((n: string) => n[0] ? n[0].toUpperCase() : "").join(" ");
-        teacherByName.set(shortName.toLowerCase().trim(), m.user_id);
+    existingTeachers?.forEach((t: any) => {
+      teacherById.set(t.id, { id: t.id, userId: t.user_id });
+      if (t.display_name) {
+        const normalized = t.display_name.toLowerCase().trim();
+        teacherByName.set(normalized, t.id);
+        // Also match by abbreviated name (e.g., "Amy B" → "Amy Brown")
+        const parts = t.display_name.split(" ");
+        if (parts.length >= 2) {
+          const abbrev = `${parts[0]} ${parts[1][0]}`.toLowerCase();
+          teacherByName.set(abbrev, t.id);
+        }
+      }
+      if (t.email) {
+        teacherByEmail.set(t.email.toLowerCase().trim(), t.id);
       }
     });
+    
+    // Helper: Find or create teacher in the NEW teachers table
+    // Returns teacher.id (not user_id) for linking
+    async function findOrCreateTeacher(name: string): Promise<string | null> {
+      if (!name?.trim()) return null;
+      const normalized = name.toLowerCase().trim();
+      
+      // Check existing by name
+      if (teacherByName.has(normalized)) return teacherByName.get(normalized)!;
+      if (createdTeachers.has(normalized)) return createdTeachers.get(normalized)!;
+      
+      // Try partial match (e.g., "Amy B" matches "Amy Brown")
+      for (const [key, teacherId] of teacherByName.entries()) {
+        const keyParts = key.split(" ");
+        const nameParts = normalized.split(" ");
+        if (keyParts[0] === nameParts[0] && nameParts[1]?.length === 1 && keyParts[1]?.startsWith(nameParts[1])) {
+          return teacherId;
+        }
+      }
+      
+      // CREATE a new unlinked teacher record (no user_id - can be linked later via invite)
+      const displayName = name.trim()
+        .split(" ")
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(" ");
+      
+      const { data: newTeacher, error } = await supabase
+        .from("teachers")
+        .insert({
+          org_id: orgId,
+          display_name: displayName,
+          user_id: null, // Unlinked - can accept invite later
+          status: "active",
+        })
+        .select("id")
+        .single();
+      
+      if (error) {
+        console.error(`Failed to create teacher "${name}":`, error);
+        return null;
+      }
+      
+      createdTeachers.set(normalized, newTeacher.id);
+      teacherByName.set(normalized, newTeacher.id);
+      console.log(`Created unlinked teacher record: ${displayName} (${newTeacher.id})`);
+      return newTeacher.id;
+    }
     
     // Fetch existing locations
     const { data: existingLocations } = await supabase
@@ -514,30 +565,6 @@ serve(async (req) => {
     existingRateCards?.forEach((r: any) => {
       rateCardByDuration.set(r.duration_minutes, r.id);
     });
-    
-    // Helper: Find or create teacher
-    async function findOrCreateTeacher(name: string): Promise<string | null> {
-      if (!name?.trim()) return null;
-      const normalized = name.toLowerCase().trim();
-      
-      // Check existing
-      if (teacherByName.has(normalized)) return teacherByName.get(normalized)!;
-      if (createdTeachers.has(normalized)) return createdTeachers.get(normalized)!;
-      
-      // Try partial match (e.g., "Amy B" matches "Amy Brown")
-      for (const [key, userId] of teacherByName.entries()) {
-        const keyParts = key.split(" ");
-        const nameParts = normalized.split(" ");
-        if (keyParts[0] === nameParts[0] && nameParts[1]?.length === 1 && keyParts[1]?.startsWith(nameParts[1])) {
-          return userId;
-        }
-      }
-      
-      // Note: We cannot create auth.users from edge functions
-      // Instead, we'll log this and the admin will need to invite the teacher
-      console.log(`Teacher "${name}" not found - will need to be invited manually`);
-      return null;
-    }
     
     // Helper: Find or create location
     async function findOrCreateLocation(name: string): Promise<string | null> {
@@ -688,9 +715,9 @@ serve(async (req) => {
             : instrumentNote;
         }
         
-        // Set teaching defaults
+        // Set teaching defaults (use new teacher_id column for teachers table)
         if (resolvedLocationId) studentData.default_location_id = resolvedLocationId;
-        if (resolvedTeacherId) studentData.default_teacher_user_id = resolvedTeacherId;
+        if (resolvedTeacherId) studentData.default_teacher_id = resolvedTeacherId;
         if (resolvedRateCardId) studentData.default_rate_card_id = resolvedRateCardId;
 
         const { data: student, error: studentError } = await supabase
@@ -768,14 +795,14 @@ serve(async (req) => {
           }
         }
 
-        // 4. Create teacher assignment if we have a resolved teacher
+        // 4. Create teacher assignment if we have a resolved teacher (use new teacher_id column)
         if (resolvedTeacherId && student.id) {
           const { error: assignError } = await supabase
             .from("student_teacher_assignments")
             .insert({
               org_id: orgId,
               student_id: student.id,
-              teacher_user_id: resolvedTeacherId,
+              teacher_id: resolvedTeacherId,
             });
           
           if (assignError && !assignError.message.includes("duplicate")) {
@@ -824,12 +851,17 @@ serve(async (req) => {
               .single();
 
             if (!recurrenceError && recurrence) {
+              // Get the user_id from the teacher record for lessons (which still uses teacher_user_id)
+              const teacherRecord = teacherById.get(effectiveTeacherId);
+              const lessonTeacherUserId = teacherRecord?.userId || user.id;
+              
               const lessonInsertData: any = {
                 org_id: orgId,
                 title: lessonTitle,
                 start_at: lessonDate.toISOString(),
                 end_at: endDate.toISOString(),
-                teacher_user_id: effectiveTeacherId,
+                teacher_user_id: lessonTeacherUserId, // lessons still use user_id during transition
+                teacher_id: effectiveTeacherId, // new teacher_id column
                 lesson_type: "private",
                 status: "scheduled",
                 created_by: user.id,

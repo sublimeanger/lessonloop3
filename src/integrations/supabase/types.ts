@@ -316,6 +316,7 @@ export type Database = {
           id: string
           org_id: string
           start_time_local: string
+          teacher_id: string | null
           teacher_user_id: string
         }
         Insert: {
@@ -325,6 +326,7 @@ export type Database = {
           id?: string
           org_id: string
           start_time_local: string
+          teacher_id?: string | null
           teacher_user_id: string
         }
         Update: {
@@ -334,6 +336,7 @@ export type Database = {
           id?: string
           org_id?: string
           start_time_local?: string
+          teacher_id?: string | null
           teacher_user_id?: string
         }
         Relationships: [
@@ -342,6 +345,20 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "availability_blocks_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "availability_blocks_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers_with_pay"
             referencedColumns: ["id"]
           },
         ]
@@ -963,6 +980,7 @@ export type Database = {
           room_id: string | null
           start_at: string
           status: Database["public"]["Enums"]["lesson_status"]
+          teacher_id: string | null
           teacher_user_id: string
           title: string
           updated_at: string
@@ -985,6 +1003,7 @@ export type Database = {
           room_id?: string | null
           start_at: string
           status?: Database["public"]["Enums"]["lesson_status"]
+          teacher_id?: string | null
           teacher_user_id: string
           title: string
           updated_at?: string
@@ -1007,6 +1026,7 @@ export type Database = {
           room_id?: string | null
           start_at?: string
           status?: Database["public"]["Enums"]["lesson_status"]
+          teacher_id?: string | null
           teacher_user_id?: string
           title?: string
           updated_at?: string
@@ -1038,6 +1058,20 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers_with_pay"
             referencedColumns: ["id"]
           },
         ]
@@ -1632,6 +1666,7 @@ export type Database = {
           student_id: string
           target_days_per_week: number | null
           target_minutes_per_day: number | null
+          teacher_id: string | null
           teacher_user_id: string
           title: string
           updated_at: string
@@ -1647,6 +1682,7 @@ export type Database = {
           student_id: string
           target_days_per_week?: number | null
           target_minutes_per_day?: number | null
+          teacher_id?: string | null
           teacher_user_id: string
           title: string
           updated_at?: string
@@ -1662,6 +1698,7 @@ export type Database = {
           student_id?: string
           target_days_per_week?: number | null
           target_minutes_per_day?: number | null
+          teacher_id?: string | null
           teacher_user_id?: string
           title?: string
           updated_at?: string
@@ -1679,6 +1716,20 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_assignments_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_assignments_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers_with_pay"
             referencedColumns: ["id"]
           },
         ]
@@ -2247,6 +2298,7 @@ export type Database = {
           is_primary: boolean
           org_id: string
           student_id: string
+          teacher_id: string | null
           teacher_user_id: string
         }
         Insert: {
@@ -2255,6 +2307,7 @@ export type Database = {
           is_primary?: boolean
           org_id: string
           student_id: string
+          teacher_id?: string | null
           teacher_user_id: string
         }
         Update: {
@@ -2263,6 +2316,7 @@ export type Database = {
           is_primary?: boolean
           org_id?: string
           student_id?: string
+          teacher_id?: string | null
           teacher_user_id?: string
         }
         Relationships: [
@@ -2280,6 +2334,20 @@ export type Database = {
             referencedRelation: "students"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "student_teacher_assignments_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_teacher_assignments_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers_with_pay"
+            referencedColumns: ["id"]
+          },
         ]
       }
       students: {
@@ -2287,6 +2355,7 @@ export type Database = {
           created_at: string
           default_location_id: string | null
           default_rate_card_id: string | null
+          default_teacher_id: string | null
           default_teacher_user_id: string | null
           deleted_at: string | null
           dob: string | null
@@ -2304,6 +2373,7 @@ export type Database = {
           created_at?: string
           default_location_id?: string | null
           default_rate_card_id?: string | null
+          default_teacher_id?: string | null
           default_teacher_user_id?: string | null
           deleted_at?: string | null
           dob?: string | null
@@ -2321,6 +2391,7 @@ export type Database = {
           created_at?: string
           default_location_id?: string | null
           default_rate_card_id?: string | null
+          default_teacher_id?: string | null
           default_teacher_user_id?: string | null
           deleted_at?: string | null
           dob?: string | null
@@ -2347,6 +2418,20 @@ export type Database = {
             columns: ["default_rate_card_id"]
             isOneToOne: false
             referencedRelation: "rate_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_default_teacher_id_fkey"
+            columns: ["default_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_default_teacher_id_fkey"
+            columns: ["default_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers_with_pay"
             referencedColumns: ["id"]
           },
           {
@@ -2410,6 +2495,71 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "teacher_profiles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teachers: {
+        Row: {
+          bio: string | null
+          created_at: string
+          default_lesson_length_mins: number
+          display_name: string
+          email: string | null
+          employment_type: Database["public"]["Enums"]["employment_type"]
+          id: string
+          instruments: string[]
+          org_id: string
+          pay_rate_type: Database["public"]["Enums"]["pay_rate_type"] | null
+          pay_rate_value: number | null
+          payroll_notes: string | null
+          phone: string | null
+          status: Database["public"]["Enums"]["student_status"]
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          default_lesson_length_mins?: number
+          display_name: string
+          email?: string | null
+          employment_type?: Database["public"]["Enums"]["employment_type"]
+          id?: string
+          instruments?: string[]
+          org_id: string
+          pay_rate_type?: Database["public"]["Enums"]["pay_rate_type"] | null
+          pay_rate_value?: number | null
+          payroll_notes?: string | null
+          phone?: string | null
+          status?: Database["public"]["Enums"]["student_status"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          default_lesson_length_mins?: number
+          display_name?: string
+          email?: string | null
+          employment_type?: Database["public"]["Enums"]["employment_type"]
+          id?: string
+          instruments?: string[]
+          org_id?: string
+          pay_rate_type?: Database["public"]["Enums"]["pay_rate_type"] | null
+          pay_rate_value?: number | null
+          payroll_notes?: string | null
+          phone?: string | null
+          status?: Database["public"]["Enums"]["student_status"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teachers_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
@@ -2523,6 +2673,75 @@ export type Database = {
           },
         ]
       }
+      teachers_with_pay: {
+        Row: {
+          bio: string | null
+          created_at: string | null
+          default_lesson_length_mins: number | null
+          display_name: string | null
+          email: string | null
+          employment_type: Database["public"]["Enums"]["employment_type"] | null
+          id: string | null
+          instruments: string[] | null
+          org_id: string | null
+          pay_rate_type: Database["public"]["Enums"]["pay_rate_type"] | null
+          pay_rate_value: number | null
+          payroll_notes: string | null
+          phone: string | null
+          status: Database["public"]["Enums"]["student_status"] | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string | null
+          default_lesson_length_mins?: number | null
+          display_name?: string | null
+          email?: string | null
+          employment_type?:
+            | Database["public"]["Enums"]["employment_type"]
+            | null
+          id?: string | null
+          instruments?: string[] | null
+          org_id?: string | null
+          pay_rate_type?: never
+          pay_rate_value?: never
+          payroll_notes?: never
+          phone?: string | null
+          status?: Database["public"]["Enums"]["student_status"] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string | null
+          default_lesson_length_mins?: number | null
+          display_name?: string | null
+          email?: string | null
+          employment_type?:
+            | Database["public"]["Enums"]["employment_type"]
+            | null
+          id?: string | null
+          instruments?: string[] | null
+          org_id?: string | null
+          pay_rate_type?: never
+          pay_rate_value?: never
+          payroll_notes?: never
+          phone?: string | null
+          status?: Database["public"]["Enums"]["student_status"] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teachers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       anonymise_guardian: { Args: { guardian_id: string }; Returns: undefined }
@@ -2554,6 +2773,10 @@ export type Database = {
       get_student_ids_for_parent: {
         Args: { _user_id: string }
         Returns: string[]
+      }
+      get_teacher_id_for_user: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: string
       }
       get_user_id_by_email: { Args: { _email: string }; Returns: string }
       get_user_org_ids: { Args: { _user_id: string }; Returns: string[] }
