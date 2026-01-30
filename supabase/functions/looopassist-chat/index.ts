@@ -21,8 +21,9 @@ interface Lesson {
   start_at: string;
   end_at: string;
   status: string;
+  teacher_id: string | null;
   teacher_user_id: string;
-  profiles?: { full_name: string } | null;
+  teacher?: { id: string; display_name: string; user_id: string | null } | null;
   lesson_participants?: Array<{ students: { id: string; first_name: string; last_name: string } | null }>;
 }
 
@@ -87,11 +88,12 @@ async function buildDataContext(supabase: any, orgId: string): Promise<{
     .order("due_date", { ascending: true })
     .limit(20);
 
-  // Fetch upcoming lessons (next 7 days)
+  // Fetch upcoming lessons (next 7 days) with teacher from teachers table
   const { data: upcomingLessons } = await supabase
     .from("lessons")
     .select(`
-      id, title, start_at, end_at, status, teacher_user_id,
+      id, title, start_at, end_at, status, teacher_id, teacher_user_id,
+      teacher:teachers!lessons_teacher_id_fkey(id, display_name, user_id),
       lesson_participants(students(id, first_name, last_name))
     `)
     .eq("org_id", orgId)
@@ -161,18 +163,20 @@ async function buildDataContext(supabase: any, orgId: string): Promise<{
     .order("paid_at", { ascending: false })
     .limit(20);
 
-  // NEW: Fetch teacher workload
+  // NEW: Fetch teacher workload using teacher_id (supports unlinked teachers)
   const { data: teacherLessons } = await supabase
     .from("lessons")
-    .select("teacher_user_id")
+    .select("teacher_id, teacher_user_id")
     .eq("org_id", orgId)
     .eq("status", "scheduled")
     .gte("start_at", `${todayStr}T00:00:00`)
     .lte("start_at", `${weekFromNowStr}T23:59:59`);
 
   const teacherCounts = new Map<string, number>();
-  (teacherLessons || []).forEach((l: { teacher_user_id: string }) => {
-    teacherCounts.set(l.teacher_user_id, (teacherCounts.get(l.teacher_user_id) || 0) + 1);
+  (teacherLessons || []).forEach((l: { teacher_id: string | null; teacher_user_id: string }) => {
+    // Use teacher_id as primary key, fallback to teacher_user_id for legacy
+    const key = l.teacher_id || l.teacher_user_id;
+    teacherCounts.set(key, (teacherCounts.get(key) || 0) + 1);
   });
 
   // NEW: Fetch unmarked past lessons (yesterday and before)
