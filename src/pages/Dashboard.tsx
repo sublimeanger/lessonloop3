@@ -142,6 +142,7 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
             outstandingAmount={stats?.outstandingAmount}
             currencyCode={currentOrg?.currency_code}
             hasStudents={(stats?.activeStudents ?? 0) > 0}
+            hasLessons={(stats?.totalLessons ?? 0) > 0}
           />
         </motion.div>
 
@@ -243,6 +244,7 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
             outstandingAmount={stats?.outstandingAmount}
             currencyCode={currentOrg?.currency_code}
             hasStudents={(stats?.activeStudents ?? 0) > 0}
+            hasLessons={(stats?.totalLessons ?? 0) > 0}
           />
         </motion.div>
 

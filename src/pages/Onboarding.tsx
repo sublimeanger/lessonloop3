@@ -251,38 +251,86 @@ export default function Onboarding() {
     );
   }
 
-  // Success screen
+  // Success screen with clear next steps
   if (step === 'success') {
     const planName = selectedPlan === 'solo_teacher' ? 'Teacher' : selectedPlan === 'academy' ? 'Studio' : 'Agency';
+    
+    // Org-type specific first action
+    const getFirstAction = () => {
+      switch (orgType) {
+        case 'solo_teacher':
+          return { action: 'Add your first student', description: 'Start by adding a student to your roster' };
+        case 'studio':
+          return { action: 'Set up your studio', description: 'Add your teaching location and rooms' };
+        case 'academy':
+          return { action: 'Add your locations', description: 'Set up your teaching venues first' };
+        case 'agency':
+          return { action: 'Add client schools', description: 'Set up the schools where your teachers work' };
+        default:
+          return { action: 'Explore your dashboard', description: 'We\'ll guide you through the next steps' };
+      }
+    };
+    
+    const firstAction = getFirstAction();
+    
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-4">
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: 'spring', duration: 0.5 }}
+          className="relative"
         >
           <CheckCircle2 className="h-20 w-20 text-primary" />
+          <motion.div
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3, type: 'spring' }}
+            className="absolute -right-1 -top-1"
+          >
+            <span className="text-2xl">🎉</span>
+          </motion.div>
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="text-center"
+          className="text-center max-w-md"
         >
-          <h1 className="text-3xl font-bold">You're all set!</h1>
-          <p className="mt-2 text-muted-foreground">Welcome to LessonLoop, {fullName}.</p>
+          <h1 className="text-3xl font-bold">Welcome to LessonLoop!</h1>
+          <p className="mt-2 text-muted-foreground">
+            Hey {fullName.split(' ')[0]}, your account is ready.
+          </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Your 30-day {planName} trial has started.
+            Your 30-day {planName} trial has started — no card required.
           </p>
         </motion.div>
+        
+        {/* Clear next step guidance */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="rounded-xl bg-primary/5 border border-primary/20 p-4 text-center max-w-sm"
+        >
+          <p className="text-sm font-medium text-primary">What's next?</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {firstAction.description}
+          </p>
+        </motion.div>
+        
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.5 }}
+          className="flex flex-col gap-3 w-full max-w-xs"
         >
-          <Button size="lg" onClick={handleGoToDashboard}>
-            Go to Dashboard
+          <Button size="lg" onClick={handleGoToDashboard} className="w-full">
+            {firstAction.action} →
           </Button>
+          <p className="text-xs text-center text-muted-foreground">
+            Don't worry, we'll guide you every step of the way
+          </p>
         </motion.div>
       </div>
     );

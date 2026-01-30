@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Calendar, Plus, Receipt, Sparkles } from 'lucide-react';
+import { Calendar, Plus, Receipt, Sparkles, Users, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -11,6 +11,7 @@ interface DashboardHeroProps {
   outstandingAmount?: number;
   currencyCode?: string;
   hasStudents?: boolean;
+  hasLessons?: boolean;
   className?: string;
 }
 
@@ -20,6 +21,7 @@ export function DashboardHero({
   outstandingAmount = 0,
   currencyCode = 'GBP',
   hasStudents = false,
+  hasLessons = false,
   className,
 }: DashboardHeroProps) {
   const getGreeting = () => {
@@ -46,6 +48,16 @@ export function DashboardHero({
   };
 
   const getSummary = () => {
+    // Brand new user - no students yet
+    if (!hasStudents) {
+      return "Welcome! Let's add your first student to get started.";
+    }
+    
+    // Has students but no lessons scheduled
+    if (!hasLessons && todayLessons === 0) {
+      return "You've added students. Now let's schedule some lessons!";
+    }
+    
     const parts: string[] = [];
     
     if (todayLessons > 0) {
@@ -57,14 +69,51 @@ export function DashboardHero({
     }
     
     if (parts.length === 0) {
-      if (!hasStudents) {
-        return "Let's get your teaching business set up!";
-      }
       return 'All caught up – your schedule is clear today.';
     }
     
     return parts.join(' and ');
   };
+
+  // Determine the primary CTA based on user state
+  const getPrimaryCTA = () => {
+    if (!hasStudents) {
+      return {
+        label: 'Add Your First Student',
+        href: '/students',
+        icon: Users,
+        description: 'Start by adding a student to your roster',
+      };
+    }
+    
+    if (todayLessons === 0 && !hasLessons) {
+      return {
+        label: 'Schedule Your First Lesson',
+        href: '/calendar',
+        icon: Calendar,
+        description: 'Create a lesson in the calendar',
+      };
+    }
+    
+    if (todayLessons > 0) {
+      return {
+        label: "View Today's Schedule",
+        href: '/calendar',
+        icon: Calendar,
+        description: null,
+      };
+    }
+    
+    return {
+      label: 'Schedule a Lesson',
+      href: '/calendar',
+      icon: Plus,
+      description: null,
+    };
+  };
+
+  const primaryCTA = getPrimaryCTA();
+  const isNewUser = !hasStudents;
 
   return (
     <motion.div
@@ -110,35 +159,23 @@ export function DashboardHero({
           {getSummary()}
         </motion.p>
 
-        {/* CTAs */}
+        {/* CTAs - Enhanced for new users */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
           className="mt-6 flex flex-wrap gap-3"
         >
-          {todayLessons > 0 ? (
-            <Link to="/calendar">
-              <Button className="gap-2 bg-white text-ink hover:bg-white/90">
-                <Calendar className="h-4 w-4" />
-                View Today's Schedule
-              </Button>
-            </Link>
-          ) : !hasStudents ? (
-            <Link to="/students">
-              <Button className="gap-2 bg-white text-ink hover:bg-white/90">
-                <Plus className="h-4 w-4" />
-                Add Your First Student
-              </Button>
-            </Link>
-          ) : (
-            <Link to="/calendar">
-              <Button className="gap-2 bg-white text-ink hover:bg-white/90">
-                <Plus className="h-4 w-4" />
-                Schedule a Lesson
-              </Button>
-            </Link>
-          )}
+          <Link to={primaryCTA.href}>
+            <Button className={cn(
+              "gap-2 bg-white text-ink hover:bg-white/90",
+              isNewUser && "shadow-lg animate-pulse"
+            )}>
+              <primaryCTA.icon className="h-4 w-4" />
+              {primaryCTA.label}
+              {isNewUser && <ChevronRight className="h-4 w-4" />}
+            </Button>
+          </Link>
           
           {outstandingAmount > 0 && (
             <Link to="/reports/outstanding">
@@ -149,6 +186,18 @@ export function DashboardHero({
             </Link>
           )}
         </motion.div>
+        
+        {/* New user hint */}
+        {isNewUser && primaryCTA.description && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            className="mt-3 text-sm text-white/50"
+          >
+            {primaryCTA.description}
+          </motion.p>
+        )}
       </div>
 
       {/* Sparkle decoration */}
