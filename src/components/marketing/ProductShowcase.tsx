@@ -34,6 +34,11 @@ const tabs = [
   },
 ];
 
+// Get current month dynamically for evergreen content
+const getCurrentMonthYear = () => {
+  return new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+};
+
 // Mock UI components for each tab
 function CalendarMockup() {
   const times = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00"];
@@ -52,7 +57,7 @@ function CalendarMockup() {
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="text-sm font-semibold text-foreground">January 2026</div>
+          <div className="text-sm font-semibold text-foreground">{getCurrentMonthYear()}</div>
           <ChevronRight className="w-4 h-4 text-muted-foreground" />
         </div>
         <div className="flex gap-2">

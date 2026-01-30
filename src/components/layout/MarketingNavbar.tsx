@@ -11,6 +11,7 @@ const navLinks = [
   { name: "Pricing", href: "/pricing" },
   { name: "About", href: "/about" },
   { name: "Blog", href: "/blog" },
+  { name: "Contact", href: "/contact" },
 ];
 
 export function MarketingNavbar() {

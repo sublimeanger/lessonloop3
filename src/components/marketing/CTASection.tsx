@@ -117,23 +117,6 @@ export function CTASection() {
                   Try free for 30 days. Cancel anytime.
                 </p>
 
-                {/* Quick Form */}
-                <div className="space-y-4 mb-6">
-                  <div>
-                    <input
-                      type="text"
-                      placeholder="Your name"
-                      className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-teal/50"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="email"
-                      placeholder="Email address"
-                      className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-teal/50"
-                    />
-                  </div>
-                </div>
 
                 <Link to="/signup" className="block">
                   <motion.div

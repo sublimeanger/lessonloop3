@@ -1,6 +1,7 @@
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { TRIAL_DAYS } from "@/lib/pricing-config";
 
 export default function Terms() {
   return (
@@ -118,7 +119,7 @@ export default function Terms() {
                 LessonLoop offers subscription plans with different features and limits:
               </p>
               <ul className="list-disc list-inside text-muted-foreground mb-4 space-y-2">
-                <li><strong>Free trial:</strong> 14 days of full access to evaluate the Service</li>
+                <li><strong>Free trial:</strong> {TRIAL_DAYS} days of full access to evaluate the Service</li>
                 <li><strong>Paid plans:</strong> Billed monthly or annually in GBP</li>
                 <li><strong>Cancellation:</strong> You may cancel at any time; access continues until the end of your billing period</li>
                 <li><strong>Refunds:</strong> Fees are non-refundable except as required by law</li>
