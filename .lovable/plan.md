@@ -1,317 +1,206 @@
 
-# Comprehensive Site-Wide Polish Audit
+# Comprehensive Marketing Pages Audit & Improvement Plan
 
-## Audit Summary
+## Executive Summary
 
-After a thorough review of 40+ components and pages across the entire LessonLoop application, I've identified polish opportunities organized by severity and impact. The codebase is already well-structured with consistent patterns, but there are areas requiring refinement for a truly flawless production experience.
-
----
-
-## Findings by Category
-
-### 1. 404 Page - Needs Complete Redesign (P0 - High Impact)
-
-**File:** `src/pages/NotFound.tsx`
-
-**Current State:** Bare-bones placeholder with no branding or helpful navigation.
-
-**Issues:**
-- No logo or brand identity
-- No navigation options beyond "Return to Home"
-- No helpful suggestions
-- Doesn't match the polished design language of the rest of the app
-
-**Fix:** Complete redesign with:
-- Brand logo
-- Illustration or icon
-- Clear 404 messaging
-- Multiple navigation options (Dashboard, Calendar, Help)
-- Consistent gradient background styling
+After a thorough review of all marketing pages, components, and content across the LessonLoop marketing site, I've identified several areas for improvement ranging from critical consistency fixes to enhancements that will improve conversion and user experience.
 
 ---
 
-### 2. Dashboard Hero - Minor Pulse Animation Issue (P1)
+## Findings Overview
 
-**File:** `src/components/dashboard/DashboardHero.tsx` (line 172)
+### Category 1: Critical Consistency Issues (P0)
 
-**Issue:** The "Add Your First Student" CTA has `animate-pulse` which can be distracting and affect accessibility for users with motion sensitivity.
+| Issue | Location | Impact |
+|-------|----------|--------|
+| **Trial Period Mismatch** | `Terms.tsx` line 121 | Shows "14 days" trial instead of 30 days - conflicts with all other marketing materials |
+| **Hardcoded Trial References** | `HeroSection.tsx`, `CTASection.tsx` | Should use `TRIAL_DAYS` constant for single-source-of-truth |
 
-**Fix:** Replace with a gentler animation or remove entirely. Consider using a ring/glow effect instead of pulse.
+### Category 2: Content Freshness Issues (P1)
 
----
+| Issue | Location | Impact |
+|-------|----------|--------|
+| **Blog Posts Outdated** | `Blog.tsx` | Dates show 2023/2024 - should be refreshed for 2025/2026 |
+| **Blog is Non-functional** | All blog cards | Shows "Coming soon" badge with no actual articles |
 
-### 3. Settings Page - Tab List Overflow on Mobile (P1)
+### Category 3: UX Improvements (P1)
 
-**File:** `src/pages/Settings.tsx` (line 309)
+| Issue | Location | Recommendation |
+|-------|----------|----------------|
+| **Footer Duplicate Links** | `MarketingFooter.tsx` | "Blog" appears in both Product and Company columns |
+| **CTA Form Not Functional** | `CTASection.tsx` | Form inputs don't actually submit - creates false expectation |
+| **Watch Demo Button No Action** | `HeroSection.tsx` | Play button doesn't do anything |
 
-**Current State:** 
-```tsx
-<TabsList className="flex-wrap h-auto gap-1">
-```
+### Category 4: Accessibility & SEO (P2)
 
-**Issue:** With 11 tabs, the tabs wrap awkwardly on mobile screens. Should use horizontal scrolling instead.
+| Issue | Location | Recommendation |
+|-------|----------|----------------|
+| **Missing Meta Tags** | Marketing pages | Add Open Graph and Twitter card meta for social sharing |
+| **Testimonials Missing Social Proof** | `TestimonialsSection.tsx` | Could add company logos or photos for credibility |
+| **LogoMarquee Alt Text** | `LogoMarquee.tsx` | Missing accessible labels for screen readers |
 
-**Fix:** Replace with horizontal scroll container:
-```tsx
-<TabsList className="w-full overflow-x-auto flex-nowrap justify-start h-auto">
-```
+### Category 5: Feature Accuracy (P2)
 
----
-
-### 4. Breadcrumb Trailing Separator Issue (P2)
-
-**File:** `src/components/layout/PageHeader.tsx` (line 33-38)
-
-**Issue:** The separator is added after every non-last item, but the logic could create edge cases with empty arrays. Minor but worth hardening.
-
-**Fix:** Add a more robust fragment key and ensure no trailing separator.
-
----
-
-### 5. TodayTimeline - Timeline Connector on Last Item (P2)
-
-**File:** `src/components/dashboard/TodayTimeline.tsx` (line 70)
-
-**Issue:** The timeline connecting line renders on all items including the last one, leaving a dangling line.
-
-**Fix:** Check if it's the last item and hide the connector:
-```tsx
-{index < lessonsArray.length - 1 && (
-  <div className="flex-1 w-0.5 bg-border mt-2" />
-)}
-```
+| Issue | Location | Note |
+|-------|----------|------|
+| **"Watch Demo" Non-functional** | `HeroSection.tsx` | Button exists but doesn't trigger video modal |
+| **Calendar Sync Listed** | `pricing-config.ts` line 79 | Feature mentioned but may not be fully shipped |
+| **White-label Options** | `pricing-config.ts` line 149 | Listed for Agency but implementation TBD |
 
 ---
 
-### 6. Empty State Consistency - Variant Sizing (P2)
+## Recommended Fixes
 
-**File:** `src/components/shared/EmptyState.tsx`
+### Phase 1: Critical Fixes (Do Now)
 
-**Issue:** The `size` prop affects container min-height but some pages don't specify size, leading to inconsistent empty state presentations.
+**1.1 Fix Trial Period in Terms.tsx**
+Change line 121 from "14 days" to "30 days" to match all other marketing materials and the `TRIAL_DAYS` constant.
 
-**Recommendation:** Audit all usages and ensure appropriate sizing. The `md` default works for most cases but some inline contexts should use `sm`.
+**1.2 Remove Non-functional CTA Form**
+The form in `CTASection.tsx` (lines 122-135) collects name/email but doesn't submit anywhere. Options:
+- Option A: Remove form, link directly to signup page
+- Option B: Wire up to edge function (like contact form)
 
----
+Recommendation: **Option A** - simplify to direct CTA button for better conversion.
 
-### 7. Select/Dropdown z-index Layering (P1)
+**1.3 Fix "Watch Demo" Button**
+Either:
+- Link to a YouTube video (if available)
+- Remove the button until video is ready
+- Replace with "Book a Demo" linking to contact page
 
-**Files:** Various pages with modals containing Select components
-
-**Issue:** Dropdowns inside dialogs may have z-index conflicts. The current implementation uses `z-50` but needs verification in nested modal contexts.
-
-**Fix:** Add explicit `z-[60]` to SelectContent when used inside dialogs:
-```tsx
-<SelectContent className="z-[60]">
-```
-
----
-
-### 8. Button Loading State Consistency (P2)
-
-**Files:** Multiple pages (Login.tsx, Signup.tsx, Settings.tsx, Teachers.tsx, etc.)
-
-**Issue:** Loading states use different patterns:
-- Some use `{isLoading && <Loader2 />} Text`
-- Some use `{isLoading ? <>Loading...</> : 'Text'}`
-
-**Fix:** Standardize on the ternary pattern with clear loading text:
-```tsx
-{isLoading ? (
-  <><Loader2 className="h-4 w-4 animate-spin" />Loading...</>
-) : (
-  'Action Text'
-)}
-```
+**1.4 Update Blog Dates**
+Change all blog post dates to 2025/2026 to appear current.
 
 ---
 
-### 9. QuickActionsGrid - Missing aria-labels (P2)
+### Phase 2: Content Improvements (Medium Priority)
 
-**File:** `src/components/dashboard/QuickActionsGrid.tsx`
+**2.1 De-duplicate Footer Links**
+Remove "Blog" from Company column since it already appears in Product.
 
-**Issue:** Action cards wrapped in Link don't have descriptive aria-labels for screen readers.
+**2.2 Update ProductShowcase Calendar Mockup**
+Change date from "January 2026" to be dynamically generated based on current month for evergreen relevance.
 
-**Fix:** Add aria-label to the Link component:
-```tsx
-<Link to={action.href} aria-label={`${action.label}: ${action.description}`}>
-```
+**2.3 Add Stats Counter Animation Reset**
+The StatsCounter component could benefit from re-triggering on scroll back into view for users who scroll up.
 
----
-
-### 10. Calendar Keyboard Shortcuts - Missing Visual Indicator (P2)
-
-**File:** `src/pages/CalendarPage.tsx` (line 265-267)
-
-**Current State:** Keyboard shortcuts shown as plain text at bottom of page.
-
-**Issue:** The shortcuts hint blends into the page and isn't easily discoverable.
-
-**Fix:** Style as a dismissible tooltip or popover triggered by a "?" button, or add a subtle badge-style container.
+**2.4 Improve LogoMarquee Accessibility**
+Add `aria-labels` to the exam board logos for screen reader users.
 
 ---
 
-### 11. StatCard - Trend Percentage Edge Case (P3)
+### Phase 3: Polish & Enhancements (Lower Priority)
 
-**File:** `src/components/dashboard/StatCard.tsx` (line 87-101)
+**3.1 Add "Contact" to Navbar**
+The Contact page exists but isn't in the main navigation - users must find it in the footer.
 
-**Issue:** If `trend.value === 0`, the trend indicator is hidden (correct). But if trend is undefined vs null, behavior might vary.
+**3.2 Improve About Page Team Section**
+The team uses placeholder avatars (initials). Consider either:
+- Adding real photos
+- Using generated avatars (e.g., DiceBear)
 
-**Fix:** Add defensive check: `{trend && typeof trend.value === 'number' && trend.value !== 0 && ...}`
+**3.3 Add Social Media Links**
+Footer social links point to generic twitter.com, linkedin.com etc. - should either:
+- Link to real LessonLoop accounts
+- Remove until accounts are created
 
----
-
-### 12. Teachers Page - Invites List Empty State (P2)
-
-**File:** `src/pages/Teachers.tsx` (line 298-327)
-
-**Issue:** When invites are empty, no message is shown. The section just doesn't render.
-
-**Observation:** This is actually correct behavior (don't show empty container), but could add a hint when there are teachers but no pending invites: "All team members have accepted their invites."
-
----
-
-### 13. Reports Page - Card Height Inconsistency (P2)
-
-**File:** `src/pages/Reports.tsx`
-
-**Issue:** Report cards use `h-full` but descriptions of varying lengths cause visual misalignment in the grid.
-
-**Fix:** Add `min-h-[180px]` to ensure uniform card heights:
-```tsx
-<Card className="h-full min-h-[180px] transition-all ...">
-```
-
----
-
-### 14. Modal Close Button Consistency (P2)
-
-**File:** `src/components/ui/dialog.tsx` (line 45)
-
-**Issue:** Close button opacity starts at `0.7` which can feel visually inconsistent with other UI elements.
-
-**Fix:** Increase default opacity to `0.8` and hover to `1`:
-```tsx
-className="absolute right-4 top-4 rounded-sm opacity-80 ..."
-```
-
----
-
-### 15. Urgent Actions Bar - Dismiss State Not Persisted (P1)
-
-**File:** `src/components/dashboard/UrgentActionsBar.tsx` (line 11)
-
-**Issue:** `isDismissed` state is local React state, so dismissing the bar and navigating away then back will show it again.
-
-**Fix:** Persist to sessionStorage for session-based dismissal, or localStorage with daily reset.
-
----
-
-### 16. FirstRunExperience - Step Progress Accessibility (P2)
-
-**File:** `src/components/dashboard/FirstRunExperience.tsx` (lines 152-164)
-
-**Issue:** Progress bar segments don't have text alternatives for screen readers.
-
-**Fix:** Add `aria-label` to the container and individual step indicators.
-
----
-
-### 17. Login/Signup - OAuth Error Message Improvement (P3)
-
-**Files:** `src/pages/Login.tsx`, `src/pages/Signup.tsx`
-
-**Issue:** OAuth error messages display `error.message` directly which may contain technical jargon.
-
-**Fix:** Add user-friendly fallback messages:
-```tsx
-description: error.message.includes('popup') 
-  ? 'Please allow popups for this site and try again'
-  : error.message,
-```
-
----
-
-### 18. Help Page - Category Grid Responsiveness (P2)
-
-**File:** `src/pages/Help.tsx` (line 89)
-
-**Issue:** Grid jumps from 1 column to 2 to 4, missing 3-column breakpoint.
-
-**Fix:** `md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`
-
----
-
-## Implementation Priority
-
-### Phase 1: Critical Polish (High Visual Impact)
-1. **404 Page Redesign** - Users encountering this page get a poor impression
-2. **Settings Tab Overflow** - Mobile usability issue
-3. **Select z-index in Modals** - Potential usability blocker
-4. **Urgent Actions Persistence** - UX annoyance
-
-### Phase 2: Refinement (Medium Priority)
-5. Dashboard Hero pulse animation
-6. TodayTimeline connector on last item
-7. Reports card height consistency
-8. Button loading state standardization
-9. Modal close button opacity
-
-### Phase 3: Accessibility & Polish (Lower Priority)
-10. QuickActionsGrid aria-labels
-11. Calendar keyboard shortcuts styling
-12. FirstRunExperience step accessibility
-13. Help category grid responsiveness
-14. OAuth error messages
-
----
-
-## Technical Implementation Details
-
-### 404 Page Redesign (Full Component)
-
-The new NotFound page will include:
-- Centered layout with gradient background
-- Brand logo
-- Large 404 text with subtle animation
-- Friendly messaging
-- Primary CTA: "Return to Dashboard"
-- Secondary links: Calendar, Help
-- Responsive design
-
-### Settings Scrollable Tabs
-
-Replace wrapping tabs with horizontal scroll using `overflow-x-auto` and `scrollbar-hide` utility (already available in the CSS).
-
-### Select Component Modal Fix
-
-Create a new `SelectContentModal` variant or pass a portal container prop to ensure proper stacking context within dialogs.
+**3.4 Add Scroll-to-Top on Route Change**
+Marketing pages don't reset scroll position when navigating between them (though `ScrollToTop` component exists).
 
 ---
 
 ## Files to Modify
 
+### High Priority
 | File | Changes |
 |------|---------|
-| `src/pages/NotFound.tsx` | Complete redesign |
-| `src/pages/Settings.tsx` | Tab list horizontal scroll |
-| `src/components/dashboard/DashboardHero.tsx` | Remove pulse animation |
-| `src/components/dashboard/TodayTimeline.tsx` | Fix last item connector |
-| `src/components/dashboard/UrgentActionsBar.tsx` | Add sessionStorage persistence |
-| `src/components/dashboard/QuickActionsGrid.tsx` | Add aria-labels |
-| `src/pages/Reports.tsx` | Card min-height |
-| `src/pages/Help.tsx` | Grid responsiveness |
-| `src/components/ui/dialog.tsx` | Close button opacity |
-| `src/pages/Login.tsx` | OAuth error handling |
-| `src/pages/Signup.tsx` | OAuth error handling |
+| `src/pages/marketing/Terms.tsx` | Fix trial period (14 → 30 days) |
+| `src/components/marketing/CTASection.tsx` | Remove non-functional form, simplify CTA |
+| `src/components/marketing/HeroSection.tsx` | Fix "Watch Demo" button |
+| `src/pages/marketing/Blog.tsx` | Update dates to 2025/2026 |
+
+### Medium Priority
+| File | Changes |
+|------|---------|
+| `src/components/layout/MarketingFooter.tsx` | De-duplicate "Blog" link |
+| `src/components/marketing/ProductShowcase.tsx` | Dynamic date for calendar mockup |
+| `src/components/marketing/LogoMarquee.tsx` | Add aria-labels |
+| `src/components/layout/MarketingNavbar.tsx` | Add Contact link |
+
+### Lower Priority
+| File | Changes |
+|------|---------|
+| `src/components/layout/MarketingFooter.tsx` | Update social links or remove |
+| `src/pages/marketing/About.tsx` | Consider avatar improvements |
 
 ---
 
-## Expected Outcome
+## Technical Implementation Details
 
-After implementing these changes:
-- Zero visual inconsistencies across all pages
-- Improved accessibility scores
-- Better mobile experience on settings page
-- Professional 404 page that maintains brand identity
-- Smoother animations without motion sensitivity issues
-- Consistent loading states across all forms
+### Trial Period Fix (Terms.tsx)
+```tsx
+// Line 121 - Change from:
+<li><strong>Free trial:</strong> 14 days of full access to evaluate the Service</li>
+
+// To (importing TRIAL_DAYS):
+<li><strong>Free trial:</strong> {TRIAL_DAYS} days of full access to evaluate the Service</li>
+```
+
+### CTASection Simplification
+Remove the input form completely and replace with a cleaner direct CTA:
+```tsx
+<Link to="/signup" className="block">
+  <Button size="xl" className="w-full ...">
+    Get Started Free
+    <ChevronRight className="w-5 h-5 ml-1" />
+  </Button>
+</Link>
+```
+
+### Watch Demo Fix
+Convert to a link to Contact page for demo booking:
+```tsx
+<Link to="/contact?subject=demo">
+  <motion.button className="...">
+    <span className="...">
+      <Play className="w-5 h-5 ml-0.5" fill="currentColor" />
+    </span>
+    Book a Demo
+  </motion.button>
+</Link>
+```
+
+### Dynamic Date for Mockups
+```tsx
+const currentMonth = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+// Use: `Week of ${currentMonth.split(' ')[0]} 20`
+```
+
+### Blog Date Updates
+Update all dates to 2025/2026:
+```tsx
+const blogPosts = [
+  { date: "15 Jan 2026", ... },
+  { date: "10 Jan 2026", ... },
+  // etc.
+];
+```
+
+---
+
+## Summary
+
+The marketing site is well-built and visually polished. The main issues are:
+
+1. **One critical consistency error** (trial period in Terms)
+2. **Non-functional UI elements** that create false expectations
+3. **Stale content** (blog dates)
+4. **Minor accessibility gaps**
+
+Implementing Phase 1 will eliminate all user-facing inconsistencies and broken interactions. Phase 2 and 3 are polish items for when there's bandwidth.
+
+**Estimated Effort:**
+- Phase 1: 15-20 minutes
+- Phase 2: 15-20 minutes  
+- Phase 3: 20-30 minutes
