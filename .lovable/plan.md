@@ -1,308 +1,213 @@
 
+# Unlinked Teacher Records Architecture
 
-# Role-Based Access Control (RBAC) Security Audit & Fix Plan
+## Problem Statement
 
-## Executive Summary
+Currently, teachers in LessonLoop **must** have an authentication account to be fully functional. This creates friction for real-world music schools where:
 
-A thorough review of the codebase reveals the role-based access control (RBAC) is **mostly correct** but has several critical issues that need fixing to ensure complete lockdown.
+- External contractors may never need to log in
+- Peripatetic teachers work across multiple schools
+- Historical records need teachers who no longer work there
+- CSV imports need to reference teachers who haven't been invited yet
 
----
-
-## Current RBAC Architecture
-
-### Route-Level Protection (App.tsx)
-The RouteGuard correctly enforces allowedRoles at the routing level:
-
-| Route | Allowed Roles | Status |
-|-------|--------------|--------|
-| `/portal/*` | parent | Correct |
-| `/dashboard` | All authenticated | Correct |
-| `/calendar` | owner, admin, teacher | Correct |
-| `/students` | owner, admin, teacher | Correct |
-| `/students/import` | owner, admin | Correct |
-| `/teachers` | owner, admin | Correct |
-| `/locations` | owner, admin | Correct |
-| `/invoices` | owner, admin, finance | Correct |
-| `/reports` | owner, admin, finance, teacher | Correct |
-| `/reports/revenue` | owner, admin, finance | Correct |
-| `/reports/outstanding` | owner, admin, finance | Correct |
-| `/reports/cancellations` | owner, admin | Correct |
-| `/reports/utilisation` | owner, admin | Correct |
-| `/reports/payroll` | owner, admin, teacher, finance | Needs Review |
-| `/reports/lessons` | owner, admin, teacher | Correct |
-| `/practice` | owner, admin, teacher | Correct |
-| `/resources` | owner, admin, teacher | Correct |
-| `/messages` | owner, admin, teacher, finance | Correct |
-| `/settings` | owner, admin, teacher, finance | Correct |
-
-### Sidebar Navigation (AppSidebar.tsx)
-
-| Role | Navigation Items | Status |
-|------|-----------------|--------|
-| owner/admin | Full navigation (Dashboard, Calendar, Register, Students, Teachers, Locations, Practice, Resources, Invoices, Reports, Messages, Settings, Help) | Correct |
-| finance | Dashboard, Invoices, Reports, Messages, Settings, Help | Correct |
-| teacher | Dashboard, My Calendar, Register, My Students, Practice, Resources, Messages, Settings, Help | Correct |
-| parent | Portal navigation only | Correct |
-| **null (loading)** | Empty array `[]` | **FIXED** (was returning full admin nav) |
+The current architecture ties `teacher_user_id` to `auth.users(id)` in several places, blocking the creation of "unlinked" teacher records.
 
 ---
 
-## Issues Identified & Fixes Required
+## Current Architecture
 
-### ISSUE 1: Resources Page - Teachers Can Upload (CRITICAL)
+| Table | Column | Constraint |
+|-------|--------|------------|
+| `teacher_profiles` | `user_id` | FK to `auth.users(id)` **ON DELETE CASCADE** |
+| `student_teacher_assignments` | `teacher_user_id` | FK to `auth.users(id)` **ON DELETE CASCADE** |
+| `lessons` | `teacher_user_id` | NOT NULL, **no FK** (uuid only) |
+| `students` | `default_teacher_user_id` | nullable, **no FK** |
+| `practice_assignments` | `teacher_user_id` | NOT NULL, **no FK** |
+| `availability_blocks` | `teacher_user_id` | NOT NULL, **no FK** |
+| `time_off_blocks` | `teacher_user_id` | NOT NULL, **no FK** |
 
-**Problem**: The Resources page (`src/pages/Resources.tsx`) shows "Upload Resource" button to ALL users who access the page, including teachers. Teachers should only VIEW resources, not upload them.
+---
 
-**Current Code** (lines 37-42):
-```typescript
-actions={
-  <Button onClick={() => setUploadModalOpen(true)}>
-    <Plus className="h-4 w-4 mr-2" />
-    Upload Resource
-  </Button>
-}
+## Proposed Solution
+
+Create a dedicated **`teachers` table** that decouples teacher records from authentication:
+
+```text
+teachers
+├── id (uuid, PK)
+├── org_id (FK to organisations)
+├── user_id (FK to auth.users, NULLABLE) -- linked when they sign up
+├── display_name (text, required)
+├── email (text, optional) -- for matching during invite
+├── phone (text, optional)
+├── instruments (text[])
+├── employment_type (enum)
+├── pay_rate_type (enum)
+├── pay_rate_value (numeric)
+├── payroll_notes (text)
+├── bio (text)
+├── status (enum: active, inactive)
+├── created_at, updated_at
 ```
 
-**Fix**: Add role check to hide upload from teachers:
-```typescript
-const { currentRole } = useOrg();
-const isAdmin = currentRole === 'owner' || currentRole === 'admin';
+### Migration Strategy
 
-// In PageHeader actions:
-actions={
-  isAdmin && (
-    <Button onClick={() => setUploadModalOpen(true)}>
-      <Plus className="h-4 w-4 mr-2" />
-      Upload Resource
-    </Button>
-  )
-}
+1. Create new `teachers` table with nullable `user_id`
+2. Migrate existing `teacher_profiles` data into new `teachers` table
+3. Add `teacher_id` column to affected tables (lessons, students, etc.)
+4. Update application code to use `teacher_id` for lookups
+5. Update CSV import to create unlinked teachers
+6. Add "Link Account" flow when teacher accepts invite
+
+---
+
+## Database Changes
+
+### New Table: `teachers`
+
+```sql
+CREATE TABLE public.teachers (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id uuid NOT NULL REFERENCES public.organisations(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL, -- nullable!
+  display_name text NOT NULL,
+  email text,
+  phone text,
+  instruments text[] NOT NULL DEFAULT '{}',
+  employment_type employment_type NOT NULL DEFAULT 'contractor',
+  pay_rate_type pay_rate_type,
+  pay_rate_value numeric(10,2),
+  payroll_notes text,
+  bio text,
+  status student_status NOT NULL DEFAULT 'active', -- reuse enum
+  default_lesson_length_mins integer NOT NULL DEFAULT 60,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(org_id, email) -- prevent duplicates by email within org
+);
+```
+
+### Alter Existing Tables
+
+```sql
+-- Add teacher_id (FK to new teachers table)
+ALTER TABLE public.lessons ADD COLUMN teacher_id uuid REFERENCES public.teachers(id) ON DELETE SET NULL;
+ALTER TABLE public.students ADD COLUMN default_teacher_id uuid REFERENCES public.teachers(id) ON DELETE SET NULL;
+ALTER TABLE public.student_teacher_assignments ADD COLUMN teacher_id uuid REFERENCES public.teachers(id) ON DELETE CASCADE;
+ALTER TABLE public.availability_blocks ADD COLUMN teacher_id uuid REFERENCES public.teachers(id) ON DELETE CASCADE;
+ALTER TABLE public.time_off_blocks ADD COLUMN teacher_id uuid REFERENCES public.teachers(id) ON DELETE CASCADE;
+ALTER TABLE public.practice_assignments ADD COLUMN teacher_id uuid REFERENCES public.teachers(id) ON DELETE SET NULL;
+```
+
+### Data Migration
+
+```sql
+-- Migrate from teacher_profiles to teachers
+INSERT INTO public.teachers (org_id, user_id, display_name, instruments, employment_type, ...)
+SELECT org_id, user_id, COALESCE(display_name, p.full_name), instruments, employment_type, ...
+FROM public.teacher_profiles tp
+JOIN public.profiles p ON p.id = tp.user_id;
+
+-- Update lessons with teacher_id based on teacher_user_id
+UPDATE public.lessons l SET teacher_id = t.id
+FROM public.teachers t WHERE l.teacher_user_id = t.user_id AND l.org_id = t.org_id;
 ```
 
 ---
 
-### ISSUE 2: Practice Page - Teachers Can Create Assignments (REVIEW)
+## Application Code Changes
 
-**Problem**: The Practice page (`src/pages/Practice.tsx`) shows "New Assignment" button to all users. Need to verify: should teachers be able to create assignments for their own students?
+### Teachers Page
+- Add ability to create "unlinked" teacher records (name, email, instruments)
+- Show "Link Account" button for unlinked teachers
+- Display linked/unlinked status badge
 
-**Business Logic Decision**:
-- If YES (teachers can create assignments for their assigned students): Current code is correct
-- If NO (only admins create assignments): Add role check similar to Issue 1
+### Teacher Dropdowns (LessonModal, TeachingDefaultsCard, etc.)
+- Query `teachers` table instead of `org_memberships + profiles`
+- Show display_name from teachers table
+- No change to user experience
 
-**Recommendation**: Keep current behaviour - teachers SHOULD be able to create assignments for their assigned students. The hook `usePracticeAssignments` should already scope to their students via RLS.
+### CSV Import
+- Create teacher records in `teachers` table
+- Match by email or name (case-insensitive)
+- No auth account required
 
----
+### Invite Flow
+- When a teacher accepts an invite, link their `auth.user.id` to the matching `teachers` record (by email)
+- Update `teachers.user_id` and grant org membership
 
-### ISSUE 3: QuickActionsGrid - Teacher Actions Link to Admin Pages (LOW)
+### RLS Policies
+- Teachers with `user_id` can still access their own data via `auth.uid()`
+- New function: `get_teacher_id_for_user(user_id, org_id)` for lookups
+- Payroll data protection remains (admin-only for pay rates)
 
-**Problem**: The `QuickActionsGrid` for teachers includes "My Students" linking to `/students`. This is correct since teachers can access that route, but teachers clicking "My Students" might expect a different filtered view.
-
-**Current behaviour**: Teachers go to Students page and see only their assigned students (already fixed via earlier changes)
-
-**Status**: NO FIX NEEDED - the Students page now properly shows only assigned students to teachers and hides admin actions.
-
----
-
-### ISSUE 4: StudentDetail - Teachers Can Add/Remove Guardians (CRITICAL)
-
-**Problem**: On `StudentDetail.tsx`, the "Add Guardian" button and remove guardian functionality is shown to ALL users including teachers.
-
-**Current Code** (line 437):
-```typescript
-<Button onClick={() => setIsGuardianDialogOpen(true)} size="sm" className="gap-2">
-  <Plus className="h-4 w-4" />
-  Add Guardian
-</Button>
-```
-
-**Fix**: Add role check:
-```typescript
-{isOrgAdmin && (
-  <Button onClick={() => setIsGuardianDialogOpen(true)} size="sm" className="gap-2">
-    <Plus className="h-4 w-4" />
-    Add Guardian
-  </Button>
-)}
-```
-
-Also fix the remove guardian button (line 463-474) to be admin-only.
+### Reports & Payroll
+- Query `teachers` table for display names
+- Filter by `teacher_id` instead of `teacher_user_id`
+- Unlinked teachers still appear in payroll (with pay rates)
 
 ---
 
-### ISSUE 5: StudentDetail - TeachingDefaultsCard Editable by Teachers (CRITICAL)
+## UI Changes
 
-**Problem**: The `TeachingDefaultsCard` allows editing teaching defaults (location, teacher, rate card). Teachers should NOT be able to change rate cards or reassign students to other teachers.
+### Teachers Page
+- "Add Teacher" button (creates unlinked record)
+- "Invite to Login" action (sends invite email, optional)
+- Status badges: "Active", "Pending Invite", "Linked"
 
-**File**: `src/components/students/TeachingDefaultsCard.tsx`
-
-**Fix**: Pass `isOrgAdmin` prop and disable editing for teachers, or make it view-only for non-admins.
-
----
-
-### ISSUE 6: CalendarPage - Teachers Can Create Lessons (REVIEW)
-
-**Problem**: The CalendarPage shows "New Lesson" button to teachers. Need to verify: should teachers create lessons?
-
-**Current Code** (lines 173-178):
-```typescript
-{!isParent && (
-  <Button onClick={() => { setSelectedLesson(null); setSlotDate(undefined); setIsModalOpen(true); }}>
-    New Lesson
-  </Button>
-)}
-```
-
-**Business Logic Decision**:
-- Solo teachers and admin staff SHOULD create lessons
-- Teachers within academies MAY or MAY NOT be allowed to create lessons (org policy)
-
-**Recommendation**: This is likely CORRECT for now. Teachers need to schedule lessons for their students. However, the LessonModal should restrict lesson creation to:
-1. Only allow teachers to assign themselves or leave teacher blank
-2. Only allow teachers to add their assigned students
+### New Teacher Modal
+- Display Name (required)
+- Email (optional, used for invite matching)
+- Instruments (multi-select)
+- Employment Type (contractor/employee)
+- Pay Rate (optional)
 
 ---
 
-### ISSUE 7: DailyRegister - All Users Can Mark Attendance (CORRECT)
+## Files to Create/Modify
 
-**Review**: Teachers SHOULD be able to mark attendance for their lessons. The page correctly auto-filters to teacher's own lessons.
+### Database
+- New migration for `teachers` table and data migration
 
-**Status**: CORRECT - No fix needed.
+### Backend
+- Update `invite-accept` to link teacher records
+- Update `csv-import-execute` to create teachers in new table
 
----
-
-### ISSUE 8: Messages - Parent Requests Tab Visibility (CORRECT)
-
-**Current Code** (line 117):
-```typescript
-const canViewRequests = isOrgAdmin || isOrgOwner;
-```
-
-**Status**: CORRECT - Only admins/owners see the "Parent Requests" tab.
-
----
-
-### ISSUE 9: Settings - Tab Visibility (CORRECT)
-
-**Review**: Settings tabs are correctly gated:
-- Profile, Organisation, Availability, Calendar, Billing, Notifications, Help - All roles
-- Members, Scheduling, Audit, Privacy, Rate Cards - Owner/Admin only
-
-**Status**: CORRECT
-
----
-
-### ISSUE 10: Reports - Teacher Seeing Payroll (MEDIUM)
-
-**Problem**: Teachers can access `/reports/payroll` which shows ALL teacher pay rates and earnings.
-
-**Current Route** (App.tsx line 179-182):
-```typescript
-<Route path="/reports/payroll" element={
-  <RouteGuard allowedRoles={['owner', 'admin', 'teacher', 'finance']}>
-    <PayrollReport />
-  </RouteGuard>
-} />
-```
-
-**Issue**: A teacher can see other teachers' pay rates.
-
-**Fix Options**:
-1. Remove teacher from allowedRoles (teachers can't see payroll)
-2. Filter payroll report to show only the logged-in teacher's own data
-
-**Recommendation**: Filter the report to show only the teacher's own data when `currentRole === 'teacher'`.
-
----
-
-## Fix Implementation Plan
-
-### Phase 1: Critical UI Fixes
-
-| File | Change | Priority |
-|------|--------|----------|
-| `src/pages/Resources.tsx` | Add isAdmin check for Upload button | Critical |
-| `src/pages/StudentDetail.tsx` | Add isOrgAdmin check for Add/Remove Guardian | Critical |
-| `src/components/students/TeachingDefaultsCard.tsx` | Make rate card editing admin-only | Critical |
-
-### Phase 2: Data Filtering Fixes
-
-| File | Change | Priority |
-|------|--------|----------|
-| `src/pages/reports/Payroll.tsx` | Filter to teacher's own data when role=teacher | Medium |
-
-### Phase 3: No Action Required
-
-| Area | Status |
+### Frontend
+| File | Change |
 |------|--------|
-| Route guards | Correctly implemented |
-| Sidebar navigation | Fixed (empty array for null role) |
-| Students page | Already fixed (admin actions hidden) |
-| Messages page | Correctly gated |
-| Settings page | Correctly gated |
-| Dashboard | Correctly shows role-specific views |
-| Calendar | Teachers should be able to create lessons |
-| Daily Register | Teachers should mark attendance |
-| Practice | Teachers should create assignments |
+| `src/pages/Teachers.tsx` | Add "Create Teacher" functionality, query new table |
+| `src/hooks/useCalendarData.ts` | Change teacher query to use `teachers` table |
+| `src/components/calendar/LessonModal.tsx` | Use `teacher_id` for selection |
+| `src/components/students/TeachingDefaultsCard.tsx` | Use `teacher_id` |
+| `src/components/students/TeacherAssignmentsPanel.tsx` | Use `teacher_id` |
+| `src/hooks/usePayroll.ts` | Query `teachers` table |
+| `src/hooks/useReports.ts` | Query `teachers` table |
+| `src/pages/DailyRegister.tsx` | Filter by `teacher_id` |
 
 ---
 
-## Parent Portal Verification
+## Benefits
 
-### Routes (All Correct)
-- `/portal/home` - parent only
-- `/portal/schedule` - parent only
-- `/portal/practice` - parent only
-- `/portal/resources` - parent only
-- `/portal/invoices` - parent only
-- `/portal/messages` - parent only
-
-### RouteGuard Behaviour
-- If a parent tries to access `/dashboard`, they are redirected to `/portal/home`
-- If a parent tries to access any non-portal route, they are redirected to `/portal/home`
-
-### PublicRoute Behaviour
-- If a logged-in parent visits `/login`, they are redirected to `/portal/home`
-
-**Status**: CORRECT
+1. **Import Flexibility**: Teachers don't need accounts to be referenced
+2. **Historical Integrity**: Departed teachers can be kept without auth accounts
+3. **Agency Model**: External contractors tracked without login
+4. **Seamless Linking**: When teachers do join, their records are already populated
+5. **No Breaking Changes**: Existing users continue to work (dual-read during transition)
 
 ---
 
-## Summary of Required Changes
+## Technical Considerations
 
-### Files to Modify
+### Backward Compatibility
+- Keep `teacher_user_id` columns temporarily during migration
+- Read from both old and new columns with preference for new
+- Remove old columns after successful migration
 
-1. **src/pages/Resources.tsx**
-   - Import `useOrg`
-   - Add `isAdmin` check for Upload button
+### Performance
+- Add indexes on `teachers.org_id`, `teachers.user_id`, `teachers.email`
+- Use the new `teachers` table as the single source of truth
 
-2. **src/pages/StudentDetail.tsx**
-   - Add `isOrgAdmin` checks for:
-     - Add Guardian button
-     - Remove Guardian button
-     - TeachingDefaultsCard (pass readOnly prop)
-
-3. **src/components/students/TeachingDefaultsCard.tsx**
-   - Add `readOnly` prop
-   - Disable editing when readOnly is true
-
-4. **src/pages/reports/Payroll.tsx**
-   - Filter data to teacher's own records when `currentRole === 'teacher'`
-
----
-
-## Testing Checklist
-
-After implementation:
-
-| Test | Expected Result |
-|------|-----------------|
-| Login as Teacher | See teacher-specific sidebar (no Invoices, Locations, Teachers) |
-| Teacher → Students | See assigned students only, no Add/Import buttons |
-| Teacher → Student Detail | Cannot add/remove guardians, cannot edit teaching defaults |
-| Teacher → Resources | Cannot upload resources |
-| Teacher → Payroll Report | See only own payroll data |
-| Login as Parent | See portal sidebar only |
-| Parent → /dashboard (manual URL) | Redirected to /portal/home |
-| Login as Finance | See Dashboard, Invoices, Reports, Messages, Settings only |
-| Finance → Students (manual URL) | Redirected to /dashboard |
-
+### Security
+- Same RLS model: admins see all, teachers see own (via `user_id` when linked)
+- Pay rate visibility restricted to admins and the teacher themselves
