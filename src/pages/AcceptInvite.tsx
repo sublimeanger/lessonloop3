@@ -106,11 +106,11 @@ export default function AcceptInvite() {
         description: `You've joined ${organisation?.name || 'the organisation'}` 
       });
       
-      // Navigate based on onboarding status
-      if (profile?.has_completed_onboarding) {
-        navigate('/dashboard');
+      // Navigate based on role - parents go to portal, staff go to dashboard
+      if (data.role === 'parent') {
+        navigate('/portal/home');
       } else {
-        navigate('/onboarding');
+        navigate('/dashboard');
       }
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
@@ -166,20 +166,23 @@ export default function AcceptInvite() {
           throw new Error(data.error);
         }
 
-        // Update profile with full name and mark onboarding as complete for invited users
+        // Update profile with full name (edge function handles onboarding flag)
         await supabase
           .from('profiles')
-          .update({ 
-            full_name: fullName,
-            has_completed_onboarding: true,
-          })
+          .update({ full_name: fullName })
           .eq('id', authData.user.id);
         
         toast({ 
           title: 'Account created!', 
           description: `Welcome to ${organisation?.name || 'the organisation'}` 
         });
-        navigate('/dashboard');
+        
+        // Navigate based on role - parents go to portal, staff go to dashboard
+        if (data.role === 'parent') {
+          navigate('/portal/home');
+        } else {
+          navigate('/dashboard');
+        }
       }
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
