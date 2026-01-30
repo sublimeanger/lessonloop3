@@ -1,213 +1,196 @@
 
-# Unlinked Teacher Records Architecture
+# Comprehensive System Integrity Audit & Fix Plan
 
-## Problem Statement
+## Executive Summary
 
-Currently, teachers in LessonLoop **must** have an authentication account to be fully functional. This creates friction for real-world music schools where:
+After a thorough systematic review, I've identified **critical architectural inconsistencies** introduced by the partial migration to the new `teachers` table. The system is currently in a **broken state** where frontend components are mixing two incompatible ID schemes:
 
-- External contractors may never need to log in
-- Peripatetic teachers work across multiple schools
-- Historical records need teachers who no longer work there
-- CSV imports need to reference teachers who haven't been invited yet
+1. **`teachers.id`** (new): The primary key of the new `teachers` table
+2. **`teacher_user_id`** / `auth.users.id` (old): The authentication user ID
 
-The current architecture ties `teacher_user_id` to `auth.users(id)` in several places, blocking the creation of "unlinked" teacher records.
+This mismatch will cause **lesson creation failures, data corruption, and broken filtering**.
 
 ---
 
-## Current Architecture
+## Critical Issues Identified
 
-| Table | Column | Constraint |
-|-------|--------|------------|
-| `teacher_profiles` | `user_id` | FK to `auth.users(id)` **ON DELETE CASCADE** |
-| `student_teacher_assignments` | `teacher_user_id` | FK to `auth.users(id)` **ON DELETE CASCADE** |
-| `lessons` | `teacher_user_id` | NOT NULL, **no FK** (uuid only) |
-| `students` | `default_teacher_user_id` | nullable, **no FK** |
-| `practice_assignments` | `teacher_user_id` | NOT NULL, **no FK** |
-| `availability_blocks` | `teacher_user_id` | NOT NULL, **no FK** |
-| `time_off_blocks` | `teacher_user_id` | NOT NULL, **no FK** |
+### P0 - Data Integrity Failures (BLOCKING)
+
+| Component | Issue | Impact |
+|-----------|-------|--------|
+| **LessonModal.tsx** | Saves `teachers.id` to `teacher_user_id` column | Lessons created with wrong teacher reference - **data corruption** |
+| **TeachingDefaultsCard.tsx** | Uses old `org_memberships` query, expects `user_id` | Cannot display or save new `teachers.id` values |
+| **TeacherAssignmentsPanel.tsx** | Uses old `teacher_user_id` column | Cannot create assignments for unlinked teachers |
+| **DailyRegister.tsx** | Filters by `teacher_user_id === user.id` | Linked teachers see no lessons if DB stores `teachers.id` |
+| **CalendarFiltersBar.tsx** | Filter uses `teacher_user_id` | Filtering won't work with new ID scheme |
+| **usePayroll.ts** | Queries old `teacher_profiles` table | Payroll will show no data for teachers in new table |
+
+### P1 - Functionality Gaps
+
+| Component | Issue |
+|-----------|-------|
+| **useConflictDetection.ts** | Availability/time-off checks use `teacher_user_id` |
+| **useTeacherAssignments.ts** | Counts use `teacher_user_id` column |
+| **StudentDetail.tsx** | Passes `default_teacher_user_id` prop (should be `default_teacher_id`) |
+| **useRegisterData.ts** | Teacher filtering uses old ID column |
 
 ---
 
-## Proposed Solution
+## Database Schema State
 
-Create a dedicated **`teachers` table** that decouples teacher records from authentication:
+The database now has **dual columns** for backward compatibility:
 
 ```text
-teachers
-├── id (uuid, PK)
-├── org_id (FK to organisations)
-├── user_id (FK to auth.users, NULLABLE) -- linked when they sign up
-├── display_name (text, required)
-├── email (text, optional) -- for matching during invite
-├── phone (text, optional)
-├── instruments (text[])
-├── employment_type (enum)
-├── pay_rate_type (enum)
-├── pay_rate_value (numeric)
-├── payroll_notes (text)
-├── bio (text)
-├── status (enum: active, inactive)
-├── created_at, updated_at
+lessons:
+  - teacher_user_id (NOT NULL, currently used by app)
+  - teacher_id (NULLABLE, new FK to teachers.id)
+
+students:
+  - default_teacher_user_id (old)
+  - default_teacher_id (new)
+
+student_teacher_assignments:
+  - teacher_user_id (old)
+  - teacher_id (new)
 ```
 
-### Migration Strategy
-
-1. Create new `teachers` table with nullable `user_id`
-2. Migrate existing `teacher_profiles` data into new `teachers` table
-3. Add `teacher_id` column to affected tables (lessons, students, etc.)
-4. Update application code to use `teacher_id` for lookups
-5. Update CSV import to create unlinked teachers
-6. Add "Link Account" flow when teacher accepts invite
+**Problem**: Frontend components are inconsistently using these columns.
 
 ---
 
-## Database Changes
+## Fix Strategy
 
-### New Table: `teachers`
+### Phase 1: Establish Consistency (Critical)
 
-```sql
-CREATE TABLE public.teachers (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id uuid NOT NULL REFERENCES public.organisations(id) ON DELETE CASCADE,
-  user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL, -- nullable!
-  display_name text NOT NULL,
-  email text,
-  phone text,
-  instruments text[] NOT NULL DEFAULT '{}',
-  employment_type employment_type NOT NULL DEFAULT 'contractor',
-  pay_rate_type pay_rate_type,
-  pay_rate_value numeric(10,2),
-  payroll_notes text,
-  bio text,
-  status student_status NOT NULL DEFAULT 'active', -- reuse enum
-  default_lesson_length_mins integer NOT NULL DEFAULT 60,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(org_id, email) -- prevent duplicates by email within org
-);
-```
+All components must use `teacher_id` (referencing `teachers.id`) as the primary identifier:
 
-### Alter Existing Tables
+**1.1 LessonModal.tsx**
+- Rename state from `teacherUserId` to `teacherId`
+- Save to BOTH `teacher_user_id` (for backward compat) AND `teacher_id`
+- When saving a lesson:
+  - Lookup `teachers.user_id` to populate `teacher_user_id` for RLS policies
+  - Store `teachers.id` in `teacher_id` column
 
-```sql
--- Add teacher_id (FK to new teachers table)
-ALTER TABLE public.lessons ADD COLUMN teacher_id uuid REFERENCES public.teachers(id) ON DELETE SET NULL;
-ALTER TABLE public.students ADD COLUMN default_teacher_id uuid REFERENCES public.teachers(id) ON DELETE SET NULL;
-ALTER TABLE public.student_teacher_assignments ADD COLUMN teacher_id uuid REFERENCES public.teachers(id) ON DELETE CASCADE;
-ALTER TABLE public.availability_blocks ADD COLUMN teacher_id uuid REFERENCES public.teachers(id) ON DELETE CASCADE;
-ALTER TABLE public.time_off_blocks ADD COLUMN teacher_id uuid REFERENCES public.teachers(id) ON DELETE CASCADE;
-ALTER TABLE public.practice_assignments ADD COLUMN teacher_id uuid REFERENCES public.teachers(id) ON DELETE SET NULL;
-```
+**1.2 TeachingDefaultsCard.tsx**
+- Query `teachers` table instead of `org_memberships`
+- Save to `default_teacher_id` column
+- Accept and display `defaultTeacherId` prop
 
-### Data Migration
+**1.3 TeacherAssignmentsPanel.tsx**
+- Query `teachers` table for available teachers
+- Use `teacher_id` column for assignments
+- Display `display_name` from `teachers` table
 
-```sql
--- Migrate from teacher_profiles to teachers
-INSERT INTO public.teachers (org_id, user_id, display_name, instruments, employment_type, ...)
-SELECT org_id, user_id, COALESCE(display_name, p.full_name), instruments, employment_type, ...
-FROM public.teacher_profiles tp
-JOIN public.profiles p ON p.id = tp.user_id;
+**1.4 CalendarFiltersBar.tsx & types.ts**
+- Change filter from `teacher_user_id` to `teacher_id`
+- Update CalendarFilters interface
 
--- Update lessons with teacher_id based on teacher_user_id
-UPDATE public.lessons l SET teacher_id = t.id
-FROM public.teachers t WHERE l.teacher_user_id = t.user_id AND l.org_id = t.org_id;
-```
-
----
-
-## Application Code Changes
-
-### Teachers Page
-- Add ability to create "unlinked" teacher records (name, email, instruments)
-- Show "Link Account" button for unlinked teachers
-- Display linked/unlinked status badge
-
-### Teacher Dropdowns (LessonModal, TeachingDefaultsCard, etc.)
-- Query `teachers` table instead of `org_memberships + profiles`
-- Show display_name from teachers table
-- No change to user experience
-
-### CSV Import
-- Create teacher records in `teachers` table
-- Match by email or name (case-insensitive)
-- No auth account required
-
-### Invite Flow
-- When a teacher accepts an invite, link their `auth.user.id` to the matching `teachers` record (by email)
-- Update `teachers.user_id` and grant org membership
-
-### RLS Policies
-- Teachers with `user_id` can still access their own data via `auth.uid()`
-- New function: `get_teacher_id_for_user(user_id, org_id)` for lookups
-- Payroll data protection remains (admin-only for pay rates)
-
-### Reports & Payroll
-- Query `teachers` table for display names
+**1.5 DailyRegister.tsx**
+- For linked teachers, lookup their `teachers.id` from `user_id` match
 - Filter by `teacher_id` instead of `teacher_user_id`
-- Unlinked teachers still appear in payroll (with pay rates)
 
----
+### Phase 2: Dual-Write Pattern
 
-## UI Changes
+During transition, all lesson writes should:
+1. Accept `teacher_id` (from `teachers` table) as the primary input
+2. Lookup `teachers.user_id` to populate `teacher_user_id` for RLS
+3. Store both values for compatibility
 
-### Teachers Page
-- "Add Teacher" button (creates unlinked record)
-- "Invite to Login" action (sends invite email, optional)
-- Status badges: "Active", "Pending Invite", "Linked"
+```typescript
+// When creating lesson:
+const teacher = teachers.find(t => t.id === selectedTeacherId);
+await supabase.from('lessons').insert({
+  teacher_id: selectedTeacherId,           // New: teachers.id
+  teacher_user_id: teacher?.userId || '',  // Old: for RLS policies
+  // ... other fields
+});
+```
 
-### New Teacher Modal
-- Display Name (required)
-- Email (optional, used for invite matching)
-- Instruments (multi-select)
-- Employment Type (contractor/employee)
-- Pay Rate (optional)
+### Phase 3: Update Supporting Hooks
 
----
-
-## Files to Create/Modify
-
-### Database
-- New migration for `teachers` table and data migration
-
-### Backend
-- Update `invite-accept` to link teacher records
-- Update `csv-import-execute` to create teachers in new table
-
-### Frontend
-| File | Change |
+| Hook | Change |
 |------|--------|
-| `src/pages/Teachers.tsx` | Add "Create Teacher" functionality, query new table |
-| `src/hooks/useCalendarData.ts` | Change teacher query to use `teachers` table |
-| `src/components/calendar/LessonModal.tsx` | Use `teacher_id` for selection |
-| `src/components/students/TeachingDefaultsCard.tsx` | Use `teacher_id` |
-| `src/components/students/TeacherAssignmentsPanel.tsx` | Use `teacher_id` |
-| `src/hooks/usePayroll.ts` | Query `teachers` table |
-| `src/hooks/useReports.ts` | Query `teachers` table |
-| `src/pages/DailyRegister.tsx` | Filter by `teacher_id` |
+| `usePayroll.ts` | Query `teachers` table instead of `teacher_profiles` |
+| `useConflictDetection.ts` | Accept `teacher_id`, lookup `user_id` for availability checks |
+| `useTeacherAssignments.ts` | Use `teacher_id` column |
+| `useRegisterData.ts` | Include `teacher_id` in response |
+
+### Phase 4: StudentDetail Integration
+
+- Update `StudentDetail.tsx` to pass `defaultTeacherId` prop
+- Update query to fetch `default_teacher_id` column
 
 ---
 
-## Benefits
+## Files to Modify
 
-1. **Import Flexibility**: Teachers don't need accounts to be referenced
-2. **Historical Integrity**: Departed teachers can be kept without auth accounts
-3. **Agency Model**: External contractors tracked without login
-4. **Seamless Linking**: When teachers do join, their records are already populated
-5. **No Breaking Changes**: Existing users continue to work (dual-read during transition)
+### High Priority (P0)
+1. `src/components/calendar/LessonModal.tsx` - Use teacher_id, dual-write
+2. `src/components/calendar/types.ts` - Update CalendarFilters interface
+3. `src/components/calendar/CalendarFiltersBar.tsx` - Use teacher_id
+4. `src/components/students/TeachingDefaultsCard.tsx` - Query teachers table
+5. `src/components/students/TeacherAssignmentsPanel.tsx` - Full refactor
+6. `src/pages/DailyRegister.tsx` - Fix teacher filtering
+7. `src/hooks/useCalendarData.ts` - Already fixed, verify
+
+### Medium Priority (P1)
+8. `src/hooks/usePayroll.ts` - Query teachers table
+9. `src/hooks/useConflictDetection.ts` - Accept teacher_id
+10. `src/hooks/useTeacherAssignments.ts` - Use teacher_id
+11. `src/hooks/useRegisterData.ts` - Add teacher_id
+12. `src/pages/StudentDetail.tsx` - Use default_teacher_id prop
+
+### Low Priority (P2)
+13. `src/hooks/useReports.ts` - Update teacher lookups
+14. `src/components/invoices/BillingRunWizard.tsx` - Teacher filter
 
 ---
 
-## Technical Considerations
+## Technical Implementation Notes
 
 ### Backward Compatibility
-- Keep `teacher_user_id` columns temporarily during migration
-- Read from both old and new columns with preference for new
-- Remove old columns after successful migration
+The `teacher_user_id` column must remain populated for:
+- Existing RLS policies that check `teacher_user_id = auth.uid()`
+- Historical data integrity
+- Rollback safety
 
-### Performance
-- Add indexes on `teachers.org_id`, `teachers.user_id`, `teachers.email`
-- Use the new `teachers` table as the single source of truth
+### Helper Function
+Add a utility to lookup teacher details:
+```typescript
+function getTeacherUserIdFromTeacherId(teacherId: string, teachers: Teacher[]): string | null {
+  const teacher = teachers.find(t => t.id === teacherId);
+  return teacher?.user_id || null;
+}
+```
 
-### Security
-- Same RLS model: admins see all, teachers see own (via `user_id` when linked)
-- Pay rate visibility restricted to admins and the teacher themselves
+### RLS Policy Updates (Optional Later)
+Eventually update RLS to use:
+```sql
+-- Check if user is the teacher (supports linked teachers)
+teacher_id IN (
+  SELECT id FROM teachers WHERE user_id = auth.uid()
+)
+```
+
+---
+
+## Testing Checklist
+
+After implementation, verify:
+- [ ] Create lesson with unlinked teacher - saves correctly
+- [ ] Create lesson with linked teacher - saves with both IDs
+- [ ] Calendar filter by teacher works
+- [ ] Daily register shows correct lessons for teacher role
+- [ ] Teaching defaults save/display correctly
+- [ ] Teacher assignments panel works with new table
+- [ ] Payroll report shows teacher data
+- [ ] Conflict detection works for both linked/unlinked
+
+---
+
+## Risk Mitigation
+
+1. **Dual-write ensures no data loss** - old columns stay populated
+2. **Incremental rollout** - fix one component at a time
+3. **Test each component** before proceeding to next
+4. **Keep teacher_profiles table** as fallback during transition
