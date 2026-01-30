@@ -197,9 +197,9 @@ export default function PayrollReport() {
               <div className="space-y-2">
                 {data.teachers.map((teacher) => (
                   <Collapsible
-                    key={teacher.teacherUserId}
-                    open={expandedTeachers.has(teacher.teacherUserId)}
-                    onOpenChange={() => toggleTeacher(teacher.teacherUserId)}
+                    key={teacher.teacherId}
+                    open={expandedTeachers.has(teacher.teacherId)}
+                    onOpenChange={() => toggleTeacher(teacher.teacherId)}
                   >
                     <div className="rounded-lg border bg-card">
                       <CollapsibleTrigger className="flex w-full items-center justify-between p-4 hover:bg-muted/50">
@@ -227,7 +227,7 @@ export default function PayrollReport() {
                             <p className="text-sm text-muted-foreground">Gross Owed</p>
                             <p className="font-bold text-primary">{formatCurrency(teacher.grossOwed)}</p>
                           </div>
-                          {expandedTeachers.has(teacher.teacherUserId) ? (
+                          {expandedTeachers.has(teacher.teacherId) ? (
                             <ChevronDown className="h-5 w-5 text-muted-foreground" />
                           ) : (
                             <ChevronRight className="h-5 w-5 text-muted-foreground" />

@@ -4,7 +4,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface TeacherPayrollSummary {
-  teacherUserId: string;
+  teacherId: string;          // Now teachers.id
   teacherName: string;
   payRateType: 'per_lesson' | 'hourly' | 'percentage' | null;
   payRateValue: number;
@@ -40,25 +40,41 @@ export function usePayroll(startDate: string, endDate: string) {
         return { teachers: [], totalGrossOwed: 0, dateRange: { start: '', end: '' } };
       }
 
-      // Fetch completed lessons in date range
+      // Fetch completed lessons in date range - now with teacher_id
       let lessonsQuery = supabase
         .from('lessons')
-        .select('id, title, start_at, end_at, teacher_user_id, status')
+        .select('id, title, start_at, end_at, teacher_id, teacher_user_id, status')
         .eq('org_id', currentOrg.id)
         .eq('status', 'completed')
         .gte('start_at', `${startDate}T00:00:00`)
         .lte('start_at', `${endDate}T23:59:59`);
 
-      // If teacher, only show their own
+      // If teacher, filter by their teacher_id (lookup via user_id)
       if (!isAdmin && user) {
-        lessonsQuery = lessonsQuery.eq('teacher_user_id', user.id);
+        // First, find the teacher record for this user
+        const { data: teacherRecord } = await supabase
+          .from('teachers')
+          .select('id')
+          .eq('org_id', currentOrg.id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (teacherRecord) {
+          lessonsQuery = lessonsQuery.eq('teacher_id', teacherRecord.id);
+        } else {
+          // Fallback to teacher_user_id for backward compat
+          lessonsQuery = lessonsQuery.eq('teacher_user_id', user.id);
+        }
       }
 
       const { data: lessons, error: lessonsError } = await lessonsQuery;
       if (lessonsError) throw lessonsError;
 
-      // Get unique teacher IDs
-      const teacherIds = [...new Set((lessons || []).map(l => l.teacher_user_id))];
+      // Get unique teacher IDs (prefer teacher_id, fallback to teacher_user_id)
+      const teacherIds = [...new Set((lessons || [])
+        .map(l => l.teacher_id)
+        .filter(Boolean)
+      )] as string[];
       
       if (teacherIds.length === 0) {
         return { 
@@ -68,20 +84,37 @@ export function usePayroll(startDate: string, endDate: string) {
         };
       }
 
-      // Fetch teacher profiles with pay rates
-      const { data: teacherProfiles, error: tpError } = await supabase
-        .from('teacher_profiles')
-        .select('user_id, display_name, pay_rate_type, pay_rate_value')
+      // Fetch teacher details from the new teachers table (includes pay rates)
+      const { data: teachersData, error: tError } = await supabase
+        .from('teachers_with_pay')  // Use view that includes pay data for admins
+        .select('id, display_name, pay_rate_type, pay_rate_value')
         .eq('org_id', currentOrg.id)
-        .in('user_id', teacherIds);
-      if (tpError) throw tpError;
-
-      // Fetch user profiles for names
-      const { data: profiles, error: pError } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
         .in('id', teacherIds);
-      if (pError) throw pError;
+      if (tError) {
+        // Fallback to base teachers table if view fails
+        const { data: fallbackTeachers } = await supabase
+          .from('teachers')
+          .select('id, display_name')
+          .eq('org_id', currentOrg.id)
+          .in('id', teacherIds);
+        
+        // Build teacher map without pay data
+        const teacherMap = new Map<string, {
+          name: string;
+          payRateType: 'per_lesson' | 'hourly' | 'percentage' | null;
+          payRateValue: number;
+        }>();
+        
+        for (const t of fallbackTeachers || []) {
+          teacherMap.set(t.id, {
+            name: t.display_name,
+            payRateType: null,
+            payRateValue: 0,
+          });
+        }
+        
+        return calculatePayroll(lessons || [], teacherMap, startDate, endDate);
+      }
 
       // Build teacher map
       const teacherMap = new Map<string, {
@@ -91,87 +124,95 @@ export function usePayroll(startDate: string, endDate: string) {
       }>();
 
       for (const tid of teacherIds) {
-        const profile = profiles?.find(p => p.id === tid);
-        const teacherProfile = teacherProfiles?.find(tp => tp.user_id === tid);
+        const teacherData = teachersData?.find(t => t.id === tid);
         
         teacherMap.set(tid, {
-          name: teacherProfile?.display_name || profile?.full_name || profile?.email || 'Unknown',
-          payRateType: teacherProfile?.pay_rate_type as 'per_lesson' | 'hourly' | 'percentage' | null,
-          payRateValue: Number(teacherProfile?.pay_rate_value) || 0,
+          name: teacherData?.display_name || 'Unknown',
+          payRateType: teacherData?.pay_rate_type as 'per_lesson' | 'hourly' | 'percentage' | null,
+          payRateValue: Number(teacherData?.pay_rate_value) || 0,
         });
       }
 
-      // Calculate payroll per teacher
-      const teacherSummaries: TeacherPayrollSummary[] = [];
-
-      for (const tid of teacherIds) {
-        const teacherLessons = (lessons || []).filter(l => l.teacher_user_id === tid);
-        const teacherInfo = teacherMap.get(tid)!;
-        
-        let totalMinutes = 0;
-        const lessonDetails: TeacherPayrollSummary['lessons'] = [];
-
-        for (const lesson of teacherLessons) {
-          const start = new Date(lesson.start_at);
-          const end = new Date(lesson.end_at);
-          const durationMins = Math.round((end.getTime() - start.getTime()) / 60000);
-          totalMinutes += durationMins;
-
-          // Calculate pay for this lesson
-          let calculatedPay = 0;
-          switch (teacherInfo.payRateType) {
-            case 'per_lesson':
-              calculatedPay = teacherInfo.payRateValue;
-              break;
-            case 'hourly':
-              calculatedPay = (durationMins / 60) * teacherInfo.payRateValue;
-              break;
-            case 'percentage':
-              // For percentage, we'd need lesson revenue - for now use 0
-              calculatedPay = 0;
-              break;
-            default:
-              calculatedPay = 0;
-          }
-
-          lessonDetails.push({
-            id: lesson.id,
-            title: lesson.title,
-            startAt: lesson.start_at,
-            endAt: lesson.end_at,
-            durationMins,
-            calculatedPay,
-          });
-        }
-
-        const grossOwed = lessonDetails.reduce((sum, l) => sum + l.calculatedPay, 0);
-
-        teacherSummaries.push({
-          teacherUserId: tid,
-          teacherName: teacherInfo.name,
-          payRateType: teacherInfo.payRateType,
-          payRateValue: teacherInfo.payRateValue,
-          completedLessons: teacherLessons.length,
-          totalMinutes,
-          totalHours: Math.round((totalMinutes / 60) * 100) / 100,
-          grossOwed,
-          lessons: lessonDetails,
-        });
-      }
-
-      // Sort by name
-      teacherSummaries.sort((a, b) => a.teacherName.localeCompare(b.teacherName));
-
-      const totalGrossOwed = teacherSummaries.reduce((sum, t) => sum + t.grossOwed, 0);
-
-      return {
-        teachers: teacherSummaries,
-        totalGrossOwed,
-        dateRange: { start: startDate, end: endDate },
-      };
+      return calculatePayroll(lessons || [], teacherMap, startDate, endDate);
     },
     enabled: !!currentOrg && !!startDate && !!endDate,
   });
+}
+
+function calculatePayroll(
+  lessons: any[],
+  teacherMap: Map<string, { name: string; payRateType: 'per_lesson' | 'hourly' | 'percentage' | null; payRateValue: number }>,
+  startDate: string,
+  endDate: string
+): PayrollData {
+  const teacherIds = [...teacherMap.keys()];
+  const teacherSummaries: TeacherPayrollSummary[] = [];
+
+  for (const tid of teacherIds) {
+    const teacherLessons = lessons.filter(l => l.teacher_id === tid);
+    const teacherInfo = teacherMap.get(tid)!;
+    
+    let totalMinutes = 0;
+    const lessonDetails: TeacherPayrollSummary['lessons'] = [];
+
+    for (const lesson of teacherLessons) {
+      const start = new Date(lesson.start_at);
+      const end = new Date(lesson.end_at);
+      const durationMins = Math.round((end.getTime() - start.getTime()) / 60000);
+      totalMinutes += durationMins;
+
+      // Calculate pay for this lesson
+      let calculatedPay = 0;
+      switch (teacherInfo.payRateType) {
+        case 'per_lesson':
+          calculatedPay = teacherInfo.payRateValue;
+          break;
+        case 'hourly':
+          calculatedPay = (durationMins / 60) * teacherInfo.payRateValue;
+          break;
+        case 'percentage':
+          // For percentage, we'd need lesson revenue - for now use 0
+          calculatedPay = 0;
+          break;
+        default:
+          calculatedPay = 0;
+      }
+
+      lessonDetails.push({
+        id: lesson.id,
+        title: lesson.title,
+        startAt: lesson.start_at,
+        endAt: lesson.end_at,
+        durationMins,
+        calculatedPay,
+      });
+    }
+
+    const grossOwed = lessonDetails.reduce((sum, l) => sum + l.calculatedPay, 0);
+
+    teacherSummaries.push({
+      teacherId: tid,
+      teacherName: teacherInfo.name,
+      payRateType: teacherInfo.payRateType,
+      payRateValue: teacherInfo.payRateValue,
+      completedLessons: teacherLessons.length,
+      totalMinutes,
+      totalHours: Math.round((totalMinutes / 60) * 100) / 100,
+      grossOwed,
+      lessons: lessonDetails,
+    });
+  }
+
+  // Sort by name
+  teacherSummaries.sort((a, b) => a.teacherName.localeCompare(b.teacherName));
+
+  const totalGrossOwed = teacherSummaries.reduce((sum, t) => sum + t.grossOwed, 0);
+
+  return {
+    teachers: teacherSummaries,
+    totalGrossOwed,
+    dateRange: { start: startDate, end: endDate },
+  };
 }
 
 export function exportPayrollToCSV(data: PayrollData, orgName: string): void {

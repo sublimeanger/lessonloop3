@@ -25,7 +25,7 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>('week');
   const [filters, setFilters] = useState<CalendarFilters>({
-    teacher_user_id: null,
+    teacher_id: null,
     location_id: null,
     room_id: null,
   });

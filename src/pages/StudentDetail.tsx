@@ -416,7 +416,7 @@ export default function StudentDetail() {
             <TeachingDefaultsCard
               studentId={student.id}
               defaultLocationId={student.default_location_id}
-              defaultTeacherUserId={student.default_teacher_user_id}
+              defaultTeacherId={(student as any).default_teacher_id || null}
               defaultRateCardId={student.default_rate_card_id}
               onUpdate={fetchStudent}
               readOnly={!isOrgAdmin}

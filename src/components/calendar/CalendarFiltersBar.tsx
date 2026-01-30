@@ -20,8 +20,8 @@ export function CalendarFiltersBar({ filters, onChange, teachers, locations, roo
       <div className="flex items-center gap-2">
         <Label className="text-sm text-muted-foreground whitespace-nowrap">Teacher:</Label>
         <Select 
-          value={filters.teacher_user_id || 'all'} 
-          onValueChange={(v) => onChange({ ...filters, teacher_user_id: v === 'all' ? null : v })}
+          value={filters.teacher_id || 'all'} 
+          onValueChange={(v) => onChange({ ...filters, teacher_id: v === 'all' ? null : v })}
         >
           <SelectTrigger className="w-40">
             <SelectValue placeholder="All teachers" />

@@ -67,7 +67,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
   // Form state
   const [lessonType, setLessonType] = useState<LessonType>('private');
-  const [teacherUserId, setTeacherUserId] = useState('');
+  const [teacherId, setTeacherId] = useState(''); // teachers.id (new model)
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [locationId, setLocationId] = useState<string | null>(null);
   const [roomId, setRoomId] = useState<string | null>(null);
@@ -114,7 +114,9 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       // Convert from UTC to org timezone for display
       const zonedStart = toZonedTime(start, orgTimezone);
       setLessonType(lesson.lesson_type);
-      setTeacherUserId(lesson.teacher_user_id);
+      // Map lesson's teacher_id (or fallback to finding teacher by user_id for backward compat)
+      const lessonTeacherId = (lesson as any).teacher_id || teachers.find(t => t.userId === lesson.teacher_user_id)?.id || '';
+      setTeacherId(lessonTeacherId);
       setSelectedStudents(lesson.participants?.map(p => p.student.id) || []);
       setLocationId(lesson.location_id);
       setRoomId(lesson.room_id);
@@ -126,9 +128,10 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       setStatus(lesson.status);
       setIsRecurring(!!lesson.recurrence_id);
     } else {
-      // New lesson
+      // New lesson - auto-select first teacher (or the one matching current user)
       setLessonType('private');
-      setTeacherUserId(user?.id || '');
+      const currentUserTeacher = teachers.find(t => t.userId === user?.id);
+      setTeacherId(currentUserTeacher?.id || teachers[0]?.id || '');
       setSelectedStudents([]);
       setLocationId(null);
       setRoomId(null);
@@ -162,10 +165,10 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
   // Auto-select teacher if only one
   useEffect(() => {
-    if (teachers.length === 1 && !teacherUserId) {
-      setTeacherUserId(teachers[0].id);
+    if (teachers.length === 1 && !teacherId) {
+      setTeacherId(teachers[0].id);
     }
-  }, [teachers, teacherUserId]);
+  }, [teachers, teacherId]);
 
   // Filter rooms by location
   const filteredRooms = useMemo(() => {
@@ -176,10 +179,10 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   // Check conflicts on key field changes with debounce
   // Simplified approach: memoize key to prevent duplicate checks
   const conflictCheckKey = useMemo(() => {
-    if (!open || !teacherUserId || !selectedDate) return null;
+    if (!open || !teacherId || !selectedDate) return null;
     const sortedStudents = [...selectedStudents].sort().join(',');
-    return `${teacherUserId}-${format(selectedDate, 'yyyy-MM-dd')}-${startTime}-${durationMins}-${roomId || 'none'}-${locationId || 'none'}-${sortedStudents}-${lesson?.id || 'new'}`;
-  }, [open, teacherUserId, selectedDate, startTime, durationMins, roomId, locationId, selectedStudents, lesson?.id]);
+    return `${teacherId}-${format(selectedDate, 'yyyy-MM-dd')}-${startTime}-${durationMins}-${roomId || 'none'}-${locationId || 'none'}-${sortedStudents}-${lesson?.id || 'new'}`;
+  }, [open, teacherId, selectedDate, startTime, durationMins, roomId, locationId, selectedStudents, lesson?.id]);
 
   useEffect(() => {
     // Early return if no valid key - clear state
@@ -232,10 +235,14 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
         const startAtUtc = fromZonedTime(localDateTime, orgTimezone);
         const endAtUtc = addMinutes(startAtUtc, durationMins);
 
+        // Lookup teacher's user_id for conflict checks (availability uses user_id)
+        const selectedTeacher = teachers.find(t => t.id === teacherId);
+        const teacherUserId = selectedTeacher?.userId || '';
+
         const results = await checkConflicts({
           start_at: startAtUtc,
           end_at: endAtUtc,
-          teacher_user_id: teacherUserId,
+          teacher_user_id: teacherUserId, // Pass user_id for availability/time-off checks
           room_id: roomId,
           location_id: locationId,
           student_ids: selectedStudents,
@@ -264,7 +271,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       clearTimeout(debounceTimer);
       clearTimeout(hardTimeout);
     };
-  }, [conflictCheckKey, checkConflicts, startTime, selectedDate, orgTimezone, durationMins, teacherUserId, roomId, locationId, selectedStudents, lesson?.id]);
+  }, [conflictCheckKey, checkConflicts, startTime, selectedDate, orgTimezone, durationMins, teacherId, roomId, locationId, selectedStudents, lesson?.id, teachers]);
 
   const generateTitle = () => {
     if (selectedStudents.length === 0) return 'New Lesson';
@@ -289,10 +296,10 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       if (!lesson) {
         const student = students.find(s => s.id === studentId);
         if (student) {
-          if (!teacherUserId && student.default_teacher_id) {
+          if (!teacherId && student.default_teacher_id) {
             const teacherExists = teachers.some(t => t.id === student.default_teacher_id);
             if (teacherExists) {
-              setTeacherUserId(student.default_teacher_id);
+              setTeacherId(student.default_teacher_id);
             }
           }
           if (!locationId && student.default_location_id) {
@@ -337,7 +344,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   const handleSaveWithMode = async (editMode: RecurringEditMode | null) => {
     if (!currentOrg || !user) return;
 
-    if (!teacherUserId) {
+    if (!teacherId) {
       toast({ title: 'Please select a teacher', variant: 'destructive' });
       return;
     }
@@ -345,6 +352,10 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       toast({ title: 'Please select at least one student', variant: 'destructive' });
       return;
     }
+
+    // Lookup teacher details for dual-write
+    const selectedTeacher = teachers.find(t => t.id === teacherId);
+    const teacherUserId = selectedTeacher?.userId || ''; // For RLS policies
 
     // Check for blocking conflicts - use current conflict state
     const blockingConflicts = conflictState.conflicts.filter(c => c.severity === 'error');
@@ -410,7 +421,8 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
                 .from('lessons')
                 .update({
                   lesson_type: lessonType,
-                  teacher_user_id: teacherUserId,
+                  teacher_user_id: teacherUserId, // For backward compat & RLS
+                  teacher_id: teacherId,          // New: teachers.id
                   location_id: locationId,
                   room_id: roomId,
                   start_at: newStart.toISOString(),
@@ -424,7 +436,8 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
               .from('lessons')
               .update({
                 lesson_type: lessonType,
-                teacher_user_id: teacherUserId,
+                teacher_user_id: teacherUserId, // For backward compat & RLS
+                teacher_id: teacherId,          // New: teachers.id
                 location_id: locationId,
                 room_id: roomId,
                 start_at: startAtUtc.toISOString(),
@@ -455,21 +468,20 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
         const notesChanged = notesShared && notesShared !== (lesson.notes_shared || '');
         if (notesChanged && currentOrg) {
-          const teacherProfile = teachers.find(t => t.id === teacherUserId);
           const zonedStart = toZonedTime(startAtUtc, orgTimezone);
           sendNotesNotification({
             lessonId: lesson.id,
             notesShared,
             lessonTitle: generateTitle(),
             lessonDate: format(zonedStart, 'EEEE, d MMMM yyyy \'at\' HH:mm'),
-            teacherName: teacherProfile?.name || profile?.full_name || 'Your teacher',
+            teacherName: selectedTeacher?.name || profile?.full_name || 'Your teacher',
             orgName: currentOrg.name,
             orgId: currentOrg.id,
           });
         }
 
         const updatedCount = lessonIdsToUpdate.length;
-        toast({ 
+        toast({
           title: updatedCount > 1 
             ? `${updatedCount} lessons updated` 
             : 'Lesson updated' 
@@ -514,7 +526,8 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
             .insert({
               org_id: currentOrg.id,
               lesson_type: lessonType,
-              teacher_user_id: teacherUserId,
+              teacher_user_id: teacherUserId, // For backward compat & RLS
+              teacher_id: teacherId,          // New: teachers.id
               location_id: locationId,
               room_id: roomId,
               start_at: lessonDate.toISOString(),
@@ -540,14 +553,13 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
             );
 
             if (notesShared && lessonDate === lessonsToCreate[0]) {
-              const teacherProfile = teachers.find(t => t.id === teacherUserId);
               const zonedLessonDate = toZonedTime(lessonDate, orgTimezone);
               sendNotesNotification({
                 lessonId: newLesson.id,
                 notesShared,
                 lessonTitle: generateTitle(),
                 lessonDate: format(zonedLessonDate, 'EEEE, d MMMM yyyy \'at\' HH:mm'),
-                teacherName: teacherProfile?.name || profile?.full_name || 'Your teacher',
+                teacherName: selectedTeacher?.name || profile?.full_name || 'Your teacher',
                 orgName: currentOrg.name,
                 orgId: currentOrg.id,
               });
@@ -614,10 +626,9 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
             </Button>
           </div>
 
-          {/* Teacher */}
           <div className="space-y-2">
             <Label>Teacher</Label>
-            <Select value={teacherUserId} onValueChange={setTeacherUserId}>
+            <Select value={teacherId} onValueChange={setTeacherId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select teacher" />
               </SelectTrigger>

@@ -56,8 +56,8 @@ export function useCalendarData(
         .order('start_at', { ascending: true })
         .limit(LESSONS_PAGE_SIZE);
 
-      if (filters.teacher_user_id) {
-        query = query.eq('teacher_user_id', filters.teacher_user_id);
+      if (filters.teacher_id) {
+        query = query.eq('teacher_id', filters.teacher_id);
       }
       if (filters.location_id) {
         query = query.eq('location_id', filters.location_id);

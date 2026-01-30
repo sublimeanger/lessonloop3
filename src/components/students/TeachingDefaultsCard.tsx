@@ -11,7 +11,7 @@ import { MapPin, User, Receipt, Edit, Loader2, Check, X } from 'lucide-react';
 interface TeachingDefaultsCardProps {
   studentId: string;
   defaultLocationId: string | null;
-  defaultTeacherUserId: string | null;
+  defaultTeacherId: string | null; // Now teachers.id
   defaultRateCardId: string | null;
   onUpdate?: () => void;
   readOnly?: boolean;
@@ -24,8 +24,8 @@ interface Location {
 }
 
 interface Teacher {
-  user_id: string;
-  full_name: string;
+  id: string;
+  display_name: string;
 }
 
 interface RateCard {
@@ -38,7 +38,7 @@ interface RateCard {
 export function TeachingDefaultsCard({ 
   studentId, 
   defaultLocationId, 
-  defaultTeacherUserId, 
+  defaultTeacherId, 
   defaultRateCardId,
   onUpdate,
   readOnly = false
@@ -62,7 +62,7 @@ export function TeachingDefaultsCard({
   
   // Edit form values
   const [editLocationId, setEditLocationId] = useState(defaultLocationId || '');
-  const [editTeacherId, setEditTeacherId] = useState(defaultTeacherUserId || '');
+  const [editTeacherId, setEditTeacherId] = useState(defaultTeacherId || '');
   const [editRateCardId, setEditRateCardId] = useState(defaultRateCardId || '');
   
   useEffect(() => {
@@ -70,22 +70,20 @@ export function TeachingDefaultsCard({
       if (!currentOrg) return;
       setIsLoading(true);
       
-      // Fetch options
-      const [locsRes, membersRes, ratesRes] = await Promise.all([
+      // Fetch options - now using teachers table instead of org_memberships
+      const [locsRes, teachersRes, ratesRes] = await Promise.all([
         supabase.from('locations').select('id, name, location_type').eq('org_id', currentOrg.id).order('name'),
-        supabase.from('org_memberships').select('user_id, profiles(full_name)').eq('org_id', currentOrg.id).in('role', ['owner', 'admin', 'teacher']).eq('status', 'active'),
+        supabase.from('teachers').select('id, display_name').eq('org_id', currentOrg.id).eq('status', 'active').order('display_name'),
         supabase.from('rate_cards').select('id, name, rate_amount, duration_mins').eq('org_id', currentOrg.id).order('name'),
       ]);
       
       setLocations(locsRes.data || []);
       setRateCards(ratesRes.data || []);
       
-      const teacherList = (membersRes.data || [])
-        .filter((m: any) => m.profiles?.full_name)
-        .map((m: any) => ({
-          user_id: m.user_id,
-          full_name: m.profiles.full_name,
-        }));
+      const teacherList = (teachersRes.data || []).map((t: any) => ({
+        id: t.id,
+        display_name: t.display_name,
+      }));
       setTeachers(teacherList);
       
       // Set display names
@@ -93,9 +91,9 @@ export function TeachingDefaultsCard({
         const loc = locsRes.data?.find(l => l.id === defaultLocationId);
         setLocationName(loc?.name || null);
       }
-      if (defaultTeacherUserId) {
-        const teacher = teacherList.find((t: Teacher) => t.user_id === defaultTeacherUserId);
-        setTeacherName(teacher?.full_name || null);
+      if (defaultTeacherId) {
+        const teacher = teacherList.find((t: Teacher) => t.id === defaultTeacherId);
+        setTeacherName(teacher?.display_name || null);
       }
       if (defaultRateCardId) {
         const rate = ratesRes.data?.find(r => r.id === defaultRateCardId);
@@ -108,7 +106,7 @@ export function TeachingDefaultsCard({
     };
     
     fetchData();
-  }, [currentOrg, defaultLocationId, defaultTeacherUserId, defaultRateCardId]);
+  }, [currentOrg, defaultLocationId, defaultTeacherId, defaultRateCardId]);
   
   const handleSave = async () => {
     setIsSaving(true);
@@ -117,7 +115,7 @@ export function TeachingDefaultsCard({
       .from('students')
       .update({
         default_location_id: editLocationId || null,
-        default_teacher_user_id: editTeacherId || null,
+        default_teacher_id: editTeacherId || null, // Now uses teacher_id
         default_rate_card_id: editRateCardId || null,
       })
       .eq('id', studentId);
@@ -131,8 +129,8 @@ export function TeachingDefaultsCard({
       const loc = locations.find(l => l.id === editLocationId);
       setLocationName(loc?.name || null);
       
-      const teacher = teachers.find(t => t.user_id === editTeacherId);
-      setTeacherName(teacher?.full_name || null);
+      const teacher = teachers.find(t => t.id === editTeacherId);
+      setTeacherName(teacher?.display_name || null);
       
       const rate = rateCards.find(r => r.id === editRateCardId);
       if (rate) {
@@ -150,7 +148,7 @@ export function TeachingDefaultsCard({
   
   const handleCancel = () => {
     setEditLocationId(defaultLocationId || '');
-    setEditTeacherId(defaultTeacherUserId || '');
+    setEditTeacherId(defaultTeacherId || '');
     setEditRateCardId(defaultRateCardId || '');
     setIsEditing(false);
   };
@@ -221,7 +219,7 @@ export function TeachingDefaultsCard({
                 <SelectContent>
                   <SelectItem value="">No default</SelectItem>
                   {teachers.map(t => (
-                    <SelectItem key={t.user_id} value={t.user_id}>{t.full_name}</SelectItem>
+                    <SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
