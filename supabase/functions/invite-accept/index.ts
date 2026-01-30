@@ -147,11 +147,15 @@ Deno.serve(async (req) => {
     // Mark invite as accepted
     await supabaseAdmin.from("invites").update({ accepted_at: new Date().toISOString() }).eq("id", invite.id);
 
-    // Set current org if not set
-    const { data: profileData } = await supabaseAdmin.from("profiles").select("current_org_id").eq("id", user.id).maybeSingle();
-    if (profileData && !profileData.current_org_id) {
-      await supabaseAdmin.from("profiles").update({ current_org_id: invite.org_id }).eq("id", user.id);
-    }
+    // Set current org and mark onboarding complete for invited users
+    // (they're joining an existing org, not creating one)
+    await supabaseAdmin
+      .from("profiles")
+      .update({ 
+        current_org_id: invite.org_id,
+        has_completed_onboarding: true 
+      })
+      .eq("id", user.id);
 
     return new Response(
       JSON.stringify({ success: true, org_id: invite.org_id, role: invite.role }),
