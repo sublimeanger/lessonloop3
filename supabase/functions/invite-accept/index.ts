@@ -84,15 +84,32 @@ Deno.serve(async (req) => {
       { onConflict: "org_id,user_id" }
     );
 
+    // Get user's profile for display name (used by teacher and parent flows)
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    // If this is a teacher invite, create teacher_profile record
+    if (invite.role === "teacher") {
+      const { error: teacherProfileError } = await supabaseAdmin
+        .from("teacher_profiles")
+        .upsert({
+          org_id: invite.org_id,
+          user_id: user.id,
+          display_name: profile?.full_name || user.email?.split("@")[0] || "Teacher",
+          pay_rate_type: null,
+          pay_rate_value: 0,
+        }, { onConflict: "org_id,user_id" });
+
+      if (teacherProfileError) {
+        console.error("Error creating teacher profile:", teacherProfileError);
+      }
+    }
+
     // If this is a parent invite, create/link guardian record
     if (invite.role === "parent") {
-      // Get user's profile for full_name
-      const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("full_name")
-        .eq("id", user.id)
-        .maybeSingle();
-
       // Check if guardian already exists for this user in this org
       const { data: existingGuardian } = await supabaseAdmin
         .from("guardians")
