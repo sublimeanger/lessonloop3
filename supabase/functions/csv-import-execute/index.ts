@@ -10,6 +10,7 @@ interface ImportRow {
   phone?: string;
   dob?: string;
   notes?: string;
+  status?: string;
   guardian_name?: string;
   guardian_email?: string;
   guardian_phone?: string;
@@ -18,6 +19,9 @@ interface ImportRow {
   lesson_time?: string;
   lesson_duration?: string;
   instrument?: string;
+  teacher_name?: string;
+  location_name?: string;
+  price?: string;
 }
 
 interface DuplicateInfo {
@@ -69,6 +73,9 @@ interface ImportResult {
   guardiansCreated: number;
   linksCreated: number;
   lessonsCreated: number;
+  teachersCreated: number;
+  locationsCreated: number;
+  rateCardsCreated: number;
   errors: string[];
   details: { row: number; student: string; status: string; error?: string }[];
 }
@@ -77,8 +84,8 @@ interface ImportResult {
 function parseDate(dateStr: string): string | null {
   if (!dateStr) return null;
   
-  // Try UK format first
-  const ukMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  // Try UK format first (with or without time)
+  const ukMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (ukMatch) {
     const [, day, month, year] = ukMatch;
     return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
@@ -91,6 +98,16 @@ function parseDate(dateStr: string): string | null {
   }
   
   return null;
+}
+
+// Parse UK price format (£24.50 → 2450 minor units)
+function parsePriceToMinor(priceStr: string): number | null {
+  if (!priceStr) return null;
+  // Remove currency symbols and whitespace
+  const cleaned = priceStr.replace(/[£$€\s,]/g, "").trim();
+  const parsed = parseFloat(cleaned);
+  if (isNaN(parsed)) return null;
+  return Math.round(parsed * 100); // Convert to pence/cents
 }
 
 // Parse time format (HH:MM or H:MM)
@@ -446,11 +463,160 @@ serve(async (req) => {
       });
     }
 
+    // PRE-PROCESS: Build caches for teachers, locations, and rate cards
+    // This prevents creating duplicates during import
+    
+    // Fetch existing teachers
+    const { data: existingMemberships } = await supabase
+      .from("org_memberships")
+      .select("user_id, role")
+      .eq("org_id", orgId)
+      .eq("status", "active")
+      .in("role", ["owner", "admin", "teacher"]);
+    
+    const { data: existingProfiles } = await supabase
+      .from("profiles")
+      .select("id, full_name, email");
+    
+    // Build teacher lookup by name (case insensitive)
+    const teacherByName = new Map<string, string>();
+    const createdTeachers = new Map<string, string>();
+    existingMemberships?.forEach((m: any) => {
+      const profile = existingProfiles?.find((p: any) => p.id === m.user_id);
+      if (profile?.full_name) {
+        teacherByName.set(profile.full_name.toLowerCase().trim(), m.user_id);
+        // Also match by first part of name (e.g., "Amy B" → "Amy Brown")
+        const shortName = profile.full_name.split(" ").map((n: string) => n[0] ? n[0].toUpperCase() : "").join(" ");
+        teacherByName.set(shortName.toLowerCase().trim(), m.user_id);
+      }
+    });
+    
+    // Fetch existing locations
+    const { data: existingLocations } = await supabase
+      .from("locations")
+      .select("id, name")
+      .eq("org_id", orgId);
+    
+    const locationByName = new Map<string, string>();
+    const createdLocations = new Map<string, string>();
+    existingLocations?.forEach((l: any) => {
+      locationByName.set(l.name.toLowerCase().trim(), l.id);
+    });
+    
+    // Fetch existing rate cards
+    const { data: existingRateCards } = await supabase
+      .from("rate_cards")
+      .select("id, name, duration_minutes, amount_per_lesson_minor")
+      .eq("org_id", orgId);
+    
+    const rateCardByDuration = new Map<number, string>();
+    const createdRateCards = new Map<string, string>(); // "duration:price" → id
+    existingRateCards?.forEach((r: any) => {
+      rateCardByDuration.set(r.duration_minutes, r.id);
+    });
+    
+    // Helper: Find or create teacher
+    async function findOrCreateTeacher(name: string): Promise<string | null> {
+      if (!name?.trim()) return null;
+      const normalized = name.toLowerCase().trim();
+      
+      // Check existing
+      if (teacherByName.has(normalized)) return teacherByName.get(normalized)!;
+      if (createdTeachers.has(normalized)) return createdTeachers.get(normalized)!;
+      
+      // Try partial match (e.g., "Amy B" matches "Amy Brown")
+      for (const [key, userId] of teacherByName.entries()) {
+        const keyParts = key.split(" ");
+        const nameParts = normalized.split(" ");
+        if (keyParts[0] === nameParts[0] && nameParts[1]?.length === 1 && keyParts[1]?.startsWith(nameParts[1])) {
+          return userId;
+        }
+      }
+      
+      // Note: We cannot create auth.users from edge functions
+      // Instead, we'll log this and the admin will need to invite the teacher
+      console.log(`Teacher "${name}" not found - will need to be invited manually`);
+      return null;
+    }
+    
+    // Helper: Find or create location
+    async function findOrCreateLocation(name: string): Promise<string | null> {
+      if (!name?.trim()) return null;
+      const normalized = name.toLowerCase().trim();
+      
+      // Check existing
+      if (locationByName.has(normalized)) return locationByName.get(normalized)!;
+      if (createdLocations.has(normalized)) return createdLocations.get(normalized)!;
+      
+      // Create new location
+      const { data: location, error } = await supabase
+        .from("locations")
+        .insert({
+          org_id: orgId,
+          name: name.trim(),
+          location_type: "school",
+          country_code: "GB",
+        })
+        .select("id")
+        .single();
+      
+      if (error) {
+        console.error(`Failed to create location "${name}":`, error);
+        return null;
+      }
+      
+      createdLocations.set(normalized, location.id);
+      return location.id;
+    }
+    
+    // Helper: Find or create rate card by duration/price
+    async function findOrCreateRateCard(durationMinutes: number, priceMinor: number | null): Promise<string | null> {
+      if (!durationMinutes) return null;
+      
+      // If we have an exact duration match, use it
+      if (rateCardByDuration.has(durationMinutes)) {
+        return rateCardByDuration.get(durationMinutes)!;
+      }
+      
+      // If we have price info, create a new rate card
+      if (priceMinor !== null) {
+        const key = `${durationMinutes}:${priceMinor}`;
+        if (createdRateCards.has(key)) return createdRateCards.get(key)!;
+        
+        const { data: rateCard, error } = await supabase
+          .from("rate_cards")
+          .insert({
+            org_id: orgId,
+            name: `${durationMinutes} minute lesson`,
+            duration_minutes: durationMinutes,
+            amount_per_lesson_minor: priceMinor,
+            currency_code: "GBP",
+            is_default: false,
+          })
+          .select("id")
+          .single();
+        
+        if (error) {
+          console.error(`Failed to create rate card for ${durationMinutes}min @ £${priceMinor/100}:`, error);
+          return null;
+        }
+        
+        rateCardByDuration.set(durationMinutes, rateCard.id);
+        createdRateCards.set(key, rateCard.id);
+        return rateCard.id;
+      }
+      
+      return null;
+    }
+
     const result: ImportResult = {
       studentsCreated: 0,
       guardiansCreated: 0,
       linksCreated: 0,
       lessonsCreated: 0,
+      teachersCreated: createdTeachers.size,
+      locationsCreated: 0,
+      rateCardsCreated: 0,
       errors: [],
       details: [],
     };
@@ -492,12 +658,19 @@ serve(async (req) => {
 
         const studentName = `${row.first_name} ${row.last_name}`;
 
+        // Resolve teaching defaults (location, teacher, rate card)
+        const resolvedLocationId = row.location_name ? await findOrCreateLocation(row.location_name) : null;
+        const resolvedTeacherId = row.teacher_name ? await findOrCreateTeacher(row.teacher_name) : teacherUserId;
+        const lessonDuration = parseInt(row.lesson_duration || "30", 10) || 30;
+        const priceMinor = row.price ? parsePriceToMinor(row.price) : null;
+        const resolvedRateCardId = await findOrCreateRateCard(lessonDuration, priceMinor);
+
         // 1. Create student
         const studentData: any = {
           org_id: orgId,
           first_name: row.first_name.trim(),
           last_name: row.last_name.trim(),
-          status: "active",
+          status: row.status?.toLowerCase() === "inactive" ? "inactive" : "active",
         };
         
         if (row.email) studentData.email = row.email.trim();
@@ -507,6 +680,18 @@ serve(async (req) => {
           if (parsedDob) studentData.dob = parsedDob;
         }
         if (row.notes) studentData.notes = row.notes.trim();
+        if (row.instrument) {
+          // Add instrument to notes if not already a notes field
+          const instrumentNote = `Instrument: ${row.instrument.trim()}`;
+          studentData.notes = studentData.notes 
+            ? `${instrumentNote}\n${studentData.notes}` 
+            : instrumentNote;
+        }
+        
+        // Set teaching defaults
+        if (resolvedLocationId) studentData.default_location_id = resolvedLocationId;
+        if (resolvedTeacherId) studentData.default_teacher_user_id = resolvedTeacherId;
+        if (resolvedRateCardId) studentData.default_rate_card_id = resolvedRateCardId;
 
         const { data: student, error: studentError } = await supabase
           .from("students")
@@ -583,8 +768,24 @@ serve(async (req) => {
           }
         }
 
-        // 4. Create recurring lesson if provided
-        if (row.lesson_day && row.lesson_time && teacherUserId) {
+        // 4. Create teacher assignment if we have a resolved teacher
+        if (resolvedTeacherId && student.id) {
+          const { error: assignError } = await supabase
+            .from("student_teacher_assignments")
+            .insert({
+              org_id: orgId,
+              student_id: student.id,
+              teacher_user_id: resolvedTeacherId,
+            });
+          
+          if (assignError && !assignError.message.includes("duplicate")) {
+            console.log(`Teacher assignment warning for ${studentName}:`, assignError.message);
+          }
+        }
+
+        // 5. Create recurring lesson if provided
+        const effectiveTeacherId = resolvedTeacherId || teacherUserId;
+        if (row.lesson_day && row.lesson_time && effectiveTeacherId) {
           const dayOfWeek = parseDayOfWeek(row.lesson_day);
           const lessonTime = parseTime(row.lesson_time);
           const duration = parseInt(row.lesson_duration || "30", 10) || 30;
@@ -623,19 +824,26 @@ serve(async (req) => {
               .single();
 
             if (!recurrenceError && recurrence) {
+              const lessonInsertData: any = {
+                org_id: orgId,
+                title: lessonTitle,
+                start_at: lessonDate.toISOString(),
+                end_at: endDate.toISOString(),
+                teacher_user_id: effectiveTeacherId,
+                lesson_type: "private",
+                status: "scheduled",
+                created_by: user.id,
+                recurrence_id: recurrence.id,
+              };
+              
+              // Add location if resolved
+              if (resolvedLocationId) {
+                lessonInsertData.location_id = resolvedLocationId;
+              }
+              
               const { data: lesson, error: lessonError } = await supabase
                 .from("lessons")
-                .insert({
-                  org_id: orgId,
-                  title: lessonTitle,
-                  start_at: lessonDate.toISOString(),
-                  end_at: endDate.toISOString(),
-                  teacher_user_id: teacherUserId,
-                  lesson_type: "private",
-                  status: "scheduled",
-                  created_by: user.id,
-                  recurrence_id: recurrence.id,
-                })
+                .insert(lessonInsertData)
                 .select("id")
                 .single();
 
@@ -671,6 +879,10 @@ serve(async (req) => {
       }
     }
 
+    // Update counts from created entities
+    result.locationsCreated = createdLocations.size;
+    result.rateCardsCreated = createdRateCards.size;
+
     // Log to audit
     await supabase.from("audit_log").insert({
       org_id: orgId,
@@ -682,6 +894,8 @@ serve(async (req) => {
         guardians_created: result.guardiansCreated,
         links_created: result.linksCreated,
         lessons_created: result.lessonsCreated,
+        locations_created: result.locationsCreated,
+        rate_cards_created: result.rateCardsCreated,
         error_count: result.errors.length,
         rows_processed: rows.length,
         rows_imported: rowIndicesToImport.size,

@@ -11,6 +11,7 @@ const STUDENT_FIELDS = [
   { name: "phone", required: false, description: "Student phone number" },
   { name: "dob", required: false, description: "Date of birth (YYYY-MM-DD or DD/MM/YYYY)" },
   { name: "notes", required: false, description: "Notes about the student" },
+  { name: "status", required: false, description: "Student status (Active/Inactive)" },
 ];
 
 const GUARDIAN_FIELDS = [
@@ -20,16 +21,23 @@ const GUARDIAN_FIELDS = [
   { name: "relationship", required: false, description: "Relationship (mother, father, guardian, other)" },
 ];
 
+const TEACHING_FIELDS = [
+  { name: "instrument", required: false, description: "Instrument being taught" },
+  { name: "lesson_duration", required: false, description: "Default lesson duration in minutes" },
+  { name: "teacher_name", required: false, description: "Teacher name for assignment" },
+  { name: "location_name", required: false, description: "Location/school name" },
+  { name: "price", required: false, description: "Lesson price (e.g., £24.50)" },
+];
+
 const LESSON_FIELDS = [
   { name: "lesson_day", required: false, description: "Day of the week for recurring lesson (Monday-Sunday)" },
   { name: "lesson_time", required: false, description: "Start time for lesson (HH:MM format)" },
-  { name: "lesson_duration", required: false, description: "Duration in minutes (default 30)" },
-  { name: "instrument", required: false, description: "Instrument being taught (for lesson title)" },
 ];
 
-const ALL_TARGET_FIELDS = [...STUDENT_FIELDS, ...GUARDIAN_FIELDS, ...LESSON_FIELDS];
+const ALL_TARGET_FIELDS = [...STUDENT_FIELDS, ...GUARDIAN_FIELDS, ...TEACHING_FIELDS, ...LESSON_FIELDS];
 
 const MAPPING_PROMPT = `You are an AI assistant that maps CSV column headers to database fields for a music lesson management system.
+This system is commonly used to import data from My Music Staff and similar platforms.
 
 Given CSV headers and sample data, determine the best mapping to these target fields:
 
@@ -39,17 +47,38 @@ ${STUDENT_FIELDS.map(f => `- ${f.name} (${f.required ? "REQUIRED" : "optional"})
 GUARDIAN FIELDS (optional - for linking parents/guardians):
 ${GUARDIAN_FIELDS.map(f => `- ${f.name}: ${f.description}`).join("\n")}
 
+TEACHING FIELDS (optional - for setting up teaching defaults):
+${TEACHING_FIELDS.map(f => `- ${f.name}: ${f.description}`).join("\n")}
+
 LESSON FIELDS (optional - for creating recurring lesson schedules):
 ${LESSON_FIELDS.map(f => `- ${f.name}: ${f.description}`).join("\n")}
+
+KNOWN SOURCE MAPPINGS (My Music Staff):
+- "Last Name" → last_name
+- "First Name" → first_name
+- "Email" → email (student email, NOT parent)
+- "Mobile Phone" → phone
+- "Birthday" → dob
+- "Status" → status (Active/Inactive)
+- "Instrument" → instrument
+- "Default Duration" → lesson_duration
+- "School" → location_name
+- "Teacher" → teacher_name
+- "Price" → price
+- "Note" → notes
+- "Parent Contact 1 First Name" + "Parent Contact 1 Last Name" → guardian_name (combine if needed)
+- "Parent Contact 1 Email" → guardian_email
+- "Parent Contact 1 Mobile Phone" → guardian_phone
 
 RULES:
 1. Each CSV header can map to at most ONE target field
 2. Each target field can be mapped from at most ONE CSV header
 3. first_name and last_name are REQUIRED for students
-4. If a column clearly contains full names, split into first_name and last_name
+4. For "Parent Contact 1 First Name" and "Parent Contact 1 Last Name", combine them into guardian_name
 5. Be conservative - if unsure, set target to null (user will map manually)
 6. Use UK date formats (DD/MM/YYYY) when interpreting dates
-7. Phone numbers should be UK format
+7. Price columns contain UK currency (£ symbol)
+8. Prefer "Parent Contact 1" fields over "Parent" column for guardian data
 
 Respond with a JSON object containing:
 {
@@ -58,7 +87,8 @@ Respond with a JSON object containing:
   ],
   "warnings": ["Any issues or suggestions"],
   "has_guardian_data": true/false,
-  "has_lesson_data": true/false
+  "has_lesson_data": true/false,
+  "has_teaching_data": true/false
 }`;
 
 serve(async (req) => {
@@ -140,39 +170,64 @@ Analyze the headers and sample values to determine the best mapping.`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      // Fallback to simple heuristic mapping
+      // Fallback to simple heuristic mapping (optimized for My Music Staff)
+      const usedTargets = new Set<string>();
       const heuristicMappings = headers.map((header: string) => {
-        const h = header.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const h = header.toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, "");
+        const original = header.toLowerCase();
         let target: string | null = null;
         let confidence = 0;
 
-        if (h.includes("firstname") || h === "first") {
-          target = "first_name"; confidence = 0.9;
-        } else if (h.includes("lastname") || h === "last" || h === "surname") {
-          target = "last_name"; confidence = 0.9;
-        } else if (h.includes("email") && !h.includes("parent") && !h.includes("guardian")) {
-          target = "email"; confidence = 0.8;
-        } else if (h.includes("phone") && !h.includes("parent") && !h.includes("guardian")) {
-          target = "phone"; confidence = 0.7;
-        } else if (h.includes("dob") || h.includes("birth") || h.includes("dateofbirth")) {
-          target = "dob"; confidence = 0.8;
-        } else if (h.includes("parentname") || h.includes("guardianname") || h.includes("parentfull")) {
+        // My Music Staff specific mappings
+        if (original === "first name" || h === "firstname") {
+          target = "first_name"; confidence = 0.95;
+        } else if (original === "last name" || h === "lastname" || h === "surname") {
+          target = "last_name"; confidence = 0.95;
+        } else if (original === "email" || (h.includes("email") && !h.includes("parent") && !h.includes("guardian") && !h.includes("contact"))) {
+          target = "email"; confidence = 0.85;
+        } else if (original === "mobile phone" || (h.includes("phone") && !h.includes("parent") && !h.includes("guardian") && !h.includes("contact"))) {
+          target = "phone"; confidence = 0.8;
+        } else if (original === "birthday" || h.includes("birthday") || h.includes("dob") || h.includes("dateofbirth")) {
+          target = "dob"; confidence = 0.9;
+        } else if (original === "status") {
+          target = "status"; confidence = 0.9;
+        } else if (original === "instrument") {
+          target = "instrument"; confidence = 0.95;
+        } else if (original === "default duration" || h === "defaultduration") {
+          target = "lesson_duration"; confidence = 0.95;
+        } else if (original === "school" || h === "school") {
+          target = "location_name"; confidence = 0.85;
+        } else if (original === "teacher") {
+          target = "teacher_name"; confidence = 0.9;
+        } else if (original === "price") {
+          target = "price"; confidence = 0.9;
+        } else if (original === "note" || h === "note") {
+          target = "notes"; confidence = 0.85;
+        } else if (original === "parent contact 1 email" || h === "parentcontact1email") {
+          target = "guardian_email"; confidence = 0.95;
+        } else if (original === "parent contact 1 mobile phone" || h === "parentcontact1mobilephone") {
+          target = "guardian_phone"; confidence = 0.9;
+        } else if (original === "parent contact 1 first name" || original === "parent contact 1 last name") {
+          // We'll combine these - only map first name to trigger combination
+          if (original === "parent contact 1 first name" && !usedTargets.has("guardian_name")) {
+            target = "guardian_name"; confidence = 0.85;
+          }
+        }
+        // Generic fallbacks
+        else if (h.includes("parentname") || h.includes("guardianname")) {
           target = "guardian_name"; confidence = 0.8;
         } else if ((h.includes("parent") || h.includes("guardian")) && h.includes("email")) {
-          target = "guardian_email"; confidence = 0.8;
+          target = "guardian_email"; confidence = 0.75;
         } else if ((h.includes("parent") || h.includes("guardian")) && h.includes("phone")) {
           target = "guardian_phone"; confidence = 0.7;
-        } else if (h.includes("instrument")) {
-          target = "instrument"; confidence = 0.8;
-        } else if (h === "day" || h.includes("lessonday")) {
-          target = "lesson_day"; confidence = 0.7;
-        } else if (h === "time" || h.includes("lessontime") || h.includes("starttime")) {
-          target = "lesson_time"; confidence = 0.7;
-        } else if (h.includes("duration") || h.includes("length")) {
-          target = "lesson_duration"; confidence = 0.7;
-        } else if (h.includes("note") || h.includes("comment")) {
-          target = "notes"; confidence = 0.6;
         }
+
+        // Prevent duplicate target assignments
+        if (target && usedTargets.has(target)) {
+          target = null;
+          confidence = 0;
+        }
+        if (target) usedTargets.add(target);
 
         return { csv_header: header, target_field: target, confidence };
       });
@@ -181,7 +236,8 @@ Analyze the headers and sample values to determine the best mapping.`;
         mappings: heuristicMappings,
         warnings: ["AI mapping unavailable - using heuristic matching. Please verify mappings."],
         has_guardian_data: heuristicMappings.some((m: any) => m.target_field?.startsWith("guardian")),
-        has_lesson_data: heuristicMappings.some((m: any) => m.target_field?.startsWith("lesson") || m.target_field === "instrument"),
+        has_lesson_data: heuristicMappings.some((m: any) => m.target_field?.startsWith("lesson")),
+        has_teaching_data: heuristicMappings.some((m: any) => ["instrument", "lesson_duration", "teacher_name", "location_name", "price"].includes(m.target_field)),
         target_fields: ALL_TARGET_FIELDS,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
