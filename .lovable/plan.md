@@ -1,155 +1,81 @@
 
-# Complete Friction Point Fix & Testing Strategy
+# Fix Teacher Invitation Acceptance Error
 
-## Current State Assessment
+## Problem Summary
+Teachers (and any invited users) cannot accept invitations. When clicking "Join", they receive an error. The database shows the invite remains unaccepted (`accepted_at: NULL`) and no `org_membership` is created.
 
-After deep investigation, I've identified **3 critical issues** and verified **2 working systems**:
+## Root Cause
+The `invite-accept` edge function queries for a column that doesn't exist:
 
-### Critical Issues Found
-
-| Issue | Severity | Root Cause | Impact |
-|-------|----------|------------|--------|
-| Invoice PDF function not deployed | HIGH | Edge function not appearing in deployed functions list despite multiple deploy attempts | PDF download button will fail |
-| Stripe Subscription Checkout | WORKING | Function deploys and runs correctly (returns "No authorization header" as expected) | Subscription upgrades work when user is logged in |
-| Conflict Detection stuck | FIXED | Added error handling wrapper to prevent stuck "Checking..." state | Users can now create lessons |
-
-### What's Actually Working
-
-1. **Stripe Subscription Checkout** - Function is deployed and responding correctly
-2. **Profile Ensure** - Function has successful logs in production
-3. **Conflict Detection** - Now has fallback error handling
-4. **All 12 secrets configured** - Including all Stripe price IDs for Teacher/Studio/Agency
-
----
-
-## Technical Fix Plan
-
-### 1. Invoice PDF Edge Function (Critical)
-
-The `invoice-pdf` function is returning 404 despite the code being present. The fix requires:
-
-**File: `supabase/functions/invoice-pdf/index.ts`**
-
-Check and potentially fix the import statement for pdf-lib which may be causing deployment failures:
-
-```typescript
-// Current (may be failing silently)
-import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
-
-// Alternative (more reliable esm.sh format)
-import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1?dts";
+```
+ERROR: column invites.related_student_id does not exist
 ```
 
-Also ensure the serve function is properly exported at the end of the file.
+**Location:** `supabase/functions/invite-accept/index.ts`, line 49
 
-### 2. Add Deployment Verification
+The edge function attempts to select `related_student_id` from the `invites` table, but this column was never added to the database schema. The current `invites` table only has: `id, org_id, email, role, token, expires_at, created_at, accepted_at`.
 
-Create a health check endpoint for invoice-pdf that returns a simple status without PDF generation to verify deployment works.
+## Solution
 
-### 3. Frontend Fallback for PDF Errors
+### Option A: Add the missing column (Recommended)
+Add `related_student_id` to the `invites` table. This column is used for parent invitations to link them directly to a student.
 
-**File: `src/hooks/useInvoicePdf.ts`**
+**Database Migration:**
+```sql
+ALTER TABLE public.invites 
+ADD COLUMN related_student_id UUID REFERENCES public.students(id) ON DELETE SET NULL;
 
-Add better error messaging when the function is unavailable:
-
-```typescript
-if (response.status === 404) {
-  throw new Error('PDF generation is temporarily unavailable. Please try again in a few minutes or contact support.');
-}
+COMMENT ON COLUMN public.invites.related_student_id IS 'Optional link to a student for parent invites';
 ```
 
----
+### Option B: Remove the column reference from edge function
+If the feature isn't needed yet, simply remove `related_student_id` from the SELECT query.
 
-## Testing Strategy
+**Edge Function Fix:**
+```typescript
+// Line 47-51: Change from
+const { data: invite, error: inviteError } = await supabaseAdmin
+  .from("invites")
+  .select("id, org_id, email, role, expires_at, accepted_at, related_student_id")
+  .eq("token", token)
+  .maybeSingle();
 
-Since I cannot log into the production app with unknown credentials, here's how YOU can test everything:
+// To
+const { data: invite, error: inviteError } = await supabaseAdmin
+  .from("invites")
+  .select("id, org_id, email, role, expires_at, accepted_at")
+  .eq("token", token)
+  .maybeSingle();
+```
 
-### A. Quick Verification Tests (5 minutes each)
+Also update line 87+ to handle the undefined case:
+```typescript
+if (invite.role === "parent" && invite.related_student_id) {
+  // becomes
+if (invite.role === "parent") {
+  // Skip student linking since column doesn't exist yet
+```
 
-#### Test 1: Invoice PDF Download
-1. Log into lessonloop.net as an admin
-2. Go to **Invoices** → Click any invoice
-3. Click **"Download PDF"** button
-4. ✓ Expected: PDF downloads with org branding, line items, and status watermark
-
-#### Test 2: Stripe Subscription Upgrade
-1. Go to **Settings** → **Billing** tab
-2. Click **"Upgrade Now"** on any plan card
-3. ✓ Expected: Redirects to Stripe Checkout page
-4. Use Stripe test card: `4242 4242 4242 4242`
-5. ✓ Expected: Returns to Settings with "subscription=success" in URL
-
-#### Test 3: CSV Import
-1. Go to **Students** → Click **"Import CSV"**
-2. Upload a CSV with columns: first_name, last_name, email, guardian_name, guardian_email
-3. Click through mapping step (AI should auto-match headers)
-4. Click **"Preview Import"** (dry run)
-5. ✓ Expected: See row-by-row status (ready, duplicate, invalid)
-6. Click **"Import"** to execute
-7. ✓ Expected: Students appear in list
-
-#### Test 4: Lesson Creation
-1. Go to **Calendar** → Click any time slot
-2. Select a student
-3. Verify conflict check completes (button should change from "Checking..." to "Create Lesson")
-4. If stuck, click **"Skip"** button to bypass
-5. ✓ Expected: Lesson saves and appears on calendar
-
-#### Test 5: Parent Portal Invoice Payment
-1. Create/login as a parent user
-2. Navigate to **Portal** → **Invoices**
-3. Click **"Pay Now"** on an outstanding invoice
-4. ✓ Expected: Redirects to Stripe Checkout with correct invoice amount
-
-### B. Mobile Responsiveness Tests
-
-Test on 390×844 viewport (iPhone 14 Pro):
-- Dashboard cards stack vertically
-- Student Wizard dialog fits within screen with 16px margins
-- Calendar switches to agenda view
-- Forms have proper spacing
-
----
-
-## What I Will Fix Now
-
-1. **Force redeploy** the `invoice-pdf` function with a minor change to trigger fresh deployment
-2. **Add robust error handling** to PDF hook for 404/500 cases
-3. **Verify** all critical edge functions are deployed and responding
-
----
-
-## Secrets Verification (✓ All Configured)
-
-| Secret | Status |
-|--------|--------|
-| STRIPE_SECRET_KEY | ✓ |
-| STRIPE_WEBHOOK_SECRET | ✓ |
-| STRIPE_PRICE_TEACHER_MONTHLY | ✓ |
-| STRIPE_PRICE_TEACHER_YEARLY | ✓ |
-| STRIPE_PRICE_STUDIO_MONTHLY | ✓ |
-| STRIPE_PRICE_STUDIO_YEARLY | ✓ |
-| STRIPE_PRICE_AGENCY_MONTHLY | ✓ |
-| STRIPE_PRICE_AGENCY_YEARLY | ✓ |
-| RESEND_API_KEY | ✓ |
-| GOOGLE_CLIENT_ID | ✓ |
-| GOOGLE_CLIENT_SECRET | ✓ |
-| LOVABLE_API_KEY | ✓ |
-
----
+## Recommendation
+**Option A is preferred** because:
+1. The parent invitation flow already has logic to use this column (lines 127-143)
+2. It enables proper parent-to-student linking during invite acceptance
+3. It's a simple additive change that doesn't break existing invites
 
 ## Implementation Steps
 
-1. Update `invoice-pdf` function with deployment fix
-2. Enhance `useInvoicePdf.ts` with better error handling
-3. Deploy all critical edge functions
-4. Verify with live test calls
-5. Document test results
+1. **Add database migration** to create the `related_student_id` column
+2. **Update the Guardian Invite Modal** (if exists) to populate this field when inviting parents
+3. **Deploy and verify** by having the teacher re-attempt invite acceptance
 
----
+## Impact
+- All pending invites will work after the migration
+- No data loss (existing invites gain a null `related_student_id`)
+- Parent invites can optionally link to students
 
-## Confidence Level
-
-After fixes: **96% investor-ready**
-
-The remaining 4% is manual verification by you on the production app using the test scripts above.
+## Testing Checklist
+After fix:
+1. Teacher accepts invite → redirected to dashboard
+2. Verify `org_memberships` record created with role=teacher
+3. Verify invite shows `accepted_at` timestamp
+4. Parent accepts invite → guardian record created
