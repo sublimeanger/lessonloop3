@@ -3,10 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 
 interface AssignmentCount {
-  teacher_user_id: string;
+  teacher_id: string;
   count: number;
 }
 
+/**
+ * Hook to get teacher assignment counts using the new teacher_id column.
+ * Returns counts keyed by teachers.id (not auth user id).
+ */
 export function useTeacherAssignmentCounts() {
   const { currentOrg } = useOrg();
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -19,7 +23,7 @@ export function useTeacherAssignmentCounts() {
       
       const { data, error } = await supabase
         .from('student_teacher_assignments')
-        .select('teacher_user_id')
+        .select('teacher_id')
         .eq('org_id', currentOrg.id);
       
       if (error) {
@@ -28,10 +32,12 @@ export function useTeacherAssignmentCounts() {
         return;
       }
       
-      // Count assignments per teacher
+      // Count assignments per teacher (by teacher_id)
       const countMap: Record<string, number> = {};
       for (const assignment of data || []) {
-        countMap[assignment.teacher_user_id] = (countMap[assignment.teacher_user_id] || 0) + 1;
+        if (assignment.teacher_id) {
+          countMap[assignment.teacher_id] = (countMap[assignment.teacher_id] || 0) + 1;
+        }
       }
       
       setCounts(countMap);
