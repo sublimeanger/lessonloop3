@@ -31,6 +31,12 @@ export function useInvoicePdf() {
       );
 
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('PDF generation is temporarily unavailable. Please try again in a few minutes or contact support.');
+        }
+        if (response.status === 500) {
+          throw new Error('PDF generation encountered an error. Please try again or contact support.');
+        }
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Failed to generate PDF');
       }
