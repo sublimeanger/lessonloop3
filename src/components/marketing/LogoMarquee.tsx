@@ -47,6 +47,8 @@ function MarqueeRow({ items, reverse = false, speed = 30 }: {
           <div
             key={`${item.name}-${i}`}
             className="flex-shrink-0 group"
+            role="img"
+            aria-label={item.fullName || item.name}
           >
             <div className="flex items-center gap-3 px-6 py-3 rounded-xl bg-muted/50 border border-border hover:border-primary/20 transition-all hover:bg-muted">
               <div 
@@ -55,6 +57,7 @@ function MarqueeRow({ items, reverse = false, speed = 30 }: {
                   backgroundColor: item.color ? `${item.color}20` : 'hsl(var(--muted))',
                   color: item.color || 'hsl(var(--muted-foreground))'
                 }}
+                aria-hidden="true"
               >
                 {item.name.substring(0, 2).toUpperCase()}
               </div>
