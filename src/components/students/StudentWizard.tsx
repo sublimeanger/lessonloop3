@@ -57,7 +57,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
   
   const [teachingData, setTeachingData] = useState<TeachingDefaultsData>({
     locationId: '',
-    teacherUserId: '',
+    teacherId: '',
     rateCardId: '',
   });
   
@@ -80,7 +80,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
           relationship: 'guardian',
           isPrimaryPayer: true,
         });
-        setTeachingData({ locationId: '', teacherUserId: '', rateCardId: '' });
+        setTeachingData({ locationId: '', teacherId: '', rateCardId: '' });
         setCreatedData(null);
       }, 200);
     }
@@ -136,7 +136,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
         dob: studentData.dob || null,
         notes: studentData.notes.trim() || null,
         default_location_id: teachingData.locationId || null,
-        default_teacher_user_id: teachingData.teacherUserId || null,
+        default_teacher_id: teachingData.teacherId || null,
         default_rate_card_id: teachingData.rateCardId || null,
       };
       
@@ -267,7 +267,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
       relationship: 'guardian',
       isPrimaryPayer: true,
     });
-    setTeachingData({ locationId: '', teacherUserId: '', rateCardId: '' });
+    setTeachingData({ locationId: '', teacherId: '', rateCardId: '' });
     setCreatedData(null);
   };
   
