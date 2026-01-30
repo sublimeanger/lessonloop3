@@ -186,7 +186,8 @@ async function executeGenerateBillingRun(
   const { data: lessons, error: lessonsError } = await supabase
     .from("lessons")
     .select(`
-      id, title, start_at, end_at, teacher_user_id,
+      id, title, start_at, end_at, teacher_id, teacher_user_id,
+      teacher:teachers!lessons_teacher_id_fkey(id, display_name),
       lesson_participants(student_id, students(id, first_name, last_name, student_guardians(guardian_id, is_primary_payer)))
     `)
     .eq("org_id", orgId)
