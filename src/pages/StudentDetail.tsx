@@ -419,6 +419,7 @@ export default function StudentDetail() {
               defaultTeacherUserId={student.default_teacher_user_id}
               defaultRateCardId={student.default_rate_card_id}
               onUpdate={fetchStudent}
+              readOnly={!isOrgAdmin}
             />
           </div>
         </TabsContent>
@@ -434,10 +435,12 @@ export default function StudentDetail() {
                 <CardTitle>Guardians</CardTitle>
                 <CardDescription>Parents and guardians linked to this student</CardDescription>
               </div>
-              <Button onClick={() => setIsGuardianDialogOpen(true)} size="sm" className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Guardian
-              </Button>
+              {isOrgAdmin && (
+                <Button onClick={() => setIsGuardianDialogOpen(true)} size="sm" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Guardian
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               {guardians.length === 0 ? (
@@ -461,7 +464,9 @@ export default function StudentDetail() {
                           {sg.guardian?.phone && <span>{sg.guardian.phone}</span>}
                         </div>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => removeGuardian(sg.id)}>Remove</Button>
+                      {isOrgAdmin && (
+                        <Button variant="ghost" size="sm" onClick={() => removeGuardian(sg.id)}>Remove</Button>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -14,6 +14,7 @@ interface TeachingDefaultsCardProps {
   defaultTeacherUserId: string | null;
   defaultRateCardId: string | null;
   onUpdate?: () => void;
+  readOnly?: boolean;
 }
 
 interface Location {
@@ -39,7 +40,8 @@ export function TeachingDefaultsCard({
   defaultLocationId, 
   defaultTeacherUserId, 
   defaultRateCardId,
-  onUpdate 
+  onUpdate,
+  readOnly = false
 }: TeachingDefaultsCardProps) {
   const { currentOrg, isOrgAdmin } = useOrg();
   const { toast } = useToast();
@@ -179,7 +181,7 @@ export function TeachingDefaultsCard({
             Auto-populate when scheduling lessons
           </CardDescription>
         </div>
-        {isOrgAdmin && !isEditing && (
+        {isOrgAdmin && !readOnly && !isEditing && (
           <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
             <Edit className="h-4 w-4 mr-1" />
             Edit
