@@ -148,11 +148,17 @@ export function FirstRunExperience() {
                 Skip all
               </Button>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div 
+              className="flex items-center gap-1.5"
+              role="progressbar"
+              aria-valuenow={completedSteps}
+              aria-valuemin={0}
+              aria-valuemax={steps.length}
+              aria-label={`Setup progress: ${completedSteps} of ${steps.length} steps complete`}
+            >
               {steps.map((step, i) => {
                 const isComplete = i < currentIndex;
                 const isCurrent = i === currentIndex;
-                const StepIcon = iconMap[step.icon] || Users;
                 return (
                   <div
                     key={step.id}
@@ -160,6 +166,8 @@ export function FirstRunExperience() {
                       'flex-1 h-2 rounded-full transition-all duration-300',
                       isComplete ? 'bg-primary' : isCurrent ? 'bg-primary/50' : 'bg-muted'
                     )}
+                    role="presentation"
+                    aria-hidden="true"
                     title={step.title}
                   />
                 );

@@ -169,7 +169,7 @@ export function DashboardHero({
           <Link to={primaryCTA.href}>
             <Button className={cn(
               "gap-2 bg-white text-ink hover:bg-white/90",
-              isNewUser && "shadow-lg animate-pulse"
+              isNewUser && "shadow-lg ring-2 ring-white/50"
             )}>
               <primaryCTA.icon className="h-4 w-4" />
               {primaryCTA.label}

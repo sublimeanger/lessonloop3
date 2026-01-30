@@ -34,7 +34,9 @@ export default function Signup() {
     if (error) {
       toast({
         title: 'Google sign up failed',
-        description: error.message,
+        description: error.message?.includes('popup') 
+          ? 'Please allow popups for this site and try again'
+          : error.message,
         variant: 'destructive',
       });
     }
@@ -50,7 +52,9 @@ export default function Signup() {
     if (error) {
       toast({
         title: 'Apple sign up failed',
-        description: error.message,
+        description: error.message?.includes('popup') 
+          ? 'Please allow popups for this site and try again'
+          : error.message,
         variant: 'destructive',
       });
     }

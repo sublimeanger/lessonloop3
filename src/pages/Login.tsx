@@ -32,7 +32,9 @@ export default function Login() {
     if (error) {
       toast({
         title: 'Google sign in failed',
-        description: error.message,
+        description: error.message?.includes('popup') 
+          ? 'Please allow popups for this site and try again'
+          : error.message,
         variant: 'destructive',
       });
     }
@@ -48,7 +50,9 @@ export default function Login() {
     if (error) {
       toast({
         title: 'Apple sign in failed',
-        description: error.message,
+        description: error.message?.includes('popup') 
+          ? 'Please allow popups for this site and try again'
+          : error.message,
         variant: 'destructive',
       });
     }

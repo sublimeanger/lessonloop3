@@ -163,7 +163,7 @@ function ActionCard({ action, index }: { action: QuickAction; index: number }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
     >
-      <Link to={action.href}>
+      <Link to={action.href} aria-label={`${action.label}: ${action.description}`}>
         <div
           className={cn(
             'group flex flex-col items-center rounded-xl border border-border bg-card p-6 text-center transition-all duration-200',
