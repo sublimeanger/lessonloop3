@@ -692,6 +692,7 @@ export type Database = {
           expires_at: string
           id: string
           org_id: string
+          related_student_id: string | null
           role: Database["public"]["Enums"]["app_role"]
           token: string
         }
@@ -702,6 +703,7 @@ export type Database = {
           expires_at?: string
           id?: string
           org_id: string
+          related_student_id?: string | null
           role: Database["public"]["Enums"]["app_role"]
           token?: string
         }
@@ -712,6 +714,7 @@ export type Database = {
           expires_at?: string
           id?: string
           org_id?: string
+          related_student_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           token?: string
         }
@@ -721,6 +724,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invites_related_student_id_fkey"
+            columns: ["related_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
             referencedColumns: ["id"]
           },
         ]
