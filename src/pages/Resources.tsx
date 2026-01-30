@@ -9,6 +9,7 @@ import { ResourceCard } from '@/components/resources/ResourceCard';
 import { UploadResourceModal } from '@/components/resources/UploadResourceModal';
 import { ShareResourceModal } from '@/components/resources/ShareResourceModal';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { useOrg } from '@/contexts/OrgContext';
 
 export default function Resources() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -16,6 +17,9 @@ export default function Resources() {
   const [selectedResource, setSelectedResource] = useState<ResourceWithShares | null>(null);
   const [search, setSearch] = useState('');
 
+  const { currentRole } = useOrg();
+  const isAdmin = currentRole === 'owner' || currentRole === 'admin';
+  
   const { data: resources = [], isLoading } = useResources();
 
   const filteredResources = resources.filter(resource =>
@@ -35,10 +39,12 @@ export default function Resources() {
           title="Resource Library"
           description="Upload and share teaching materials with students"
           actions={
-            <Button onClick={() => setUploadModalOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Upload Resource
-            </Button>
+            isAdmin && (
+              <Button onClick={() => setUploadModalOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Upload Resource
+              </Button>
+            )
           }
         />
 
