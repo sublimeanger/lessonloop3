@@ -91,14 +91,54 @@ Deno.serve(async (req) => {
       .eq("id", user.id)
       .maybeSingle();
 
-    // If this is a teacher invite, create teacher_profile record
+    // If this is a teacher invite, handle the new teachers table
     if (invite.role === "teacher") {
+      const displayName = profile?.full_name || user.email?.split("@")[0] || "Teacher";
+      
+      // Check if there's an existing unlinked teacher record with matching email
+      const { data: existingTeacher } = await supabaseAdmin
+        .from("teachers")
+        .select("id, user_id")
+        .eq("org_id", invite.org_id)
+        .eq("email", user.email?.toLowerCase())
+        .maybeSingle();
+
+      if (existingTeacher) {
+        // Link the existing unlinked teacher record to this user
+        if (!existingTeacher.user_id) {
+          await supabaseAdmin
+            .from("teachers")
+            .update({ 
+              user_id: user.id,
+              display_name: displayName, // Update name in case it's more accurate now
+            })
+            .eq("id", existingTeacher.id);
+          console.log(`Linked existing teacher record ${existingTeacher.id} to user ${user.id}`);
+        }
+      } else {
+        // Create a new teacher record
+        const { error: teacherError } = await supabaseAdmin
+          .from("teachers")
+          .insert({
+            org_id: invite.org_id,
+            user_id: user.id,
+            display_name: displayName,
+            email: user.email?.toLowerCase(),
+            status: "active",
+          });
+
+        if (teacherError) {
+          console.error("Error creating teacher record:", teacherError);
+        }
+      }
+
+      // Also maintain legacy teacher_profiles for backward compatibility during transition
       const { error: teacherProfileError } = await supabaseAdmin
         .from("teacher_profiles")
         .upsert({
           org_id: invite.org_id,
           user_id: user.id,
-          display_name: profile?.full_name || user.email?.split("@")[0] || "Teacher",
+          display_name: displayName,
           pay_rate_type: null,
           pay_rate_value: 0,
         }, { onConflict: "org_id,user_id" });

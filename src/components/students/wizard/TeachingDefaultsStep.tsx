@@ -7,7 +7,7 @@ import { MapPin, User, Receipt, Info } from 'lucide-react';
 
 export interface TeachingDefaultsData {
   locationId: string;
-  teacherUserId: string;
+  teacherId: string; // Now refers to teachers.id, not user_id
   rateCardId: string;
 }
 
@@ -18,8 +18,9 @@ interface Location {
 }
 
 interface Teacher {
-  user_id: string;
-  full_name: string;
+  id: string;
+  display_name: string;
+  isLinked: boolean;
 }
 
 interface RateCard {
@@ -54,30 +55,19 @@ export function TeachingDefaultsStep({ data, onChange }: TeachingDefaultsStepPro
         .eq('org_id', currentOrg.id)
         .order('name');
       
-      // Fetch teachers (org_memberships with role teacher or owner/admin who teach)
-      const { data: members } = await supabase
-        .from('org_memberships')
-        .select('user_id')
+      // Fetch teachers from new teachers table
+      const { data: teacherData } = await supabase
+        .from('teachers')
+        .select('id, display_name, user_id')
         .eq('org_id', currentOrg.id)
-        .in('role', ['owner', 'admin', 'teacher'])
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .order('display_name');
       
-      // Fetch profiles separately for the member user_ids
-      let teacherList: Teacher[] = [];
-      if (members && members.length > 0) {
-        const userIds = members.map(m => m.user_id);
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .in('id', userIds);
-        
-        teacherList = (profiles || [])
-          .filter(p => p.full_name)
-          .map(p => ({
-            user_id: p.id,
-            full_name: p.full_name!,
-          }));
-      }
+      const teacherList: Teacher[] = (teacherData || []).map(t => ({
+        id: t.id,
+        display_name: t.display_name,
+        isLinked: !!t.user_id,
+      }));
       
       // Fetch rate cards
       const { data: rates } = await supabase
@@ -152,8 +142,8 @@ export function TeachingDefaultsStep({ data, onChange }: TeachingDefaultsStepPro
           Default Teacher
         </Label>
         <Select
-          value={data.teacherUserId}
-          onValueChange={(v) => update('teacherUserId', v === 'none' ? '' : v)}
+          value={data.teacherId}
+          onValueChange={(v) => update('teacherId', v === 'none' ? '' : v)}
         >
           <SelectTrigger>
             <SelectValue placeholder={isLoading ? 'Loading...' : 'Select teacher (optional)'} />
@@ -161,8 +151,8 @@ export function TeachingDefaultsStep({ data, onChange }: TeachingDefaultsStepPro
           <SelectContent>
             <SelectItem value="none">No default teacher</SelectItem>
             {teachers.map((t) => (
-              <SelectItem key={t.user_id} value={t.user_id}>
-                {t.full_name}
+              <SelectItem key={t.id} value={t.id}>
+                {t.display_name}
               </SelectItem>
             ))}
           </SelectContent>

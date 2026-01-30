@@ -154,14 +154,14 @@ export function useCalendarData(
 
 export function useTeachersAndLocations() {
   const { currentOrg } = useOrg();
-  const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([]);
+  const [teachers, setTeachers] = useState<{ id: string; name: string; userId: string | null }[]>([]);
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
   const [rooms, setRooms] = useState<{ id: string; name: string; location_id: string }[]>([]);
   const [students, setStudents] = useState<{ 
     id: string; 
     name: string; 
     default_location_id: string | null;
-    default_teacher_user_id: string | null;
+    default_teacher_id: string | null;
     default_rate_card_id: string | null;
   }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -172,14 +172,14 @@ export function useTeachersAndLocations() {
     const fetchData = async () => {
       setIsLoading(true);
       
-      // Fetch all data in parallel for better performance
-      const [membershipsResult, locationResult, roomResult, studentResult] = await Promise.all([
+      // Fetch all data in parallel - now using teachers table
+      const [teachersResult, locationResult, roomResult, studentResult] = await Promise.all([
         supabase
-          .from('org_memberships')
-          .select('user_id, role')
+          .from('teachers')
+          .select('id, display_name, user_id')
           .eq('org_id', currentOrg.id)
           .eq('status', 'active')
-          .in('role', ['owner', 'admin', 'teacher']),
+          .order('display_name'),
         supabase
           .from('locations')
           .select('id, name')
@@ -192,7 +192,7 @@ export function useTeachersAndLocations() {
           .order('name'),
         supabase
           .from('students')
-          .select('id, first_name, last_name, default_location_id, default_teacher_user_id, default_rate_card_id')
+          .select('id, first_name, last_name, default_location_id, default_teacher_id, default_rate_card_id')
           .eq('org_id', currentOrg.id)
           .eq('status', 'active')
           .is('deleted_at', null)
@@ -200,29 +200,13 @@ export function useTeachersAndLocations() {
           .limit(500)
       ]);
 
-      // Fetch teacher profiles in a batch
-      if (membershipsResult.data && membershipsResult.data.length > 0) {
-        const userIds = membershipsResult.data.map(m => m.user_id);
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, full_name, email')
-          .in('id', userIds);
-
-        const profileMap = new Map(
-          (profiles || []).map(p => [p.id, p])
-        );
-
-        const teacherList = membershipsResult.data.map((m) => {
-          const profile = profileMap.get(m.user_id);
-          return {
-            id: m.user_id,
-            name: profile?.full_name || profile?.email || 'Unknown',
-          };
-        });
-        setTeachers(teacherList);
-      } else {
-        setTeachers([]);
-      }
+      // Map teachers from new teachers table
+      const teacherList = (teachersResult.data || []).map((t: any) => ({
+        id: t.id,
+        name: t.display_name || 'Unknown',
+        userId: t.user_id,
+      }));
+      setTeachers(teacherList);
 
       setLocations(locationResult.data || []);
       setRooms(roomResult.data || []);
@@ -231,7 +215,7 @@ export function useTeachersAndLocations() {
           id: s.id,
           name: `${s.first_name} ${s.last_name}`,
           default_location_id: s.default_location_id,
-          default_teacher_user_id: s.default_teacher_user_id,
+          default_teacher_id: s.default_teacher_id,
           default_rate_card_id: s.default_rate_card_id,
         }))
       );
