@@ -4,11 +4,35 @@ import { AlertTriangle, ChevronRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUrgentActions, UrgentAction } from '@/hooks/useUrgentActions';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+const DISMISS_KEY = 'urgent_actions_dismissed';
+
+function getIsDismissed(): boolean {
+  try {
+    const stored = sessionStorage.getItem(DISMISS_KEY);
+    return stored === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function setDismissed(): void {
+  try {
+    sessionStorage.setItem(DISMISS_KEY, 'true');
+  } catch {
+    // Session storage not available
+  }
+}
 
 export function UrgentActionsBar() {
   const { actions, isLoading, hasActions, totalCount } = useUrgentActions();
-  const [isDismissed, setIsDismissed] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(() => getIsDismissed());
+
+  const handleDismiss = () => {
+    setIsDismissed(true);
+    setDismissed();
+  };
   const [expandedAction, setExpandedAction] = useState<string | null>(null);
 
   if (isLoading || !hasActions || isDismissed) {
@@ -63,7 +87,7 @@ export function UrgentActionsBar() {
             variant="ghost"
             size="icon"
             className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-            onClick={() => setIsDismissed(true)}
+            onClick={handleDismiss}
             aria-label="Dismiss"
           >
             <X className="h-4 w-4" />

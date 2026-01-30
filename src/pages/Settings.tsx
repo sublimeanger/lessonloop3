@@ -306,7 +306,7 @@ export default function Settings() {
       />
 
       <Tabs defaultValue={initialTab} className="space-y-6">
-        <TabsList className="flex-wrap h-auto gap-1">
+        <TabsList className="w-full overflow-x-auto flex-nowrap justify-start h-auto gap-1 scrollbar-hide">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="organisation">Organisation</TabsTrigger>
           {(isOrgAdmin || isOrgOwner) && (

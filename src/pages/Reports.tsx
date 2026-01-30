@@ -132,7 +132,7 @@ function ReportCard({ report }: { report: Report }) {
 
   return (
     <Link to={report.href}>
-      <Card className="h-full transition-all hover:border-primary/50 hover:shadow-md cursor-pointer">
+      <Card className="h-full min-h-[180px] transition-all hover:border-primary/50 hover:shadow-md cursor-pointer">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">

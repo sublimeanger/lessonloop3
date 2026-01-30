@@ -36,7 +36,7 @@ const statusConfig = {
   },
 };
 
-function LessonItem({ lesson, index }: { lesson: TodayLesson; index: number }) {
+function LessonItem({ lesson, index, isLast }: { lesson: TodayLesson; index: number; isLast: boolean }) {
   const config = statusConfig[lesson.status];
   const StatusIcon = config.icon;
   const isNow = lesson.status === 'in-progress';
@@ -67,7 +67,7 @@ function LessonItem({ lesson, index }: { lesson: TodayLesson; index: number }) {
           <StatusIcon className="h-5 w-5" />
         </div>
         {/* Connecting line (not on last item) */}
-        <div className="flex-1 w-0.5 bg-border mt-2" />
+        {!isLast && <div className="flex-1 w-0.5 bg-border mt-2" />}
       </div>
 
       {/* Content */}
@@ -200,7 +200,7 @@ export function TodayTimeline({ className }: TodayTimelineProps) {
         ) : (
           <div className="p-4">
             {lessons?.map((lesson, index) => (
-              <LessonItem key={lesson.id} lesson={lesson} index={index} />
+              <LessonItem key={lesson.id} lesson={lesson} index={index} isLast={index === lessons.length - 1} />
             ))}
           </div>
         )}
