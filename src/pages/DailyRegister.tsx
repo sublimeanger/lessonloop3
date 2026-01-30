@@ -30,25 +30,33 @@ export default function DailyRegister() {
   const { currentRole } = useOrg();
   
   // P1 Fix: Auto-filter to teacher's own lessons, persist via URL/localStorage
+  // Now uses teacher_id (from teachers table) instead of auth user id
   const [teacherFilter, setTeacherFilter] = useState<string | null>(() => {
     // Initialize from localStorage for persistence
     const stored = localStorage.getItem('register_teacher_filter');
     return stored || null;
   });
 
-  // Set default teacher filter for teachers on first load
-  useEffect(() => {
-    if (currentRole === 'teacher' && user?.id && !teacherFilter) {
-      setTeacherFilter(user.id);
-      localStorage.setItem('register_teacher_filter', user.id);
-    }
-  }, [currentRole, user?.id, teacherFilter]);
-
   const { data: allLessons, isLoading, refetch } = useRegisterData(selectedDate);
   
-  // Filter lessons by teacher if filter is set
+  // For teachers, we need to find their teacher_id from the teachers table
+  // This is done by matching user_id in the lessons data
+  useEffect(() => {
+    if (currentRole === 'teacher' && user?.id && !teacherFilter && allLessons) {
+      // Find a lesson where this user is the teacher and get the teacher_id
+      const myLesson = allLessons.find(l => l.teacher_user_id === user.id);
+      if (myLesson?.teacher_id) {
+        setTeacherFilter(myLesson.teacher_id);
+        localStorage.setItem('register_teacher_filter', myLesson.teacher_id);
+      }
+    }
+  }, [currentRole, user?.id, teacherFilter, allLessons]);
+
+  // Filter lessons by teacher_id if filter is set (supports both new and legacy lessons)
   const lessons = allLessons?.filter(lesson => 
-    !teacherFilter || lesson.teacher_user_id === teacherFilter
+    !teacherFilter || lesson.teacher_id === teacherFilter || 
+    // Fallback: for legacy lessons without teacher_id, check teacher_user_id matches linked user
+    (!lesson.teacher_id && lesson.teacher_user_id === user?.id && teacherFilter === localStorage.getItem('register_teacher_filter'))
   );
 
   const goToPrevDay = () => setSelectedDate(prev => subDays(prev, 1));

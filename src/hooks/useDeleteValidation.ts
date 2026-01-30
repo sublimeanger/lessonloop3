@@ -148,37 +148,62 @@ export function useDeleteValidation() {
 
   /**
    * Check if a teacher can be removed from the org
+   * @param teacherId - The teacher's ID from the teachers table (not auth user id)
    */
-  const checkTeacherRemoval = async (teacherUserId: string): Promise<DeletionCheckResult> => {
+  const checkTeacherRemoval = async (teacherId: string): Promise<DeletionCheckResult> => {
     if (!currentOrg) return { canDelete: false, blocks: [{ reason: 'No organisation context', entityType: 'org', count: 0 }], warnings: [] };
 
     const blocks: DeletionBlock[] = [];
     const warnings: string[] = [];
 
-    // Check for future lessons
+    // Get teacher record to check for user_id (for legacy lessons)
+    const { data: teacher } = await supabase
+      .from('teachers')
+      .select('id, user_id')
+      .eq('id', teacherId)
+      .single();
+
+    // Check for future lessons using teacher_id (new) OR teacher_user_id (legacy)
     const now = new Date().toISOString();
-    const { count: lessonCount } = await supabase
+    
+    // Check lessons with new teacher_id column
+    const { count: lessonCountById } = await supabase
       .from('lessons')
       .select('id', { count: 'exact', head: true })
-      .eq('teacher_user_id', teacherUserId)
+      .eq('teacher_id', teacherId)
       .eq('org_id', currentOrg.id)
       .gte('start_at', now)
       .neq('status', 'cancelled');
 
-    if (lessonCount && lessonCount > 0) {
+    // Also check legacy lessons if teacher has a linked user_id
+    let legacyLessonCount = 0;
+    if (teacher?.user_id) {
+      const { count } = await supabase
+        .from('lessons')
+        .select('id', { count: 'exact', head: true })
+        .eq('teacher_user_id', teacher.user_id)
+        .is('teacher_id', null) // Only legacy lessons without teacher_id
+        .eq('org_id', currentOrg.id)
+        .gte('start_at', now)
+        .neq('status', 'cancelled');
+      legacyLessonCount = count || 0;
+    }
+
+    const totalLessonCount = (lessonCountById || 0) + legacyLessonCount;
+    if (totalLessonCount > 0) {
       blocks.push({
-        reason: `Teacher has ${lessonCount} upcoming lesson${lessonCount > 1 ? 's' : ''} scheduled`,
+        reason: `Teacher has ${totalLessonCount} upcoming lesson${totalLessonCount > 1 ? 's' : ''} scheduled`,
         entityType: 'lessons',
-        count: lessonCount,
+        count: totalLessonCount,
         details: 'Reassign these lessons to another teacher before removing.',
       });
     }
 
-    // Check for assigned students
+    // Check for assigned students using teacher_id
     const { count: assignmentCount } = await supabase
       .from('student_teacher_assignments')
       .select('id', { count: 'exact', head: true })
-      .eq('teacher_user_id', teacherUserId)
+      .eq('teacher_id', teacherId)
       .eq('org_id', currentOrg.id);
 
     if (assignmentCount && assignmentCount > 0) {

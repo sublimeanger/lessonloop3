@@ -212,31 +212,36 @@ export function useLessonsDeliveredReport(startDate: string, endDate: string) {
         return { byTeacher: [], byLocation: [], totalCompleted: 0, totalCancelled: 0, totalMinutes: 0 };
       }
 
-      // Fetch lessons in date range
+      // Fetch lessons in date range with teacher_id
       const { data: lessons, error } = await supabase
         .from('lessons')
-        .select('id, teacher_user_id, location_id, start_at, end_at, status')
+        .select('id, teacher_id, teacher_user_id, location_id, start_at, end_at, status')
         .eq('org_id', currentOrg.id)
         .gte('start_at', `${startDate}T00:00:00`)
         .lte('start_at', `${endDate}T23:59:59`);
 
       if (error) throw error;
 
-      // Get unique teacher IDs
-      const teacherIds = [...new Set((lessons || []).map(l => l.teacher_user_id))];
+      // Get unique teacher IDs (prefer teacher_id, fallback to teacher_user_id for legacy)
+      const teacherIds = [...new Set((lessons || []).map(l => l.teacher_id).filter(Boolean) as string[])];
+      const legacyTeacherUserIds = [...new Set((lessons || []).filter(l => !l.teacher_id).map(l => l.teacher_user_id))];
       const locationIds = [...new Set((lessons || []).filter(l => l.location_id).map(l => l.location_id!))];
 
-      // Fetch teacher profiles
-      const { data: teacherProfiles } = await supabase
-        .from('teacher_profiles')
-        .select('user_id, display_name')
-        .eq('org_id', currentOrg.id)
-        .in('user_id', teacherIds);
+      // Fetch teachers from new table
+      const { data: teachers } = teacherIds.length > 0
+        ? await supabase
+            .from('teachers')
+            .select('id, display_name')
+            .in('id', teacherIds)
+        : { data: [] };
 
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .in('id', teacherIds);
+      // Fetch legacy teacher profiles for backward compatibility
+      const { data: legacyProfiles } = legacyTeacherUserIds.length > 0
+        ? await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .in('id', legacyTeacherUserIds)
+        : { data: [] };
 
       // Fetch locations
       const { data: locations } = await supabase
@@ -244,12 +249,14 @@ export function useLessonsDeliveredReport(startDate: string, endDate: string) {
         .select('id, name')
         .in('id', locationIds);
 
-      // Build maps
+      // Build maps - map teacher_id to name
       const teacherNameMap = new Map<string, string>();
-      for (const tid of teacherIds) {
-        const tp = teacherProfiles?.find(t => t.user_id === tid);
-        const p = profiles?.find(pr => pr.id === tid);
-        teacherNameMap.set(tid, tp?.display_name || p?.full_name || 'Unknown');
+      for (const t of teachers || []) {
+        teacherNameMap.set(t.id, t.display_name);
+      }
+      // Legacy fallback for teacher_user_id
+      for (const p of legacyProfiles || []) {
+        teacherNameMap.set(p.id, p.full_name || 'Unknown');
       }
 
       const locationNameMap = new Map<string, string>();
@@ -270,8 +277,11 @@ export function useLessonsDeliveredReport(startDate: string, endDate: string) {
         const end = new Date(lesson.end_at);
         const durationMins = Math.round((end.getTime() - start.getTime()) / 60000);
 
+        // Use teacher_id if available, fallback to teacher_user_id for legacy data
+        const teacherKey = lesson.teacher_id || lesson.teacher_user_id;
+        
         // Teacher aggregation
-        const teacherStats = teacherMap.get(lesson.teacher_user_id) || { completed: 0, cancelled: 0, minutes: 0 };
+        const teacherStats = teacherMap.get(teacherKey) || { completed: 0, cancelled: 0, minutes: 0 };
         if (lesson.status === 'completed') {
           teacherStats.completed += 1;
           teacherStats.minutes += durationMins;
@@ -281,7 +291,7 @@ export function useLessonsDeliveredReport(startDate: string, endDate: string) {
           teacherStats.cancelled += 1;
           totalCancelled += 1;
         }
-        teacherMap.set(lesson.teacher_user_id, teacherStats);
+        teacherMap.set(teacherKey, teacherStats);
 
         // Location aggregation (only completed)
         if (lesson.status === 'completed') {
@@ -343,10 +353,10 @@ export function useCancellationReport(startDate: string, endDate: string) {
         return { totalScheduled: 0, totalCompleted: 0, totalCancelled: 0, cancellationRate: 0, byReason: [], byTeacher: [] };
       }
 
-      // Fetch all lessons in date range
+      // Fetch all lessons in date range with teacher_id
       const { data: lessons, error } = await supabase
         .from('lessons')
-        .select('id, teacher_user_id, status')
+        .select('id, teacher_id, teacher_user_id, status')
         .eq('org_id', currentOrg.id)
         .gte('start_at', `${startDate}T00:00:00`)
         .lte('start_at', `${endDate}T23:59:59`);
@@ -362,23 +372,32 @@ export function useCancellationReport(startDate: string, endDate: string) {
             .in('lesson_id', lessonIds)
         : { data: [] };
 
-      // Get teacher names
-      const teacherIds = [...new Set((lessons || []).map(l => l.teacher_user_id))];
-      const { data: teacherProfiles } = await supabase
-        .from('teacher_profiles')
-        .select('user_id, display_name')
-        .eq('org_id', currentOrg.id)
-        .in('user_id', teacherIds);
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .in('id', teacherIds);
+      // Get teacher IDs (prefer teacher_id, fallback to teacher_user_id for legacy)
+      const teacherIds = [...new Set((lessons || []).map(l => l.teacher_id).filter(Boolean) as string[])];
+      const legacyTeacherUserIds = [...new Set((lessons || []).filter(l => !l.teacher_id).map(l => l.teacher_user_id))];
+      
+      // Fetch teachers from new table
+      const { data: teachers } = teacherIds.length > 0
+        ? await supabase
+            .from('teachers')
+            .select('id, display_name')
+            .in('id', teacherIds)
+        : { data: [] };
+
+      // Fetch legacy profiles for backward compatibility  
+      const { data: legacyProfiles } = legacyTeacherUserIds.length > 0
+        ? await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .in('id', legacyTeacherUserIds)
+        : { data: [] };
 
       const teacherNameMap = new Map<string, string>();
-      for (const tid of teacherIds) {
-        const tp = teacherProfiles?.find(t => t.user_id === tid);
-        const p = profiles?.find(pr => pr.id === tid);
-        teacherNameMap.set(tid, tp?.display_name || p?.full_name || 'Unknown');
+      for (const t of teachers || []) {
+        teacherNameMap.set(t.id, t.display_name);
+      }
+      for (const p of legacyProfiles || []) {
+        teacherNameMap.set(p.id, p.full_name || 'Unknown');
       }
 
       // Calculate stats
@@ -399,15 +418,16 @@ export function useCancellationReport(startDate: string, endDate: string) {
         .map(([reason, count]) => ({ reason, count }))
         .sort((a, b) => b.count - a.count);
 
-      // By teacher
+      // By teacher - use teacher_id if available, fallback to teacher_user_id
       const teacherStatsMap = new Map<string, { cancelled: number; total: number }>();
       for (const lesson of lessons || []) {
-        const stats = teacherStatsMap.get(lesson.teacher_user_id) || { cancelled: 0, total: 0 };
+        const teacherKey = lesson.teacher_id || lesson.teacher_user_id;
+        const stats = teacherStatsMap.get(teacherKey) || { cancelled: 0, total: 0 };
         stats.total += 1;
         if (lesson.status === 'cancelled') {
           stats.cancelled += 1;
         }
-        teacherStatsMap.set(lesson.teacher_user_id, stats);
+        teacherStatsMap.set(teacherKey, stats);
       }
 
       const byTeacher = Array.from(teacherStatsMap.entries())
