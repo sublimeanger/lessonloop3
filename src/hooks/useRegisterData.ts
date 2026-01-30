@@ -16,7 +16,8 @@ export interface RegisterLesson {
   location_name: string | null;
   room_name: string | null;
   recurrence_id: string | null;
-  teacher_user_id: string; // Added for client-side filtering
+  teacher_id: string | null;
+  teacher_user_id: string;
   participants: Array<{
     student_id: string;
     student_name: string;
@@ -52,6 +53,7 @@ export function useRegisterData(date: Date) {
           recurrence_id,
           location_id,
           room_id,
+          teacher_id,
           teacher_user_id,
           lesson_participants (
             student_id,
@@ -72,8 +74,9 @@ export function useRegisterData(date: Date) {
         .lte('start_at', dayEnd)
         .order('start_at', { ascending: true });
 
-      // Filter by teacher for teacher role
+      // Filter by teacher's teacher_id (lookup by user_id) for teacher role
       if (isTeacher && user) {
+        // Use teacher_user_id for backward compat until all data migrated
         query = query.eq('teacher_user_id', user.id);
       }
 
@@ -131,6 +134,7 @@ export function useRegisterData(date: Date) {
           notes_shared: lesson.notes_shared,
           notes_private: lesson.notes_private,
           recurrence_id: lesson.recurrence_id,
+          teacher_id: lesson.teacher_id,
           teacher_user_id: lesson.teacher_user_id,
           location_name: lesson.location_id ? locationMap.get(lesson.location_id) || null : null,
           room_name: lesson.room_id ? roomMap.get(lesson.room_id) || null : null,

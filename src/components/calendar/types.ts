@@ -75,7 +75,7 @@ export interface ConflictResult {
 export type CalendarView = 'day' | 'week' | 'agenda';
 
 export interface CalendarFilters {
-  teacher_user_id: string | null;
+  teacher_id: string | null;   // Now teachers.id
   location_id: string | null;
   room_id: string | null;
 }

@@ -13,21 +13,21 @@ import { Plus, GraduationCap, Star, Loader2 } from 'lucide-react';
 
 interface TeacherAssignment {
   id: string;
-  teacher_user_id: string;
+  teacher_id: string;
   is_primary: boolean;
-  profile?: {
-    full_name: string | null;
+  teacher?: {
+    id: string;
+    display_name: string;
     email: string | null;
+    user_id: string | null;
   };
 }
 
 interface AvailableTeacher {
-  user_id: string;
-  role: string;
-  profile?: {
-    full_name: string | null;
-    email: string | null;
-  };
+  id: string;
+  display_name: string;
+  email: string | null;
+  user_id: string | null;
 }
 
 interface TeacherAssignmentsPanelProps {
@@ -52,9 +52,20 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
     if (!currentOrg || !studentId) return;
     setIsLoading(true);
     
+    // Query assignments with teacher details from new teachers table
     const { data, error } = await supabase
       .from('student_teacher_assignments')
-      .select('id, teacher_user_id, is_primary')
+      .select(`
+        id, 
+        teacher_id, 
+        is_primary,
+        teacher:teachers!student_teacher_assignments_teacher_id_fkey (
+          id,
+          display_name,
+          email,
+          user_id
+        )
+      `)
       .eq('org_id', currentOrg.id)
       .eq('student_id', studentId);
     
@@ -64,52 +75,27 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
       return;
     }
     
-    // Fetch profiles for each assignment
-    const assignmentsWithProfiles: TeacherAssignment[] = [];
-    for (const assignment of data || []) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('full_name, email')
-        .eq('id', assignment.teacher_user_id)
-        .maybeSingle();
-      
-      assignmentsWithProfiles.push({
-        ...assignment,
-        profile: profile || undefined,
-      });
-    }
-    
-    setAssignments(assignmentsWithProfiles);
+    setAssignments((data || []).map((a: any) => ({
+      id: a.id,
+      teacher_id: a.teacher_id,
+      is_primary: a.is_primary,
+      teacher: a.teacher,
+    })));
     setIsLoading(false);
   };
 
   const fetchAvailableTeachers = async () => {
     if (!currentOrg) return;
     
-    // Get all teachers/admins/owners in the org
-    const { data: members } = await supabase
-      .from('org_memberships')
-      .select('user_id, role')
+    // Get all active teachers from the teachers table
+    const { data: teachers } = await supabase
+      .from('teachers')
+      .select('id, display_name, email, user_id')
       .eq('org_id', currentOrg.id)
-      .in('role', ['owner', 'admin', 'teacher'])
-      .eq('status', 'active');
+      .eq('status', 'active')
+      .order('display_name');
     
-    // Fetch profiles
-    const teachersWithProfiles: AvailableTeacher[] = [];
-    for (const member of members || []) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('full_name, email')
-        .eq('id', member.user_id)
-        .maybeSingle();
-      
-      teachersWithProfiles.push({
-        ...member,
-        profile: profile || undefined,
-      });
-    }
-    
-    setAvailableTeachers(teachersWithProfiles);
+    setAvailableTeachers((teachers || []) as AvailableTeacher[]);
   };
 
   useEffect(() => {
@@ -125,12 +111,16 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
     
     setIsSaving(true);
     
+    // Find the teacher to get their user_id for backward compat
+    const teacher = availableTeachers.find(t => t.id === selectedTeacherId);
+    
     const { error } = await supabase
       .from('student_teacher_assignments')
       .insert({
         org_id: currentOrg.id,
         student_id: studentId,
-        teacher_user_id: selectedTeacherId,
+        teacher_id: selectedTeacherId,                      // New: teachers.id
+        teacher_user_id: teacher?.user_id || null,          // For backward compat
         is_primary: isPrimary,
       });
     
@@ -189,7 +179,7 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
 
   // Filter out already assigned teachers
   const unassignedTeachers = availableTeachers.filter(
-    t => !assignments.some(a => a.teacher_user_id === t.user_id)
+    t => !assignments.some(a => a.teacher_id === t.id)
   );
 
   return (
@@ -227,21 +217,24 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
               <div key={assignment.id} className="flex items-center justify-between rounded-lg border p-3">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
-                    {assignment.profile?.full_name?.[0] || assignment.profile?.email?.[0] || '?'}
+                    {assignment.teacher?.display_name?.[0] || assignment.teacher?.email?.[0] || '?'}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium">
-                        {assignment.profile?.full_name || assignment.profile?.email || 'Unknown'}
+                        {assignment.teacher?.display_name || assignment.teacher?.email || 'Unknown'}
                       </span>
                       {assignment.is_primary && (
                         <Badge className="gap-1 text-xs">
                           <Star className="h-3 w-3" /> Primary
                         </Badge>
                       )}
+                      {!assignment.teacher?.user_id && (
+                        <Badge variant="outline" className="text-xs">Unlinked</Badge>
+                      )}
                     </div>
-                    {assignment.profile?.email && (
-                      <p className="text-sm text-muted-foreground">{assignment.profile.email}</p>
+                    {assignment.teacher?.email && (
+                      <p className="text-sm text-muted-foreground">{assignment.teacher.email}</p>
                     )}
                   </div>
                 </div>
@@ -292,8 +285,9 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
                     <SelectItem value="none" disabled>No teachers available</SelectItem>
                   ) : (
                     unassignedTeachers.map((teacher) => (
-                      <SelectItem key={teacher.user_id} value={teacher.user_id}>
-                        {teacher.profile?.full_name || teacher.profile?.email || 'Unknown'} ({teacher.role})
+                      <SelectItem key={teacher.id} value={teacher.id}>
+                        {teacher.display_name || teacher.email || 'Unknown'}
+                        {!teacher.user_id && ' (unlinked)'}
                       </SelectItem>
                     ))
                   )}
