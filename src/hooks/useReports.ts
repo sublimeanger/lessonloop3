@@ -433,6 +433,7 @@ export interface DashboardStats {
   hoursThisWeek: number;
   revenueMTD: number;
   lessonsThisWeek: number;
+  totalLessons: number; // Total lessons ever scheduled
 }
 
 export function useDashboardStats() {
@@ -442,7 +443,7 @@ export function useDashboardStats() {
     queryKey: ['dashboard-stats', currentOrg?.id],
     queryFn: async (): Promise<DashboardStats> => {
       if (!currentOrg) {
-        return { todayLessons: 0, activeStudents: 0, outstandingAmount: 0, hoursThisWeek: 0, revenueMTD: 0, lessonsThisWeek: 0 };
+        return { todayLessons: 0, activeStudents: 0, outstandingAmount: 0, hoursThisWeek: 0, revenueMTD: 0, lessonsThisWeek: 0, totalLessons: 0 };
       }
 
       const today = new Date();
@@ -494,6 +495,12 @@ export function useDashboardStats() {
         .gte('issue_date', monthStart)
         .lte('issue_date', monthEnd);
 
+      // Total lessons ever (for new user detection)
+      const { count: totalLessonsCount } = await supabase
+        .from('lessons')
+        .select('id', { count: 'exact', head: true })
+        .eq('org_id', currentOrg.id);
+
       const todayLessons = todayLessonsData?.length || 0;
       const activeStudents = studentsData?.length || 0;
       const outstandingAmount = (outstandingData || []).reduce((sum, inv) => sum + inv.total_minor, 0) / 100;
@@ -518,6 +525,7 @@ export function useDashboardStats() {
         hoursThisWeek: Math.round(hoursThisWeek * 10) / 10,
         revenueMTD,
         lessonsThisWeek,
+        totalLessons: totalLessonsCount || 0,
       };
     },
     enabled: !!currentOrg,
