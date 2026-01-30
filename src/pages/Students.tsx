@@ -33,6 +33,7 @@ interface Student {
 
 export default function Students() {
   const { currentOrg, currentRole } = useOrg();
+  const isAdmin = currentRole === 'owner' || currentRole === 'admin';
   const { user } = useAuth();
   const { toast } = useToast();
   const { limits, canAddStudent } = useUsageCounts();
@@ -140,19 +141,21 @@ export default function Students() {
         description="Manage your students and their information"
         breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Students' }]}
         actions={
-          <div className="flex items-center gap-2">
-            <Link to="/students/import">
-              <Button variant="outline" className="gap-2">
-                <Upload className="h-4 w-4" />
-                <span className="hidden sm:inline">Import</span>
+          isAdmin ? (
+            <div className="flex items-center gap-2">
+              <Link to="/students/import">
+                <Button variant="outline" className="gap-2">
+                  <Upload className="h-4 w-4" />
+                  <span className="hidden sm:inline">Import</span>
+                </Button>
+              </Link>
+              <Button onClick={openAddWizard} className="gap-2" disabled={!canAddStudent} data-tour="add-student-button">
+                {!canAddStudent && <Lock className="h-4 w-4" />}
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Add Student</span>
               </Button>
-            </Link>
-            <Button onClick={openAddWizard} className="gap-2" disabled={!canAddStudent} data-tour="add-student-button">
-              {!canAddStudent && <Lock className="h-4 w-4" />}
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Add Student</span>
-            </Button>
-          </div>
+            </div>
+          ) : undefined
         }
       />
 
@@ -240,14 +243,16 @@ export default function Students() {
                   )}
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => { e.preventDefault(); toggleStatus(student); }}
-                aria-label={`${student.status === 'active' ? 'Deactivate' : 'Activate'} ${student.first_name} ${student.last_name}`}
-              >
-                {student.status === 'active' ? 'Deactivate' : 'Activate'}
-              </Button>
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => { e.preventDefault(); toggleStatus(student); }}
+                  aria-label={`${student.status === 'active' ? 'Deactivate' : 'Activate'} ${student.first_name} ${student.last_name}`}
+                >
+                  {student.status === 'active' ? 'Deactivate' : 'Activate'}
+                </Button>
+              )}
             </Link>
           ))}
         </div>
