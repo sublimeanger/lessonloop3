@@ -1,57 +1,8 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
-import { Calendar } from "lucide-react";
-
-const blogPosts = [
-  {
-    title: "10 Time-Saving Tips for Music Teachers in 2026",
-    excerpt: "Discover proven strategies to streamline your admin work and focus more on what you love: teaching music.",
-    date: "28 Jan 2026",
-    category: "Productivity",
-    readTime: "5 min read",
-    image: "from-teal to-teal-dark",
-  },
-  {
-    title: "How to Set Your Lesson Rates in the UK",
-    excerpt: "A comprehensive guide to pricing your music lessons competitively while maintaining profitability.",
-    date: "21 Jan 2026",
-    category: "Business",
-    readTime: "8 min read",
-    image: "from-coral to-coral-dark",
-  },
-  {
-    title: "The Complete Guide to Parent Communication",
-    excerpt: "Best practices for keeping parents informed and engaged in their child's musical journey.",
-    date: "14 Jan 2026",
-    category: "Communication",
-    readTime: "6 min read",
-    image: "from-ink to-ink-light",
-  },
-  {
-    title: "Managing Multiple Teaching Locations",
-    excerpt: "Tips and tools for teachers who work across several venues, from schools to home studios.",
-    date: "7 Jan 2026",
-    category: "Operations",
-    readTime: "7 min read",
-    image: "from-teal to-teal-dark",
-  },
-  {
-    title: "GDPR Compliance for Music Teachers",
-    excerpt: "What you need to know about data protection and student privacy in your teaching practice.",
-    date: "31 Dec 2025",
-    category: "Legal",
-    readTime: "10 min read",
-    image: "from-coral to-coral-dark",
-  },
-  {
-    title: "Building a Sustainable Teaching Practice",
-    excerpt: "Long-term strategies for growing your music teaching business without burning out.",
-    date: "24 Dec 2025",
-    category: "Business",
-    readTime: "9 min read",
-    image: "from-ink to-ink-light",
-  },
-];
+import { Clock, ArrowRight } from "lucide-react";
+import { blogPosts } from "@/data/blogPosts";
 
 export default function Blog() {
   return (
@@ -90,22 +41,22 @@ export default function Blog() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {blogPosts.map((post, index) => (
               <motion.article
-                key={post.title}
+                key={post.slug}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1, duration: 0.5 }}
                 className="group"
               >
-              <div className="block cursor-default">
+                <Link to={`/blog/${post.slug}`} className="block">
                   <div className="rounded-2xl border border-border bg-card overflow-hidden hover:border-primary/30 hover:shadow-xl transition-all duration-300">
-                    {/* Image Placeholder */}
-                    <div className={`aspect-video bg-gradient-to-br ${post.image} relative`}>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                          <Calendar className="w-8 h-8 text-white" />
-                        </div>
-                      </div>
+                    {/* Featured Image */}
+                    <div className="aspect-video relative overflow-hidden">
+                      <img 
+                        src={post.featuredImage} 
+                        alt={post.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
                     </div>
 
                     {/* Content */}
@@ -114,10 +65,13 @@ export default function Blog() {
                         <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
                           {post.category}
                         </span>
-                        <span className="text-xs text-muted-foreground">{post.readTime}</span>
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          {post.readTime}
+                        </span>
                       </div>
 
-                      <h3 className="text-lg font-bold text-foreground mb-3 group-hover:text-primary transition-colors">
+                      <h3 className="text-lg font-bold text-foreground mb-3 group-hover:text-primary transition-colors line-clamp-2">
                         {post.title}
                       </h3>
                       <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
@@ -126,13 +80,13 @@ export default function Blog() {
 
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">{post.date}</span>
-                        <span className="px-2 py-1 rounded-full bg-muted text-xs text-muted-foreground">
-                          Coming soon
+                        <span className="flex items-center gap-1 text-sm font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                          Read more <ArrowRight className="w-4 h-4" />
                         </span>
-                      </div>
                       </div>
                     </div>
                   </div>
+                </Link>
               </motion.article>
             ))}
           </div>

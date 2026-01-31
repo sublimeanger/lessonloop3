@@ -17,6 +17,7 @@ import Features from "./pages/marketing/Features";
 import Pricing from "./pages/marketing/Pricing";
 import About from "./pages/marketing/About";
 import Blog from "./pages/marketing/Blog";
+import BlogPost from "./pages/marketing/BlogPost";
 import Contact from "./pages/marketing/Contact";
 import Privacy from "./pages/marketing/Privacy";
 import Terms from "./pages/marketing/Terms";
@@ -248,6 +249,7 @@ const App = () => (
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/about" element={<About />} />
               <Route path="/blog" element={<Blog />} />
+              <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
