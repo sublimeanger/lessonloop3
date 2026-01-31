@@ -183,23 +183,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 4000);
 
     // Set up auth state listener FIRST
+    // CRITICAL: This listener handles ONGOING auth changes AFTER initial load
+    // It should NOT set isLoading to prevent UI flashing on tab switches
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mountedRef.current) return;
       
       // Only log in dev
       if (import.meta.env.DEV) {
-        console.log('Auth state change:', event);
+        console.log('Auth state change:', event, 'isInitialised:', isInitialised);
       }
       
       setSession(newSession);
       setUser(newSession?.user ?? null);
 
       if (newSession?.user) {
-        // Skip profile refetch on token refresh - user is already authenticated
-        // This prevents unnecessary state churn when returning to an inactive tab
+        // Skip profile refetch on token refresh or if already initialised
+        // This prevents UI churn when returning to an inactive tab
         if (event === 'TOKEN_REFRESHED') {
           if (import.meta.env.DEV) {
             console.log('Token refreshed - skipping profile refetch');
+          }
+          // Still mark as initialised if we weren't already
+          if (!isInitialised && mountedRef.current) {
+            setIsLoading(false);
+            setIsInitialised(true);
+          }
+          return;
+        }
+
+        // If we're already initialised with this user's data, skip refetch
+        // This handles SIGNED_IN re-emission on tab focus
+        if (isInitialised && profile?.id === newSession.user.id) {
+          if (import.meta.env.DEV) {
+            console.log('Already initialised with same user - skipping refetch');
           }
           return;
         }
@@ -210,7 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         fetchingRef.current = true;
         
-        // Fetch profile and roles in parallel
+        // Fetch profile and roles in parallel (fire-and-forget style for ongoing changes)
         const [profileData, rolesData] = await Promise.all([
           fetchProfile(newSession.user.id),
           fetchRoles(newSession.user.id),
