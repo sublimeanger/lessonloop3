@@ -47,6 +47,8 @@ export function CalendarGrid({
   
   // Track if this was a drag operation to prevent click from firing
   const wasDragging = useRef(false);
+  // Use ref for isDragging check in click handler to avoid stale closure
+  const isDraggingRef = useRef(false);
 
   const days = useMemo(() => {
     if (view === 'day') {
@@ -128,6 +130,7 @@ export function CalendarGrid({
     setDragStart({ date: startDate, y });
     setDragEnd(y + 30); // Default 30 min
     setIsDragging(true);
+    isDraggingRef.current = true;
     wasDragging.current = false;
   };
 
@@ -148,6 +151,7 @@ export function CalendarGrid({
   const handleMouseUp = useCallback(() => {
     if (!isDragging || !dragStart || dragEnd === null) {
       setIsDragging(false);
+      isDraggingRef.current = false;
       setDragStart(null);
       setDragEnd(null);
       return;
@@ -173,6 +177,7 @@ export function CalendarGrid({
     }
     
     setIsDragging(false);
+    isDraggingRef.current = false;
     setDragStart(null);
     setDragEnd(null);
   }, [isDragging, dragStart, dragEnd, onSlotDrag]);
@@ -184,8 +189,8 @@ export function CalendarGrid({
       return;
     }
     
-    // Don't trigger if still in drag mode
-    if (isDragging) return;
+    // Don't trigger if still in drag mode (use ref for up-to-date value)
+    if (isDraggingRef.current) return;
     
     const y = getAccurateY(e);
     if (y < 0) return; // Click was above the grid
