@@ -64,7 +64,17 @@ import PortalResources from "./pages/portal/PortalResources";
 import PortalInvoices from "./pages/portal/PortalInvoices";
 import PortalMessages from "./pages/portal/PortalMessages";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Disable automatic refetch on window focus to prevent
+      // unwanted refreshes when returning to inactive tabs
+      refetchOnWindowFocus: false,
+      // Keep data fresh for 5 minutes before considering stale
+      staleTime: 5 * 60 * 1000,
+    },
+  },
+});
 
 const App = () => (
   <ErrorBoundary>

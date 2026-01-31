@@ -195,6 +195,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newSession?.user ?? null);
 
       if (newSession?.user) {
+        // Skip profile refetch on token refresh - user is already authenticated
+        // This prevents unnecessary state churn when returning to an inactive tab
+        if (event === 'TOKEN_REFRESHED') {
+          if (import.meta.env.DEV) {
+            console.log('Token refreshed - skipping profile refetch');
+          }
+          return;
+        }
+        
         // Prevent duplicate fetches from INITIAL_SESSION + getSession race
         if (fetchingRef.current) {
           return;
