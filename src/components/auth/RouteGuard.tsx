@@ -70,8 +70,9 @@ export function RouteGuard({
     }
   };
 
-  // Wait for auth to initialise (max 4s via hard timeout)
-  if (!isInitialised || isLoading) {
+  // Wait for INITIAL auth to complete - once initialised, never show loading again
+  // This prevents the loading spinner from appearing on tab switches
+  if (!isInitialised) {
     return <AuthLoading onLogout={signOut} onForceRedirect={handleForceRedirect} />;
   }
 
@@ -125,8 +126,8 @@ export function PublicRoute({ children }: { children: ReactNode }) {
   const { currentRole, hasInitialised: orgInitialised } = useOrg();
   const location = useLocation();
 
-  // Still loading auth - show loading state
-  if (!isInitialised || isLoading) {
+  // Wait for INITIAL auth only - don't block on subsequent loading states
+  if (!isInitialised) {
     return <AuthLoading />;
   }
 
