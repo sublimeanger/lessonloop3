@@ -85,13 +85,22 @@ export default function BlogPost() {
           );
         }
         
+        // Helper to format inline text (bold, links)
+        const formatInline = (text: string) => {
+          // Handle bold and links
+          const formatted = text
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">$1</a>');
+          return <span dangerouslySetInnerHTML={{ __html: formatted }} />;
+        };
+
         // Lists
         if (block.includes("\n- ")) {
           const items = block.split("\n").filter(line => line.startsWith("- "));
           return (
             <ul key={index} className="list-disc list-inside space-y-2 text-muted-foreground mb-4">
               {items.map((item, i) => (
-                <li key={i}>{item.replace("- ", "")}</li>
+                <li key={i}>{formatInline(item.replace("- ", ""))}</li>
               ))}
             </ul>
           );
@@ -103,7 +112,7 @@ export default function BlogPost() {
           return (
             <ol key={index} className="list-decimal list-inside space-y-2 text-muted-foreground mb-4">
               {items.map((item, i) => (
-                <li key={i}>{item.replace(/^\d+\. /, "")}</li>
+                <li key={i}>{formatInline(item.replace(/^\d+\. /, ""))}</li>
               ))}
             </ol>
           );
