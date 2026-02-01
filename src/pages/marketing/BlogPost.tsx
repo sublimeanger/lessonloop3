@@ -63,9 +63,12 @@ export default function BlogPost() {
 
   // Convert markdown-style content to HTML
   const formatContent = (content: string) => {
-    return content
-      .split("\n\n")
-      .map((block, index) => {
+    const blocks = content
+      .split(/\n\n+/)
+      .map(block => block.trim())
+      .filter(block => block.length > 0);
+    
+    return blocks.map((block, index) => {
         // Headings
         if (block.startsWith("## ")) {
           const text = block.replace("## ", "");

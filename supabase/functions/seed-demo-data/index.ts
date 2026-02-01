@@ -159,6 +159,7 @@ serve(async (req) => {
       console.log(`Created ${finalGuardians.length} guardians`);
 
       // Link students to guardians
+      console.log('Creating student_guardians links...');
       const linkInserts = finalStudents.map((student, i) => ({
         student_id: student.id,
         guardian_id: finalGuardians[i].id,
@@ -166,8 +167,18 @@ serve(async (req) => {
         is_primary_payer: true,
         relationship: i % 2 === 0 ? 'mother' : 'father',
       }));
-      const { error: linkError } = await supabase.from('student_guardians').insert(linkInserts);
-      if (linkError) throw linkError;
+      console.log('Inserting student_guardians:', linkInserts.length);
+      
+      const { data: linkData, error: linkError } = await supabase
+        .from('student_guardians')
+        .insert(linkInserts)
+        .select();
+      
+      if (linkError) {
+        console.error('student_guardians error:', linkError);
+        throw linkError;
+      }
+      console.log('Created student_guardians:', linkData?.length);
     } else {
       // Fetch existing guardians
       const { data: existingGuardians } = await supabase
