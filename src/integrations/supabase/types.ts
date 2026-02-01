@@ -1212,8 +1212,62 @@ export type Database = {
           },
         ]
       }
+      message_batches: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string
+          failed_count: number
+          filter_criteria: Json
+          id: string
+          name: string
+          org_id: string
+          recipient_count: number
+          sent_count: number
+          status: string
+          subject: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by: string
+          failed_count?: number
+          filter_criteria?: Json
+          id?: string
+          name: string
+          org_id: string
+          recipient_count?: number
+          sent_count?: number
+          status?: string
+          subject: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string
+          failed_count?: number
+          filter_criteria?: Json
+          id?: string
+          name?: string
+          org_id?: string
+          recipient_count?: number
+          sent_count?: number
+          status?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_batches_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_log: {
         Row: {
+          batch_id: string | null
           body: string
           channel: string
           created_at: string
@@ -1233,6 +1287,7 @@ export type Database = {
           subject: string
         }
         Insert: {
+          batch_id?: string | null
           body: string
           channel?: string
           created_at?: string
@@ -1252,6 +1307,7 @@ export type Database = {
           subject: string
         }
         Update: {
+          batch_id?: string | null
           body?: string
           channel?: string
           created_at?: string
@@ -1271,6 +1327,13 @@ export type Database = {
           subject?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "message_log_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "message_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "message_log_org_id_fkey"
             columns: ["org_id"]
