@@ -167,6 +167,13 @@ export function useSendInternalMessage() {
         throw new Error('Not authenticated');
       }
 
+      // Get sender's profile for the email notification
+      const { data: senderProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+
       const { data, error } = await supabase
         .from('internal_messages')
         .insert({
@@ -182,11 +189,38 @@ export function useSendInternalMessage() {
         .single();
 
       if (error) throw error;
+
+      // Send email notification (best-effort, don't fail if this errors)
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-internal-message`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${sessionData.session?.access_token}`,
+            },
+            body: JSON.stringify({
+              org_id: currentOrg.id,
+              recipient_user_id: recipientUserId,
+              sender_name: senderProfile?.full_name || 'A team member',
+              sender_role: currentRole,
+              subject,
+              body,
+            }),
+          }
+        );
+      } catch (emailError) {
+        console.error('Failed to send email notification:', emailError);
+        // Don't throw - the message was saved successfully
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['internal-messages'] });
-      toast({ title: 'Message sent', description: 'Your message has been sent.' });
+      toast({ title: 'Message sent', description: 'Your message has been sent and the recipient notified by email.' });
     },
     onError: (error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
