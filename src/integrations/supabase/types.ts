@@ -701,6 +701,53 @@ export type Database = {
           },
         ]
       }
+      internal_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          org_id: string
+          read_at: string | null
+          recipient_role: string
+          recipient_user_id: string
+          sender_role: string
+          sender_user_id: string
+          subject: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          org_id: string
+          read_at?: string | null
+          recipient_role: string
+          recipient_user_id: string
+          sender_role: string
+          sender_user_id: string
+          subject: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          org_id?: string
+          read_at?: string | null
+          recipient_role?: string
+          recipient_user_id?: string
+          sender_role?: string
+          sender_user_id?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internal_messages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invites: {
         Row: {
           accepted_at: string | null

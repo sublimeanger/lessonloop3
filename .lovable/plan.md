@@ -8,6 +8,12 @@
 
 Parents now receive email notifications (via Resend) when an admin approves, declines, or resolves their portal requests.
 
+## ✅ Phase 2: COMPLETE - Internal Staff Messaging
+
+Teachers, admins, and owners can now send internal messages to each other. The Messages page includes an "Internal" tab with inbox/sent views, unread badge counts, and mark-as-read on expand.
+
+---
+
 ### What Already Exists
 
 | Component | Status | Notes |
