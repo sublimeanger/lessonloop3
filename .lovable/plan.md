@@ -4,6 +4,10 @@
 
 ## ✅ Phase 1: COMPLETE - Bulk Messaging with Smart Filters
 
+## ✅ Phase 1b: COMPLETE - Email Notifications for Request Responses
+
+Parents now receive email notifications (via Resend) when an admin approves, declines, or resolves their portal requests.
+
 ### What Already Exists
 
 | Component | Status | Notes |

@@ -96,33 +96,60 @@ export function useUpdateMessageRequest() {
 
       if (error) throw error;
 
-      // P2 Fix: Log notification to message_log when request is updated
+      // Send email notification to guardian when request is responded to
       const guardian = request.guardians as { email: string | null; full_name: string } | null;
-      if (guardian?.email && (status === 'approved' || status === 'declined')) {
-        const statusMessage = status === 'approved' 
-          ? 'Your request has been approved.'
-          : 'Your request has been declined.';
+      if (guardian?.email && (status === 'approved' || status === 'declined' || status === 'resolved')) {
+        const statusLabel = status === 'approved' 
+          ? 'approved'
+          : status === 'declined' 
+            ? 'declined'
+            : 'resolved';
         
-        await supabase.from('message_log').insert({
-          org_id: currentOrg.id,
-          recipient_email: guardian.email,
-          recipient_name: guardian.full_name,
-          recipient_type: 'guardian',
-          recipient_id: request.guardian_id,
-          subject: `Update: ${request.subject}`,
-          body: `${statusMessage}${adminResponse ? `\n\nResponse: ${adminResponse}` : ''}`,
-          message_type: 'request_update',
-          status: 'sent',
-          sent_at: new Date().toISOString(),
-          related_id: requestId,
-        });
+        const statusMessage = `Your request "${request.subject}" has been ${statusLabel}.`;
+        const fullBody = adminResponse 
+          ? `${statusMessage}\n\nResponse from your teacher:\n${adminResponse}\n\nView details in your parent portal.`
+          : `${statusMessage}\n\nView details in your parent portal.`;
+
+        // Call send-message edge function to send email AND log it
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-message`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${sessionData.session?.access_token}`,
+              },
+              body: JSON.stringify({
+                org_id: currentOrg.id,
+                sender_user_id: sessionData.session?.user.id,
+                recipient_type: 'guardian',
+                recipient_id: request.guardian_id,
+                recipient_email: guardian.email,
+                recipient_name: guardian.full_name,
+                subject: `Update: ${request.subject}`,
+                body: fullBody,
+                related_id: requestId,
+                message_type: 'request_update',
+              }),
+            }
+          );
+
+          if (!response.ok) {
+            console.error('Failed to send notification email:', await response.text());
+          }
+        } catch (emailError) {
+          console.error('Error sending notification email:', emailError);
+          // Don't throw - the request update succeeded, email is best-effort
+        }
       }
 
       return { status, guardianNotified: !!guardian?.email };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-message-requests'] });
-      const notifyMsg = data.guardianNotified ? ' Parent has been notified.' : '';
+      const notifyMsg = data.guardianNotified ? ' Parent has been notified by email.' : '';
       toast({ title: 'Request updated', description: `The request status has been updated.${notifyMsg}` });
     },
     onError: (error) => {
