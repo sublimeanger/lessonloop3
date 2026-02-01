@@ -1,127 +1,279 @@
 
-# Plan: Fix send-invite-email Edge Function Parameter Mismatch
+
+# Plan: Add Invite Status Tracking to Guardians Tab
 
 ## Summary
 
-The `send-invite-email` edge function expects 7 parameters (`inviteId`, `orgId`, `orgName`, `recipientEmail`, `recipientRole`, `inviteToken`, `inviterName`) but the frontend code only passes 2 (`inviteId`, `guardianId`). This will cause the invite functionality to fail silently.
+Enhance the Guardians tab in StudentDetail.tsx to show invite status (pending, expired) and replace the generic "Invite" button with contextual actions:
+- **Uninvited**: Show "Invite" button (current behavior)
+- **Invite Pending**: Show "Invite Pending" badge + "Resend" button
+- **Invite Expired**: Show "Invite Expired" badge + "Resend" button
+- **Portal Access**: Show "Portal Access" badge (already implemented)
 
 ---
 
-## The Problem
+## Current Behavior
 
-**Edge Function Expects:**
-```typescript
-interface InviteEmailRequest {
-  inviteId: string;
-  orgId: string;
-  orgName: string;
-  recipientEmail: string;
-  recipientRole: string;
-  inviteToken: string;
-  inviterName: string;
-}
-```
+| Guardian State | Current Display |
+|----------------|-----------------|
+| No email | Nothing shown |
+| Has email, no user_id | "Invite" button |
+| Has user_id | "Portal Access" badge |
 
-**Frontend Sends (both GuardianInviteModal and StudentDetail.tsx):**
-```typescript
-{
-  inviteId: invite.id,
-  guardianId: guardian.id,
-}
-```
-
-This mismatch means the edge function will receive `undefined` for most required fields, causing the email to fail or send with broken content.
+**Problem**: After sending an invite, the "Invite" button remains visible because we don't check for pending invites. This could lead to duplicate invites being created.
 
 ---
 
-## Solution
+## Enhanced Behavior
 
-Update the edge function to fetch the required data from the database using just `inviteId`. This is the cleanest approach because:
-1. All data already exists in the `invites` table (`org_id`, `email`, `role`, `token`)
-2. Organisation name can be joined from `organisations` table
-3. Reduces frontend complexity - just pass the invite ID
-4. More secure - frontend doesn't need to pass sensitive data
+| Guardian State | New Display |
+|----------------|-------------|
+| No email | Nothing shown |
+| Has email, no invite, no user_id | "Invite" button |
+| Has email, pending invite (not expired) | "Invite Pending" badge + "Resend Invite" button |
+| Has email, expired invite | "Invite Expired" badge + "Resend Invite" button |
+| Has user_id | "Portal Access" badge |
 
 ---
 
 ## Implementation Details
 
-### File to Modify: `supabase/functions/send-invite-email/index.ts`
+### 1. Create New Interface for Invite Status
 
-**Changes Required:**
-
-1. Update the interface to accept minimal input:
 ```typescript
-interface InviteEmailRequest {
-  inviteId: string;
-  guardianId?: string; // Optional, for linking
+interface GuardianInviteStatus {
+  guardianId: string;
+  inviteId: string | null;
+  inviteStatus: 'none' | 'pending' | 'expired' | 'accepted';
+  expiresAt?: string;
 }
 ```
 
-2. Fetch all required data from database:
+### 2. Add State for Invite Statuses
+
 ```typescript
-// Fetch invite with related org data
-const { data: invite, error: fetchError } = await supabase
-  .from('invites')
-  .select(`
-    id,
-    org_id,
-    email,
-    role,
-    token,
-    organisations!inner(name)
-  `)
-  .eq('id', inviteId)
-  .single();
-
-if (fetchError || !invite) {
-  throw new Error('Invite not found');
-}
-
-const orgName = invite.organisations.name;
-const recipientEmail = invite.email;
-const recipientRole = invite.role;
-const inviteToken = invite.token;
-const orgId = invite.org_id;
-const inviterName = orgName; // Use org name as inviter for now
+const [guardianInvites, setGuardianInvites] = useState<Record<string, GuardianInviteStatus>>({});
 ```
 
-3. Use these fetched values for email composition
+### 3. Create Function to Fetch Invite Statuses
 
----
+Query the `invites` table for all guardian emails in the current org with role='parent':
 
-## Database Schema Check
+```typescript
+const fetchGuardianInvites = async () => {
+  if (!currentOrg) return;
+  
+  // Get all guardian emails for this org
+  const guardianEmails = guardians
+    .map(sg => sg.guardian?.email)
+    .filter(Boolean);
+  
+  if (guardianEmails.length === 0) return;
+  
+  const { data } = await supabase
+    .from('invites')
+    .select('id, email, expires_at, accepted_at')
+    .eq('org_id', currentOrg.id)
+    .eq('role', 'parent')
+    .in('email', guardianEmails);
+  
+  // Map by email to guardian
+  const inviteMap: Record<string, GuardianInviteStatus> = {};
+  guardians.forEach(sg => {
+    const guardian = sg.guardian;
+    if (!guardian?.email) return;
+    
+    const invite = data?.find(i => i.email === guardian.email);
+    if (!invite) {
+      inviteMap[guardian.id] = { guardianId: guardian.id, inviteId: null, inviteStatus: 'none' };
+    } else if (invite.accepted_at) {
+      inviteMap[guardian.id] = { guardianId: guardian.id, inviteId: invite.id, inviteStatus: 'accepted' };
+    } else if (new Date(invite.expires_at) < new Date()) {
+      inviteMap[guardian.id] = { guardianId: guardian.id, inviteId: invite.id, inviteStatus: 'expired', expiresAt: invite.expires_at };
+    } else {
+      inviteMap[guardian.id] = { guardianId: guardian.id, inviteId: invite.id, inviteStatus: 'pending', expiresAt: invite.expires_at };
+    }
+  });
+  
+  setGuardianInvites(inviteMap);
+};
+```
 
-The `invites` table has:
-- `id` (uuid)
-- `org_id` (uuid) - FK to organisations
-- `email` (text)
-- `role` (text)
-- `token` (text) - auto-generated
-- `related_student_id` (uuid, optional)
-- `expires_at` (timestamp)
+### 4. Call fetchGuardianInvites After fetchGuardians
 
-All required data is available via the invite record.
+Update useEffect to fetch invite statuses after guardians are loaded:
+
+```typescript
+useEffect(() => {
+  fetchStudent();
+  fetchGuardians();
+}, [id, currentOrg?.id]);
+
+useEffect(() => {
+  if (guardians.length > 0) {
+    fetchGuardianInvites();
+  }
+}, [guardians]);
+```
+
+### 5. Update handleInviteGuardian to Support Resend
+
+Modify the function to handle resending by deleting the old invite first (or updating it):
+
+```typescript
+const handleInviteGuardian = async (guardian: Guardian, existingInviteId?: string) => {
+  if (!guardian.email || !currentOrg || !student) return;
+  setInvitingGuardianId(guardian.id);
+
+  try {
+    // If resending, delete the old invite first
+    if (existingInviteId) {
+      await supabase
+        .from('invites')
+        .delete()
+        .eq('id', existingInviteId);
+    }
+
+    // Create new invite record
+    const { data: invite, error: inviteError } = await supabase
+      .from('invites')
+      .insert({
+        org_id: currentOrg.id,
+        email: guardian.email,
+        role: 'parent' as const,
+        related_student_id: student.id,
+      })
+      .select()
+      .single();
+
+    if (inviteError) throw inviteError;
+
+    // Send invite email via edge function
+    await supabase.functions.invoke('send-invite-email', {
+      body: { inviteId: invite.id, guardianId: guardian.id },
+    });
+
+    toast({
+      title: existingInviteId ? 'Invite resent' : 'Invite sent',
+      description: `Portal invite sent to ${guardian.full_name} at ${guardian.email}`,
+    });
+
+    fetchGuardians();
+  } catch (error: any) {
+    toast({
+      title: 'Error sending invite',
+      description: error.message,
+      variant: 'destructive',
+    });
+  } finally {
+    setInvitingGuardianId(null);
+  }
+};
+```
+
+### 6. Update Guardian Row UI
+
+Replace the current invite button logic with status-aware rendering:
+
+```tsx
+{/* Invite status and actions */}
+{isOrgAdmin && !sg.guardian?.user_id && sg.guardian?.email && (() => {
+  const inviteStatus = guardianInvites[sg.guardian.id];
+  const isInviting = invitingGuardianId === sg.guardian.id;
+  
+  if (!inviteStatus || inviteStatus.inviteStatus === 'none') {
+    // No invite sent yet
+    return (
+      <Button variant="outline" size="sm" onClick={() => handleInviteGuardian(sg.guardian!)} disabled={isInviting} className="gap-1">
+        {isInviting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+        Invite
+      </Button>
+    );
+  } else if (inviteStatus.inviteStatus === 'pending') {
+    // Invite pending
+    return (
+      <div className="flex items-center gap-2">
+        <Badge variant="secondary" className="text-xs">Invite Pending</Badge>
+        <Button variant="ghost" size="sm" onClick={() => handleInviteGuardian(sg.guardian!, inviteStatus.inviteId!)} disabled={isInviting} className="gap-1 text-xs">
+          {isInviting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+          Resend
+        </Button>
+      </div>
+    );
+  } else if (inviteStatus.inviteStatus === 'expired') {
+    // Invite expired
+    return (
+      <div className="flex items-center gap-2">
+        <Badge variant="destructive" className="text-xs">Invite Expired</Badge>
+        <Button variant="ghost" size="sm" onClick={() => handleInviteGuardian(sg.guardian!, inviteStatus.inviteId!)} disabled={isInviting} className="gap-1 text-xs">
+          {isInviting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+          Resend
+        </Button>
+      </div>
+    );
+  }
+  return null;
+})()}
+```
 
 ---
 
 ## Files to Modify
 
-| File | Change |
-|------|--------|
-| `supabase/functions/send-invite-email/index.ts` | Fetch invite details from DB instead of expecting them in request body |
+| File | Changes |
+|------|---------|
+| `src/pages/StudentDetail.tsx` | Add invite status interface, state, fetch function, update handleInviteGuardian, update guardian row UI |
+
+---
+
+## Visual Summary
+
+```text
+BEFORE:
+┌─────────────────────────────────────────────────────────────┐
+│ Sarah Watson          [guardian] [Primary Payer]            │
+│ sarah.watson@test.com                                       │
+│                                        [Invite]    [Remove] │
+└─────────────────────────────────────────────────────────────┘
+
+AFTER (Pending):
+┌─────────────────────────────────────────────────────────────┐
+│ Sarah Watson          [guardian] [Primary Payer]            │
+│ sarah.watson@test.com                                       │
+│                      [Invite Pending] [Resend]     [Remove] │
+└─────────────────────────────────────────────────────────────┘
+
+AFTER (Expired):
+┌─────────────────────────────────────────────────────────────┐
+│ Sarah Watson          [guardian] [Primary Payer]            │
+│ sarah.watson@test.com                                       │
+│                      [Invite Expired] [Resend]     [Remove] │
+└─────────────────────────────────────────────────────────────┘
+
+AFTER (Accepted):
+┌─────────────────────────────────────────────────────────────┐
+│ Sarah Watson          [guardian] [Primary Payer]            │
+│ sarah.watson@test.com             [Portal Access]           │
+│                                                    [Remove] │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Edge Cases
+
+1. **Multiple invites for same email**: Query returns most recent invite (ORDER BY created_at DESC LIMIT 1 per email)
+2. **Guardian email changed after invite**: Old invite won't match; treated as "no invite"
+3. **Race condition**: Disable button during invite send to prevent duplicates
 
 ---
 
 ## Testing Plan
 
-After fixing:
-1. Navigate to Students > Oliver Johnson > Guardians tab
-2. Click "Invite" button next to Michelle Johnson
-3. Check edge function logs for successful execution
-4. Check `invites` table for new record with token
-5. Check `message_log` table for logged email with invite URL
-6. Copy invite URL from logs
-7. Navigate to accept-invite page
-8. Create parent account and accept invite
-9. Verify redirect to portal
+After implementation:
+1. Navigate to Students > Emily Watson > Guardians tab
+2. Verify Sarah Watson shows "Invite Pending" badge (invite was already sent)
+3. Click "Resend" button and verify new invite is created
+4. Wait 7 days (or manually expire invite in DB) to test expired state
+5. Accept invite and verify "Portal Access" badge appears
+
