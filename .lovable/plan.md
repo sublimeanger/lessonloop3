@@ -1,50 +1,115 @@
-# Comprehensive System Fixes - COMPLETED
+
+# Fix: Auto-Create Teacher Record During Onboarding
 
 ## Summary
 
-All critical fixes from the walkthrough have been implemented.
+The onboarding flow is missing a critical step: creating a teacher record for Solo Teachers and owner-teachers. This causes the lesson creation modal to have an empty teacher dropdown, blocking the core scheduling functionality.
 
 ---
 
-## Completed Fixes
+## The Problem
 
-### ✅ Issue 1: Blog Markdown `##` Headers Not Rendering
+When a user completes onboarding:
+1. Profile is updated ✓
+2. Organisation is created ✓
+3. Org membership with role "owner" is created ✓
+4. **No teacher record is created ✗**
 
-**Fixed**: Updated `formatContent` in `BlogPost.tsx` to:
-1. Trim whitespace from blocks before processing
-2. Filter empty blocks after splitting
+Result: New users cannot create lessons because the Teacher dropdown is empty.
+
+---
+
+## Solution
+
+### Update `onboarding-setup` Edge Function
+
+Add teacher creation after organisation setup for:
+- `solo_teacher` org type (owner is always the teacher)
+- Optionally for `studio`/`academy` org types too
+
+### Implementation Details
+
+**File to modify:** `supabase/functions/onboarding-setup/index.ts`
+
+**Add after line 174** (after org creation):
 
 ```typescript
-const blocks = content
-  .split(/\n\n+/)
-  .map(block => block.trim())
-  .filter(block => block.length > 0);
+// Step 3.5: For solo_teacher orgs, create a teacher record for the owner
+if (org_type === 'solo_teacher') {
+  console.log('[onboarding-setup] Creating teacher record for solo teacher');
+  
+  const { error: teacherError } = await adminClient
+    .from('teachers')
+    .insert({
+      org_id: orgId,
+      user_id: user.id,
+      name: full_name,
+      email: user.email,
+      status: 'active',
+    });
+
+  if (teacherError && teacherError.code !== '23505') {
+    console.error('[onboarding-setup] Teacher creation failed:', teacherError);
+    // Non-fatal - log but don't fail onboarding
+  } else {
+    console.log('[onboarding-setup] Teacher record created');
+  }
+}
 ```
 
-### ✅ Issue 2: Seed Function student_guardians Logging
+### Fix Existing Data
 
-**Fixed**: Added comprehensive logging to `seed-demo-data` edge function:
-- Logs the number of student_guardian links being inserted
-- Uses `.select()` to verify insertion
-- Logs the number of records created
-- Throws with full error details if insertion fails
+For users who already completed onboarding without a teacher record, we need to create teachers for them. This can be done via a one-time SQL migration:
 
-### ✅ Issue 3: Sitemap Domain
-
-**Status**: Kept as `lessonloop.net` - this is the correct production domain. Will work correctly once DNS is configured.
+```sql
+-- Create teacher records for solo_teacher org owners who don't have one
+INSERT INTO teachers (org_id, user_id, name, email, status)
+SELECT 
+  o.id as org_id,
+  om.user_id,
+  p.full_name as name,
+  p.email,
+  'active' as status
+FROM organisations o
+JOIN org_memberships om ON o.id = om.org_id AND om.role = 'owner'
+JOIN profiles p ON om.user_id = p.id
+LEFT JOIN teachers t ON t.org_id = o.id AND t.user_id = om.user_id
+WHERE o.org_type = 'solo_teacher'
+AND t.id IS NULL;
+```
 
 ---
 
-## Files Modified
+## Additional Fixes for Academy/Agency
+
+For `academy` and `agency` org types, we could optionally:
+1. Create a teacher record for the owner (if they teach)
+2. Show a prompt in the UI to add teachers before creating lessons
+
+However, for MVP, the Solo Teacher fix is most critical since that's the primary use case.
+
+---
+
+## Testing Plan
+
+1. Deploy updated edge function
+2. Run SQL to fix existing data
+3. Sign up as new Solo Teacher → verify teacher record created
+4. Navigate to Calendar → New Lesson → verify teacher appears in dropdown
+5. Create a lesson → verify it saves successfully
+
+---
+
+## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/pages/marketing/BlogPost.tsx` | Fixed formatContent to trim/filter blocks |
-| `supabase/functions/seed-demo-data/index.ts` | Added logging and verification for student_guardians |
+| `supabase/functions/onboarding-setup/index.ts` | Add teacher creation for solo_teacher orgs |
 
 ---
 
-## Next Steps (Optional)
+## Impact
 
-- Run `seed-demo-data` function on a fresh org to verify student_guardians are created
-- Create a demo account with known password for E2E testing
+- **Critical** - Without this fix, new Solo Teacher users cannot create lessons
+- **Low risk** - The change is additive and doesn't affect existing functionality
+- **Immediate benefit** - Core app functionality restored for new users
