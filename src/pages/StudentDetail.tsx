@@ -30,6 +30,13 @@ import { TeachingDefaultsCard } from '@/components/students/TeachingDefaultsCard
 type StudentStatus = 'active' | 'inactive';
 type RelationshipType = 'mother' | 'father' | 'guardian' | 'other';
 
+interface GuardianInviteStatus {
+  guardianId: string;
+  inviteId: string | null;
+  inviteStatus: 'none' | 'pending' | 'expired' | 'accepted';
+  expiresAt?: string;
+}
+
 interface Student {
   id: string;
   first_name: string;
@@ -93,6 +100,7 @@ export default function StudentDetail() {
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedGuardianForMessage, setSelectedGuardianForMessage] = useState<Guardian | null>(null);
   const [invitingGuardianId, setInvitingGuardianId] = useState<string | null>(null);
+  const [guardianInvites, setGuardianInvites] = useState<Record<string, GuardianInviteStatus>>({});
   
   // Data hooks
   const { data: messages, isLoading: messagesLoading } = useStudentMessages(id);
@@ -147,10 +155,56 @@ export default function StudentDetail() {
     setAllGuardians((allG || []) as Guardian[]);
   };
 
+  const fetchGuardianInvites = async () => {
+    if (!currentOrg) return;
+    
+    const guardianEmails = guardians
+      .map(sg => sg.guardian?.email)
+      .filter((email): email is string => Boolean(email));
+    
+    if (guardianEmails.length === 0) {
+      setGuardianInvites({});
+      return;
+    }
+    
+    const { data } = await supabase
+      .from('invites')
+      .select('id, email, expires_at, accepted_at')
+      .eq('org_id', currentOrg.id)
+      .eq('role', 'parent')
+      .in('email', guardianEmails)
+      .order('created_at', { ascending: false });
+    
+    const inviteMap: Record<string, GuardianInviteStatus> = {};
+    guardians.forEach(sg => {
+      const guardian = sg.guardian;
+      if (!guardian?.email) return;
+      
+      const invite = data?.find(i => i.email === guardian.email);
+      if (!invite) {
+        inviteMap[guardian.id] = { guardianId: guardian.id, inviteId: null, inviteStatus: 'none' };
+      } else if (invite.accepted_at) {
+        inviteMap[guardian.id] = { guardianId: guardian.id, inviteId: invite.id, inviteStatus: 'accepted' };
+      } else if (new Date(invite.expires_at) < new Date()) {
+        inviteMap[guardian.id] = { guardianId: guardian.id, inviteId: invite.id, inviteStatus: 'expired', expiresAt: invite.expires_at };
+      } else {
+        inviteMap[guardian.id] = { guardianId: guardian.id, inviteId: invite.id, inviteStatus: 'pending', expiresAt: invite.expires_at };
+      }
+    });
+    
+    setGuardianInvites(inviteMap);
+  };
+
   useEffect(() => {
     fetchStudent();
     fetchGuardians();
   }, [id, currentOrg?.id]);
+
+  useEffect(() => {
+    if (guardians.length > 0) {
+      fetchGuardianInvites();
+    }
+  }, [guardians, currentOrg?.id]);
 
   const handleSave = async () => {
     if (!student) return;
@@ -266,12 +320,20 @@ export default function StudentDetail() {
     }
   };
 
-  const handleInviteGuardian = async (guardian: Guardian) => {
+  const handleInviteGuardian = async (guardian: Guardian, existingInviteId?: string) => {
     if (!guardian.email || !currentOrg || !student) return;
     setInvitingGuardianId(guardian.id);
 
     try {
-      // Create invite record
+      // If resending, delete the old invite first
+      if (existingInviteId) {
+        await supabase
+          .from('invites')
+          .delete()
+          .eq('id', existingInviteId);
+      }
+
+      // Create new invite record
       const { data: invite, error: inviteError } = await supabase
         .from('invites')
         .insert({
@@ -299,7 +361,7 @@ export default function StudentDetail() {
       }
 
       toast({
-        title: 'Invite sent',
+        title: existingInviteId ? 'Invite resent' : 'Invite sent',
         description: `Portal invite sent to ${guardian.full_name} at ${guardian.email}`,
       });
 
@@ -519,23 +581,74 @@ export default function StudentDetail() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {/* Invite button - show only if guardian has email, no user_id, and user is admin */}
-                        {isOrgAdmin && !sg.guardian?.user_id && sg.guardian?.email && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => sg.guardian && handleInviteGuardian(sg.guardian)}
-                            disabled={invitingGuardianId === sg.guardian?.id}
-                            className="gap-1"
-                          >
-                            {invitingGuardianId === sg.guardian?.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <Send className="h-3 w-3" />
-                            )}
-                            Invite
-                          </Button>
-                        )}
+                        {/* Invite status and actions */}
+                        {isOrgAdmin && !sg.guardian?.user_id && sg.guardian?.email && (() => {
+                          const inviteStatus = guardianInvites[sg.guardian.id];
+                          const isInviting = invitingGuardianId === sg.guardian.id;
+                          
+                          if (!inviteStatus || inviteStatus.inviteStatus === 'none') {
+                            // No invite sent yet
+                            return (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleInviteGuardian(sg.guardian!)}
+                                disabled={isInviting}
+                                className="gap-1"
+                              >
+                                {isInviting ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Send className="h-3 w-3" />
+                                )}
+                                Invite
+                              </Button>
+                            );
+                          } else if (inviteStatus.inviteStatus === 'pending') {
+                            // Invite pending
+                            return (
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className="text-xs">Invite Pending</Badge>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleInviteGuardian(sg.guardian!, inviteStatus.inviteId!)}
+                                  disabled={isInviting}
+                                  className="gap-1 text-xs"
+                                >
+                                  {isInviting ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Send className="h-3 w-3" />
+                                  )}
+                                  Resend
+                                </Button>
+                              </div>
+                            );
+                          } else if (inviteStatus.inviteStatus === 'expired') {
+                            // Invite expired
+                            return (
+                              <div className="flex items-center gap-2">
+                                <Badge variant="destructive" className="text-xs">Invite Expired</Badge>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleInviteGuardian(sg.guardian!, inviteStatus.inviteId!)}
+                                  disabled={isInviting}
+                                  className="gap-1 text-xs"
+                                >
+                                  {isInviting ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Send className="h-3 w-3" />
+                                  )}
+                                  Resend
+                                </Button>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                         {isOrgAdmin && (
                           <Button variant="ghost" size="sm" onClick={() => removeGuardian(sg.id)}>Remove</Button>
                         )}
