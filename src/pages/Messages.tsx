@@ -12,7 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MessageSquare, Plus, Search, Filter, Loader2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Plus, Search, Filter, Loader2, Users, User, ChevronDown } from 'lucide-react';
 
 import { useOrg } from '@/contexts/OrgContext';
 import { useMessageLog } from '@/hooks/useMessages';
@@ -20,6 +26,7 @@ import { usePendingRequestsCount } from '@/hooks/useAdminMessageRequests';
 import { MessageList } from '@/components/messages/MessageList';
 import { MessageRequestsList } from '@/components/messages/MessageRequestsList';
 import { ComposeMessageModal } from '@/components/messages/ComposeMessageModal';
+import { BulkComposeModal } from '@/components/messages/BulkComposeModal';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Guardian {
@@ -34,6 +41,7 @@ export default function Messages() {
   const canViewRequests = isOrgAdmin || isOrgOwner;
   
   const [composeOpen, setComposeOpen] = useState(false);
+  const [bulkComposeOpen, setBulkComposeOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [channelFilter, setChannelFilter] = useState<string>('all');
   const [guardians, setGuardians] = useState<Guardian[]>([]);
@@ -107,10 +115,27 @@ export default function Messages() {
           { label: 'Messages' },
         ]}
         actions={
-          <Button onClick={() => setComposeOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Message
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                New Message
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setComposeOpen(true)} className="gap-2">
+                <User className="h-4 w-4" />
+                Individual Message
+              </DropdownMenuItem>
+              {canViewRequests && (
+                <DropdownMenuItem onClick={() => setBulkComposeOpen(true)} className="gap-2">
+                  <Users className="h-4 w-4" />
+                  Bulk Message
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         }
       />
 
@@ -216,6 +241,12 @@ export default function Messages() {
         open={composeOpen}
         onOpenChange={setComposeOpen}
         guardians={guardians}
+      />
+
+      {/* Bulk Compose Modal */}
+      <BulkComposeModal
+        open={bulkComposeOpen}
+        onOpenChange={setBulkComposeOpen}
       />
     </AppLayout>
   );
