@@ -1,212 +1,113 @@
 
-# Full Blog System & SEO Implementation Plan
+# Comprehensive System Fixes Required
 
 ## Summary
 
-The project currently lacks a sitemap, has no pre-rendering for SEO, and the blog is a placeholder with "Coming soon" badges. This plan will create a fully functional blog with 6 complete articles, proper SEO sitemap, and featured images.
+The comprehensive walkthrough revealed several critical data integrity issues and UI bugs that need to be fixed before the system can be considered production-ready.
 
 ---
 
-## Part 1: Sitemap.xml Creation
+## Critical Issues to Fix
 
-### Current State
-- No `sitemap.xml` exists
-- `robots.txt` doesn't reference a sitemap
+### Issue 1: Missing Student-Guardian Links in Seed Function
 
-### Implementation
-Create a static `public/sitemap.xml` containing all public marketing pages:
+**Problem**: The `seed-demo-data` edge function creates students and guardians but the `student_guardians` junction records are not being persisted. This affects billing payer resolution.
 
-**Pages to include:**
-| URL | Priority | Change Frequency |
-|-----|----------|------------------|
-| `/` | 1.0 | weekly |
-| `/features` | 0.9 | weekly |
-| `/pricing` | 0.9 | weekly |
-| `/about` | 0.8 | monthly |
-| `/blog` | 0.8 | weekly |
-| `/blog/time-saving-tips` | 0.7 | monthly |
-| `/blog/setting-lesson-rates` | 0.7 | monthly |
-| `/blog/parent-communication` | 0.7 | monthly |
-| `/blog/multiple-locations` | 0.7 | monthly |
-| `/blog/gdpr-compliance` | 0.7 | monthly |
-| `/blog/sustainable-practice` | 0.7 | monthly |
-| `/contact` | 0.7 | monthly |
-| `/privacy` | 0.5 | yearly |
-| `/terms` | 0.5 | yearly |
-| `/gdpr` | 0.5 | yearly |
-| `/cookies` | 0.5 | yearly |
-| `/login` | 0.3 | monthly |
-| `/signup` | 0.6 | monthly |
+**Fix**: Review and fix the seed function's student_guardians insertion logic. The issue is likely:
+- RLS blocking the insert (service role key should bypass this)
+- Transaction isolation issue
+- Error being silently swallowed
 
-**Update `robots.txt`** to include:
-```
-Sitemap: https://lessonloop3.lovable.app/sitemap.xml
-```
+**Files to modify**:
+- `supabase/functions/seed-demo-data/index.ts`
 
 ---
 
-## Part 2: Pre-rendering Consideration
+### Issue 2: Blog Markdown `##` Headers Not Rendering
 
-### Current State
-The app is a client-side rendered (CSR) React SPA. Adding true SSG/pre-rendering would require significant architectural changes (e.g., switching to a framework like Remix or adding `vite-plugin-prerender`).
+**Problem**: The first heading (`## Introduction`) and potentially other headings are displaying as raw text with the `##` visible.
 
-### Recommendation
-For a Vite/React SPA on Lovable Cloud, the practical approach is:
-1. **Static sitemap** (implemented above)
-2. **Proper meta tags** (already in `index.html`)
-3. **Search engine friendly content** via semantic HTML
+**Root Cause**: The content starts with a newline before `## Introduction`. When split on `\n\n`, the first block might be empty or include leading whitespace, causing the `startsWith("## ")` check to fail.
 
-Full pre-rendering is a larger architectural decision that would require framework changes. The sitemap + meta tags approach gives good SEO value for marketing pages.
+**Fix**: Update `formatContent` in `BlogPost.tsx` to:
+1. Trim whitespace from blocks before processing
+2. Handle the case where blocks have leading newlines
+
+**Files to modify**:
+- `src/pages/marketing/BlogPost.tsx` - Update the `formatContent` function
 
 ---
 
-## Part 3: Complete Blog System
+### Issue 3: Sitemap Domain Mismatch
 
-### Architecture
+**Problem**: Sitemap uses `lessonloop.net` but the published URL is `lessonloop3.lovable.app`.
 
-**New Files:**
-| File | Purpose |
-|------|---------|
-| `src/data/blogPosts.ts` | Central blog content data with full articles |
-| `src/pages/marketing/BlogPost.tsx` | Individual article page component |
-| `public/blog/` | Directory for blog featured images (6 SVGs) |
+**Fix**: Update sitemap to use the correct production domain. Since the final domain will be `lessonloop.net`, we should keep this but note it will only work correctly when DNS is configured.
 
-**Modified Files:**
-| File | Changes |
-|------|---------|
-| `src/pages/marketing/Blog.tsx` | Link cards to individual posts, use real images |
-| `src/App.tsx` | Add `/blog/:slug` route |
+**Files to modify** (optional):
+- `public/sitemap.xml` - Update domain if needed
 
-### Blog Data Structure
+---
 
+### Issue 4: Payment Data Missing for Some Orgs
+
+**Problem**: Premier Music Education Agency has £480 in paid invoices but £0 in payments recorded. This creates inconsistent financial reports.
+
+**Fix**: This is a data issue rather than code issue. The seed function for this org (if it exists) didn't create payment records.
+
+**Resolution**: Run SQL migration to create missing payment records or clean up test data.
+
+---
+
+## Secondary Fixes
+
+### Fix 5: Add Demo Account with Known Password
+
+To enable future E2E testing, create a documented test account with a known password.
+
+---
+
+## Implementation Order
+
+1. **Fix blog markdown rendering** (Quick fix, high visibility)
+2. **Fix seed function student_guardians** (Critical for data integrity)
+3. **Verify sitemap domain** (Low priority, SEO)
+
+---
+
+## Estimated Changes
+
+| File | Type | Change |
+|------|------|--------|
+| `src/pages/marketing/BlogPost.tsx` | Edit | Fix formatContent block trimming |
+| `supabase/functions/seed-demo-data/index.ts` | Edit | Debug student_guardians insertion |
+| `public/sitemap.xml` | Optional | Update domain if deploying to lessonloop3.lovable.app |
+
+---
+
+## Technical Details
+
+### BlogPost.tsx Fix
 ```typescript
-interface BlogPost {
-  slug: string;           // URL-friendly identifier
-  title: string;
-  excerpt: string;        // Short summary for cards
-  date: string;
-  category: string;
-  readTime: string;
-  author: {
-    name: string;
-    role: string;
-  };
-  featuredImage: string;  // Path to SVG in public/blog/
-  content: string;        // Full article in Markdown-style JSX
-  tags: string[];
-  relatedPosts: string[]; // Slugs of related articles
+// In formatContent, add trimming:
+const blocks = post.content
+  .split(/\n\n+/)
+  .map(block => block.trim())  // Add trim
+  .filter(block => block.length > 0);  // Filter empty blocks
+```
+
+### Seed Function Debug
+Add logging to verify the student_guardians insert is working:
+```typescript
+console.log('Inserting student_guardians:', linkInserts.length);
+const { data: linkData, error: linkError } = await supabase
+  .from('student_guardians')
+  .insert(linkInserts)
+  .select();  // Add select to verify
+
+if (linkError) {
+  console.error('student_guardians error:', linkError);
+  throw linkError;
 }
+console.log('Created student_guardians:', linkData?.length);
 ```
-
-### Blog Articles Content
-
-I will write 6 complete, UK-focused articles (1,000-1,500 words each):
-
-**Article 1: "10 Time-Saving Tips for Music Teachers in 2026"**
-- Category: Productivity
-- Topics: Batch scheduling, template messages, automated invoicing, lesson planning shortcuts, digital tools, practice tracking, admin hour blocking, parent portal, mobile apps, end-of-term automation
-
-**Article 2: "How to Set Your Lesson Rates in the UK"**
-- Category: Business
-- Topics: Market research (typical UK rates by instrument/region), cost calculation, hourly vs package rates, home vs venue pricing, travel surcharges, term discounts, when to raise rates, VAT threshold
-
-**Article 3: "The Complete Guide to Parent Communication"**
-- Category: Communication
-- Topics: Progress updates, lesson notes, practice expectations, cancellation policies, term newsletters, difficult conversations, feedback loops, portal access, response time expectations
-
-**Article 4: "Managing Multiple Teaching Locations"**
-- Category: Operations
-- Topics: Travel time buffers, location-specific rates, room booking coordination, equipment considerations, timetable optimization, hybrid online/in-person, location-based invoicing, student grouping
-
-**Article 5: "GDPR Compliance for Music Teachers"**
-- Category: Legal
-- Topics: What GDPR means for tutors, consent requirements, data you can collect, storage requirements, right to deletion, data breach protocols, photography/video recording, third-party tools
-
-**Article 6: "Building a Sustainable Teaching Practice"**
-- Category: Business
-- Topics: Avoiding burnout, setting boundaries, term structure, holiday policies, income diversification, raising rates over time, student retention, work-life balance, long-term planning
-
-### Featured Images
-
-Create 6 custom SVG illustrations for the blog posts in `public/blog/`:
-- `time-saving.svg` - Clock/efficiency themed
-- `lesson-rates.svg` - Pound sterling/pricing themed
-- `parent-communication.svg` - Messaging/conversation themed
-- `multiple-locations.svg` - Map/pins themed
-- `gdpr-compliance.svg` - Shield/lock themed
-- `sustainable-practice.svg` - Growth/plant themed
-
-Each SVG will use the LessonLoop brand colours (teal, coral, ink) with a modern illustration style.
-
-### BlogPost Page Features
-
-- Hero section with featured image
-- Article metadata (date, category, read time, author)
-- Full article content with headings, paragraphs, lists
-- Sidebar with table of contents
-- Related articles section
-- Share buttons (copy link, Twitter, LinkedIn)
-- CTA to signup at bottom
-- Back to blog link
-- Responsive design (single column on mobile)
-
----
-
-## Part 4: Implementation Details
-
-### Route Configuration
-```tsx
-// In App.tsx
-import BlogPost from "./pages/marketing/BlogPost";
-
-// In Routes
-<Route path="/blog/:slug" element={<BlogPost />} />
-```
-
-### Blog Listing Updates
-- Remove "Coming soon" badge
-- Add `Link` wrapper to each card
-- Use actual featured images instead of gradient placeholders
-- Add hover effect indicating clickability
-
-### SEO for Blog Posts
-Each blog post page will include:
-- Dynamic document title
-- Meta description from excerpt
-- Structured data (Article schema)
-- Canonical URL
-- Open Graph tags for social sharing
-
----
-
-## Files to Create
-
-| File | Description |
-|------|-------------|
-| `public/sitemap.xml` | XML sitemap for search engines |
-| `public/blog/time-saving.svg` | Featured image |
-| `public/blog/lesson-rates.svg` | Featured image |
-| `public/blog/parent-communication.svg` | Featured image |
-| `public/blog/multiple-locations.svg` | Featured image |
-| `public/blog/gdpr-compliance.svg` | Featured image |
-| `public/blog/sustainable-practice.svg` | Featured image |
-| `src/data/blogPosts.ts` | Complete blog content data |
-| `src/pages/marketing/BlogPost.tsx` | Individual article page |
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `public/robots.txt` | Add sitemap reference |
-| `src/pages/marketing/Blog.tsx` | Link to posts, real images |
-| `src/App.tsx` | Add blog post route |
-
----
-
-## Estimated Deliverables
-
-- 1 sitemap.xml with 18 URLs
-- 6 SVG featured images (brand-styled)
-- 6 complete blog articles (~7,500 words total)
-- Fully functional blog listing and detail pages
-- Proper SEO metadata on all blog pages
