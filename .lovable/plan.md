@@ -14,6 +14,14 @@ Teachers, admins, and owners can now send internal messages to each other. The M
 
 ---
 
+## ✅ Phase 3: COMPLETE - Email Notifications for All Messages
+
+All in-app messages now trigger email notifications via Resend:
+- Parent request responses (Phase 1b)
+- Internal staff messages (notify-internal-message edge function)
+
+---
+
 ### What Already Exists
 
 | Component | Status | Notes |
