@@ -173,7 +173,29 @@ Deno.serve(async (req) => {
     // Wait for trigger to complete
     await new Promise(resolve => setTimeout(resolve, 300));
 
-    // Step 3: Mark onboarding complete and ensure current_org_id is set
+    // Step 3.5: For solo_teacher orgs, create a teacher record for the owner
+    if (org_type === 'solo_teacher') {
+      console.log('[onboarding-setup] Creating teacher record for solo teacher');
+      
+      const { error: teacherError } = await adminClient
+        .from('teachers')
+        .insert({
+          org_id: orgId,
+          user_id: user.id,
+          display_name: full_name,
+          email: user.email,
+          status: 'active',
+        });
+
+      if (teacherError && teacherError.code !== '23505') {
+        console.error('[onboarding-setup] Teacher creation failed:', teacherError);
+        // Non-fatal - log but don't fail onboarding
+      } else {
+        console.log('[onboarding-setup] Teacher record created');
+      }
+    }
+
+    // Step 4: Mark onboarding complete and ensure current_org_id is set
     const { error: completeError } = await adminClient
       .from('profiles')
       .update({ 
