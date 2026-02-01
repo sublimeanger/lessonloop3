@@ -49,6 +49,7 @@ interface Guardian {
   full_name: string;
   email: string | null;
   phone: string | null;
+  user_id: string | null;
 }
 
 interface StudentGuardian {
@@ -91,6 +92,7 @@ export default function StudentDetail() {
   const [isNewGuardian, setIsNewGuardian] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedGuardianForMessage, setSelectedGuardianForMessage] = useState<Guardian | null>(null);
+  const [invitingGuardianId, setInvitingGuardianId] = useState<string | null>(null);
   
   // Data hooks
   const { data: messages, isLoading: messagesLoading } = useStudentMessages(id);
@@ -129,7 +131,7 @@ export default function StudentDetail() {
     
     const { data } = await supabase
       .from('student_guardians')
-      .select(`*, guardian:guardians(*)`)
+      .select(`*, guardian:guardians(id, full_name, email, phone, user_id)`)
       .eq('student_id', id);
     
     setGuardians((data || []).map((sg: any) => ({
@@ -261,6 +263,55 @@ export default function StudentDetail() {
       toast({ title: 'Error removing guardian', description: error.message, variant: 'destructive' });
     } else {
       fetchGuardians();
+    }
+  };
+
+  const handleInviteGuardian = async (guardian: Guardian) => {
+    if (!guardian.email || !currentOrg || !student) return;
+    setInvitingGuardianId(guardian.id);
+
+    try {
+      // Create invite record
+      const { data: invite, error: inviteError } = await supabase
+        .from('invites')
+        .insert({
+          org_id: currentOrg.id,
+          email: guardian.email,
+          role: 'parent' as const,
+          related_student_id: student.id,
+        })
+        .select()
+        .single();
+
+      if (inviteError) throw inviteError;
+
+      // Send invite email via edge function
+      const { error: emailError } = await supabase.functions.invoke('send-invite-email', {
+        body: {
+          inviteId: invite.id,
+          guardianId: guardian.id,
+        },
+      });
+
+      if (emailError) {
+        console.error('Email error:', emailError);
+        // Don't fail - invite was created
+      }
+
+      toast({
+        title: 'Invite sent',
+        description: `Portal invite sent to ${guardian.full_name} at ${guardian.email}`,
+      });
+
+      fetchGuardians();
+    } catch (error: any) {
+      toast({
+        title: 'Error sending invite',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setInvitingGuardianId(null);
     }
   };
 
@@ -458,15 +509,37 @@ export default function StudentDetail() {
                           <span className="font-medium">{sg.guardian?.full_name}</span>
                           <Badge variant="outline" className="text-xs capitalize">{sg.relationship}</Badge>
                           {sg.is_primary_payer && <Badge className="text-xs">Primary Payer</Badge>}
+                          {sg.guardian?.user_id && (
+                            <Badge variant="secondary" className="text-xs">Portal Access</Badge>
+                          )}
                         </div>
                         <div className="flex gap-4 text-sm text-muted-foreground mt-1">
                           {sg.guardian?.email && <span>{sg.guardian.email}</span>}
                           {sg.guardian?.phone && <span>{sg.guardian.phone}</span>}
                         </div>
                       </div>
-                      {isOrgAdmin && (
-                        <Button variant="ghost" size="sm" onClick={() => removeGuardian(sg.id)}>Remove</Button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {/* Invite button - show only if guardian has email, no user_id, and user is admin */}
+                        {isOrgAdmin && !sg.guardian?.user_id && sg.guardian?.email && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => sg.guardian && handleInviteGuardian(sg.guardian)}
+                            disabled={invitingGuardianId === sg.guardian?.id}
+                            className="gap-1"
+                          >
+                            {invitingGuardianId === sg.guardian?.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Send className="h-3 w-3" />
+                            )}
+                            Invite
+                          </Button>
+                        )}
+                        {isOrgAdmin && (
+                          <Button variant="ghost" size="sm" onClick={() => removeGuardian(sg.id)}>Remove</Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
