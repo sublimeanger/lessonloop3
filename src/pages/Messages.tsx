@@ -18,15 +18,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Search, Filter, Loader2, Users, User, ChevronDown } from 'lucide-react';
+import { Plus, Search, Filter, Loader2, Users, User, ChevronDown, MessageSquare } from 'lucide-react';
 
 import { useOrg } from '@/contexts/OrgContext';
 import { useMessageLog } from '@/hooks/useMessages';
 import { usePendingRequestsCount } from '@/hooks/useAdminMessageRequests';
+import { useUnreadInternalCount } from '@/hooks/useInternalMessages';
 import { MessageList } from '@/components/messages/MessageList';
 import { MessageRequestsList } from '@/components/messages/MessageRequestsList';
 import { ComposeMessageModal } from '@/components/messages/ComposeMessageModal';
 import { BulkComposeModal } from '@/components/messages/BulkComposeModal';
+import { InternalComposeModal } from '@/components/messages/InternalComposeModal';
+import { InternalMessageList } from '@/components/messages/InternalMessageList';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Guardian {
@@ -39,18 +42,22 @@ export default function Messages() {
   const { currentOrg, currentRole, isOrgAdmin, isOrgOwner } = useOrg();
   const isParent = currentRole === 'parent';
   const canViewRequests = isOrgAdmin || isOrgOwner;
+  const isStaff = ['owner', 'admin', 'teacher'].includes(currentRole || '');
   
   const [composeOpen, setComposeOpen] = useState(false);
   const [bulkComposeOpen, setBulkComposeOpen] = useState(false);
+  const [internalComposeOpen, setInternalComposeOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [channelFilter, setChannelFilter] = useState<string>('all');
   const [guardians, setGuardians] = useState<Guardian[]>([]);
   const [activeTab, setActiveTab] = useState('sent');
+  const [internalView, setInternalView] = useState<'inbox' | 'sent'>('inbox');
 
   const { data: messages, isLoading } = useMessageLog({
     channel: channelFilter === 'all' ? undefined : channelFilter,
   });
   const { data: pendingCount } = usePendingRequestsCount();
+  const { data: unreadInternalCount } = useUnreadInternalCount();
 
   // Fetch guardians for compose modal
   useEffect(() => {
@@ -109,7 +116,7 @@ export default function Messages() {
     <AppLayout>
       <PageHeader
         title="Messages"
-        description="Send messages and manage parent requests"
+        description="Send messages and manage communications"
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Messages' },
@@ -126,7 +133,7 @@ export default function Messages() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setComposeOpen(true)} className="gap-2">
                 <User className="h-4 w-4" />
-                Individual Message
+                Message Parent
               </DropdownMenuItem>
               {canViewRequests && (
                 <DropdownMenuItem onClick={() => setBulkComposeOpen(true)} className="gap-2">
@@ -134,15 +141,31 @@ export default function Messages() {
                   Bulk Message
                 </DropdownMenuItem>
               )}
+              {isStaff && (
+                <DropdownMenuItem onClick={() => setInternalComposeOpen(true)} className="gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Internal Message
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         }
       />
 
-      {canViewRequests ? (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="sent">Sent Messages</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="sent">Sent to Parents</TabsTrigger>
+          {isStaff && (
+            <TabsTrigger value="internal" className="gap-2">
+              Internal
+              {unreadInternalCount && unreadInternalCount > 0 && (
+                <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1">
+                  {unreadInternalCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+          )}
+          {canViewRequests && (
             <TabsTrigger value="requests" className="gap-2">
               Parent Requests
               {pendingCount && pendingCount > 0 && (
@@ -151,54 +174,11 @@ export default function Messages() {
                 </Badge>
               )}
             </TabsTrigger>
-          </TabsList>
+          )}
+        </TabsList>
 
-          <TabsContent value="sent">
-            {/* Filters */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center mb-6">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search messages..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <Select value={channelFilter} onValueChange={setChannelFilter}>
-                <SelectTrigger className="w-40">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Channels</SelectItem>
-                  <SelectItem value="email">Email</SelectItem>
-                  <SelectItem value="inapp">In-App</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Message List */}
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <MessageList
-                messages={filteredMessages || []}
-                isLoading={isLoading}
-                emptyMessage="No messages sent yet. Click 'New Message' to send your first message."
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="requests">
-            <MessageRequestsList />
-          </TabsContent>
-        </Tabs>
-      ) : (
-        <>
-          {/* Non-admin view - just sent messages */}
+        <TabsContent value="sent">
+          {/* Filters */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -222,6 +202,7 @@ export default function Messages() {
             </Select>
           </div>
 
+          {/* Message List */}
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -233,8 +214,28 @@ export default function Messages() {
               emptyMessage="No messages sent yet. Click 'New Message' to send your first message."
             />
           )}
-        </>
-      )}
+        </TabsContent>
+
+        {isStaff && (
+          <TabsContent value="internal">
+            <div className="flex items-center gap-4 mb-6">
+              <Tabs value={internalView} onValueChange={(v) => setInternalView(v as 'inbox' | 'sent')}>
+                <TabsList>
+                  <TabsTrigger value="inbox">Inbox</TabsTrigger>
+                  <TabsTrigger value="sent">Sent</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+            <InternalMessageList view={internalView} />
+          </TabsContent>
+        )}
+
+        {canViewRequests && (
+          <TabsContent value="requests">
+            <MessageRequestsList />
+          </TabsContent>
+        )}
+      </Tabs>
 
       {/* Compose Modal */}
       <ComposeMessageModal
@@ -247,6 +248,12 @@ export default function Messages() {
       <BulkComposeModal
         open={bulkComposeOpen}
         onOpenChange={setBulkComposeOpen}
+      />
+
+      {/* Internal Compose Modal */}
+      <InternalComposeModal
+        open={internalComposeOpen}
+        onOpenChange={setInternalComposeOpen}
       />
     </AppLayout>
   );
