@@ -15,7 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Mail, Phone, Calendar, Edit, Trash2, Plus, UserPlus, MessageSquare, Send, Receipt, Music } from 'lucide-react';
+import { Loader2, Mail, Phone, Calendar, Edit, Trash2, Plus, UserPlus, MessageSquare, Send, Receipt, Music, Copy } from 'lucide-react';
 import { useStudentMessages } from '@/hooks/useMessages';
 import { MessageList } from '@/components/messages/MessageList';
 import { ComposeMessageModal } from '@/components/messages/ComposeMessageModal';
@@ -35,6 +35,7 @@ interface GuardianInviteStatus {
   inviteId: string | null;
   inviteStatus: 'none' | 'pending' | 'expired' | 'accepted';
   expiresAt?: string;
+  token?: string;
 }
 
 interface Student {
@@ -169,7 +170,7 @@ export default function StudentDetail() {
     
     const { data } = await supabase
       .from('invites')
-      .select('id, email, expires_at, accepted_at')
+      .select('id, email, expires_at, accepted_at, token')
       .eq('org_id', currentOrg.id)
       .eq('role', 'parent')
       .in('email', guardianEmails)
@@ -188,11 +189,17 @@ export default function StudentDetail() {
       } else if (new Date(invite.expires_at) < new Date()) {
         inviteMap[guardian.id] = { guardianId: guardian.id, inviteId: invite.id, inviteStatus: 'expired', expiresAt: invite.expires_at };
       } else {
-        inviteMap[guardian.id] = { guardianId: guardian.id, inviteId: invite.id, inviteStatus: 'pending', expiresAt: invite.expires_at };
+        inviteMap[guardian.id] = { guardianId: guardian.id, inviteId: invite.id, inviteStatus: 'pending', expiresAt: invite.expires_at, token: invite.token };
       }
     });
     
     setGuardianInvites(inviteMap);
+  };
+
+  const handleCopyInviteLink = async (token: string) => {
+    const url = `${window.location.origin}/accept-invite?token=${token}`;
+    await navigator.clipboard.writeText(url);
+    toast({ title: 'Link copied', description: 'Invite link copied to clipboard' });
   };
 
   useEffect(() => {
@@ -609,27 +616,17 @@ export default function StudentDetail() {
                             return (
                               <div className="flex items-center gap-2">
                                 <Badge variant="secondary" className="text-xs">Invite Pending</Badge>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleInviteGuardian(sg.guardian!, inviteStatus.inviteId!)}
-                                  disabled={isInviting}
-                                  className="gap-1 text-xs"
-                                >
-                                  {isInviting ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    <Send className="h-3 w-3" />
-                                  )}
-                                  Resend
-                                </Button>
-                              </div>
-                            );
-                          } else if (inviteStatus.inviteStatus === 'expired') {
-                            // Invite expired
-                            return (
-                              <div className="flex items-center gap-2">
-                                <Badge variant="destructive" className="text-xs">Invite Expired</Badge>
+                                {inviteStatus.token && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleCopyInviteLink(inviteStatus.token!)}
+                                    className="gap-1 text-xs"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                    Copy Link
+                                  </Button>
+                                )}
                                 <Button
                                   variant="ghost"
                                   size="sm"
