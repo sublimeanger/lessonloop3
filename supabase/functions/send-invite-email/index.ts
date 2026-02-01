@@ -5,12 +5,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
 interface InviteEmailRequest {
   inviteId: string;
-  orgId: string;
-  orgName: string;
-  recipientEmail: string;
-  recipientRole: string;
-  inviteToken: string;
-  inviterName: string;
+  guardianId?: string; // Optional, for linking context
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -25,19 +20,51 @@ serve(async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const {
-      inviteId,
-      orgId,
-      orgName,
-      recipientEmail,
-      recipientRole,
-      inviteToken,
-      inviterName,
-    }: InviteEmailRequest = await req.json();
+    const { inviteId, guardianId }: InviteEmailRequest = await req.json();
+
+    if (!inviteId) {
+      return new Response(
+        JSON.stringify({ error: "inviteId is required" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Fetch invite with organisation data from database
+    const { data: invite, error: fetchError } = await supabase
+      .from("invites")
+      .select(`
+        id,
+        org_id,
+        email,
+        role,
+        token,
+        organisations!inner(name)
+      `)
+      .eq("id", inviteId)
+      .single();
+
+    if (fetchError || !invite) {
+      console.error("Error fetching invite:", fetchError);
+      return new Response(
+        JSON.stringify({ error: "Invite not found" }),
+        { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Extract data from fetched invite
+    // deno-lint-ignore no-explicit-any
+    const orgName = (invite.organisations as any).name as string;
+    const recipientEmail = invite.email;
+    const recipientRole = invite.role;
+    const inviteToken = invite.token;
+    const orgId = invite.org_id;
+    const inviterName = orgName; // Use org name as inviter
 
     // Build invite URL
     const frontendUrl = Deno.env.get("FRONTEND_URL") || req.headers.get("origin") || "https://lessonloop.net";
     const inviteUrl = `${frontendUrl}/accept-invite?token=${inviteToken}`;
+
+    console.log("Sending invite email to:", recipientEmail, "for org:", orgName);
 
     const subject = `You've been invited to join ${orgName}`;
     const body = `
