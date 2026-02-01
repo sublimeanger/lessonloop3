@@ -14,11 +14,13 @@ Teachers, admins, and owners can now send internal messages to each other. The M
 
 ---
 
-## ✅ Phase 3: COMPLETE - Email Notifications for All Messages
+## ✅ Phase 4: COMPLETE - Message Threading
 
-All in-app messages now trigger email notifications via Resend:
-- Parent request responses (Phase 1b)
-- Internal staff messages (notify-internal-message edge function)
+Messages are now grouped into conversation threads with:
+- Collapsible thread cards showing all messages in a conversation
+- Reply functionality that links new messages to threads via thread_id and parent_message_id
+- Toggle between "Threads" and "List" views on the Messages page
+- Both message_log and internal_messages tables support threading
 
 ---
 

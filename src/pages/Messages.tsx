@@ -18,7 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Search, Filter, Loader2, Users, User, ChevronDown, MessageSquare } from 'lucide-react';
+import { Plus, Search, Filter, Loader2, Users, User, ChevronDown, MessageSquare, List, GitBranch } from 'lucide-react';
 
 import { useOrg } from '@/contexts/OrgContext';
 import { useMessageLog } from '@/hooks/useMessages';
@@ -30,7 +30,9 @@ import { ComposeMessageModal } from '@/components/messages/ComposeMessageModal';
 import { BulkComposeModal } from '@/components/messages/BulkComposeModal';
 import { InternalComposeModal } from '@/components/messages/InternalComposeModal';
 import { InternalMessageList } from '@/components/messages/InternalMessageList';
+import { ThreadedMessageList } from '@/components/messages/ThreadedMessageList';
 import { supabase } from '@/integrations/supabase/client';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 interface Guardian {
   id: string;
@@ -52,6 +54,7 @@ export default function Messages() {
   const [guardians, setGuardians] = useState<Guardian[]>([]);
   const [activeTab, setActiveTab] = useState('sent');
   const [internalView, setInternalView] = useState<'inbox' | 'sent'>('inbox');
+  const [viewMode, setViewMode] = useState<'list' | 'threaded'>('threaded');
 
   const { data: messages, isLoading } = useMessageLog({
     channel: channelFilter === 'all' ? undefined : channelFilter,
@@ -178,7 +181,7 @@ export default function Messages() {
         </TabsList>
 
         <TabsContent value="sent">
-          {/* Filters */}
+          {/* Filters and View Toggle */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -187,23 +190,45 @@ export default function Messages() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
+                disabled={viewMode === 'threaded'}
               />
             </div>
-            <Select value={channelFilter} onValueChange={setChannelFilter}>
-              <SelectTrigger className="w-40">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Channels</SelectItem>
-                <SelectItem value="email">Email</SelectItem>
-                <SelectItem value="inapp">In-App</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <ToggleGroup 
+                type="single" 
+                value={viewMode} 
+                onValueChange={(v) => v && setViewMode(v as 'list' | 'threaded')}
+                className="border rounded-md"
+              >
+                <ToggleGroupItem value="threaded" aria-label="Threaded view" className="gap-2 px-3">
+                  <GitBranch className="h-4 w-4" />
+                  <span className="hidden sm:inline">Threads</span>
+                </ToggleGroupItem>
+                <ToggleGroupItem value="list" aria-label="List view" className="gap-2 px-3">
+                  <List className="h-4 w-4" />
+                  <span className="hidden sm:inline">List</span>
+                </ToggleGroupItem>
+              </ToggleGroup>
+              {viewMode === 'list' && (
+                <Select value={channelFilter} onValueChange={setChannelFilter}>
+                  <SelectTrigger className="w-40">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Channels</SelectItem>
+                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="inapp">In-App</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
           </div>
 
-          {/* Message List */}
-          {isLoading ? (
+          {/* Message View */}
+          {viewMode === 'threaded' ? (
+            <ThreadedMessageList />
+          ) : isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
