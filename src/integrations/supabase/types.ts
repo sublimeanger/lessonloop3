@@ -707,36 +707,42 @@ export type Database = {
           created_at: string
           id: string
           org_id: string
+          parent_message_id: string | null
           read_at: string | null
           recipient_role: string
           recipient_user_id: string
           sender_role: string
           sender_user_id: string
           subject: string
+          thread_id: string | null
         }
         Insert: {
           body: string
           created_at?: string
           id?: string
           org_id: string
+          parent_message_id?: string | null
           read_at?: string | null
           recipient_role: string
           recipient_user_id: string
           sender_role: string
           sender_user_id: string
           subject: string
+          thread_id?: string | null
         }
         Update: {
           body?: string
           created_at?: string
           id?: string
           org_id?: string
+          parent_message_id?: string | null
           read_at?: string | null
           recipient_role?: string
           recipient_user_id?: string
           sender_role?: string
           sender_user_id?: string
           subject?: string
+          thread_id?: string | null
         }
         Relationships: [
           {
@@ -744,6 +750,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_messages_parent_message_id_fkey"
+            columns: ["parent_message_id"]
+            isOneToOne: false
+            referencedRelation: "internal_messages"
             referencedColumns: ["id"]
           },
         ]
@@ -1322,6 +1335,7 @@ export type Database = {
           id: string
           message_type: string
           org_id: string
+          parent_message_id: string | null
           read_at: string | null
           recipient_email: string
           recipient_id: string | null
@@ -1332,6 +1346,7 @@ export type Database = {
           sent_at: string | null
           status: string
           subject: string
+          thread_id: string | null
         }
         Insert: {
           batch_id?: string | null
@@ -1342,6 +1357,7 @@ export type Database = {
           id?: string
           message_type: string
           org_id: string
+          parent_message_id?: string | null
           read_at?: string | null
           recipient_email: string
           recipient_id?: string | null
@@ -1352,6 +1368,7 @@ export type Database = {
           sent_at?: string | null
           status?: string
           subject: string
+          thread_id?: string | null
         }
         Update: {
           batch_id?: string | null
@@ -1362,6 +1379,7 @@ export type Database = {
           id?: string
           message_type?: string
           org_id?: string
+          parent_message_id?: string | null
           read_at?: string | null
           recipient_email?: string
           recipient_id?: string | null
@@ -1372,6 +1390,7 @@ export type Database = {
           sent_at?: string | null
           status?: string
           subject?: string
+          thread_id?: string | null
         }
         Relationships: [
           {
@@ -1386,6 +1405,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_log_parent_message_id_fkey"
+            columns: ["parent_message_id"]
+            isOneToOne: false
+            referencedRelation: "message_log"
             referencedColumns: ["id"]
           },
         ]
