@@ -1,13 +1,40 @@
 
-# Promotional Media Assets Plan
+# Promotional Media Assets - COMPLETED ✅
 
-## Overview
+## Implementation Summary
 
-This plan outlines how to capture high-quality photos (screenshots) and create videos/GIFs of LessonLoop to use across the marketing site, documentation, and promotional materials.
+### Generated Assets (src/assets/marketing/)
 
-## Current Asset Audit
+| Asset | Type | Description |
+|-------|------|-------------|
+| `dashboard-hero.jpg` | Screenshot | Music lesson scheduling dashboard |
+| `calendar-week.jpg` | Screenshot | Weekly calendar with lesson blocks |
+| `invoices-list.jpg` | Screenshot | Invoice list with mixed statuses |
+| `parent-portal.jpg` | Screenshot | Family dashboard web application |
+| `loopassist-chat.jpg` | Screenshot | AI assistant chat interface |
+| `lesson-creation-demo.mp4` | Video | 5s demo of lesson scheduling workflow |
 
-### Existing Assets
+### Components Created
+
+- **BrowserFrame** (`src/components/marketing/BrowserFrame.tsx`)
+  - Dark variant for ink backgrounds
+  - Light variant for card backgrounds  
+  - DeviceFrame for iPhone/iPad mockups
+
+### Marketing Integration
+
+- **HeroSection**: Updated to use real `dashboard-hero.jpg` screenshot
+- **ProductShowcase**: Retains animated mockups (interactive UX value)
+- **Features Page**: Retains interactive deep-dives
+
+### Asset Import Pattern
+```tsx
+import { dashboardHero, calendarWeek } from "@/assets/marketing";
+```
+
+---
+
+## Original Plan (for reference)
 - **SVG Previews** (`/public/previews/`): Static placeholder illustrations
   - `calendar-preview.svg`
   - `invoices-preview.svg`
