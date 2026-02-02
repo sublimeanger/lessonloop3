@@ -2,7 +2,8 @@ import { motion, useMotionValue, useTransform, useSpring } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Play, Star, Calendar, Clock, CheckCircle2, Bell } from "lucide-react";
-
+import { dashboardHero } from "@/assets/marketing";
+import { useState } from "react";
 // Word-by-word animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -298,7 +299,7 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* Product Mockup */}
+      {/* Product Mockup - Real Screenshot */}
       <motion.div
         initial={{ opacity: 0, y: 60 }}
         animate={{ opacity: 1, y: 0 }}
@@ -310,9 +311,9 @@ export function HeroSection() {
           {/* Browser Top Bar */}
           <div className="flex items-center gap-2 px-4 py-3 bg-white/5 border-b border-white/10">
             <div className="flex gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-red-500/80" />
-              <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-              <div className="w-3 h-3 rounded-full bg-green-500/80" />
+              <div className="w-3 h-3 rounded-full bg-destructive/80" />
+              <div className="w-3 h-3 rounded-full bg-warning/80" />
+              <div className="w-3 h-3 rounded-full bg-success/80" />
             </div>
             <div className="flex-1 flex justify-center">
               <div className="bg-white/10 rounded-lg px-4 py-1 text-xs text-white/40 font-mono">
@@ -321,44 +322,15 @@ export function HeroSection() {
             </div>
           </div>
 
-          {/* Mockup Content */}
-          <div className="p-6 bg-gradient-to-br from-background/95 to-background">
-            {/* Mini Header */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal to-teal-dark" />
-                <div>
-                  <div className="text-sm font-semibold text-foreground">Today's Schedule</div>
-                  <div className="text-xs text-muted-foreground">Monday, 24 January</div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <div className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium">+ New Lesson</div>
-              </div>
-            </div>
-
-            {/* Schedule List */}
-            <div className="space-y-3">
-              {scheduleItems.map((item, i) => (
-                <motion.div
-                  key={item.time}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 1.8 + i * 0.1 }}
-                  className="flex items-center gap-4 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-colors"
-                >
-                  <div className="text-sm font-mono text-muted-foreground w-12">{item.time}</div>
-                  <div className={`w-1 h-8 rounded-full ${item.color}`} />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-foreground">{item.student}</div>
-                    <div className="text-xs text-muted-foreground">{item.type} Lesson</div>
-                  </div>
-                  <div className="px-2 py-1 rounded-md bg-muted text-muted-foreground text-xs">
-                    30 min
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+          {/* Real Screenshot */}
+          <div className="relative">
+            <img 
+              src={dashboardHero} 
+              alt="LessonLoop Dashboard - Music lesson scheduling software" 
+              className="w-full h-auto"
+            />
+            {/* Subtle overlay for blend */}
+            <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent pointer-events-none" />
           </div>
         </div>
 
