@@ -1,156 +1,205 @@
 
-# LessonLoop Production Readiness Status
+# Promotional Media Assets Plan
 
-## ✅ PRODUCTION READY
+## Overview
 
-Last verified: 2026-02-02
+This plan outlines how to capture high-quality photos (screenshots) and create videos/GIFs of LessonLoop to use across the marketing site, documentation, and promotional materials.
+
+## Current Asset Audit
+
+### Existing Assets
+- **SVG Previews** (`/public/previews/`): Static placeholder illustrations
+  - `calendar-preview.svg`
+  - `invoices-preview.svg`
+  - `students-preview.svg`
+- **Blog Graphics** (`/public/blog/`): Abstract SVG illustrations for articles
+- **Marketing Mockups**: Animated React components in the HeroSection, ProductShowcase, and BentoFeatures
+
+### Gap Analysis
+The current marketing site relies heavily on **animated mockups** (React components) rather than real screenshots. While these look polished, they:
+- Don't show the real product
+- Can't be used in external media (pitch decks, social, print)
+- May not fully represent current features
+
+## Proposed Asset Categories
+
+### 1. Hero Screenshots (High-Priority)
+Static screenshots for key marketing placements:
+
+| Screenshot | Source Page | Usage |
+|------------|-------------|-------|
+| Dashboard Overview | `/dashboard` | Hero section, About page |
+| Calendar Week View | `/calendar` (Week view with lessons) | Product tour, Features |
+| Invoice List | `/invoices` (Mixed statuses) | Billing deep-dive |
+| Parent Portal Home | `/portal/home` | Portal deep-dive |
+| LoopAssist AI Chat | Drawer open with conversation | AI feature section |
+| Student Profile | `/students/:id` | Student management |
+| Billing Run Wizard | Modal open | Automation story |
+
+### 2. Feature GIFs/Videos (Medium-Priority)
+Short animated captures demonstrating workflows:
+
+| Demo | Duration | Shows |
+|------|----------|-------|
+| Create Lesson | 8-10s | Click slot → Fill modal → Save |
+| Billing Run | 10-12s | Open wizard → Select options → Generate |
+| LoopAssist Query | 8-10s | Type question → AI response streams |
+| Parent Portal Pay | 6-8s | View invoice → Click Pay → Stripe flow |
+| Drag-Drop Reschedule | 5-7s | Drag lesson to new slot |
+
+### 3. Device Mockups (For Social/Print)
+Screenshots placed into device frames:
+- MacBook Pro frame for desktop views
+- iPhone 15 Pro frame for parent portal mobile view
+- iPad frame for tablet users
+
+## Technical Implementation
+
+### Phase 1: Capture Infrastructure
+
+Create a dedicated **demo mode** that prepares the app with:
+- Seeded realistic data (already exists: `seed-demo-data` edge function)
+- Specific test accounts for consistent captures
+- Option to hide UI chrome (sidebar, header) for clean shots
+
+### Phase 2: Screenshot Capture Process
+
+**Option A: Manual Browser Capture** (Fastest)
+1. Log in as demo Owner account
+2. Navigate to each target page
+3. Use browser's screenshot tool or macOS Screenshot (Cmd+Shift+4)
+4. Crop and export at 2x resolution
+
+**Option B: Automated Playwright Script**
+Create a script that:
+- Logs in via test credentials
+- Navigates to each key page
+- Captures at multiple resolutions (desktop, tablet, mobile)
+- Saves to `/public/screenshots/` or external storage
+
+### Phase 3: Video/GIF Creation
+
+**Tools:**
+- **Screen Recording**: macOS Screen Recording, Loom, or ScreenStudio
+- **GIF Conversion**: FFmpeg or Gifski for high-quality GIFs
+- **Editing**: CapCut or Final Cut for transitions
+
+**Recording Guidelines:**
+- Resolution: 1920x1080 minimum
+- Frame rate: 30fps for videos, 15fps for GIFs
+- Duration: Keep under 15 seconds for GIFs
+- Mouse movements: Smooth, deliberate, visible cursor
+- No personal data visible (use demo accounts)
+
+## Storage Strategy
+
+### For Web Usage
+Store in `/public/marketing/`:
+```
+/public/marketing/
+├── screenshots/
+│   ├── dashboard-hero.webp
+│   ├── calendar-week.webp
+│   ├── invoices-list.webp
+│   ├── parent-portal.webp
+│   └── loopassist-chat.webp
+├── gifs/
+│   ├── create-lesson.gif
+│   ├── billing-run.gif
+│   └── loopassist-query.gif
+└── videos/
+    ├── product-tour.mp4
+    └── 60-second-demo.mp4
+```
+
+### For External Use (Pitch Decks, Social)
+- Export as PNG (screenshots) and MP4 (videos)
+- Store in cloud (Google Drive, Dropbox) for sharing
+- Maintain a brand asset library document
+
+## Marketing Site Integration
+
+### Updates Required
+
+1. **HeroSection**: Replace animated mockup with real screenshot in browser frame
+2. **ProductShowcase**: Option to toggle between animated mockups and real screenshots
+3. **Features Page**: Add actual product screenshots to deep-dive sections
+4. **About Page**: Use dashboard screenshot as "the product" visual
+
+### New Component: ScreenshotBrowserFrame
+
+A reusable component that wraps screenshots in a browser-style frame:
+
+```tsx
+<BrowserFrame>
+  <img src="/marketing/screenshots/dashboard-hero.webp" alt="LessonLoop Dashboard" />
+</BrowserFrame>
+```
+
+## Recommended Capture Sequence
+
+### Session 1: Core Screenshots
+1. Dashboard (Owner view with populated data)
+2. Calendar (Week view with 8-10 lessons)
+3. Students list (10+ students showing)
+4. Single student profile (with guardian, lessons tab)
+5. Invoices list (mixed statuses)
+6. LoopAssist drawer open (with sample conversation)
+
+### Session 2: Feature Workflows
+1. Record: Create new lesson flow
+2. Record: Billing run wizard
+3. Record: LoopAssist asking "who hasn't paid"
+4. Record: Parent portal payment flow
+
+### Session 3: Mobile/Tablet
+1. Parent portal on iPhone frame
+2. Calendar on iPad
+3. Mobile-responsive dashboard
+
+## Quality Checklist
+
+Before using any capture:
+- [ ] No personal/test email addresses visible
+- [ ] Realistic-looking data (British names, GBP amounts)
+- [ ] Current date/time looks appropriate
+- [ ] No console errors or loading states visible
+- [ ] Consistent brand colours and typography
+- [ ] High resolution (minimum 2x for retina)
 
 ---
 
-## Security Audit Summary
+## Technical Details
 
-### ✅ All RLS Policies Verified
+### Demo Data Requirements
+The existing `seed-demo-data` edge function should be verified/enhanced to include:
+- 20+ students with realistic British names
+- 50+ lessons spread across calendar
+- 10+ invoices in various statuses
+- Sample conversation in LoopAssist history
+- Parent portal with linked children
 
-| Table | Policies | Status |
-|-------|----------|--------|
-| `calendar_connections` | User-scoped CRUD | ✅ Secure |
-| `guardians` | Admin/Finance/Teacher scoped | ✅ Secure |
-| `students` | Admin/Finance/Teacher/Parent scoped | ✅ Secure |
-| `profiles` | User-only access, anon blocked | ✅ Secure |
-| `teachers` | Admin CRUD, role-scoped view | ✅ Secure |
-| `teacher_profiles` | Admin view all, teacher own-only | ✅ Secure |
-| `invoices` | Finance CRUD, parent own-only | ✅ Secure |
-| `payments` | Finance CRUD, anon blocked | ✅ Secure |
-| `stripe_checkout_sessions` | Finance/payer scoped | ✅ Secure |
-| `organisations` | Member-scoped access | ✅ Secure |
-| `message_log` | Recipient/org scoped | ✅ Secure |
-| `internal_messages` | Sender/recipient scoped | ✅ Secure |
-| `ai_messages` | User-scoped, no enumeration | ✅ Secure |
-| `lesson_participants` | Parent limited to own children | ✅ Secure |
-| `attendance_records` | Staff/parent scoped | ✅ Secure |
+### Recommended Resolutions
+| Context | Resolution |
+|---------|------------|
+| Desktop screenshot | 2560x1440 or 1920x1080 @2x |
+| Mobile screenshot | 390x844 (iPhone 15 Pro) |
+| Tablet screenshot | 1024x768 (iPad) |
+| Video | 1920x1080 @ 30fps |
+| GIF | 800x600 max, 15fps |
 
-### ⚠️ Manual Action Required
+### File Formats
+- **Photos**: WebP (primary), PNG (fallback), JPEG (external)
+- **Animations**: GIF (short loops), MP4 (longer demos)
+- **Source**: Keep original recordings for future edits
 
-| Item | Status | Action |
-|------|--------|--------|
-| Leaked Password Protection | Not enabled | Enable in Cloud View → Auth Settings (Pro Plan required) |
+## Next Steps After Approval
 
----
+1. Verify demo data is sufficient for realistic captures
+2. Set up consistent test environment
+3. Capture Session 1 (core screenshots)
+4. Create BrowserFrame component for marketing integration
+5. Update HeroSection to use real screenshot option
+6. Capture Session 2 (workflow videos)
+7. Convert to GIFs and optimise for web
 
-## Secrets Configured
-
-| Secret | Status |
-|--------|--------|
-| `GOOGLE_CLIENT_ID` | ✅ |
-| `GOOGLE_CLIENT_SECRET` | ✅ |
-| `LOVABLE_API_KEY` | ✅ (system) |
-| `RESEND_API_KEY` | ✅ |
-| `STRIPE_SECRET_KEY` | ✅ |
-| `STRIPE_WEBHOOK_SECRET` | ✅ |
-| `STRIPE_PRICE_*` | ✅ (6 price IDs) |
-
----
-
-## Core Systems Verified
-
-### Authentication & Authorization
-- ✅ Email/password signup with verification
-- ✅ Google OAuth integration
-- ✅ Role-based access control (Owner, Admin, Teacher, Finance, Parent)
-- ✅ Session stability across tab switches
-- ✅ Invite system for staff and guardians
-
-### Scheduling
-- ✅ Calendar with day/week/month views
-- ✅ Recurring lessons with series editing
-- ✅ Conflict detection
-- ✅ Closure dates and availability blocks
-- ✅ Google Calendar sync (OAuth)
-
-### Billing & Payments
-- ✅ Invoice generation and management
-- ✅ Billing run wizard
-- ✅ Stripe Checkout integration
-- ✅ Payment recording
-- ✅ Make-up credit system
-
-### Messaging
-- ✅ Outbound email to parents (via Resend)
-- ✅ Bulk messaging for admins
-- ✅ Internal staff messaging with threading
-- ✅ Parent portal requests with responses
-
-### Parent Portal
-- ✅ View schedules and upcoming lessons
-- ✅ View and pay invoices
-- ✅ Practice tracking with streaks
-- ✅ Resource access
-- ✅ Submit requests
-
-### AI (LoopAssist)
-- ✅ Natural language queries
-- ✅ Action proposals with confirmation
-- ✅ Rate limiting (30 req/5min)
-- ✅ Context-aware suggestions
-
----
-
-## Edge Functions Deployed
-
-| Function | Purpose | Auth |
-|----------|---------|------|
-| `looopassist-chat` | AI assistant | JWT |
-| `looopassist-execute` | AI action execution | JWT |
-| `stripe-create-checkout` | Payment sessions | JWT |
-| `stripe-webhook` | Payment confirmations | Stripe sig |
-| `send-message` | Email delivery | JWT |
-| `send-invoice-email` | Invoice emails | JWT |
-| `send-bulk-message` | Mass email | JWT |
-| `gdpr-export` | Data export | JWT |
-| `gdpr-delete` | Data deletion | JWT |
-| `csv-import-*` | Student import | JWT |
-| `calendar-*` | Calendar sync | JWT |
-| `invite-*` | User invitations | JWT/Service |
-| `onboarding-setup` | Org creation | JWT |
-| `trial-*` | Trial lifecycle | Cron |
-
----
-
-## Security Hardening Completed
-
-1. ✅ Test utility `reset-test-password` removed
-2. ✅ `create-test-messaging-accounts` hardened with owner-only authorization
-3. ✅ CORS validation via shared helpers
-4. ✅ Rate limiting on sensitive endpoints
-5. ✅ RLS on all 50 tables
-6. ✅ Anonymous access blocked on sensitive tables
-7. ✅ Audit logging for CUD operations
-8. ✅ Double-payment guards in database
-
----
-
-## Deployment Checklist
-
-Before going live:
-
-- [x] All secrets configured
-- [x] RLS policies verified
-- [x] Edge functions deployed
-- [x] CORS includes production domain (lessonloop.net)
-- [x] Stripe webhooks configured
-- [x] Resend verified sender configured
-- [ ] Enable "Leaked Password Protection" (requires Pro Plan)
-- [ ] Configure custom domain DNS
-- [ ] Publish to production
-
----
-
-## Test Accounts (Development Only)
-
-| Role | Email | Password |
-|------|-------|----------|
-| Owner | jamiemckaye@gmail.com | TestOwner2026! |
-| Teacher | test-teacher-msg@lessonloop.test | TestTeacher2026! |
-| Parent | test-parent-msg@lessonloop.test | TestParent2026! |
-
-⚠️ **Remove or disable test accounts before production launch**
