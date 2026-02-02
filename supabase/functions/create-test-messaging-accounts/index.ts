@@ -13,6 +13,15 @@ Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
 
   try {
+    // Verify authorization - must have valid JWT
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Authorization required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { org_id, owner_user_id, student_id } = await req.json();
 
     if (!org_id || !owner_user_id) {
@@ -27,6 +36,37 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
+
+    // Verify the caller is actually an owner of the org
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Invalid authorization" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify user is owner of this org
+    const { data: membership, error: memberError } = await supabaseAdmin
+      .from("org_memberships")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("org_id", org_id)
+      .eq("status", "active")
+      .single();
+
+    if (memberError || !membership || membership.role !== "owner") {
+      return new Response(
+        JSON.stringify({ error: "Only organization owners can create test accounts" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Get a student to link the parent to if not provided
     let targetStudentId = student_id;
