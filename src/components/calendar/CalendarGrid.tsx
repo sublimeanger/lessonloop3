@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { format, startOfWeek, addDays, isSameDay, parseISO, differenceInMinutes, startOfDay, setHours, setMinutes, endOfWeek, endOfDay } from 'date-fns';
 import { LessonWithDetails, CalendarView } from './types';
 import { LessonCard } from './LessonCard';
+import { computeOverlapLayout } from './overlapLayout';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useOrg } from '@/contexts/OrgContext';
@@ -86,18 +87,7 @@ export function CalendarGrid({
     return closures.find(c => isSameDay(c.date, day));
   };
 
-  const getLessonPosition = (lesson: LessonWithDetails) => {
-    const start = parseISO(lesson.start_at);
-    const end = parseISO(lesson.end_at);
-    const startMinutes = start.getHours() * 60 + start.getMinutes();
-    const endMinutes = end.getHours() * 60 + end.getMinutes();
-    const duration = endMinutes - startMinutes;
-    
-    const top = ((startMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
-    const height = (duration / 60) * HOUR_HEIGHT;
-    
-    return { top, height: Math.max(height, 20) };
-  };
+  // No longer need getLessonPosition - handled by overlapLayout utility
 
   const getTimeFromY = (y: number): { hour: number; minute: number } => {
     const totalMinutes = ((y / HOUR_HEIGHT) * 60) + (START_HOUR * 60);
@@ -263,6 +253,7 @@ export function CalendarGrid({
             {days.map((day) => {
               const dayLessons = lessons.filter(l => isSameDay(parseISO(l.start_at), day));
               const closure = getClosureForDay(day);
+              const overlapPositions = computeOverlapLayout(dayLessons, HOUR_HEIGHT, START_HOUR);
               
               return (
                 <div
@@ -284,14 +275,27 @@ export function CalendarGrid({
                     />
                   ))}
 
-                  {/* Lessons */}
+                  {/* Lessons with overlap layout */}
                   {dayLessons.map((lesson) => {
-                    const { top, height } = getLessonPosition(lesson);
+                    const pos = overlapPositions.get(lesson.id);
+                    if (!pos) return null;
+                    
+                    const { top, height, columnIndex, totalColumns } = pos;
+                    const widthPercent = 100 / totalColumns;
+                    const leftPercent = columnIndex * widthPercent;
+                    // Add small gap between columns
+                    const gapPx = totalColumns > 1 ? 2 : 0;
+                    
                     return (
                       <div
                         key={lesson.id}
-                        className="absolute left-1 right-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded"
-                        style={{ top, height }}
+                        className="absolute focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded"
+                        style={{ 
+                          top, 
+                          height,
+                          left: `calc(${leftPercent}% + ${gapPx}px)`,
+                          width: `calc(${widthPercent}% - ${gapPx * 2}px)`,
+                        }}
                         role="button"
                         tabIndex={0}
                         aria-label={`${lesson.title} - ${format(parseISO(lesson.start_at), 'HH:mm')}`}
