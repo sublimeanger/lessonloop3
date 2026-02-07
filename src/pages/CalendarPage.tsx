@@ -12,7 +12,7 @@ import { AgendaView } from '@/components/calendar/AgendaView';
 import { LessonModal } from '@/components/calendar/LessonModal';
 import { LessonDetailPanel } from '@/components/calendar/LessonDetailPanel';
 import { CalendarFiltersBar } from '@/components/calendar/CalendarFiltersBar';
-import { TeacherColourLegend } from '@/components/calendar/TeacherColourLegend';
+
 import { MarkDayCompleteButton } from '@/components/calendar/MarkDayCompleteButton';
 import { CalendarView, CalendarFilters, LessonWithDetails } from '@/components/calendar/types';
 import { buildTeacherColourMap } from '@/components/calendar/teacherColours';
@@ -195,25 +195,25 @@ export default function CalendarPage() {
       />
 
       {/* Toolbar */}
-      <div className="mb-4 space-y-3">
-        {/* Row 1: Navigation */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <Button variant="outline" size="sm" onClick={goToToday} className="shrink-0">
+      <div className="mb-3 space-y-2">
+        {/* Row 1: Navigation + view toggle */}
+        <div className="flex items-center justify-between gap-1">
+          <div className="flex items-center gap-1 min-w-0">
+            <Button variant="outline" size="sm" onClick={goToToday} className="shrink-0 h-8 px-2.5 text-xs sm:text-sm sm:px-3">
               Today
             </Button>
             <div className="flex items-center shrink-0">
-              <Button variant="ghost" size="icon" onClick={navigatePrev}>
+              <Button variant="ghost" size="icon" onClick={navigatePrev} className="h-8 w-8">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={navigateNext}>
+              <Button variant="ghost" size="icon" onClick={navigateNext} className="h-8 w-8">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-            <span className="font-medium truncate text-sm sm:text-base">{getDateDisplay()}</span>
+            <span className="font-medium truncate text-xs sm:text-sm">{getDateDisplay()}</span>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             {!isParent && (
               <MarkDayCompleteButton
                 currentDate={currentDate}
@@ -222,34 +222,28 @@ export default function CalendarPage() {
               />
             )}
             <ToggleGroup type="single" value={view} onValueChange={(v) => v && setView(v as CalendarView)} data-tour="calendar-view-toggle">
-              <ToggleGroupItem value="day" aria-label="Day view">
-                <CalendarDays className="h-4 w-4" />
+              <ToggleGroupItem value="day" aria-label="Day view" className="h-8 w-8 p-0">
+                <CalendarDays className="h-3.5 w-3.5" />
               </ToggleGroupItem>
-              <ToggleGroupItem value="week" aria-label="Week view">
-                <LayoutGrid className="h-4 w-4" />
+              <ToggleGroupItem value="week" aria-label="Week view" className="h-8 w-8 p-0">
+                <LayoutGrid className="h-3.5 w-3.5" />
               </ToggleGroupItem>
-              <ToggleGroupItem value="agenda" aria-label="Agenda view">
-                <List className="h-4 w-4" />
+              <ToggleGroupItem value="agenda" aria-label="Agenda view" className="h-8 w-8 p-0">
+                <List className="h-3.5 w-3.5" />
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
         </div>
 
         {/* Row 2: Filters */}
-        <div data-tour="calendar-filters" className="space-y-2">
+        <div data-tour="calendar-filters">
           <CalendarFiltersBar
             filters={filters}
             onChange={setFilters}
             teachers={teachers}
             locations={locations}
             rooms={rooms}
-          />
-          <TeacherColourLegend
-            teachers={teachersWithColours}
-            filters={filters}
-            onFilterTeacher={(teacherId) =>
-              setFilters((prev) => ({ ...prev, teacher_id: teacherId }))
-            }
+            teachersWithColours={teachersWithColours}
           />
         </div>
       </div>
@@ -299,8 +293,8 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {/* Keyboard shortcuts hint */}
-      <div className="mt-4 text-xs text-muted-foreground">
+      {/* Keyboard shortcuts hint — desktop only */}
+      <div className="mt-3 text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
         <span className="font-medium">Keyboard:</span> ← → navigate • T today • N new lesson • D/W/A views
       </div>
 
