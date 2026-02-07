@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { format, getDay, differenceInMinutes, addMinutes, subMinutes } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
@@ -44,7 +45,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): 
 export function useConflictDetection() {
   const { currentOrg } = useOrg();
 
-  const checkConflicts = async (params: ConflictCheckParams): Promise<ConflictResult[]> => {
+  const checkConflicts = useCallback(async (params: ConflictCheckParams): Promise<ConflictResult[]> => {
     if (!currentOrg) return [];
 
     const conflicts: ConflictResult[] = [];
@@ -172,7 +173,7 @@ export function useConflictDetection() {
     }
 
     return conflicts;
-  };
+  }, [currentOrg]);
 
   return { checkConflicts };
 }
