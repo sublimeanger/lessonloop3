@@ -43,7 +43,7 @@ export function FeatureCTA() {
           </h2>
 
           <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
-            Join thousands of music educators who've reclaimed their time. 
+            Join a growing community of music educators who've reclaimed their time. 
             Start your 30-day free trial today.
           </p>
 

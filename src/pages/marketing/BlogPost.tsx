@@ -438,7 +438,7 @@ export default function BlogPost() {
             Ready to transform your teaching practice?
           </h2>
           <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join thousands of UK music teachers who save hours every week with LessonLoop's 
+            Join a growing community of UK music teachers who save hours every week with LessonLoop's 
             all-in-one scheduling, invoicing, and parent communication platform.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

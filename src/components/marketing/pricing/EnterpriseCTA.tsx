@@ -78,13 +78,14 @@ export function EnterpriseCTA() {
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
-                <Button 
-                  size="lg" 
-                  variant="outline"
-                  className="border-white/20 text-white hover:bg-white/10 font-semibold"
-                >
-                  Book a Demo
-                </Button>
+                <Link to="/contact?subject=demo">
+                  <Button 
+                    size="lg" 
+                    className="border border-white/30 bg-transparent text-white hover:bg-white/10 font-semibold"
+                  >
+                    Book a Demo
+                  </Button>
+                </Link>
               </div>
             </motion.div>
             
