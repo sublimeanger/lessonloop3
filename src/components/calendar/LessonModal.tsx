@@ -237,12 +237,12 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
         // Lookup teacher's user_id for conflict checks (availability uses user_id)
         const selectedTeacher = teachers.find(t => t.id === teacherId);
-        const teacherUserId = selectedTeacher?.userId || '';
+        const teacherUserId = selectedTeacher?.userId || null;
 
         const results = await checkConflicts({
           start_at: startAtUtc,
           end_at: endAtUtc,
-          teacher_user_id: teacherUserId, // Pass user_id for availability/time-off checks
+          teacher_user_id: teacherUserId, // Pass user_id (null for unlinked teachers)
           room_id: roomId,
           location_id: locationId,
           student_ids: selectedStudents,
@@ -355,7 +355,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
     // Lookup teacher details for dual-write
     const selectedTeacher = teachers.find(t => t.id === teacherId);
-    const teacherUserId = selectedTeacher?.userId || ''; // For RLS policies
+    const teacherUserId = selectedTeacher?.userId || null; // null for unlinked teachers
 
     // Check for blocking conflicts - use current conflict state
     const blockingConflicts = conflictState.conflicts.filter(c => c.severity === 'error');
@@ -421,8 +421,8 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
                 .from('lessons')
                 .update({
                   lesson_type: lessonType,
-                  teacher_user_id: teacherUserId, // For backward compat & RLS
-                  teacher_id: teacherId,          // New: teachers.id
+                  teacher_user_id: teacherUserId, // null for unlinked teachers
+                  teacher_id: teacherId,
                   location_id: locationId,
                   room_id: roomId,
                   start_at: newStart.toISOString(),
@@ -436,8 +436,8 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
               .from('lessons')
               .update({
                 lesson_type: lessonType,
-                teacher_user_id: teacherUserId, // For backward compat & RLS
-                teacher_id: teacherId,          // New: teachers.id
+                teacher_user_id: teacherUserId, // null for unlinked teachers
+                teacher_id: teacherId,
                 location_id: locationId,
                 room_id: roomId,
                 start_at: startAtUtc.toISOString(),
@@ -526,8 +526,8 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
             .insert({
               org_id: currentOrg.id,
               lesson_type: lessonType,
-              teacher_user_id: teacherUserId, // For backward compat & RLS
-              teacher_id: teacherId,          // New: teachers.id
+              teacher_user_id: teacherUserId, // null for unlinked teachers
+              teacher_id: teacherId,
               location_id: locationId,
               room_id: roomId,
               start_at: lessonDate.toISOString(),

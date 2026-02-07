@@ -1048,7 +1048,7 @@ export type Database = {
           start_at: string
           status: Database["public"]["Enums"]["lesson_status"]
           teacher_id: string | null
-          teacher_user_id: string
+          teacher_user_id: string | null
           title: string
           updated_at: string
         }
@@ -1071,7 +1071,7 @@ export type Database = {
           start_at: string
           status?: Database["public"]["Enums"]["lesson_status"]
           teacher_id?: string | null
-          teacher_user_id: string
+          teacher_user_id?: string | null
           title: string
           updated_at?: string
         }
@@ -1094,7 +1094,7 @@ export type Database = {
           start_at?: string
           status?: Database["public"]["Enums"]["lesson_status"]
           teacher_id?: string | null
-          teacher_user_id?: string
+          teacher_user_id?: string | null
           title?: string
           updated_at?: string
         }
