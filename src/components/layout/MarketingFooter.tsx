@@ -2,7 +2,6 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogoWordmark } from "@/components/brand/Logo";
-import { Twitter, Linkedin, Youtube, Instagram } from "lucide-react";
 
 const footerLinks = {
   product: [
@@ -26,12 +25,7 @@ const footerLinks = {
   ],
 };
 
-const socialLinks = [
-  { name: "Twitter", icon: Twitter, href: "https://twitter.com" },
-  { name: "LinkedIn", icon: Linkedin, href: "https://linkedin.com" },
-  { name: "YouTube", icon: Youtube, href: "https://youtube.com" },
-  { name: "Instagram", icon: Instagram, href: "https://instagram.com" },
-];
+// Social links removed — will be added when real accounts are set up
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -75,22 +69,16 @@ export const MarketingFooter = React.forwardRef<HTMLElement>(function MarketingF
                 Keeping every lesson in the loop. The complete platform for music educators to manage scheduling, billing, and student communication.
               </p>
               
-              {/* Social Links */}
-              <div className="flex items-center gap-3 mt-8">
-                {socialLinks.map((social) => (
-                  <motion.a
-                    key={social.name}
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    whileHover={{ scale: 1.1, y: -2 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
-                    aria-label={social.name}
-                  >
-                    <social.icon className="w-5 h-5 text-white/70" />
-                  </motion.a>
-                ))}
+              {/* LTP Music link */}
+              <div className="mt-8">
+                <a
+                  href="https://ltpmusic.co.uk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white/40 hover:text-white/60 text-sm transition-colors"
+                >
+                  A product by LTP Music →
+                </a>
               </div>
             </motion.div>
 

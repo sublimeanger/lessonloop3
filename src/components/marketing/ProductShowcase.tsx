@@ -293,7 +293,7 @@ export function ProductShowcase() {
             See it in action
           </h2>
           <p className="mt-6 text-lg text-white/60 max-w-2xl mx-auto">
-            Explore the key features that make LessonLoop the choice of thousands of UK music educators.
+            Explore the key features that make LessonLoop purpose-built for UK music educators.
           </p>
         </motion.div>
 

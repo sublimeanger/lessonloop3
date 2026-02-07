@@ -1,7 +1,7 @@
 import { motion, useMotionValue, useTransform, useSpring } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Play, Star, Calendar, Clock, CheckCircle2, Bell } from "lucide-react";
+import { ChevronRight, Play, Calendar, Clock, CheckCircle2, Bell } from "lucide-react";
 import { dashboardHero } from "@/assets/marketing";
 import { useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -218,7 +218,7 @@ export function HeroSection() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-teal"></span>
             </span>
             <span className="text-white/80 text-sm font-medium">
-              Join 2,000+ UK music educators using LessonLoop
+              Built by a music teacher, for music teachers
             </span>
           </motion.div>
 
@@ -249,7 +249,7 @@ export function HeroSection() {
             className="mt-8 text-xl sm:text-2xl text-white/60 max-w-2xl mx-auto leading-relaxed"
           >
             The all-in-one platform for scheduling, invoicing, and parent communication. 
-            Built specifically for UK music teachers and academies.
+            Created by a piano teacher who lived the problem.
           </motion.p>
 
           {/* CTA Buttons */}
@@ -295,30 +295,12 @@ export function HeroSection() {
             className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-white/40"
           >
             <div className="flex items-center gap-2">
-              <div className="flex -space-x-2">
-                {["S", "E", "J", "L", "M"].map((letter, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, scale: 0 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 1.4 + i * 0.1 }}
-                    className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-light to-teal border-2 border-ink flex items-center justify-center text-xs font-bold text-ink"
-                  >
-                    {letter}
-                  </motion.div>
-                ))}
-              </div>
-              <span className="text-sm">2,000+ educators</span>
-            </div>
-            <div className="w-px h-5 bg-white/20 hidden sm:block" />
-            <div className="flex items-center gap-1.5">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Star key={i} className="w-4 h-4 fill-coral text-coral" />
-              ))}
-              <span className="text-sm ml-1.5">4.9/5 rating</span>
+              <span className="text-sm">🎹 Built by a music teacher</span>
             </div>
             <div className="w-px h-5 bg-white/20 hidden sm:block" />
             <span className="text-sm">30-day free trial</span>
+            <div className="w-px h-5 bg-white/20 hidden sm:block" />
+            <span className="text-sm">No credit card needed</span>
           </motion.div>
         </div>
       </div>

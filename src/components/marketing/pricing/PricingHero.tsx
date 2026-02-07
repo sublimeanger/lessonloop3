@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Sparkles, Star, Users } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { BillingToggle } from "./BillingToggle";
 import { TRIAL_DAYS } from "@/lib/pricing-config";
 
@@ -118,29 +118,9 @@ export function PricingHero({ isAnnual, onToggle }: PricingHeroProps) {
             transition={{ delay: 0.5, duration: 0.6 }}
             className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground"
           >
-            <div className="flex items-center gap-2">
-              <div className="flex -space-x-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <div
-                    key={i}
-                    className="w-8 h-8 rounded-full bg-gradient-to-br from-teal to-primary border-2 border-background flex items-center justify-center"
-                  >
-                    <Users className="w-4 h-4 text-white" />
-                  </div>
-                ))}
-              </div>
-              <span>2,000+ educators</span>
-            </div>
-            
-            <div className="hidden sm:block w-px h-5 bg-border" />
-            
             <div className="flex items-center gap-1.5">
-              <div className="flex gap-0.5">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-                ))}
-              </div>
-              <span>4.9/5 rating</span>
+              <span className="text-success font-medium">✓</span>
+              <span>Built by a music teacher</span>
             </div>
             
             <div className="hidden sm:block w-px h-5 bg-border" />
@@ -148,6 +128,13 @@ export function PricingHero({ isAnnual, onToggle }: PricingHeroProps) {
             <div className="flex items-center gap-1.5">
               <span className="text-success font-medium">✓</span>
               <span>{TRIAL_DAYS}-day free trial</span>
+            </div>
+            
+            <div className="hidden sm:block w-px h-5 bg-border" />
+            
+            <div className="flex items-center gap-1.5">
+              <span className="text-success font-medium">✓</span>
+              <span>No credit card required</span>
             </div>
           </motion.div>
         </motion.div>
