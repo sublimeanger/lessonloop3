@@ -21,7 +21,7 @@ const CONFLICT_CHECK_TIMEOUT = 10000; // 10 second timeout
 interface ConflictCheckParams {
   start_at: Date;
   end_at: Date;
-  teacher_user_id: string;
+  teacher_user_id: string | null;
   room_id: string | null;
   location_id: string | null;
   student_ids: string[];
@@ -79,29 +79,35 @@ export function useConflictDetection() {
             () => checkClosureDates(currentOrg.id, start_at, location_id, currentOrg.block_scheduling_on_closures),
             'closure dates'
           ),
-          // Check teacher availability blocks
-          safeCheck(
-            () => checkTeacherAvailability(currentOrg.id, teacher_user_id, start_at, end_at),
-            'teacher availability'
-          ),
-          // Check teacher time-off
-          safeCheck(
-            () => checkTeacherTimeOff(currentOrg.id, teacher_user_id, start_at, end_at),
-            'teacher time-off'
-          ),
-          // Check teacher lesson overlap with travel buffer
-          safeCheck(
-            () => checkTeacherLessons(
-              currentOrg.id, 
-              teacher_user_id, 
-              start_at, 
-              end_at, 
-              location_id,
-              (currentOrg as any).buffer_minutes_between_locations || 0,
-              exclude_lesson_id
-            ),
-            'teacher lessons'
-          ),
+          // Check teacher availability blocks (skip if no user_id)
+          teacher_user_id
+            ? safeCheck(
+                () => checkTeacherAvailability(currentOrg.id, teacher_user_id, start_at, end_at),
+                'teacher availability'
+              )
+            : Promise.resolve([]),
+          // Check teacher time-off (skip if no user_id)
+          teacher_user_id
+            ? safeCheck(
+                () => checkTeacherTimeOff(currentOrg.id, teacher_user_id, start_at, end_at),
+                'teacher time-off'
+              )
+            : Promise.resolve([]),
+          // Check teacher lesson overlap with travel buffer (skip if no user_id)
+          teacher_user_id
+            ? safeCheck(
+                () => checkTeacherLessons(
+                  currentOrg.id, 
+                  teacher_user_id, 
+                  start_at, 
+                  end_at, 
+                  location_id,
+                  (currentOrg as any).buffer_minutes_between_locations || 0,
+                  exclude_lesson_id
+                ),
+                'teacher lessons'
+              )
+            : Promise.resolve([]),
           // Check room overlap and capacity
           room_id 
             ? safeCheck(
@@ -109,11 +115,13 @@ export function useConflictDetection() {
                 'room conflicts'
               ) 
             : Promise.resolve([]),
-          // Check external calendar busy blocks
-          safeCheck(
-            () => checkExternalBusyBlocks(currentOrg.id, teacher_user_id, start_at, end_at),
-            'external calendar'
-          ),
+          // Check external calendar busy blocks (skip if no user_id)
+          teacher_user_id
+            ? safeCheck(
+                () => checkExternalBusyBlocks(currentOrg.id, teacher_user_id, start_at, end_at),
+                'external calendar'
+              )
+            : Promise.resolve([]),
         ]),
         CONFLICT_CHECK_TIMEOUT,
         'Conflict check timed out'
