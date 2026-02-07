@@ -4,7 +4,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { LessonWithDetails, CalendarFilters } from '@/components/calendar/types';
 import { startOfWeek, endOfWeek, startOfDay, endOfDay, addDays } from 'date-fns';
 
-const LESSONS_PAGE_SIZE = 100;
+const LESSONS_PAGE_SIZE = 500;
 
 export function useCalendarData(
   currentDate: Date,
