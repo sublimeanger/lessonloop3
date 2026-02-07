@@ -72,7 +72,7 @@ export default function Pricing() {
       <PricingProof />
 
       {/* Feature Comparison Table */}
-      <FeatureComparison />
+      <FeatureComparison hidePrices hideBottomCTA />
 
       {/* Value Calculator */}
       <ValueCalculator />

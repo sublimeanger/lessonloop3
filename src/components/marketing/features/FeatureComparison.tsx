@@ -46,7 +46,12 @@ function FeatureValue({ value }: { value: boolean | string }) {
   return <span className="text-xs lg:text-sm text-muted-foreground">{value}</span>;
 }
 
-export function FeatureComparison() {
+interface FeatureComparisonProps {
+  hidePrices?: boolean;
+  hideBottomCTA?: boolean;
+}
+
+export function FeatureComparison({ hidePrices = false, hideBottomCTA = false }: FeatureComparisonProps) {
   const [showAllMobile, setShowAllMobile] = useState(false);
 
   return (
@@ -97,10 +102,12 @@ export function FeatureComparison() {
                   )}
                   <h3 className="text-lg lg:text-xl font-bold text-foreground">{tier.name}</h3>
                   <p className="text-xs lg:text-sm text-muted-foreground mb-2">{tier.description}</p>
-                  <p className="text-2xl lg:text-3xl font-bold text-foreground">
-                    {tier.price}
-                    {tier.price !== "Custom" && <span className="text-xs lg:text-sm text-muted-foreground">/mo</span>}
-                  </p>
+                  {!hidePrices && (
+                    <p className="text-2xl lg:text-3xl font-bold text-foreground">
+                      {tier.price}
+                      {tier.price !== "Custom" && <span className="text-xs lg:text-sm text-muted-foreground">/mo</span>}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -157,8 +164,12 @@ export function FeatureComparison() {
               <h3 className="text-lg font-bold text-foreground">{tier.name}</h3>
               <p className="text-xs text-muted-foreground mb-2">{tier.description}</p>
               <p className="text-2xl font-bold text-foreground mb-4">
-                {tier.price}
-                {tier.price !== "Custom" && <span className="text-xs text-muted-foreground">/mo</span>}
+                {!hidePrices && (
+                  <>
+                    {tier.price}
+                    {tier.price !== "Custom" && <span className="text-xs text-muted-foreground">/mo</span>}
+                  </>
+                )}
               </p>
 
               <div className="space-y-2">
@@ -197,20 +208,21 @@ export function FeatureComparison() {
           )}
         </div>
 
-        {/* CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mt-8 lg:mt-12"
-        >
-          <Link
-            to="/pricing"
-            className="inline-flex items-center gap-2 px-5 py-2.5 lg:px-6 lg:py-3 rounded-xl bg-primary text-primary-foreground text-sm lg:text-base font-medium hover:bg-primary/90 transition-colors"
+        {!hideBottomCTA && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mt-8 lg:mt-12"
           >
-            View full pricing details
-          </Link>
-        </motion.div>
+            <Link
+              to="/pricing"
+              className="inline-flex items-center gap-2 px-5 py-2.5 lg:px-6 lg:py-3 rounded-xl bg-primary text-primary-foreground text-sm lg:text-base font-medium hover:bg-primary/90 transition-colors"
+            >
+              View full pricing details
+            </Link>
+          </motion.div>
+        )}
       </div>
     </section>
   );
