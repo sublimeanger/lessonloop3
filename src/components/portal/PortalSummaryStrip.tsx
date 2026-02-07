@@ -96,7 +96,7 @@ export function PortalSummaryStrip({ data, isLoading, currencyCode = 'GBP' }: Po
             )}
           </div>
           <div className="flex items-center justify-between gap-2">
-            <p className={`text-xl font-bold ${hasOverdue ? 'text-destructive' : hasBalance ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
+            <p className={`text-xl font-bold ${hasOverdue ? 'text-destructive' : hasBalance ? 'text-warning' : 'text-success'}`}>
               {hasBalance ? formatCurrencyMinor(data?.outstandingBalance || 0, currencyCode) : 'Paid up'}
             </p>
             {canPay && (

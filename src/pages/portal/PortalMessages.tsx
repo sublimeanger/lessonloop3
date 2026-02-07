@@ -25,7 +25,7 @@ export default function PortalMessages() {
         );
       case 'approved':
         return (
-          <Badge variant="default" className="gap-1 bg-green-600">
+          <Badge variant="default" className="gap-1 bg-success text-success-foreground">
             <CheckCircle className="h-3 w-3" />
             Approved
           </Badge>

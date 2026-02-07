@@ -37,7 +37,7 @@ export function InvoiceStatsWidget() {
       value: formatCurrency(stats.totalOutstanding, currency),
       subtext: `${stats.sentCount + stats.overdueCount} invoices`,
       icon: Clock,
-      className: 'text-amber-600',
+      className: 'text-warning',
     },
     {
       label: 'Overdue',
@@ -58,7 +58,7 @@ export function InvoiceStatsWidget() {
       value: formatCurrency(stats.paid, currency),
       subtext: `${stats.paidCount} invoices`,
       icon: CheckCircle2,
-      className: 'text-green-600',
+      className: 'text-success',
     },
   ];
 

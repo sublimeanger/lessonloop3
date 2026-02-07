@@ -424,7 +424,7 @@ export default function StudentsImport() {
     
     if (confidence >= 0.7) {
       return (
-        <Badge variant="default" className="bg-green-500/90 hover:bg-green-500">
+        <Badge variant="default" className="bg-success/90 hover:bg-success text-success-foreground">
           <CheckCircle2 className="h-3 w-3 mr-1" />
           {Math.round(confidence * 100)}%
         </Badge>
@@ -433,7 +433,7 @@ export default function StudentsImport() {
       return (
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge variant="secondary" className="bg-amber-500/20 text-amber-700 border-amber-500/30 hover:bg-amber-500/30">
+            <Badge variant="secondary" className="bg-warning/20 text-warning border-warning/30 hover:bg-warning/30">
               <AlertTriangle className="h-3 w-3 mr-1" />
               {Math.round(confidence * 100)}%
             </Badge>
@@ -451,7 +451,7 @@ export default function StudentsImport() {
     switch (status.status) {
       case "ready":
         return (
-          <Badge variant="default" className="bg-green-500/90">
+          <Badge variant="default" className="bg-success/90 text-success-foreground">
             <CheckCircle2 className="h-3 w-3 mr-1" />
             Ready
           </Badge>
@@ -460,7 +460,7 @@ export default function StudentsImport() {
         return (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge variant="secondary" className="bg-amber-500/20 text-amber-700 border-amber-500/30">
+              <Badge variant="secondary" className="bg-warning/20 text-warning border-warning/30">
                 <AlertTriangle className="h-3 w-3 mr-1" />
                 Dup of #{status.duplicateOf}
               </Badge>
@@ -474,7 +474,7 @@ export default function StudentsImport() {
         return (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge variant="secondary" className="bg-amber-500/20 text-amber-700 border-amber-500/30">
+              <Badge variant="secondary" className="bg-warning/20 text-warning border-warning/30">
                 <AlertTriangle className="h-3 w-3 mr-1" />
                 Exists
               </Badge>
@@ -632,7 +632,7 @@ export default function StudentsImport() {
                   </TableHeader>
                   <TableBody>
                     {mappings.map((mapping, idx) => (
-                      <TableRow key={mapping.csv_header} className={mapping.confidence < 0.7 && mapping.target_field ? "bg-amber-500/5" : ""}>
+                      <TableRow key={mapping.csv_header} className={mapping.confidence < 0.7 && mapping.target_field ? "bg-warning/5" : ""}>
                         <TableCell className="font-medium">{mapping.csv_header}</TableCell>
                         <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
                           {rows.slice(0, 2).map(r => r[idx]).filter(Boolean).join(", ") || "(empty)"}
@@ -763,35 +763,35 @@ export default function StudentsImport() {
             <CardContent className="space-y-6">
               {/* Validation summary */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="bg-green-500/10 border-green-500/20">
+                <Card className="bg-success/10 border-success/20">
                   <CardContent className="pt-4">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      <CheckCircle2 className="h-5 w-5 text-success" />
                       <div>
-                        <div className="text-2xl font-bold text-green-700">{dryRunResult.validation.valid}</div>
-                        <div className="text-sm text-green-600">Ready to import</div>
+                        <div className="text-2xl font-bold text-success">{dryRunResult.validation.valid}</div>
+                        <div className="text-sm text-success">Ready to import</div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="bg-amber-500/10 border-amber-500/20">
+                <Card className="bg-warning/10 border-warning/20">
                   <CardContent className="pt-4">
                     <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-amber-600" />
+                      <AlertTriangle className="h-5 w-5 text-warning" />
                       <div>
-                        <div className="text-2xl font-bold text-amber-700">{dryRunResult.validation.duplicatesInCsv.length}</div>
-                        <div className="text-sm text-amber-600">Duplicates in CSV</div>
+                        <div className="text-2xl font-bold text-warning">{dryRunResult.validation.duplicatesInCsv.length}</div>
+                        <div className="text-sm text-warning">Duplicates in CSV</div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="bg-amber-500/10 border-amber-500/20">
+                <Card className="bg-warning/10 border-warning/20">
                   <CardContent className="pt-4">
                     <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-amber-600" />
+                      <AlertTriangle className="h-5 w-5 text-warning" />
                       <div>
-                        <div className="text-2xl font-bold text-amber-700">{dryRunResult.validation.duplicatesInDatabase.length}</div>
-                        <div className="text-sm text-amber-600">Already in database</div>
+                        <div className="text-2xl font-bold text-warning">{dryRunResult.validation.duplicatesInDatabase.length}</div>
+                        <div className="text-sm text-warning">Already in database</div>
                       </div>
                     </div>
                   </CardContent>
@@ -857,10 +857,10 @@ export default function StudentsImport() {
                   <TabsTrigger value="all">
                     All Records ({dryRunResult.rowStatuses.length})
                   </TabsTrigger>
-                  <TabsTrigger value="issues" className="text-amber-600">
+                  <TabsTrigger value="issues" className="text-warning">
                     Issues ({dryRunResult.rowStatuses.filter(s => s.status !== "ready").length})
                   </TabsTrigger>
-                  <TabsTrigger value="ready" className="text-green-600">
+                  <TabsTrigger value="ready" className="text-success">
                     Ready ({dryRunResult.validation.valid})
                   </TabsTrigger>
                 </TabsList>
@@ -885,7 +885,7 @@ export default function StudentsImport() {
                               key={status.row}
                               className={
                                 status.status === "invalid" ? "bg-destructive/5" :
-                                status.status !== "ready" ? "bg-amber-500/5" : ""
+                                status.status !== "ready" ? "bg-warning/5" : ""
                               }
                             >
                               <TableCell className="text-muted-foreground">{status.row}</TableCell>
