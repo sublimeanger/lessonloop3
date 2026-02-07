@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
+import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS } from './teacherColours';
 
 interface ClosureInfo {
   date: Date;
@@ -21,6 +22,7 @@ interface CalendarGridProps {
   onLessonClick: (lesson: LessonWithDetails) => void;
   onSlotClick: (date: Date) => void;
   onSlotDrag: (start: Date, end: Date) => void;
+  teacherColourMap?: Map<string, TeacherWithColour>;
 }
 
 const HOUR_HEIGHT = 60; // pixels per hour
@@ -35,7 +37,8 @@ export function CalendarGrid({
   lessons, 
   onLessonClick, 
   onSlotClick,
-  onSlotDrag 
+  onSlotDrag,
+  teacherColourMap,
 }: CalendarGridProps) {
   const { currentOrg } = useOrg();
   const [isDragging, setIsDragging] = useState(false);
@@ -85,6 +88,14 @@ export function CalendarGrid({
 
   const getClosureForDay = (day: Date): ClosureInfo | undefined => {
     return closures.find(c => isSameDay(c.date, day));
+  };
+
+  const resolveColourByUserId = (teacherUserId: string | null | undefined): TeacherColourEntry => {
+    if (!teacherUserId || !teacherColourMap) return TEACHER_COLOURS[0];
+    for (const entry of teacherColourMap.values()) {
+      if (entry.userId === teacherUserId) return entry.colour;
+    }
+    return TEACHER_COLOURS[0];
   };
 
   // No longer need getLessonPosition - handled by overlapLayout utility
@@ -311,7 +322,7 @@ export function CalendarGrid({
                           }
                         }}
                       >
-                        <LessonCard lesson={lesson} onClick={() => onLessonClick(lesson)} />
+                        <LessonCard lesson={lesson} onClick={() => onLessonClick(lesson)} teacherColour={resolveColourByUserId(lesson.teacher_user_id)} />
                       </div>
                     );
                   })}

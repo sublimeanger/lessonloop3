@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { format, addDays, subDays, addWeeks, subWeeks, startOfWeek } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -7,12 +7,15 @@ import { Button } from '@/components/ui/button';
 import { useOrg } from '@/contexts/OrgContext';
 import { useCalendarData, useTeachersAndLocations } from '@/hooks/useCalendarData';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
+import { StackedWeekView } from '@/components/calendar/StackedWeekView';
 import { AgendaView } from '@/components/calendar/AgendaView';
 import { LessonModal } from '@/components/calendar/LessonModal';
 import { LessonDetailPanel } from '@/components/calendar/LessonDetailPanel';
 import { CalendarFiltersBar } from '@/components/calendar/CalendarFiltersBar';
+import { TeacherColourLegend } from '@/components/calendar/TeacherColourLegend';
 import { MarkDayCompleteButton } from '@/components/calendar/MarkDayCompleteButton';
 import { CalendarView, CalendarFilters, LessonWithDetails } from '@/components/calendar/types';
+import { buildTeacherColourMap } from '@/components/calendar/teacherColours';
 import { ContextualHint } from '@/components/shared/ContextualHint';
 import { Calendar, ChevronLeft, ChevronRight, Plus, List, CalendarDays, LayoutGrid, Loader2 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -47,6 +50,13 @@ export default function CalendarPage() {
 
   // Fetch lessons
   const { lessons, isLoading, refetch } = useCalendarData(currentDate, view, filters);
+
+  // Teacher colour map
+  const teacherColourMap = useMemo(() => buildTeacherColourMap(teachers), [teachers]);
+  const teachersWithColours = useMemo(
+    () => Array.from(teacherColourMap.values()),
+    [teacherColourMap]
+  );
 
   // Navigation
   const navigatePrev = () => {
@@ -226,13 +236,20 @@ export default function CalendarPage() {
         </div>
 
         {/* Row 2: Filters */}
-        <div data-tour="calendar-filters">
+        <div data-tour="calendar-filters" className="space-y-2">
           <CalendarFiltersBar
             filters={filters}
             onChange={setFilters}
             teachers={teachers}
             locations={locations}
             rooms={rooms}
+          />
+          <TeacherColourLegend
+            teachers={teachersWithColours}
+            filters={filters}
+            onFilterTeacher={(teacherId) =>
+              setFilters((prev) => ({ ...prev, teacher_id: teacherId }))
+            }
           />
         </div>
       </div>
@@ -248,6 +265,17 @@ export default function CalendarPage() {
           lessons={lessons}
           onLessonClick={handleLessonClick}
         />
+      ) : view === 'week' ? (
+        <div data-tour="calendar-grid" data-hint="calendar-grid">
+          <StackedWeekView
+            currentDate={currentDate}
+            lessons={lessons}
+            teacherColourMap={teacherColourMap}
+            onLessonClick={handleLessonClick}
+            onSlotClick={handleSlotClick}
+            isParent={isParent}
+          />
+        </div>
       ) : (
         <div data-tour="calendar-grid" data-hint="calendar-grid">
           <CalendarGrid
@@ -257,6 +285,7 @@ export default function CalendarPage() {
             onLessonClick={handleLessonClick}
             onSlotClick={handleSlotClick}
             onSlotDrag={handleSlotDrag}
+            teacherColourMap={teacherColourMap}
           />
           {!isParent && (
             <ContextualHint

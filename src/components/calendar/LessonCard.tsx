@@ -1,21 +1,24 @@
-import { format, differenceInMinutes, isSameDay, parseISO } from 'date-fns';
+import { format, differenceInMinutes, parseISO } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Clock, MapPin, User, Repeat } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { TeacherColourEntry } from './teacherColours';
 
 interface LessonCardProps {
   lesson: LessonWithDetails;
   onClick: () => void;
-  variant?: 'calendar' | 'agenda';
+  variant?: 'calendar' | 'agenda' | 'stacked';
+  teacherColour?: TeacherColourEntry;
 }
 
-export function LessonCard({ lesson, onClick, variant = 'calendar' }: LessonCardProps) {
+export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColour }: LessonCardProps) {
   const startTime = parseISO(lesson.start_at);
   const endTime = parseISO(lesson.end_at);
   const duration = differenceInMinutes(endTime, startTime);
   const isRecurring = !!lesson.recurrence_id;
+  const isCancelled = lesson.status === 'cancelled';
   
   const statusColors = {
     scheduled: 'bg-primary/10 border-primary/30 hover:bg-primary/20',
@@ -26,6 +29,69 @@ export function LessonCard({ lesson, onClick, variant = 'calendar' }: LessonCard
   const studentNames = lesson.participants?.map(p => 
     `${p.student.first_name} ${p.student.last_name}`
   ).join(', ') || '';
+
+  // Stacked variant — used in the new week view
+  if (variant === 'stacked') {
+    return (
+      <div
+        onClick={onClick}
+        className={cn(
+          'rounded-lg border-l-4 border bg-card p-2.5 cursor-pointer transition-all hover:shadow-md hover:scale-[1.01] group',
+          isCancelled && 'opacity-50',
+          teacherColour?.border ?? 'border-l-primary'
+        )}
+      >
+        {/* Time range */}
+        <div className={cn(
+          'text-sm font-semibold tabular-nums',
+          isCancelled && 'line-through'
+        )}>
+          {format(startTime, 'HH:mm')} – {format(endTime, 'HH:mm')}
+        </div>
+
+        {/* Title */}
+        <div className={cn(
+          'text-sm font-medium truncate mt-0.5',
+          isCancelled && 'line-through text-muted-foreground'
+        )}>
+          {lesson.title}
+        </div>
+
+        {/* Student names */}
+        {studentNames && (
+          <div className="text-xs text-muted-foreground truncate mt-0.5">
+            {studentNames}
+          </div>
+        )}
+
+        {/* Bottom row: teacher + location + badges */}
+        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+          {lesson.teacher && (
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              {teacherColour && (
+                <span className={cn('h-2 w-2 rounded-full shrink-0', teacherColour.bg)} />
+              )}
+              <span className="truncate max-w-[90px]">
+                {lesson.teacher.full_name || lesson.teacher.email}
+              </span>
+            </span>
+          )}
+          {lesson.location && (
+            <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+              <MapPin className="h-3 w-3 shrink-0" />
+              <span className="truncate max-w-[70px]">{lesson.location.name}</span>
+            </span>
+          )}
+          {isRecurring && (
+            <Repeat className="h-3 w-3 text-muted-foreground shrink-0" />
+          )}
+          <Badge variant="outline" className="text-[10px] px-1 py-0 capitalize ml-auto">
+            {lesson.lesson_type}
+          </Badge>
+        </div>
+      </div>
+    );
+  }
 
   if (variant === 'agenda') {
     return (
@@ -84,7 +150,7 @@ export function LessonCard({ lesson, onClick, variant = 'calendar' }: LessonCard
     );
   }
 
-  // Calendar variant - compact card for week/day view
+  // Calendar variant - compact card for day view time-grid
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -92,6 +158,7 @@ export function LessonCard({ lesson, onClick, variant = 'calendar' }: LessonCard
           onClick={onClick}
           className={cn(
             'h-full w-full rounded px-2 py-1 cursor-pointer overflow-hidden border text-xs transition-all hover:scale-[1.02] hover:shadow-md',
+            teacherColour ? `border-l-2 ${teacherColour.border}` : '',
             statusColors[lesson.status]
           )}
         >
