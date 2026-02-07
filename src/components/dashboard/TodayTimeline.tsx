@@ -41,81 +41,89 @@ function LessonItem({ lesson, index, isLast }: { lesson: TodayLesson; index: num
   const StatusIcon = config.icon;
   const isNow = lesson.status === 'in-progress';
   
+  // Link to calendar on the lesson's date
+  const lessonDate = format(lesson.startAt, 'yyyy-MM-dd');
+  
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.1 }}
-      className={cn(
-        'group relative flex gap-4 rounded-lg p-4 transition-colors',
-        isNow && 'bg-teal/5 ring-1 ring-teal/20',
-        lesson.status === 'cancelled' && 'opacity-60'
-      )}
     >
-      {/* Timeline line */}
-      <div className="flex flex-col items-center">
-        <div
-          className={cn(
-            'flex h-10 w-10 items-center justify-center rounded-full border-2',
-            isNow
-              ? 'border-teal bg-teal text-white'
-              : lesson.status === 'completed'
-              ? 'border-success/30 bg-success/10 text-success'
-              : 'border-border bg-background text-muted-foreground'
-          )}
-        >
-          <StatusIcon className="h-5 w-5" />
-        </div>
-        {/* Connecting line (not on last item) */}
-        {!isLast && <div className="flex-1 w-0.5 bg-border mt-2" />}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 pb-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            {/* Time */}
-            <p className="text-sm font-medium text-muted-foreground">
-              {format(lesson.startAt, 'HH:mm')} – {format(lesson.endAt, 'HH:mm')}
-              <span className="ml-2 text-xs">({lesson.duration} min)</span>
-            </p>
-            
-            {/* Title */}
-            <h4 className={cn(
-              'mt-1 text-base font-semibold',
-              lesson.status === 'cancelled' && 'line-through'
-            )}>
-              {lesson.title}
-            </h4>
-            
-            {/* Students */}
-            {lesson.students.length > 0 && (
-              <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-                <Users className="h-3.5 w-3.5" />
-                <span>
-                  {lesson.students.map(s => s.name).join(', ')}
-                </span>
-              </div>
+      <Link
+        to={`/calendar?date=${lessonDate}`}
+        className={cn(
+          'group relative flex gap-4 rounded-lg p-4 transition-colors cursor-pointer',
+          'hover:bg-accent/50',
+          isNow && 'bg-teal/5 ring-1 ring-teal/20',
+          lesson.status === 'cancelled' && 'opacity-60'
+        )}
+      >
+        {/* Timeline line */}
+        <div className="flex flex-col items-center">
+          <div
+            className={cn(
+              'flex h-10 w-10 items-center justify-center rounded-full border-2',
+              isNow
+                ? 'border-teal bg-teal text-white'
+                : lesson.status === 'completed'
+                ? 'border-success/30 bg-success/10 text-success'
+                : 'border-border bg-background text-muted-foreground'
             )}
-            
-            {/* Location */}
-            {lesson.location && (
-              <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-3.5 w-3.5" />
-                <span>
-                  {lesson.location.name}
-                  {lesson.room && ` – ${lesson.room.name}`}
-                </span>
-              </div>
-            )}
+          >
+            <StatusIcon className="h-5 w-5" />
           </div>
-
-          {/* Status badge */}
-          <Badge variant="outline" className={cn('shrink-0', config.className)}>
-            {isNow ? 'NOW' : config.label}
-          </Badge>
+          {/* Connecting line (not on last item) */}
+          {!isLast && <div className="flex-1 w-0.5 bg-border mt-2" />}
         </div>
-      </div>
+
+        {/* Content */}
+        <div className="flex-1 pb-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              {/* Time */}
+              <p className="text-sm font-medium text-muted-foreground">
+                {format(lesson.startAt, 'HH:mm')} – {format(lesson.endAt, 'HH:mm')}
+                <span className="ml-2 text-xs">({lesson.duration} min)</span>
+              </p>
+              
+              {/* Title */}
+              <h4 className={cn(
+                'mt-1 text-base font-semibold group-hover:text-primary transition-colors',
+                lesson.status === 'cancelled' && 'line-through'
+              )}>
+                {lesson.title}
+              </h4>
+              
+              {/* Students */}
+              {lesson.students.length > 0 && (
+                <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Users className="h-3.5 w-3.5" />
+                  <span>
+                    {lesson.students.map(s => s.name).join(', ')}
+                  </span>
+                </div>
+              )}
+              
+              {/* Location */}
+              {lesson.location && (
+                <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5" />
+                  <span>
+                    {lesson.location.name}
+                    {lesson.room && ` – ${lesson.room.name}`}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Status badge */}
+            <Badge variant="outline" className={cn('shrink-0', config.className)}>
+              {isNow ? 'NOW' : config.label}
+            </Badge>
+          </div>
+        </div>
+      </Link>
     </motion.div>
   );
 }

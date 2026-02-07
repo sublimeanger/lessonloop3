@@ -177,6 +177,7 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
                 value={stats?.todayLessons ?? 0}
                 subtitle={stats?.todayLessons === 0 ? 'No lessons scheduled' : 'lessons today'}
                 icon={Calendar}
+                href="/calendar"
                 variant="teal"
               />
               <StatCard
@@ -184,6 +185,7 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
                 value={stats?.activeStudents ?? 0}
                 subtitle={stats?.activeStudents === 0 ? 'Add your first student' : 'enrolled'}
                 icon={Users}
+                href="/students"
                 variant="coral"
               />
               <StatCard
@@ -199,6 +201,7 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
                 value={stats?.hoursThisWeek ?? 0}
                 subtitle={stats?.hoursThisWeek === 0 ? 'Schedule lessons to track' : 'hours taught'}
                 icon={Clock}
+                href="/calendar"
                 variant="emerald"
               />
             </div>
@@ -274,6 +277,7 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
                 value={stats?.activeStudents ?? 0}
                 subtitle={stats?.activeStudents === 0 ? 'Add students to get started' : 'enrolled'}
                 icon={Users}
+                href="/students"
                 variant="teal"
               />
               <StatCard
@@ -374,6 +378,7 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
                 value={stats?.todayLessons ?? 0}
                 subtitle={stats?.todayLessons === 0 ? 'No lessons scheduled' : 'lessons today'}
                 icon={Calendar}
+                href="/calendar"
                 variant="teal"
               />
               <StatCard
@@ -381,6 +386,7 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
                 value={stats?.myStudentsCount ?? 0}
                 subtitle="students in your care"
                 icon={Users}
+                href="/students"
                 variant="coral"
               />
               <StatCard
@@ -388,6 +394,7 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
                 value={stats?.lessonsThisMonth ?? 0}
                 subtitle="lessons completed"
                 icon={Clock}
+                href="/reports/lessons"
                 variant="violet"
               />
               <StatCard
@@ -395,6 +402,7 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
                 value={stats?.hoursThisWeek ?? 0}
                 subtitle="teaching hours"
                 icon={TrendingUp}
+                href="/calendar"
                 variant="emerald"
               />
             </div>
