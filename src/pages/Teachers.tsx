@@ -16,6 +16,7 @@ import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { useTeachers, useTeacherMutations, useTeacherStudentCounts } from '@/hooks/useTeachers';
 import { Progress } from '@/components/ui/progress';
 import { Plus, GraduationCap, Loader2, Mail, UserPlus, Users, Lock, Link2, Link2Off, Phone } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -428,8 +429,16 @@ export default function Teachers() {
 
 // Teacher card component
 function TeacherCard({ teacher, studentCount }: { teacher: any; studentCount: number }) {
+  const navigate = useNavigate();
+  
   return (
-    <div className="flex items-center gap-4 rounded-lg border bg-card p-4">
+    <div 
+      className="flex items-center gap-4 rounded-lg border bg-card p-4 transition-colors hover:bg-accent cursor-pointer"
+      onClick={() => navigate(`/calendar?teacher=${teacher.id}`)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/calendar?teacher=${teacher.id}`); }}
+    >
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
         {teacher.display_name?.[0] || '?'}
       </div>
@@ -474,6 +483,7 @@ function TeacherCard({ teacher, studentCount }: { teacher: any; studentCount: nu
           )}
         </div>
       </div>
+      <span className="text-xs text-muted-foreground hidden sm:inline">View schedule →</span>
     </div>
   );
 }

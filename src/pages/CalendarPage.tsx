@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { format, addDays, subDays, addWeeks, subWeeks, startOfWeek } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -20,15 +21,19 @@ export default function CalendarPage() {
   const { currentRole } = useOrg();
   const isParent = currentRole === 'parent';
   const { teachers, locations, rooms } = useTeachersAndLocations();
+  const [searchParams] = useSearchParams();
 
   // Calendar state
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    const dateParam = searchParams.get('date');
+    return dateParam ? new Date(dateParam) : new Date();
+  });
   const [view, setView] = useState<CalendarView>('week');
-  const [filters, setFilters] = useState<CalendarFilters>({
-    teacher_id: null,
+  const [filters, setFilters] = useState<CalendarFilters>(() => ({
+    teacher_id: searchParams.get('teacher') || null,
     location_id: null,
     room_id: null,
-  });
+  }));
 
   // Lesson modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
