@@ -17,7 +17,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>('');
   const [notes, setNotes] = useState('');
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { data: assignments = [], isLoading } = useParentPracticeAssignments();
   const logPractice = useLogPractice();
