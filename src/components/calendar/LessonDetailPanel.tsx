@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban, Gift, AlertTriangle } from 'lucide-react';
+import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban, Gift, AlertTriangle, CalendarClock, StopCircle } from 'lucide-react';
 
 interface LessonDetailPanelProps {
   lesson: LessonWithDetails | null;
@@ -274,62 +274,118 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           </div>
         </SheetHeader>
 
-        <div className="mt-6 space-y-6">
+        <div className="mt-4 space-y-5">
+          {/* Quick Actions - prominent, right at the top */}
+          {lesson.status !== 'cancelled' && (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={onEdit} variant="outline" className="gap-2" disabled={actionInProgress}>
+                  <CalendarClock className="h-4 w-4" />
+                  Reschedule
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={handleCancelClick} 
+                  className="gap-2 border-warning/50 text-warning hover:bg-warning/10 hover:text-warning"
+                  disabled={actionInProgress}
+                >
+                  {actionInProgress ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                  Cancel
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {isRecurring && (
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      setRecurringAction('cancel');
+                      setCancelMode('this_and_future');
+                      setCancelDialogOpen(true);
+                    }}
+                    className="gap-2 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    disabled={actionInProgress}
+                  >
+                    <StopCircle className="h-4 w-4" />
+                    End Series
+                  </Button>
+                )}
+                <Button 
+                  variant="ghost" 
+                  onClick={handleDeleteClick} 
+                  className="gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  disabled={actionInProgress}
+                >
+                  {actionInProgress ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  Delete
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {lesson.status === 'cancelled' && (
+            <div className="flex gap-2">
+              <Button onClick={onEdit} variant="outline" className="flex-1 gap-2" disabled={actionInProgress}>
+                <Edit2 className="h-4 w-4" />
+                Edit
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={handleDeleteClick} 
+                className="flex-1 gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                disabled={actionInProgress}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
+            </div>
+          )}
+
+          <Separator />
+
           {/* Time & Date */}
           <div className="flex items-center gap-3 text-muted-foreground">
-            <Clock className="h-5 w-5" />
-            <div>
-              <div className="font-medium text-foreground">
-                {format(startTime, 'EEEE, d MMMM yyyy')}
-              </div>
-              <div>
-                {format(startTime, 'HH:mm')} – {format(endTime, 'HH:mm')} ({duration} min)
-              </div>
+            <Clock className="h-4 w-4 flex-shrink-0" />
+            <div className="text-sm">
+              <span className="font-medium text-foreground">
+                {format(startTime, 'EEE d MMM')}
+              </span>
+              {' · '}
+              {format(startTime, 'HH:mm')}–{format(endTime, 'HH:mm')} ({duration} min)
             </div>
           </div>
 
           {/* Teacher */}
           <div className="flex items-center gap-3 text-muted-foreground">
-            <User className="h-5 w-5" />
-            <div>
-              <div className="text-xs uppercase tracking-wide">Teacher</div>
-              <div className="font-medium text-foreground">
-                {lesson.teacher?.full_name || lesson.teacher?.email || 'Unknown'}
-              </div>
-            </div>
+            <User className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm font-medium text-foreground">
+              {lesson.teacher?.full_name || lesson.teacher?.email || 'Unknown'}
+            </span>
           </div>
 
           {/* Location */}
           {lesson.location && (
             <div className="flex items-center gap-3 text-muted-foreground">
-              <MapPin className="h-5 w-5" />
-              <div>
-                <div className="text-xs uppercase tracking-wide">Location</div>
-                <div className="font-medium text-foreground">
-                  {lesson.location.name}
-                  {lesson.room && ` – ${lesson.room.name}`}
-                </div>
-              </div>
+              <MapPin className="h-4 w-4 flex-shrink-0" />
+              <span className="text-sm font-medium text-foreground">
+                {lesson.location.name}
+                {lesson.room && ` – ${lesson.room.name}`}
+              </span>
             </div>
           )}
 
           {/* Students */}
           <div className="flex items-start gap-3 text-muted-foreground">
-            <Users className="h-5 w-5 mt-0.5" />
-            <div className="flex-1">
-              <div className="text-xs uppercase tracking-wide mb-2">
-                {lesson.lesson_type === 'group' ? 'Students' : 'Student'}
-              </div>
-              <div className="space-y-2">
-                {lesson.participants?.map((p) => (
-                  <div key={p.id} className="text-foreground">
-                    {p.student.first_name} {p.student.last_name}
-                  </div>
-                ))}
-                {(!lesson.participants || lesson.participants.length === 0) && (
-                  <div className="text-muted-foreground italic">No students assigned</div>
-                )}
-              </div>
+            <Users className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 text-sm">
+              {lesson.participants?.map((p, i) => (
+                <span key={p.id} className="text-foreground">
+                  {p.student.first_name} {p.student.last_name}
+                  {i < (lesson.participants?.length || 0) - 1 && ', '}
+                </span>
+              ))}
+              {(!lesson.participants || lesson.participants.length === 0) && (
+                <span className="text-muted-foreground italic">No students assigned</span>
+              )}
             </div>
           </div>
 
@@ -337,13 +393,13 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
 
           {/* Attendance */}
           <div>
-            <h3 className="font-semibold mb-3">Attendance</h3>
+            <h3 className="font-semibold mb-3 text-sm">Attendance</h3>
             <div className="space-y-3">
               {lesson.participants?.map((p) => {
                 const currentStatus = getStudentAttendance(p.student.id);
                 return (
                   <div key={p.id} className="space-y-2">
-                    <div className="font-medium">{p.student.first_name} {p.student.last_name}</div>
+                    <div className="font-medium text-sm">{p.student.first_name} {p.student.last_name}</div>
                     <div className="flex flex-wrap gap-1">
                       {ATTENDANCE_OPTIONS.slice(0, 3).map((option) => (
                         <Button
@@ -379,7 +435,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
             <>
               <Separator />
               <div>
-                <h3 className="font-semibold mb-2">Lesson Notes (Shared with Parents)</h3>
+                <h3 className="font-semibold mb-2 text-sm">Lesson Notes (Shared)</h3>
                 <p className="text-muted-foreground text-sm whitespace-pre-wrap bg-muted/50 p-3 rounded-md">{lesson.notes_shared}</p>
               </div>
             </>
@@ -390,43 +446,11 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
             <>
               <Separator />
               <div>
-                <h3 className="font-semibold mb-2">Private Notes (Staff Only)</h3>
+                <h3 className="font-semibold mb-2 text-sm">Private Notes (Staff Only)</h3>
                 <p className="text-muted-foreground text-sm whitespace-pre-wrap">{lesson.notes_private}</p>
               </div>
             </>
           )}
-
-          <Separator />
-
-          {/* Actions */}
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <Button onClick={onEdit} className="flex-1 gap-2" disabled={actionInProgress}>
-                <Edit2 className="h-4 w-4" />
-                Edit
-              </Button>
-              {lesson.status !== 'cancelled' && (
-                <Button 
-                  variant="outline" 
-                  onClick={handleCancelClick} 
-                  className="flex-1 gap-2"
-                  disabled={actionInProgress}
-                >
-                  {actionInProgress ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
-                  Cancel
-                </Button>
-              )}
-            </div>
-            <Button 
-              variant="ghost" 
-              onClick={handleDeleteClick} 
-              className="w-full gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-              disabled={actionInProgress}
-            >
-              {actionInProgress ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-              Delete Lesson
-            </Button>
-          </div>
         </div>
       </SheetContent>
 
