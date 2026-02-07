@@ -22,6 +22,7 @@ interface ConflictCheckParams {
   start_at: Date;
   end_at: Date;
   teacher_user_id: string | null;
+  teacher_id?: string | null; // teachers.id for unlinked teacher fallback
   room_id: string | null;
   location_id: string | null;
   student_ids: string[];
@@ -47,7 +48,7 @@ export function useConflictDetection() {
     if (!currentOrg) return [];
 
     const conflicts: ConflictResult[] = [];
-    const { start_at, end_at, teacher_user_id, room_id, location_id, student_ids, exclude_lesson_id } = params;
+    const { start_at, end_at, teacher_user_id, teacher_id, room_id, location_id, student_ids, exclude_lesson_id } = params;
 
     try {
       // Run conflict checks in parallel with individual error handling
@@ -107,7 +108,19 @@ export function useConflictDetection() {
                 ),
                 'teacher lessons'
               )
-            : Promise.resolve([]),
+            // Fallback: check by teacher_id for unlinked teachers
+            : teacher_id
+              ? safeCheck(
+                  () => checkTeacherLessonsByTeacherId(
+                    currentOrg.id,
+                    teacher_id,
+                    start_at,
+                    end_at,
+                    exclude_lesson_id
+                  ),
+                  'teacher lessons (by teacher_id)'
+                )
+              : Promise.resolve([]),
           // Check room overlap and capacity
           room_id 
             ? safeCheck(
@@ -477,6 +490,52 @@ async function checkExternalBusyBlocks(
       message: `Teacher has an external calendar event: ${title}`,
       entity_name: title,
     });
+  }
+
+  return conflicts;
+}
+
+/**
+ * Check teacher lesson overlaps by teacher_id (for unlinked teachers without user accounts)
+ */
+async function checkTeacherLessonsByTeacherId(
+  orgId: string,
+  teacherId: string,
+  startAt: Date,
+  endAt: Date,
+  excludeLessonId?: string
+): Promise<ConflictResult[]> {
+  const conflicts: ConflictResult[] = [];
+
+  let query = supabase
+    .from('lessons')
+    .select('id, title, start_at, end_at')
+    .eq('org_id', orgId)
+    .eq('teacher_id', teacherId)
+    .neq('status', 'cancelled')
+    .lt('start_at', endAt.toISOString())
+    .gt('end_at', startAt.toISOString());
+
+  if (excludeLessonId) {
+    query = query.neq('id', excludeLessonId);
+  }
+
+  const { data: teacherLessons } = await query;
+
+  if (teacherLessons && teacherLessons.length > 0) {
+    const directOverlap = teacherLessons.find(l => {
+      const lStart = new Date(l.start_at);
+      const lEnd = new Date(l.end_at);
+      return lStart < endAt && lEnd > startAt;
+    });
+
+    if (directOverlap) {
+      conflicts.push({
+        type: 'teacher',
+        severity: 'error',
+        message: `Teacher already has a lesson at this time: ${directOverlap.title}`,
+      });
+    }
   }
 
   return conflicts;

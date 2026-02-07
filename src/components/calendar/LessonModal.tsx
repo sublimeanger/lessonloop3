@@ -247,6 +247,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
           start_at: startAtUtc,
           end_at: endAtUtc,
           teacher_user_id: teacherUserId,
+          teacher_id: teacherId, // Pass teacher_id for unlinked teacher fallback
           room_id: roomId,
           location_id: locationId,
           student_ids: selectedStudents,
