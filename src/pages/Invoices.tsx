@@ -156,7 +156,11 @@ export default function Invoices() {
         }
       />
 
-      {!isParent && <div data-tour="invoice-stats"><InvoiceStatsWidget /></div>}
+      {!isParent && (
+        <div data-tour="invoice-stats">
+          <InvoiceStatsWidget onFilterStatus={(status) => setFilters(prev => ({ ...prev, status: status as any }))} />
+        </div>
+      )}
 
       <div className="mt-6 space-y-4">
         {!isParent && (

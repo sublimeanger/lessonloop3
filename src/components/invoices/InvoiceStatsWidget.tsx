@@ -2,6 +2,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useInvoiceStats } from '@/hooks/useInvoices';
 import { useOrg } from '@/contexts/OrgContext';
 import { AlertCircle, Clock, FileText, CheckCircle2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 function formatCurrency(amountMinor: number, currencyCode: string = 'GBP') {
   const amount = amountMinor / 100;
@@ -11,7 +12,11 @@ function formatCurrency(amountMinor: number, currencyCode: string = 'GBP') {
   }).format(amount);
 }
 
-export function InvoiceStatsWidget() {
+interface InvoiceStatsWidgetProps {
+  onFilterStatus?: (status: string) => void;
+}
+
+export function InvoiceStatsWidget({ onFilterStatus }: InvoiceStatsWidgetProps = {}) {
   const { data: stats, isLoading } = useInvoiceStats();
   const { currentOrg } = useOrg();
 
@@ -38,6 +43,7 @@ export function InvoiceStatsWidget() {
       subtext: `${stats.sentCount + stats.overdueCount} invoices`,
       icon: Clock,
       className: 'text-warning',
+      filterStatus: 'sent',
     },
     {
       label: 'Overdue',
@@ -45,6 +51,7 @@ export function InvoiceStatsWidget() {
       subtext: `${stats.overdueCount} invoices`,
       icon: AlertCircle,
       className: 'text-destructive',
+      filterStatus: 'overdue',
     },
     {
       label: 'Drafts',
@@ -52,6 +59,7 @@ export function InvoiceStatsWidget() {
       subtext: `${stats.draftCount} invoices`,
       icon: FileText,
       className: 'text-muted-foreground',
+      filterStatus: 'draft',
     },
     {
       label: 'Paid (YTD)',
@@ -59,13 +67,25 @@ export function InvoiceStatsWidget() {
       subtext: `${stats.paidCount} invoices`,
       icon: CheckCircle2,
       className: 'text-success',
+      filterStatus: 'paid',
     },
   ];
+
+  const isClickable = !!onFilterStatus;
 
   return (
     <div className="grid gap-4 md:grid-cols-4">
       {statCards.map((stat) => (
-        <Card key={stat.label}>
+        <Card 
+          key={stat.label}
+          className={cn(
+            isClickable && 'cursor-pointer transition-all hover:shadow-md hover:border-primary/20'
+          )}
+          onClick={() => onFilterStatus?.(stat.filterStatus)}
+          role={isClickable ? 'button' : undefined}
+          tabIndex={isClickable ? 0 : undefined}
+          onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') onFilterStatus?.(stat.filterStatus); } : undefined}
+        >
           <CardContent className="pt-6">
             <div className="flex items-start justify-between">
               <div>
