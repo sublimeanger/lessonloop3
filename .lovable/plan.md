@@ -1,232 +1,245 @@
 
-# Promotional Media Assets - COMPLETED ✅
 
-## Implementation Summary
+# Massive Agency Demo Data Seeder
 
-### Generated Assets (src/assets/marketing/)
+## Overview
+Build a new edge function `seed-agency-demo` that transforms the `demo-teacher@lessonloop.test` account from a solo teacher into a fully operational agency with 9 schools, 18 teachers, 300+ students, thousands of lessons, and complete invoicing history. This will also create loginable teacher and parent accounts for cross-role testing.
 
-| Asset | Type | Description |
-|-------|------|-------------|
-| `dashboard-hero.jpg` | Screenshot | Music lesson scheduling dashboard |
-| `calendar-week.jpg` | Screenshot | Weekly calendar with lesson blocks |
-| `invoices-list.jpg` | Screenshot | Invoice list with mixed statuses |
-| `parent-portal.jpg` | Screenshot | Family dashboard web application |
-| `loopassist-chat.jpg` | Screenshot | AI assistant chat interface |
-| `lesson-creation-demo.mp4` | Video | 5s demo of lesson scheduling workflow |
-
-### Components Created
-
-- **BrowserFrame** (`src/components/marketing/BrowserFrame.tsx`)
-  - Dark variant for ink backgrounds
-  - Light variant for card backgrounds  
-  - DeviceFrame for iPhone/iPad mockups
-
-### Marketing Integration
-
-- **HeroSection**: Updated to use real `dashboard-hero.jpg` screenshot
-- **ProductShowcase**: Retains animated mockups (interactive UX value)
-- **Features Page**: Retains interactive deep-dives
-
-### Asset Import Pattern
-```tsx
-import { dashboardHero, calendarWeek } from "@/assets/marketing";
-```
+## Current State
+- **Account**: `demo-teacher@lessonloop.test` (password: `DemoTeacher2026!`)
+- **User ID**: `b633da13-0599-4ab0-bfd8-c5a686b5d684`
+- **Org ID**: `5b905216-85ae-4aca-8c50-9757d0444b60`
+- **Org type**: `solo_teacher` with `max_teachers: 1`
+- **Existing data**: 1 teacher record (the owner), nothing else
+- The org needs to be upgraded to `agency` type first
 
 ---
 
-## Original Plan (for reference)
-- **SVG Previews** (`/public/previews/`): Static placeholder illustrations
-  - `calendar-preview.svg`
-  - `invoices-preview.svg`
-  - `students-preview.svg`
-- **Blog Graphics** (`/public/blog/`): Abstract SVG illustrations for articles
-- **Marketing Mockups**: Animated React components in the HeroSection, ProductShowcase, and BentoFeatures
+## Phase 1: Organisation Upgrade
 
-### Gap Analysis
-The current marketing site relies heavily on **animated mockups** (React components) rather than real screenshots. While these look polished, they:
-- Don't show the real product
-- Can't be used in external media (pitch decks, social, print)
-- May not fully represent current features
+Update the existing organisation record:
+- `org_type` -> `agency`
+- `name` -> `Harmony Music Education Agency`
+- `subscription_plan` -> `agency`
+- `max_students` -> `9999`
+- `max_teachers` -> `9999`
+- `vat_enabled` -> `true`, `vat_rate` -> `20`
+- Set invoice address fields for realism
 
-## Proposed Asset Categories
+---
 
-### 1. Hero Screenshots (High-Priority)
-Static screenshots for key marketing placements:
+## Phase 2: Locations (9 Schools)
 
-| Screenshot | Source Page | Usage |
-|------------|-------------|-------|
-| Dashboard Overview | `/dashboard` | Hero section, About page |
-| Calendar Week View | `/calendar` (Week view with lessons) | Product tour, Features |
-| Invoice List | `/invoices` (Mixed statuses) | Billing deep-dive |
-| Parent Portal Home | `/portal/home` | Portal deep-dive |
-| LoopAssist AI Chat | Drawer open with conversation | AI feature section |
-| Student Profile | `/students/:id` | Student management |
-| Billing Run Wizard | Modal open | Automation story |
+Create 9 schools across different UK cities, each with 2-3 rooms:
 
-### 2. Feature GIFs/Videos (Medium-Priority)
-Short animated captures demonstrating workflows:
+| # | School Name | City | Rooms |
+|---|-------------|------|-------|
+| 1 | Oakwood Primary School | London | Music Room, Hall |
+| 2 | St Mary's Academy | Manchester | Room A, Room B, Hall |
+| 3 | Riverside Secondary School | Birmingham | Music Suite, Practice Room |
+| 4 | The Willows Prep | Bristol | Studio 1, Studio 2 |
+| 5 | Kingsgate Grammar | Leeds | Music Block, Drama Hall |
+| 6 | Elmhurst Community School | Liverpool | Teaching Room, Assembly Hall |
+| 7 | Briarwood College | Sheffield | Music Dept, Rehearsal Room |
+| 8 | Ashford Park School | Nottingham | Room 1, Room 2, Room 3 |
+| 9 | Westfield Junior School | Cambridge | Music Room, Practice Room |
 
-| Demo | Duration | Shows |
-|------|----------|-------|
-| Create Lesson | 8-10s | Click slot → Fill modal → Save |
-| Billing Run | 10-12s | Open wizard → Select options → Generate |
-| LoopAssist Query | 8-10s | Type question → AI response streams |
-| Parent Portal Pay | 6-8s | View invoice → Click Pay → Stripe flow |
-| Drag-Drop Reschedule | 5-7s | Drag lesson to new slot |
+Total: 9 locations, ~22 rooms
 
-### 3. Device Mockups (For Social/Print)
-Screenshots placed into device frames:
-- MacBook Pro frame for desktop views
-- iPhone 15 Pro frame for parent portal mobile view
-- iPad frame for tablet users
+---
+
+## Phase 3: Teachers (18 Teachers)
+
+Create 18 teacher records (unlinked -- no auth accounts) distributed across schools. Two of these will also get loginable auth accounts for cross-role testing.
+
+Each teacher has:
+- Realistic UK name
+- 2-3 instruments from: Piano, Violin, Guitar, Cello, Drums, Flute, Clarinet, Saxophone, Trumpet, Recorder
+- Employment type (mix of `employee` and `contractor`)
+- Pay rate (per_lesson or hourly)
+
+**Loginable Teacher Accounts** (2 accounts with full auth):
+1. `teacher1@lessonloop.test` / `Teacher1Demo2026!` -- assigned to schools 1-3
+2. `teacher2@lessonloop.test` / `Teacher2Demo2026!` -- assigned to schools 4-6
+
+These will have:
+- Auth user created with `email_confirm: true`
+- Profile, org_membership (role: teacher), user_roles, teacher record
+- Their `teachers.user_id` linked to their auth ID
+
+---
+
+## Phase 4: Students (315 Students) + Guardians (~250 Guardians)
+
+Create 35 students per school (9 x 35 = 315 students), each with:
+- Realistic UK first/last name combinations
+- Teaching defaults set (default_location_id, default_teacher_id)
+- Status: mostly `active`, a few `inactive`
+
+**Guardians (~250)**:
+- Most students get 1 guardian (primary payer)
+- ~30 families share guardians (siblings), testing multi-student guardian billing
+- Each guardian linked via `student_guardians` with `is_primary_payer: true`
+
+**Loginable Parent Accounts** (3 accounts):
+1. `parent1@lessonloop.test` / `Parent1Demo2026!` -- parent of 2 siblings at School 1
+2. `parent2@lessonloop.test` / `Parent2Demo2026!` -- parent of 1 child at School 4
+3. `parent3@lessonloop.test` / `Parent3Demo2026!` -- parent of 3 siblings across Schools 2 and 5
+
+These get:
+- Auth user with email confirmed
+- Profile, org_membership (role: parent), user_roles
+- Guardian record with `user_id` linked
+- Proper `student_guardians` linking
+
+---
+
+## Phase 5: Student-Teacher Assignments
+
+Each student gets assigned to 1 primary teacher at their school via `student_teacher_assignments`. Teachers are distributed so each has ~15-20 students.
+
+---
+
+## Phase 6: Rate Cards (16 Cards)
+
+Create rate cards for all instrument/duration combinations:
+
+| Instrument | 30 min | 45 min |
+|------------|--------|--------|
+| Piano | 35.00 | 50.00 |
+| Guitar | 32.00 | 45.00 |
+| Violin | 38.00 | 55.00 |
+| Cello | 38.00 | 55.00 |
+| Drums | 30.00 | 42.00 |
+| Flute | 35.00 | 50.00 |
+| Clarinet | 35.00 | 50.00 |
+| Saxophone | 35.00 | 50.00 |
+
+---
+
+## Phase 7: Lessons (~2,500+ Lessons)
+
+Generate lessons Monday-Friday only, spread across 12 weeks:
+- **Past 8 weeks**: ~1,600 completed lessons (status: `completed`)
+- **Current week**: ~200 lessons (mix of `completed` for past days, `scheduled` for remaining)
+- **Future 4 weeks**: ~800 scheduled lessons (status: `scheduled`)
+- **~30 cancelled lessons** scattered through past weeks
+
+Each lesson:
+- Assigned to correct teacher (`teacher_user_id` + `teacher_id`)
+- Set at correct location + room
+- Time slots: 08:30-17:00, staggered 30/45 min blocks
+- Proper `lesson_participants` linking student to lesson
+- Mix of `private` and `group` (some group lessons with 2-3 students)
+
+**Attendance Records** for completed lessons:
+- ~90% `present`, ~5% `absent`, ~3% `late`, ~2% `cancelled_by_student`
+
+---
+
+## Phase 8: Invoicing (~180 Invoices)
+
+Generate monthly invoices for the past 3 months, grouped by guardian (payer):
+
+**Month 1 (2 months ago)**: ~60 invoices
+- ~50 `paid` with payment records
+- ~8 `overdue`
+- ~2 `void`
+
+**Month 2 (1 month ago)**: ~60 invoices
+- ~35 `paid`
+- ~15 `sent`
+- ~8 `overdue`
+- ~2 `void`
+
+**Month 3 (current)**: ~60 invoices
+- ~10 `paid`
+- ~30 `sent`
+- ~15 `draft`
+- ~5 `overdue`
+
+Each invoice:
+- Linked to correct `payer_guardian_id` and `payer_student_id`
+- Proper `invoice_items` (4 lessons per student per month)
+- Correct totals calculated from rate cards
+- `GBP` currency, sequential `invoice_number`
+
+**Payments**: Created for all `paid` invoices with mix of `bank_transfer`, `card`, and `cash` methods
+
+---
+
+## Phase 9: Make-Up Credits (~20 Credits)
+
+Create make-up credits for some cancelled lessons:
+- ~15 unredeemed (available)
+- ~5 redeemed (linked to make-up lessons)
+
+---
+
+## Phase 10: Messaging Data
+
+Seed realistic messaging across all channels:
+- **Internal messages** (10+): teacher-to-owner conversations about schedules, student progress
+- **Message requests** (8+): parent requests for reschedules, cancellations, general queries (mix of pending/approved/declined)
+- **Outbound message log** (15+): invoice reminders, lesson confirmations, welcome emails
+
+---
 
 ## Technical Implementation
 
-### Phase 1: Capture Infrastructure
+### Edge Function: `supabase/functions/seed-agency-demo/index.ts`
 
-Create a dedicated **demo mode** that prepares the app with:
-- Seeded realistic data (already exists: `seed-demo-data` edge function)
-- Specific test accounts for consistent captures
-- Option to hide UI chrome (sidebar, header) for clean shots
+The function will:
+1. Accept a POST request with the user's auth token
+2. Verify the caller is the org owner
+3. Run all phases sequentially with progress logging
+4. Use batch inserts (chunks of 100) to stay within database limits
+5. Return a comprehensive summary of everything created
+6. Include idempotency check (skip if data already exists)
 
-### Phase 2: Screenshot Capture Process
+### Batching Strategy
+- Supabase insert limit is ~1000 rows, but we'll batch at 100 for reliability
+- Lessons (2500+) split into 25 batches
+- Lesson participants follow the same batching
+- Attendance records batched similarly
 
-**Option A: Manual Browser Capture** (Fastest)
-1. Log in as demo Owner account
-2. Navigate to each target page
-3. Use browser's screenshot tool or macOS Screenshot (Cmd+Shift+4)
-4. Crop and export at 2x resolution
+### Auth Account Creation
+- Uses `supabase.auth.admin.createUser()` with `email_confirm: true`
+- Creates profiles, org_memberships, user_roles, teacher/guardian records
+- All done via service role key
 
-**Option B: Automated Playwright Script**
-Create a script that:
-- Logs in via test credentials
-- Navigates to each key page
-- Captures at multiple resolutions (desktop, tablet, mobile)
-- Saves to `/public/screenshots/` or external storage
-
-### Phase 3: Video/GIF Creation
-
-**Tools:**
-- **Screen Recording**: macOS Screen Recording, Loom, or ScreenStudio
-- **GIF Conversion**: FFmpeg or Gifski for high-quality GIFs
-- **Editing**: CapCut or Final Cut for transitions
-
-**Recording Guidelines:**
-- Resolution: 1920x1080 minimum
-- Frame rate: 30fps for videos, 15fps for GIFs
-- Duration: Keep under 15 seconds for GIFs
-- Mouse movements: Smooth, deliberate, visible cursor
-- No personal data visible (use demo accounts)
-
-## Storage Strategy
-
-### For Web Usage
-Store in `/public/marketing/`:
-```
-/public/marketing/
-├── screenshots/
-│   ├── dashboard-hero.webp
-│   ├── calendar-week.webp
-│   ├── invoices-list.webp
-│   ├── parent-portal.webp
-│   └── loopassist-chat.webp
-├── gifs/
-│   ├── create-lesson.gif
-│   ├── billing-run.gif
-│   └── loopassist-query.gif
-└── videos/
-    ├── product-tour.mp4
-    └── 60-second-demo.mp4
-```
-
-### For External Use (Pitch Decks, Social)
-- Export as PNG (screenshots) and MP4 (videos)
-- Store in cloud (Google Drive, Dropbox) for sharing
-- Maintain a brand asset library document
-
-## Marketing Site Integration
-
-### Updates Required
-
-1. **HeroSection**: Replace animated mockup with real screenshot in browser frame
-2. **ProductShowcase**: Option to toggle between animated mockups and real screenshots
-3. **Features Page**: Add actual product screenshots to deep-dive sections
-4. **About Page**: Use dashboard screenshot as "the product" visual
-
-### New Component: ScreenshotBrowserFrame
-
-A reusable component that wraps screenshots in a browser-style frame:
-
-```tsx
-<BrowserFrame>
-  <img src="/marketing/screenshots/dashboard-hero.webp" alt="LessonLoop Dashboard" />
-</BrowserFrame>
-```
-
-## Recommended Capture Sequence
-
-### Session 1: Core Screenshots
-1. Dashboard (Owner view with populated data)
-2. Calendar (Week view with 8-10 lessons)
-3. Students list (10+ students showing)
-4. Single student profile (with guardian, lessons tab)
-5. Invoices list (mixed statuses)
-6. LoopAssist drawer open (with sample conversation)
-
-### Session 2: Feature Workflows
-1. Record: Create new lesson flow
-2. Record: Billing run wizard
-3. Record: LoopAssist asking "who hasn't paid"
-4. Record: Parent portal payment flow
-
-### Session 3: Mobile/Tablet
-1. Parent portal on iPhone frame
-2. Calendar on iPad
-3. Mobile-responsive dashboard
-
-## Quality Checklist
-
-Before using any capture:
-- [ ] No personal/test email addresses visible
-- [ ] Realistic-looking data (British names, GBP amounts)
-- [ ] Current date/time looks appropriate
-- [ ] No console errors or loading states visible
-- [ ] Consistent brand colours and typography
-- [ ] High resolution (minimum 2x for retina)
+### Data Integrity
+- All records scoped to the single org ID
+- All foreign keys properly linked
+- No orphaned records
+- Invoice totals calculated from actual rate cards
+- Lesson times respect Monday-Friday only, no overlapping slots per teacher
 
 ---
 
-## Technical Details
+## Test Account Summary
 
-### Demo Data Requirements
-The existing `seed-demo-data` edge function should be verified/enhanced to include:
-- 20+ students with realistic British names
-- 50+ lessons spread across calendar
-- 10+ invoices in various statuses
-- Sample conversation in LoopAssist history
-- Parent portal with linked children
+| Role | Email | Password | Access |
+|------|-------|----------|--------|
+| Owner/Admin | demo-teacher@lessonloop.test | DemoTeacher2026! | Full agency dashboard, all schools |
+| Teacher 1 | teacher1@lessonloop.test | Teacher1Demo2026! | Schools 1-3, own students only |
+| Teacher 2 | teacher2@lessonloop.test | Teacher2Demo2026! | Schools 4-6, own students only |
+| Parent 1 | parent1@lessonloop.test | Parent1Demo2026! | 2 siblings at School 1 |
+| Parent 2 | parent2@lessonloop.test | Parent2Demo2026! | 1 child at School 4 |
+| Parent 3 | parent3@lessonloop.test | Parent3Demo2026! | 3 children across Schools 2 & 5 |
 
-### Recommended Resolutions
-| Context | Resolution |
-|---------|------------|
-| Desktop screenshot | 2560x1440 or 1920x1080 @2x |
-| Mobile screenshot | 390x844 (iPhone 15 Pro) |
-| Tablet screenshot | 1024x768 (iPad) |
-| Video | 1920x1080 @ 30fps |
-| GIF | 800x600 max, 15fps |
+---
 
-### File Formats
-- **Photos**: WebP (primary), PNG (fallback), JPEG (external)
-- **Animations**: GIF (short loops), MP4 (longer demos)
-- **Source**: Keep original recordings for future edits
+## What This Enables Testing
 
-## Next Steps After Approval
-
-1. Verify demo data is sufficient for realistic captures
-2. Set up consistent test environment
-3. Capture Session 1 (core screenshots)
-4. Create BrowserFrame component for marketing integration
-5. Update HeroSection to use real screenshot option
-6. Capture Session 2 (workflow videos)
-7. Convert to GIFs and optimise for web
+- **Calendar**: Busy multi-teacher, multi-location week view with filtering
+- **Students**: 300+ student list with search, pagination, teaching defaults
+- **Invoicing**: Full invoice lifecycle -- drafts, sent, paid, overdue, void
+- **Reports**: Revenue, outstanding ageing, utilisation, payroll -- all with real data
+- **Parent Portal**: Login as parent, see children, lessons, invoices, send requests
+- **Teacher View**: Login as teacher, see own schedule, own students only (RLS)
+- **Billing Runs**: Test with real completed lessons to generate new invoices
+- **LoopAssist AI**: Query against meaningful data ("show overdue invoices", "who has lessons today")
+- **Multi-guardian**: Sibling families testing consolidated billing
+- **Make-up credits**: Test credit issuance and redemption flows
 
