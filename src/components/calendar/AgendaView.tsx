@@ -2,18 +2,29 @@ import { format, parseISO, isSameDay, startOfDay, addDays } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { LessonCard } from './LessonCard';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS } from './teacherColours';
+
+function resolveColourByUserId(
+  colourMap: Map<string, TeacherWithColour>,
+  teacherUserId: string | null | undefined
+): TeacherColourEntry {
+  if (!teacherUserId) return TEACHER_COLOURS[0];
+  for (const entry of colourMap.values()) {
+    if (entry.userId === teacherUserId) return entry.colour;
+  }
+  return TEACHER_COLOURS[0];
+}
 
 interface AgendaViewProps {
   currentDate: Date;
   lessons: LessonWithDetails[];
   onLessonClick: (lesson: LessonWithDetails) => void;
+  teacherColourMap?: Map<string, TeacherWithColour>;
 }
 
-export function AgendaView({ currentDate, lessons, onLessonClick }: AgendaViewProps) {
-  // Group lessons by day
+export function AgendaView({ currentDate, lessons, onLessonClick, teacherColourMap }: AgendaViewProps) {
   const groupedLessons: { date: Date; lessons: LessonWithDetails[] }[] = [];
   
-  // Create 14 day buckets
   for (let i = 0; i < 14; i++) {
     const day = addDays(startOfDay(currentDate), i);
     const dayLessons = lessons.filter(l => isSameDay(parseISO(l.start_at), day));
@@ -51,6 +62,7 @@ export function AgendaView({ currentDate, lessons, onLessonClick }: AgendaViewPr
                   lesson={lesson}
                   onClick={() => onLessonClick(lesson)}
                   variant="agenda"
+                  teacherColour={teacherColourMap ? resolveColourByUserId(teacherColourMap, lesson.teacher_user_id) : undefined}
                 />
               ))}
             </div>

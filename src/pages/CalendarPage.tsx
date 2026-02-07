@@ -264,6 +264,7 @@ export default function CalendarPage() {
           currentDate={currentDate}
           lessons={lessons}
           onLessonClick={handleLessonClick}
+          teacherColourMap={teacherColourMap}
         />
       ) : view === 'week' ? (
         <div data-tour="calendar-grid" data-hint="calendar-grid">
