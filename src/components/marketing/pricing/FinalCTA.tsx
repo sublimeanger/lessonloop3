@@ -26,8 +26,8 @@ export function FinalCTA() {
           </h2>
           
           <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
-            Join thousands of music educators who've reclaimed their time 
-            and grown their studios with LessonLoop.
+            Join a growing community of music educators who've reclaimed their time 
+            and simplified their admin with LessonLoop.
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">

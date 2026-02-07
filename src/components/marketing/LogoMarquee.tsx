@@ -90,7 +90,7 @@ export function LogoMarquee() {
           className="text-center"
         >
           <p className="text-sm text-muted-foreground font-medium uppercase tracking-wider mb-2">
-            Trusted by educators preparing students for
+            Designed for teachers preparing students for
           </p>
           <h3 className="text-xl font-semibold text-foreground">
             Leading examination boards & seamless integrations

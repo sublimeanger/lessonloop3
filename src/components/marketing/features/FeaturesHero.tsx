@@ -215,8 +215,8 @@ export function FeaturesHero({ activeCategory, onCategoryClick }: FeaturesHeroPr
         >
           {[
             { value: "50+", label: "Features" },
-            { value: "6hrs", label: "Saved weekly" },
-            { value: "99.9%", label: "Uptime" },
+            { value: "All Plans", label: "Unlimited students" },
+            { value: "UK-Built", label: "GBP & VAT ready" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">{stat.value}</p>

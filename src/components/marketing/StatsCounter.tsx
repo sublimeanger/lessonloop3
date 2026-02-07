@@ -1,75 +1,32 @@
-import { motion, useInView, useSpring, useTransform } from "framer-motion";
-import { useRef, useEffect, useState } from "react";
-import { Calendar, Receipt, Users, TrendingUp } from "lucide-react";
+import { motion } from "framer-motion";
+import { Calendar, Receipt, Users, Shield } from "lucide-react";
 
 const stats = [
   { 
-    value: 50000, 
-    suffix: "+", 
-    label: "Lessons Scheduled Monthly",
-    icon: Calendar,
+    label: "Unlimited Students",
+    sublabel: "On every plan",
+    icon: Users,
     color: "from-teal to-teal-dark"
   },
   { 
-    value: 2, 
-    prefix: "£", 
-    suffix: "M+", 
-    label: "Invoices Processed",
+    label: "Automated Billing",
+    sublabel: "Invoice runs in clicks",
     icon: Receipt,
     color: "from-coral to-coral-dark"
   },
   { 
-    value: 2000, 
-    suffix: "+", 
-    label: "UK Educators",
-    icon: Users,
+    label: "Purpose-Built",
+    sublabel: "For UK music teachers",
+    icon: Calendar,
     color: "from-violet-500 to-violet-600"
   },
   { 
-    value: 99.9, 
-    suffix: "%", 
-    label: "Uptime Guarantee",
-    icon: TrendingUp,
+    label: "GDPR Compliant",
+    sublabel: "Secure by design",
+    icon: Shield,
     color: "from-emerald-500 to-emerald-600"
   },
 ];
-
-function AnimatedNumber({ value, prefix = "", suffix = "" }: { value: number; prefix?: string; suffix?: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const [displayValue, setDisplayValue] = useState(0);
-
-  const springValue = useSpring(0, {
-    stiffness: 50,
-    damping: 30,
-  });
-
-  const rounded = useTransform(springValue, (latest) => {
-    if (value >= 1000) {
-      return Math.round(latest).toLocaleString();
-    }
-    return Number(latest.toFixed(1));
-  });
-
-  useEffect(() => {
-    if (isInView) {
-      springValue.set(value);
-    }
-  }, [isInView, value, springValue]);
-
-  useEffect(() => {
-    const unsubscribe = rounded.on("change", (v) => {
-      setDisplayValue(v as unknown as number);
-    });
-    return unsubscribe;
-  }, [rounded]);
-
-  return (
-    <span ref={ref}>
-      {prefix}{displayValue}{suffix}
-    </span>
-  );
-}
 
 export function StatsCounter() {
   return (
@@ -128,18 +85,14 @@ export function StatsCounter() {
                 <stat.icon className="w-7 h-7 text-white" />
               </motion.div>
 
-              {/* Number */}
-              <div className="text-4xl lg:text-5xl xl:text-6xl font-extrabold text-white mb-2 font-mono tracking-tight">
-                <AnimatedNumber 
-                  value={stat.value} 
-                  prefix={stat.prefix} 
-                  suffix={stat.suffix} 
-                />
+              {/* Label */}
+              <div className="text-xl lg:text-2xl font-bold text-white mb-1">
+                {stat.label}
               </div>
 
-              {/* Label */}
+              {/* Sublabel */}
               <div className="text-white/60 text-sm lg:text-base">
-                {stat.label}
+                {stat.sublabel}
               </div>
             </motion.div>
           ))}

@@ -52,33 +52,22 @@ export function CTASection() {
               transition={{ duration: 0.6 }}
             >
               <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
-                Ready to transform
+                Ready to simplify
                 <br />
                 your teaching?
               </h2>
               <p className="text-xl text-white/70 mb-8">
-                Join thousands of music educators who've simplified their admin 
+                Join a growing community of music educators who've simplified their admin 
                 and reclaimed their time for what matters most — teaching.
               </p>
 
-              {/* Social Proof */}
+              {/* Founder credential */}
               <div className="flex items-center gap-4 mb-8">
-                <div className="flex -space-x-3">
-                  {["S", "E", "J", "M", "R"].map((letter, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, scale: 0 }}
-                      whileInView={{ opacity: 1, scale: 1 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: 0.3 + i * 0.1 }}
-                      className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-light to-teal border-2 border-ink flex items-center justify-center text-sm font-bold text-ink"
-                    >
-                      {letter}
-                    </motion.div>
-                  ))}
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-light to-teal border-2 border-ink flex items-center justify-center text-sm font-bold text-ink">
+                  LT
                 </div>
                 <div className="text-white/80">
-                  <span className="font-semibold text-white">2,000+</span> educators already on board
+                  Built by <span className="font-semibold text-white">Lauren Twilley</span>, a piano teacher who runs a school of 300 students
                 </div>
               </div>
 
@@ -117,7 +106,6 @@ export function CTASection() {
                   Try free for 30 days. Cancel anytime.
                 </p>
 
-
                 <Link to="/signup" className="block">
                   <motion.div
                     whileHover={{ scale: 1.02 }}
@@ -141,7 +129,7 @@ export function CTASection() {
                 </p>
               </div>
 
-              {/* Floating Testimonial */}
+              {/* Founder quote */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -150,14 +138,14 @@ export function CTASection() {
                 className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/10"
               >
                 <p className="text-white/70 text-sm italic mb-3">
-                  "Setup took less than 10 minutes. I had my first invoice sent within the hour."
+                  "I built LessonLoop because I wanted a system that worked the way music teaching actually works."
                 </p>
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-coral to-coral-dark flex items-center justify-center text-white font-bold text-xs">
-                    ET
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal to-teal-dark flex items-center justify-center text-white font-bold text-xs">
+                    LT
                   </div>
                   <div className="text-white/60 text-sm">
-                    Emma T. • Violin Teacher
+                    Lauren Twilley • Founder & Piano Teacher
                   </div>
                 </div>
               </motion.div>
