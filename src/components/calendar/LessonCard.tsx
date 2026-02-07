@@ -89,12 +89,9 @@ export function LessonCard({ lesson, onClick, variant = 'calendar' }: LessonCard
     <div
       onClick={onClick}
       className={cn(
-        'absolute left-1 right-1 rounded px-2 py-1 cursor-pointer overflow-hidden border text-xs transition-colors',
+        'h-full w-full rounded px-2 py-1 cursor-pointer overflow-hidden border text-xs transition-colors',
         statusColors[lesson.status]
       )}
-      style={{
-        // Height and position will be calculated by parent grid
-      }}
     >
       <div className="flex items-center gap-1 font-medium truncate">
         {isRecurring && <Repeat className="h-3 w-3 flex-shrink-0" />}
