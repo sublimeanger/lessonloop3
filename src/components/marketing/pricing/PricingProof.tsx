@@ -32,7 +32,7 @@ export function PricingProof() {
         >
           <Quote className="w-8 h-8 text-primary/20 mx-auto mb-4" />
           <p className="text-lg text-foreground italic leading-relaxed mb-4">
-            "I built LessonLoop because I wanted a system that worked the way music teaching actually works. Not a generic calendar. Not a patchwork of apps."
+            "Behind the lessons, there's a whole side of teaching that no one talks about enough — the constant admin. I built LessonLoop so other teachers wouldn't have to live with that."
           </p>
           <div className="flex items-center justify-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal to-primary flex items-center justify-center text-white font-semibold text-sm">
