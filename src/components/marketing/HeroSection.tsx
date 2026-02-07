@@ -1,10 +1,11 @@
 import { motion, useMotionValue, useTransform, useSpring } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Play, Calendar, Clock, CheckCircle2, Bell } from "lucide-react";
-import { dashboardHero } from "@/assets/marketing";
-import { useState } from "react";
+import { ChevronRight, Play, Calendar, Clock, CheckCircle2, Bell, Users, Music, FileText, Receipt } from "lucide-react";
+import { useState, useMemo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { format, addDays, startOfWeek } from "date-fns";
+
 // Word-by-word animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -37,7 +38,7 @@ const notifications = [
     icon: CheckCircle2,
     title: "Payment received",
     subtitle: "Emma Watson paid £45.00",
-    color: "from-emerald-500 to-emerald-600",
+    color: "from-success to-success",
     position: "left-[5%] top-[25%]",
     delay: 1.2,
   },
@@ -61,19 +62,10 @@ const notifications = [
     icon: Clock,
     title: "3 lessons today",
     subtitle: "Next: Oliver at 2pm",
-    color: "from-violet-500 to-violet-600",
+    color: "from-primary to-primary",
     position: "right-[8%] bottom-[30%]",
     delay: 2.1,
   },
-];
-
-// Mockup schedule data
-const scheduleItems = [
-  { time: "09:00", student: "Emma W.", type: "Piano", color: "bg-teal" },
-  { time: "10:00", student: "Oliver J.", type: "Guitar", color: "bg-coral" },
-  { time: "11:30", student: "Sophie M.", type: "Violin", color: "bg-violet-500" },
-  { time: "14:00", student: "James C.", type: "Piano", color: "bg-teal" },
-  { time: "15:30", student: "Lily P.", type: "Voice", color: "bg-amber-500" },
 ];
 
 export function HeroSection() {
@@ -86,13 +78,17 @@ export function HeroSection() {
   const y = useSpring(useTransform(mouseY, [0, 1], [-10, 10]), springConfig);
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (isMobile) return; // Skip on mobile
+    if (isMobile) return;
     const rect = e.currentTarget.getBoundingClientRect();
     mouseX.set((e.clientX - rect.left) / rect.width);
     mouseY.set((e.clientY - rect.top) / rect.height);
   };
 
   const headlineWords = ["Music", "lessons,", "perfectly", "orchestrated."];
+
+  // Generate realistic "today" data for the mockup
+  const today = new Date();
+  const todayFormatted = format(today, "EEEE d MMMM");
 
   return (
     <section 
@@ -305,7 +301,7 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* Product Mockup - Real Screenshot */}
+      {/* Interactive Dashboard Mockup */}
       <motion.div
         initial={{ opacity: 0, y: 60 }}
         animate={{ opacity: 1, y: 0 }}
@@ -323,20 +319,93 @@ export function HeroSection() {
             </div>
             <div className="flex-1 flex justify-center">
               <div className="bg-white/10 rounded-lg px-4 py-1 text-xs text-white/40 font-mono">
-                app.lessonloop.net/calendar
+                app.lessonloop.net/dashboard
               </div>
             </div>
           </div>
 
-          {/* Real Screenshot */}
-          <div className="relative">
-            <img 
-              src={dashboardHero} 
-              alt="LessonLoop Dashboard - Music lesson scheduling software" 
-              className="w-full h-auto"
-            />
-            {/* Subtle overlay for blend */}
-            <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent pointer-events-none" />
+          {/* Dashboard Mockup Content */}
+          <div className="bg-background p-4 sm:p-6">
+            {/* Dashboard header */}
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="text-lg font-bold text-foreground">Good morning ☀️</h3>
+                <p className="text-sm text-muted-foreground">{todayFormatted}</p>
+              </div>
+              <div className="flex gap-2">
+                <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium">
+                  + New Lesson
+                </div>
+              </div>
+            </div>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+              {[
+                { label: "Today's Lessons", value: "5", icon: Calendar, accent: "text-teal" },
+                { label: "This Week", value: "23", icon: Clock, accent: "text-foreground" },
+                { label: "Outstanding", value: "£420", icon: Receipt, accent: "text-coral" },
+                { label: "Students", value: "34", icon: Users, accent: "text-foreground" },
+              ].map((stat) => (
+                <motion.div
+                  key={stat.label}
+                  className="bg-card border border-border rounded-xl p-3"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1.6 + Math.random() * 0.3 }}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <stat.icon className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-[10px] sm:text-xs text-muted-foreground">{stat.label}</span>
+                  </div>
+                  <p className={`text-lg sm:text-xl font-bold ${stat.accent}`}>{stat.value}</p>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Today's timeline */}
+            <div className="bg-card border border-border rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-foreground">Today's Schedule</h4>
+                <span className="text-xs text-muted-foreground">5 lessons</span>
+              </div>
+              <div className="space-y-2">
+                {[
+                  { time: "09:00", student: "Emma W.", instrument: "Piano", duration: "60 min", color: "bg-teal", status: "completed" },
+                  { time: "10:30", student: "Oliver J.", instrument: "Guitar", duration: "45 min", color: "bg-coral", status: "completed" },
+                  { time: "13:00", student: "Sophie M.", instrument: "Violin", duration: "60 min", color: "bg-primary", status: "current" },
+                  { time: "15:00", student: "James C.", instrument: "Piano", duration: "30 min", color: "bg-teal", status: "upcoming" },
+                  { time: "16:30", student: "Lily P.", instrument: "Voice", duration: "45 min", color: "bg-accent", status: "upcoming" },
+                ].map((lesson, i) => (
+                  <motion.div
+                    key={lesson.student}
+                    className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${
+                      lesson.status === "current" 
+                        ? "bg-teal/10 border border-teal/20" 
+                        : lesson.status === "completed" 
+                          ? "opacity-60" 
+                          : "hover:bg-muted/50"
+                    }`}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: lesson.status === "completed" ? 0.6 : 1, x: 0 }}
+                    transition={{ delay: 1.8 + i * 0.1 }}
+                  >
+                    <div className={`w-1 h-8 rounded-full ${lesson.color}`} />
+                    <span className="text-xs font-mono text-muted-foreground w-10 shrink-0">{lesson.time}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{lesson.student}</p>
+                      <p className="text-xs text-muted-foreground">{lesson.instrument} · {lesson.duration}</p>
+                    </div>
+                    {lesson.status === "completed" && (
+                      <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                    )}
+                    {lesson.status === "current" && (
+                      <span className="text-[10px] font-medium text-teal bg-teal/20 px-2 py-0.5 rounded-full shrink-0">Now</span>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -353,7 +422,7 @@ export function HeroSection() {
             className="bg-card border border-border rounded-xl p-3 shadow-xl"
           >
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-success to-success flex items-center justify-center">
                 <CheckCircle2 className="w-4 h-4 text-white" />
               </div>
               <div>

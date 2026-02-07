@@ -102,7 +102,7 @@ export function PortalDeepDive() {
               ))}
             </div>
 
-            {/* Testimonial */}
+            {/* Why we built this */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -110,19 +110,12 @@ export function PortalDeepDive() {
               transition={{ delay: 0.6 }}
               className="bg-card border border-border rounded-xl p-6"
             >
-              <p className="text-muted-foreground italic mb-4">
-                "Parents love being able to pay online and track their child's practice. 
-                I've had zero payment chasing since we started using the portal."
+              <p className="text-sm font-medium text-teal mb-2">Why we built this</p>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Half of teaching was answering "what time is the lesson?" texts and chasing 
+                late payments. The parent portal was built to give families everything they 
+                need — schedules, invoices, practice logs — so teachers can focus on teaching.
               </p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-teal/20 flex items-center justify-center">
-                  <span className="text-sm font-bold text-teal">SC</span>
-                </div>
-                <div>
-                  <p className="font-medium text-foreground text-sm">Sarah C.</p>
-                  <p className="text-xs text-muted-foreground">Piano Teacher, London</p>
-                </div>
-              </div>
             </motion.div>
           </motion.div>
 
