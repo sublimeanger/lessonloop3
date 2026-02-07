@@ -109,8 +109,8 @@ export function OrgMembersTab() {
     switch (role) {
       case 'owner': return 'bg-primary text-primary-foreground';
       case 'admin': return 'bg-blue-500 text-white';
-      case 'teacher': return 'bg-green-500 text-white';
-      case 'finance': return 'bg-amber-500 text-white';
+      case 'teacher': return 'bg-success text-success-foreground';
+      case 'finance': return 'bg-warning text-warning-foreground';
       case 'parent': return 'bg-purple-500 text-white';
       default: return 'bg-muted';
     }

@@ -64,7 +64,7 @@ export function ChildCard({ child, currencyCode = 'GBP' }: ChildCardProps) {
             <Receipt className="h-4 w-4 text-muted-foreground" />
             <span>Outstanding</span>
           </div>
-          <span className={`font-medium ${hasBalance ? 'text-destructive' : 'text-green-600'}`}>
+          <span className={`font-medium ${hasBalance ? 'text-destructive' : 'text-success'}`}>
             {hasBalance ? formatCurrencyMinor(child.outstanding_balance, currencyCode) : 'Paid up'}
           </span>
         </div>

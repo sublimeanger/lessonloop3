@@ -69,7 +69,7 @@ export function DeleteValidationDialog({
               </>
             ) : (
               <>
-                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                <AlertTriangle className="h-5 w-5 text-warning" />
                 Delete {entityType}?
               </>
             )}
@@ -112,10 +112,10 @@ export function DeleteValidationDialog({
             {checkResult.warnings.map((warning, index) => (
               <div
                 key={index}
-                className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg"
+                className="flex items-start gap-3 p-3 bg-warning/10 border border-warning/20 rounded-lg"
               >
-                <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-700 dark:text-amber-400">{warning}</p>
+                <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-warning dark:text-warning">{warning}</p>
               </div>
             ))}
           </div>

@@ -31,7 +31,7 @@ export function ProactiveAlerts({ alerts, onSuggestedAction }: ProactiveAlertsPr
       case 'urgent':
         return 'border-destructive/50 bg-destructive/5';
       case 'warning':
-        return 'border-amber-500/50 bg-amber-500/5';
+        return 'border-warning/50 bg-warning/5';
       default:
         return 'border-primary/30 bg-primary/5';
     }
@@ -42,7 +42,7 @@ export function ProactiveAlerts({ alerts, onSuggestedAction }: ProactiveAlertsPr
       case 'urgent':
         return 'text-destructive';
       case 'warning':
-        return 'text-amber-600';
+        return 'text-warning';
       default:
         return 'text-primary';
     }

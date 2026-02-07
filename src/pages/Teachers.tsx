@@ -207,7 +207,7 @@ export default function Teachers() {
             <span className="text-sm font-medium">Teacher Usage</span>
             <span className={cn(
               'text-sm',
-              usage.isTeacherNearLimit && 'text-amber-600 font-medium',
+              usage.isTeacherNearLimit && 'text-warning font-medium',
               usage.isTeacherAtLimit && 'text-destructive font-medium'
             )}>
               {teachers.length} / {limits.maxTeachers}
@@ -217,7 +217,7 @@ export default function Teachers() {
             value={(teachers.length / limits.maxTeachers) * 100} 
             className={cn(
               'h-2',
-              usage.isTeacherNearLimit && '[&>div]:bg-amber-500',
+              usage.isTeacherNearLimit && '[&>div]:bg-warning',
               usage.isTeacherAtLimit && '[&>div]:bg-destructive'
             )} 
           />

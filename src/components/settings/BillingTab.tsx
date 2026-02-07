@@ -293,7 +293,7 @@ export function BillingTab() {
                 <span className="text-sm text-muted-foreground">Students</span>
                 <span className={cn(
                   'text-sm font-medium',
-                  usage.isStudentNearLimit && 'text-amber-600',
+                  usage.isStudentNearLimit && 'text-warning',
                   usage.isStudentAtLimit && 'text-destructive'
                 )}>
                   {limits.maxStudents >= 9999 ? 'Unlimited' : `${counts.students} / ${limits.maxStudents}`}
@@ -304,7 +304,7 @@ export function BillingTab() {
                   value={usage.studentsPercentage} 
                   className={cn(
                     'h-2',
-                    usage.isStudentNearLimit && '[&>div]:bg-amber-500',
+                    usage.isStudentNearLimit && '[&>div]:bg-warning',
                     usage.isStudentAtLimit && '[&>div]:bg-destructive'
                   )} 
                 />
@@ -315,7 +315,7 @@ export function BillingTab() {
                 <span className="text-sm text-muted-foreground">Teachers</span>
                 <span className={cn(
                   'text-sm font-medium',
-                  usage.isTeacherNearLimit && 'text-amber-600',
+                  usage.isTeacherNearLimit && 'text-warning',
                   usage.isTeacherAtLimit && 'text-destructive'
                 )}>
                   {limits.maxTeachers >= 9999 ? 'Unlimited' : `${counts.teachers} / ${limits.maxTeachers}`}
@@ -326,7 +326,7 @@ export function BillingTab() {
                   value={usage.teachersPercentage} 
                   className={cn(
                     'h-2',
-                    usage.isTeacherNearLimit && '[&>div]:bg-amber-500',
+                    usage.isTeacherNearLimit && '[&>div]:bg-warning',
                     usage.isTeacherAtLimit && '[&>div]:bg-destructive'
                   )} 
                 />

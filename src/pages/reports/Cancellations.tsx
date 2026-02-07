@@ -163,7 +163,7 @@ export default function CancellationReport() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className={`text-2xl font-bold ${data.cancellationRate > 10 ? 'text-destructive' : data.cancellationRate > 5 ? 'text-yellow-600' : 'text-green-600'}`}>
+                <p className={`text-2xl font-bold ${data.cancellationRate > 10 ? 'text-destructive' : data.cancellationRate > 5 ? 'text-warning' : 'text-success'}`}>
                   {data.cancellationRate.toFixed(1)}%
                 </p>
               </CardContent>
@@ -256,7 +256,7 @@ export default function CancellationReport() {
                       <TableCell className="text-right">{teacher.total}</TableCell>
                       <TableCell className="text-right text-destructive">{teacher.cancelled}</TableCell>
                       <TableCell className="text-right">
-                        <span className={teacher.rate > 10 ? 'text-destructive font-medium' : teacher.rate > 5 ? 'text-yellow-600' : 'text-green-600'}>
+                        <span className={teacher.rate > 10 ? 'text-destructive font-medium' : teacher.rate > 5 ? 'text-warning' : 'text-success'}>
                           {teacher.rate.toFixed(1)}%
                         </span>
                       </TableCell>
