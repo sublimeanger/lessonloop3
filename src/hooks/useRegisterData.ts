@@ -66,7 +66,7 @@ export function useRegisterData(date: Date) {
           attendance_records (
             student_id,
             attendance_status,
-            notes
+            cancellation_reason
           )
         `)
         .eq('org_id', currentOrg.id)
@@ -121,7 +121,7 @@ export function useRegisterData(date: Date) {
               ? `${lp.students.first_name} ${lp.students.last_name}`
               : 'Unknown Student',
             attendance_status: attendance?.attendance_status || null,
-            attendance_notes: attendance?.notes || null,
+            attendance_notes: attendance?.cancellation_reason || null,
           };
         });
 
