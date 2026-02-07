@@ -84,6 +84,8 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   // Track the current conflict check to avoid stale updates - use refs to prevent re-renders
   const conflictCheckRef = useRef<number>(0);
   const lastCheckKeyRef = useRef<string>('');
+  const checkConflictsRef = useRef(checkConflicts);
+  checkConflictsRef.current = checkConflicts;
 
   // Get org timezone, default to Europe/London
   const orgTimezone = currentOrg?.timezone || 'Europe/London';
@@ -192,7 +194,11 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   useEffect(() => {
     // Early return if no valid key - clear state
     if (!conflictCheckKey) {
-      setConflictState({ isChecking: false, conflicts: [] });
+      setConflictState(prev =>
+        prev.isChecking || prev.conflicts.length > 0
+          ? { isChecking: false, conflicts: [] }
+          : prev
+      );
       lastCheckKeyRef.current = '';
       return;
     }
@@ -243,7 +249,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
         const selectedTeacher = teachersRef.current.find(t => t.id === teacherId);
         const teacherUserId = selectedTeacher?.userId || null;
 
-        const results = await checkConflicts({
+        const results = await checkConflictsRef.current({
           start_at: startAtUtc,
           end_at: endAtUtc,
           teacher_user_id: teacherUserId,
@@ -275,7 +281,8 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       clearTimeout(debounceTimer);
       clearTimeout(hardTimeout);
     };
-  }, [conflictCheckKey, checkConflicts, startTime, selectedDate, orgTimezone, durationMins, teacherId, roomId, locationId, selectedStudents, lesson?.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conflictCheckKey]);
 
   const generateTitle = () => {
     if (selectedStudents.length === 0) return 'New Lesson';
