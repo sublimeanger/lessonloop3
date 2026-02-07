@@ -86,25 +86,32 @@ export function LessonCard({ lesson, onClick, variant = 'calendar' }: LessonCard
 
   // Calendar variant - compact card for week/day view
   return (
-    <div
-      onClick={onClick}
-      className={cn(
-        'h-full w-full rounded px-2 py-1 cursor-pointer overflow-hidden border text-xs transition-colors',
-        statusColors[lesson.status]
-      )}
-    >
-      <div className="flex items-center gap-1 font-medium truncate">
-        {isRecurring && <Repeat className="h-3 w-3 flex-shrink-0" />}
-        <span className="truncate">{lesson.title}</span>
-      </div>
-      {duration >= 30 && (
-        <div className="text-muted-foreground truncate">
-          {format(startTime, 'HH:mm')} - {format(endTime, 'HH:mm')}
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          onClick={onClick}
+          className={cn(
+            'h-full w-full rounded px-2 py-1 cursor-pointer overflow-hidden border text-xs transition-all hover:scale-[1.02] hover:shadow-md',
+            statusColors[lesson.status]
+          )}
+        >
+          <div className="flex items-center gap-1 font-medium truncate">
+            {isRecurring && <Repeat className="h-3 w-3 flex-shrink-0" />}
+            <span className="truncate">{lesson.title}</span>
+          </div>
+          {duration >= 30 && (
+            <div className="text-muted-foreground truncate">
+              {format(startTime, 'HH:mm')} - {format(endTime, 'HH:mm')}
+            </div>
+          )}
+          {duration >= 45 && studentNames && (
+            <div className="text-muted-foreground truncate">{studentNames}</div>
+          )}
         </div>
-      )}
-      {duration >= 45 && studentNames && (
-        <div className="text-muted-foreground truncate">{studentNames}</div>
-      )}
-    </div>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs">
+        Click to view, edit, or cancel
+      </TooltipContent>
+    </Tooltip>
   );
 }
