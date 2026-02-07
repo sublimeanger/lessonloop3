@@ -151,9 +151,9 @@ function getUtilisationColor(percent: number): string {
 }
 
 function getUtilisationBadge(percent: number) {
-  if (percent >= 70) return <Badge className="bg-green-500/10 text-green-600 border-green-200">Well Used</Badge>;
-  if (percent >= 40) return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-200">Moderate</Badge>;
-  return <Badge className="bg-red-500/10 text-red-600 border-red-200">Underutilised</Badge>;
+  if (percent >= 70) return <Badge className="bg-success/10 text-success border-success/20">Well Used</Badge>;
+  if (percent >= 40) return <Badge className="bg-warning/10 text-warning border-warning/20">Moderate</Badge>;
+  return <Badge className="bg-destructive/10 text-destructive border-destructive/20">Underutilised</Badge>;
 }
 
 function formatHoursMinutes(minutes: number): string {

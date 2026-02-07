@@ -19,7 +19,7 @@ export function LessonCard({ lesson, onClick, variant = 'calendar' }: LessonCard
   
   const statusColors = {
     scheduled: 'bg-primary/10 border-primary/30 hover:bg-primary/20',
-    completed: 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20',
+    completed: 'bg-success/10 border-success/30 hover:bg-success/20',
     cancelled: 'bg-muted border-muted-foreground/20 opacity-60',
   };
 

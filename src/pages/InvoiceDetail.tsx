@@ -51,7 +51,7 @@ function getStatusBadge(status: InvoiceStatus, dueDate: string) {
   return (
     <Badge
       variant={variants[status]}
-      className={status === 'paid' ? 'bg-green-600 hover:bg-green-700' : undefined}
+      className={status === 'paid' ? 'bg-success hover:bg-success/90 text-success-foreground' : undefined}
     >
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </Badge>
@@ -295,7 +295,7 @@ export default function InvoiceDetail() {
                       </div>
                     )}
                     {invoice.credit_applied_minor > 0 && (
-                      <div className="flex justify-between text-sm text-green-600">
+                      <div className="flex justify-between text-sm text-success">
                         <span className="flex items-center gap-1">
                           <Gift className="h-3 w-3" />
                           Make-Up Credit
@@ -310,7 +310,7 @@ export default function InvoiceDetail() {
                     </div>
                     {totalPaid > 0 && (
                       <>
-                        <div className="flex justify-between text-sm text-green-600">
+                        <div className="flex justify-between text-sm text-success">
                           <span>Paid</span>
                           <span>-{formatCurrencyMinor(totalPaid, currency)}</span>
                         </div>
@@ -351,7 +351,7 @@ export default function InvoiceDetail() {
                       className="flex items-center justify-between rounded-lg border p-3"
                     >
                       <div className="flex items-center gap-3">
-                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        <CheckCircle2 className="h-5 w-5 text-success" />
                         <div>
                           <div className="font-medium">
                             {formatCurrencyMinor(payment.amount_minor, currency)}
