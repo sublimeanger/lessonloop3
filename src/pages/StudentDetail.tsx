@@ -49,6 +49,7 @@ interface Student {
   status: StudentStatus;
   default_location_id: string | null;
   default_teacher_user_id: string | null;
+  default_teacher_id: string | null;
   default_rate_card_id: string | null;
 }
 
@@ -536,7 +537,7 @@ export default function StudentDetail() {
             <TeachingDefaultsCard
               studentId={student.id}
               defaultLocationId={student.default_location_id}
-              defaultTeacherId={(student as any).default_teacher_id || null}
+              defaultTeacherId={student.default_teacher_id}
               defaultRateCardId={student.default_rate_card_id}
               onUpdate={fetchStudent}
               readOnly={!isOrgAdmin}
@@ -682,7 +683,7 @@ export default function StudentDetail() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">
-                            {formatDateUK(sl.lesson.start_time)} at {formatTimeUK(sl.lesson.start_time)}
+                            {formatDateUK(sl.lesson.start_at)} at {formatTimeUK(sl.lesson.start_at)}
                           </span>
                           <Badge variant={
                             sl.lesson.status === 'completed' ? 'default' :
@@ -698,7 +699,7 @@ export default function StudentDetail() {
                           )}
                         </div>
                         <div className="flex gap-4 text-sm text-muted-foreground mt-1">
-                          {sl.lesson.subject && <span>{sl.lesson.subject}</span>}
+                          {sl.lesson.title && <span>{sl.lesson.title}</span>}
                           {sl.lesson.teacher_name && <span>with {sl.lesson.teacher_name}</span>}
                           {sl.lesson.location_name && <span>@ {sl.lesson.location_name}</span>}
                         </div>
@@ -747,7 +748,7 @@ export default function StudentDetail() {
                           </Badge>
                         </div>
                         <div className="flex gap-4 text-sm text-muted-foreground mt-1">
-                          <span>{formatCurrencyMinor(inv.total_amount_pence)}</span>
+                          <span>{formatCurrencyMinor(inv.total_minor)}</span>
                           {inv.due_date && <span>Due: {formatDateUK(inv.due_date)}</span>}
                           {inv.payer_name && <span>Payer: {inv.payer_name}</span>}
                         </div>

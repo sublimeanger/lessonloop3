@@ -7,10 +7,10 @@ export interface StudentLesson {
   lesson_id: string;
   lesson: {
     id: string;
-    start_time: string;
-    end_time: string;
+    start_at: string;
+    end_at: string;
     status: string;
-    subject: string | null;
+    title: string;
     location_name: string | null;
     teacher_name: string | null;
   };
@@ -21,7 +21,7 @@ export interface StudentInvoice {
   id: string;
   invoice_number: string;
   status: string;
-  total_amount_pence: number;
+  total_minor: number;
   due_date: string | null;
   issue_date: string | null;
   payer_name: string | null;
@@ -38,20 +38,20 @@ export function useStudentLessons(studentId: string | undefined) {
     queryFn: async () => {
       if (!studentId || !currentOrg) return [];
 
+      // Fetch lesson participants with lesson details
       const { data, error } = await supabase
         .from('lesson_participants')
         .select(`
           id,
           lesson_id,
-          attendance_status,
           lessons!inner (
             id,
-            start_time,
-            end_time,
+            start_at,
+            end_at,
             status,
-            subject,
+            title,
             locations (name),
-            teacher:profiles!lessons_teacher_user_id_fkey (full_name)
+            teacher:teachers!lessons_teacher_id_fkey (display_name)
           )
         `)
         .eq('student_id', studentId)
@@ -62,18 +62,37 @@ export function useStudentLessons(studentId: string | undefined) {
         throw error;
       }
 
-      return (data || []).map((lp: any) => ({
+      const lessonParticipants = data || [];
+      const lessonIds = lessonParticipants.map((lp: any) => lp.lesson_id);
+
+      // Fetch attendance records for this student's lessons
+      let attendanceMap: Record<string, string> = {};
+      if (lessonIds.length > 0) {
+        const { data: attendanceData, error: attError } = await supabase
+          .from('attendance_records')
+          .select('lesson_id, attendance_status')
+          .eq('student_id', studentId)
+          .in('lesson_id', lessonIds);
+
+        if (!attError && attendanceData) {
+          attendanceMap = Object.fromEntries(
+            attendanceData.map((ar) => [ar.lesson_id, ar.attendance_status])
+          );
+        }
+      }
+
+      return lessonParticipants.map((lp: any) => ({
         id: lp.id,
         lesson_id: lp.lesson_id,
-        attendance_status: lp.attendance_status,
+        attendance_status: attendanceMap[lp.lesson_id] || null,
         lesson: {
           id: lp.lessons.id,
-          start_time: lp.lessons.start_time,
-          end_time: lp.lessons.end_time,
+          start_at: lp.lessons.start_at,
+          end_at: lp.lessons.end_at,
           status: lp.lessons.status,
-          subject: lp.lessons.subject,
+          title: lp.lessons.title,
           location_name: lp.lessons.locations?.name || null,
-          teacher_name: lp.lessons.teacher?.full_name || null,
+          teacher_name: lp.lessons.teacher?.display_name || null,
         },
       })) as StudentLesson[];
     },
@@ -105,51 +124,36 @@ export function useStudentInvoices(studentId: string | undefined) {
 
       const invoiceIds = [...new Set((itemData || []).map(item => item.invoice_id))];
 
+      // Build the common select string
+      const invoiceSelect = `
+        id,
+        invoice_number,
+        status,
+        total_minor,
+        due_date,
+        issue_date,
+        payer_guardian:guardians(full_name),
+        payer_student:students(first_name, last_name)
+      `;
+
       if (invoiceIds.length === 0) {
         // Also check if student is the payer directly
         const { data: directInvoices, error: directError } = await supabase
           .from('invoices')
-          .select(`
-            id,
-            invoice_number,
-            status,
-            total_amount_pence,
-            due_date,
-            issue_date,
-            payer_guardian:guardians!invoices_payer_guardian_id_fkey (full_name),
-            payer_student:students!invoices_payer_student_id_fkey (first_name, last_name)
-          `)
+          .select(invoiceSelect)
           .eq('org_id', currentOrg.id)
           .eq('payer_student_id', studentId)
           .order('issue_date', { ascending: false });
 
         if (directError) throw directError;
 
-        return (directInvoices || []).map((inv: any) => ({
-          id: inv.id,
-          invoice_number: inv.invoice_number,
-          status: inv.status,
-          total_amount_pence: inv.total_amount_pence,
-          due_date: inv.due_date,
-          issue_date: inv.issue_date,
-          payer_name: inv.payer_guardian?.full_name || 
-            (inv.payer_student ? `${inv.payer_student.first_name} ${inv.payer_student.last_name}` : null),
-        })) as StudentInvoice[];
+        return mapInvoices(directInvoices || []);
       }
 
       // Fetch invoices by IDs
       const { data, error } = await supabase
         .from('invoices')
-        .select(`
-          id,
-          invoice_number,
-          status,
-          total_amount_pence,
-          due_date,
-          issue_date,
-          payer_guardian:guardians!invoices_payer_guardian_id_fkey (full_name),
-          payer_student:students!invoices_payer_student_id_fkey (first_name, last_name)
-        `)
+        .select(invoiceSelect)
         .eq('org_id', currentOrg.id)
         .in('id', invoiceIds)
         .order('issue_date', { ascending: false });
@@ -159,17 +163,21 @@ export function useStudentInvoices(studentId: string | undefined) {
         throw error;
       }
 
-      return (data || []).map((inv: any) => ({
-        id: inv.id,
-        invoice_number: inv.invoice_number,
-        status: inv.status,
-        total_amount_pence: inv.total_amount_pence,
-        due_date: inv.due_date,
-        issue_date: inv.issue_date,
-        payer_name: inv.payer_guardian?.full_name || 
-          (inv.payer_student ? `${inv.payer_student.first_name} ${inv.payer_student.last_name}` : null),
-      })) as StudentInvoice[];
+      return mapInvoices(data || []);
     },
     enabled: !!studentId && !!currentOrg,
   });
+}
+
+function mapInvoices(invoices: any[]): StudentInvoice[] {
+  return invoices.map((inv) => ({
+    id: inv.id,
+    invoice_number: inv.invoice_number,
+    status: inv.status,
+    total_minor: inv.total_minor,
+    due_date: inv.due_date,
+    issue_date: inv.issue_date,
+    payer_name: inv.payer_guardian?.full_name ||
+      (inv.payer_student ? `${inv.payer_student.first_name} ${inv.payer_student.last_name}` : null),
+  }));
 }
