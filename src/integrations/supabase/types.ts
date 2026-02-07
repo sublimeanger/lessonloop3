@@ -2456,7 +2456,7 @@ export type Database = {
           org_id: string
           student_id: string
           teacher_id: string | null
-          teacher_user_id: string
+          teacher_user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -2465,7 +2465,7 @@ export type Database = {
           org_id: string
           student_id: string
           teacher_id?: string | null
-          teacher_user_id: string
+          teacher_user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -2474,7 +2474,7 @@ export type Database = {
           org_id?: string
           student_id?: string
           teacher_id?: string | null
-          teacher_user_id?: string
+          teacher_user_id?: string | null
         }
         Relationships: [
           {
