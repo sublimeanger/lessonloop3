@@ -54,7 +54,7 @@ export function useTeacherDashboardStats() {
       const { data: assignments } = await supabase
         .from('student_teacher_assignments')
         .select('student_id')
-        .match({ org_id: currentOrg.id, teacher_user_id: user.id, is_active: true });
+        .match({ org_id: currentOrg.id, teacher_user_id: user.id });
 
       // Get this week's lessons for hours calculation
       const { data: weekLessons } = await supabase
