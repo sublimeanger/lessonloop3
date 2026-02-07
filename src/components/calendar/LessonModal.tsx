@@ -184,6 +184,11 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     return `${teacherId}-${format(selectedDate, 'yyyy-MM-dd')}-${startTime}-${durationMins}-${roomId || 'none'}-${locationId || 'none'}-${sortedStudents}-${lesson?.id || 'new'}`;
   }, [open, teacherId, selectedDate, startTime, durationMins, roomId, locationId, selectedStudents, lesson?.id]);
 
+  // Stable ref for teachers to avoid infinite re-render loop
+  // (teachers array is recreated each render by useTeachersAndLocations)
+  const teachersRef = useRef(teachers);
+  teachersRef.current = teachers;
+
   useEffect(() => {
     // Early return if no valid key - clear state
     if (!conflictCheckKey) {
@@ -212,8 +217,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     // Show loading immediately
     setConflictState({ isChecking: true, conflicts: [] });
     
-    // Hard timeout failsafe - ALWAYS fires if check takes too long
-    // This is the ultimate safeguard against hung queries
+    // Hard timeout failsafe
     const hardTimeout = setTimeout(() => {
       if (!completed) {
         console.warn('Conflict check hard timeout triggered');
@@ -235,14 +239,14 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
         const startAtUtc = fromZonedTime(localDateTime, orgTimezone);
         const endAtUtc = addMinutes(startAtUtc, durationMins);
 
-        // Lookup teacher's user_id for conflict checks (availability uses user_id)
-        const selectedTeacher = teachers.find(t => t.id === teacherId);
+        // Lookup teacher's user_id from stable ref
+        const selectedTeacher = teachersRef.current.find(t => t.id === teacherId);
         const teacherUserId = selectedTeacher?.userId || null;
 
         const results = await checkConflicts({
           start_at: startAtUtc,
           end_at: endAtUtc,
-          teacher_user_id: teacherUserId, // Pass user_id (null for unlinked teachers)
+          teacher_user_id: teacherUserId,
           room_id: roomId,
           location_id: locationId,
           student_ids: selectedStudents,
@@ -266,12 +270,11 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     }, 300);
 
     return () => {
-      // On cleanup, mark completed to prevent stale updates
       completed = true;
       clearTimeout(debounceTimer);
       clearTimeout(hardTimeout);
     };
-  }, [conflictCheckKey, checkConflicts, startTime, selectedDate, orgTimezone, durationMins, teacherId, roomId, locationId, selectedStudents, lesson?.id, teachers]);
+  }, [conflictCheckKey, checkConflicts, startTime, selectedDate, orgTimezone, durationMins, teacherId, roomId, locationId, selectedStudents, lesson?.id]);
 
   const generateTitle = () => {
     if (selectedStudents.length === 0) return 'New Lesson';
@@ -488,6 +491,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
         });
       } else {
         const lessonsToCreate: Date[] = [startAtUtc];
+        let recurrenceId: string | null = null;
 
         if (isRecurring && recurrenceDays.length > 0) {
           const { data: recurrence, error: recError } = await supabase
@@ -505,13 +509,22 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
             .single();
 
           if (recError) throw recError;
+          recurrenceId = recurrence.id;
 
-          const endDate = recurrenceEndDate || addMinutes(startAtUtc, 90 * 24 * 60);
+          // Use org timezone for accurate day-of-week matching
+          const endDate = recurrenceEndDate 
+            ? fromZonedTime(
+                setHours(startOfDay(recurrenceEndDate), 23),
+                orgTimezone
+              )
+            : addMinutes(startAtUtc, 90 * 24 * 60); // 90 days default
           let currentDate = new Date(startAtUtc);
           
           while (currentDate <= endDate) {
-            const dayOfWeek = currentDate.getDay();
-            if (recurrenceDays.includes(dayOfWeek) && currentDate > startAtUtc) {
+            // Convert UTC to org timezone for accurate day-of-week check
+            const zonedDate = toZonedTime(currentDate, orgTimezone);
+            const dayOfWeek = zonedDate.getDay();
+            if (recurrenceDays.includes(dayOfWeek) && currentDate.getTime() > startAtUtc.getTime()) {
               lessonsToCreate.push(new Date(currentDate));
             }
             currentDate = addMinutes(currentDate, 24 * 60);
@@ -526,7 +539,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
             .insert({
               org_id: currentOrg.id,
               lesson_type: lessonType,
-              teacher_user_id: teacherUserId, // null for unlinked teachers
+              teacher_user_id: teacherUserId,
               teacher_id: teacherId,
               location_id: locationId,
               room_id: roomId,
@@ -537,6 +550,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
               notes_shared: notesShared || null,
               status: 'scheduled',
               created_by: user.id,
+              recurrence_id: recurrenceId,
             })
             .select()
             .single();
