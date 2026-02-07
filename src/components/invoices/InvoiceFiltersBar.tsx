@@ -39,7 +39,7 @@ export function InvoiceFiltersBar({ filters, onFiltersChange }: InvoiceFiltersBa
   };
 
   return (
-    <div className="flex flex-wrap items-end gap-4 rounded-lg border bg-card p-4">
+    <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-end gap-3 sm:gap-4 rounded-lg border bg-card p-4">
       <div className="space-y-1.5">
         <Label htmlFor="status" className="text-xs">
           Status
@@ -50,7 +50,7 @@ export function InvoiceFiltersBar({ filters, onFiltersChange }: InvoiceFiltersBa
             onFiltersChange({ ...filters, status: value as InvoiceStatus | 'all' })
           }
         >
-          <SelectTrigger id="status" className="w-[140px]">
+          <SelectTrigger id="status" className="w-full sm:w-[140px]">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -74,7 +74,7 @@ export function InvoiceFiltersBar({ filters, onFiltersChange }: InvoiceFiltersBa
           onChange={(e) =>
             onFiltersChange({ ...filters, dueDateFrom: e.target.value || undefined })
           }
-          className="w-[140px]"
+          className="w-full sm:w-[140px]"
         />
       </div>
 
@@ -89,12 +89,12 @@ export function InvoiceFiltersBar({ filters, onFiltersChange }: InvoiceFiltersBa
           onChange={(e) =>
             onFiltersChange({ ...filters, dueDateTo: e.target.value || undefined })
           }
-          className="w-[140px]"
+          className="w-full sm:w-[140px]"
         />
       </div>
 
       {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
+        <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 col-span-2 sm:col-span-1">
           <X className="h-3 w-3" />
           Clear
         </Button>

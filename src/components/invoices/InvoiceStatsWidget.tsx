@@ -22,7 +22,7 @@ export function InvoiceStatsWidget({ onFilterStatus }: InvoiceStatsWidgetProps =
 
   if (isLoading || !stats) {
     return (
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <Card key={i}>
             <CardContent className="pt-6">
@@ -74,7 +74,7 @@ export function InvoiceStatsWidget({ onFilterStatus }: InvoiceStatsWidgetProps =
   const isClickable = !!onFilterStatus;
 
   return (
-    <div className="grid gap-4 md:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
       {statCards.map((stat) => (
         <Card 
           key={stat.label}
