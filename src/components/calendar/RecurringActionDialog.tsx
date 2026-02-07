@@ -1,4 +1,4 @@
-import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Repeat, CalendarDays, CalendarRange } from 'lucide-react';
 
@@ -37,52 +37,60 @@ export function RecurringActionDialog({ open, onClose, onSelect, action }: Recur
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={onClose}>
-      <AlertDialogContent className="max-w-md">
-        <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2">
-            <Repeat className="h-5 w-5 text-primary" />
-            {titles[action]}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {descriptions[action]}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        
-        <div className="flex flex-col gap-3 py-4">
-          <Button
-            variant="outline"
-            className="justify-start h-auto p-4 text-left"
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md p-0 overflow-hidden">
+        <div className="bg-primary/5 border-b border-border px-6 pt-6 pb-4">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2.5 text-lg">
+              <div className="flex items-center justify-center h-9 w-9 rounded-full bg-primary/10">
+                <Repeat className="h-4.5 w-4.5 text-primary" />
+              </div>
+              {titles[action]}
+            </DialogTitle>
+            <DialogDescription className="mt-2 text-muted-foreground">
+              {descriptions[action]}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
+
+        <div className="flex flex-col gap-3 px-6 py-5">
+          <button
+            className="group flex items-start gap-4 rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-primary/40 hover:bg-accent/50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => onSelect('this_only')}
           >
-            <CalendarDays className="h-5 w-5 mr-3 flex-shrink-0 text-muted-foreground" />
-            <div>
-              <div className="font-medium">This lesson only</div>
-              <div className="text-sm text-muted-foreground font-normal">
+            <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-muted shrink-0 transition-colors group-hover:bg-primary/10">
+              <CalendarDays className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-primary" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="font-semibold text-foreground">This lesson only</div>
+              <div className="text-sm text-muted-foreground leading-snug">
                 {thisOnlyLabels[action]}
               </div>
             </div>
-          </Button>
-          
-          <Button
-            variant="outline"
-            className="justify-start h-auto p-4 text-left border-destructive/50 hover:border-destructive hover:bg-destructive/5"
+          </button>
+
+          <button
+            className="group flex items-start gap-4 rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-destructive/40 hover:bg-destructive/5 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => onSelect('this_and_future')}
           >
-            <CalendarRange className="h-5 w-5 mr-3 flex-shrink-0 text-destructive" />
-            <div>
-              <div className="font-medium">This and all future lessons</div>
-              <div className="text-sm text-muted-foreground font-normal">
+            <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-muted shrink-0 transition-colors group-hover:bg-destructive/10">
+              <CalendarRange className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-destructive" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="font-semibold text-foreground">This and all future lessons</div>
+              <div className="text-sm text-muted-foreground leading-snug">
                 {futureLabels[action]}
               </div>
             </div>
-          </Button>
+          </button>
         </div>
 
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+        <DialogFooter className="border-t border-border px-6 py-4 bg-muted/30">
+          <Button variant="ghost" onClick={onClose} className="w-full sm:w-auto">
+            Cancel
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
