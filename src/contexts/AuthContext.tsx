@@ -112,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isInitialised, setIsInitialised] = useState(false);
   const mountedRef = useRef(true);
   const fetchingRef = useRef(false); // Prevent duplicate fetches
+  const initialisedRef = useRef(false); // Track init state for timeout closure
 
   const refreshProfile = async () => {
     if (user) {
@@ -175,10 +176,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Hard timeout - 4 seconds max for initial load
     const hardTimeout = setTimeout(() => {
-      if (mountedRef.current && !isInitialised) {
+      if (mountedRef.current && !initialisedRef.current) {
         console.warn('Auth hard timeout - forcing completion');
         setIsLoading(false);
         setIsInitialised(true);
+        initialisedRef.current = true;
       }
     }, 4000);
 
@@ -204,16 +206,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.log('Token refreshed - skipping profile refetch');
           }
           // Still mark as initialised if we weren't already
-          if (!isInitialised && mountedRef.current) {
+          if (!initialisedRef.current && mountedRef.current) {
             setIsLoading(false);
             setIsInitialised(true);
+            initialisedRef.current = true;
           }
           return;
         }
 
         // If we're already initialised with this user's data, skip refetch
         // This handles SIGNED_IN re-emission on tab focus
-        if (isInitialised && profile?.id === newSession.user.id) {
+        if (initialisedRef.current && profile?.id === newSession.user.id) {
           if (import.meta.env.DEV) {
             console.log('Already initialised with same user - skipping refetch');
           }
@@ -237,6 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRoles(rolesData);
           setIsLoading(false);
           setIsInitialised(true);
+          initialisedRef.current = true;
         }
         fetchingRef.current = false;
       } else {
@@ -245,6 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRoles([]);
           setIsLoading(false);
           setIsInitialised(true);
+          initialisedRef.current = true;
         }
       }
     });
@@ -264,6 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!initialSession) {
           setIsLoading(false);
           setIsInitialised(true);
+          initialisedRef.current = true;
         }
         // If there IS a session, the onAuthStateChange will handle it
         
@@ -272,6 +278,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (mountedRef.current) {
           setIsLoading(false);
           setIsInitialised(true);
+          initialisedRef.current = true;
         }
       }
     };

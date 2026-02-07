@@ -1,3 +1,4 @@
+import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogoWordmark } from "@/components/brand/Logo";
@@ -47,9 +48,9 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
-export function MarketingFooter() {
+export const MarketingFooter = React.forwardRef<HTMLElement>(function MarketingFooter(_props, ref) {
   return (
-    <footer className="relative bg-ink text-white overflow-hidden">
+    <footer ref={ref} className="relative bg-ink text-white overflow-hidden">
       {/* Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-ink to-ink-dark pointer-events-none" />
       
@@ -198,4 +199,4 @@ export function MarketingFooter() {
       </div>
     </footer>
   );
-}
+});
