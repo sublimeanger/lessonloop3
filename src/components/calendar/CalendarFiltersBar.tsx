@@ -16,14 +16,14 @@ export function CalendarFiltersBar({ filters, onChange, teachers, locations, roo
     : [];
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
       <div className="flex items-center gap-2">
-        <Label className="text-sm text-muted-foreground whitespace-nowrap">Teacher:</Label>
+        <Label className="text-sm text-muted-foreground whitespace-nowrap hidden sm:inline">Teacher:</Label>
         <Select 
           value={filters.teacher_id || 'all'} 
           onValueChange={(v) => onChange({ ...filters, teacher_id: v === 'all' ? null : v })}
         >
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-[130px] sm:w-40">
             <SelectValue placeholder="All teachers" />
           </SelectTrigger>
           <SelectContent>
@@ -36,12 +36,12 @@ export function CalendarFiltersBar({ filters, onChange, teachers, locations, roo
       </div>
 
       <div className="flex items-center gap-2">
-        <Label className="text-sm text-muted-foreground whitespace-nowrap">Location:</Label>
+        <Label className="text-sm text-muted-foreground whitespace-nowrap hidden sm:inline">Location:</Label>
         <Select 
           value={filters.location_id || 'all'} 
           onValueChange={(v) => onChange({ ...filters, location_id: v === 'all' ? null : v, room_id: null })}
         >
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-[130px] sm:w-40">
             <SelectValue placeholder="All locations" />
           </SelectTrigger>
           <SelectContent>
@@ -55,12 +55,12 @@ export function CalendarFiltersBar({ filters, onChange, teachers, locations, roo
 
       {filters.location_id && filteredRooms.length > 0 && (
         <div className="flex items-center gap-2">
-          <Label className="text-sm text-muted-foreground whitespace-nowrap">Room:</Label>
+          <Label className="text-sm text-muted-foreground whitespace-nowrap hidden sm:inline">Room:</Label>
           <Select 
             value={filters.room_id || 'all'} 
             onValueChange={(v) => onChange({ ...filters, room_id: v === 'all' ? null : v })}
           >
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-[110px] sm:w-32">
               <SelectValue placeholder="All rooms" />
             </SelectTrigger>
             <SelectContent>

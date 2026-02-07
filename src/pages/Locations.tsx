@@ -320,23 +320,23 @@ export default function Locations() {
             >
               <Card>
                 <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{getLocationTypeIcon(location.location_type)}</span>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <CardTitle className="text-lg">{location.name}</CardTitle>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-2xl shrink-0">{getLocationTypeIcon(location.location_type)}</span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <CardTitle className="text-lg truncate">{location.name}</CardTitle>
                           {location.is_primary && <Badge>Primary</Badge>}
                           <Badge variant="outline" className="capitalize">{location.location_type}</Badge>
                         </div>
                         {(location.address_line_1 || location.city) && (
-                          <CardDescription>
+                          <CardDescription className="truncate">
                             {[location.address_line_1, location.city, location.postcode].filter(Boolean).join(', ')}
                           </CardDescription>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       {isOrgAdmin && (
                         <>
                           <Button variant="ghost" size="icon" onClick={() => openLocationDialog(location)}>
@@ -350,7 +350,8 @@ export default function Locations() {
                       <CollapsibleTrigger asChild>
                         <Button variant="ghost" size="sm" className="gap-2">
                           <DoorOpen className="h-4 w-4" />
-                          {location.rooms?.length || 0} Rooms
+                          <span className="hidden sm:inline">{location.rooms?.length || 0} Rooms</span>
+                          <span className="sm:hidden">{location.rooms?.length || 0}</span>
                           <ChevronDown className={`h-4 w-4 transition-transform ${expandedLocations.has(location.id) ? 'rotate-180' : ''}`} />
                         </Button>
                       </CollapsibleTrigger>
@@ -410,7 +411,7 @@ export default function Locations() {
             <DialogDescription>Configure your teaching venue details.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Name *</Label>
                 <Input value={locName} onChange={(e) => setLocName(e.target.value)} placeholder="Main Studio" />
@@ -436,7 +437,7 @@ export default function Locations() {
               <Label>Address Line 2</Label>
               <Input value={locAddress2} onChange={(e) => setLocAddress2(e.target.value)} placeholder="Suite 4" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>City</Label>
                 <Input value={locCity} onChange={(e) => setLocCity(e.target.value)} placeholder="London" />

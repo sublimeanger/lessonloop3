@@ -185,52 +185,55 @@ export default function CalendarPage() {
       />
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={goToToday}>
-            Today
-          </Button>
-          <div className="flex items-center">
-            <Button variant="ghost" size="icon" onClick={navigatePrev}>
-              <ChevronLeft className="h-4 w-4" />
+      <div className="mb-4 space-y-3">
+        {/* Row 1: Navigation */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Button variant="outline" size="sm" onClick={goToToday} className="shrink-0">
+              Today
             </Button>
-            <Button variant="ghost" size="icon" onClick={navigateNext}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center shrink-0">
+              <Button variant="ghost" size="icon" onClick={navigatePrev}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={navigateNext}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <span className="font-medium truncate text-sm sm:text-base">{getDateDisplay()}</span>
           </div>
-          <span className="font-medium min-w-[200px]">{getDateDisplay()}</span>
-          
-          {!isParent && (
-            <MarkDayCompleteButton
-              currentDate={currentDate}
-              lessons={lessons}
-              onComplete={refetch}
-            />
-          )}
+
+          <div className="flex items-center gap-2 shrink-0">
+            {!isParent && (
+              <MarkDayCompleteButton
+                currentDate={currentDate}
+                lessons={lessons}
+                onComplete={refetch}
+              />
+            )}
+            <ToggleGroup type="single" value={view} onValueChange={(v) => v && setView(v as CalendarView)} data-tour="calendar-view-toggle">
+              <ToggleGroupItem value="day" aria-label="Day view">
+                <CalendarDays className="h-4 w-4" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="week" aria-label="Week view">
+                <LayoutGrid className="h-4 w-4" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="agenda" aria-label="Agenda view">
+                <List className="h-4 w-4" />
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div data-tour="calendar-filters">
-            <CalendarFiltersBar
-              filters={filters}
-              onChange={setFilters}
-              teachers={teachers}
-              locations={locations}
-              rooms={rooms}
-            />
-          </div>
-          
-          <ToggleGroup type="single" value={view} onValueChange={(v) => v && setView(v as CalendarView)} data-tour="calendar-view-toggle">
-            <ToggleGroupItem value="day" aria-label="Day view">
-              <CalendarDays className="h-4 w-4" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="week" aria-label="Week view">
-              <LayoutGrid className="h-4 w-4" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="agenda" aria-label="Agenda view">
-              <List className="h-4 w-4" />
-            </ToggleGroupItem>
-          </ToggleGroup>
+        {/* Row 2: Filters */}
+        <div data-tour="calendar-filters">
+          <CalendarFiltersBar
+            filters={filters}
+            onChange={setFilters}
+            teachers={teachers}
+            locations={locations}
+            rooms={rooms}
+          />
         </div>
       </div>
 
