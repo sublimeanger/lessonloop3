@@ -24,6 +24,14 @@ function formatStudentNames(participants?: LessonWithDetails['participants']): s
   return `${name} +${participants.length - 1}`;
 }
 
+/** Short student display for compact mobile cards */
+function formatStudentShort(participants?: LessonWithDetails['participants']): string {
+  if (!participants || participants.length === 0) return '';
+  const first = participants[0].student;
+  if (participants.length === 1) return `${first.first_name} ${first.last_name.charAt(0)}.`;
+  return `${first.first_name} +${participants.length - 1}`;
+}
+
 /**
  * Build the secondary line: "w/ Teacher" or "Location · w/ Teacher"
  */
@@ -52,43 +60,45 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
   const colour = teacherColour ?? TEACHER_COLOURS[0];
 
   const studentDisplay = formatStudentNames(lesson.participants);
+  const studentShort = formatStudentShort(lesson.participants);
   const secondaryLine = buildSecondaryLine(lesson);
 
-  // ─── Stacked variant — MyMusicStaff-inspired full-bg cards ───
+  // ─── Stacked variant — compact coloured cards for week view ───
   if (variant === 'stacked') {
     return (
       <div
         onClick={onClick}
         className={cn(
-          'px-2 py-1.5 cursor-pointer transition-colors rounded-sm',
+          'px-1 sm:px-1.5 py-0.5 sm:py-1 cursor-pointer transition-colors rounded-sm',
           colour.bgLight,
-          isCancelled && 'opacity-50'
+          isCancelled && 'opacity-40'
         )}
       >
-        {/* Line 1: time range + recurring icon */}
+        {/* Time */}
         <div className={cn(
-          'text-[11px] leading-tight tabular-nums',
+          'text-[9px] sm:text-[10px] leading-tight tabular-nums',
           colour.text,
           isCancelled && 'line-through'
         )}>
-          {format(startTime, 'HH:mm')} – {format(endTime, 'HH:mm')}
-          {isRecurring && <Repeat className="h-2.5 w-2.5 inline-block ml-1 -mt-px" />}
+          {format(startTime, 'HH:mm')}–{format(endTime, 'HH:mm')}
+          {isRecurring && <Repeat className="h-2 w-2 sm:h-2.5 sm:w-2.5 inline-block ml-0.5 -mt-px" />}
         </div>
 
-        {/* Line 2: student name (headline) */}
-        {studentDisplay && (
+        {/* Student name */}
+        {(studentDisplay || studentShort) && (
           <div className={cn(
-            'text-sm font-semibold truncate leading-snug',
+            'text-[10px] sm:text-xs font-semibold truncate leading-snug',
             isCancelled && 'line-through text-muted-foreground'
           )}>
-            {studentDisplay}
+            <span className="hidden sm:inline">{studentDisplay}</span>
+            <span className="sm:hidden">{studentShort}</span>
           </div>
         )}
 
-        {/* Line 3: teacher / location */}
+        {/* Teacher / location — hide on very small screens */}
         {secondaryLine && (
           <div className={cn(
-            'text-[11px] truncate leading-tight',
+            'text-[9px] sm:text-[10px] truncate leading-tight hidden sm:block',
             colour.text
           )}>
             {secondaryLine}
@@ -104,33 +114,33 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
       <div
         onClick={onClick}
         className={cn(
-          'flex items-center gap-4 rounded-lg p-4 cursor-pointer transition-colors',
+          'flex items-center gap-3 sm:gap-4 rounded-lg p-3 sm:p-4 cursor-pointer transition-colors',
           colour.bgLight,
           isCancelled && 'opacity-50'
         )}
       >
-        <div className="flex flex-col items-center text-center min-w-[60px]">
-          <span className={cn('text-2xl font-bold', colour.text)}>
+        <div className="flex flex-col items-center text-center min-w-[50px] sm:min-w-[60px]">
+          <span className={cn('text-xl sm:text-2xl font-bold', colour.text)}>
             {format(startTime, 'HH:mm')}
           </span>
-          <span className="text-xs text-muted-foreground">{format(endTime, 'HH:mm')}</span>
+          <span className="text-[10px] sm:text-xs text-muted-foreground">{format(endTime, 'HH:mm')}</span>
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className={cn(
-              'font-semibold truncate',
+              'font-semibold truncate text-sm sm:text-base',
               isCancelled && 'line-through'
             )}>
               {studentDisplay || lesson.title}
             </span>
             {isRecurring && (
-              <Repeat className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              <Repeat className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground flex-shrink-0" />
             )}
           </div>
-          <div className="text-sm text-muted-foreground mt-0.5 truncate">
+          <div className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">
             {secondaryLine}
           </div>
-          <div className="text-xs text-muted-foreground mt-0.5">
+          <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
             {duration} min · {lesson.lesson_type}
           </div>
         </div>
