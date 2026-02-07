@@ -27,9 +27,9 @@ interface LessonDetailPanelProps {
 }
 
 const ATTENDANCE_OPTIONS: { value: AttendanceStatus; label: string; icon: React.ReactNode; color: string }[] = [
-  { value: 'present', label: 'Present', icon: <Check className="h-4 w-4" />, color: 'bg-green-500 text-white' },
+  { value: 'present', label: 'Present', icon: <Check className="h-4 w-4" />, color: 'bg-success text-success-foreground' },
   { value: 'absent', label: 'Absent', icon: <X className="h-4 w-4" />, color: 'bg-destructive text-destructive-foreground' },
-  { value: 'late', label: 'Late', icon: <Clock className="h-4 w-4" />, color: 'bg-amber-500 text-white' },
+  { value: 'late', label: 'Late', icon: <Clock className="h-4 w-4" />, color: 'bg-warning text-warning-foreground' },
   { value: 'cancelled_by_teacher', label: 'Cancelled (Teacher)', icon: <AlertCircle className="h-4 w-4" />, color: 'bg-muted text-muted-foreground' },
   { value: 'cancelled_by_student', label: 'Cancelled (Student)', icon: <AlertCircle className="h-4 w-4" />, color: 'bg-muted text-muted-foreground' },
 ];
@@ -458,10 +458,10 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           
           {/* Late Cancellation Warning */}
           {isLateCancellation && (
-            <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex items-start gap-3 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+              <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
               <div className="text-sm">
-                <p className="font-medium text-amber-700 dark:text-amber-400">Late Cancellation Notice</p>
+                <p className="font-medium text-warning">Late Cancellation Notice</p>
                 <p className="text-muted-foreground mt-1">
                   This lesson starts in {hoursUntilLesson} hours. Your policy requires {cancellationNoticeHours} hours notice.
                   Students may not receive a make-up credit for late cancellations.

@@ -108,10 +108,10 @@ export function OrgMembersTab() {
   const getRoleBadgeColor = (role: AppRole) => {
     switch (role) {
       case 'owner': return 'bg-primary text-primary-foreground';
-      case 'admin': return 'bg-blue-500 text-white';
+      case 'admin': return 'bg-info text-info-foreground';
       case 'teacher': return 'bg-success text-success-foreground';
       case 'finance': return 'bg-warning text-warning-foreground';
-      case 'parent': return 'bg-purple-500 text-white';
+      case 'parent': return 'bg-accent text-accent-foreground';
       default: return 'bg-muted';
     }
   };

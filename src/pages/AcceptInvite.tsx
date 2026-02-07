@@ -237,7 +237,7 @@ export default function AcceptInvite() {
           </CardHeader>
           <CardContent className="space-y-4">
             {!emailMatches && (
-              <div className="rounded-lg bg-amber-50 p-4 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+              <div className="rounded-lg bg-warning/10 p-4 text-sm text-warning border border-warning/20">
                 <p>This invitation was sent to <strong>{invite.email}</strong>, but you're logged in as <strong>{user.email}</strong>.</p>
                 <p className="mt-2">Please log out and sign in with the invited email, or ask for a new invitation.</p>
               </div>
