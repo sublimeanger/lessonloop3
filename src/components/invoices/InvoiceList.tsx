@@ -64,7 +64,7 @@ function getStatusBadge(status: InvoiceStatus, dueDate: string) {
   return (
     <Badge
       variant={variants[status]}
-      className={status === 'paid' ? 'bg-green-600 hover:bg-green-700' : undefined}
+      className={status === 'paid' ? 'bg-success hover:bg-success/90' : undefined}
     >
       {labels[status]}
     </Badge>

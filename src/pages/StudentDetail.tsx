@@ -704,7 +704,7 @@ export default function StudentDetail() {
                           {sl.lesson.location_name && <span>@ {sl.lesson.location_name}</span>}
                         </div>
                       </div>
-                      <Link to="/calendar">
+                      <Link to={`/calendar?date=${sl.lesson.start_at.split('T')[0]}`}>
                         <Button variant="ghost" size="sm">View</Button>
                       </Link>
                     </div>
