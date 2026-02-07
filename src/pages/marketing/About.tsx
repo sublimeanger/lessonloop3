@@ -177,7 +177,7 @@ export default function About() {
                   <Quote className="w-10 h-10 text-white/30" />
                   
                   <p className="text-xl lg:text-2xl font-medium leading-relaxed text-white/90">
-                    "I built LessonLoop because I wanted a system that worked the way music teaching actually works. Not a generic calendar. Not a patchwork of apps. A proper home for lessons."
+                    "Behind the lessons, I lived the side of teaching that no one talks about enough: the constant admin. The back-and-forth. The chasing. I built LessonLoop so other teachers wouldn't have to."
                   </p>
                   
                   <div className="pt-6 border-t border-white/10">
@@ -328,7 +328,7 @@ export default function About() {
                 <Quote className="w-12 h-12 text-teal-light/30 mb-6" />
                 
                 <p className="text-xl lg:text-2xl text-white leading-relaxed mb-8">
-                  "I built LessonLoop because I wanted a system that worked the way music teaching actually works. Not a generic calendar. Not a patchwork of apps. A proper home for lessons — where scheduling, payments, and communication feel straightforward again."
+                  "We believe music teachers shouldn't have to sacrifice their evenings, weekends, or peace of mind just to stay organised. LessonLoop exists to give you back time — so you can focus on what matters most: teaching, inspiring, and building something you're proud of."
                 </p>
                 
                 <div className="flex items-center gap-4 pt-6 border-t border-white/10">
