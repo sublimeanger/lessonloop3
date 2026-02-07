@@ -15,11 +15,6 @@ interface ClosureInfo {
   reason: string;
 }
 
-/**
- * Resolve teacher colour from the colour map using teacher_user_id.
- * The map is keyed by teachers.id, but lessons reference teacher_user_id.
- * We do a lookup via the userId field on TeacherWithColour.
- */
 function resolveColourByUserId(
   colourMap: Map<string, TeacherWithColour>,
   teacherUserId: string | null | undefined
@@ -51,7 +46,6 @@ export function StackedWeekView({
   const { currentOrg } = useOrg();
   const [closures, setClosures] = useState<ClosureInfo[]>([]);
 
-  // Fetch closures for the visible week
   useEffect(() => {
     if (!currentOrg) return;
     const start = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -69,6 +63,7 @@ export function StackedWeekView({
         }
       });
   }, [currentOrg, currentDate]);
+
   const days = useMemo(() => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -89,13 +84,12 @@ export function StackedWeekView({
   const getClosureForDay = (day: Date): ClosureInfo | undefined =>
     closures.find((c) => isSameDay(c.date, day));
 
-  // Current time for "now" indicator
   const now = new Date();
   const currentTimeLabel = format(now, 'HH:mm');
 
   return (
     <ScrollArea className="h-[calc(100vh-320px)]">
-      <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden border">
+      <div className="grid grid-cols-7 border rounded-lg overflow-hidden">
         {/* Day headers */}
         {days.map((day) => {
           const closure = getClosureForDay(day);
@@ -104,16 +98,18 @@ export function StackedWeekView({
             <div
               key={`header-${day.toISOString()}`}
               className={cn(
-                'bg-background px-2 py-2.5 text-center',
-                today && 'bg-primary/5'
+                'bg-muted/30 px-1.5 py-2 text-center border-b',
+                today && 'bg-primary/5',
+                // Add right border to all but last column
+                'border-r last:border-r-0'
               )}
             >
-              <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+              <div className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">
                 {format(day, 'EEE')}
               </div>
               <div
                 className={cn(
-                  'text-lg font-bold mt-0.5',
+                  'text-lg font-bold mt-0.5 leading-none',
                   today && 'text-primary'
                 )}
               >
@@ -142,29 +138,24 @@ export function StackedWeekView({
             <div
               key={`col-${day.toISOString()}`}
               className={cn(
-                'bg-background min-h-[120px] flex flex-col',
+                'bg-background min-h-[100px] flex flex-col border-r last:border-r-0',
                 today && 'bg-primary/[0.02]',
                 closure && 'bg-warning/5 dark:bg-warning/5'
               )}
             >
               {/* Now indicator */}
               {today && (
-                <div className="flex items-center gap-1 px-2 py-1">
+                <div className="flex items-center gap-1 px-1.5 py-0.5">
                   <div className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
                   <span className="text-[10px] font-medium text-destructive tabular-nums">
                     {currentTimeLabel}
                   </span>
-                  <div className="flex-1 h-px bg-destructive/40" />
+                  <div className="flex-1 h-px bg-destructive/30" />
                 </div>
               )}
 
-              {/* Stacked lesson cards */}
-              <div className="flex-1 p-1.5 space-y-1.5">
-                {dayLessons.length === 0 && (
-                  <div className="text-xs text-muted-foreground/50 text-center py-4 italic">
-                    No lessons
-                  </div>
-                )}
+              {/* Stacked lesson cards — flush, tight spacing */}
+              <div className="flex-1 p-0.5 space-y-0.5">
                 {dayLessons.map((lesson) => {
                   const colour = resolveColourByUserId(
                     teacherColourMap,
@@ -182,19 +173,17 @@ export function StackedWeekView({
                 })}
               </div>
 
-              {/* Add lesson affordance */}
+              {/* Add lesson affordance — minimal */}
               {!isParent && (
                 <button
                   onClick={() => {
-                    // Default to 9am on this day
                     const slotDate = new Date(day);
                     slotDate.setHours(9, 0, 0, 0);
                     onSlotClick(slotDate);
                   }}
-                  className="flex items-center justify-center gap-1 py-1.5 text-xs text-muted-foreground/60 hover:text-primary hover:bg-primary/5 transition-colors border-t border-dashed border-border/50 cursor-pointer"
+                  className="flex items-center justify-center py-1 text-xs text-muted-foreground/40 hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer"
                 >
                   <Plus className="h-3 w-3" />
-                  <span className="hidden sm:inline">Add</span>
                 </button>
               )}
             </div>

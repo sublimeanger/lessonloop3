@@ -1,10 +1,9 @@
 import { format, differenceInMinutes, parseISO } from 'date-fns';
 import { LessonWithDetails } from './types';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Clock, MapPin, User, Repeat } from 'lucide-react';
+import { Repeat } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { TeacherColourEntry } from './teacherColours';
+import { TeacherColourEntry, TEACHER_COLOURS } from './teacherColours';
 
 interface LessonCardProps {
   lesson: LessonWithDetails;
@@ -13,171 +12,163 @@ interface LessonCardProps {
   teacherColour?: TeacherColourEntry;
 }
 
+/**
+ * Format student names: "Last, First" for single student,
+ * "Last, First +N" for groups.
+ */
+function formatStudentNames(participants?: LessonWithDetails['participants']): string {
+  if (!participants || participants.length === 0) return '';
+  const first = participants[0].student;
+  const name = `${first.last_name}, ${first.first_name}`;
+  if (participants.length === 1) return name;
+  return `${name} +${participants.length - 1}`;
+}
+
+/**
+ * Build the secondary line: "w/ Teacher" or "Location · w/ Teacher"
+ */
+function buildSecondaryLine(lesson: LessonWithDetails): string {
+  const teacherName = lesson.teacher?.full_name || lesson.teacher?.email || '';
+  const locationName = lesson.location?.name || '';
+  
+  if (locationName && teacherName) {
+    return `${locationName} · w/ ${teacherName}`;
+  }
+  if (teacherName) {
+    return `w/ ${teacherName}`;
+  }
+  if (locationName) {
+    return locationName;
+  }
+  return '';
+}
+
 export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColour }: LessonCardProps) {
   const startTime = parseISO(lesson.start_at);
   const endTime = parseISO(lesson.end_at);
   const duration = differenceInMinutes(endTime, startTime);
   const isRecurring = !!lesson.recurrence_id;
   const isCancelled = lesson.status === 'cancelled';
-  
-  const statusColors = {
-    scheduled: 'bg-primary/10 border-primary/30 hover:bg-primary/20',
-    completed: 'bg-success/10 border-success/30 hover:bg-success/20',
-    cancelled: 'bg-muted border-muted-foreground/20 opacity-60',
-  };
+  const colour = teacherColour ?? TEACHER_COLOURS[0];
 
-  const studentNames = lesson.participants?.map(p => 
-    `${p.student.first_name} ${p.student.last_name}`
-  ).join(', ') || '';
+  const studentDisplay = formatStudentNames(lesson.participants);
+  const secondaryLine = buildSecondaryLine(lesson);
 
-  // Stacked variant — used in the new week view
+  // ─── Stacked variant — MyMusicStaff-inspired full-bg cards ───
   if (variant === 'stacked') {
     return (
       <div
         onClick={onClick}
         className={cn(
-          'rounded-lg border-l-4 border bg-card p-2.5 cursor-pointer transition-all hover:shadow-md hover:scale-[1.01] group',
-          isCancelled && 'opacity-50',
-          teacherColour?.border ?? 'border-l-primary'
+          'px-2 py-1.5 cursor-pointer transition-colors rounded-sm',
+          colour.bgLight,
+          isCancelled && 'opacity-50'
         )}
       >
-        {/* Time range */}
+        {/* Line 1: time range + recurring icon */}
         <div className={cn(
-          'text-sm font-semibold tabular-nums',
+          'text-[11px] leading-tight tabular-nums',
+          colour.text,
           isCancelled && 'line-through'
         )}>
           {format(startTime, 'HH:mm')} – {format(endTime, 'HH:mm')}
+          {isRecurring && <Repeat className="h-2.5 w-2.5 inline-block ml-1 -mt-px" />}
         </div>
 
-        {/* Title */}
-        <div className={cn(
-          'text-sm font-medium truncate mt-0.5',
-          isCancelled && 'line-through text-muted-foreground'
-        )}>
-          {lesson.title}
-        </div>
-
-        {/* Student names */}
-        {studentNames && (
-          <div className="text-xs text-muted-foreground truncate mt-0.5">
-            {studentNames}
+        {/* Line 2: student name (headline) */}
+        {studentDisplay && (
+          <div className={cn(
+            'text-sm font-semibold truncate leading-snug',
+            isCancelled && 'line-through text-muted-foreground'
+          )}>
+            {studentDisplay}
           </div>
         )}
 
-        {/* Bottom row: teacher + location + badges */}
-        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-          {lesson.teacher && (
-            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-              {teacherColour && (
-                <span className={cn('h-2 w-2 rounded-full shrink-0', teacherColour.bg)} />
-              )}
-              <span className="truncate max-w-[90px]">
-                {lesson.teacher.full_name || lesson.teacher.email}
-              </span>
-            </span>
-          )}
-          {lesson.location && (
-            <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
-              <MapPin className="h-3 w-3 shrink-0" />
-              <span className="truncate max-w-[70px]">{lesson.location.name}</span>
-            </span>
-          )}
-          {isRecurring && (
-            <Repeat className="h-3 w-3 text-muted-foreground shrink-0" />
-          )}
-          <Badge variant="outline" className="text-[10px] px-1 py-0 capitalize ml-auto">
-            {lesson.lesson_type}
-          </Badge>
-        </div>
+        {/* Line 3: teacher / location */}
+        {secondaryLine && (
+          <div className={cn(
+            'text-[11px] truncate leading-tight',
+            colour.text
+          )}>
+            {secondaryLine}
+          </div>
+        )}
       </div>
     );
   }
 
+  // ─── Agenda variant — teacher-tinted row ───
   if (variant === 'agenda') {
     return (
       <div
         onClick={onClick}
         className={cn(
-          'flex items-center gap-4 rounded-lg border p-4 cursor-pointer transition-colors',
-          statusColors[lesson.status]
+          'flex items-center gap-4 rounded-lg p-4 cursor-pointer transition-colors',
+          colour.bgLight,
+          isCancelled && 'opacity-50'
         )}
       >
         <div className="flex flex-col items-center text-center min-w-[60px]">
-          <span className="text-2xl font-bold">{format(startTime, 'HH:mm')}</span>
+          <span className={cn('text-2xl font-bold', colour.text)}>
+            {format(startTime, 'HH:mm')}
+          </span>
           <span className="text-xs text-muted-foreground">{format(endTime, 'HH:mm')}</span>
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-medium truncate">{lesson.title}</span>
-            <Badge variant="outline" className="text-xs capitalize">
-              {lesson.lesson_type}
-            </Badge>
-            {isRecurring && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Repeat className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                </TooltipTrigger>
-                <TooltipContent>Recurring series</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-          <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-            {lesson.teacher && (
-              <span className="flex items-center gap-1">
-                <User className="h-3 w-3" />
-                {lesson.teacher.full_name || lesson.teacher.email}
-              </span>
-            )}
-            {lesson.location && (
-              <span className="flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                {lesson.location.name}
-                {lesson.room && ` - ${lesson.room.name}`}
-              </span>
-            )}
-            <span className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {duration} min
+            <span className={cn(
+              'font-semibold truncate',
+              isCancelled && 'line-through'
+            )}>
+              {studentDisplay || lesson.title}
             </span>
+            {isRecurring && (
+              <Repeat className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            )}
           </div>
-          {studentNames && (
-            <p className="text-sm text-muted-foreground mt-1 truncate">
-              Students: {studentNames}
-            </p>
-          )}
+          <div className="text-sm text-muted-foreground mt-0.5 truncate">
+            {secondaryLine}
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            {duration} min · {lesson.lesson_type}
+          </div>
         </div>
       </div>
     );
   }
 
-  // Calendar variant - compact card for day view time-grid
+  // ─── Calendar variant — compact card for day view time-grid ───
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <div
           onClick={onClick}
           className={cn(
-            'h-full w-full rounded px-2 py-1 cursor-pointer overflow-hidden border text-xs transition-all hover:scale-[1.02] hover:shadow-md',
-            teacherColour ? `border-l-2 ${teacherColour.border}` : '',
-            statusColors[lesson.status]
+            'h-full w-full rounded-sm px-1.5 py-1 cursor-pointer overflow-hidden text-xs transition-all hover:scale-[1.02] hover:shadow-md',
+            colour.bgLight,
+            isCancelled && 'opacity-50'
           )}
         >
-          <div className="flex items-center gap-1 font-medium truncate">
+          <div className={cn(
+            'flex items-center gap-1 font-semibold truncate',
+            isCancelled && 'line-through'
+          )}>
             {isRecurring && <Repeat className="h-3 w-3 flex-shrink-0" />}
-            <span className="truncate">{lesson.title}</span>
+            <span className="truncate">{studentDisplay || lesson.title}</span>
           </div>
           {duration >= 30 && (
-            <div className="text-muted-foreground truncate">
-              {format(startTime, 'HH:mm')} - {format(endTime, 'HH:mm')}
+            <div className={cn('truncate', colour.text)}>
+              {format(startTime, 'HH:mm')} – {format(endTime, 'HH:mm')}
             </div>
           )}
-          {duration >= 45 && studentNames && (
-            <div className="text-muted-foreground truncate">{studentNames}</div>
+          {duration >= 45 && secondaryLine && (
+            <div className={cn('truncate', colour.text)}>{secondaryLine}</div>
           )}
         </div>
       </TooltipTrigger>
       <TooltipContent side="top" className="text-xs">
-        Click to view, edit, or cancel
+        {lesson.title} · Click to view or edit
       </TooltipContent>
     </Tooltip>
   );
