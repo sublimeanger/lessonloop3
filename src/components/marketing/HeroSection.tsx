@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronRight, Play, Star, Calendar, Clock, CheckCircle2, Bell } from "lucide-react";
 import { dashboardHero } from "@/assets/marketing";
 import { useState } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 // Word-by-word animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -76,6 +77,7 @@ const scheduleItems = [
 ];
 
 export function HeroSection() {
+  const isMobile = useIsMobile();
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   
@@ -84,6 +86,7 @@ export function HeroSection() {
   const y = useSpring(useTransform(mouseY, [0, 1], [-10, 10]), springConfig);
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (isMobile) return; // Skip on mobile
     const rect = e.currentTarget.getBoundingClientRect();
     mouseX.set((e.clientX - rect.left) / rect.width);
     mouseY.set((e.clientY - rect.top) / rect.height);
@@ -94,48 +97,69 @@ export function HeroSection() {
   return (
     <section 
       className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden"
-      onMouseMove={handleMouseMove}
+      onMouseMove={isMobile ? undefined : handleMouseMove}
     >
       {/* 3D Gradient Mesh Background */}
       <div className="absolute inset-0 bg-ink" />
       
-      {/* Animated Mesh Gradients */}
-      <motion.div
-        animate={{
-          scale: [1, 1.3, 1],
-          rotate: [0, 180, 360],
-        }}
-        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-        className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] opacity-40"
-        style={{
-          background: "radial-gradient(circle, hsl(var(--teal) / 0.4) 0%, transparent 70%)",
-          filter: "blur(80px)",
-        }}
-      />
-      <motion.div
-        animate={{
-          scale: [1.2, 1, 1.2],
-          rotate: [360, 180, 0],
-        }}
-        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-        className="absolute bottom-[-20%] right-[-10%] w-[700px] h-[700px] opacity-30"
-        style={{
-          background: "radial-gradient(circle, hsl(var(--coral) / 0.4) 0%, transparent 70%)",
-          filter: "blur(80px)",
-        }}
-      />
-      <motion.div
-        animate={{
-          scale: [1, 1.2, 1],
-          x: [0, 100, 0],
-        }}
-        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-[40%] left-[30%] w-[500px] h-[500px] opacity-20"
-        style={{
-          background: "radial-gradient(circle, hsl(var(--teal-light) / 0.3) 0%, transparent 70%)",
-          filter: "blur(60px)",
-        }}
-      />
+      {/* Animated Mesh Gradients — static on mobile for performance */}
+      {isMobile ? (
+        <>
+          <div
+            className="absolute top-[-20%] left-[-10%] w-[400px] h-[400px] opacity-30"
+            style={{
+              background: "radial-gradient(circle, hsl(var(--teal) / 0.4) 0%, transparent 70%)",
+              filter: "blur(60px)",
+            }}
+          />
+          <div
+            className="absolute bottom-[-20%] right-[-10%] w-[350px] h-[350px] opacity-20"
+            style={{
+              background: "radial-gradient(circle, hsl(var(--coral) / 0.4) 0%, transparent 70%)",
+              filter: "blur(60px)",
+            }}
+          />
+        </>
+      ) : (
+        <>
+          <motion.div
+            animate={{
+              scale: [1, 1.3, 1],
+              rotate: [0, 180, 360],
+            }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] opacity-40"
+            style={{
+              background: "radial-gradient(circle, hsl(var(--teal) / 0.4) 0%, transparent 70%)",
+              filter: "blur(80px)",
+            }}
+          />
+          <motion.div
+            animate={{
+              scale: [1.2, 1, 1.2],
+              rotate: [360, 180, 0],
+            }}
+            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+            className="absolute bottom-[-20%] right-[-10%] w-[700px] h-[700px] opacity-30"
+            style={{
+              background: "radial-gradient(circle, hsl(var(--coral) / 0.4) 0%, transparent 70%)",
+              filter: "blur(80px)",
+            }}
+          />
+          <motion.div
+            animate={{
+              scale: [1, 1.2, 1],
+              x: [0, 100, 0],
+            }}
+            transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute top-[40%] left-[30%] w-[500px] h-[500px] opacity-20"
+            style={{
+              background: "radial-gradient(circle, hsl(var(--teal-light) / 0.3) 0%, transparent 70%)",
+              filter: "blur(60px)",
+            }}
+          />
+        </>
+      )}
 
       {/* Subtle Grid Pattern */}
       <div 

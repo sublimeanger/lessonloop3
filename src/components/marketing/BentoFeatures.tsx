@@ -195,22 +195,15 @@ function AIDemo() {
           {msg.text}
         </motion.div>
       ))}
-      <motion.div
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ delay: 1 }}
-        className="flex gap-1 ml-2"
-      >
+      <div className="flex gap-1 ml-2">
         {[0, 1, 2].map((i) => (
-          <motion.div
+          <div
             key={i}
-            animate={{ opacity: [0.3, 1, 0.3] }}
-            transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-            className="w-1.5 h-1.5 rounded-full bg-muted-foreground"
+            className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-pulse"
+            style={{ animationDelay: `${i * 200}ms` }}
           />
         ))}
-      </motion.div>
+      </div>
     </div>
   );
 }
