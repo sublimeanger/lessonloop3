@@ -13,7 +13,7 @@ export interface AdminMessageRequest {
   created_at: string;
   guardian?: { id: string; full_name: string; email: string | null } | null;
   student?: { id: string; first_name: string; last_name: string } | null;
-  lesson?: { id: string; title: string; start_at: string } | null;
+  lesson?: { id: string; title: string; start_at: string; end_at: string } | null;
 }
 
 export function useAdminMessageRequests(options?: { status?: string }) {
@@ -36,7 +36,7 @@ export function useAdminMessageRequests(options?: { status?: string }) {
           created_at,
           guardian:guardians(id, full_name, email),
           student:students(id, first_name, last_name),
-          lesson:lessons(id, title, start_at)
+          lesson:lessons(id, title, start_at, end_at)
         `)
         .eq('org_id', currentOrg.id)
         .order('created_at', { ascending: false });
@@ -53,6 +53,20 @@ export function useAdminMessageRequests(options?: { status?: string }) {
   });
 }
 
+export interface UpdateRequestPayload {
+  requestId: string;
+  status: 'approved' | 'declined' | 'resolved';
+  adminResponse?: string;
+  /** For reschedule approvals: the new lesson start time (ISO string) */
+  newStartAt?: string;
+  /** For reschedule approvals: the new lesson end time (ISO string) */
+  newEndAt?: string;
+  /** The lesson ID to update (for reschedule/cancellation) */
+  lessonId?: string;
+  /** The request type to determine what calendar action to take */
+  requestType?: 'cancellation' | 'reschedule' | 'general';
+}
+
 export function useUpdateMessageRequest() {
   const { currentOrg } = useOrg();
   const queryClient = useQueryClient();
@@ -63,11 +77,11 @@ export function useUpdateMessageRequest() {
       requestId,
       status,
       adminResponse,
-    }: {
-      requestId: string;
-      status: 'approved' | 'declined' | 'resolved';
-      adminResponse?: string;
-    }) => {
+      newStartAt,
+      newEndAt,
+      lessonId,
+      requestType,
+    }: UpdateRequestPayload) => {
       if (!currentOrg) throw new Error('No organisation');
 
       const updateData: Record<string, unknown> = { 
@@ -78,7 +92,40 @@ export function useUpdateMessageRequest() {
         updateData.admin_response = adminResponse;
       }
 
-      // Get the request first to find the guardian for notification
+      // --- Calendar actions on approval ---
+      let calendarAction: 'rescheduled' | 'cancelled' | null = null;
+
+      if (status === 'approved' && lessonId) {
+        if (requestType === 'reschedule' && newStartAt && newEndAt) {
+          // Actually reschedule the lesson on the calendar
+          const { error: lessonError } = await supabase
+            .from('lessons')
+            .update({ start_at: newStartAt, end_at: newEndAt })
+            .eq('id', lessonId)
+            .eq('org_id', currentOrg.id);
+
+          if (lessonError) throw new Error(`Failed to reschedule lesson: ${lessonError.message}`);
+          calendarAction = 'rescheduled';
+        } else if (requestType === 'cancellation') {
+          // Actually cancel the lesson on the calendar
+          const { data: sessionData } = await supabase.auth.getSession();
+          const { error: lessonError } = await supabase
+            .from('lessons')
+            .update({
+              status: 'cancelled',
+              cancelled_at: new Date().toISOString(),
+              cancelled_by: sessionData.session?.user.id || null,
+              cancellation_reason: `Cancelled via parent request: ${adminResponse || 'Approved by admin'}`,
+            })
+            .eq('id', lessonId)
+            .eq('org_id', currentOrg.id);
+
+          if (lessonError) throw new Error(`Failed to cancel lesson: ${lessonError.message}`);
+          calendarAction = 'cancelled';
+        }
+      }
+
+      // Update the request record
       const { data: request, error: fetchError } = await supabase
         .from('message_requests')
         .select('guardian_id, subject, guardians(email, full_name)')
@@ -96,7 +143,7 @@ export function useUpdateMessageRequest() {
 
       if (error) throw error;
 
-      // Send email notification to guardian when request is responded to
+      // Send email notification to guardian
       const guardian = request.guardians as { email: string | null; full_name: string } | null;
       if (guardian?.email && (status === 'approved' || status === 'declined' || status === 'resolved')) {
         const statusLabel = status === 'approved' 
@@ -105,12 +152,17 @@ export function useUpdateMessageRequest() {
             ? 'declined'
             : 'resolved';
         
-        const statusMessage = `Your request "${request.subject}" has been ${statusLabel}.`;
+        let statusMessage = `Your request "${request.subject}" has been ${statusLabel}.`;
+        if (calendarAction === 'rescheduled') {
+          statusMessage += ' The lesson has been rescheduled on the calendar.';
+        } else if (calendarAction === 'cancelled') {
+          statusMessage += ' The lesson has been cancelled on the calendar.';
+        }
+
         const fullBody = adminResponse 
           ? `${statusMessage}\n\nResponse from your teacher:\n${adminResponse}\n\nView details in your parent portal.`
           : `${statusMessage}\n\nView details in your parent portal.`;
 
-        // Call send-message edge function to send email AND log it
         try {
           const { data: sessionData } = await supabase.auth.getSession();
           const response = await fetch(
@@ -141,16 +193,25 @@ export function useUpdateMessageRequest() {
           }
         } catch (emailError) {
           console.error('Error sending notification email:', emailError);
-          // Don't throw - the request update succeeded, email is best-effort
         }
       }
 
-      return { status, guardianNotified: !!guardian?.email };
+      return { status, calendarAction, guardianNotified: !!guardian?.email };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-message-requests'] });
-      const notifyMsg = data.guardianNotified ? ' Parent has been notified by email.' : '';
-      toast({ title: 'Request updated', description: `The request status has been updated.${notifyMsg}` });
+      // Also invalidate calendar data since lessons may have changed
+      if (data.calendarAction) {
+        queryClient.invalidateQueries({ queryKey: ['calendar-lessons'] });
+        queryClient.invalidateQueries({ queryKey: ['today-lessons'] });
+      }
+      const actionMsg = data.calendarAction === 'rescheduled' 
+        ? ' Lesson rescheduled on the calendar.'
+        : data.calendarAction === 'cancelled'
+          ? ' Lesson cancelled on the calendar.'
+          : '';
+      const notifyMsg = data.guardianNotified ? ' Parent notified by email.' : '';
+      toast({ title: 'Request updated', description: `The request has been updated.${actionMsg}${notifyMsg}` });
     },
     onError: (error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
