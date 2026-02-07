@@ -189,19 +189,6 @@ export function BillingDeepDive() {
               </motion.div>
             </motion.div>
 
-            {/* Stats callout */}
-            <motion.div
-              className="absolute -bottom-6 -left-6 z-10"
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 1.3 }}
-            >
-              <div className="bg-card border border-border rounded-xl p-4 shadow-lg">
-                <p className="text-2xl font-bold text-teal">6 hours</p>
-                <p className="text-xs text-muted-foreground">saved per month on billing</p>
-              </div>
-            </motion.div>
           </motion.div>
 
           {/* Right: Content */}
