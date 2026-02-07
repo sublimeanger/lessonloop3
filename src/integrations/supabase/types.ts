@@ -351,6 +351,13 @@ export type Database = {
             foreignKeyName: "availability_blocks_teacher_id_fkey"
             columns: ["teacher_id"]
             isOneToOne: false
+            referencedRelation: "teacher_profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "availability_blocks_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
             referencedRelation: "teachers"
             referencedColumns: ["id"]
           },
@@ -1124,6 +1131,13 @@ export type Database = {
             foreignKeyName: "lessons_teacher_id_fkey"
             columns: ["teacher_id"]
             isOneToOne: false
+            referencedRelation: "teacher_profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
             referencedRelation: "teachers"
             referencedColumns: ["id"]
           },
@@ -1858,6 +1872,13 @@ export type Database = {
             foreignKeyName: "practice_assignments_teacher_id_fkey"
             columns: ["teacher_id"]
             isOneToOne: false
+            referencedRelation: "teacher_profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_assignments_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
             referencedRelation: "teachers"
             referencedColumns: ["id"]
           },
@@ -2474,6 +2495,13 @@ export type Database = {
             foreignKeyName: "student_teacher_assignments_teacher_id_fkey"
             columns: ["teacher_id"]
             isOneToOne: false
+            referencedRelation: "teacher_profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_teacher_assignments_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
             referencedRelation: "teachers"
             referencedColumns: ["id"]
           },
@@ -2554,6 +2582,13 @@ export type Database = {
             columns: ["default_rate_card_id"]
             isOneToOne: false
             referencedRelation: "rate_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_default_teacher_id_fkey"
+            columns: ["default_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_profiles_public"
             referencedColumns: ["id"]
           },
           {
@@ -2768,40 +2803,46 @@ export type Database = {
         Row: {
           bio: string | null
           created_at: string | null
+          display_name: string | null
           employment_type: Database["public"]["Enums"]["employment_type"] | null
           id: string | null
           instruments: string[] | null
           org_id: string | null
+          status: Database["public"]["Enums"]["student_status"] | null
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
           bio?: string | null
           created_at?: string | null
+          display_name?: string | null
           employment_type?:
             | Database["public"]["Enums"]["employment_type"]
             | null
           id?: string | null
           instruments?: string[] | null
           org_id?: string | null
+          status?: Database["public"]["Enums"]["student_status"] | null
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
           bio?: string | null
           created_at?: string | null
+          display_name?: string | null
           employment_type?:
             | Database["public"]["Enums"]["employment_type"]
             | null
           id?: string | null
           instruments?: string[] | null
           org_id?: string | null
+          status?: Database["public"]["Enums"]["student_status"] | null
           updated_at?: string | null
           user_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "teacher_profiles_org_id_fkey"
+            foreignKeyName: "teachers_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
