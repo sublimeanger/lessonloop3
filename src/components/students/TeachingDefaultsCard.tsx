@@ -194,12 +194,12 @@ export function TeachingDefaultsCard({
                 <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                 Location
               </Label>
-              <Select value={editLocationId} onValueChange={setEditLocationId}>
+              <Select value={editLocationId || 'none'} onValueChange={(v) => setEditLocationId(v === 'none' ? '' : v)}>
                 <SelectTrigger className="h-9">
                   <SelectValue placeholder="No default" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No default</SelectItem>
+                  <SelectItem value="none">No default</SelectItem>
                   {locations.map(loc => (
                     <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
                   ))}
@@ -212,12 +212,12 @@ export function TeachingDefaultsCard({
                 <User className="h-3.5 w-3.5 text-muted-foreground" />
                 Teacher
               </Label>
-              <Select value={editTeacherId} onValueChange={setEditTeacherId}>
+              <Select value={editTeacherId || 'none'} onValueChange={(v) => setEditTeacherId(v === 'none' ? '' : v)}>
                 <SelectTrigger className="h-9">
                   <SelectValue placeholder="No default" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No default</SelectItem>
+                  <SelectItem value="none">No default</SelectItem>
                   {teachers.map(t => (
                     <SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>
                   ))}
@@ -230,12 +230,12 @@ export function TeachingDefaultsCard({
                 <Receipt className="h-3.5 w-3.5 text-muted-foreground" />
                 Rate Card
               </Label>
-              <Select value={editRateCardId} onValueChange={setEditRateCardId}>
+              <Select value={editRateCardId || 'none'} onValueChange={(v) => setEditRateCardId(v === 'none' ? '' : v)}>
                 <SelectTrigger className="h-9">
                   <SelectValue placeholder="No default" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No default</SelectItem>
+                  <SelectItem value="none">No default</SelectItem>
                   {rateCards.map(rate => (
                     <SelectItem key={rate.id} value={rate.id}>
                       {rate.name} - £{(rate.rate_amount / 100).toFixed(2)}
