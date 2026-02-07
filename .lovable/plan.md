@@ -1,72 +1,65 @@
 
-# Fix Plan: Calendar Display, Conflict Detection, and Account Setup
 
-## Issues Found
+# Make Calendar Lessons Intuitive to Edit and Remove
 
-### 1. Duplicate Lessons in the Database
-There are **3 lessons for Jamie Mckaye at exactly the same time** (Feb 9, 09:00-10:00):
-- 2 standalone lessons (no recurrence link -- likely created during earlier bug testing)
-- 1 lesson from the recurring Monday series
+## The Problem
 
-These are stacking on top of each other, which is why the calendar looks "malformed."
+The calendar already supports clicking lessons to view details and editing them, but the experience isn't intuitive:
 
-### 2. No Overlap Layout in the Calendar
-When multiple lessons share the same time slot, the calendar renders them **directly on top of each other** with identical positioning. There is no side-by-side column algorithm, so overlapping events appear garbled.
+1. **Too many steps to reschedule**: Click lesson, then detail panel opens, then click "Edit", then a full modal opens, then you change the date/time, then save. That's 4+ clicks for what should feel instant.
+2. **"Remove from schedule" is buried**: The Cancel and Delete actions are at the bottom of the detail panel, styled the same as everything else. Users can't find how to take a student off the calendar.
+3. **No visual hint that cards are interactive**: The lesson cards have a cursor-pointer, but no hover tooltip or visual cue telling users "click to manage this lesson."
 
-### 3. Conflict Detection Gap for Unlinked Teachers
-When a teacher does not have a user account (teacher_user_id is null), **all teacher overlap checks are skipped**. This means the system happily lets you create duplicate lessons at the same time for the same teacher. The system should use the `teacher_id` column (from the teachers table) as a fallback for overlap detection.
+## What Changes
 
-### 4. Lauren's Account Status
-Lauren (laurentwilleypiano@gmail.com) already has the **owner** role and the **agency** plan, but her subscription status shows as "trialing". This needs to be switched to "active" permanently.
+### 1. Redesign the Detail Panel for Quick Actions
 
----
+Transform the top of the detail panel from a passive information display into an action-oriented header with three prominent, clearly labelled buttons:
 
-## Fix Steps
+- **Reschedule** (calendar icon) -- Opens the edit modal with the date/time fields focused
+- **Cancel Lesson** (ban icon) -- Direct cancel flow (with recurring choice if applicable)
+- **Delete** (trash icon) -- Direct delete flow
 
-### Step 1: Clean Up Duplicate Lessons (Database)
-Delete the 2 standalone duplicate lessons for Jamie Mckaye on Feb 9 that were created during bug testing. Keep the one that belongs to the recurring series.
+These replace the current bottom-of-panel buttons that users aren't finding.
 
-### Step 2: Fix Conflict Detection for Unlinked Teachers
-Update `useConflictDetection.ts` to add a new `checkTeacherLessonsByTeacherId` function that queries by `teacher_id` (from the teachers table) instead of `teacher_user_id`. When `teacher_user_id` is null but `teacher_id` is provided, this check will run instead -- preventing duplicate bookings for teachers without login accounts.
+### 2. Add Hover Tooltip on Lesson Cards
 
-### Step 3: Add Overlap Layout to CalendarGrid
-Add a column-based overlap algorithm to `CalendarGrid.tsx` that:
-- Groups lessons that share overlapping time ranges
-- Assigns each overlapping lesson a column index and total column count
-- Renders them side-by-side (e.g., 2 overlapping lessons each get 50% width) instead of stacking
+When hovering over a lesson card on the calendar grid, show a subtle tooltip: "Click to view, edit, or cancel". This teaches users the interaction is available.
 
-This is a standard calendar layout algorithm used by Google Calendar, Outlook, etc.
+### 3. Improve the Detail Panel Layout
 
-### Step 4: Set Lauren's Subscription to Active Agency
-Run a database update to set her organisation's `subscription_status` to `active` and clear the trial end date so she has permanent, unrestricted agency access.
+Restructure the detail panel to show:
+- Lesson title + status badge (existing)
+- **Quick action buttons** right below the header (NEW -- prominent, coloured)
+- Time, teacher, location, students info (existing, kept compact)
+- Attendance section (existing)
+- Notes (existing)
 
----
+The old bottom action bar is removed in favour of the prominent top placement.
+
+### 4. Add "End All Future Lessons" as a Named Action
+
+For recurring lessons, add a clearly labelled "End Series" option alongside Cancel and Delete. This specifically answers the user's question: "How do I take a student off the calendar?" -- you click the lesson, then click "End Series", which cancels all future occurrences.
 
 ## Technical Details
 
-### Overlap Layout Algorithm (Step 3)
-```text
-Before (current):
-+------------------+
-| Lesson A         |  <-- Lesson B renders BEHIND this, invisible
-| 09:00 - 10:00    |
-+------------------+
-
-After (fix):
-+---------+---------+
-| Lesson  | Lesson  |
-| A       | B       |
-| 09:00   | 09:00   |
-+---------+---------+
-```
-
-The algorithm groups lessons into "overlap clusters" where any lesson that overlaps in time with another is in the same cluster. Each lesson in a cluster gets a column index and the total number of columns, which determines its left offset and width within the day column.
-
-### Conflict Detection Fix (Step 2)
-The `LessonModal` will pass `teacher_id` alongside `teacher_user_id` to the conflict checker. A new parallel check will query the `lessons` table filtering by `teacher_id` (not `teacher_user_id`) to catch overlaps for unlinked teachers.
-
 ### Files Modified
-- `src/components/calendar/CalendarGrid.tsx` -- overlap layout algorithm
-- `src/hooks/useConflictDetection.ts` -- teacher_id-based conflict check
-- `src/components/calendar/LessonModal.tsx` -- pass teacher_id to conflict checker
-- Database migration -- clean up duplicates + update Lauren's subscription
+
+**`src/components/calendar/LessonDetailPanel.tsx`**
+- Move action buttons from the bottom of the panel to directly below the header
+- Style them as a prominent button group with clear icons and labels:
+  - "Reschedule" (primary outline, calendar icon)
+  - "Cancel" (warning/amber styling, ban icon)  
+  - "Delete" (destructive ghost, trash icon)
+- For recurring lessons, add an "End Series" button that cancels all future lessons in one click (with confirmation)
+- Keep attendance and notes sections below
+
+**`src/components/calendar/LessonCard.tsx`**
+- Wrap the calendar variant card in a Tooltip showing "Click to view or edit"
+- Add a subtle scale-up hover effect (`hover:scale-[1.02]`) for visual feedback
+
+**`src/components/calendar/CalendarGrid.tsx`**
+- Wrap each lesson's clickable div with the Tooltip provider so hover hints work within the grid context
+
+### No database changes required -- this is purely a UX restructuring of existing functionality.
+
