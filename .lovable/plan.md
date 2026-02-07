@@ -1,65 +1,71 @@
 
 
-# Make Calendar Lessons Intuitive to Edit and Remove
+# Fix: Lesson Click Not Opening Detail Panel
 
-## The Problem
+## Root Cause
 
-The calendar already supports clicking lessons to view details and editing them, but the experience isn't intuitive:
+There is an **infinite render loop** in `LessonModal` that is flooding React's state update queue. Even though the LessonModal is closed (its `open` prop is `false`), it is still mounted on the page and its internal `useEffect` is stuck in an infinite cycle. This blocks React from processing other state updates -- including the one that opens the lesson detail panel when you click a lesson card.
 
-1. **Too many steps to reschedule**: Click lesson, then detail panel opens, then click "Edit", then a full modal opens, then you change the date/time, then save. That's 4+ clicks for what should feel instant.
-2. **"Remove from schedule" is buried**: The Cancel and Delete actions are at the bottom of the detail panel, styled the same as everything else. Users can't find how to take a student off the calendar.
-3. **No visual hint that cards are interactive**: The lesson cards have a cursor-pointer, but no hover tooltip or visual cue telling users "click to manage this lesson."
+### The Loop (step by step)
 
-## What Changes
+```text
+1. LessonModal renders
+2. useConflictDetection() returns a NEW checkConflicts function (not memoised)
+3. The conflict-check useEffect fires because checkConflicts changed
+4. conflictCheckKey is null (modal closed), so it calls:
+   setConflictState({ isChecking: false, conflicts: [] })  <-- new object every time
+5. New object triggers re-render --> back to step 1
+```
 
-### 1. Redesign the Detail Panel for Quick Actions
+## Fix (3 changes)
 
-Transform the top of the detail panel from a passive information display into an action-oriented header with three prominent, clearly labelled buttons:
+### 1. Memoise `checkConflicts` in `useConflictDetection.ts`
 
-- **Reschedule** (calendar icon) -- Opens the edit modal with the date/time fields focused
-- **Cancel Lesson** (ban icon) -- Direct cancel flow (with recurring choice if applicable)
-- **Delete** (trash icon) -- Direct delete flow
+Wrap the `checkConflicts` function in `useCallback` so it keeps the same reference between renders. This is the **root cause** fix -- stops the dependency array from changing on every render.
 
-These replace the current bottom-of-panel buttons that users aren't finding.
+**File:** `src/hooks/useConflictDetection.ts`
+- Import `useCallback` from React
+- Wrap the `checkConflicts` function in `useCallback` with `[currentOrg]` as the dependency (the only external value it reads)
 
-### 2. Add Hover Tooltip on Lesson Cards
+### 2. Guard against no-op state updates in `LessonModal.tsx`
 
-When hovering over a lesson card on the calendar grid, show a subtle tooltip: "Click to view, edit, or cancel". This teaches users the interaction is available.
+In the conflict-check `useEffect`, when `conflictCheckKey` is null, avoid calling `setConflictState` if the state is already in its default shape. This adds a defensive layer so even if something else triggers re-renders, the effect won't unnecessarily set state.
 
-### 3. Improve the Detail Panel Layout
+**File:** `src/components/calendar/LessonModal.tsx`  
+- Change the early return block (around line 194) from:
+  ```
+  setConflictState({ isChecking: false, conflicts: [] });
+  ```
+  to a functional update that only changes state if it differs:
+  ```
+  setConflictState(prev => 
+    prev.isChecking || prev.conflicts.length > 0 
+      ? { isChecking: false, conflicts: [] } 
+      : prev
+  );
+  ```
 
-Restructure the detail panel to show:
-- Lesson title + status badge (existing)
-- **Quick action buttons** right below the header (NEW -- prominent, coloured)
-- Time, teacher, location, students info (existing, kept compact)
-- Attendance section (existing)
-- Notes (existing)
+### 3. Remove `checkConflicts` from the useEffect dependency array
 
-The old bottom action bar is removed in favour of the prominent top placement.
+Since `checkConflicts` is now stable (memoised), it technically won't cause issues. But as a belt-and-braces approach, the dependency array at line 278 should rely on `conflictCheckKey` as the primary trigger (which already encodes all the relevant field values). Remove `checkConflicts` and the redundant field-level dependencies (`startTime`, `selectedDate`, etc.) that are already captured in the memoised key.
 
-### 4. Add "End All Future Lessons" as a Named Action
+**File:** `src/components/calendar/LessonModal.tsx`
+- Simplify the dependency array from:
+  ```
+  [conflictCheckKey, checkConflicts, startTime, selectedDate, orgTimezone, durationMins, teacherId, roomId, locationId, selectedStudents, lesson?.id]
+  ```
+  to:
+  ```
+  [conflictCheckKey]
+  ```
+  (Store `checkConflicts` in a ref instead, since it is used inside the effect but should not trigger re-runs.)
 
-For recurring lessons, add a clearly labelled "End Series" option alongside Cancel and Delete. This specifically answers the user's question: "How do I take a student off the calendar?" -- you click the lesson, then click "End Series", which cancels all future occurrences.
+## Files Modified
 
-## Technical Details
+| File | Change |
+|------|--------|
+| `src/hooks/useConflictDetection.ts` | Wrap `checkConflicts` in `useCallback` |
+| `src/components/calendar/LessonModal.tsx` | Guard no-op setState + simplify useEffect deps |
 
-### Files Modified
-
-**`src/components/calendar/LessonDetailPanel.tsx`**
-- Move action buttons from the bottom of the panel to directly below the header
-- Style them as a prominent button group with clear icons and labels:
-  - "Reschedule" (primary outline, calendar icon)
-  - "Cancel" (warning/amber styling, ban icon)  
-  - "Delete" (destructive ghost, trash icon)
-- For recurring lessons, add an "End Series" button that cancels all future lessons in one click (with confirmation)
-- Keep attendance and notes sections below
-
-**`src/components/calendar/LessonCard.tsx`**
-- Wrap the calendar variant card in a Tooltip showing "Click to view or edit"
-- Add a subtle scale-up hover effect (`hover:scale-[1.02]`) for visual feedback
-
-**`src/components/calendar/CalendarGrid.tsx`**
-- Wrap each lesson's clickable div with the Tooltip provider so hover hints work within the grid context
-
-### No database changes required -- this is purely a UX restructuring of existing functionality.
+## No database changes. No new files.
 
