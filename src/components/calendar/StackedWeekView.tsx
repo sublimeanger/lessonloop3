@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { format, startOfWeek, addDays, endOfWeek, isSameDay, parseISO, isToday } from 'date-fns';
+import { format, startOfWeek, addDays, endOfWeek, isSameDay, parseISO, isToday, isSaturday, isSunday } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { LessonCard } from './LessonCard';
 import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS } from './teacherColours';
@@ -64,10 +64,25 @@ export function StackedWeekView({
       });
   }, [currentOrg, currentDate]);
 
-  const days = useMemo(() => {
+  // Build all 7 days (Mon–Sun)
+  const allDays = useMemo(() => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   }, [currentDate]);
+
+  // Auto-detect: show 5 columns if no weekend lessons, 7 if there are
+  const hasWeekendLessons = useMemo(() => {
+    return lessons.some((l) => {
+      const d = parseISO(l.start_at);
+      return isSaturday(d) || isSunday(d);
+    });
+  }, [lessons]);
+
+  const days = useMemo(
+    () => (hasWeekendLessons ? allDays : allDays.slice(0, 5)),
+    [allDays, hasWeekendLessons]
+  );
+  const colCount = days.length;
 
   const lessonsByDay = useMemo(() => {
     const map = new Map<string, LessonWithDetails[]>();
@@ -89,9 +104,12 @@ export function StackedWeekView({
 
   return (
     <ScrollArea className="h-[calc(100vh-260px)]">
-      {/* Desktop: 7-column grid / Mobile: scrollable horizontal */}
-      <div className="min-w-[640px] sm:min-w-0">
-        <div className="grid grid-cols-7 border rounded-lg overflow-hidden">
+      {/* Dynamic columns: 5 (Mon–Fri) or 7 (Mon–Sun) */}
+      <div className={cn('min-w-[500px] sm:min-w-0', colCount === 5 && 'sm:min-w-0')}>
+        <div
+          className="grid border rounded-lg overflow-hidden"
+          style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
+        >
           {/* Day headers */}
           {days.map((day) => {
             const closure = getClosureForDay(day);
