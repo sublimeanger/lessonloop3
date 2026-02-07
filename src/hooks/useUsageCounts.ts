@@ -37,7 +37,7 @@ export function useUsageCounts(): UsageStatus {
     queryFn: async (): Promise<UsageCounts> => {
       if (!currentOrg) return { students: 0, teachers: 0, locations: 0 };
 
-      // Fetch counts in parallel
+      // Use SELECT with count instead of HEAD to avoid aborted request noise
       const [studentsResult, teachersResult, locationsResult] = await Promise.all([
         supabase
           .from('students')
@@ -63,8 +63,8 @@ export function useUsageCounts(): UsageStatus {
       };
     },
     enabled: !!currentOrg,
-    staleTime: 30_000, // 30 seconds
-    refetchInterval: 60_000, // Refresh every minute
+    staleTime: 5 * 60_000, // 5 minutes — counts rarely change mid-session
+    gcTime: 10 * 60_000,   // Keep cached for 10 minutes
   });
 
   const studentCount = counts?.students || 0;

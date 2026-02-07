@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +29,7 @@ const STEPS = [
 
 export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { currentOrg } = useOrg();
   const { toast } = useToast();
   
@@ -233,6 +235,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
       
       setCurrentStep('success');
       toast({ title: 'Student created successfully!' });
+      queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
       onSuccess?.();
       
     } catch (error: any) {

@@ -93,6 +93,7 @@ export function useTeacherMutations() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
       toast({ title: 'Teacher created successfully' });
     },
     onError: (error: any) => {
@@ -138,6 +139,7 @@ export function useTeacherMutations() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
       toast({ title: 'Teacher removed' });
     },
     onError: (error: any) => {

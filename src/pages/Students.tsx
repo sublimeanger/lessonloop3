@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ export default function Students() {
   const isAdmin = currentRole === 'owner' || currentRole === 'admin';
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { limits, canAddStudent } = useUsageCounts();
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -131,6 +133,7 @@ export default function Students() {
       toast({ title: 'Error updating status', description: error.message, variant: 'destructive' });
     } else {
       setStudents(prev => prev.map(s => s.id === student.id ? { ...s, status: newStatus } : s));
+      queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
     }
   };
 
