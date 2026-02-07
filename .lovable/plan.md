@@ -1,245 +1,150 @@
 
 
-# Massive Agency Demo Data Seeder
+# Fix Critical Bugs: Student Detail Page + Invoice Date Format
 
-## Overview
-Build a new edge function `seed-agency-demo` that transforms the `demo-teacher@lessonloop.test` account from a solo teacher into a fully operational agency with 9 schools, 18 teachers, 300+ students, thousands of lessons, and complete invoicing history. This will also create loginable teacher and parent accounts for cross-role testing.
+## Problem Summary
 
-## Current State
-- **Account**: `demo-teacher@lessonloop.test` (password: `DemoTeacher2026!`)
-- **User ID**: `b633da13-0599-4ab0-bfd8-c5a686b5d684`
-- **Org ID**: `5b905216-85ae-4aca-8c50-9757d0444b60`
-- **Org type**: `solo_teacher` with `max_teachers: 1`
-- **Existing data**: 1 teacher record (the owner), nothing else
-- The org needs to be upgraded to `agency` type first
+The Student Detail page is completely broken -- both the Lessons and Invoices tabs fail with 400 errors due to schema mismatches between the code and database. Additionally, the Student interface is missing the `default_teacher_id` field, and date filters use US format placeholders instead of UK.
 
 ---
 
-## Phase 1: Organisation Upgrade
+## Bug 1: Student Lessons Query (CRITICAL)
 
-Update the existing organisation record:
-- `org_type` -> `agency`
-- `name` -> `Harmony Music Education Agency`
-- `subscription_plan` -> `agency`
-- `max_students` -> `9999`
-- `max_teachers` -> `9999`
-- `vat_enabled` -> `true`, `vat_rate` -> `20`
-- Set invoice address fields for realism
+**File:** `src/hooks/useStudentDetail.ts` -- `useStudentLessons`
 
----
+The query references columns that don't exist on the `lessons` table:
 
-## Phase 2: Locations (9 Schools)
+| Code references | Actual DB column |
+|----------------|-----------------|
+| `start_time` | `start_at` |
+| `end_time` | `end_at` |
+| `subject` | `title` |
+| `attendance_status` on `lesson_participants` | Does not exist -- lives on `attendance_records` table |
+| `profiles!lessons_teacher_user_id_fkey` | No such FK -- teacher FK is `lessons_teacher_id_fkey` pointing to `teachers` table |
 
-Create 9 schools across different UK cities, each with 2-3 rooms:
+**Fix:**
+- Rewrite the Supabase query to use correct column names: `start_at`, `end_at`, `title`
+- Join teacher via `teacher:teachers!lessons_teacher_id_fkey(display_name)` instead of `profiles`
+- Remove `attendance_status` from `lesson_participants` select (column doesn't exist there)
+- Fetch attendance separately: after getting lesson IDs, query `attendance_records` filtered by `student_id` and the lesson IDs to get attendance per lesson
+- Update the `StudentLesson` interface to use `start_at`, `end_at`, `title` instead of `start_time`, `end_time`, `subject`
 
-| # | School Name | City | Rooms |
-|---|-------------|------|-------|
-| 1 | Oakwood Primary School | London | Music Room, Hall |
-| 2 | St Mary's Academy | Manchester | Room A, Room B, Hall |
-| 3 | Riverside Secondary School | Birmingham | Music Suite, Practice Room |
-| 4 | The Willows Prep | Bristol | Studio 1, Studio 2 |
-| 5 | Kingsgate Grammar | Leeds | Music Block, Drama Hall |
-| 6 | Elmhurst Community School | Liverpool | Teaching Room, Assembly Hall |
-| 7 | Briarwood College | Sheffield | Music Dept, Rehearsal Room |
-| 8 | Ashford Park School | Nottingham | Room 1, Room 2, Room 3 |
-| 9 | Westfield Junior School | Cambridge | Music Room, Practice Room |
-
-Total: 9 locations, ~22 rooms
+**Updated query approach:**
+```
+lesson_participants -> lessons!inner (id, start_at, end_at, status, title, locations(name), teacher:teachers!lessons_teacher_id_fkey(display_name))
+```
+Then a second query to `attendance_records` for the student + lesson IDs to map attendance status per lesson.
 
 ---
 
-## Phase 3: Teachers (18 Teachers)
+## Bug 2: Student Invoices Query (CRITICAL)
 
-Create 18 teacher records (unlinked -- no auth accounts) distributed across schools. Two of these will also get loginable auth accounts for cross-role testing.
+**File:** `src/hooks/useStudentDetail.ts` -- `useStudentInvoices`
 
-Each teacher has:
-- Realistic UK name
-- 2-3 instruments from: Piano, Violin, Guitar, Cello, Drums, Flute, Clarinet, Saxophone, Trumpet, Recorder
-- Employment type (mix of `employee` and `contractor`)
-- Pay rate (per_lesson or hourly)
+Two issues:
+1. Uses explicit FK hint syntax (`guardians!invoices_payer_guardian_id_fkey`) which may cause PostgREST ambiguity errors
+2. The `StudentInvoice` interface uses `total_amount_pence` but the actual DB column is `total_minor`
 
-**Loginable Teacher Accounts** (2 accounts with full auth):
-1. `teacher1@lessonloop.test` / `Teacher1Demo2026!` -- assigned to schools 1-3
-2. `teacher2@lessonloop.test` / `Teacher2Demo2026!` -- assigned to schools 4-6
-
-These will have:
-- Auth user created with `email_confirm: true`
-- Profile, org_membership (role: teacher), user_roles, teacher record
-- Their `teachers.user_id` linked to their auth ID
+**Fix:**
+- Use the simpler relationship syntax that works in `useInvoices.ts`: `payer_guardian:guardians(full_name)` and `payer_student:students(first_name, last_name)`
+- Update `StudentInvoice` interface: rename `total_amount_pence` to `total_minor`
+- Update the mapping function accordingly
 
 ---
 
-## Phase 4: Students (315 Students) + Guardians (~250 Guardians)
+## Bug 3: Student Interface Missing `default_teacher_id`
 
-Create 35 students per school (9 x 35 = 315 students), each with:
-- Realistic UK first/last name combinations
-- Teaching defaults set (default_location_id, default_teacher_id)
-- Status: mostly `active`, a few `inactive`
+**File:** `src/pages/StudentDetail.tsx`
 
-**Guardians (~250)**:
-- Most students get 1 guardian (primary payer)
-- ~30 families share guardians (siblings), testing multi-student guardian billing
-- Each guardian linked via `student_guardians` with `is_primary_payer: true`
+The `Student` interface (line 41-53) has `default_teacher_user_id` but not `default_teacher_id`. The `TeachingDefaultsCard` is already using a workaround: `(student as any).default_teacher_id`. The DB has both columns, but `default_teacher_id` (FK to `teachers` table) is the one being used by the seeder and by `TeachingDefaultsCard`.
 
-**Loginable Parent Accounts** (3 accounts):
-1. `parent1@lessonloop.test` / `Parent1Demo2026!` -- parent of 2 siblings at School 1
-2. `parent2@lessonloop.test` / `Parent2Demo2026!` -- parent of 1 child at School 4
-3. `parent3@lessonloop.test` / `Parent3Demo2026!` -- parent of 3 siblings across Schools 2 and 5
-
-These get:
-- Auth user with email confirmed
-- Profile, org_membership (role: parent), user_roles
-- Guardian record with `user_id` linked
-- Proper `student_guardians` linking
+**Fix:**
+- Add `default_teacher_id: string | null` to the `Student` interface
+- Remove the `as any` cast on line 539 and use `student.default_teacher_id` directly
 
 ---
 
-## Phase 5: Student-Teacher Assignments
+## Bug 4: Lesson Display Uses Old Field Names
 
-Each student gets assigned to 1 primary teacher at their school via `student_teacher_assignments`. Teachers are distributed so each has ~15-20 students.
+**File:** `src/pages/StudentDetail.tsx` (lines 680-710)
 
----
+The lesson rendering template references `sl.lesson.start_time`, `sl.lesson.subject`, `sl.lesson.teacher_name`. These need to match the updated interface.
 
-## Phase 6: Rate Cards (16 Cards)
-
-Create rate cards for all instrument/duration combinations:
-
-| Instrument | 30 min | 45 min |
-|------------|--------|--------|
-| Piano | 35.00 | 50.00 |
-| Guitar | 32.00 | 45.00 |
-| Violin | 38.00 | 55.00 |
-| Cello | 38.00 | 55.00 |
-| Drums | 30.00 | 42.00 |
-| Flute | 35.00 | 50.00 |
-| Clarinet | 35.00 | 50.00 |
-| Saxophone | 35.00 | 50.00 |
+**Fix:**
+- `sl.lesson.start_time` -> `sl.lesson.start_at`
+- `sl.lesson.subject` -> `sl.lesson.title`
+- `sl.lesson.teacher_name` -> `sl.lesson.teacher_name` (keep, but sourced from `teachers.display_name`)
 
 ---
 
-## Phase 7: Lessons (~2,500+ Lessons)
+## Bug 5: Invoice Display Uses `total_amount_pence`
 
-Generate lessons Monday-Friday only, spread across 12 weeks:
-- **Past 8 weeks**: ~1,600 completed lessons (status: `completed`)
-- **Current week**: ~200 lessons (mix of `completed` for past days, `scheduled` for remaining)
-- **Future 4 weeks**: ~800 scheduled lessons (status: `scheduled`)
-- **~30 cancelled lessons** scattered through past weeks
+**File:** `src/pages/StudentDetail.tsx` (line 750)
 
-Each lesson:
-- Assigned to correct teacher (`teacher_user_id` + `teacher_id`)
-- Set at correct location + room
-- Time slots: 08:30-17:00, staggered 30/45 min blocks
-- Proper `lesson_participants` linking student to lesson
-- Mix of `private` and `group` (some group lessons with 2-3 students)
+References `inv.total_amount_pence` which needs to match the updated interface.
 
-**Attendance Records** for completed lessons:
-- ~90% `present`, ~5% `absent`, ~3% `late`, ~2% `cancelled_by_student`
+**Fix:**
+- `inv.total_amount_pence` -> `inv.total_minor`
 
 ---
 
-## Phase 8: Invoicing (~180 Invoices)
+## Bug 6: UK Date Format (LOW)
 
-Generate monthly invoices for the past 3 months, grouped by guardian (payer):
+**File:** `src/components/invoices/InvoiceFiltersBar.tsx`
 
-**Month 1 (2 months ago)**: ~60 invoices
-- ~50 `paid` with payment records
-- ~8 `overdue`
-- ~2 `void`
+The `<input type="date">` elements show browser-default `mm/dd/yyyy` placeholders. While the actual date picker behaviour is browser-controlled, we can add a `placeholder` attribute for browsers that support it.
 
-**Month 2 (1 month ago)**: ~60 invoices
-- ~35 `paid`
-- ~15 `sent`
-- ~8 `overdue`
-- ~2 `void`
-
-**Month 3 (current)**: ~60 invoices
-- ~10 `paid`
-- ~30 `sent`
-- ~15 `draft`
-- ~5 `overdue`
-
-Each invoice:
-- Linked to correct `payer_guardian_id` and `payer_student_id`
-- Proper `invoice_items` (4 lessons per student per month)
-- Correct totals calculated from rate cards
-- `GBP` currency, sequential `invoice_number`
-
-**Payments**: Created for all `paid` invoices with mix of `bank_transfer`, `card`, and `cash` methods
+**Fix:**
+- This is actually controlled by the browser locale, not by placeholder attributes on `type="date"` inputs. The `type="date"` input renders a native date picker whose format follows the user's OS/browser locale settings. No code change needed here -- this is a non-issue since UK users will see `dd/mm/yyyy` natively.
 
 ---
 
-## Phase 9: Make-Up Credits (~20 Credits)
+## Files to Change
 
-Create make-up credits for some cancelled lessons:
-- ~15 unredeemed (available)
-- ~5 redeemed (linked to make-up lessons)
+### 1. `src/hooks/useStudentDetail.ts` (full rewrite of both hooks)
 
----
+**`StudentLesson` interface changes:**
+- `start_time` -> `start_at`
+- `end_time` -> `end_at`
+- `subject` -> `title`
 
-## Phase 10: Messaging Data
+**`StudentInvoice` interface changes:**
+- `total_amount_pence` -> `total_minor`
 
-Seed realistic messaging across all channels:
-- **Internal messages** (10+): teacher-to-owner conversations about schedules, student progress
-- **Message requests** (8+): parent requests for reschedules, cancellations, general queries (mix of pending/approved/declined)
-- **Outbound message log** (15+): invoice reminders, lesson confirmations, welcome emails
+**`useStudentLessons` query rewrite:**
+- Fix column names in select: `start_at`, `end_at`, `title`
+- Join teacher via `teacher:teachers!lessons_teacher_id_fkey(display_name)`
+- Remove `attendance_status` from `lesson_participants`
+- Add a second query to `attendance_records` to get attendance per lesson for this student
+- Merge attendance data into the returned results
 
----
+**`useStudentInvoices` query rewrite:**
+- Remove FK hint syntax from both query locations (lines 119-120 and 150-151)
+- Use simple syntax: `payer_guardian:guardians(full_name)`, `payer_student:students(first_name, last_name)`
+- Map `total_minor` instead of `total_amount_pence`
 
-## Technical Implementation
+### 2. `src/pages/StudentDetail.tsx`
 
-### Edge Function: `supabase/functions/seed-agency-demo/index.ts`
+**Interface fix (line 41-53):**
+- Add `default_teacher_id: string | null` to the `Student` interface
 
-The function will:
-1. Accept a POST request with the user's auth token
-2. Verify the caller is the org owner
-3. Run all phases sequentially with progress logging
-4. Use batch inserts (chunks of 100) to stay within database limits
-5. Return a comprehensive summary of everything created
-6. Include idempotency check (skip if data already exists)
+**TeachingDefaultsCard prop fix (line 539):**
+- Change `(student as any).default_teacher_id || null` to `student.default_teacher_id`
 
-### Batching Strategy
-- Supabase insert limit is ~1000 rows, but we'll batch at 100 for reliability
-- Lessons (2500+) split into 25 batches
-- Lesson participants follow the same batching
-- Attendance records batched similarly
+**Lesson rendering fix (lines 680-710):**
+- `sl.lesson.start_time` -> `sl.lesson.start_at` (two occurrences on line 685)
+- `sl.lesson.subject` -> `sl.lesson.title` (line 701)
 
-### Auth Account Creation
-- Uses `supabase.auth.admin.createUser()` with `email_confirm: true`
-- Creates profiles, org_memberships, user_roles, teacher/guardian records
-- All done via service role key
-
-### Data Integrity
-- All records scoped to the single org ID
-- All foreign keys properly linked
-- No orphaned records
-- Invoice totals calculated from actual rate cards
-- Lesson times respect Monday-Friday only, no overlapping slots per teacher
+**Invoice rendering fix (line 750):**
+- `inv.total_amount_pence` -> `inv.total_minor`
 
 ---
 
-## Test Account Summary
+## Expected Outcome
 
-| Role | Email | Password | Access |
-|------|-------|----------|--------|
-| Owner/Admin | demo-teacher@lessonloop.test | DemoTeacher2026! | Full agency dashboard, all schools |
-| Teacher 1 | teacher1@lessonloop.test | Teacher1Demo2026! | Schools 1-3, own students only |
-| Teacher 2 | teacher2@lessonloop.test | Teacher2Demo2026! | Schools 4-6, own students only |
-| Parent 1 | parent1@lessonloop.test | Parent1Demo2026! | 2 siblings at School 1 |
-| Parent 2 | parent2@lessonloop.test | Parent2Demo2026! | 1 child at School 4 |
-| Parent 3 | parent3@lessonloop.test | Parent3Demo2026! | 3 children across Schools 2 & 5 |
-
----
-
-## What This Enables Testing
-
-- **Calendar**: Busy multi-teacher, multi-location week view with filtering
-- **Students**: 300+ student list with search, pagination, teaching defaults
-- **Invoicing**: Full invoice lifecycle -- drafts, sent, paid, overdue, void
-- **Reports**: Revenue, outstanding ageing, utilisation, payroll -- all with real data
-- **Parent Portal**: Login as parent, see children, lessons, invoices, send requests
-- **Teacher View**: Login as teacher, see own schedule, own students only (RLS)
-- **Billing Runs**: Test with real completed lessons to generate new invoices
-- **LoopAssist AI**: Query against meaningful data ("show overdue invoices", "who has lessons today")
-- **Multi-guardian**: Sibling families testing consolidated billing
-- **Make-up credits**: Test credit issuance and redemption flows
+After these fixes:
+- Student detail Lessons tab will load all lessons with correct dates, titles, teacher names, location names, and attendance status
+- Student detail Invoices tab will load all invoices with correct amounts, payer names, dates, and statuses
+- Teaching defaults card will properly display teacher assignments without type casting hacks
+- All 315 students in the demo data will have fully functional detail pages
 
