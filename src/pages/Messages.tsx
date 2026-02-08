@@ -190,7 +190,6 @@ export default function Messages() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
-                disabled={viewMode === 'threaded'}
               />
             </div>
             <div className="flex items-center gap-2">
@@ -227,7 +226,7 @@ export default function Messages() {
 
           {/* Message View */}
           {viewMode === 'threaded' ? (
-            <ThreadedMessageList />
+            <ThreadedMessageList searchQuery={searchQuery} />
           ) : isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

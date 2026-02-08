@@ -30,6 +30,7 @@ export interface MessageLogEntry {
   message_type: string;
   status: string;
   sent_at: string | null;
+  read_at: string | null;
   error_message: string | null;
   created_at: string;
   // Joined data

@@ -13,6 +13,7 @@ export interface ThreadMessage {
   recipient_name: string | null;
   recipient_type: string | null;
   recipient_id: string | null;
+  related_id: string | null;
   sender_user_id: string | null;
   status: string;
   created_at: string;
@@ -137,50 +138,24 @@ export function useReplyToMessage() {
     }) => {
       if (!currentOrg || !user) throw new Error('Not authenticated');
 
-      // Get session for edge function call
-      const { data: sessionData } = await supabase.auth.getSession();
+      // Call send-message edge function with threading info included atomically
+      const { data: result, error } = await supabase.functions.invoke('send-message', {
+        body: {
+          org_id: currentOrg.id,
+          sender_user_id: user.id,
+          recipient_type: recipientType || 'guardian',
+          recipient_id: recipientId,
+          recipient_email: recipientEmail,
+          recipient_name: recipientName,
+          subject: subject.startsWith('Re:') ? subject : `Re: ${subject}`,
+          body,
+          message_type: 'reply',
+          thread_id: threadId,
+          parent_message_id: parentMessageId,
+        },
+      });
 
-      // Call send-message edge function with threading info
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-message`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${sessionData.session?.access_token}`,
-          },
-          body: JSON.stringify({
-            org_id: currentOrg.id,
-            sender_user_id: user.id,
-            recipient_type: recipientType || 'guardian',
-            recipient_id: recipientId,
-            recipient_email: recipientEmail,
-            recipient_name: recipientName,
-            subject: subject.startsWith('Re:') ? subject : `Re: ${subject}`,
-            body,
-            message_type: 'reply',
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send reply');
-      }
-
-      const result = await response.json();
-
-      // Update the message with threading info
-      if (result.message_id) {
-        await supabase
-          .from('message_log')
-          .update({
-            thread_id: threadId,
-            parent_message_id: parentMessageId,
-          })
-          .eq('id', result.message_id);
-      }
-
+      if (error) throw error;
       return result;
     },
     onSuccess: () => {
