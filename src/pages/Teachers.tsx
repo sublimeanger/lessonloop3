@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -7,26 +7,19 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
-import { useAuth, AppRole } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { useTeachers, useTeacherMutations, useTeacherStudentCounts } from '@/hooks/useTeachers';
 import { Progress } from '@/components/ui/progress';
-import { Plus, GraduationCap, Loader2, Mail, UserPlus, Users, Lock, Link2, Link2Off, Phone } from 'lucide-react';
+import { Plus, GraduationCap, Loader2, UserPlus, Lock, Link2, Link2Off, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-interface Invite {
-  id: string;
-  email: string;
-  role: AppRole;
-  expires_at: string;
-  accepted_at: string | null;
-}
+import { InviteMemberDialog } from '@/components/settings/InviteMemberDialog';
+import { PendingInvitesList } from '@/components/settings/PendingInvitesList';
 
 export default function Teachers() {
   const { currentOrg, isOrgAdmin } = useOrg();
@@ -39,97 +32,15 @@ export default function Teachers() {
   const { createTeacher } = useTeacherMutations();
   const { data: studentCounts = {} } = useTeacherStudentCounts();
   
-  const [invites, setInvites] = useState<Invite[]>([]);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
-  // Invite form
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'admin' | 'teacher' | 'finance'>('teacher');
+  const [inviteRefreshKey, setInviteRefreshKey] = useState(0);
   
   // Create teacher form (unlinked)
   const [newTeacherName, setNewTeacherName] = useState('');
   const [newTeacherEmail, setNewTeacherEmail] = useState('');
   const [newTeacherPhone, setNewTeacherPhone] = useState('');
-
-  // Fetch pending invites
-  const fetchInvites = async () => {
-    if (!currentOrg) return;
-    const { data } = await supabase
-      .from('invites')
-      .select('*')
-      .eq('org_id', currentOrg.id)
-      .is('accepted_at', null)
-      .in('role', ['admin', 'teacher', 'finance']);
-    setInvites((data || []) as Invite[]);
-  };
-
-  // Load invites on mount
-  useState(() => {
-    fetchInvites();
-  });
-
-  const handleInvite = async () => {
-    if (!inviteEmail.trim() || !currentOrg) {
-      toast({ title: 'Email required', variant: 'destructive' });
-      return;
-    }
-    
-    if (inviteRole === 'teacher' && !canAddTeacher) {
-      toast({ 
-        title: 'Teacher limit reached', 
-        description: `You've reached your limit of ${limits.maxTeachers} teachers.`,
-        variant: 'destructive' 
-      });
-      return;
-    }
-    
-    setIsSaving(true);
-    
-    const { data: invite, error } = await supabase.from('invites').insert({
-      org_id: currentOrg.id,
-      email: inviteEmail.trim().toLowerCase(),
-      role: inviteRole,
-    }).select().single();
-    
-    if (error) {
-      if (error.message.includes('duplicate')) {
-        toast({ title: 'Already invited', variant: 'destructive' });
-      } else {
-        toast({ title: 'Error sending invite', description: error.message, variant: 'destructive' });
-      }
-      setIsSaving(false);
-      return;
-    }
-    
-    // Send invite email
-    try {
-      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user?.id).single();
-      
-      await supabase.functions.invoke('send-invite-email', {
-        body: {
-          inviteId: invite.id,
-          orgId: currentOrg.id,
-          orgName: currentOrg.name,
-          recipientEmail: inviteEmail.trim().toLowerCase(),
-          recipientRole: inviteRole,
-          inviteToken: invite.token,
-          inviterName: profile?.full_name || 'A team member',
-        },
-      });
-      
-      toast({ title: 'Invite sent', description: `Invitation sent to ${inviteEmail}` });
-    } catch (emailError: any) {
-      console.error('Email error:', emailError);
-      toast({ title: 'Invite created', description: 'Email may not have been sent.' });
-    }
-    
-    setIsInviteDialogOpen(false);
-    setInviteEmail('');
-    fetchInvites();
-    setIsSaving(false);
-  };
 
   const handleCreateTeacher = async () => {
     if (!newTeacherName.trim()) {
@@ -155,15 +66,6 @@ export default function Teachers() {
     setNewTeacherEmail('');
     setNewTeacherPhone('');
     setIsSaving(false);
-  };
-
-  const cancelInvite = async (inviteId: string) => {
-    const { error } = await supabase.from('invites').delete().eq('id', inviteId);
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      fetchInvites();
-    }
   };
 
   const linkedTeachers = teachers.filter(t => t.isLinked);
@@ -296,82 +198,17 @@ export default function Teachers() {
         </Tabs>
       )}
 
-      {/* Pending Invites */}
-      {invites.length > 0 && (
-        <div className="mt-6">
-          <h3 className="mb-3 text-sm font-medium text-muted-foreground">Pending Invites</h3>
-          <div className="space-y-2">
-            {invites.map((invite) => (
-              <div key={invite.id} className="flex items-center gap-4 rounded-lg border border-dashed bg-muted/30 p-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                  <UserPlus className="h-5 w-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium truncate">{invite.email}</span>
-                    <Badge variant="outline" className="text-xs">{invite.role}</Badge>
-                    <Badge variant="secondary" className="text-xs">Pending</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Expires {new Date(invite.expires_at).toLocaleDateString('en-GB')}
-                  </p>
-                </div>
-                {isOrgAdmin && (
-                  <Button variant="ghost" size="sm" onClick={() => cancelInvite(invite.id)}>
-                    Cancel
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Pending Invites (reusable component) */}
+      <div className="mt-6">
+        <PendingInvitesList refreshKey={inviteRefreshKey} roleFilter={['admin', 'teacher', 'finance']} />
+      </div>
 
-      {/* Invite Dialog */}
-      <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Invite Team Member</DialogTitle>
-            <DialogDescription>Send an invitation to join your organisation with login access.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email address</Label>
-              <Input
-                id="email"
-                type="email"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="teacher@example.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'admin' | 'teacher' | 'finance')}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="teacher">Teacher</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="finance">Finance</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                {inviteRole === 'admin' 
-                  ? 'Admins can manage students, teachers, and billing.' 
-                  : inviteRole === 'finance'
-                  ? 'Finance users can manage invoices and billing.'
-                  : 'Teachers can view and manage their assigned students.'}
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleInvite} disabled={isSaving}>
-              {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending...</> : 'Send Invite'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Shared Invite Dialog */}
+      <InviteMemberDialog
+        open={isInviteDialogOpen}
+        onOpenChange={setIsInviteDialogOpen}
+        onInviteSent={() => setInviteRefreshKey(k => k + 1)}
+      />
 
       {/* Create Teacher Dialog (unlinked) */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -457,33 +294,20 @@ function TeacherCard({ teacher, studentCount }: { teacher: any; studentCount: nu
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          {teacher.email && (
-            <span className="flex items-center gap-1 truncate">
-              <Mail className="h-3 w-3" />
-              {teacher.email}
-            </span>
-          )}
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          {teacher.email && <span>{teacher.email}</span>}
           {teacher.phone && (
             <span className="flex items-center gap-1">
               <Phone className="h-3 w-3" />
               {teacher.phone}
             </span>
           )}
-          {teacher.instruments && teacher.instruments.length > 0 && (
-            <span className="truncate">
-              {teacher.instruments.join(', ')}
-            </span>
-          )}
-          {studentCount > 0 && (
-            <span className="flex items-center gap-1">
-              <Users className="h-3 w-3" />
-              {studentCount} student{studentCount !== 1 ? 's' : ''}
-            </span>
-          )}
+          <span className="flex items-center gap-1">
+            <GraduationCap className="h-3 w-3" />
+            {studentCount} student{studentCount !== 1 ? 's' : ''}
+          </span>
         </div>
       </div>
-      <span className="text-xs text-muted-foreground hidden sm:inline">View schedule →</span>
     </div>
   );
 }
