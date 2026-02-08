@@ -1,118 +1,107 @@
 
 
-# Messaging System: Deep Audit and Enhancement Plan
+# Messaging System Stress Test: Seed Data + Bug Fixes
 
-## Current Architecture
+## Overview
 
-The messaging system has **4 separate subsystems** that don't talk to each other well:
-
-1. **Parent Messages (message_log table)** -- outbound emails from staff to guardians via Resend
-2. **Internal Messages (internal_messages table)** -- private staff-to-staff messages
-3. **Parent Requests (message_requests table)** -- inbound requests from parents (cancellation, reschedule, general)
-4. **Bulk Messages (message_batches + message_log)** -- mass emails to filtered guardian groups
+After a deep audit of the messaging system, I'll create an edge function to seed comprehensive test data covering all messaging scenarios, and fix the bugs discovered during the audit.
 
 ---
 
-## Issues Found
+## Bugs and Issues Found
 
-### Issue 1: No clickable context links in messages
-Messages have a `related_id` field (stores student ID) and `recipient_id` (stores guardian ID), but **none of this is surfaced as clickable links** in the thread or list views. When reading a thread about "Emma's lesson on Tuesday", you can't click through to Emma's profile, the lesson, or any related invoice. The `EntityChip` component exists in LoopAssist but is never used in the messaging UI.
+### Bug 1: No messages have `related_id` (student context) set
+All 15 existing messages in `message_log` have `related_id = NULL`. The EntityChip feature we built (clickable student links in threads) has zero data to work with. The seeder never populated this field, and the compose modal only sets it when `studentId` is passed as a prop (which only happens from the Student Detail page, not from the Messages page compose flow).
 
-### Issue 2: Thread view shows no context about WHO or WHAT the message is about
-The `ThreadCard` shows subject and recipient name, but doesn't show:
-- Which student the message relates to (even though `related_id` stores the student ID)
-- Any linked lesson or invoice
-- The guardian's linked students for quick reference
+### Bug 2: No messages use threading (`thread_id` is always NULL)
+All 15 existing messages have `thread_id = NULL`. The entire threaded view feature shows every message as a standalone thread with 1 message each. Users cannot see conversation flow.
 
-### Issue 3: Messages in the flat list view are not clickable/expandable
-The `MessageList` component renders each message as a static card with a truncated body (`line-clamp-2`). There's no way to expand a message to read the full content, and no way to reply from the list view.
+### Bug 3: Internal message threading has `parent_message_id` always NULL
+Despite the seeder creating "Re:" replies in internal messages, it never sets `thread_id` or `parent_message_id`, so replies appear as standalone messages rather than grouped threads.
 
-### Issue 4: Parent Portal "Messages" page only shows requests, not received messages
-`PortalMessages.tsx` only fetches from `message_requests` -- it completely ignores emails sent TO the parent (from `message_log`). A parent who receives a message from their teacher has no way to see it in their portal. The `useParentMessages` hook exists but is never used by the portal messages page.
+### Bug 4: EntityChip click propagation conflict in ThreadCard
+When a user clicks the EntityChip (student link) inside a `CollapsibleTrigger`, the click both navigates to the student page AND toggles the collapsible. The `onClick` on EntityChip doesn't call `e.stopPropagation()`.
 
-### Issue 5: Internal messages have no threading
-Despite `internal_messages` having `thread_id` and `parent_message_id` columns, the `InternalMessageList` renders messages as a flat accordion list with no reply functionality. Staff cannot reply to an internal message -- they must compose a new one.
+### Bug 5: MessageList `onReply` callback is never wired
+On the Messages page, `MessageList` accepts an `onReply` prop to open the compose modal pre-filled, but the Messages page never passes this prop. The "Reply" button in list view does nothing because `onReply` is undefined.
 
-### Issue 6: No way to reply to messages from the parent portal
-Parents can only submit new requests. They cannot reply to admin responses or to messages sent to them. There's no bidirectional conversation.
+### Bug 6: Compose modal cannot attach student context from Messages page
+When composing a message from the Messages page (not from Student Detail), there's no way to link a student to the message. The `related_id` field is only populated when `studentId` is passed as a prop, which only happens from the Student Detail page.
 
-### Issue 7: Search is disabled in threaded view
-On the Messages page, the search input is explicitly `disabled={viewMode === 'threaded'}`. There's no way to search through threaded conversations.
-
-### Issue 8: Thread grouping is fragile
-The `useMessageThreads` hook groups by `thread_id`, falling back to using the message's own `id` as a thread. But when a reply is sent, the `thread_id` is set AFTER the message is created (two-step: create via edge function, then update). If the update fails, the reply becomes an orphaned standalone thread.
+### Bug 7: All seeded messages share the same timestamp
+All 15 messages in `message_log` have identical `created_at` timestamps (`2026-02-07 11:41:00`), making it impossible to distinguish ordering in the UI.
 
 ---
 
-## Enhancement Plan
+## Implementation Plan
 
-### Step 1: Add context chips to thread messages
-- Import and use the existing `EntityChip` component in `ThreadMessageItem` and `ThreadCard`
-- Look up the `related_id` to resolve student name and make it clickable (links to `/students/{id}`)
-- Show a "Related Student" chip on the thread header when `related_id` is present
-- Show recipient type badge (e.g., "Guardian" chip)
+### Step 1: Create `seed-messaging-stress-test` edge function
 
-### Step 2: Make the flat MessageList expandable with context
-- Convert `MessageList` cards to be expandable (click to show full body)
-- Add clickable student link when `related_id` is present
-- Add a "Reply" button that opens the compose modal pre-filled with recipient
+Creates a new edge function that seeds ~80+ messages across all 4 subsystems with realistic, varied data:
 
-### Step 3: Fix Parent Portal Messages to show both requests AND received messages
-- Update `PortalMessages.tsx` to use tabs: "Inbox" (messages received via `useParentMessages`) and "Requests" (existing request list)
-- Add a way for parents to reply to received messages (simple text reply that creates a `message_request` of type "general" or calls the `send-message` edge function if their user has permissions)
-- Mark messages as read when viewed (using the existing `useMarkMessagesAsRead` hook which is built but never wired up)
+**Parent Messages (message_log) -- ~30 messages:**
+- 6 standalone messages to different guardians with `related_id` set to their linked students
+- 4 multi-message threads (3-4 messages each) with proper `thread_id` chaining, demonstrating conversations about lesson progress, billing queries, schedule changes, and practice concerns
+- Each message has unique timestamps spread across the past 2 weeks
+- Mix of statuses: `sent`, `pending`, `failed`
+- Mix of message types: `manual`, `invoice_reminder`, `lesson_confirmation`, `practice_update`
 
-### Step 4: Add threading to internal messages
-- Add a "Reply" button to each internal message in the accordion
-- When replying, set `thread_id` and `parent_message_id` on the new message
-- Group internal messages by thread (similar to how `useMessageThreads` works)
+**Internal Messages -- ~20 messages:**
+- 3 threaded conversations (2-4 messages each) between owner and different teachers
+- Topics: room booking conflicts, student progress reports, term planning, holiday cover
+- Proper `thread_id` and `parent_message_id` set on replies
+- Mix of read/unread states (some `read_at` set, some NULL)
 
-### Step 5: Enable search in threaded view
-- Add client-side search filtering to `ThreadedMessageList` that filters threads by subject, recipient name, or message body content
-- Remove the `disabled` prop from the search input when in threaded mode
+**Parent Requests (message_requests) -- ~8 requests:**
+- 2 pending cancellation requests with student and lesson IDs linked
+- 1 pending reschedule request  
+- 1 pending general enquiry
+- 2 approved requests (with `admin_response` filled)
+- 1 declined request
+- 1 resolved request
 
-### Step 6: Improve thread reliability
-- Update the `send-message` edge function to accept `thread_id` and `parent_message_id` as optional fields, setting them at insert time instead of requiring a second update call
-- Remove the two-step pattern from `useReplyToMessage`
+**Bulk Message Batch -- 1 batch:**
+- Create a `message_batch` entry
+- Link 5 messages from `message_log` to it via `batch_id`
+
+### Step 2: Fix EntityChip click propagation (ThreadCard.tsx)
+
+Add `e.stopPropagation()` wrapper around the EntityChip inside the `CollapsibleTrigger` in `ThreadCard.tsx`, so clicking the student chip navigates without toggling the thread open/closed.
+
+### Step 3: Wire up `onReply` in Messages page
+
+In `Messages.tsx`, pass an `onReply` callback to `MessageList` that opens the compose modal pre-filled with the recipient's details.
+
+### Step 4: Add student selector to compose modal
+
+Add an optional "Related Student" dropdown to `ComposeMessageModal` that lets users link a message to a student. When a guardian is selected, auto-populate the dropdown with their linked students.
 
 ---
 
 ## Technical Details
 
-### ThreadCard.tsx and ThreadMessageItem.tsx changes:
-- Import `EntityChip` from `@/components/looopassist/EntityChip`
-- In `ThreadCard`, check if any message in the thread has a `related_id` -- if so, fetch the student name via a lightweight query and render a clickable student chip in the thread header
-- Add a new hook `useRelatedEntity(relatedId)` that resolves a UUID to a student name (cached via React Query) for display in chips
-- In `ThreadMessageItem`, render a small "context bar" below the header showing related entities
+### New Edge Function: `supabase/functions/seed-messaging-stress-test/index.ts`
+- Accepts `{ org_id }` in body
+- Requires JWT auth, verifies caller is org owner
+- Uses service role to insert data directly into:
+  - `message_log` (30+ rows with varied timestamps, threading, related_id)
+  - `internal_messages` (20+ rows with threading)
+  - `message_requests` (8 rows with varied statuses and linked lessons)
+  - `message_batches` (1 row)
+- Returns summary counts of all seeded data
+- All timestamps are staggered across the past 14 days for realistic ordering
+- Uses actual guardian IDs, student IDs, and lesson IDs from the org's existing data
 
-### MessageList.tsx changes:
-- Wrap each card in a `Collapsible` component
-- When expanded, show full message body (not truncated)
-- Add "Reply" and "View Student" action buttons in the expanded state
-- Add a "View Student" link using `related_id` when present
+### ThreadCard.tsx fix:
+- Wrap EntityChip in a `<span onClick={e => e.stopPropagation()}>` inside the CollapsibleTrigger area
 
-### PortalMessages.tsx changes:
-- Add `Tabs` with "Inbox" and "My Requests" sections
-- Inbox tab: use `useParentMessages()` hook (already exists, never used)
-- Wire up `useMarkMessagesAsRead()` in a `useEffect` when inbox messages are displayed
-- Add simple reply capability (compose reply that goes through `send-message` edge function)
+### Messages.tsx changes:
+- Add state for reply target: `const [replyTarget, setReplyTarget] = useState<MessageLogEntry | null>(null)`
+- Pass `onReply={setReplyTarget}` to `MessageList`
+- When `replyTarget` is set, open `ComposeMessageModal` with pre-filled guardian
 
-### InternalMessageList.tsx changes:
-- Add a "Reply" button inside each accordion content area
-- When replying, include `thread_id` and `parent_message_id` in the insert
-- Group messages by thread for visual coherence (show reply chains indented)
-
-### send-message edge function changes:
-- Accept optional `thread_id` and `parent_message_id` in the request body
-- Include them in the `message_log` insert so threading is atomic (no second update needed)
-- This is a one-line change to the insert object
-
-### New hook: useRelatedStudent.ts
-- Small hook that takes a `related_id` (student UUID) and returns `{ name, id }` via a cached query
-- Used by thread cards and message list items to show "Re: Student Name" context
-
-### Messages.tsx (page) changes:
-- Remove `disabled` from search input for threaded mode
-- Pass `searchQuery` to `ThreadedMessageList` component
-- `ThreadedMessageList` filters threads client-side by matching against subject, recipient name, and message bodies
+### ComposeMessageModal.tsx changes:
+- Add a "Related Student" `Select` field that queries `student_guardians` for the selected guardian
+- Auto-populate when guardian changes
+- Pass the selected student ID as `related_id` to `useSendMessage`
 
