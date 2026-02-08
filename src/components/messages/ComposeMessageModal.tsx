@@ -20,6 +20,8 @@ import {
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import { useSendMessage, useMessageTemplates } from '@/hooks/useMessages';
+import { supabase } from '@/integrations/supabase/client';
+import { useOrg } from '@/contexts/OrgContext';
 
 interface Guardian {
   id: string;
@@ -48,7 +50,10 @@ export function ComposeMessageModal({
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [linkedStudents, setLinkedStudents] = useState<{ id: string; name: string }[]>([]);
 
+  const { currentOrg } = useOrg();
   const { data: templates } = useMessageTemplates();
   const sendMessage = useSendMessage();
 
@@ -58,6 +63,13 @@ export function ComposeMessageModal({
       setSelectedGuardianId(preselectedGuardian.id);
     }
   }, [preselectedGuardian]);
+
+  // Pre-select student if provided
+  useEffect(() => {
+    if (studentId) {
+      setSelectedStudentId(studentId);
+    }
+  }, [studentId]);
 
   // Apply template
   useEffect(() => {
@@ -69,6 +81,36 @@ export function ComposeMessageModal({
       }
     }
   }, [selectedTemplateId, templates]);
+
+  // Fetch linked students when guardian changes
+  useEffect(() => {
+    const guardianId = selectedGuardianId || preselectedGuardian?.id;
+    if (!guardianId || !currentOrg) {
+      setLinkedStudents([]);
+      return;
+    }
+
+    const fetchStudents = async () => {
+      const { data } = await supabase
+        .from('student_guardians')
+        .select('student_id, students!inner(id, first_name, last_name)')
+        .eq('guardian_id', guardianId)
+        .eq('org_id', currentOrg.id);
+
+      if (data) {
+        const students = data.map((sg: any) => ({
+          id: sg.students.id,
+          name: `${sg.students.first_name} ${sg.students.last_name}`,
+        }));
+        setLinkedStudents(students);
+        // Auto-select if only one student and nothing pre-selected
+        if (students.length === 1 && !selectedStudentId) {
+          setSelectedStudentId(students[0].id);
+        }
+      }
+    };
+    fetchStudents();
+  }, [selectedGuardianId, preselectedGuardian?.id, currentOrg?.id]);
 
   const selectedGuardian = guardians.find(g => g.id === selectedGuardianId) || preselectedGuardian;
 
@@ -82,7 +124,7 @@ export function ComposeMessageModal({
       recipient_name: selectedGuardian.full_name,
       subject: subject.trim(),
       body: body.trim(),
-      related_id: studentId,
+      related_id: selectedStudentId || studentId,
       message_type: 'manual',
     });
 
@@ -90,6 +132,7 @@ export function ComposeMessageModal({
     setSubject('');
     setBody('');
     setSelectedTemplateId('');
+    setSelectedStudentId('');
     if (!preselectedGuardian) {
       setSelectedGuardianId('');
     }
@@ -163,6 +206,26 @@ export function ComposeMessageModal({
                   {templates.map((template) => (
                     <SelectItem key={template.id} value={template.id}>
                       {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Related student selector */}
+          {linkedStudents.length > 0 && (
+            <div className="space-y-2">
+              <Label>Related Student (optional)</Label>
+              <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Link to a student" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No student linked</SelectItem>
+                  {linkedStudents.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
