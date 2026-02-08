@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { format, addDays, subDays, isToday, isBefore, endOfDay } from 'date-fns';
+import { format, addDays, subDays, isToday } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,8 @@ import {
   ClipboardList,
   CheckCircle2,
   Clock,
-  Users
+  Users,
+  XCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -71,7 +72,9 @@ export default function DailyRegister() {
   const totalLessons = lessons?.length || 0;
   const completedLessons = lessons?.filter(l => l.status === 'completed').length || 0;
   const scheduledLessons = lessons?.filter(l => l.status === 'scheduled').length || 0;
-  const totalStudents = lessons?.reduce((acc, l) => acc + l.participants.length, 0) || 0;
+  const cancelledLessons = lessons?.filter(l => l.status === 'cancelled').length || 0;
+  const activeLessons = totalLessons - cancelledLessons;
+  const totalStudents = lessons?.filter(l => l.status !== 'cancelled').reduce((acc, l) => acc + l.participants.length, 0) || 0;
 
   // Transform lessons for MarkDayCompleteButton (needs LessonWithDetails format)
   const lessonsForBulkComplete = (lessons || []).map(l => ({
@@ -149,14 +152,14 @@ export default function DailyRegister() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Lessons</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active Lessons</CardTitle>
             <ClipboardList className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalLessons}</div>
+            <div className="text-2xl font-bold">{activeLessons}</div>
           </CardContent>
         </Card>
         <Card>
@@ -177,6 +180,17 @@ export default function DailyRegister() {
             <div className="text-2xl font-bold">{scheduledLessons}</div>
           </CardContent>
         </Card>
+        {cancelledLessons > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Cancelled</CardTitle>
+              <XCircle className="h-4 w-4 text-destructive" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-destructive">{cancelledLessons}</div>
+            </CardContent>
+          </Card>
+        )}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Students</CardTitle>
