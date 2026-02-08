@@ -16,7 +16,7 @@ import { History, Eye, User, Calendar, FileText } from 'lucide-react';
 import { formatDateUK } from '@/lib/utils';
 
 const ENTITY_TYPES = [
-  { value: '', label: 'All Entities' },
+  { value: 'all', label: 'All Entities' },
   { value: 'students', label: 'Students' },
   { value: 'lessons', label: 'Lessons' },
   { value: 'invoices', label: 'Invoices' },
@@ -25,22 +25,22 @@ const ENTITY_TYPES = [
 ];
 
 const ACTIONS = [
-  { value: '', label: 'All Actions' },
+  { value: 'all', label: 'All Actions' },
   { value: 'create', label: 'Created' },
   { value: 'update', label: 'Updated' },
   { value: 'delete', label: 'Deleted' },
 ];
 
 export default function AuditLogTab() {
-  const [entityType, setEntityType] = useState('');
-  const [action, setAction] = useState('');
+  const [entityType, setEntityType] = useState('all');
+  const [action, setAction] = useState('all');
   const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedEntry, setSelectedEntry] = useState<AuditLogEntry | null>(null);
 
   const { data: logs, isLoading, error } = useAuditLog({
-    entityType: entityType || undefined,
-    action: action || undefined,
+    entityType: entityType === 'all' ? undefined : entityType,
+    action: action === 'all' ? undefined : action,
     startDate,
     endDate,
     limit: 200,
