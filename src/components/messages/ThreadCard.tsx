@@ -83,12 +83,14 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
                   {thread.recipient_name || thread.recipient_email}
                 </span>
                 {relatedStudent && (
-                  <EntityChip
-                    type="student"
-                    id={relatedStudent.id}
-                    label={relatedStudent.name}
-                    className="text-xs"
-                  />
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <EntityChip
+                      type="student"
+                      id={relatedStudent.id}
+                      label={relatedStudent.name}
+                      className="text-xs"
+                    />
+                  </span>
                 )}
                 <span className="text-xs ml-auto flex-shrink-0">
                   {format(new Date(thread.latest_message_at), 'dd MMM yyyy, HH:mm')}

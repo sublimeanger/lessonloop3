@@ -29,6 +29,7 @@ import { MessageRequestsList } from '@/components/messages/MessageRequestsList';
 import { ComposeMessageModal } from '@/components/messages/ComposeMessageModal';
 import { BulkComposeModal } from '@/components/messages/BulkComposeModal';
 import { InternalComposeModal } from '@/components/messages/InternalComposeModal';
+import type { MessageLogEntry } from '@/hooks/useMessages';
 import { InternalMessageList } from '@/components/messages/InternalMessageList';
 import { ThreadedMessageList } from '@/components/messages/ThreadedMessageList';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,6 +56,8 @@ export default function Messages() {
   const [activeTab, setActiveTab] = useState('sent');
   const [internalView, setInternalView] = useState<'inbox' | 'sent'>('inbox');
   const [viewMode, setViewMode] = useState<'list' | 'threaded'>('threaded');
+  const [replyTarget, setReplyTarget] = useState<Guardian | null>(null);
+  const [replyStudentId, setReplyStudentId] = useState<string | undefined>(undefined);
 
   const { data: messages, isLoading } = useMessageLog({
     channel: channelFilter === 'all' ? undefined : channelFilter,
@@ -236,6 +239,17 @@ export default function Messages() {
               messages={filteredMessages || []}
               isLoading={isLoading}
               emptyMessage="No messages sent yet. Click 'New Message' to send your first message."
+              onReply={(msg: MessageLogEntry) => {
+                if (msg.recipient_id && msg.recipient_email) {
+                  setReplyTarget({
+                    id: msg.recipient_id,
+                    full_name: msg.recipient_name || msg.recipient_email,
+                    email: msg.recipient_email,
+                  });
+                  setReplyStudentId(msg.related_id || undefined);
+                  setComposeOpen(true);
+                }
+              }}
             />
           )}
         </TabsContent>
@@ -264,8 +278,16 @@ export default function Messages() {
       {/* Compose Modal */}
       <ComposeMessageModal
         open={composeOpen}
-        onOpenChange={setComposeOpen}
+        onOpenChange={(open) => {
+          setComposeOpen(open);
+          if (!open) {
+            setReplyTarget(null);
+            setReplyStudentId(undefined);
+          }
+        }}
         guardians={guardians}
+        preselectedGuardian={replyTarget || undefined}
+        studentId={replyStudentId}
       />
 
       {/* Bulk Compose Modal */}
