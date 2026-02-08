@@ -9,6 +9,8 @@ import { Plus } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileWeekView } from './MobileWeekView';
 
 interface ClosureInfo {
   date: Date;
@@ -44,6 +46,7 @@ export function StackedWeekView({
   isParent,
 }: StackedWeekViewProps) {
   const { currentOrg } = useOrg();
+  const isMobile = useIsMobile();
   const [closures, setClosures] = useState<ClosureInfo[]>([]);
 
   useEffect(() => {
@@ -102,10 +105,26 @@ export function StackedWeekView({
   const now = new Date();
   const currentTimeLabel = format(now, 'HH:mm');
 
+  // Mobile: swipeable horizontal layout
+  if (isMobile) {
+    return (
+      <MobileWeekView
+        days={days}
+        lessons={lessons}
+        teacherColourMap={teacherColourMap}
+        onLessonClick={onLessonClick}
+        onSlotClick={onSlotClick}
+        isParent={isParent}
+        closures={closures}
+        currentDate={currentDate}
+      />
+    );
+  }
+
+  // Desktop: existing grid layout
   return (
     <ScrollArea className="h-[calc(100vh-260px)]">
-      {/* Dynamic columns: 5 (Mon–Fri) or 7 (Mon–Sun) */}
-      <div className={cn('min-w-[500px] sm:min-w-0', colCount === 5 && 'sm:min-w-0')}>
+      <div>
         <div
           className="grid border rounded-lg overflow-hidden"
           style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
