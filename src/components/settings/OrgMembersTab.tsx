@@ -40,19 +40,27 @@ export function OrgMembersTab() {
       .eq('org_id', currentOrg.id)
       .neq('status', 'disabled');
     
-    const membersWithProfiles: Member[] = [];
-    for (const member of memberData || []) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('full_name, email')
-        .eq('id', member.user_id)
-        .maybeSingle();
-      
-      membersWithProfiles.push({
-        ...member,
-        profile: profile || undefined,
-      });
+    if (!memberData || memberData.length === 0) {
+      setMembers([]);
+      setIsLoading(false);
+      return;
     }
+
+    // Batch-fetch all profiles in one query instead of N+1
+    const userIds = memberData.map(m => m.user_id);
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('id', userIds);
+
+    const profileMap = new Map(
+      (profiles || []).map(p => [p.id, { full_name: p.full_name, email: p.email }])
+    );
+
+    const membersWithProfiles: Member[] = memberData.map(member => ({
+      ...member,
+      profile: profileMap.get(member.user_id) || undefined,
+    }));
     
     // Sort: owner first, then by name
     membersWithProfiles.sort((a, b) => {
