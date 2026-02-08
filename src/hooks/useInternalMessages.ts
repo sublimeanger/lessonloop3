@@ -157,11 +157,15 @@ export function useSendInternalMessage() {
       recipientRole,
       subject,
       body,
+      threadId,
+      parentMessageId,
     }: {
       recipientUserId: string;
       recipientRole: string;
       subject: string;
       body: string;
+      threadId?: string;
+      parentMessageId?: string;
     }) => {
       if (!currentOrg || !user || !currentRole) {
         throw new Error('Not authenticated');
@@ -184,6 +188,8 @@ export function useSendInternalMessage() {
           recipient_role: recipientRole,
           subject,
           body,
+          thread_id: threadId || null,
+          parent_message_id: parentMessageId || null,
         })
         .select()
         .single();

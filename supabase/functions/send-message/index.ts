@@ -14,6 +14,8 @@ interface SendMessageRequest {
   body: string;
   related_id?: string;
   message_type?: string;
+  thread_id?: string;
+  parent_message_id?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -90,6 +92,8 @@ const handler = async (req: Request): Promise<Response> => {
         related_id: data.related_id || null,
         message_type: data.message_type || "manual",
         status: "pending",
+        thread_id: data.thread_id || null,
+        parent_message_id: data.parent_message_id || null,
       })
       .select()
       .single();

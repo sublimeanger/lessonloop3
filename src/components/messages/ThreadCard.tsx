@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useReplyToMessage, MessageThread } from '@/hooks/useMessageThreads';
+import { useRelatedStudent } from '@/hooks/useRelatedStudent';
+import { EntityChip } from '@/components/looopassist/EntityChip';
 import { ThreadMessageItem } from './ThreadMessageItem';
 
 interface ThreadCardProps {
@@ -28,6 +30,10 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
   const replyMutation = useReplyToMessage();
   const [replyBody, setReplyBody] = useState('');
   const latestMessage = thread.messages[thread.messages.length - 1];
+
+  // Find the first related_id across all messages in the thread
+  const relatedStudentId = thread.messages.find(m => m.related_id)?.related_id;
+  const { data: relatedStudent } = useRelatedStudent(relatedStudentId);
 
   const handleSendReply = async () => {
     if (!replyBody.trim()) return;
@@ -63,7 +69,7 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
               <MessageSquare className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <span className="font-medium truncate">{thread.subject}</span>
                 {thread.message_count > 1 && (
                   <Badge variant="secondary" className="text-xs">
@@ -71,12 +77,20 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
                   </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <User className="h-3 w-3" />
+              <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+                <User className="h-3 w-3 flex-shrink-0" />
                 <span className="truncate">
                   {thread.recipient_name || thread.recipient_email}
                 </span>
-                <span className="text-xs">
+                {relatedStudent && (
+                  <EntityChip
+                    type="student"
+                    id={relatedStudent.id}
+                    label={relatedStudent.name}
+                    className="text-xs"
+                  />
+                )}
+                <span className="text-xs ml-auto flex-shrink-0">
                   {format(new Date(thread.latest_message_at), 'dd MMM yyyy, HH:mm')}
                 </span>
               </div>

@@ -1,20 +1,32 @@
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { ThreadMessage } from '@/hooks/useMessageThreads';
+import { useRelatedStudent } from '@/hooks/useRelatedStudent';
+import { EntityChip } from '@/components/looopassist/EntityChip';
 
 interface ThreadMessageItemProps {
   message: ThreadMessage;
 }
 
 export function ThreadMessageItem({ message }: ThreadMessageItemProps) {
+  const { data: relatedStudent } = useRelatedStudent(message.related_id);
+
   return (
     <div className="p-4 bg-muted/30">
-      <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground flex-wrap">
         <span className="font-medium text-foreground">
           {message.sender_profile?.full_name || 'You'}
         </span>
         <span>→</span>
         <span>{message.recipient_name || message.recipient_email}</span>
+        {relatedStudent && (
+          <EntityChip
+            type="student"
+            id={relatedStudent.id}
+            label={relatedStudent.name}
+            className="text-xs"
+          />
+        )}
         <span className="text-xs ml-auto">
           {format(new Date(message.created_at), 'dd MMM yyyy, HH:mm')}
         </span>
