@@ -17,6 +17,7 @@ import {
 import { LessonWithDetails } from './types';
 import { LessonCard } from './LessonCard';
 import { computeOverlapLayout } from './overlapLayout';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS } from './teacherColours';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -369,7 +370,7 @@ export function WeekTimeGrid({
                 const dayLessons = lessons.filter((l) => isSameDay(parseISO(l.start_at), day));
                 const closure = getClosureForDay(day);
                 const today = isToday(day);
-                const overlapPositions = computeOverlapLayout(dayLessons, HOUR_HEIGHT, START_HOUR);
+                const { positions: overlapPositions, overflowBuckets } = computeOverlapLayout(dayLessons, HOUR_HEIGHT, START_HOUR, 3);
 
                 return (
                   <div
@@ -458,8 +459,51 @@ export function WeekTimeGrid({
                             teacherColour={resolveColourByUserId(teacherColourMap, lesson.teacher_user_id)}
                             showResizeHandle={!isParent && !!onLessonResize}
                             onResizeStart={(e) => startResize(lesson, e)}
+                            compact={totalColumns >= 3}
                           />
                         </div>
+                      );
+                    })}
+
+                    {/* Overflow "+N more" pills */}
+                    {Array.from(overflowBuckets.entries()).map(([bucketKey, bucket]) => {
+                      const maxCols = 3;
+                      const pillCol = maxCols - 1;
+                      const widthPercent = 100 / maxCols;
+                      const leftPercent = pillCol * widthPercent;
+                      return (
+                        <Popover key={`overflow-${bucketKey}`}>
+                          <PopoverTrigger asChild>
+                            <button
+                              className="absolute z-[6] rounded-sm bg-muted/80 hover:bg-muted text-[10px] font-semibold text-muted-foreground px-1 py-0.5 cursor-pointer transition-colors truncate text-center"
+                              style={{
+                                top: bucket.top,
+                                height: Math.max(bucket.height, 20),
+                                left: `calc(${leftPercent}% + 2px)`,
+                                width: `calc(${widthPercent}% - 4px)`,
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              +{bucket.lessons.length} more
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent side="right" className="w-64 p-2 max-h-60 overflow-y-auto" align="start">
+                            <div className="text-xs font-semibold text-muted-foreground mb-1.5">
+                              {bucket.lessons.length} more lesson{bucket.lessons.length > 1 ? 's' : ''}
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              {bucket.lessons.map((lesson) => (
+                                <LessonCard
+                                  key={lesson.id}
+                                  lesson={lesson}
+                                  variant="stacked"
+                                  onClick={() => onLessonClick(lesson)}
+                                  teacherColour={resolveColourByUserId(teacherColourMap, lesson.teacher_user_id)}
+                                />
+                              ))}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       );
                     })}
 

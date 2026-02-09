@@ -14,6 +14,8 @@ interface LessonCardProps {
   showResizeHandle?: boolean;
   /** Called when the user starts dragging the resize handle */
   onResizeStart?: (e: React.MouseEvent | React.TouchEvent) => void;
+  /** Ultra-compact mode for narrow columns (≥3 overlapping) */
+  compact?: boolean;
 }
 
 /**
@@ -55,7 +57,7 @@ function buildSecondaryLine(lesson: LessonWithDetails): string {
   return '';
 }
 
-export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColour, showResizeHandle, onResizeStart }: LessonCardProps) {
+export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColour, showResizeHandle, onResizeStart, compact }: LessonCardProps) {
   const startTime = parseISO(lesson.start_at);
   const endTime = parseISO(lesson.end_at);
   const duration = differenceInMinutes(endTime, startTime);
@@ -153,6 +155,11 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
   }
 
   // ─── Calendar variant — compact card for time-grid ───
+  // Ultra-compact: only first name, no time/secondary
+  const compactStudentName = compact
+    ? (lesson.participants?.[0]?.student.first_name || lesson.title)
+    : (studentDisplay || lesson.title);
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -168,15 +175,15 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
             'flex items-center gap-1 font-semibold truncate',
             isCancelled && 'line-through'
           )}>
-            {isRecurring && <Repeat className="h-3 w-3 flex-shrink-0" />}
-            <span className="truncate">{studentDisplay || lesson.title}</span>
+            {isRecurring && !compact && <Repeat className="h-3 w-3 flex-shrink-0" />}
+            <span className="truncate">{compactStudentName}</span>
           </div>
-          {duration >= 30 && (
+          {!compact && duration >= 30 && (
             <div className={cn('truncate', colour.text)}>
               {format(startTime, 'HH:mm')} – {format(endTime, 'HH:mm')}
             </div>
           )}
-          {duration >= 45 && secondaryLine && (
+          {!compact && duration >= 45 && secondaryLine && (
             <div className={cn('truncate', colour.text)}>{secondaryLine}</div>
           )}
 

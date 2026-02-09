@@ -8,22 +8,30 @@ export interface LayoutPosition {
   totalColumns: number;
 }
 
+export interface OverlapResult {
+  positions: Map<string, LayoutPosition>;
+  /** Lessons hidden behind the "+N more" pill, keyed by a time-bucket string */
+  overflowBuckets: Map<string, { lessons: LessonWithDetails[]; top: number; height: number }>;
+}
+
 /**
  * Groups overlapping lessons into clusters and assigns column positions
  * so they render side-by-side instead of stacking on top of each other.
- * 
- * Algorithm:
- * 1. Sort lessons by start time
- * 2. Group into overlap clusters (any lesson overlapping with another in the cluster)
- * 3. Assign column indices greedily (first available column)
+ *
+ * When a cluster needs more columns than `maxColumns`, lessons beyond
+ * the cap are collected into overflow buckets and removed from the
+ * visible positions map.
  */
 export function computeOverlapLayout(
   lessons: LessonWithDetails[],
   hourHeight: number,
-  startHour: number
-): Map<string, LayoutPosition> {
+  startHour: number,
+  maxColumns: number = 3
+): OverlapResult {
   const positions = new Map<string, LayoutPosition>();
-  if (lessons.length === 0) return positions;
+  const overflowBuckets = new Map<string, { lessons: LessonWithDetails[]; top: number; height: number }>();
+
+  if (lessons.length === 0) return { positions, overflowBuckets };
 
   // Sort by start time, then by end time (longer first)
   const sorted = [...lessons].sort((a, b) => {
@@ -34,12 +42,11 @@ export function computeOverlapLayout(
 
   // Build overlap clusters
   const clusters: LessonWithDetails[][] = [];
-  
+
   for (const lesson of sorted) {
     const lessonStart = new Date(lesson.start_at).getTime();
     const lessonEnd = new Date(lesson.end_at).getTime();
-    
-    // Find an existing cluster this lesson overlaps with
+
     let foundCluster = false;
     for (const cluster of clusters) {
       const overlapsWithCluster = cluster.some(existing => {
@@ -47,14 +54,14 @@ export function computeOverlapLayout(
         const existingEnd = new Date(existing.end_at).getTime();
         return lessonStart < existingEnd && lessonEnd > existingStart;
       });
-      
+
       if (overlapsWithCluster) {
         cluster.push(lesson);
         foundCluster = true;
         break;
       }
     }
-    
+
     if (!foundCluster) {
       clusters.push([lesson]);
     }
@@ -74,18 +81,16 @@ export function computeOverlapLayout(
 
     // Greedy column assignment
     const columns: { end: number }[] = [];
-    
-    // Sort cluster by start time for greedy assignment
-    cluster.sort((a, b) => 
+
+    cluster.sort((a, b) =>
       new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
     );
-    
+
     const columnAssignments = new Map<string, number>();
-    
+
     for (const lesson of cluster) {
       const lessonStart = new Date(lesson.start_at).getTime();
-      
-      // Find the first column where this lesson fits (no overlap)
+
       let assignedCol = -1;
       for (let col = 0; col < columns.length; col++) {
         if (lessonStart >= columns[col].end) {
@@ -94,28 +99,70 @@ export function computeOverlapLayout(
           break;
         }
       }
-      
-      // If no column available, create a new one
+
       if (assignedCol === -1) {
         assignedCol = columns.length;
         columns.push({ end: new Date(lesson.end_at).getTime() });
       }
-      
+
       columnAssignments.set(lesson.id, assignedCol);
     }
 
-    const totalColumns = columns.length;
-    
-    for (const lesson of cluster) {
-      positions.set(lesson.id, {
-        ...getVerticalPosition(lesson, hourHeight, startHour),
-        columnIndex: columnAssignments.get(lesson.id) || 0,
-        totalColumns,
-      });
+    const rawTotalColumns = columns.length;
+
+    if (rawTotalColumns <= maxColumns) {
+      // No overflow — assign normally
+      for (const lesson of cluster) {
+        positions.set(lesson.id, {
+          ...getVerticalPosition(lesson, hourHeight, startHour),
+          columnIndex: columnAssignments.get(lesson.id) || 0,
+          totalColumns: rawTotalColumns,
+        });
+      }
+    } else {
+      // Overflow: keep first (maxColumns - 1) columns visible,
+      // last visible column reserved for the "+N more" pill area
+      const visibleCols = maxColumns - 1; // e.g. 2 columns for lessons
+
+      const overflowLessons: LessonWithDetails[] = [];
+
+      for (const lesson of cluster) {
+        const col = columnAssignments.get(lesson.id) || 0;
+        if (col < visibleCols) {
+          // Visible lesson
+          positions.set(lesson.id, {
+            ...getVerticalPosition(lesson, hourHeight, startHour),
+            columnIndex: col,
+            totalColumns: maxColumns, // render at maxColumns width so pill has space
+          });
+        } else {
+          // Overflow lesson
+          overflowLessons.push(lesson);
+        }
+      }
+
+      if (overflowLessons.length > 0) {
+        // Compute the bounding box for the overflow group
+        let minTop = Infinity;
+        let maxBottom = -Infinity;
+        for (const lesson of overflowLessons) {
+          const vp = getVerticalPosition(lesson, hourHeight, startHour);
+          minTop = Math.min(minTop, vp.top);
+          maxBottom = Math.max(maxBottom, vp.top + vp.height);
+        }
+
+        // Key by cluster identity (use first lesson id)
+        const bucketKey = cluster[0].id;
+        overflowBuckets.set(bucketKey, {
+          lessons: overflowLessons,
+          top: minTop,
+          height: maxBottom - minTop,
+        });
+      }
     }
   }
 
-  return positions;
+  return { positions, overflowBuckets };
 }
 
 function getVerticalPosition(
