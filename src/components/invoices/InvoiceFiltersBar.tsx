@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { X } from 'lucide-react';
 import type { InvoiceFilters } from '@/hooks/useInvoices';
 import type { Database } from '@/integrations/supabase/types';
+import { useTerms } from '@/hooks/useTerms';
 
 type InvoiceStatus = Database['public']['Enums']['invoice_status'];
 
@@ -29,10 +30,13 @@ const STATUS_OPTIONS: Array<{ value: InvoiceStatus | 'all'; label: string }> = [
 ];
 
 export function InvoiceFiltersBar({ filters, onFiltersChange }: InvoiceFiltersBarProps) {
+  const { data: terms = [] } = useTerms();
+
   const hasFilters =
     (filters.status && filters.status !== 'all') ||
     filters.dueDateFrom ||
-    filters.dueDateTo;
+    filters.dueDateTo ||
+    filters.termId;
 
   const clearFilters = () => {
     onFiltersChange({});
@@ -62,6 +66,32 @@ export function InvoiceFiltersBar({ filters, onFiltersChange }: InvoiceFiltersBa
           </SelectContent>
         </Select>
       </div>
+
+      {terms.length > 0 && (
+        <div className="space-y-1.5">
+          <Label htmlFor="term" className="text-xs">
+            Term
+          </Label>
+          <Select
+            value={filters.termId || 'all'}
+            onValueChange={(value) =>
+              onFiltersChange({ ...filters, termId: value === 'all' ? undefined : value })
+            }
+          >
+            <SelectTrigger id="term" className="w-full sm:w-[180px]">
+              <SelectValue placeholder="All Terms" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Terms</SelectItem>
+              {terms.map((term) => (
+                <SelectItem key={term.id} value={term.id}>
+                  {term.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="space-y-1.5">
         <Label htmlFor="dueDateFrom" className="text-xs">

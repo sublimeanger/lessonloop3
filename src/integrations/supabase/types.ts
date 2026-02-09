@@ -413,6 +413,7 @@ export type Database = {
       }
       billing_runs: {
         Row: {
+          billing_mode: string
           created_at: string
           created_by: string
           end_date: string
@@ -422,8 +423,10 @@ export type Database = {
           start_date: string
           status: Database["public"]["Enums"]["billing_run_status"]
           summary: Json | null
+          term_id: string | null
         }
         Insert: {
+          billing_mode?: string
           created_at?: string
           created_by: string
           end_date: string
@@ -433,8 +436,10 @@ export type Database = {
           start_date: string
           status?: Database["public"]["Enums"]["billing_run_status"]
           summary?: Json | null
+          term_id?: string | null
         }
         Update: {
+          billing_mode?: string
           created_at?: string
           created_by?: string
           end_date?: string
@@ -444,6 +449,7 @@ export type Database = {
           start_date?: string
           status?: Database["public"]["Enums"]["billing_run_status"]
           summary?: Json | null
+          term_id?: string | null
         }
         Relationships: [
           {
@@ -451,6 +457,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_runs_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
             referencedColumns: ["id"]
           },
         ]
@@ -916,6 +929,7 @@ export type Database = {
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal_minor: number
           tax_minor: number
+          term_id: string | null
           total_minor: number
           updated_at: string
           vat_rate: number
@@ -935,6 +949,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal_minor?: number
           tax_minor?: number
+          term_id?: string | null
           total_minor?: number
           updated_at?: string
           vat_rate?: number
@@ -954,6 +969,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal_minor?: number
           tax_minor?: number
+          term_id?: string | null
           total_minor?: number
           updated_at?: string
           vat_rate?: number
@@ -978,6 +994,13 @@ export type Database = {
             columns: ["payer_student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
             referencedColumns: ["id"]
           },
         ]
@@ -2731,6 +2754,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "teachers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      terms: {
+        Row: {
+          created_at: string
+          created_by: string
+          end_date: string
+          id: string
+          name: string
+          org_id: string
+          start_date: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          end_date: string
+          id?: string
+          name: string
+          org_id: string
+          start_date: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          end_date?: string
+          id?: string
+          name?: string
+          org_id?: string
+          start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "terms_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"

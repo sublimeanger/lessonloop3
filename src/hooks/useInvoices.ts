@@ -23,6 +23,7 @@ export interface InvoiceFilters {
   teacherId?: string;
   dueDateFrom?: string;
   dueDateTo?: string;
+  termId?: string;
 }
 
 export function useInvoices(filters: InvoiceFilters = {}) {
@@ -61,6 +62,10 @@ export function useInvoices(filters: InvoiceFilters = {}) {
         } else if (filters.payerType === 'student') {
           query = query.eq('payer_student_id', filters.payerId);
         }
+      }
+
+      if (filters.termId) {
+        query = query.eq('term_id', filters.termId);
       }
 
       const { data, error } = await query;
@@ -380,11 +385,15 @@ export function useRecordPayment() {
   });
 }
 
-export function useUnbilledLessons(dateRange: { from: string; to: string }, teacherId?: string) {
+export function useUnbilledLessons(
+  dateRange: { from: string; to: string },
+  teacherId?: string,
+  billingMode: 'delivered' | 'upfront' = 'delivered'
+) {
   const { currentOrg } = useOrg();
 
   return useQuery({
-    queryKey: ['unbilled-lessons', currentOrg?.id, dateRange, teacherId],
+    queryKey: ['unbilled-lessons', currentOrg?.id, dateRange, teacherId, billingMode],
     queryFn: async () => {
       if (!currentOrg?.id) return [];
 
@@ -410,9 +419,15 @@ export function useUnbilledLessons(dateRange: { from: string; to: string }, teac
           )
         `)
         .eq('org_id', currentOrg.id)
-        .eq('status', 'completed')
         .gte('start_at', dateRange.from)
         .lte('start_at', dateRange.to);
+
+      // Filter by status based on billing mode
+      if (billingMode === 'upfront') {
+        lessonsQuery = lessonsQuery.in('status', ['scheduled', 'completed'] as const);
+      } else {
+        lessonsQuery = lessonsQuery.eq('status', 'completed');
+      }
 
       if (teacherId) {
         lessonsQuery = lessonsQuery.eq('teacher_user_id', teacherId);
