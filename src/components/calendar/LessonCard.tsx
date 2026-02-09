@@ -1,7 +1,7 @@
 import { format, differenceInMinutes, parseISO } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { cn } from '@/lib/utils';
-import { Repeat } from 'lucide-react';
+import { Repeat, GripHorizontal } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { TeacherColourEntry, TEACHER_COLOURS } from './teacherColours';
 
@@ -10,6 +10,10 @@ interface LessonCardProps {
   onClick: () => void;
   variant?: 'calendar' | 'agenda' | 'stacked';
   teacherColour?: TeacherColourEntry;
+  /** Show the resize handle at the bottom edge (calendar variant only) */
+  showResizeHandle?: boolean;
+  /** Called when the user starts dragging the resize handle */
+  onResizeStart?: (e: React.MouseEvent | React.TouchEvent) => void;
 }
 
 /**
@@ -51,7 +55,7 @@ function buildSecondaryLine(lesson: LessonWithDetails): string {
   return '';
 }
 
-export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColour }: LessonCardProps) {
+export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColour, showResizeHandle, onResizeStart }: LessonCardProps) {
   const startTime = parseISO(lesson.start_at);
   const endTime = parseISO(lesson.end_at);
   const duration = differenceInMinutes(endTime, startTime);
@@ -148,14 +152,14 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
     );
   }
 
-  // ─── Calendar variant — compact card for day view time-grid ───
+  // ─── Calendar variant — compact card for time-grid ───
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <div
           onClick={onClick}
           className={cn(
-            'h-full w-full rounded-sm px-1.5 py-1 cursor-pointer overflow-hidden text-xs transition-all hover:scale-[1.02] hover:shadow-md',
+            'h-full w-full rounded-sm px-1.5 py-1 cursor-pointer overflow-hidden text-xs transition-all hover:shadow-md group relative',
             colour.bgLight,
             isCancelled && 'opacity-50'
           )}
@@ -174,6 +178,23 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
           )}
           {duration >= 45 && secondaryLine && (
             <div className={cn('truncate', colour.text)}>{secondaryLine}</div>
+          )}
+
+          {/* Resize handle — visible on hover */}
+          {showResizeHandle && !isCancelled && (
+            <div
+              className="absolute bottom-0 left-0 right-0 h-2 flex items-center justify-center cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity"
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                onResizeStart?.(e);
+              }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+                onResizeStart?.(e);
+              }}
+            >
+              <GripHorizontal className="h-3 w-3 text-muted-foreground" />
+            </div>
           )}
         </div>
       </TooltipTrigger>
