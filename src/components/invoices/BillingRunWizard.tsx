@@ -25,10 +25,12 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useUnbilledLessons } from '@/hooks/useInvoices';
 import { useCreateBillingRun } from '@/hooks/useBillingRuns';
 import { useRateCards, findRateForDuration } from '@/hooks/useRateCards';
+import { useTerms } from '@/hooks/useTerms';
 import type { Database } from '@/integrations/supabase/types';
 import { formatCurrencyMinor } from '@/lib/utils';
 
 type BillingRunType = Database['public']['Enums']['billing_run_type'];
+type BillingMode = 'delivered' | 'upfront';
 
 interface BillingRunWizardProps {
   open: boolean;
@@ -39,6 +41,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
   const { currentOrg } = useOrg();
   const createBillingRun = useCreateBillingRun();
   const { data: rateCards = [], isLoading: loadingRateCards } = useRateCards();
+  const { data: terms = [] } = useTerms();
   const [step, setStep] = useState<'config' | 'preview' | 'complete'>('config');
   const lastMonth = subMonths(new Date(), 1);
 
@@ -46,19 +49,21 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
     runType: 'monthly' as BillingRunType,
     startDate: format(startOfMonth(lastMonth), 'yyyy-MM-dd'),
     endDate: format(endOfMonth(lastMonth), 'yyyy-MM-dd'),
+    termId: '' as string,
+    billingMode: 'delivered' as BillingMode,
   });
 
-  const { data: unbilledLessons = [], isLoading: loadingLessons } = useUnbilledLessons({
-    from: config.startDate,
-    to: config.endDate,
-  });
+  const { data: unbilledLessons = [], isLoading: loadingLessons } = useUnbilledLessons(
+    { from: config.startDate, to: config.endDate },
+    undefined,
+    config.runType === 'term' ? config.billingMode : 'delivered'
+  );
 
   const hasRateCards = rateCards.length > 0;
 
-  // Calculate lesson rate based on duration
   const getLessonRate = (lesson: any): number => {
     const durationMins = differenceInMinutes(new Date(lesson.end_at), new Date(lesson.start_at));
-    return findRateForDuration(durationMins, rateCards, 3000); // fallback £30
+    return findRateForDuration(durationMins, rateCards, 3000);
   };
 
   // Group lessons by payer for preview
@@ -101,18 +106,32 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
     setConfig((c) => {
       let startDate = c.startDate;
       let endDate = c.endDate;
+      let termId = '';
+      let billingMode = c.billingMode;
 
       if (type === 'monthly') {
         startDate = format(startOfMonth(lastMonth), 'yyyy-MM-dd');
         endDate = format(endOfMonth(lastMonth), 'yyyy-MM-dd');
+        billingMode = 'delivered';
       }
 
-      return { ...c, runType: type, startDate, endDate };
+      return { ...c, runType: type, startDate, endDate, termId, billingMode };
     });
   };
 
+  const handleTermChange = (termId: string) => {
+    const term = terms.find((t) => t.id === termId);
+    if (term) {
+      setConfig((c) => ({
+        ...c,
+        termId,
+        startDate: term.start_date,
+        endDate: term.end_date,
+      }));
+    }
+  };
+
   const handleGenerate = async () => {
-    // Calculate average rate from rate cards or use default
     const defaultRate = rateCards.find(r => r.is_default)?.rate_amount || 
                         rateCards[0]?.rate_amount || 
                         3000;
@@ -123,6 +142,8 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
       end_date: config.endDate,
       generate_invoices: true,
       lesson_rate_minor: defaultRate,
+      billing_mode: config.billingMode,
+      term_id: config.termId || undefined,
     });
 
     setStep('complete');
@@ -161,24 +182,86 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
               </Select>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Start Date</Label>
-                <Input
-                  type="date"
-                  value={config.startDate}
-                  onChange={(e) => setConfig((c) => ({ ...c, startDate: e.target.value }))}
-                />
+            {/* Term selector for termly billing */}
+            {config.runType === 'term' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Select Term</Label>
+                  {terms.length === 0 ? (
+                    <div className="rounded-lg border border-dashed p-3 text-center text-sm text-muted-foreground">
+                      No terms defined. Go to Settings → Scheduling to create terms.
+                    </div>
+                  ) : (
+                    <Select value={config.termId} onValueChange={handleTermChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a term" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {terms.map((term) => (
+                          <SelectItem key={term.id} value={term.id}>
+                            {term.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Billing Mode</Label>
+                  <Select
+                    value={config.billingMode}
+                    onValueChange={(v) => setConfig((c) => ({ ...c, billingMode: v as BillingMode }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="delivered">Bill for delivered lessons</SelectItem>
+                      <SelectItem value="upfront">Bill upfront for scheduled lessons</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {config.billingMode === 'delivered'
+                      ? 'Only completed lessons will be included in the invoice.'
+                      : 'All scheduled, confirmed, and completed lessons will be included.'}
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* Date pickers - shown for monthly/custom, or read-only for term */}
+            {config.runType !== 'term' ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Start Date</Label>
+                  <Input
+                    type="date"
+                    value={config.startDate}
+                    onChange={(e) => setConfig((c) => ({ ...c, startDate: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>End Date</Label>
+                  <Input
+                    type="date"
+                    value={config.endDate}
+                    onChange={(e) => setConfig((c) => ({ ...c, endDate: e.target.value }))}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>End Date</Label>
-                <Input
-                  type="date"
-                  value={config.endDate}
-                  onChange={(e) => setConfig((c) => ({ ...c, endDate: e.target.value }))}
-                />
+            ) : config.termId ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Start Date</Label>
+                  <Input type="date" value={config.startDate} disabled className="bg-muted" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">End Date</Label>
+                  <Input type="date" value={config.endDate} disabled className="bg-muted" />
+                </div>
               </div>
-            </div>
+            ) : null}
 
             {/* Rate Cards Status */}
             <div className="rounded-lg border p-3">
@@ -217,7 +300,14 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
               <Button variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button onClick={() => setStep('preview')} disabled={loadingLessons || loadingRateCards}>
+              <Button
+                onClick={() => setStep('preview')}
+                disabled={
+                  loadingLessons ||
+                  loadingRateCards ||
+                  (config.runType === 'term' && !config.termId)
+                }
+              >
                 {(loadingLessons || loadingRateCards) ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -233,6 +323,18 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
 
         {step === 'preview' && (
           <div className="space-y-4">
+            {/* Billing mode badge for termly */}
+            {config.runType === 'term' && (
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">
+                  {terms.find((t) => t.id === config.termId)?.name}
+                </Badge>
+                <Badge variant={config.billingMode === 'upfront' ? 'default' : 'secondary'}>
+                  {config.billingMode === 'upfront' ? 'Upfront' : 'Delivered'}
+                </Badge>
+              </div>
+            )}
+
             <div className="grid gap-4 sm:grid-cols-3">
               <Card>
                 <CardHeader className="pb-2">

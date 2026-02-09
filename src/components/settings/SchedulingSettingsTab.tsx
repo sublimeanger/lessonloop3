@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format, addDays, eachDayOfInterval, parseISO } from 'date-fns';
+import { TermManagementCard } from '@/components/settings/TermManagementCard';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -488,6 +489,9 @@ export function SchedulingSettingsTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Terms Management */}
+      <TermManagementCard />
 
       {/* Add Closure Modal */}
       <Dialog open={isAddModalOpen} onOpenChange={resetModal}>

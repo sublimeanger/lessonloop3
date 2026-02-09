@@ -49,11 +49,19 @@ export function useCreateBillingRun() {
       end_date: string;
       generate_invoices: boolean;
       lesson_rate_minor: number;
+      billing_mode?: 'delivered' | 'upfront';
+      term_id?: string;
     }) => {
       if (!currentOrg?.id || !user?.id) throw new Error('No organisation or user');
 
-      // Get unbilled completed lessons in date range
-      const { data: lessons, error: lessonsError } = await supabase
+      // Determine which lesson statuses to include based on billing mode
+      const billingMode = data.billing_mode || 'delivered';
+      const statusFilter: Array<'scheduled' | 'completed' | 'cancelled'> = billingMode === 'upfront'
+        ? ['scheduled', 'completed']
+        : ['completed'];
+
+      // Get lessons in date range matching billing mode
+      let lessonsQuery = supabase
         .from('lessons')
         .select(`
           id,
@@ -73,9 +81,16 @@ export function useCreateBillingRun() {
           )
         `)
         .eq('org_id', currentOrg.id)
-        .eq('status', 'completed')
         .gte('start_at', data.start_date)
         .lte('start_at', data.end_date);
+
+      if (statusFilter.length === 1) {
+        lessonsQuery = lessonsQuery.eq('status', statusFilter[0]);
+      } else {
+        lessonsQuery = lessonsQuery.in('status', statusFilter);
+      }
+
+      const { data: lessons, error: lessonsError } = await lessonsQuery;
 
       if (lessonsError) throw lessonsError;
 
@@ -182,7 +197,8 @@ export function useCreateBillingRun() {
               vat_rate: vatRate,
               currency_code: currentOrg.currency_code,
               status: 'draft',
-            })
+              term_id: data.term_id || null,
+            } as any)
             .select()
             .single();
 
@@ -220,12 +236,14 @@ export function useCreateBillingRun() {
           end_date: data.end_date,
           created_by: user.id,
           status: 'completed',
+          billing_mode: data.billing_mode || 'delivered',
+          term_id: data.term_id || null,
           summary: {
             invoiceCount: invoiceIds.length,
             totalAmount,
             invoiceIds,
           },
-        })
+        } as any)
         .select()
         .single();
 
