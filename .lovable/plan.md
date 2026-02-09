@@ -1,70 +1,87 @@
 
 
-# Fix: Unreadable Calendar When Many Lessons Overlap
+# Restore Stacked Week View as Default Calendar
 
 ## Problem
 
-The overlap layout algorithm divides each day column equally among all concurrent lessons. In a busy academy (e.g., 7 teachers running lessons at 10:00), this creates 7+ tiny columns where lesson text is truncated to single characters -- completely unreadable.
+The current time-grid view (hour rows, 07:00-21:00 axis, tiny positioned cards) is cluttered and hard to read at a glance. The previous stacked layout -- simple day columns with lesson cards listed vertically -- gave a much better full-week overview.
 
 ## Solution
 
-Cap visible columns at 3 and show a "+N more" overflow pill for hidden lessons. This is the same pattern Google Calendar uses for dense time slots.
+Bring back a clean stacked week view as the default, and keep the time-grid as an optional "detailed" view for users who need precise time positioning.
 
 ---
 
 ## Changes
 
-### 1. Update `overlapLayout.ts` -- Add max-column cap
+### 1. Add a new `StackedWeekView.tsx` component
 
-- Add an optional `maxColumns` parameter (default: 3)
-- When a cluster has more columns than the cap, mark overflow lessons with a flag
-- Return a new `overflowLessons` map alongside the existing positions map, keyed by time-slot ranges
+A clean, simple week layout:
+- 7 (or 5) day columns side by side, equal width
+- Each column has a day header (Mon 3, Tue 4, etc.) with today highlighted
+- Lesson cards stacked vertically within each day, sorted by start time
+- Cards use the existing `LessonCard` "stacked" variant (shows time, student name, teacher)
+- Teacher colour tinting on cards (already working)
+- Closure date highlighting on column headers
+- Click anywhere on a day column to trigger lesson creation for that day
+- Click a lesson card to open the detail panel (existing behaviour)
+- No hour rows, no time axis, no absolute positioning -- just a clean list per day
+- Scrollable if a day has many lessons
 
-### 2. Update `WeekTimeGrid.tsx` -- Render overflow indicators
+### 2. Update `CalendarPage.tsx` -- Add third view option
 
-- After rendering the visible (capped) lesson cards, render a small "+N more" pill at each time slot that has overflow
-- Clicking the pill opens a popover listing all lessons in that time slot in a readable vertical list
-- Each lesson in the popover is clickable (opens the lesson detail panel)
+- Add `'stacked'` back to the `CalendarView` type alongside `'week'` and `'agenda'`
+- Set `'stacked'` as the default view
+- Add a third toggle button (e.g. a Columns icon) for the stacked view
+- View toggle: Stacked (default) | Time Grid | Agenda
+- When clicking an empty area of a day column in stacked view, open the quick-create popover with that day pre-selected (time defaults to next available hour)
+- Keyboard shortcut: `S` for stacked view
 
-### 3. Update `LessonCard.tsx` -- Ultra-compact mode
+### 3. Update `types.ts`
 
-- When `totalColumns >= 3`, switch to an ultra-compact display: show only the student's first name (no last name, no time range, no secondary line)
-- This maximises readability even at 3 columns wide
+- Add `'stacked'` to the `CalendarView` type union
 
 ---
 
 ## Technical Detail
 
-**overlapLayout.ts changes:**
+### `StackedWeekView.tsx` (~120 lines)
 
 ```text
-Current: computeOverlapLayout(lessons, hourHeight, startHour)
-New:     computeOverlapLayout(lessons, hourHeight, startHour, maxColumns = 3)
+Props:
+  - currentDate: Date
+  - lessons: LessonWithDetails[]
+  - teacherColourMap: Map<string, TeacherWithColour>
+  - onLessonClick: (lesson) => void
+  - onDayClick: (date: Date) => void
+  - isParent: boolean
 
-When totalColumns > maxColumns:
-  - Lessons in columns 0..(maxColumns-2) render normally
-  - Column (maxColumns-1) becomes reserved for a "+N more" indicator
-  - Overflow lessons are returned in a separate Map<string, LessonWithDetails[]>
-    keyed by a time-range bucket (e.g. "10:00-10:30")
+Layout:
+  - flex container with equal-width day columns
+  - Each column: header + scrollable card list
+  - Cards use LessonCard variant="stacked"
+  - Empty days show subtle "No lessons" text
+  - Click on empty space calls onDayClick(day)
 ```
 
-**WeekTimeGrid.tsx changes:**
+### `CalendarPage.tsx` changes
 
-- Call `computeOverlapLayout` with `maxColumns = 3`
-- Render visible lessons as before (now max 3 columns wide, so always readable)
-- For each overflow bucket, render a small pill: "+4 more" positioned at the correct top/height
-- Pill click opens a Popover with a scrollable list of all lessons in that slot
+- Default view state: `useState<CalendarView>('stacked')`
+- Add `onDayClick` handler that sets slot date to noon on that day, opens quick-create
+- Render `StackedWeekView` when `view === 'stacked'`
+- Keep `WeekTimeGrid` for `view === 'week'` (the detailed time-grid)
+- Keep `AgendaView` for `view === 'agenda'`
+- Toggle group gets 3 options: Columns (stacked), LayoutGrid (time-grid), List (agenda)
 
-**LessonCard.tsx changes (calendar variant):**
+### `types.ts` change
 
-- Add a `compact` prop (boolean)
-- When `compact && totalColumns >= 3`: show only first name, hide time range and secondary line even for 30+ min lessons
-- This keeps text readable at ~60-80px column widths
+- `CalendarView = 'stacked' | 'week' | 'agenda'`
+
+### Files Created
+- `src/components/calendar/StackedWeekView.tsx`
 
 ### Files Modified
-- `src/components/calendar/overlapLayout.ts` -- Add max-column capping and overflow tracking
-- `src/components/calendar/WeekTimeGrid.tsx` -- Render "+N more" pills with popover, pass compact flag
-- `src/components/calendar/LessonCard.tsx` -- Add compact display mode for narrow columns
+- `src/pages/CalendarPage.tsx` -- Add stacked view as default, wire onDayClick
+- `src/components/calendar/types.ts` -- Add 'stacked' to CalendarView
 
-### No New Files, No Database Changes
-
+### No Database Changes
