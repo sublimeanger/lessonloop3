@@ -72,7 +72,7 @@ export interface ConflictResult {
   entity_name?: string;
 }
 
-export type CalendarView = 'week' | 'agenda';
+export type CalendarView = 'stacked' | 'week' | 'agenda';
 
 export interface CalendarFilters {
   teacher_id: string | null;   // Now teachers.id
