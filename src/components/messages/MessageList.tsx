@@ -16,6 +16,11 @@ function stripHtml(html: string): string {
   return tmp.textContent || tmp.innerText || '';
 }
 
+// Check if a string contains HTML tags
+function isHtml(str: string): boolean {
+  return /<[a-z][\s\S]*>/i.test(str);
+}
+
 interface MessageListProps {
   messages: MessageLogEntry[];
   isLoading?: boolean;
@@ -118,9 +123,16 @@ function MessageCard({ message, onReply }: { message: MessageLogEntry; onReply?:
         <CollapsibleContent>
           <div className="border-t px-4 py-3 space-y-3">
             {/* Full message body */}
-            <div className="whitespace-pre-wrap text-sm bg-muted/50 rounded-lg p-4">
-              {stripHtml(message.body)}
-            </div>
+            {isHtml(message.body) ? (
+              <div
+                className="text-sm bg-muted/50 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert [&_a]:text-primary [&_a]:underline"
+                dangerouslySetInnerHTML={{ __html: message.body }}
+              />
+            ) : (
+              <div className="whitespace-pre-wrap text-sm bg-muted/50 rounded-lg p-4">
+                {message.body}
+              </div>
+            )}
 
             {/* Context and actions */}
             <div className="flex items-center gap-2 flex-wrap">

@@ -31,7 +31,14 @@ export function ThreadMessageItem({ message }: ThreadMessageItemProps) {
           {format(new Date(message.created_at), 'dd MMM yyyy, HH:mm')}
         </span>
       </div>
-      <div className="whitespace-pre-wrap text-sm">{message.body}</div>
+      {/<[a-z][\s\S]*>/i.test(message.body) ? (
+        <div
+          className="text-sm prose prose-sm max-w-none dark:prose-invert [&_a]:text-primary [&_a]:underline"
+          dangerouslySetInnerHTML={{ __html: message.body }}
+        />
+      ) : (
+        <div className="whitespace-pre-wrap text-sm">{message.body}</div>
+      )}
       {message.status === 'sent' && (
         <Badge variant="outline" className="mt-2 text-xs">Sent</Badge>
       )}
