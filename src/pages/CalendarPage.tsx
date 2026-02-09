@@ -15,6 +15,7 @@ import { MarkDayCompleteButton } from '@/components/calendar/MarkDayCompleteButt
 import { RecurringActionDialog, RecurringActionMode } from '@/components/calendar/RecurringActionDialog';
 import { CalendarView, CalendarFilters, LessonWithDetails } from '@/components/calendar/types';
 import { buildTeacherColourMap } from '@/components/calendar/teacherColours';
+import { QuickCreatePopover } from '@/components/calendar/QuickCreatePopover';
 import { ContextualHint } from '@/components/shared/ContextualHint';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { supabase } from '@/integrations/supabase/client';
@@ -50,6 +51,11 @@ export default function CalendarPage() {
   // Detail panel state
   const [detailPanelOpen, setDetailPanelOpen] = useState(false);
   const [detailLesson, setDetailLesson] = useState<LessonWithDetails | null>(null);
+
+  // Quick-create popover state
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const [quickCreateStart, setQuickCreateStart] = useState<Date>(new Date());
+  const [quickCreateEnd, setQuickCreateEnd] = useState<Date | undefined>(undefined);
 
   // Drag reschedule / resize state for recurring dialog
   const [pendingDrag, setPendingDrag] = useState<{
@@ -107,19 +113,25 @@ export default function CalendarPage() {
 
   const handleSlotClick = useCallback((date: Date) => {
     if (isParent) return;
-    setSelectedLesson(null);
-    setSlotDate(date);
-    setSlotEndDate(new Date(date.getTime() + 60 * 60 * 1000));
-    setIsModalOpen(true);
+    setQuickCreateStart(date);
+    setQuickCreateEnd(undefined);
+    setQuickCreateOpen(true);
   }, [isParent]);
 
   const handleSlotDrag = useCallback((start: Date, end: Date) => {
     if (isParent) return;
-    setSelectedLesson(null);
-    setSlotDate(start);
-    setSlotEndDate(end);
-    setIsModalOpen(true);
+    setQuickCreateStart(start);
+    setQuickCreateEnd(end);
+    setQuickCreateOpen(true);
   }, [isParent]);
+
+  const handleQuickCreateOpenFullModal = useCallback(() => {
+    setQuickCreateOpen(false);
+    setSelectedLesson(null);
+    setSlotDate(quickCreateStart);
+    setSlotEndDate(quickCreateEnd || new Date(quickCreateStart.getTime() + 60 * 60 * 1000));
+    setIsModalOpen(true);
+  }, [quickCreateStart, quickCreateEnd]);
 
   const handleEditFromDetail = () => {
     setSelectedLesson(detailLesson);
@@ -406,6 +418,18 @@ export default function CalendarPage() {
       <div className="mt-3 text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
         <span className="font-medium">Keyboard:</span> ← → navigate • T today • N new lesson • W/A views
       </div>
+
+      {/* Quick Create Popover */}
+      {!isParent && (
+        <QuickCreatePopover
+          open={quickCreateOpen}
+          onClose={() => setQuickCreateOpen(false)}
+          onSaved={handleSaved}
+          onOpenFullModal={handleQuickCreateOpenFullModal}
+          startDate={quickCreateStart}
+          endDate={quickCreateEnd}
+        />
+      )}
 
       {/* Lesson Modal */}
       <LessonModal
