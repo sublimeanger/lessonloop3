@@ -8,6 +8,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useCalendarData, useTeachersAndLocations } from '@/hooks/useCalendarData';
 import { WeekTimeGrid } from '@/components/calendar/WeekTimeGrid';
 import { AgendaView } from '@/components/calendar/AgendaView';
+import { StackedWeekView } from '@/components/calendar/StackedWeekView';
 import { LessonModal } from '@/components/calendar/LessonModal';
 import { LessonDetailPanel } from '@/components/calendar/LessonDetailPanel';
 import { CalendarFiltersBar } from '@/components/calendar/CalendarFiltersBar';
@@ -20,7 +21,7 @@ import { ContextualHint } from '@/components/shared/ContextualHint';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Loader2, Columns3 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 export default function CalendarPage() {
@@ -35,7 +36,7 @@ export default function CalendarPage() {
     const dateParam = searchParams.get('date');
     return dateParam ? new Date(dateParam) : new Date();
   });
-  const [view, setView] = useState<CalendarView>('week');
+  const [view, setView] = useState<CalendarView>('stacked');
   const [filters, setFilters] = useState<CalendarFilters>(() => ({
     teacher_id: searchParams.get('teacher') || null,
     location_id: null,
@@ -99,6 +100,7 @@ export default function CalendarPage() {
           break;
         case 'w': setView('week'); break;
         case 'a': setView('agenda'); break;
+        case 's': setView('stacked'); break;
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -355,7 +357,10 @@ export default function CalendarPage() {
               />
             )}
             <ToggleGroup type="single" value={view} onValueChange={(v) => v && setView(v as CalendarView)} data-tour="calendar-view-toggle">
-              <ToggleGroupItem value="week" aria-label="Week view" className="h-8 w-8 p-0">
+              <ToggleGroupItem value="stacked" aria-label="Stacked view" className="h-8 w-8 p-0">
+                <Columns3 className="h-3.5 w-3.5" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="week" aria-label="Time grid view" className="h-8 w-8 p-0">
                 <LayoutGrid className="h-3.5 w-3.5" />
               </ToggleGroupItem>
               <ToggleGroupItem value="agenda" aria-label="Agenda view" className="h-8 w-8 p-0">
@@ -390,6 +395,20 @@ export default function CalendarPage() {
           onLessonClick={handleLessonClick}
           teacherColourMap={teacherColourMap}
         />
+      ) : view === 'stacked' ? (
+        <StackedWeekView
+          currentDate={currentDate}
+          lessons={lessons}
+          teacherColourMap={teacherColourMap}
+          onLessonClick={handleLessonClick}
+          onDayClick={(date) => {
+            if (isParent) return;
+            setQuickCreateStart(date);
+            setQuickCreateEnd(undefined);
+            setQuickCreateOpen(true);
+          }}
+          isParent={isParent}
+        />
       ) : (
         <div data-tour="calendar-grid" data-hint="calendar-grid">
           <WeekTimeGrid
@@ -416,7 +435,7 @@ export default function CalendarPage() {
 
       {/* Keyboard shortcuts hint — desktop only */}
       <div className="mt-3 text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
-        <span className="font-medium">Keyboard:</span> ← → navigate • T today • N new lesson • W/A views
+        <span className="font-medium">Keyboard:</span> ← → navigate • T today • N new lesson • S/W/A views
       </div>
 
       {/* Quick Create Popover */}

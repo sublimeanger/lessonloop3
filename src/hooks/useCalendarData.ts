@@ -8,7 +8,7 @@ const LESSONS_PAGE_SIZE = 500;
 
 export function useCalendarData(
   currentDate: Date,
-  view: 'week' | 'agenda',
+  view: 'stacked' | 'week' | 'agenda',
   filters: CalendarFilters
 ) {
   const { currentOrg } = useOrg();
@@ -17,7 +17,7 @@ export function useCalendarData(
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const getDateRange = useCallback(() => {
-    if (view === 'week') {
+    if (view === 'week' || view === 'stacked') {
       return { start: startOfWeek(currentDate, { weekStartsOn: 1 }), end: endOfWeek(currentDate, { weekStartsOn: 1 }) };
     } else {
       // Agenda: next 14 days
