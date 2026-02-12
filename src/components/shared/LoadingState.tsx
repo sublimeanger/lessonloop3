@@ -130,6 +130,68 @@ export function CalendarDaySkeleton() {
   );
 }
 
+// App shell skeleton - mimics AppLayout during auth loading
+export function AppShellSkeleton() {
+  return (
+    <div className="flex min-h-screen w-full bg-background">
+      {/* Sidebar */}
+      <div className="hidden md:flex w-60 flex-col border-r bg-sidebar p-4 gap-6">
+        <div className="flex items-center gap-2 px-2">
+          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="h-5 w-24" />
+        </div>
+        <div className="space-y-1">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 px-3 py-2">
+              <Skeleton className="h-4 w-4 rounded" />
+              <Skeleton className="h-4" style={{ width: `${60 + Math.random() * 40}%` }} />
+            </div>
+          ))}
+        </div>
+        <div className="mt-auto flex items-center gap-3 border-t pt-4">
+          <Skeleton className="h-9 w-9 rounded-full" />
+          <div className="flex-1 space-y-1">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-3 w-12" />
+          </div>
+        </div>
+      </div>
+
+      {/* Main area */}
+      <div className="flex flex-1 flex-col">
+        {/* Header */}
+        <div className="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-background px-4">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-7 w-7 rounded-md md:hidden" />
+            <Skeleton className="h-6 w-6 rounded-md" />
+            <Skeleton className="h-5 w-24 hidden sm:block" />
+            <Skeleton className="h-4 w-px mx-1" />
+            <Skeleton className="h-5 w-28 hidden sm:block" />
+          </div>
+          <Skeleton className="h-8 w-24 rounded-md" />
+        </div>
+
+        {/* Content */}
+        <main className="flex-1 p-4 md:p-6 lg:p-8">
+          <div className="space-y-6">
+            <Skeleton className="h-8 w-48" />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <StatsCardSkeleton key={i} />
+              ))}
+            </div>
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
 // Form skeleton
 export function FormSkeleton({ fields = 4 }: { fields?: number }) {
   return (
