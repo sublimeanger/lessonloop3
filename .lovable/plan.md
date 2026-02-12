@@ -1,156 +1,74 @@
 
 
-# Termly Invoicing and Term Management
+# Calendar Density Improvements for High-Volume Academies
 
-## What the best competitors do
-
-After researching TutorBird, MyMusicStaff, Opus1, and Teachworks, here's the industry standard approach:
-
-1. **Named terms with dates** -- Teachers define terms like "Autumn 2025: 1 Sep - 19 Dec". This is universal across all competitors.
-2. **Two billing modes per term:**
-   - **Upfront (in advance):** Count all *scheduled* lessons in the term, multiply by rate, invoice at term start. Adjustments/credits applied later for cancellations.
-   - **Retrospective (in arrears):** After the term ends, invoice only for *completed/attended* lessons. This is what the current billing run already does.
-3. **Automatic invoicing schedules** -- MMS/TutorBird let you auto-generate invoices on a recurring basis (weekly, monthly, per-term). This is a later enhancement.
-
-## What LessonLoop needs
-
-The org already has a `billing_approach` enum (`monthly`, `termly`, `custom`) and the billing run has a `term` type -- but there is **no `terms` table** to actually define term periods. The billing run wizard currently just has manual date pickers for "term" mode, which is clunky and error-prone.
-
----
+## Problem
+When an academy has 50+ lessons per day, the current calendar views become difficult to read. The Stacked view shows an unbounded list of cards per day, the Time Grid gets overwhelmed with overlapping lessons, and there's no way to group by teacher for a quick overview.
 
 ## Changes
 
-### 1. New database table: `terms`
+### 1. Stacked Week View -- Collapsible Day with Lesson Count + Teacher Grouping
+**File: `src/components/calendar/StackedWeekView.tsx`**
 
-Stores named term periods per organisation.
+- When a day has more than 8 lessons, show only the first 5 and a "Show N more" button to expand
+- Add a teacher-grouped sub-layout: lessons are visually grouped under a small teacher name header with their colour dot, making it easy to scan "who's teaching what"
+- Show a lesson count badge in the day header (e.g., "Mon 12 -- 14 lessons")
 
-```text
-terms
-  id           uuid PK
-  org_id       uuid FK -> organisations
-  name         text  (e.g. "Autumn Term 2025")
-  start_date   date
-  end_date     date
-  created_at   timestamptz
-  created_by   uuid
+### 2. LessonCard Stacked Variant -- Tighter Compact Mode
+**File: `src/components/calendar/LessonCard.tsx`**
 
-Unique constraint: (org_id, name)
-Index on (org_id, start_date)
-RLS: org staff can CRUD
-```
+- Add an `ultraCompact` rendering path for the stacked variant when the day has many lessons: single-line layout showing time + student name only, no secondary line, reduced vertical padding
+- This kicks in automatically when the parent passes `compact={true}`
 
-### 2. New settings UI: Term Management (in Settings > Scheduling)
+### 3. Time Grid -- Increase Max Overlap Columns + Summary Pill
+**File: `src/components/calendar/overlapLayout.ts`**
 
-Add a "Terms" card to the existing Scheduling Settings tab:
-- List of defined terms with name, date range, and lesson count
-- "Add Term" button opens a simple form: Name, Start Date, End Date
-- Quick-add presets for standard UK academic year (3 terms)
-- Edit and delete existing terms
-- Visual indicator showing which term is "current" based on today's date
+- Increase default `maxColumns` from 3 to 4 for better density handling
+- The existing "+N more" overflow pill already handles excess; this just shows more before triggering overflow
 
-### 3. Upgrade the Billing Run Wizard
+**File: `src/components/calendar/WeekTimeGrid.tsx`**
 
-When billing type is "Termly":
-- Replace the manual date pickers with a term selector dropdown (populated from the `terms` table)
-- Selecting a term auto-fills the start and end dates
-- Add a billing mode toggle: **"Bill for delivered lessons"** vs **"Bill upfront for scheduled lessons"**
-  - Delivered: queries `lessons` where `status = 'completed'` (current behaviour)
-  - Upfront: queries `lessons` where `status IN ('scheduled', 'confirmed', 'completed')` -- counts all lessons in the term regardless of completion status
-- Preview step shows which mode was selected
+- Pass `maxColumns={4}` to `computeOverlapLayout`
+- Add a day summary badge in the sticky header showing lesson count per day (e.g., "12") when count exceeds 10
 
-### 4. Invoices page -- Term filter
+### 4. Agenda View -- Teacher Grouping Option
+**File: `src/components/calendar/AgendaView.tsx`**
 
-Add an optional "Term" filter to the invoice filters bar so users can see all invoices generated for a specific term.
+- Add a "Group by teacher" toggle that reorganises lessons within each day under teacher sub-headers with their colour indicator
+- This makes it easy for academy managers to review each teacher's daily load at a glance
 
-### 5. Invoice record -- Term link
+### 5. Calendar Page -- Density Toggle
+**File: `src/pages/CalendarPage.tsx`**
 
-Add an optional `term_id` column to the `invoices` table so each invoice can be linked back to the term it was generated for. This enables filtering and reporting by term.
+- Add a "Compact" toggle button in the toolbar (next to the view switcher) that enables compact mode across all views
+- When active, it passes `compact={true}` down to StackedWeekView and WeekTimeGrid
+- State persisted in localStorage so the preference sticks
 
 ---
 
-## Technical Detail
+## Technical Details
 
-### Database migration
+### StackedWeekView Changes
+- New state: `expandedDays` (Set of date keys) to track which high-volume days are expanded
+- Threshold constant: `COMPACT_THRESHOLD = 8` -- days with more lessons than this get collapsed
+- Teacher grouping: group `dayLessons` by `teacher_user_id`, sort groups alphabetically, render a small coloured header per group
+- Lesson count badge rendered in the day header div
 
-```text
--- New terms table
-CREATE TABLE public.terms (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id uuid NOT NULL REFERENCES public.organisations(id) ON DELETE CASCADE,
-  name text NOT NULL,
-  start_date date NOT NULL,
-  end_date date NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  created_by uuid NOT NULL REFERENCES auth.users(id),
-  UNIQUE(org_id, name)
-);
+### LessonCard Stacked Compact Mode
+- When `compact` prop is true on the stacked variant: reduce padding to `px-1 py-px`, show only time + first student name on a single line, hide secondary line entirely
+- Font sizes reduced to `text-[9px]` for time and `text-[10px]` for name
 
-CREATE INDEX idx_terms_org_dates ON public.terms(org_id, start_date);
+### WeekTimeGrid Day Count Badge
+- In the sticky day header, when `dayLessons.length > 10`, render a small `Badge` showing the count
+- Keeps managers aware of load without needing to scroll
 
--- RLS policies for terms
-ALTER TABLE public.terms ENABLE ROW LEVEL SECURITY;
+### AgendaView Teacher Grouping
+- New prop `groupByTeacher: boolean`
+- When true, within each day group, sub-group lessons by teacher and render a coloured divider with the teacher name
+- Toggle controlled from CalendarPage via a small button
 
-CREATE POLICY "Staff can view terms"
-  ON public.terms FOR SELECT
-  USING (is_org_staff(auth.uid(), org_id));
-
-CREATE POLICY "Admin can manage terms"
-  ON public.terms FOR ALL
-  USING (is_org_admin(auth.uid(), org_id));
-
--- Add term_id to invoices
-ALTER TABLE public.invoices
-  ADD COLUMN term_id uuid REFERENCES public.terms(id) ON DELETE SET NULL;
-
--- Add billing_mode to billing_runs
-ALTER TABLE public.billing_runs
-  ADD COLUMN billing_mode text NOT NULL DEFAULT 'delivered'
-  CHECK (billing_mode IN ('delivered', 'upfront'));
-
-ALTER TABLE public.billing_runs
-  ADD COLUMN term_id uuid REFERENCES public.terms(id) ON DELETE SET NULL;
-```
-
-### New hook: `useTerms.ts`
-
-- `useTerms()` -- fetch all terms for current org, ordered by start_date desc
-- `useCreateTerm()` -- insert a new term
-- `useUpdateTerm()` -- edit name/dates
-- `useDeleteTerm()` -- remove a term
-- `useCurrentTerm()` -- derived: find the term where today falls between start_date and end_date
-
-### Settings UI changes (`SchedulingSettingsTab.tsx`)
-
-Add a new "Terms" Card below the existing Closure Dates card:
-- Table/list of terms with columns: Name, Start Date, End Date, Status (past/current/upcoming)
-- "Add Term" dialog with name, start date, end date fields
-- UK preset button: generates Autumn/Spring/Summer terms for the selected academic year
-- Edit/delete actions per term
-
-### Billing Run Wizard changes (`BillingRunWizard.tsx`)
-
-When `runType === 'term'`:
-- Show a `Select` dropdown of defined terms instead of raw date pickers
-- Add a billing mode toggle (delivered vs upfront)
-- Upfront mode: change the unbilled lessons query to include `scheduled` and `confirmed` lessons, not just `completed`
-- Pass `term_id` and `billing_mode` through to the created billing run and resulting invoices
-
-### Invoice Filters changes (`InvoiceFiltersBar.tsx`)
-
-- Add an optional "Term" select filter
-- When selected, filter invoices by `term_id`
-
-### Files Created
-- `src/hooks/useTerms.ts` -- CRUD hook for terms
-
-### Files Modified
-- `src/components/settings/SchedulingSettingsTab.tsx` -- Add Terms management card
-- `src/components/invoices/BillingRunWizard.tsx` -- Term selector and billing mode toggle
-- `src/components/invoices/InvoiceFiltersBar.tsx` -- Add term filter
-- `src/hooks/useInvoices.ts` -- Support term_id filter
-- `src/hooks/useBillingRuns.ts` -- Pass term_id and billing_mode
-
-### Database Changes
-- New table: `terms` with RLS
-- New columns: `invoices.term_id`, `billing_runs.billing_mode`, `billing_runs.term_id`
+### CalendarPage Compact Toggle
+- New state: `isCompact` with localStorage persistence key `ll-calendar-compact`
+- Rendered as a small toggle or button in the toolbar row
+- Passed as prop to child view components
 
