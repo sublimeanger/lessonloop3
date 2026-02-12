@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,15 +7,19 @@ import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { 
   Sparkles, CreditCard, Clock, Check, ArrowRight, 
-  Users, GraduationCap, Loader2, ExternalLink, AlertTriangle
+  Users, GraduationCap, Loader2, ExternalLink, AlertTriangle,
+  Link2, CheckCircle2, RefreshCw
 } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useSubscriptionCheckout, BillingInterval } from '@/hooks/useSubscriptionCheckout';
 import { useUsageCounts } from '@/hooks/useUsageCounts';
+import { useStripeConnect } from '@/hooks/useStripeConnect';
 import { LimitReached } from '@/components/subscription/FeatureGate';
 import { useOrg } from '@/contexts/OrgContext';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, formatLimit, TRIAL_DAYS, DB_PLAN_MAP } from '@/lib/pricing-config';
 
 // Database plan types
@@ -179,6 +183,7 @@ const PLANS = Object.fromEntries(
 
 export function BillingTab() {
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('monthly');
+  const [searchParams, setSearchParams] = useSearchParams();
   const { 
     plan, 
     status, 
@@ -193,6 +198,31 @@ export function BillingTab() {
   const { initiateSubscription, openCustomerPortal, isLoading } = useSubscriptionCheckout();
   const { counts, usage } = useUsageCounts();
   const { isOrgOwner, isOrgAdmin } = useOrg();
+  const {
+    connectStatus,
+    isLoading: isConnectLoading,
+    isOnboarding,
+    startOnboarding,
+    refreshStatus,
+    isConnected,
+    isPending,
+    dashboardUrl,
+  } = useStripeConnect();
+
+  // Handle connect return/refresh from Stripe
+  useEffect(() => {
+    const connectParam = searchParams.get('connect');
+    if (connectParam === 'return') {
+      refreshStatus();
+      toast.success('Stripe account setup updated');
+      searchParams.delete('connect');
+      setSearchParams(searchParams, { replace: true });
+    } else if (connectParam === 'refresh') {
+      toast.info('Please complete your Stripe account setup');
+      searchParams.delete('connect');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, refreshStatus, setSearchParams]);
 
   const canManageBilling = isOrgOwner || isOrgAdmin;
   const hasActiveSubscription = stripeSubscriptionId && status === 'active';
@@ -426,6 +456,112 @@ export function BillingTab() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Payment Collection (Stripe Connect) */}
+      {canManageBilling && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Link2 className="h-5 w-5 text-primary" />
+                  Payment Collection
+                </CardTitle>
+                <CardDescription>
+                  Connect your Stripe account to receive parent payments directly
+                </CardDescription>
+              </div>
+              {isConnected && (
+                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  Connected
+                </Badge>
+              )}
+              {isPending && (
+                <Badge variant="secondary">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Setup Incomplete
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isConnectLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : isConnected ? (
+              <div className="space-y-4">
+                <div className="p-4 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                    <div>
+                      <p className="font-medium text-sm">Stripe account connected</p>
+                      <p className="text-xs text-muted-foreground">
+                        Parent payments will be deposited directly into your Stripe account.
+                        {connectStatus?.platformFeePercent ? ` A ${connectStatus.platformFeePercent}% platform fee applies.` : ''}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {dashboardUrl && (
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={dashboardUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Stripe Dashboard
+                      </a>
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="sm" onClick={refreshStatus}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh Status
+                  </Button>
+                </div>
+              </div>
+            ) : isPending ? (
+              <div className="space-y-4">
+                <div className="p-4 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-500" />
+                    <div>
+                      <p className="font-medium text-sm">Setup incomplete</p>
+                      <p className="text-xs text-muted-foreground">
+                        Your Stripe account has been created but setup isn't complete. 
+                        Click below to finish the process.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <Button onClick={startOnboarding} disabled={isOnboarding}>
+                  {isOnboarding ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <ArrowRight className="h-4 w-4 mr-2" />
+                  )}
+                  Complete Stripe Setup
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Connect your Stripe account so parents can pay invoices online. 
+                  Payments go directly to your bank account via Stripe. You'll be redirected 
+                  to Stripe to complete the setup.
+                </p>
+                <Button onClick={startOnboarding} disabled={isOnboarding}>
+                  {isOnboarding ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <CreditCard className="h-4 w-4 mr-2" />
+                  )}
+                  Connect Stripe Account
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Non-admin message */}

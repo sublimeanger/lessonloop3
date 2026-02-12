@@ -96,6 +96,15 @@ serve(async (req) => {
     // Get currency code
     const currencyCode = ((invoice.organisations as any)?.currency_code || "GBP").toLowerCase();
 
+    // Fetch org's Stripe Connect info
+    const { data: orgConnect } = await supabase
+      .from("organisations")
+      .select("stripe_connect_account_id, stripe_connect_status, platform_fee_percent")
+      .eq("id", invoice.org_id)
+      .single();
+
+    const hasConnectedAccount = orgConnect?.stripe_connect_account_id && orgConnect?.stripe_connect_status === "active";
+
     // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
@@ -124,8 +133,8 @@ serve(async (req) => {
     const finalSuccessUrl = `${baseUrl}?payment=success&invoice=${invoiceId}`;
     const finalCancelUrl = cancelUrl || `${baseUrl}?payment=cancelled&invoice=${invoiceId}`;
 
-    // Create Stripe Checkout Session
-    const session = await stripe.checkout.sessions.create({
+    // Build checkout session params
+    const sessionParams: any = {
       customer: customerId,
       customer_email: customerId ? undefined : payerEmail,
       payment_method_types: ["card"],
@@ -149,8 +158,24 @@ serve(async (req) => {
         lessonloop_invoice_id: invoiceId,
         lessonloop_org_id: invoice.org_id,
       },
-      expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes
-    });
+      expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+    };
+
+    // Route funds to connected account if Stripe Connect is active
+    if (hasConnectedAccount) {
+      const feePercent = Number(orgConnect.platform_fee_percent) || 0;
+      const applicationFee = feePercent > 0 ? Math.round(amountDue * (feePercent / 100)) : 0;
+      
+      sessionParams.payment_intent_data = {
+        transfer_data: {
+          destination: orgConnect.stripe_connect_account_id,
+        },
+        ...(applicationFee > 0 && { application_fee_amount: applicationFee }),
+      };
+    }
+
+    // Create Stripe Checkout Session
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     // Record the session in our database
     const { error: insertError } = await supabase

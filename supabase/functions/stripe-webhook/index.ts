@@ -107,6 +107,12 @@ serve(async (req) => {
         break;
       }
 
+      case "account.updated": {
+        const account = event.data.object as Stripe.Account;
+        await handleAccountUpdated(supabase, account);
+        break;
+      }
+
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }
@@ -424,6 +430,69 @@ async function handleSubscriptionDeleted(supabase: any, subscription: Stripe.Sub
     console.error("Failed to update org on subscription deletion:", error);
   } else {
     console.log(`Org ${org.id} subscription cancelled`);
+  }
+}
+
+async function handleAccountUpdated(supabase: any, account: Stripe.Account) {
+  const orgId = account.metadata?.lessonloop_org_id;
+  if (!orgId) {
+    // Try to find org by connect account ID
+    const { data: org } = await supabase
+      .from("organisations")
+      .select("id")
+      .eq("stripe_connect_account_id", account.id)
+      .single();
+
+    if (!org) {
+      console.log("Cannot find org for account.updated event");
+      return;
+    }
+
+    const newStatus = account.charges_enabled && account.payouts_enabled
+      ? "active"
+      : account.details_submitted
+      ? "restricted"
+      : "pending";
+
+    const updateData: Record<string, unknown> = { stripe_connect_status: newStatus };
+    if (newStatus === "active") {
+      updateData.stripe_connect_onboarded_at = new Date().toISOString();
+    }
+
+    const { error } = await supabase
+      .from("organisations")
+      .update(updateData)
+      .eq("id", org.id);
+
+    if (error) {
+      console.error("Failed to update org connect status:", error);
+    } else {
+      console.log(`Org ${org.id} Connect status updated to ${newStatus}`);
+    }
+    return;
+  }
+
+  // Has orgId in metadata
+  const newStatus = account.charges_enabled && account.payouts_enabled
+    ? "active"
+    : account.details_submitted
+    ? "restricted"
+    : "pending";
+
+  const updateData: Record<string, unknown> = { stripe_connect_status: newStatus };
+  if (newStatus === "active") {
+    updateData.stripe_connect_onboarded_at = new Date().toISOString();
+  }
+
+  const { error } = await supabase
+    .from("organisations")
+    .update(updateData)
+    .eq("id", orgId);
+
+  if (error) {
+    console.error("Failed to update org connect status:", error);
+  } else {
+    console.log(`Org ${orgId} Connect status updated to ${newStatus}`);
   }
 }
 
