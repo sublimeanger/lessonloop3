@@ -1,16 +1,11 @@
-import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Invoice PDF generator
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
 Deno.serve(async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const corsResponse = handleCorsPreflightRequest(req);
+  if (corsResponse) return corsResponse;
 
+  const corsHeaders = getCorsHeaders(req);
   const url = new URL(req.url);
 
   // Health check endpoint
@@ -22,6 +17,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Dynamic import of pdf-lib to avoid potential deployment issues
+    const { PDFDocument, rgb, StandardFonts } = await import("https://esm.sh/pdf-lib@1.17.1");
+    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.45.0");
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -111,37 +110,32 @@ Deno.serve(async (req: Request): Promise<Response> => {
     y -= 10;
     page.drawText("INVOICE", { x: leftMargin, y, size: 14, font: helveticaBold, color: rgb(0.15, 0.39, 0.92) });
 
-    // Status watermark for paid invoices
     if (invoice.status === "paid") {
       page.drawText("PAID", { x: 380, y: y - 2, size: 28, font: helveticaBold, color: rgb(0.13, 0.72, 0.42) });
     }
 
     y -= 25;
 
-    // Invoice details grid
-    const detailsLeft = [
+    // Invoice details
+    const details = [
       { label: "Invoice Number", value: invoice.invoice_number },
       { label: "Issue Date", value: new Date(invoice.issue_date).toLocaleDateString("en-GB") },
       { label: "Due Date", value: new Date(invoice.due_date).toLocaleDateString("en-GB") },
     ];
-    const detailsRight = [
-      { label: "Bill To", value: payerName },
-    ];
 
-    detailsLeft.forEach(({ label, value }) => {
+    details.forEach(({ label, value }) => {
       page.drawText(label, { x: leftMargin, y, size: 9, font: helveticaBold, color: rgb(0.4, 0.4, 0.4) });
       page.drawText(value, { x: leftMargin + 100, y, size: 9, font: helvetica, color: rgb(0.1, 0.1, 0.1) });
       y -= 16;
     });
 
-    detailsRight.forEach(({ label, value }) => {
-      page.drawText(label, { x: 350, y: y + 48, size: 9, font: helveticaBold, color: rgb(0.4, 0.4, 0.4) });
-      page.drawText(value, { x: 350 + 60, y: y + 48, size: 9, font: helvetica, color: rgb(0.1, 0.1, 0.1) });
-    });
+    // Bill To
+    page.drawText("Bill To", { x: 350, y: y + 48, size: 9, font: helveticaBold, color: rgb(0.4, 0.4, 0.4) });
+    page.drawText(payerName, { x: 350 + 60, y: y + 48, size: 9, font: helvetica, color: rgb(0.1, 0.1, 0.1) });
 
     y -= 15;
 
-    // Line items table header
+    // Table header
     page.drawRectangle({ x: leftMargin, y: y - 2, width: rightMargin - leftMargin, height: 20, color: rgb(0.95, 0.95, 0.97) });
     page.drawText("Description", { x: leftMargin + 8, y: y + 3, size: 9, font: helveticaBold, color: rgb(0.3, 0.3, 0.3) });
     page.drawText("Qty", { x: 370, y: y + 3, size: 9, font: helveticaBold, color: rgb(0.3, 0.3, 0.3) });
@@ -231,7 +225,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     console.error("PDF error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
+      headers: { "Content-Type": "application/json", ...getCorsHeaders(req) },
     });
   }
 });
