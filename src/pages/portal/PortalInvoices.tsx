@@ -12,12 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Receipt, Loader2, Download, CreditCard, AlertCircle, CheckCircle } from 'lucide-react';
+import { Receipt, Loader2, Download, CreditCard, AlertCircle, CheckCircle, Building2 } from 'lucide-react';
 import { format, parseISO, isBefore, startOfToday } from 'date-fns';
 import { useOrg } from '@/contexts/OrgContext';
 import { useParentInvoices } from '@/hooks/useParentPortal';
 import { useStripePayment } from '@/hooks/useStripePayment';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 function formatCurrency(amountMinor: number, currencyCode: string = 'GBP'): string {
   return new Intl.NumberFormat('en-GB', {
@@ -35,6 +36,29 @@ export default function PortalInvoices() {
   const { data: invoices, isLoading, refetch } = useParentInvoices({ status: statusFilter });
   const { initiatePayment, isLoading: isPaymentLoading } = useStripePayment();
   const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
+  const [orgPaymentPrefs, setOrgPaymentPrefs] = useState<{
+    online_payments_enabled: boolean;
+    bank_account_name: string | null;
+    bank_sort_code: string | null;
+    bank_account_number: string | null;
+    bank_reference_prefix: string | null;
+  } | null>(null);
+
+  // Fetch org payment preferences
+  useEffect(() => {
+    if (!currentOrg?.id) return;
+    supabase
+      .from('organisations')
+      .select('online_payments_enabled, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix')
+      .eq('id', currentOrg.id)
+      .single()
+      .then(({ data }) => {
+        if (data) setOrgPaymentPrefs(data as any);
+      });
+  }, [currentOrg?.id]);
+
+  const onlinePaymentsEnabled = orgPaymentPrefs?.online_payments_enabled !== false;
+  const hasBankDetails = !!(orgPaymentPrefs?.bank_account_name && orgPaymentPrefs?.bank_sort_code && orgPaymentPrefs?.bank_account_number);
 
   // Get highlighted invoice from URL param
   const highlightedInvoiceId = searchParams.get('invoice');
@@ -130,7 +154,30 @@ export default function PortalInvoices() {
                   </p>
                 </div>
               </div>
-              {/* Payment button would go here when Stripe is integrated */}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Bank Transfer Details Card */}
+      {hasBankDetails && (
+        <Card className="mb-6 border-sky-200/50 dark:border-sky-800/30 bg-sky-50/50 dark:bg-sky-950/20">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <Building2 className="h-5 w-5 text-sky-600 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium text-sm mb-2">
+                  {onlinePaymentsEnabled ? 'Or pay by bank transfer' : 'Pay by bank transfer'}
+                </p>
+                <div className="text-sm space-y-1 text-muted-foreground">
+                  <p><strong>Account Name:</strong> {orgPaymentPrefs?.bank_account_name}</p>
+                  <p><strong>Sort Code:</strong> {orgPaymentPrefs?.bank_sort_code}</p>
+                  <p><strong>Account Number:</strong> {orgPaymentPrefs?.bank_account_number}</p>
+                  {orgPaymentPrefs?.bank_reference_prefix && (
+                    <p className="text-xs mt-1">Use reference: <strong>{orgPaymentPrefs.bank_reference_prefix}-[invoice number]</strong></p>
+                  )}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -174,17 +221,18 @@ export default function PortalInvoices() {
             <div>
               <h2 className="text-lg font-semibold mb-4">Outstanding</h2>
               <div className="space-y-3">
-                {outstandingInvoices.map((invoice) => (
-                  <InvoiceCard
-                    key={invoice.id}
-                    invoice={invoice}
-                    currencyCode={currentOrg?.currency_code || 'GBP'}
-                    getStatusBadge={getStatusBadge}
-                    onPay={handlePayInvoice}
-                    isPaying={payingInvoiceId === invoice.id || isPaymentLoading}
-                    isHighlighted={invoice.id === highlightedInvoiceId}
-                  />
-                ))}
+                  {outstandingInvoices.map((invoice) => (
+                    <InvoiceCard
+                      key={invoice.id}
+                      invoice={invoice}
+                      currencyCode={currentOrg?.currency_code || 'GBP'}
+                      getStatusBadge={getStatusBadge}
+                      onPay={handlePayInvoice}
+                      isPaying={payingInvoiceId === invoice.id || isPaymentLoading}
+                      isHighlighted={invoice.id === highlightedInvoiceId}
+                      showPayButton={onlinePaymentsEnabled}
+                    />
+                  ))}
               </div>
             </div>
           )}
@@ -205,6 +253,7 @@ export default function PortalInvoices() {
                     onPay={handlePayInvoice}
                     isPaying={payingInvoiceId === invoice.id || isPaymentLoading}
                     isHighlighted={invoice.id === highlightedInvoiceId}
+                    showPayButton={onlinePaymentsEnabled}
                   />
                 ))}
               </div>
@@ -232,10 +281,11 @@ interface InvoiceCardProps {
   onPay: (invoiceId: string) => void;
   isPaying: boolean;
   isHighlighted?: boolean;
+  showPayButton?: boolean;
 }
 
-function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, isHighlighted }: InvoiceCardProps) {
-  const isPayable = ['sent', 'overdue'].includes(invoice.status);
+function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, isHighlighted, showPayButton = true }: InvoiceCardProps) {
+  const isPayable = ['sent', 'overdue'].includes(invoice.status) && showPayButton;
   const isPaid = invoice.status === 'paid';
 
   return (

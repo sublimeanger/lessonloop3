@@ -1657,6 +1657,10 @@ export type Database = {
         Row: {
           address: string | null
           auto_pause_lessons_after_days: number | null
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_reference_prefix: string | null
+          bank_sort_code: string | null
           billing_approach: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures: boolean
           buffer_minutes_between_locations: number | null
@@ -1679,9 +1683,11 @@ export type Database = {
           max_students: number
           max_teachers: number
           name: string
+          online_payments_enabled: boolean | null
           org_type: Database["public"]["Enums"]["org_type"]
           overdue_reminder_days: number[] | null
           parent_reschedule_policy: string | null
+          payment_methods_enabled: string[] | null
           platform_fee_percent: number | null
           stripe_connect_account_id: string | null
           stripe_connect_onboarded_at: string | null
@@ -1699,6 +1705,10 @@ export type Database = {
         Insert: {
           address?: string | null
           auto_pause_lessons_after_days?: number | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_reference_prefix?: string | null
+          bank_sort_code?: string | null
           billing_approach?: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures?: boolean
           buffer_minutes_between_locations?: number | null
@@ -1721,9 +1731,11 @@ export type Database = {
           max_students?: number
           max_teachers?: number
           name: string
+          online_payments_enabled?: boolean | null
           org_type?: Database["public"]["Enums"]["org_type"]
           overdue_reminder_days?: number[] | null
           parent_reschedule_policy?: string | null
+          payment_methods_enabled?: string[] | null
           platform_fee_percent?: number | null
           stripe_connect_account_id?: string | null
           stripe_connect_onboarded_at?: string | null
@@ -1741,6 +1753,10 @@ export type Database = {
         Update: {
           address?: string | null
           auto_pause_lessons_after_days?: number | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_reference_prefix?: string | null
+          bank_sort_code?: string | null
           billing_approach?: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures?: boolean
           buffer_minutes_between_locations?: number | null
@@ -1763,9 +1779,11 @@ export type Database = {
           max_students?: number
           max_teachers?: number
           name?: string
+          online_payments_enabled?: boolean | null
           org_type?: Database["public"]["Enums"]["org_type"]
           overdue_reminder_days?: number[] | null
           parent_reschedule_policy?: string | null
+          payment_methods_enabled?: string[] | null
           platform_fee_percent?: number | null
           stripe_connect_account_id?: string | null
           stripe_connect_onboarded_at?: string | null
