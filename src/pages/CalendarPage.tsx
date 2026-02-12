@@ -21,8 +21,10 @@ import { ContextualHint } from '@/components/shared/ContextualHint';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Loader2, Columns3 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Loader2, Columns3, Minimize2, Users } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Toggle } from '@/components/ui/toggle';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function CalendarPage() {
   const { currentRole } = useOrg();
@@ -37,11 +39,20 @@ export default function CalendarPage() {
     return dateParam ? new Date(dateParam) : new Date();
   });
   const [view, setView] = useState<CalendarView>('stacked');
+  const [isCompact, setIsCompact] = useState(() => {
+    try { return localStorage.getItem('ll-calendar-compact') === '1'; } catch { return false; }
+  });
+  const [groupByTeacher, setGroupByTeacher] = useState(false);
   const [filters, setFilters] = useState<CalendarFilters>(() => ({
     teacher_id: searchParams.get('teacher') || null,
     location_id: null,
     room_id: null,
   }));
+
+  // Persist compact preference
+  useEffect(() => {
+    try { localStorage.setItem('ll-calendar-compact', isCompact ? '1' : '0'); } catch {}
+  }, [isCompact]);
 
   // Lesson modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -367,6 +378,40 @@ export default function CalendarPage() {
                 <List className="h-3.5 w-3.5" />
               </ToggleGroupItem>
             </ToggleGroup>
+
+            <div className="h-4 w-px bg-border mx-0.5" />
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Toggle
+                  size="sm"
+                  pressed={isCompact}
+                  onPressedChange={setIsCompact}
+                  aria-label="Compact mode"
+                  className="h-8 w-8 p-0"
+                >
+                  <Minimize2 className="h-3.5 w-3.5" />
+                </Toggle>
+              </TooltipTrigger>
+              <TooltipContent>Compact mode</TooltipContent>
+            </Tooltip>
+
+            {view === 'agenda' && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Toggle
+                    size="sm"
+                    pressed={groupByTeacher}
+                    onPressedChange={setGroupByTeacher}
+                    aria-label="Group by teacher"
+                    className="h-8 w-8 p-0"
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                  </Toggle>
+                </TooltipTrigger>
+                <TooltipContent>Group by teacher</TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
 
@@ -394,6 +439,7 @@ export default function CalendarPage() {
           lessons={lessons}
           onLessonClick={handleLessonClick}
           teacherColourMap={teacherColourMap}
+          groupByTeacher={groupByTeacher}
         />
       ) : view === 'stacked' ? (
         <StackedWeekView
@@ -408,6 +454,7 @@ export default function CalendarPage() {
             setQuickCreateOpen(true);
           }}
           isParent={isParent}
+          compact={isCompact}
         />
       ) : (
         <div data-tour="calendar-grid" data-hint="calendar-grid">
