@@ -5,10 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Sparkles, CreditCard, Clock, Check, ArrowRight, 
   Users, GraduationCap, Loader2, ExternalLink, AlertTriangle,
-  Link2, CheckCircle2, RefreshCw
+  Link2, CheckCircle2, RefreshCw, Building2, Info, Eye, Save
 } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useSubscriptionCheckout, BillingInterval } from '@/hooks/useSubscriptionCheckout';
@@ -20,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, formatLimit, TRIAL_DAYS, DB_PLAN_MAP } from '@/lib/pricing-config';
 
 // Database plan types
@@ -197,7 +202,7 @@ export function BillingTab() {
   } = useSubscription();
   const { initiateSubscription, openCustomerPortal, isLoading } = useSubscriptionCheckout();
   const { counts, usage } = useUsageCounts();
-  const { isOrgOwner, isOrgAdmin } = useOrg();
+  const { isOrgOwner, isOrgAdmin, currentOrg } = useOrg();
   const {
     connectStatus,
     isLoading: isConnectLoading,
@@ -564,6 +569,9 @@ export function BillingTab() {
         </Card>
       )}
 
+      {/* Payment Preferences */}
+      {canManageBilling && <PaymentPreferencesCard orgId={currentOrg?.id} isConnected={isConnected} />}
+
       {/* Non-admin message */}
       {!canManageBilling && (
         <Card>
@@ -575,5 +583,186 @@ export function BillingTab() {
         </Card>
       )}
     </div>
+  );
+}
+
+function PaymentPreferencesCard({ orgId, isConnected }: { orgId?: string; isConnected: boolean }) {
+  const [onlinePayments, setOnlinePayments] = useState(true);
+  const [cardEnabled, setCardEnabled] = useState(true);
+  const [bacsEnabled, setBacsEnabled] = useState(false);
+  const [bankAccountName, setBankAccountName] = useState('');
+  const [bankSortCode, setBankSortCode] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankReferencePrefix, setBankReferencePrefix] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+
+  useEffect(() => {
+    if (!orgId) return;
+    supabase
+      .from('organisations')
+      .select('online_payments_enabled, payment_methods_enabled, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix')
+      .eq('id', orgId)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setOnlinePayments(data.online_payments_enabled !== false);
+          const methods = data.payment_methods_enabled || ['card'];
+          setCardEnabled(methods.includes('card'));
+          setBacsEnabled(methods.includes('bacs_debit'));
+          setBankAccountName(data.bank_account_name || '');
+          setBankSortCode(data.bank_sort_code || '');
+          setBankAccountNumber(data.bank_account_number || '');
+          setBankReferencePrefix(data.bank_reference_prefix || '');
+        }
+        setIsLoaded(true);
+      });
+  }, [orgId]);
+
+  const handleSave = async () => {
+    if (!orgId) return;
+    setIsSaving(true);
+    const methods: string[] = [];
+    if (cardEnabled) methods.push('card');
+    if (bacsEnabled) methods.push('bacs_debit');
+
+    const { error } = await supabase
+      .from('organisations')
+      .update({
+        online_payments_enabled: onlinePayments,
+        payment_methods_enabled: methods.length > 0 ? methods : ['card'],
+        bank_account_name: bankAccountName || null,
+        bank_sort_code: bankSortCode || null,
+        bank_account_number: bankAccountNumber || null,
+        bank_reference_prefix: bankReferencePrefix || null,
+      } as any)
+      .eq('id', orgId);
+
+    setIsSaving(false);
+    if (error) {
+      toast.error('Failed to save payment preferences');
+    } else {
+      toast.success('Payment preferences saved');
+    }
+  };
+
+  if (!isLoaded) return null;
+
+  const hasBankDetails = !!(bankAccountName && bankSortCode && bankAccountNumber);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Building2 className="h-5 w-5 text-primary" />
+          Payment Preferences
+        </CardTitle>
+        <CardDescription>
+          Control how parents can pay invoices
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Online Payments Toggle */}
+        <div className="flex items-center justify-between p-4 rounded-lg border">
+          <div className="space-y-0.5">
+            <Label className="text-sm font-medium">Online Payments</Label>
+            <p className="text-xs text-muted-foreground">
+              Enable the "Pay Now" button on invoices for parents
+            </p>
+          </div>
+          <Switch checked={onlinePayments} onCheckedChange={setOnlinePayments} />
+        </div>
+
+        {/* Accepted Methods (only when online payments on + Stripe connected) */}
+        {onlinePayments && isConnected && (
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Accepted Payment Methods</Label>
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <Checkbox checked={cardEnabled} onCheckedChange={(v) => setCardEnabled(!!v)} />
+                <div>
+                  <span className="text-sm font-medium">Card</span>
+                  <span className="text-xs text-muted-foreground ml-2">Visa, Mastercard, etc.</span>
+                </div>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <Checkbox checked={bacsEnabled} onCheckedChange={(v) => setBacsEnabled(!!v)} />
+                <div>
+                  <span className="text-sm font-medium">Bacs Direct Debit</span>
+                  <span className="text-xs text-muted-foreground ml-2">UK bank account payments</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        )}
+
+        <Separator />
+
+        {/* Bank Transfer Details */}
+        <div className="space-y-4">
+          <div>
+            <Label className="text-sm font-medium">Bank Transfer Details</Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              Shown on PDF invoices and emails so parents can pay by bank transfer
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="bank-name" className="text-xs">Account Name</Label>
+              <Input id="bank-name" placeholder="e.g. Mrs J Smith" value={bankAccountName} onChange={(e) => setBankAccountName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sort-code" className="text-xs">Sort Code</Label>
+              <Input id="sort-code" placeholder="e.g. 12-34-56" value={bankSortCode} onChange={(e) => setBankSortCode(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="account-number" className="text-xs">Account Number</Label>
+              <Input id="account-number" placeholder="e.g. 12345678" value={bankAccountNumber} onChange={(e) => setBankAccountNumber(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ref-prefix" className="text-xs">Reference Prefix</Label>
+              <Input id="ref-prefix" placeholder="e.g. LESSON" value={bankReferencePrefix} onChange={(e) => setBankReferencePrefix(e.target.value)} />
+            </div>
+          </div>
+        </div>
+
+        {/* Info banner */}
+        {!isConnected && hasBankDetails && (
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-800/30">
+            <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+            <p className="text-xs text-muted-foreground">
+              Parents will see your bank details on invoices for manual payment. Connect Stripe above to also offer online card payments.
+            </p>
+          </div>
+        )}
+
+        {/* Preview toggle */}
+        {hasBankDetails && (
+          <div>
+            <Button variant="ghost" size="sm" className="gap-2 text-xs" onClick={() => setShowPreview(!showPreview)}>
+              <Eye className="h-3.5 w-3.5" />
+              {showPreview ? 'Hide Preview' : 'Preview on Invoice'}
+            </Button>
+            {showPreview && (
+              <div className="mt-3 p-4 rounded-lg bg-sky-50/80 dark:bg-sky-950/20 border border-sky-200/50 dark:border-sky-800/30">
+                <p className="text-sm font-semibold text-sky-900 dark:text-sky-200 mb-2">Payment Details</p>
+                <div className="text-xs space-y-1 text-sky-800 dark:text-sky-300">
+                  <p><strong>Account Name:</strong> {bankAccountName}</p>
+                  <p><strong>Sort Code:</strong> {bankSortCode}</p>
+                  <p><strong>Account Number:</strong> {bankAccountNumber}</p>
+                  {bankReferencePrefix && <p><strong>Reference:</strong> {bankReferencePrefix}-LL-2025-00001</p>}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <Button onClick={handleSave} disabled={isSaving} className="gap-2">
+          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          Save Payment Preferences
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

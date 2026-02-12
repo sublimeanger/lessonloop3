@@ -7,12 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2, Loader2, Gift } from 'lucide-react';
+import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2, Loader2, Gift, Building2 } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useInvoice, useUpdateInvoiceStatus } from '@/hooks/useInvoices';
 import { useStripePayment } from '@/hooks/useStripePayment';
 import { useInvoicePdf } from '@/hooks/useInvoicePdf';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
 import { SendInvoiceModal } from '@/components/invoices/SendInvoiceModal';
@@ -74,6 +75,21 @@ export default function InvoiceDetail() {
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
   const [voidConfirmOpen, setVoidConfirmOpen] = useState(false);
+  const [orgPaymentPrefs, setOrgPaymentPrefs] = useState<any>(null);
+
+  // Fetch org payment preferences for parent view
+  useEffect(() => {
+    if (!currentOrg?.id || !isParent) return;
+    supabase
+      .from('organisations')
+      .select('online_payments_enabled, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix')
+      .eq('id', currentOrg.id)
+      .single()
+      .then(({ data }) => { if (data) setOrgPaymentPrefs(data); });
+  }, [currentOrg?.id, isParent]);
+
+  const onlinePaymentsEnabled = orgPaymentPrefs?.online_payments_enabled !== false;
+  const hasBankDetails = !!(orgPaymentPrefs?.bank_account_name && orgPaymentPrefs?.bank_sort_code && orgPaymentPrefs?.bank_account_number);
 
   // Handle payment success/cancel URL params
   useEffect(() => {
@@ -174,7 +190,7 @@ export default function InvoiceDetail() {
                   )}
                   {isPdfLoading ? 'Generating...' : 'Download PDF'}
                 </Button>
-                {invoice.status !== 'paid' && invoice.status !== 'void' && (
+                {invoice.status !== 'paid' && invoice.status !== 'void' && onlinePaymentsEnabled && (
                   <Button 
                     className="gap-2" 
                     onClick={handlePayNow}
@@ -372,6 +388,30 @@ export default function InvoiceDetail() {
         </div>
 
         <div className="space-y-6">
+          {/* Bank Transfer Details for parents */}
+          {isParent && hasBankDetails && (
+            <Card className="border-sky-200/50 dark:border-sky-800/30 bg-sky-50/50 dark:bg-sky-950/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-sky-600" />
+                  {onlinePaymentsEnabled ? 'Or Pay by Bank Transfer' : 'Pay by Bank Transfer'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm space-y-1 text-muted-foreground">
+                  <p><strong>Account Name:</strong> {orgPaymentPrefs.bank_account_name}</p>
+                  <p><strong>Sort Code:</strong> {orgPaymentPrefs.bank_sort_code}</p>
+                  <p><strong>Account Number:</strong> {orgPaymentPrefs.bank_account_number}</p>
+                  {orgPaymentPrefs.bank_reference_prefix && (
+                    <p className="mt-2 text-xs">
+                      Reference: <strong>{orgPaymentPrefs.bank_reference_prefix}-{invoice.invoice_number}</strong>
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Payment Status</CardTitle>

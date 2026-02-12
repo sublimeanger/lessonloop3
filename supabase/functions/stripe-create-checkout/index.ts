@@ -96,12 +96,17 @@ serve(async (req) => {
     // Get currency code
     const currencyCode = ((invoice.organisations as any)?.currency_code || "GBP").toLowerCase();
 
-    // Fetch org's Stripe Connect info
+    // Fetch org's Stripe Connect info and payment preferences
     const { data: orgConnect } = await supabase
       .from("organisations")
-      .select("stripe_connect_account_id, stripe_connect_status, platform_fee_percent")
+      .select("stripe_connect_account_id, stripe_connect_status, platform_fee_percent, payment_methods_enabled, online_payments_enabled")
       .eq("id", invoice.org_id)
       .single();
+
+    // Check if online payments are enabled
+    if (orgConnect && orgConnect.online_payments_enabled === false) {
+      throw new Error("Online payments are disabled for this organisation. Please pay by bank transfer.");
+    }
 
     const hasConnectedAccount = orgConnect?.stripe_connect_account_id && orgConnect?.stripe_connect_status === "active";
 
@@ -137,7 +142,9 @@ serve(async (req) => {
     const sessionParams: any = {
       customer: customerId,
       customer_email: customerId ? undefined : payerEmail,
-      payment_method_types: ["card"],
+      payment_method_types: orgConnect?.payment_methods_enabled?.length > 0
+        ? orgConnect.payment_methods_enabled
+        : ["card"],
       mode: "payment",
       line_items: [
         {
