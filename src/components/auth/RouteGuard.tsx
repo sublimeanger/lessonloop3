@@ -2,8 +2,8 @@ import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
-import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AppShellSkeleton } from '@/components/shared/LoadingState';
 
 interface RouteGuardProps {
   children: ReactNode;
@@ -19,7 +19,6 @@ function AuthLoading({ onLogout, onForceRedirect }: { onLogout?: () => void; onF
   
   useEffect(() => {
     const escapeTimer = setTimeout(() => setShowEscape(true), 2000);
-    // Force redirect after 8 seconds to prevent infinite hang
     const forceTimer = setTimeout(() => setForceTimeout(true), 8000);
     return () => {
       clearTimeout(escapeTimer);
@@ -27,7 +26,6 @@ function AuthLoading({ onLogout, onForceRedirect }: { onLogout?: () => void; onF
     };
   }, []);
 
-  // After 8 seconds, force redirect to onboarding as safe default
   useEffect(() => {
     if (forceTimeout && onForceRedirect) {
       console.warn('[RouteGuard] Force timeout reached - redirecting');
@@ -36,13 +34,14 @@ function AuthLoading({ onLogout, onForceRedirect }: { onLogout?: () => void; onF
   }, [forceTimeout, onForceRedirect]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      <p className="text-sm text-muted-foreground">Loading...</p>
+    <div className="relative">
+      <AppShellSkeleton />
       {showEscape && onLogout && (
-        <Button variant="ghost" size="sm" onClick={onLogout} className="mt-4">
-          Logout and try again
-        </Button>
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
+          <Button variant="secondary" size="sm" onClick={onLogout} className="shadow-lg">
+            Logout and try again
+          </Button>
+        </div>
       )}
     </div>
   );
