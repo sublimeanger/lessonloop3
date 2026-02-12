@@ -1,32 +1,26 @@
 
-# Stripe Payment Integration -- Completing the Last Mile
 
-## Current State
-Great news -- the Stripe payment integration is **95% complete**. The code for creating checkout sessions, handling webhooks, recording payments, and updating invoice statuses is already built and wired into the Parent Portal UI with "Pay Now" buttons.
+# Fix Slow Auth Loading State
 
-## What's Missing
-There is one configuration gap preventing it from working:
+## Problem
+When the app loads behind authentication, users see a bare spinner with "Loading..." text, and after 2 seconds a "Logout and try again" button appears. This feels broken and slow, even though auth typically resolves in 1-3 seconds.
 
-The two Stripe-related backend functions (`stripe-create-checkout` and `stripe-webhook`) are not registered in the backend configuration file. This means they will reject requests due to default security checks that don't apply to them (the checkout function handles its own authentication, and the webhook receives calls directly from Stripe with no user token).
+## Solution
+Replace the `AuthLoading` component in `RouteGuard.tsx` with a proper app-shell skeleton that mimics the real layout (sidebar + header + content area), giving users an instant sense of the app loading rather than a blank screen with a spinner.
 
-## Plan
+## Changes
 
-### Step 1: Register backend functions in config
-Add `stripe-create-checkout` and `stripe-webhook` to `supabase/config.toml` with `verify_jwt = false` so they can handle authentication themselves.
+### File: `src/components/shared/LoadingState.tsx`
+- Add a new `AppShellSkeleton` export that renders a full-page skeleton mimicking the AppLayout:
+  - Left sidebar column with skeleton nav items (logo placeholder, 6 menu item skeletons)
+  - Top header bar with skeleton breadcrumb and avatar
+  - Main content area with 4 stat card skeletons and a list of card skeletons
+- Uses existing `Skeleton` component for visual consistency
 
-### Step 2: Deploy and verify
-Deploy both functions and test the end-to-end flow:
-- Parent clicks "Pay Now" on an invoice
-- Backend creates a Stripe Checkout session
-- Parent is redirected to Stripe's hosted payment page
-- After payment, Stripe sends a webhook notification
-- Backend records the payment and marks the invoice as paid
-- Parent is redirected back to the portal with a success message
+### File: `src/components/auth/RouteGuard.tsx`
+- Replace the `AuthLoading` component's current spinner-on-blank-page with `AppShellSkeleton`
+- The "Logout and try again" button (2s delay) and 8s force redirect logic stay, but render as a floating overlay on the skeleton rather than replacing the whole screen
+- Result: users see a professional loading state that looks like the app is about to appear, not a broken blank page
 
-## Technical Details
+No auth logic, timing, or routing changes -- purely a visual upgrade.
 
-**File: `supabase/config.toml`**
-- Add `[functions.stripe-create-checkout]` with `verify_jwt = false` (function validates auth via Authorization header internally)
-- Add `[functions.stripe-webhook]` with `verify_jwt = false` (Stripe sends requests with signature verification, not JWT)
-
-No other code changes are needed -- the edge functions, hooks, UI components, database tables, and RLS policies are all already in place.
