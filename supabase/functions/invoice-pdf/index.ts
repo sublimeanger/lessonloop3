@@ -1,7 +1,9 @@
 // Invoice PDF generator
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
-Deno.serve(async (req: Request): Promise<Response> => {
+serve(async (req: Request): Promise<Response> => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
 
@@ -17,10 +19,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Dynamic import of pdf-lib to avoid potential deployment issues
-    const { PDFDocument, rgb, StandardFonts } = await import("https://esm.sh/pdf-lib@1.17.1");
-    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.45.0");
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -40,6 +38,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
       const body = await req.json();
       invoiceId = body.invoiceId;
     }
+
+    // Lazy-load pdf-lib only when actually generating a PDF
+    const { PDFDocument, rgb, StandardFonts } = await import("https://esm.sh/pdf-lib@1.17.1?target=deno");
 
     if (!invoiceId) {
       // Fallback: generate a test PDF
@@ -123,7 +124,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       { label: "Due Date", value: new Date(invoice.due_date).toLocaleDateString("en-GB") },
     ];
 
-    details.forEach(({ label, value }) => {
+    details.forEach(({ label, value }: { label: string; value: string }) => {
       page.drawText(label, { x: leftMargin, y, size: 9, font: helveticaBold, color: rgb(0.4, 0.4, 0.4) });
       page.drawText(value, { x: leftMargin + 100, y, size: 9, font: helvetica, color: rgb(0.1, 0.1, 0.1) });
       y -= 16;
@@ -144,7 +145,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     y -= 22;
 
     // Line items
-    const items = invoice.invoice_items || [];
+    const items = (invoice.invoice_items || []) as any[];
     items.forEach((item: any) => {
       const desc = item.description?.substring(0, 50) || "Item";
       page.drawText(desc, { x: leftMargin + 8, y, size: 9, font: helvetica, color: rgb(0.1, 0.1, 0.1) });
