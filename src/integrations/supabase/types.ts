@@ -1682,6 +1682,10 @@ export type Database = {
           org_type: Database["public"]["Enums"]["org_type"]
           overdue_reminder_days: number[] | null
           parent_reschedule_policy: string | null
+          platform_fee_percent: number | null
+          stripe_connect_account_id: string | null
+          stripe_connect_onboarded_at: string | null
+          stripe_connect_status: string | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_plan: Database["public"]["Enums"]["subscription_plan"]
@@ -1720,6 +1724,10 @@ export type Database = {
           org_type?: Database["public"]["Enums"]["org_type"]
           overdue_reminder_days?: number[] | null
           parent_reschedule_policy?: string | null
+          platform_fee_percent?: number | null
+          stripe_connect_account_id?: string | null
+          stripe_connect_onboarded_at?: string | null
+          stripe_connect_status?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
@@ -1758,6 +1766,10 @@ export type Database = {
           org_type?: Database["public"]["Enums"]["org_type"]
           overdue_reminder_days?: number[] | null
           parent_reschedule_policy?: string | null
+          platform_fee_percent?: number | null
+          stripe_connect_account_id?: string | null
+          stripe_connect_onboarded_at?: string | null
+          stripe_connect_status?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
