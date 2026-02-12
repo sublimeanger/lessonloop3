@@ -279,12 +279,12 @@ export default function PortalSchedule() {
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center mb-6">
         {children && children.length > 1 && (
-          <Select value={studentFilter} onValueChange={handleStudentChange}>
+          <Select value={studentFilter || '__all__'} onValueChange={(v) => handleStudentChange(v === '__all__' ? '' : v)}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="All children" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All children</SelectItem>
+              <SelectItem value="__all__">All children</SelectItem>
               {children.map((child) => (
                 <SelectItem key={child.id} value={child.id}>
                   {child.first_name} {child.last_name}
