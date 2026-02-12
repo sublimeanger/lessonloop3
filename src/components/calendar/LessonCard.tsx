@@ -71,6 +71,35 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
 
   // ─── Stacked variant — compact coloured cards for week view ───
   if (variant === 'stacked') {
+    // Ultra-compact: single line with time + first student name
+    if (compact) {
+      return (
+        <div
+          onClick={onClick}
+          className={cn(
+            'px-1 py-px cursor-pointer transition-colors rounded-sm flex items-center gap-1 min-h-0',
+            colour.bgLight,
+            isCancelled && 'opacity-40'
+          )}
+        >
+          <span className={cn(
+            'text-[9px] tabular-nums shrink-0',
+            colour.text,
+            isCancelled && 'line-through'
+          )}>
+            {format(startTime, 'HH:mm')}
+          </span>
+          <span className={cn(
+            'text-[10px] font-semibold truncate',
+            isCancelled && 'line-through text-muted-foreground'
+          )}>
+            {studentShort || lesson.title}
+          </span>
+          {isRecurring && <Repeat className="h-2 w-2 shrink-0 text-muted-foreground" />}
+        </div>
+      );
+    }
+
     return (
       <div
         onClick={onClick}

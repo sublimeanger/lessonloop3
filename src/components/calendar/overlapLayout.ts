@@ -26,7 +26,7 @@ export function computeOverlapLayout(
   lessons: LessonWithDetails[],
   hourHeight: number,
   startHour: number,
-  maxColumns: number = 3
+  maxColumns: number = 4
 ): OverlapResult {
   const positions = new Map<string, LayoutPosition>();
   const overflowBuckets = new Map<string, { lessons: LessonWithDetails[]; top: number; height: number }>();

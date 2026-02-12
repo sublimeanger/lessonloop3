@@ -330,8 +330,18 @@ export function WeekTimeGrid({
                   <div className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">
                     {format(day, 'EEE')}
                   </div>
-                  <div className={cn('text-lg font-bold leading-none', today && 'text-primary')}>
-                    {format(day, 'd')}
+                  <div className="flex items-center justify-center gap-1">
+                    <span className={cn('text-lg font-bold leading-none', today && 'text-primary')}>
+                      {format(day, 'd')}
+                    </span>
+                    {(() => {
+                      const dayCount = lessons.filter((l) => isSameDay(parseISO(l.start_at), day)).length;
+                      return dayCount > 10 ? (
+                        <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 leading-none">
+                          {dayCount}
+                        </Badge>
+                      ) : null;
+                    })()}
                   </div>
                   {closure && (
                     <Badge
@@ -370,7 +380,7 @@ export function WeekTimeGrid({
                 const dayLessons = lessons.filter((l) => isSameDay(parseISO(l.start_at), day));
                 const closure = getClosureForDay(day);
                 const today = isToday(day);
-                const { positions: overlapPositions, overflowBuckets } = computeOverlapLayout(dayLessons, HOUR_HEIGHT, START_HOUR, 3);
+                const { positions: overlapPositions, overflowBuckets } = computeOverlapLayout(dayLessons, HOUR_HEIGHT, START_HOUR, 4);
 
                 return (
                   <div
@@ -467,7 +477,7 @@ export function WeekTimeGrid({
 
                     {/* Overflow "+N more" pills */}
                     {Array.from(overflowBuckets.entries()).map(([bucketKey, bucket]) => {
-                      const maxCols = 3;
+                      const maxCols = 4;
                       const pillCol = maxCols - 1;
                       const widthPercent = 100 / maxCols;
                       const leftPercent = pillCol * widthPercent;
