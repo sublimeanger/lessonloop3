@@ -1,104 +1,100 @@
 
 
-# Stripe Connect Integration
+# Best-in-Class UK Payment Collection
 
 ## Overview
-Enable each academy/teacher to connect their own Stripe account so parent payments go directly to them, with LessonLoop optionally taking a platform fee. This uses **Stripe Connect (Standard)** -- the simplest model where connected accounts manage their own Stripe dashboard.
+Close the gaps identified in the competitive analysis to make LessonLoop's billing the most flexible and seamless option for UK music teachers. This plan adds Bacs Direct Debit support, manual bank transfer details on invoices, per-org payment preferences, and proper opt-out flow.
 
-## How It Works (User Journey)
-
-1. **Owner/Admin** goes to Settings > Billing and sees a new "Payment Collection" section
-2. They click "Connect Stripe Account" which redirects them to Stripe's hosted onboarding
-3. After completing onboarding, they're redirected back and their account is linked
-4. When a **parent** clicks "Pay Now" on an invoice, the checkout session is created on the connected account (or via `transfer_data`) so funds go directly to the teacher/academy
-5. LessonLoop can optionally collect a platform fee (configurable, default 0%)
-
-## Technical Changes
+## Changes
 
 ### 1. Database Migration
 
-Add columns to the `organisations` table:
+Add payment preference fields to `organisations`:
 
 ```text
-stripe_connect_account_id  TEXT     -- Stripe connected account ID (acct_xxx)
-stripe_connect_status      TEXT     -- 'pending', 'active', 'restricted', 'disabled'
-stripe_connect_onboarded_at TIMESTAMPTZ
-platform_fee_percent       NUMERIC  DEFAULT 0  -- optional platform fee (0-10%)
+payment_methods_enabled   TEXT[]    DEFAULT '{card}'  
+  -- Array of enabled methods: 'card', 'bacs_debit'
+  -- Controls what Stripe Checkout offers parents
+
+bank_account_name         TEXT      -- e.g. "Mrs J Smith" or "ABC Music Academy"
+bank_sort_code            TEXT      -- e.g. "12-34-56"
+bank_account_number       TEXT      -- e.g. "12345678"
+bank_reference_prefix     TEXT      -- e.g. "LESSON" (auto-appends invoice number)
+
+online_payments_enabled   BOOLEAN   DEFAULT true
+  -- When false, hides "Pay Now" buttons entirely
+  -- Invoice emails show bank details instead of payment link
 ```
 
-### 2. New Edge Function: `stripe-connect-onboard`
+### 2. Settings UI: Payment Preferences Card
 
-- Authenticated endpoint (owner/admin only)
-- Creates a Stripe Connect account via `stripe.accounts.create({ type: 'standard' })`
-- Generates an Account Link (`stripe.accountLinks.create`) for onboarding
-- Saves the `stripe_connect_account_id` to the organisation
-- Returns the onboarding URL for redirect
+Add a new "Payment Preferences" card in `BillingTab.tsx` (below the Stripe Connect card):
 
-### 3. New Edge Function: `stripe-connect-callback`
+- **Online Payments toggle** -- enable/disable the "Pay Now" button across the portal
+- **Accepted Methods** -- checkboxes for "Card" and "Bacs Direct Debit" (only shown when online payments are enabled and Stripe is connected)
+- **Bank Transfer Details** section -- fields for account name, sort code, account number, reference prefix
+- **Preview** -- shows how bank details will appear on invoices
+- When Stripe Connect is not set up but bank details are entered, show an info banner: "Parents will see your bank details on invoices for manual payment"
 
-- Handles the return redirect after Stripe onboarding
-- Checks account status via `stripe.accounts.retrieve`
-- Updates `stripe_connect_status` to 'active' if `charges_enabled` and `payouts_enabled`
-- Redirects to Settings > Billing with a success/error parameter
+### 3. Stripe Checkout: Add Bacs Direct Debit
 
-### 4. New Edge Function: `stripe-connect-status`
+Modify `stripe-create-checkout` edge function:
+- Fetch `payment_methods_enabled` and `online_payments_enabled` from the org
+- If `online_payments_enabled` is false, return an error (the frontend should not call this)
+- Set `payment_method_types` dynamically from `payment_methods_enabled` instead of hardcoded `["card"]`
+- When `bacs_debit` is included, Stripe handles the mandate collection automatically
 
-- Lightweight endpoint to check current Connect account status
-- Used by the frontend to refresh status and show dashboard link
+### 4. Parent Portal: Conditional Pay Button + Bank Details
 
-### 5. Modify: `stripe-create-checkout` Edge Function
+Modify `PortalInvoices.tsx` and `InvoiceDetail.tsx`:
+- Fetch the org's `online_payments_enabled` flag
+- If **online payments disabled**: hide "Pay Now" button, show bank transfer details card instead
+- If **online payments enabled**: show "Pay Now" as today (Stripe handles method selection)
+- Always show bank transfer details (if configured) as a secondary option below the Pay Now button, with text like "Or pay by bank transfer" with sort code and account number
 
-- Before creating a checkout session, look up the org's `stripe_connect_account_id`
-- If connected: use `payment_intent_data.transfer_data` to route funds to the connected account with an optional `application_fee_amount`
-- If not connected: fall back to current behaviour (platform account receives funds)
+### 5. Invoice Email: Dynamic CTA
 
-### 6. Modify: `stripe-webhook` Edge Function
+Modify `send-invoice-email` edge function:
+- Fetch org payment preferences
+- If online payments enabled: show "View and Pay Invoice" CTA button (as today)
+- If online payments disabled: replace CTA with bank transfer details block showing sort code, account number, and reference
+- If both: show "View and Pay Invoice" button plus bank details below
 
-- Handle `account.updated` events to keep `stripe_connect_status` in sync
-- When a connected account becomes restricted or disabled, update the org accordingly
+### 6. PDF Invoice: Bank Details Footer
 
-### 7. Frontend: New "Payment Collection" Card in BillingTab
+Modify `invoice-pdf` edge function:
+- If bank details are configured, add a "Payment Details" section at the bottom of the PDF:
+  - Account Name, Sort Code, Account Number
+  - Reference: `{prefix}-{invoice_number}`
+- This appears regardless of whether online payments are enabled (parents always have the option)
 
-Add a card in `BillingTab.tsx` below the subscription section:
+### 7. Platform Fee Decision
 
-- **Not connected state**: Shows explanation + "Connect Stripe Account" button
-- **Pending state**: Shows "Complete Setup" button (generates new account link)
-- **Connected state**: Shows green badge, "View Stripe Dashboard" link, and optional disconnect
-- Only visible to owner/admin roles
+No code change needed -- the `platform_fee_percent` column already exists and defaults to 0%. The `stripe-create-checkout` function already calculates and applies `application_fee_amount` when the value is above 0. This can be set per-org via the database if needed in future. For now, **LessonLoop takes 0% of parent payments** -- revenue comes purely from subscription fees.
 
-### 8. Frontend: Hook `useStripeConnect`
-
-New hook providing:
-- `connectStatus` -- current connect state from the org
-- `startOnboarding()` -- calls the onboard edge function and redirects
-- `refreshStatus()` -- checks current status
-- `dashboardUrl` -- link to Stripe Express Dashboard
-
-### 9. Config Updates
-
-Register new edge functions in `supabase/config.toml`:
-- `stripe-connect-onboard` with `verify_jwt = false` (handles auth internally)
-- `stripe-connect-callback` with `verify_jwt = false` (redirect handler)
-- `stripe-connect-status` with `verify_jwt = false`
-
-### Files Summary
+## Files Summary
 
 | Action | File |
 |--------|------|
-| Create | `supabase/functions/stripe-connect-onboard/index.ts` |
-| Create | `supabase/functions/stripe-connect-callback/index.ts` |
-| Create | `supabase/functions/stripe-connect-status/index.ts` |
-| Create | `src/hooks/useStripeConnect.ts` |
-| Modify | `supabase/functions/stripe-create-checkout/index.ts` (add transfer_data) |
-| Modify | `supabase/functions/stripe-webhook/index.ts` (add account.updated handler) |
-| Modify | `src/components/settings/BillingTab.tsx` (add Payment Collection card) |
-| Modify | `supabase/config.toml` (register new functions) |
-| Migration | Add columns to `organisations` table |
+| Migration | Add columns to `organisations` |
+| Modify | `src/components/settings/BillingTab.tsx` (payment preferences card) |
+| Modify | `supabase/functions/stripe-create-checkout/index.ts` (dynamic payment methods) |
+| Modify | `src/pages/portal/PortalInvoices.tsx` (conditional pay/bank details) |
+| Modify | `src/pages/InvoiceDetail.tsx` (conditional pay/bank details) |
+| Modify | `supabase/functions/send-invoice-email/index.ts` (dynamic CTA) |
+| Modify | `supabase/functions/invoice-pdf/index.ts` (bank details footer) |
 
-### Security Considerations
+## Competitor Advantage After Implementation
 
-- Only owner/admin can initiate Connect onboarding (verified server-side)
-- The connected account ID is validated before creating checkout sessions
-- Platform fee is stored server-side and cannot be manipulated by clients
-- RLS on `organisations` already protects the new columns
+| Feature | MyMusicStaff | LessonLoop |
+|---------|-------------|------------|
+| Card payments | Yes (Stripe/PayPal) | Yes (Stripe) |
+| Bacs Direct Debit | No | **Yes** |
+| Bank details on invoices | Basic | **Rich (PDF + email + portal)** |
+| Payment method preferences | No | **Yes (per-org toggle)** |
+| Opt-out of online payments | Basic | **Yes (graceful fallback to bank details)** |
+| Platform fee on payments | N/A | **0% (subscription model)** |
+| Actionable email CTAs | No | **Yes (View and Pay)** |
+| Parent self-service portal | Basic | **Full portal with history** |
 
+This makes LessonLoop the most flexible payment collection system in the UK music teaching market -- supporting card, Bacs Direct Debit, and manual bank transfer, with per-organisation control over what's offered.
