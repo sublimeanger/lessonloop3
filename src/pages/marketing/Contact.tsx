@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
-import { Mail, MapPin, MessageSquare, Clock, HelpCircle, Loader2, CheckCircle } from "lucide-react";
+import { MapPin, MessageSquare, Clock, HelpCircle, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,13 +12,6 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
 const contactMethods = [
-  {
-    icon: Mail,
-    title: "Email Us",
-    description: "Get a response within 24 hours",
-    value: "hello@lessonloop.net",
-    action: "mailto:hello@lessonloop.net",
-  },
   {
     icon: MessageSquare,
     title: "Live Chat",
@@ -127,7 +120,7 @@ export default function Contact() {
       {/* Contact Methods */}
       <section className="py-16 bg-background">
         <div className="container mx-auto px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <div className="grid gap-6 max-w-md mx-auto">
             {contactMethods.map((method, index) => (
               <motion.a
                 key={method.title}
