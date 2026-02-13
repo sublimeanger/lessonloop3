@@ -88,7 +88,7 @@ export function KickstarterHero() {
             className="inline-flex items-center gap-2 bg-coral/20 backdrop-blur-xl border border-coral/30 rounded-full px-5 py-2.5 mb-8"
           >
             <Rocket className="w-4 h-4 text-coral-light" />
-            <span className="text-coral-light text-sm font-semibold">Coming to Kickstarter · June 2026</span>
+            <span className="text-coral-light text-sm font-semibold">Coming to Kickstarter · Date TBC</span>
           </motion.div>
 
           {/* Headline */}
@@ -127,7 +127,7 @@ export function KickstarterHero() {
             transition={{ delay: 1 }}
             className="mt-12"
           >
-            <p className="text-white/40 text-sm uppercase tracking-widest mb-4 font-medium">Campaign launches in</p>
+            <p className="text-white/40 text-sm uppercase tracking-widest mb-4 font-medium">30-day campaign · launching soon</p>
             <CountdownTimer />
           </motion.div>
 
