@@ -1,76 +1,57 @@
 
 
-# Fix Invoice PDF Generation -- World-Class Reliability
+# AI Chat Widget + Contact Form Updates
 
-## Problem
-The `invoice-pdf` edge function returns a persistent 404 because `pdf-lib` (via any import method -- static, dynamic, esm.sh, npm:) crashes the Deno edge runtime during boot. This is a known incompatibility. No amount of import tweaking will fix it.
+## Overview
 
-## Solution: Build PDFs from Raw PDF Specification
+Add a floating AI chat widget to all marketing pages where visitors can ask questions about LessonLoop and get instant answers. Also update the contact form to remove telephone numbers and forward submissions to jamie@searchflare.co.uk with "LessonLoop enquiry" as the subject.
 
-Replace `pdf-lib` with a zero-dependency, hand-crafted PDF generator using the raw PDF 1.4 specification. PDF is a text-based format at its core -- objects, streams, and cross-reference tables. We can construct professional invoices entirely from string concatenation with no external library.
+## What Changes
 
-This approach:
-- Has zero external dependencies (nothing to crash)
-- Is fully compatible with every Deno/edge runtime
-- Produces valid, standards-compliant PDF 1.4 files
-- Supports text, fonts (Helvetica/Helvetica-Bold built into every PDF reader), colours, and rectangles
+### 1. New AI Chat Edge Function (`supabase/functions/marketing-chat/index.ts`)
+- Backend function that calls Lovable AI (Gemini 3 Flash) with a comprehensive system prompt
+- System prompt contains all LessonLoop knowledge: pricing (Teacher £12/mo, Studio £29/mo, Agency £79/mo), features, FAQs, trial info, security/GDPR details
+- No authentication required (public endpoint for marketing visitors)
+- Streams responses back via SSE for real-time typing effect
 
-## What the PDF Will Include
+### 2. New Floating Chat Component (`src/components/marketing/MarketingChatWidget.tsx`)
+- Floating button (bottom-right corner) with a chat bubble icon
+- Opens a chat panel with message history, input field, and streaming AI responses
+- Markdown rendering for AI responses
+- Branded with LessonLoop styling (teal accent, clean design)
+- Mobile-responsive (full-width on small screens, fixed-width panel on desktop)
+- Persists within session (messages kept in React state)
+- Suggested starter questions ("What plans do you offer?", "Is there a free trial?", "How does scheduling work?")
 
-- Organisation name, address, VAT number (header)
-- "INVOICE" title with invoice number, dates, bill-to
-- Line items table (description, qty, rate, amount)
-- Subtotal, VAT, make-up credit, total
-- "PAID" watermark when applicable
-- Bank transfer details footer (Account Name, Sort Code, Account Number, Reference)
-- Notes section
+### 3. Update MarketingLayout (`src/components/layout/MarketingLayout.tsx`)
+- Add the chat widget so it appears on every marketing page
 
-## Technical Approach
+### 4. Update Contact Page (`src/pages/marketing/Contact.tsx`)
+- Remove the "Call Us" card with the phone number from the contact methods array
+- Keep only Email and Live Chat contact methods (2-column grid)
 
-### Raw PDF Structure
-A PDF file is built from numbered objects:
+### 5. Update Contact Edge Function (`supabase/functions/send-contact-message/index.ts`)
+- Change `RECIPIENT_EMAIL` from `hello@lessonloop.net` to `jamie@searchflare.co.uk`
+- Change subject line format to `LessonLoop enquiry` (fixed subject, with original subject/name in the body)
 
-```text
-%PDF-1.4
-1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
-2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
-3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 5 0 R /Resources << /Font << /F1 4 0 R >> >> >> endobj
-4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj
-5 0 obj << /Length {n} >> stream ... endstream endobj
-xref
-0 6
-trailer << /Size 6 /Root 1 0 R >>
-startxref {offset}
-%%EOF
-```
+## Technical Details
 
-The content stream uses PDF operators: `BT` (begin text), `Tf` (set font), `Td` (move cursor), `Tj` (show text), `ET` (end text), `re` (rectangle), `rg`/`RG` (colour).
+### AI System Prompt Knowledge Base
+The system prompt will be embedded in the edge function and will cover:
+- All three pricing plans with exact prices, limits, and features (sourced from `pricing-config.ts`)
+- Trial details (30 days, no credit card)
+- FAQs from the pricing page
+- Core features: scheduling, invoicing, parent portal, LoopAssist AI, practice tracking, resources
+- UK-centric defaults (GBP, DD/MM/YYYY, VAT optional, term calendar)
+- Security and GDPR compliance
+- Supported user types (solo teachers, academies, agencies)
+- Guidance to direct complex queries to the contact form
 
-### Helper Functions
-Build small utility functions:
-- `pdfString(text)` -- escape parentheses and backslashes
-- `addObject(content)` -- track object offsets for the xref table
-- `buildContentStream(invoice, org)` -- generate all drawing commands
-- `buildPdf(objects)` -- assemble the final file with correct byte offsets
+### SSE Streaming on Frontend
+- Uses the same proven SSE parsing pattern already used by `useLoopAssist.ts`
+- Token-by-token rendering with buffer management
+- Handles `[DONE]`, CRLF, partial JSON safely
 
-### Files Changed
-
-| File | Change |
-|------|--------|
-| `supabase/functions/invoice-pdf/index.ts` | Complete rewrite: remove pdf-lib, use raw PDF construction |
-
-No other files change. The function signature, URL, and response format remain identical.
-
-### Verification Plan
-1. Deploy the function
-2. Call `/invoice-pdf?health=true` to confirm it boots
-3. Call `/invoice-pdf` (no invoiceId) to get a test PDF
-4. Call `/invoice-pdf?invoiceId={real-id}` with auth to generate a real invoice PDF
-
-### Why This Is World-Class
-- Zero runtime dependencies = zero deployment failures
-- Every PDF reader (Chrome, Safari, Adobe, Preview) supports PDF 1.4
-- Bank details footer ensures parents always have payment info
-- Professional layout matching the current design spec
-- Instant deployment with no esm.sh/npm resolution delays
+### Edge Function Config
+- Add `marketing-chat` to `supabase/config.toml` with `verify_jwt = false` (public endpoint)
 
