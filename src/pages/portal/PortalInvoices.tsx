@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,11 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Receipt, Loader2, Download, CreditCard, AlertCircle, CheckCircle, Building2 } from 'lucide-react';
+import { Receipt, Loader2, Download, CreditCard, AlertCircle, CheckCircle, Building2, FileDown } from 'lucide-react';
 import { format, parseISO, isBefore, startOfToday } from 'date-fns';
 import { useOrg } from '@/contexts/OrgContext';
 import { useParentInvoices } from '@/hooks/useParentPortal';
 import { useStripePayment } from '@/hooks/useStripePayment';
+import { useInvoicePdf } from '@/hooks/useInvoicePdf';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -287,6 +288,7 @@ interface InvoiceCardProps {
 function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, isHighlighted, showPayButton = true }: InvoiceCardProps) {
   const isPayable = ['sent', 'overdue'].includes(invoice.status) && showPayButton;
   const isPaid = invoice.status === 'paid';
+  const { downloadPdf, isLoading: isPdfLoading } = useInvoicePdf();
 
   return (
     <Card 
@@ -316,12 +318,19 @@ function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, i
               {formatCurrency(invoice.total_minor, currencyCode)}
             </p>
             <div className="flex items-center gap-2 mt-2">
-              <Link to={`/invoices/${invoice.id}`}>
-                <Button variant="ghost" size="sm">
-                  <Download className="h-4 w-4 mr-1" />
-                  View
-                </Button>
-              </Link>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => downloadPdf(invoice.id, invoice.invoice_number)}
+                disabled={isPdfLoading}
+              >
+                {isPdfLoading ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <FileDown className="h-4 w-4 mr-1" />
+                )}
+                PDF
+              </Button>
               {isPayable && (
                 <Button 
                   size="sm" 
