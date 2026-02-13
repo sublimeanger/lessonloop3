@@ -23,6 +23,7 @@ import Privacy from "./pages/marketing/Privacy";
 import Terms from "./pages/marketing/Terms";
 import GDPR from "./pages/marketing/GDPR";
 import Cookies from "./pages/marketing/Cookies";
+import Kickstarter from "./pages/marketing/Kickstarter";
 
 // Auth Pages
 import Login from "./pages/Login";
@@ -255,6 +256,7 @@ const App = () => (
               <Route path="/terms" element={<Terms />} />
               <Route path="/gdpr" element={<GDPR />} />
               <Route path="/cookies" element={<Cookies />} />
+              <Route path="/kickstarter" element={<Kickstarter />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               
               {/* 404 */}

@@ -1005,6 +1005,27 @@ export type Database = {
           },
         ]
       }
+      kickstarter_signups: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string | null
+        }
+        Relationships: []
+      }
       lesson_participants: {
         Row: {
           created_at: string
