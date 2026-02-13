@@ -1,7 +1,7 @@
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-const RECIPIENT_EMAIL = 'hello@lessonloop.net';
+const RECIPIENT_EMAIL = 'jamie@searchflare.co.uk';
 
 interface ContactRequest {
   firstName: string;
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
         from: 'LessonLoop Contact <noreply@lessonloop.net>',
         to: [RECIPIENT_EMAIL],
         reply_to: sanitizedData.email,
-        subject: `[Contact Form] ${sanitizedData.subject} - ${sanitizedData.firstName} ${sanitizedData.lastName}`,
+        subject: 'LessonLoop enquiry',
         html: `
           <h2>New Contact Form Submission</h2>
           <p><strong>From:</strong> ${sanitizedData.firstName} ${sanitizedData.lastName}</p>

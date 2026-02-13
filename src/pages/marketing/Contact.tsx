@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
-import { Mail, Phone, MapPin, MessageSquare, Clock, HelpCircle, Loader2, CheckCircle } from "lucide-react";
+import { Mail, MapPin, MessageSquare, Clock, HelpCircle, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,16 +22,9 @@ const contactMethods = [
   {
     icon: MessageSquare,
     title: "Live Chat",
-    description: "Available Mon-Fri, 9am-5pm",
+    description: "AI-powered instant answers",
     value: "Start a conversation",
-    action: "/contact",
-  },
-  {
-    icon: Phone,
-    title: "Call Us",
-    description: "Speak to our support team",
-    value: "+44 20 1234 5678",
-    action: "tel:+442012345678",
+    action: "#",
   },
 ];
 
@@ -134,7 +127,7 @@ export default function Contact() {
       {/* Contact Methods */}
       <section className="py-16 bg-background">
         <div className="container mx-auto px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
             {contactMethods.map((method, index) => (
               <motion.a
                 key={method.title}
