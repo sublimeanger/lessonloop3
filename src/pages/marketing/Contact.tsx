@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
-import { MapPin, MessageSquare, Clock, HelpCircle, Loader2, CheckCircle } from "lucide-react";
+import { MessageSquare, Clock, HelpCircle, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -307,21 +307,6 @@ export default function Contact() {
                     </div>
                   </div>
 
-                  <div className="flex gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
-                      <MapPin className="w-5 h-5 text-teal-light" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium mb-1">Office Location</h4>
-                      <p className="text-sm text-white/60">
-                        123 Music Lane
-                        <br />
-                        London, EC1A 1BB
-                        <br />
-                        United Kingdom
-                      </p>
-                    </div>
-                  </div>
 
                   <div className="flex gap-4">
                     <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
