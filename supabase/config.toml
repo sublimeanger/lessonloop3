@@ -20,3 +20,9 @@ verify_jwt = false
 
 [functions.send-invoice-email]
 verify_jwt = false
+
+[functions.marketing-chat]
+verify_jwt = false
+
+[functions.send-contact-message]
+verify_jwt = false

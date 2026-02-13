@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { MarketingNavbar } from "./MarketingNavbar";
 import { MarketingFooter } from "./MarketingFooter";
+import { MarketingChatWidget } from "@/components/marketing/MarketingChatWidget";
 
 interface MarketingLayoutProps {
   children: ReactNode;
@@ -14,6 +15,7 @@ export function MarketingLayout({ children }: MarketingLayoutProps) {
         {children}
       </main>
       <MarketingFooter />
+      <MarketingChatWidget />
     </div>
   );
 }
