@@ -7,9 +7,9 @@ import {
   MessageSquare,
   FileText,
   Bell,
-  Smartphone
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { parentPortal } from "@/assets/marketing";
+import { BrowserFrameLight } from "@/components/marketing/BrowserFrame";
 
 const features = [
   {
@@ -61,7 +61,7 @@ export function PortalDeepDive() {
                 <Users className="w-6 h-6 text-white" />
               </div>
               <span className="text-sm font-medium text-teal uppercase tracking-wider">
-                Parent Portal
+                Student Management
               </span>
             </div>
 
@@ -119,7 +119,7 @@ export function PortalDeepDive() {
             </motion.div>
           </motion.div>
 
-          {/* Right: Phone Mockup */}
+          {/* Right: Real Screenshot */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -127,116 +127,14 @@ export function PortalDeepDive() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="relative flex justify-center"
           >
-            {/* Phone frame */}
-            <div className="relative w-[280px] sm:w-[320px]">
-              <div className="relative bg-foreground rounded-[3rem] p-3 shadow-2xl">
-                {/* Notch */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-foreground rounded-b-2xl z-10" />
-                
-                {/* Screen */}
-                <div className="relative bg-background rounded-[2.5rem] overflow-hidden">
-                  {/* Status bar */}
-                  <div className="flex items-center justify-between px-6 py-3 bg-muted/50">
-                    <span className="text-xs text-muted-foreground">9:41</span>
-                    <div className="flex items-center gap-1">
-                      <Smartphone className="w-3 h-3 text-muted-foreground" />
-                    </div>
-                  </div>
-
-                  {/* App content */}
-                  <div className="p-4 pb-8 min-h-[500px]">
-                    {/* Header */}
-                    <div className="mb-6">
-                      <p className="text-xs text-muted-foreground mb-1">Welcome back</p>
-                      <h3 className="text-lg font-bold text-foreground">Emma's Portal</h3>
-                    </div>
-
-                    {/* Next lesson card */}
-                    <motion.div
-                      className="bg-teal/10 border border-teal/30 rounded-xl p-4 mb-4"
-                      initial={{ opacity: 0, y: 10 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: 0.5 }}
-                    >
-                      <p className="text-xs text-teal font-medium mb-2">Next Lesson</p>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold text-foreground text-sm">Piano with Ms. Johnson</p>
-                          <p className="text-xs text-muted-foreground">Tomorrow, 3:00 PM</p>
-                        </div>
-                        <div className="w-10 h-10 rounded-lg bg-teal/20 flex items-center justify-center">
-                          <Music className="w-5 h-5 text-teal" />
-                        </div>
-                      </div>
-                    </motion.div>
-
-                    {/* Practice streak */}
-                    <motion.div
-                      className="bg-coral/10 border border-coral/30 rounded-xl p-4 mb-4"
-                      initial={{ opacity: 0, y: 10 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: 0.6 }}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs text-coral font-medium">Practice Streak</p>
-                        <span className="text-xl">🔥</span>
-                      </div>
-                      <p className="text-2xl font-bold text-foreground">7 days</p>
-                      <p className="text-xs text-muted-foreground">Keep it up!</p>
-                    </motion.div>
-
-                    {/* Outstanding invoice */}
-                    <motion.div
-                      className="bg-card border border-border rounded-xl p-4 mb-4"
-                      initial={{ opacity: 0, y: 10 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: 0.7 }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Invoice #247</p>
-                          <p className="font-semibold text-foreground">£180.00</p>
-                        </div>
-                        <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium">
-                          Pay Now
-                        </div>
-                      </div>
-                    </motion.div>
-
-                    {/* Quick actions */}
-                    <motion.div
-                      className="grid grid-cols-4 gap-2"
-                      initial={{ opacity: 0, y: 10 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: 0.8 }}
-                    >
-                      {[
-                        { icon: Calendar, label: "Schedule" },
-                        { icon: Music, label: "Practice" },
-                        { icon: FileText, label: "Invoices" },
-                        { icon: MessageSquare, label: "Message" },
-                      ].map((action) => (
-                        <div key={action.label} className="flex flex-col items-center gap-1">
-                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                            <action.icon className="w-4 h-4 text-muted-foreground" />
-                          </div>
-                          <span className="text-[10px] text-muted-foreground">{action.label}</span>
-                        </div>
-                      ))}
-                    </motion.div>
-                  </div>
-
-                  {/* Home indicator */}
-                  <div className="flex justify-center pb-2">
-                    <div className="w-32 h-1 rounded-full bg-muted-foreground/30" />
-                  </div>
-                </div>
-              </div>
-            </div>
+            <BrowserFrameLight url="app.lessonloop.net/students">
+              <img 
+                src={parentPortal} 
+                alt="Student list with search, active badges, and avatar initials" 
+                className="w-full" 
+                loading="lazy" 
+              />
+            </BrowserFrameLight>
 
             {/* Floating elements */}
             <motion.div

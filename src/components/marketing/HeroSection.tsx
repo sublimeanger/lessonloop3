@@ -5,6 +5,7 @@ import { ChevronRight, Play, Calendar, Clock, CheckCircle2, Bell, Users, Music, 
 import { useState, useMemo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format, addDays, startOfWeek } from "date-fns";
+import dashboardHero from "@/assets/marketing/dashboard-hero.png";
 
 // Word-by-word animation variants
 const containerVariants = {
@@ -324,89 +325,13 @@ export function HeroSection() {
             </div>
           </div>
 
-          {/* Dashboard Mockup Content */}
-          <div className="bg-background p-4 sm:p-6">
-            {/* Dashboard header */}
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="text-lg font-bold text-foreground">Good morning ☀️</h3>
-                <p className="text-sm text-muted-foreground">{todayFormatted}</p>
-              </div>
-              <div className="flex gap-2">
-                <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium">
-                  + New Lesson
-                </div>
-              </div>
-            </div>
-
-            {/* Stats row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-              {[
-                { label: "Today's Lessons", value: "5", icon: Calendar, accent: "text-teal" },
-                { label: "This Week", value: "23", icon: Clock, accent: "text-foreground" },
-                { label: "Outstanding", value: "£420", icon: Receipt, accent: "text-coral" },
-                { label: "Students", value: "34", icon: Users, accent: "text-foreground" },
-              ].map((stat) => (
-                <motion.div
-                  key={stat.label}
-                  className="bg-card border border-border rounded-xl p-3"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 1.6 + Math.random() * 0.3 }}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <stat.icon className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="text-[10px] sm:text-xs text-muted-foreground">{stat.label}</span>
-                  </div>
-                  <p className={`text-lg sm:text-xl font-bold ${stat.accent}`}>{stat.value}</p>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Today's timeline */}
-            <div className="bg-card border border-border rounded-xl p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-semibold text-foreground">Today's Schedule</h4>
-                <span className="text-xs text-muted-foreground">5 lessons</span>
-              </div>
-              <div className="space-y-2">
-                {[
-                  { time: "09:00", student: "Emma W.", instrument: "Piano", duration: "60 min", color: "bg-teal", status: "completed" },
-                  { time: "10:30", student: "Oliver J.", instrument: "Guitar", duration: "45 min", color: "bg-coral", status: "completed" },
-                  { time: "13:00", student: "Sophie M.", instrument: "Violin", duration: "60 min", color: "bg-primary", status: "current" },
-                  { time: "15:00", student: "James C.", instrument: "Piano", duration: "30 min", color: "bg-teal", status: "upcoming" },
-                  { time: "16:30", student: "Lily P.", instrument: "Voice", duration: "45 min", color: "bg-accent", status: "upcoming" },
-                ].map((lesson, i) => (
-                  <motion.div
-                    key={lesson.student}
-                    className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${
-                      lesson.status === "current" 
-                        ? "bg-teal/10 border border-teal/20" 
-                        : lesson.status === "completed" 
-                          ? "opacity-60" 
-                          : "hover:bg-muted/50"
-                    }`}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: lesson.status === "completed" ? 0.6 : 1, x: 0 }}
-                    transition={{ delay: 1.8 + i * 0.1 }}
-                  >
-                    <div className={`w-1 h-8 rounded-full ${lesson.color}`} />
-                    <span className="text-xs font-mono text-muted-foreground w-10 shrink-0">{lesson.time}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{lesson.student}</p>
-                      <p className="text-xs text-muted-foreground">{lesson.instrument} · {lesson.duration}</p>
-                    </div>
-                    {lesson.status === "completed" && (
-                      <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                    )}
-                    {lesson.status === "current" && (
-                      <span className="text-[10px] font-medium text-teal bg-teal/20 px-2 py-0.5 rounded-full shrink-0">Now</span>
-                    )}
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </div>
+          {/* Real Dashboard Screenshot */}
+          <img 
+            src={dashboardHero} 
+            alt="LessonLoop dashboard showing lessons, invoices, and student management" 
+            className="w-full" 
+            loading="eager"
+          />
         </div>
 
         {/* Floating Elements Around Mockup */}
