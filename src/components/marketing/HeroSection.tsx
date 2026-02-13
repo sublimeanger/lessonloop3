@@ -5,7 +5,7 @@ import { ChevronRight, Play, Calendar, Clock, CheckCircle2, Bell, Users, Music, 
 import { useState, useMemo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format, addDays, startOfWeek } from "date-fns";
-import dashboardHero from "@/assets/marketing/dashboard-hero.png";
+import dashboardHero from "@/assets/marketing/dashboard-hero-hd.png";
 
 // Word-by-word animation variants
 const containerVariants = {
