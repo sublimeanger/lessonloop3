@@ -15,7 +15,7 @@ verify_jwt = false
 [functions.stripe-connect-status]
 verify_jwt = false
 
-[functions.invoice-pdf]
+[functions.generate-invoice-pdf]
 verify_jwt = false
 
 [functions.send-invoice-email]
