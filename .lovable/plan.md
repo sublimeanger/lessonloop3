@@ -1,57 +1,83 @@
 
 
-# AI Chat Widget + Contact Form Updates
+# Kickstarter Pre-Launch Landing Page
 
 ## Overview
 
-Add a floating AI chat widget to all marketing pages where visitors can ask questions about LessonLoop and get instant answers. Also update the contact form to remove telephone numbers and forward submissions to jamie@searchflare.co.uk with "LessonLoop enquiry" as the subject.
+Create a world-class `/kickstarter` landing page with email signup, 6 backer tiers, a live countdown timer, the full campaign story, and a risks section. The page will reuse the existing marketing design system (gradient backgrounds, motion animations, glass-morphism cards) and product screenshots from `src/assets/marketing/`.
 
-## What Changes
+## Page Sections (top to bottom)
 
-### 1. New AI Chat Edge Function (`supabase/functions/marketing-chat/index.ts`)
-- Backend function that calls Lovable AI (Gemini 3 Flash) with a comprehensive system prompt
-- System prompt contains all LessonLoop knowledge: pricing (Teacher £12/mo, Studio £29/mo, Agency £79/mo), features, FAQs, trial info, security/GDPR details
-- No authentication required (public endpoint for marketing visitors)
-- Streams responses back via SSE for real-time typing effect
+### 1. Hero with Countdown
+- Dark gradient background matching the existing Hero style (ink + teal/coral mesh)
+- Headline: "Help Us Launch LessonLoop" with animated word reveal
+- Subheadline about the mission
+- Live countdown timer to June 1, 2026 (configurable target date) showing days/hours/minutes/seconds
+- Email signup form (name + email) stored in a new `kickstarter_signups` database table
+- Trust badges: "All-or-nothing | £18,500 goal | June 2026"
 
-### 2. New Floating Chat Component (`src/components/marketing/MarketingChatWidget.tsx`)
-- Floating button (bottom-right corner) with a chat bubble icon
-- Opens a chat panel with message history, input field, and streaming AI responses
-- Markdown rendering for AI responses
-- Branded with LessonLoop styling (teal accent, clean design)
-- Mobile-responsive (full-width on small screens, fixed-width panel on desktop)
-- Persists within session (messages kept in React state)
-- Suggested starter questions ("What plans do you offer?", "Is there a free trial?", "How does scheduling work?")
+### 2. The Story (Campaign Narrative)
+- Lauren's 20-year journey section with the "LT" avatar motif (reused from CTASection)
+- Three-act structure: The Problem, The Journey, The Solution
+- Product screenshots from `src/assets/marketing/` (dashboard-hero.jpg, calendar-week.jpg, invoices-list.jpg, parent-portal.jpg, loopassist-chat.jpg) displayed in browser frames
+- Key stats: 300 students, 10 teachers, 20 years of experience
 
-### 3. Update MarketingLayout (`src/components/layout/MarketingLayout.tsx`)
-- Add the chat widget so it appears on every marketing page
+### 3. What You Get (Product Features Summary)
+- Bento-style grid showing core features: Scheduling, Invoicing, Parent Portal, LoopAssist AI, Practice Tracking
+- Reuses the visual style from BentoFeatures
 
-### 4. Update Contact Page (`src/pages/marketing/Contact.tsx`)
-- Remove the "Call Us" card with the phone number from the contact methods array
-- Keep only Email and Live Chat contact methods (2-column grid)
+### 4. Backer Tiers
+- 6 reward cards in a responsive grid (2x3 on desktop, stacked on mobile):
+  - **Supporter** - £5: Name on the supporters wall, early updates
+  - **Teacher Early Bird** - £49: 1 year Teacher plan (save £95), founding member badge
+  - **Studio Early Bird** - £149: 1 year Studio plan (save £199), founding member badge, priority onboarding
+  - **Lifetime Teacher** - £199: Lifetime Teacher plan, founding member badge, name on supporters wall
+  - **Lifetime Studio** - £399: Lifetime Studio plan, founding member badge, priority support, name on supporters wall
+  - **Champion** - £500: Lifetime Studio plan, 1-hour strategy call, logo on partners page, everything above
+- Popular badge on "Teacher Early Bird"
+- Each card shows: price, title, what's included, estimated delivery, limited quantity indicators where appropriate
 
-### 5. Update Contact Edge Function (`supabase/functions/send-contact-message/index.ts`)
-- Change `RECIPIENT_EMAIL` from `hello@lessonloop.net` to `jamie@searchflare.co.uk`
-- Change subject line format to `LessonLoop enquiry` (fixed subject, with original subject/name in the body)
+### 5. Why Kickstarter
+- Clean section explaining: platform is built and ready, funds go to infrastructure scaling, mobile app, and AI enhancements
+- Three columns: Infrastructure, Mobile App, AI Enhancement
+
+### 6. Risks and Challenges
+- Honest, transparent section covering:
+  - Core platform already functional (mitigates vaporware risk)
+  - Third-party API dependencies
+  - Infrastructure scaling
+  - AI accuracy (human-in-the-loop confirmation)
+- Glass-morphism cards with warning/shield icons
+
+### 7. FAQ
+- Accordion-style FAQ section with 6-8 common questions
+- Reuses Radix Accordion component
+
+### 8. Final CTA
+- Repeated email signup form
+- Countdown timer (smaller)
+- "Be the first to know when we launch"
 
 ## Technical Details
 
-### AI System Prompt Knowledge Base
-The system prompt will be embedded in the edge function and will cover:
-- All three pricing plans with exact prices, limits, and features (sourced from `pricing-config.ts`)
-- Trial details (30 days, no credit card)
-- FAQs from the pricing page
-- Core features: scheduling, invoicing, parent portal, LoopAssist AI, practice tracking, resources
-- UK-centric defaults (GBP, DD/MM/YYYY, VAT optional, term calendar)
-- Security and GDPR compliance
-- Supported user types (solo teachers, academies, agencies)
-- Guidance to direct complex queries to the contact form
+### New Files
+- `src/pages/marketing/Kickstarter.tsx` - Main page component (composed of sub-sections)
+- `src/components/marketing/kickstarter/KickstarterHero.tsx` - Hero + countdown + email form
+- `src/components/marketing/kickstarter/CampaignStory.tsx` - The narrative section
+- `src/components/marketing/kickstarter/BackerTiers.tsx` - Reward tier cards
+- `src/components/marketing/kickstarter/RisksSection.tsx` - Risks and challenges
+- `src/components/marketing/kickstarter/KickstarterFAQ.tsx` - FAQ accordion
+- `src/components/marketing/kickstarter/CountdownTimer.tsx` - Reusable countdown hook + display
 
-### SSE Streaming on Frontend
-- Uses the same proven SSE parsing pattern already used by `useLoopAssist.ts`
-- Token-by-token rendering with buffer management
-- Handles `[DONE]`, CRLF, partial JSON safely
+### Modified Files
+- `src/App.tsx` - Add `/kickstarter` public route
+- Database migration - Create `kickstarter_signups` table (id, email, name, created_at) with RLS policy allowing anonymous inserts
 
-### Edge Function Config
-- Add `marketing-chat` to `supabase/config.toml` with `verify_jwt = false` (public endpoint)
+### Design Approach
+- Reuses all existing marketing patterns: `MarketingLayout`, `motion` animations, gradient backgrounds, glass-morphism cards
+- Product imagery from `src/assets/marketing/` displayed in `BrowserFrame`-style containers
+- Countdown uses `useEffect` + `setInterval` with `date-fns` for time calculations
+- Email signup writes to database via Supabase client (no edge function needed for simple insert)
+- Fully responsive: mobile-first grid layouts
+- No videos as requested
 
