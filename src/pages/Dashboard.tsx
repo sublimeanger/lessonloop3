@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -113,9 +113,18 @@ export default function Dashboard() {
   return <SoloTeacherDashboard firstName={firstName} />;
 }
 
+// Hook to only animate on first mount, not on re-navigation
+function useFirstMount() {
+  const hasAnimated = useRef(false);
+  const isFirst = !hasAnimated.current;
+  useEffect(() => { hasAnimated.current = true; }, []);
+  return isFirst;
+}
+
 function SoloTeacherDashboard({ firstName }: { firstName: string }) {
   const { currentOrg } = useOrg();
   const { data: stats, isLoading } = useDashboardStats();
+  const isFirstMount = useFirstMount();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GB', {
@@ -130,7 +139,7 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
     <AppLayout>
       <motion.div
         variants={containerVariants}
-        initial="hidden"
+        initial={isFirstMount ? "hidden" : "visible"}
         animate="visible"
         className="space-y-6"
       >
@@ -221,6 +230,7 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
 function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?: string }) {
   const { currentOrg } = useOrg();
   const { data: stats, isLoading } = useDashboardStats();
+  const isFirstMount = useFirstMount();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GB', {
@@ -235,7 +245,7 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
     <AppLayout>
       <motion.div
         variants={containerVariants}
-        initial="hidden"
+        initial={isFirstMount ? "hidden" : "visible"}
         animate="visible"
         className="space-y-6"
       >
@@ -339,12 +349,13 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
 
 function TeacherDashboard({ firstName }: { firstName: string }) {
   const { data: stats, isLoading } = useTeacherDashboardStats();
+  const isFirstMount = useFirstMount();
 
   return (
     <AppLayout>
       <motion.div
         variants={containerVariants}
-        initial="hidden"
+        initial={isFirstMount ? "hidden" : "visible"}
         animate="visible"
         className="space-y-6"
       >
