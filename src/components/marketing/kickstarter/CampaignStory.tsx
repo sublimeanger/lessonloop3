@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { BrowserFrameLight } from "@/components/marketing/BrowserFrame";
 import { calendarWeek, invoicesList, parentPortal, loopassistChat } from "@/assets/marketing";
-import dashboardHero from "@/assets/marketing/dashboard-hero.jpg";
+import dashboardHero from "@/assets/marketing/dashboard-hero.png";
 import { Music, Users, GraduationCap } from "lucide-react";
 
 const stats = [
