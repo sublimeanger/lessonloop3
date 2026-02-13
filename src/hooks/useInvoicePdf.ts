@@ -20,7 +20,7 @@ export function useInvoicePdf() {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invoice-pdf?invoiceId=${invoiceId}`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-invoice-pdf?invoiceId=${invoiceId}`,
         {
           method: 'GET',
           headers: {
