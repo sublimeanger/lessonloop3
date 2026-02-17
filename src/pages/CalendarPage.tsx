@@ -21,7 +21,8 @@ import { ContextualHint } from '@/components/shared/ContextualHint';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Loader2, Columns3, Minimize2, Users } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Loader2, Columns3, Minimize2, Users, AlertTriangle } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Toggle } from '@/components/ui/toggle';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -79,7 +80,7 @@ export default function CalendarPage() {
   const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
 
   // Fetch lessons
-  const { lessons, isLoading, refetch } = useCalendarData(currentDate, view, filters);
+  const { lessons, isLoading, isCapReached, refetch } = useCalendarData(currentDate, view, filters);
 
   // Teacher colour map
   const teacherColourMap = useMemo(() => buildTeacherColourMap(teachers), [teachers]);
@@ -183,13 +184,17 @@ export default function CalendarPage() {
 
           if (error) throw error;
         } else {
-          // Update just this lesson
+          // Update just this lesson — mark as series exception if recurring
+          const updatePayload: Record<string, unknown> = {
+            start_at: newStart.toISOString(),
+            end_at: newEnd.toISOString(),
+          };
+          if (lesson.recurrence_id && mode === 'this_only') {
+            updatePayload.is_series_exception = true;
+          }
           const { error } = await supabase
             .from('lessons')
-            .update({
-              start_at: newStart.toISOString(),
-              end_at: newEnd.toISOString(),
-            })
+            .update(updatePayload)
             .eq('id', lesson.id);
 
           if (error) throw error;
@@ -427,6 +432,16 @@ export default function CalendarPage() {
           />
         </div>
       </div>
+
+      {/* 500-lesson cap warning */}
+      {isCapReached && (
+        <Alert variant="default" className="mb-3 border-warning/50 bg-warning/10">
+          <AlertTriangle className="h-4 w-4 text-warning" />
+          <AlertDescription className="text-sm">
+            Showing first 500 lessons. Apply filters (teacher, location) to narrow results.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Calendar content */}
       {isLoading ? (

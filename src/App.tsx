@@ -9,6 +9,7 @@ import { LoopAssistProvider } from "@/contexts/LoopAssistContext";
 import { TourProvider } from "@/components/tours/TourProvider";
 import { RouteGuard, PublicRoute } from "@/components/auth/RouteGuard";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
+import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 
 // Marketing Pages
@@ -56,6 +57,7 @@ import NotFound from "./pages/NotFound";
 import Practice from "./pages/Practice";
 import Resources from "./pages/Resources";
 import DailyRegister from "./pages/DailyRegister";
+import BatchAttendance from "./pages/BatchAttendance";
 import Help from "./pages/Help";
 
 // Portal Pages
@@ -88,6 +90,7 @@ const App = () => (
               <LoopAssistProvider>
                 <TourProvider>
                   <ScrollToTop />
+                  <OfflineBanner />
                   <Toaster />
                   <Sonner />
             <Routes>
@@ -146,6 +149,11 @@ const App = () => (
               <Route path="/calendar" element={
                 <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
                   <CalendarPage />
+                </RouteGuard>
+              } />
+              <Route path="/batch-attendance" element={
+                <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
+                  <BatchAttendance />
                 </RouteGuard>
               } />
               <Route path="/students" element={

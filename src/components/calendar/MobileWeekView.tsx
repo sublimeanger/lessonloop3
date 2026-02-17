@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { format, isSameDay, parseISO, isToday } from 'date-fns';
+import { format, isSameDay, parseISO, isToday, differenceInMinutes, addMinutes, setHours, setMinutes, startOfDay } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { LessonCard } from './LessonCard';
 import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS } from './teacherColours';
@@ -29,6 +29,7 @@ interface MobileWeekViewProps {
   teacherColourMap: Map<string, TeacherWithColour>;
   onLessonClick: (lesson: LessonWithDetails) => void;
   onSlotClick: (date: Date) => void;
+  onLessonDrop?: (lesson: LessonWithDetails, newStart: Date, newEnd: Date) => void;
   isParent: boolean;
   closures: ClosureInfo[];
   currentDate: Date;
@@ -40,6 +41,7 @@ export function MobileWeekView({
   teacherColourMap,
   onLessonClick,
   onSlotClick,
+  onLessonDrop,
   isParent,
   closures,
   currentDate,
@@ -47,6 +49,71 @@ export function MobileWeekView({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeDotIndex, setActiveDotIndex] = useState(0);
   const dayRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Long-press drag state
+  const [dragLesson, setDragLesson] = useState<LessonWithDetails | null>(null);
+  const [dragTargetDayIdx, setDragTargetDayIdx] = useState<number | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent, lesson: LessonWithDetails) => {
+    if (isParent || !onLessonDrop) return;
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    longPressTimerRef.current = setTimeout(() => {
+      try { navigator.vibrate?.(50); } catch {}
+      setDragLesson(lesson);
+    }, 300);
+  }, [isParent, onLessonDrop]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!dragLesson) {
+      // Cancel long-press if finger moved before activation
+      if (longPressTimerRef.current && touchStartPos.current) {
+        const touch = e.touches[0];
+        const dx = Math.abs(touch.clientX - touchStartPos.current.x);
+        const dy = Math.abs(touch.clientY - touchStartPos.current.y);
+        if (dx > 10 || dy > 10) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+      }
+      return;
+    }
+    e.preventDefault();
+    const touch = e.touches[0];
+    // Determine which day column the finger is over
+    const container = scrollRef.current;
+    if (!container) return;
+    const dayWidth = container.scrollWidth / days.length;
+    const scrollLeft = container.scrollLeft;
+    const relativeX = touch.clientX - container.getBoundingClientRect().left + scrollLeft;
+    const dayIdx = Math.min(Math.max(Math.floor(relativeX / dayWidth), 0), days.length - 1);
+    setDragTargetDayIdx(dayIdx);
+  }, [dragLesson, days.length]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    if (dragLesson && dragTargetDayIdx !== null && onLessonDrop) {
+      const targetDay = days[dragTargetDayIdx];
+      const originalStart = parseISO(dragLesson.start_at);
+      const originalEnd = parseISO(dragLesson.end_at);
+      const durationMs = originalEnd.getTime() - originalStart.getTime();
+      // Keep same time of day, change the date
+      const newStart = setMinutes(setHours(startOfDay(targetDay), originalStart.getHours()), originalStart.getMinutes());
+      const newEnd = new Date(newStart.getTime() + durationMs);
+      
+      if (!isSameDay(originalStart, targetDay)) {
+        onLessonDrop(dragLesson, newStart, newEnd);
+      }
+    }
+    setDragLesson(null);
+    setDragTargetDayIdx(null);
+    touchStartPos.current = null;
+  }, [dragLesson, dragTargetDayIdx, days, onLessonDrop]);
 
   const lessonsByDay = useMemo(() => {
     const map = new Map<string, LessonWithDetails[]>();
@@ -107,7 +174,18 @@ export function MobileWeekView({
   const currentTimeLabel = format(now, 'HH:mm');
 
   return (
-    <div className="flex flex-col h-[calc(100vh-260px)]">
+    <div
+      className="flex flex-col h-[calc(100vh-260px)]"
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Drag indicator */}
+      {dragLesson && (
+        <div className="bg-primary/10 border border-primary/30 rounded-md px-3 py-1.5 mx-2 mb-1 text-xs text-center text-primary font-medium animate-pulse">
+          Drop on a day to reschedule · {dragLesson.title}
+        </div>
+      )}
+
       {/* Swipeable day columns */}
       <div
         ref={scrollRef}
@@ -124,7 +202,7 @@ export function MobileWeekView({
             <div
               key={key}
               ref={(el) => { dayRefs.current[idx] = el; }}
-              className="min-w-[33.33vw] snap-start flex flex-col border-r last:border-r-0"
+              className="min-w-[80vw] snap-start flex flex-col border-r last:border-r-0"
             >
               {/* Day header */}
               <button
@@ -158,9 +236,10 @@ export function MobileWeekView({
               {/* Day body */}
               <div
                 className={cn(
-                  'bg-background min-h-[80px] flex-1 flex flex-col overflow-y-auto',
+                  'bg-background min-h-[80px] flex-1 flex flex-col overflow-y-auto transition-colors',
                   today && 'bg-primary/[0.02]',
-                  closure && 'bg-warning/5 dark:bg-warning/5'
+                  closure && 'bg-warning/5 dark:bg-warning/5',
+                  dragLesson && dragTargetDayIdx === idx && 'bg-primary/10 ring-2 ring-primary/30 ring-inset'
                 )}
               >
                 {/* Now indicator */}
@@ -181,14 +260,23 @@ export function MobileWeekView({
                       teacherColourMap,
                       lesson.teacher_user_id
                     );
+                    const isDragging = dragLesson?.id === lesson.id;
                     return (
-                      <LessonCard
+                      <div
                         key={lesson.id}
-                        lesson={lesson}
-                        onClick={() => onLessonClick(lesson)}
-                        variant="stacked"
-                        teacherColour={colour}
-                      />
+                        onTouchStart={(e) => handleTouchStart(e, lesson)}
+                        className={cn(
+                          'transition-all',
+                          isDragging && 'opacity-30 scale-95'
+                        )}
+                      >
+                        <LessonCard
+                          lesson={lesson}
+                          onClick={() => { if (!dragLesson) onLessonClick(lesson); }}
+                          variant="stacked"
+                          teacherColour={colour}
+                        />
+                      </div>
                     );
                   })}
                 </div>

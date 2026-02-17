@@ -2,6 +2,7 @@ import { format, differenceInMinutes, parseISO } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { cn } from '@/lib/utils';
 import { Repeat, GripHorizontal } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { TeacherColourEntry, TEACHER_COLOURS } from './teacherColours';
 
@@ -62,6 +63,7 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
   const endTime = parseISO(lesson.end_at);
   const duration = differenceInMinutes(endTime, startTime);
   const isRecurring = !!lesson.recurrence_id;
+  const isEditedException = isRecurring && !!(lesson as any).is_series_exception;
   const isCancelled = lesson.status === 'cancelled';
   const colour = teacherColour ?? TEACHER_COLOURS[0];
 
@@ -96,6 +98,11 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
             {studentShort || lesson.title}
           </span>
           {isRecurring && <Repeat className="h-2 w-2 shrink-0 text-muted-foreground" />}
+          {isEditedException && (
+            <span className="text-[8px] font-medium text-warning bg-warning/20 px-0.5 rounded shrink-0">
+              Edited
+            </span>
+          )}
         </div>
       );
     }
@@ -117,6 +124,11 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
         )}>
           {format(startTime, 'HH:mm')}–{format(endTime, 'HH:mm')}
           {isRecurring && <Repeat className="h-2 w-2 sm:h-2.5 sm:w-2.5 inline-block ml-0.5 -mt-px" />}
+          {isEditedException && (
+            <span className="text-[8px] sm:text-[9px] font-medium text-warning bg-warning/20 px-0.5 rounded ml-0.5 inline-block -mt-px">
+              Edited
+            </span>
+          )}
         </div>
 
         {/* Student name */}
@@ -171,6 +183,11 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
             {isRecurring && (
               <Repeat className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground flex-shrink-0" />
             )}
+            {isEditedException && (
+              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-warning/50 text-warning bg-warning/10">
+                Edited
+              </Badge>
+            )}
           </div>
           <div className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">
             {secondaryLine}
@@ -205,6 +222,9 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
             isCancelled && 'line-through'
           )}>
             {isRecurring && !compact && <Repeat className="h-3 w-3 flex-shrink-0" />}
+            {isEditedException && !compact && (
+              <span className="text-[8px] font-medium text-warning bg-warning/20 px-0.5 rounded shrink-0">Ed.</span>
+            )}
             <span className="truncate">{compactStudentName}</span>
           </div>
           {!compact && duration >= 30 && (

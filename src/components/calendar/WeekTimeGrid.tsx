@@ -295,6 +295,7 @@ export function WeekTimeGrid({
         teacherColourMap={teacherColourMap}
         onLessonClick={onLessonClick}
         onSlotClick={onSlotClick}
+        onLessonDrop={onLessonDrop}
         isParent={isParent}
         closures={closures}
         currentDate={currentDate}
