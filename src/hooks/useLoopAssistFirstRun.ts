@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg, OrgType } from '@/contexts/OrgContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const STORAGE_KEY = 'loopassist_first_run_orgs';
 
@@ -101,12 +102,12 @@ export function useLoopAssistFirstRun() {
       // Check org status to tailor the message
       try {
         const [studentsResult, locationsResult] = await Promise.all([
-          (await import('@/integrations/supabase/client')).supabase
+          supabase
             .from('students')
             .select('id', { count: 'exact', head: true })
             .eq('org_id', currentOrg.id)
             .eq('status', 'active'),
-          (await import('@/integrations/supabase/client')).supabase
+          supabase
             .from('locations')
             .select('id', { count: 'exact', head: true })
             .eq('org_id', currentOrg.id),
