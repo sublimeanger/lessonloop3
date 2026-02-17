@@ -12,14 +12,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar, Clock, MapPin, User, Loader2, MessageSquare, CheckCircle, XCircle, AlertCircle, FileText, CalendarClock } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, Loader2, MessageSquare, CheckCircle, XCircle, AlertCircle, FileText, CalendarClock, CalendarPlus } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, startOfToday, differenceInHours } from 'date-fns';
 import { useParentLessons, useChildrenWithDetails, useCreateMessageRequest } from '@/hooks/useParentPortal';
 import { useOrg } from '@/contexts/OrgContext';
 import { RequestModal } from '@/components/portal/RequestModal';
 import { RescheduleSlotPicker } from '@/components/portal/RescheduleSlotPicker';
 import { useToast } from '@/hooks/use-toast';
+import { downloadICSFile, generateGoogleCalendarUrl } from '@/lib/calendarExport';
 
 export default function PortalSchedule() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -231,29 +238,51 @@ export default function PortalSchedule() {
             )}
           </div>
 
-          {lesson.status === 'scheduled' && !isPast && canReschedule && (
+          {lesson.status === 'scheduled' && !isPast && (
             <div className="flex flex-col gap-1">
-              {/* Reschedule button - shows slot picker or request form based on policy */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1"
-                onClick={() => showSlotPicker 
-                  ? handleRescheduleClick({
-                      id: lesson.id,
-                      title: lesson.title,
-                      start_at: lesson.start_at,
-                      end_at: lesson.end_at,
-                      teacher_user_id: lesson.teacher_user_id,
-                    })
-                  : handleRequestChange({ id: lesson.id, title: lesson.title })
-                }
-              >
-                <CalendarClock className="h-4 w-4" />
-                <span className="hidden sm:inline">
-                  {showSlotPicker ? 'Reschedule' : 'Request Change'}
-                </span>
-              </Button>
+              {/* Add to Calendar */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1">
+                    <CalendarPlus className="h-4 w-4" />
+                    <span className="hidden sm:inline">Add to Cal</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => window.open(generateGoogleCalendarUrl(lesson), '_blank')}
+                  >
+                    Google Calendar
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => downloadICSFile(lesson)}>
+                    Apple / Outlook (.ics)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Reschedule */}
+              {canReschedule && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={() => showSlotPicker 
+                    ? handleRescheduleClick({
+                        id: lesson.id,
+                        title: lesson.title,
+                        start_at: lesson.start_at,
+                        end_at: lesson.end_at,
+                        teacher_user_id: lesson.teacher_user_id,
+                      })
+                    : handleRequestChange({ id: lesson.id, title: lesson.title })
+                  }
+                >
+                  <CalendarClock className="h-4 w-4" />
+                  <span className="hidden sm:inline">
+                    {showSlotPicker ? 'Reschedule' : 'Request Change'}
+                  </span>
+                </Button>
+              )}
               {/* Message button */}
               <Button
                 variant="ghost"

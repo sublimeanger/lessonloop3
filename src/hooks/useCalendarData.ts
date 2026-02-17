@@ -14,6 +14,7 @@ export function useCalendarData(
   const { currentOrg } = useOrg();
   const [lessons, setLessons] = useState<LessonWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCapReached, setIsCapReached] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const getDateRange = useCallback(() => {
@@ -44,7 +45,7 @@ export function useCalendarData(
         .select(`
           id, title, start_at, end_at, status, lesson_type, notes_shared, notes_private, 
           teacher_user_id, location_id, room_id, org_id, recurrence_id, online_meeting_url,
-          created_by, created_at, updated_at,
+          created_by, created_at, updated_at, is_series_exception,
           location:locations(id, name),
           room:rooms(id, name)
         `)
@@ -56,6 +57,9 @@ export function useCalendarData(
 
       if (filters.teacher_id) {
         query = query.eq('teacher_id', filters.teacher_id);
+      }
+      if (filters.teacher_user_id) {
+        query = query.eq('teacher_user_id', filters.teacher_user_id);
       }
       if (filters.location_id) {
         query = query.eq('location_id', filters.location_id);
@@ -69,9 +73,13 @@ export function useCalendarData(
       if (error || !lessonsData) {
         console.error('Error fetching lessons:', error);
         setLessons([]);
+        setIsCapReached(false);
         setIsLoading(false);
         return;
       }
+
+      // Check if we hit the page size cap
+      setIsCapReached(lessonsData.length >= LESSONS_PAGE_SIZE);
 
       if (lessonsData.length === 0) {
         setLessons([]);
@@ -147,7 +155,7 @@ export function useCalendarData(
     };
   }, [fetchLessons]);
 
-  return { lessons, isLoading, refetch: fetchLessons };
+  return { lessons, isLoading, isCapReached, refetch: fetchLessons };
 }
 
 export function useTeachersAndLocations() {

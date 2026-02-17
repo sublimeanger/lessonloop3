@@ -14,6 +14,7 @@ import {
   Music,
   FolderOpen,
   ClipboardList,
+  ClipboardCheck,
   HelpCircle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -44,6 +45,7 @@ const ownerAdminNav: NavItem[] = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Calendar', url: '/calendar', icon: Calendar },
   { title: 'Register', url: '/register', icon: ClipboardList },
+  { title: 'Batch Attendance', url: '/batch-attendance', icon: ClipboardCheck },
   { title: 'Students', url: '/students', icon: Users },
   { title: 'Teachers', url: '/teachers', icon: GraduationCap },
   { title: 'Locations', url: '/locations', icon: MapPin },
@@ -69,6 +71,7 @@ const teacherNav: NavItem[] = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'My Calendar', url: '/calendar', icon: Calendar },
   { title: 'Register', url: '/register', icon: ClipboardList },
+  { title: 'Batch Attendance', url: '/batch-attendance', icon: ClipboardCheck },
   { title: 'My Students', url: '/students', icon: Users },
   { title: 'Practice', url: '/practice', icon: Music },
   { title: 'Resources', url: '/resources', icon: FolderOpen },

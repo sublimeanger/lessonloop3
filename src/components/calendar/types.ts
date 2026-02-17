@@ -25,6 +25,7 @@ export interface Lesson {
 }
 
 export interface LessonWithDetails extends Lesson {
+  is_series_exception?: boolean;
   teacher?: {
     full_name: string | null;
     email: string | null;
@@ -76,6 +77,7 @@ export type CalendarView = 'stacked' | 'week' | 'agenda';
 
 export interface CalendarFilters {
   teacher_id: string | null;   // Now teachers.id
+  teacher_user_id?: string | null;
   location_id: string | null;
   room_id: string | null;
 }
