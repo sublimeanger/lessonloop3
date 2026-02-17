@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.send-contact-message]
 verify_jwt = false
+
+[functions.profile-ensure]
+verify_jwt = false
