@@ -1,97 +1,138 @@
 
 
-# Kickstarter Page Overhaul — Addressing Review Feedback
+# Calendar Enhancements — Implementation Plan
 
-This plan addresses the two pieces of Kickstarter review feedback: (1) incomplete AI disclosure and (2) funds framed around general business/marketing rather than product creation and delivery.
-
----
-
-## Issue 1: AI Disclosure
-
-Kickstarter requires a dedicated "Use of AI" section in the Story tab. While this is primarily filled out on the Kickstarter platform itself, the landing page should also be transparent. We will add a new **AI Transparency** section to the page that mirrors what you'll put in Kickstarter's form.
-
-### New component: `AIDisclosure.tsx`
-
-A clearly labelled section titled **"How We Use AI"** covering:
-
-- **Confirmation**: Yes, LessonLoop uses AI as a product feature (LoopAssist).
-- **Providers**: Lovable AI gateway (which routes to Google Gemini and OpenAI models). No proprietary models are trained.
-- **Funding link**: Specify that campaign funds will be used to enhance LoopAssist's capabilities (smarter scheduling suggestions, predictive analytics) — not to train foundational models.
-- **Human safeguards**: LoopAssist operates under a strict human-in-the-loop model. Every AI-proposed action (invoice run, reschedule, etc.) requires explicit user confirmation before execution. All AI actions are logged in an audit trail.
-- **AI vs human-designed**: Clearly state which parts are AI-powered (LoopAssist chat, proactive alerts, action proposals) and which are fully human-designed (scheduling engine, invoicing, calendar, parent portal, all UI/UX).
-- **Page materials**: Disclose if any AI tools were used to create the Kickstarter page copy or imagery.
-
-This section will sit between **RisksSection** and **KickstarterFAQ**.
+This plan covers 8 improvements from the third-party review (excluding heatmap overlay and smart scheduling suggestions).
 
 ---
 
-## Issue 2: Reframe Funding Away from Marketing
+## 1. 500-Lesson Cap Warning + Server-Side Filtering
 
-### Changes to `WhyKickstarter.tsx`
+**Problem:** `useCalendarData` silently caps at 500 lessons with no user feedback. Large academies could lose data.
 
-The current three pillars are "Infrastructure", "Mobile App", and "AI Enhancement". The problem is the broader page references marketing in the budget. We need to:
-
-- **Remove any mention of "marketing"** from the funding breakdown.
-- **Replace the pillars** with creation/delivery-focused items:
-  1. **Product Development** — Building native mobile apps (iOS and Android) for teachers and parents, plus new features like calendar sync and practice tracking.
-  2. **AI Feature Development** — Expanding LoopAssist with smarter scheduling suggestions, automated billing analysis, and progress reports.
-  3. **Infrastructure and Testing** — Scaling servers, security hardening, load testing, and ensuring enterprise-grade reliability for thousands of users.
-
-- **Add a visible "Use of Funds" breakdown** (e.g. a simple bar or list) showing percentages directed purely at product creation:
-  - Product Development: 45%
-  - AI Feature Development: 25%
-  - Infrastructure, Hosting and Security: 20%
-  - Backer Fulfilment and Delivery: 10%
-
-### Changes to `KickstarterHero.tsx`
-
-- Update the subtitle copy to emphasise **what is being created** and **how backers receive it**: "Back us to fund mobile apps, smarter AI features, and rock-solid infrastructure. Every backer gets early access to the platform."
-
-### Changes to `CampaignStory.tsx`
-
-- In Act 3 ("The Solution"), add a sentence making it explicit what backers are funding: "Your backing funds the creation of mobile apps, enhanced AI features, and the infrastructure to serve thousands of teachers — and you'll receive access as soon as it's ready."
-
-### Changes to `KickstarterFAQ.tsx`
-
-- **Update the first FAQ** ("Is LessonLoop actually built?") to remove the mention of "scaling infrastructure" (too vague/business-y) and replace with specifics: "Funds will go towards building native mobile apps, developing new AI scheduling features, and hardening infrastructure for reliability."
-- **Add a new FAQ**: "What exactly will my pledge fund?" — Answer: "100% of funds go towards product creation and delivery: mobile app development, AI feature enhancements, infrastructure for reliability, and delivering backer rewards. No funds are allocated to marketing or general business operations."
-
-### Changes to `RisksSection.tsx`
-
-- Update the "Not Vaporware" risk copy to reinforce creation focus: "Kickstarter funds go towards creating mobile apps, new AI features, and scaling infrastructure — not general business expenses."
+**Changes:**
+- `src/hooks/useCalendarData.ts` — After fetching, check if `lessonsData.length === LESSONS_PAGE_SIZE`. If so, surface a flag `isCapReached: true` from the hook.
+- When teacher/location/room filters are active, apply them in the query (already done) so the cap is less likely to be hit.
+- `src/pages/CalendarPage.tsx` — When `isCapReached` is true, render an amber alert banner: *"Showing first 500 lessons. Apply filters (teacher, location) to narrow results."*
 
 ---
 
-## Updated Page Order
+## 2. Recurring Lesson "Edited" Badge
 
-1. KickstarterHero (updated subtitle)
-2. CampaignStory (updated Act 3 copy)
-3. WhyKickstarter (reframed pillars + visible Use of Funds breakdown)
-4. BackerTiers (unchanged)
-5. RisksSection (updated copy)
-6. **AIDisclosure (NEW)**
-7. KickstarterFAQ (updated + new FAQ)
-8. FinalCTA (unchanged)
+**Problem:** No visual indicator when a single instance of a recurring series has been individually modified (e.g., different time or date from the pattern).
+
+**Changes:**
+- `src/hooks/useCalendarData.ts` — In the enrichment step, for lessons with a `recurrence_id`, fetch the recurrence pattern or compare siblings to detect anomalies. A simpler approach: add an `is_exception` or check if the lesson's `updated_at` differs meaningfully from `created_at` (indicating manual edit). The most reliable approach is to add a boolean `is_series_exception` column to the `lessons` table via migration, defaulted to `false`, and set to `true` whenever a "this only" edit is made.
+- `src/pages/CalendarPage.tsx` — When saving a "this_only" edit on a recurring lesson, set `is_series_exception = true`.
+- `src/components/calendar/LessonCard.tsx` — When `lesson.recurrence_id` exists AND `lesson.is_series_exception` is true, render a small "Edited" badge (amber, next to the recurring icon).
+
+**Database migration:**
+```sql
+ALTER TABLE public.lessons 
+  ADD COLUMN is_series_exception boolean NOT NULL DEFAULT false;
+```
 
 ---
 
-## Technical Details
+## 3. Batch Attendance Mode
 
-### Files to create
-- `src/components/marketing/kickstarter/AIDisclosure.tsx` — New section with AI transparency info, using the same card-based layout as RisksSection for visual consistency.
+**Problem:** Taking attendance for 8+ lessons requires opening each lesson individually.
 
-### Files to modify
-- `src/pages/marketing/Kickstarter.tsx` — Import and add AIDisclosure between RisksSection and KickstarterFAQ.
-- `src/components/marketing/kickstarter/WhyKickstarter.tsx` — Reframe pillars, add Use of Funds percentage breakdown.
-- `src/components/marketing/kickstarter/KickstarterHero.tsx` — Update subtitle text.
-- `src/components/marketing/kickstarter/CampaignStory.tsx` — Update Act 3 body text.
-- `src/components/marketing/kickstarter/KickstarterFAQ.tsx` — Update FAQ 1, add new "What will my pledge fund?" FAQ.
-- `src/components/marketing/kickstarter/RisksSection.tsx` — Update "Not Vaporware" body text.
+**Changes:**
+- Create `src/pages/BatchAttendance.tsx` — A dedicated end-of-day view that:
+  - Lists all today's completed/scheduled lessons in chronological order
+  - Each lesson row shows student names with Present/Absent/Late toggle buttons inline
+  - Has a "Mark All Present" button at the top that defaults every student to present
+  - Saves attendance in batch via a single "Save All" action
+- `src/App.tsx` — Add route `/batch-attendance`
+- `src/components/layout/AppSidebar.tsx` — Add nav link under Calendar section
+- `src/components/calendar/LessonDetailPanel.tsx` — No changes needed (existing per-lesson attendance stays)
 
-### What you'll need to do on Kickstarter's platform
-These landing page changes mirror what you should fill in on Kickstarter's "Use of AI" form in the Story tab:
-- (a) Confirm the project uses AI
-- (b) List providers: Google Gemini, OpenAI (via Lovable AI gateway)
-- (c) Confirm funds will be used to develop/enhance AI features (not train foundational models)
-- (d) Explain human-in-the-loop safeguards and audit logging
+---
+
+## 4. Mobile Drag-to-Reschedule
+
+**Problem:** The `MobileWeekView` has no drag interaction for rescheduling lessons.
+
+**Changes:**
+- `src/components/calendar/MobileWeekView.tsx` — Add long-press (300ms) detection on lesson cards using touch events. On activation:
+  - Haptic feedback (`navigator.vibrate(50)`)
+  - Visual lift effect (scale + shadow on the card)
+  - Track touch position and highlight the destination day column
+  - On drop (touchend), calculate the target day and show a confirmation dialog with the proposed new date/time
+  - Call existing `onLessonDrop` callback from parent
+- Update props to accept `onLessonDrop` (same signature as desktop)
+- `src/components/calendar/WeekTimeGrid.tsx` — Pass `onLessonDrop` and `onLessonResize` through to `MobileWeekView`
+- `src/pages/CalendarPage.tsx` — No changes needed (already passes handlers)
+
+**UX flow:** Long-press card (300ms) -> card lifts with haptic -> drag horizontally across day columns -> release -> confirmation toast with "Moved to [Day] at [Time]" or conflict error.
+
+---
+
+## 5. Mobile Stacked View — 3-Day Rolling Default
+
+**Problem:** 7 columns at 33.33vw each means each column is ~130px on a 390px screen. A 3-day centred view would be more scannable.
+
+**Changes:**
+- `src/components/calendar/MobileWeekView.tsx` — Change `min-w-[33.33vw]` to `min-w-[80vw]` so each day card takes most of the screen width, making it a true swipeable day-by-day view rather than a cramped multi-column layout. The snap behaviour already works (`snap-x snap-mandatory`). This gives each day ~312px of width on a 390px screen.
+- Auto-scroll to today remains unchanged.
+- Dot indicators remain for all 7 days.
+
+---
+
+## 6. Parent Portal — Add to Calendar Export
+
+**Problem:** Parents frequently ask "what time is the lesson?" — exporting to their phone calendar solves this.
+
+**Changes:**
+- Create `src/lib/calendarExport.ts` — Utility functions:
+  - `generateICSEvent(lesson)` — Returns an .ics file string for a single lesson
+  - `generateGoogleCalendarUrl(lesson)` — Returns a Google Calendar "add event" URL
+- `src/pages/portal/PortalSchedule.tsx` — Add "Add to Calendar" dropdown button on each upcoming lesson card with options:
+  - "Google Calendar" — Opens link in new tab
+  - "Apple / Outlook (.ics)" — Downloads .ics file
+
+---
+
+## 7. Offline Resilience — Service Worker Caching
+
+**Problem:** Teachers in studios with patchy signal see blank screens.
+
+**Changes:**
+- Install `vite-plugin-pwa` dependency
+- `vite.config.ts` — Add PWA plugin with workbox config:
+  - Cache app shell (HTML, JS, CSS) with StaleWhileRevalidate
+  - Cache API responses for `/rest/v1/lessons` with NetworkFirst strategy (30-second timeout, fallback to cache)
+  - `navigateFallbackDenylist: [/^\/~oauth/]` to protect auth flow
+- `index.html` — Add PWA meta tags and manifest link
+- Create `public/manifest.json` with LessonLoop branding
+- The calendar will render from cache when offline, with a subtle "Offline — showing cached data" banner when `navigator.onLine` is false
+- `src/components/shared/OfflineBanner.tsx` — Small amber banner component that listens to online/offline events
+
+---
+
+## 8. Lesson Page Size — Server-Side Filter Optimisation
+
+**Problem:** Filters are applied in the query but could be more aggressive to stay under the 500 cap.
+
+**Changes:**
+- `src/hooks/useCalendarData.ts` — When filters are active, also filter the related data fetches (participants, attendance) to only the filtered lesson IDs, reducing payload size. Add `teacher_user_id` filter directly in the lessons query (already done for `teacher_id` but needs alignment with the actual column name used in the DB).
+- Return `totalCount` alongside `lessons` by adding a separate `.count()` query (or checking if `lessonsData.length === LESSONS_PAGE_SIZE`) so the UI knows when data is truncated.
+
+---
+
+## Technical Summary
+
+| Item | Files Modified | New Files | DB Migration |
+|------|---------------|-----------|-------------|
+| 500-lesson cap warning | useCalendarData.ts, CalendarPage.tsx | -- | -- |
+| Edited badge | LessonCard.tsx, useCalendarData.ts, CalendarPage.tsx | -- | Add `is_series_exception` column |
+| Batch attendance | App.tsx, AppSidebar.tsx | BatchAttendance.tsx | -- |
+| Mobile drag | MobileWeekView.tsx, WeekTimeGrid.tsx | -- | -- |
+| 3-day mobile | MobileWeekView.tsx | -- | -- |
+| Calendar export | PortalSchedule.tsx | calendarExport.ts | -- |
+| Offline/PWA | vite.config.ts, index.html | manifest.json, OfflineBanner.tsx | -- |
+| Filter optimisation | useCalendarData.ts | -- | -- |
+
+**Estimated scope:** ~8 files modified, ~4 new files, 1 database migration.
 
