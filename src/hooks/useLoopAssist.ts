@@ -39,6 +39,21 @@ export interface PageContext {
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/looopassist-chat`;
 const EXECUTE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/looopassist-execute`;
 
+const QUESTION_WORDS = /^(who|what|when|where|how|why|show|list|send|mark|generate|draft|create|find|get|check|tell|give|which|are|is|do|can|will|should)\b/i;
+
+function generateSmartTitle(content: string): string {
+  const trimmed = content.trim();
+  if (QUESTION_WORDS.test(trimmed)) {
+    // Take first sentence up to 40 chars
+    const sentenceEnd = trimmed.search(/[.?!\n]/);
+    if (sentenceEnd > 0 && sentenceEnd <= 40) {
+      return trimmed.slice(0, sentenceEnd + 1);
+    }
+    return trimmed.length <= 40 ? trimmed : trimmed.slice(0, 40) + '…';
+  }
+  return trimmed.length <= 30 ? trimmed : trimmed.slice(0, 30) + '…';
+}
+
 export function useLoopAssist(externalPageContext?: PageContext) {
   const { user, session } = useAuth();
   const { currentOrg } = useOrg();
@@ -133,14 +148,15 @@ export function useLoopAssist(externalPageContext?: PageContext) {
   const sendMessage = useCallback(async (content: string) => {
     if (!currentOrg?.id || !user?.id || !session?.access_token) {
       toast.error('Please log in to use LoopAssist');
-      return;
+      throw new Error('Not authenticated');
     }
 
     let conversationId = currentConversationId;
 
-    // Create conversation if needed
+    // Create conversation if needed — use smart title
     if (!conversationId) {
-      const newConv = await createConversation.mutateAsync(content.slice(0, 50));
+      const title = generateSmartTitle(content);
+      const newConv = await createConversation.mutateAsync(title);
       conversationId = newConv.id;
     }
 
@@ -153,8 +169,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
       content,
     });
     if (msgError) {
-      toast.error('Failed to send message');
-      return;
+      throw new Error('Failed to send message');
     }
 
     // Refresh messages to show user message
@@ -278,9 +293,10 @@ export function useLoopAssist(externalPageContext?: PageContext) {
 
         // Update conversation title if first message
         if (messages.length === 0) {
+          const title = generateSmartTitle(content);
           await supabase
             .from('ai_conversations')
-            .update({ title: content.slice(0, 50) })
+            .update({ title })
             .eq('id', conversationId);
         }
       }
@@ -289,10 +305,10 @@ export function useLoopAssist(externalPageContext?: PageContext) {
       queryClient.invalidateQueries({ queryKey: ['ai-conversations'] });
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
-        toast.error('Response timed out. Please try a shorter question.');
+        throw new Error('Response timed out. Please try a shorter question.');
       } else {
         logger.error('LoopAssist error:', error);
-        toast.error(error instanceof Error ? error.message : 'Failed to get response');
+        throw error instanceof Error ? error : new Error('Failed to get response');
       }
     } finally {
       if (timeoutRef.current) {
