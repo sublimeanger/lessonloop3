@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { logger } from "@/lib/logger";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { motion } from "framer-motion";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { Button } from "@/components/ui/button";
@@ -95,7 +96,7 @@ export default function BlogPost() {
           const formatted = text
             .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
             .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">$1</a>');
-          return <span dangerouslySetInnerHTML={{ __html: formatted }} />;
+          return <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(formatted) }} />;
         };
 
         // Lists
@@ -190,7 +191,7 @@ export default function BlogPost() {
             <p 
               key={index} 
               className="text-muted-foreground leading-relaxed mb-4"
-              dangerouslySetInnerHTML={{ __html: formattedText }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(formattedText) }}
             />
           );
         }
