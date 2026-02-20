@@ -656,7 +656,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { context, orgId } = body;
+    const { context, orgId, lastContextHash } = body;
     let { messages } = body;
 
     // ── Prompt injection defenses ──────────────────────────────
@@ -796,30 +796,45 @@ Todays scheduled lessons: ${todayLessons?.length || 0}`;
       .single();
 
     const userRole = membership.role;
+
+    // ── Context hash caching ──────────────────────────────────
+    // Build data context, compute hash, skip rebuild if unchanged
+    let filteredSummary = "";
+    let contextHash = "";
+
     const { sections } = await buildDataContext(supabase, orgId);
 
     // ── Role-based data filtering ──────────────────────────────
-    // Teachers must NOT see invoice/billing/guardian-contact data
-    // Finance must NOT see lesson notes or practice data
-    let filteredSummary = "";
     if (userRole === "teacher") {
       filteredSummary = sections.lessonSummary + sections.studentSummary +
         sections.cancellationSummary + sections.performanceSummary + sections.unmarkedSummary;
-      // Strip guardian emails from pageContextInfo
       pageContextInfo = pageContextInfo.replace(/\b[\w.-]+@[\w.-]+\.\w+\b/g, "[email hidden]");
     } else if (userRole === "finance") {
       filteredSummary = sections.invoiceSummary + sections.studentSummary +
         sections.guardianSummary + sections.performanceSummary +
         sections.rateCardSummary + sections.paymentSummary;
-      // Strip lesson notes and practice data from pageContextInfo
       pageContextInfo = pageContextInfo
         .replace(/Notes:.*$/gm, "Notes: [hidden]")
         .replace(/Practice Stats:[\s\S]*?(?=\n\n|$)/, "")
         .replace(/Recent Practice[\s\S]*?(?=\n\n|$)/, "")
         .replace(/Active Practice Assignments[\s\S]*?(?=\n\n|$)/, "");
     } else {
-      // owner, admin — full access
       filteredSummary = Object.values(sections).join("");
+    }
+
+    // Compute a simple hash of the filtered data context
+    const hashSource = filteredSummary + pageContextInfo;
+    const encoder = new TextEncoder();
+    const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(hashSource));
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    contextHash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
+
+    // If client sent the same hash, use a short stub instead of full context
+    let dataContext: string;
+    if (lastContextHash && lastContextHash === contextHash) {
+      dataContext = "\n\n[Data context unchanged since last message in this conversation. All previously provided entity data remains current.]";
+    } else {
+      dataContext = filteredSummary;
     }
 
     const orgContext = orgData
@@ -828,7 +843,7 @@ Your role: ${userRole}
 Currency: ${orgData.currency_code}`
       : "";
 
-    const fullContext = SYSTEM_PROMPT + orgContext + pageContextInfo + filteredSummary;
+    const fullContext = SYSTEM_PROMPT + orgContext + pageContextInfo + dataContext;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -873,7 +888,7 @@ Currency: ${orgData.currency_code}`
     }
 
     return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream", "X-Context-Hash": contextHash },
     });
   } catch (e) {
     console.error("LoopAssist error:", e);
