@@ -380,23 +380,39 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
     });
   }
 
-  // Recent lessons (last 10)
-  const { data: recentLessons } = await supabase
+  // Upcoming lessons (next 15) — prioritised
+  const { data: upcomingLessons } = await supabase
     .from("lesson_participants")
-    .select(`
-      lessons(id, title, start_at, status, notes_shared)
-    `)
+    .select("lessons(id, title, start_at, status)")
     .eq("student_id", studentId)
-    .order("created_at", { ascending: false })
-    .limit(10);
+    .gte("lessons.start_at", new Date().toISOString())
+    .order("created_at", { ascending: true })
+    .limit(15);
 
-  if (recentLessons && recentLessons.length > 0) {
-    context += `\n\nRecent Lessons (${recentLessons.length}):`;
-    recentLessons.forEach((lp: any) => {
-      if (lp.lessons) {
-        const date = new Date(lp.lessons.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-        context += `\n  - [Lesson:${lp.lessons.id}] ${date}: ${lp.lessons.title} (${lp.lessons.status})`;
-      }
+  const upcoming = (upcomingLessons || []).filter((lp: any) => lp.lessons);
+  if (upcoming.length > 0) {
+    context += `\n\nUpcoming Lessons (${upcoming.length}):`;
+    upcoming.forEach((lp: any) => {
+      const date = new Date(lp.lessons.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+      context += `\n  - [Lesson:${lp.lessons.id}] ${date}: ${lp.lessons.title}`;
+    });
+  }
+
+  // Recent completed lessons (last 5)
+  const { data: completedLessons } = await supabase
+    .from("lesson_participants")
+    .select("lessons(id, title, start_at, status)")
+    .eq("student_id", studentId)
+    .lt("lessons.start_at", new Date().toISOString())
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  const completed = (completedLessons || []).filter((lp: any) => lp.lessons);
+  if (completed.length > 0) {
+    context += `\n\nRecent Completed Lessons (${completed.length}):`;
+    completed.forEach((lp: any) => {
+      const date = new Date(lp.lessons.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+      context += `\n  - [Lesson:${lp.lessons.id}] ${date}: ${lp.lessons.title} (${lp.lessons.status})`;
     });
   }
 
@@ -464,12 +480,20 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
       .limit(10);
 
     if (studentInvoices && studentInvoices.length > 0) {
-      const overdueCount = studentInvoices.filter((i: Invoice) => i.status === "overdue").length;
-      const outstandingCount = studentInvoices.filter((i: Invoice) => i.status === "sent").length;
-      context += `\n\nInvoices (${studentInvoices.length} total, ${overdueCount} overdue, ${outstandingCount} outstanding):`;
-      studentInvoices.slice(0, 5).forEach((inv: Invoice) => {
+      // Prioritise overdue invoices first
+      const sorted = [...studentInvoices].sort((a: Invoice, b: Invoice) => {
+        const priority: Record<string, number> = { overdue: 0, sent: 1, draft: 2, paid: 3, cancelled: 4 };
+        return (priority[a.status] ?? 5) - (priority[b.status] ?? 5);
+      });
+      const overdueCount = sorted.filter((i: Invoice) => i.status === "overdue").length;
+      const outstandingCount = sorted.filter((i: Invoice) => i.status === "sent").length;
+      context += `\n\nInvoices (${sorted.length} shown, ${overdueCount} overdue, ${outstandingCount} outstanding):`;
+      sorted.slice(0, 5).forEach((inv: Invoice) => {
         context += `\n  - [Invoice:${inv.invoice_number}] ${inv.status} £${(inv.total_minor / 100).toFixed(2)}`;
       });
+      if (sorted.length > 5) {
+        context += `\n  ... and ${sorted.length - 5} more invoices`;
+      }
     }
 
     // Make-up credits
@@ -501,6 +525,22 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
         context += `\n  - ${a.title}`;
       });
     }
+  }
+
+  // Truncate if context exceeds 4000 characters to avoid bloating the prompt
+  const MAX_CONTEXT_CHARS = 4000;
+  if (context.length > MAX_CONTEXT_CHARS) {
+    const lines = context.split("\n");
+    let truncated = "";
+    let lineCount = 0;
+    for (const line of lines) {
+      if (truncated.length + line.length + 1 > MAX_CONTEXT_CHARS - 80) break;
+      truncated += (lineCount > 0 ? "\n" : "") + line;
+      lineCount++;
+    }
+    const droppedLines = lines.length - lineCount;
+    truncated += `\n... and ${droppedLines} more context lines truncated for brevity`;
+    return truncated;
   }
 
   return context;
