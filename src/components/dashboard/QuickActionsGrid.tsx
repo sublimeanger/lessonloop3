@@ -4,6 +4,7 @@ import {
   Users, Plus, BookOpen, FileText,
   type LucideIcon,
 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 interface QuickAction {
@@ -48,26 +49,30 @@ export function QuickActionsGrid({ variant = 'solo', className }: QuickActionsGr
     : soloActions;
 
   return (
-    <div className={cn('', className)} data-tour="quick-actions">
-      <h2 className="text-sm font-semibold text-foreground mb-3">Quick Actions</h2>
-      <div className="grid grid-cols-2 gap-2">
-        {actions.map((action) => (
-          <Link
-            key={action.id}
-            to={action.href}
-            className={cn(
-              'flex items-center gap-3 rounded-xl px-4 py-3 transition-all',
-              'hover:shadow-sm active:scale-[0.98]',
-              action.primary
-                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                : 'bg-muted/50 text-foreground hover:bg-muted',
-            )}
-          >
-            <action.icon className="h-5 w-5 shrink-0" strokeWidth={1.5} />
-            <span className="text-sm font-medium">{action.label}</span>
-          </Link>
-        ))}
-      </div>
-    </div>
+    <Card className={cn('', className)} data-tour="quick-actions">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-semibold">Quick Actions</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-2">
+          {actions.map((action) => (
+            <Link
+              key={action.id}
+              to={action.href}
+              className={cn(
+                'flex items-center gap-3 rounded-xl px-4 py-3 transition-all',
+                'hover:shadow-sm active:scale-[0.98]',
+                action.primary
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  : 'bg-muted/50 text-foreground hover:bg-muted',
+              )}
+            >
+              <action.icon className="h-5 w-5 shrink-0" strokeWidth={1.5} />
+              <span className="text-sm font-medium">{action.label}</span>
+            </Link>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
