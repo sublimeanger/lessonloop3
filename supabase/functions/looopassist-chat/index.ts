@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
-import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { checkRateLimit, checkLoopAssistDailyCap, rateLimitResponse } from "../_shared/rate-limit.ts";
 
 interface Invoice {
   id: string;
@@ -649,10 +649,17 @@ serve(async (req) => {
       });
     }
 
-    // Rate limiting check
+    // Per-user rate limit
     const rateLimitResult = await checkRateLimit(user.id, "looopassist-chat");
     if (!rateLimitResult.allowed) {
-      return rateLimitResponse(corsHeaders, rateLimitResult.retryAfterSeconds);
+      return rateLimitResponse(corsHeaders, rateLimitResult);
+    }
+
+    // Per-org daily cap (cost control)
+    const body_peek = await req.clone().json();
+    const dailyCapResult = await checkLoopAssistDailyCap(body_peek.orgId);
+    if (!dailyCapResult.allowed) {
+      return rateLimitResponse(corsHeaders, dailyCapResult);
     }
 
     const body = await req.json();
