@@ -1,4 +1,6 @@
 import { ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Header } from './Header';
 import { AppSidebar } from './AppSidebar';
@@ -17,6 +19,7 @@ interface AppLayoutProps {
 function AppLayoutInner({ children }: AppLayoutProps) {
   const { isOpen, setIsOpen } = useLoopAssistUI();
   const { currentRole } = useOrg();
+  const location = useLocation();
   
   // Initialize keyboard shortcuts
   const { 
@@ -37,7 +40,14 @@ function AppLayoutInner({ children }: AppLayoutProps) {
       <div className="flex flex-1">
         <AppSidebar />
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
-          {children}
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {children}
+          </motion.div>
         </main>
       </div>
       {showLoopAssist && (
