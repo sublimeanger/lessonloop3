@@ -41,6 +41,8 @@ import { CalendarSkeleton } from '@/components/shared/LoadingState';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Toggle } from '@/components/ui/toggle';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
+import { useProactiveAlerts } from '@/hooks/useProactiveAlerts';
 
 const LG_QUERY = '(min-width: 1024px)';
 const subscribe = (cb: () => void) => { const mql = window.matchMedia(LG_QUERY); mql.addEventListener('change', cb); return () => mql.removeEventListener('change', cb); };
@@ -612,6 +614,8 @@ export default function CalendarPage() {
         }
       />
 
+      <CalendarUnmarkedBanner />
+
       {/* Toolbar */}
       <div className="mb-3 space-y-2">
         {/* Row 1: Navigation + week strip + view toggle */}
@@ -863,5 +867,19 @@ export default function CalendarPage() {
         action="edit"
       />
     </AppLayout>
+  );
+}
+
+function CalendarUnmarkedBanner() {
+  const { alerts } = useProactiveAlerts();
+  const unmarked = alerts.find(a => a.type === 'unmarked');
+  if (!unmarked || !unmarked.count) return null;
+
+  return (
+    <LoopAssistPageBanner
+      bannerKey="calendar_unmarked"
+      message={`${unmarked.count} lesson${unmarked.count > 1 ? 's' : ''} from recently need marking — Let LoopAssist handle it`}
+      prompt="Mark all yesterday's lessons as complete"
+    />
   );
 }

@@ -17,6 +17,7 @@ import { SendInvoiceModal } from '@/components/invoices/SendInvoiceModal';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { useToast } from '@/hooks/use-toast';
 import { isBefore, parseISO } from 'date-fns';
+import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -168,6 +169,14 @@ export default function Invoices() {
         <div className="mb-4" data-tour="invoice-stats">
           <InvoiceStatsWidget onFilterStatus={(status) => { handleFiltersChange({ ...filters, status: status as any }); }} />
         </div>
+      )}
+
+      {!isParent && statusCounts.overdue > 0 && (
+        <LoopAssistPageBanner
+          bannerKey="invoices_overdue"
+          message={`${statusCounts.overdue} invoice${statusCounts.overdue !== 1 ? 's are' : ' is'} overdue — Chase them with LoopAssist`}
+          prompt="Send reminders for all overdue invoices"
+        />
       )}
 
       <div className="space-y-4">
