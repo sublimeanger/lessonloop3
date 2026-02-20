@@ -17,6 +17,7 @@ import {
   Square,
   X,
   RotateCcw,
+  Search,
 } from 'lucide-react';
 import { useLoopAssist, AIMessage, AIConversation } from '@/hooks/useLoopAssist';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
@@ -505,19 +506,43 @@ function ConversationList({
   onDelete: (id: string) => void;
   onNew: () => void;
 }) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredConversations = searchQuery.trim()
+    ? conversations.filter(conv =>
+        conv.title.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : conversations;
+
   return (
     <ScrollArea className="flex-1">
       <div className="p-4">
-        <Button variant="outline" className="mb-4 w-full gap-2" onClick={onNew}>
+        <Button variant="outline" className="mb-3 w-full gap-2" onClick={onNew}>
           <Plus className="h-4 w-4" />
           New Conversation
         </Button>
 
+        {conversations.length > 0 && (
+          <div className="relative mb-3">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search conversations..."
+              className="pl-8 h-8 text-sm"
+            />
+          </div>
+        )}
+
         {conversations.length === 0 ? (
           <p className="text-center text-sm text-muted-foreground">No conversations yet</p>
+        ) : filteredConversations.length === 0 && searchQuery ? (
+          <p className="text-center text-sm text-muted-foreground py-4">
+            No conversations matching &ldquo;{searchQuery}&rdquo;
+          </p>
         ) : (
           <div className="space-y-2">
-            {conversations.map((conv) => (
+            {filteredConversations.map((conv) => (
               <div
                 key={conv.id}
                 role="button"
