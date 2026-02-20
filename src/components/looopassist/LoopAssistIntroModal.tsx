@@ -35,6 +35,13 @@ export function LoopAssistIntroModal({ open, onOpenChange }: LoopAssistIntroModa
     }
     setHasSeenIntro(true);
     onOpenChange(false);
+
+    // Show first-use toast with keyboard shortcut hint
+    import('sonner').then(({ toast }) => {
+      setTimeout(() => {
+        toast.info('Pro tip: Press ⌘J to open LoopAssist from anywhere');
+      }, 500);
+    });
   };
 
   // Only show if user hasn't seen it and modal should be open

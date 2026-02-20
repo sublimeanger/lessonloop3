@@ -23,6 +23,7 @@ import { NavLink } from '@/components/NavLink';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
+import { useProactiveAlerts } from '@/hooks/useProactiveAlerts';
 import {
   Sidebar,
   SidebarContent,
@@ -225,6 +226,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { state } = useSidebar();
   const { setIsOpen: openLoopAssist } = useLoopAssistUI();
+  const { totalActionable, hasCritical } = useProactiveAlerts();
   const collapsed = state === 'collapsed';
   const navGroups = getNavGroups(currentRole);
   const showLoopAssist = currentRole && currentRole !== 'parent';
@@ -281,9 +283,17 @@ export function AppSidebar() {
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => openLoopAssist(true)}
-                    className="flex items-center justify-center rounded-lg p-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    className="relative flex items-center justify-center rounded-lg p-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   >
                     <Sparkles className="h-[18px] w-[18px]" strokeWidth={1.5} />
+                    {totalActionable > 0 && (
+                      <span className={cn(
+                        'absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[9px] font-bold text-destructive-foreground',
+                        hasCritical ? 'bg-destructive' : 'bg-warning'
+                      )}>
+                        {totalActionable > 9 ? '9+' : totalActionable}
+                      </span>
+                    )}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="text-xs">LoopAssist</TooltipContent>
@@ -294,7 +304,18 @@ export function AppSidebar() {
                 className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ring-1 ring-sidebar-border"
               >
                 <Sparkles className="h-[18px] w-[18px] text-sidebar-primary" strokeWidth={1.5} />
-                <span>LoopAssist</span>
+                <span className="flex-1 text-left">LoopAssist</span>
+                {totalActionable > 0 && (
+                  <span className={cn(
+                    'flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-destructive-foreground',
+                    hasCritical ? 'bg-destructive' : 'bg-warning'
+                  )}>
+                    {totalActionable > 9 ? '9+' : totalActionable}
+                  </span>
+                )}
+                {totalActionable === 0 && (
+                  <span className="text-[10px] text-sidebar-foreground/40">⌘J</span>
+                )}
               </button>
             )}
             <SidebarSeparator className="bg-sidebar-border" />
