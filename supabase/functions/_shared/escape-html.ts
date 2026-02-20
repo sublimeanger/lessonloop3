@@ -8,5 +8,13 @@ export function escapeHtml(str: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replace(/'/g, '&#039;');
+}
+
+/**
+ * Escapes HTML and converts newlines to <br> tags.
+ * Use for multi-line user content in email bodies.
+ */
+export function escapeAndLineBreak(str: string): string {
+  return escapeHtml(str).replace(/\n/g, '<br>');
 }
