@@ -77,9 +77,10 @@ export function useLoopAssist(externalPageContext?: PageContext) {
         .from('ai_messages')
         .select('*')
         .eq('conversation_id', currentConversationId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(50);
       if (error) throw error;
-      return data as AIMessage[];
+      return (data as AIMessage[]).reverse();
     },
     enabled: !!currentConversationId,
   });
@@ -160,31 +161,19 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     queryClient.invalidateQueries({ queryKey: ['ai-messages', conversationId] });
 
     // Build message history with truncation to manage token limits
-    const MAX_HISTORY = 10;
+    const MAX_HISTORY_MESSAGES = 20; // Keep last 20 messages (10 turns)
     const allMessages = messages.map((m) => ({ role: m.role, content: m.content }));
     allMessages.push({ role: 'user', content });
 
-    let historyMessages: { role: string; content: string }[];
+    const historyMessages = allMessages.length > MAX_HISTORY_MESSAGES
+      ? allMessages.slice(-MAX_HISTORY_MESSAGES)
+      : [...allMessages];
 
-    if (allMessages.length <= MAX_HISTORY + 1) {
-      // +1 for the new message; fits within limit
-      historyMessages = allMessages;
-    } else {
-      const firstUserMsg = allMessages.find((m) => m.role === 'user');
-      const trimmedCount = allMessages.length - MAX_HISTORY;
-      const recentMessages = allMessages.slice(-MAX_HISTORY);
-
-      const summaryNote: { role: string; content: string } = {
+    if (allMessages.length > MAX_HISTORY_MESSAGES) {
+      historyMessages.unshift({
         role: 'system',
-        content: `Previous conversation context: [${trimmedCount} messages trimmed]. The user has been asking about "${firstUserMsg?.content?.slice(0, 80) || 'general topics'}".`,
-      };
-
-      // Include first user message for context, summary, then recent messages
-      historyMessages = [
-        ...(firstUserMsg && !recentMessages.includes(firstUserMsg) ? [firstUserMsg] : []),
-        summaryNote,
-        ...recentMessages,
-      ];
+        content: `[Earlier conversation context truncated. ${allMessages.length - MAX_HISTORY_MESSAGES} earlier messages not shown.]`,
+      });
     }
 
     setIsStreaming(true);
