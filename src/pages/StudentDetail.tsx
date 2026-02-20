@@ -105,7 +105,7 @@ export default function StudentDetail() {
   const [guardianInvites, setGuardianInvites] = useState<Record<string, GuardianInviteStatus>>({});
   
   // Data hooks
-  const { data: messages, isLoading: messagesLoading } = useStudentMessages(id);
+  const { data: messages, isLoading: messagesLoading, hasMore: messagesHasMore, loadMore: messagesLoadMore, isFetchingMore: messagesIsFetchingMore } = useStudentMessages(id);
   const { data: studentLessons, isLoading: lessonsLoading } = useStudentLessons(id);
   const { data: studentInvoices, isLoading: invoicesLoading } = useStudentInvoices(id);
 
@@ -824,6 +824,9 @@ export default function StudentDetail() {
                   messages={messages || []}
                   isLoading={messagesLoading}
                   emptyMessage="No messages sent to this student's guardians yet."
+                  hasMore={messagesHasMore}
+                  onLoadMore={() => messagesLoadMore()}
+                  isFetchingMore={messagesIsFetchingMore}
                 />
               )}
             </CardContent>

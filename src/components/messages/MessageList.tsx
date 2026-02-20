@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Mail, MessageSquare, Clock, User, CheckCircle, AlertCircle, ChevronDown, ChevronRight, Reply } from 'lucide-react';
+import { Mail, MessageSquare, Clock, User, CheckCircle, AlertCircle, ChevronDown, ChevronRight, Reply, Loader2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useRelatedStudent } from '@/hooks/useRelatedStudent';
@@ -26,6 +26,9 @@ interface MessageListProps {
   isLoading?: boolean;
   emptyMessage?: string;
   onReply?: (message: MessageLogEntry) => void;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
+  isFetchingMore?: boolean;
 }
 
 function MessageCard({ message, onReply }: { message: MessageLogEntry; onReply?: (msg: MessageLogEntry) => void }) {
@@ -170,7 +173,7 @@ function MessageCard({ message, onReply }: { message: MessageLogEntry; onReply?:
   );
 }
 
-export function MessageList({ messages, isLoading, emptyMessage = 'No messages yet', onReply }: MessageListProps) {
+export function MessageList({ messages, isLoading, emptyMessage = 'No messages yet', onReply, hasMore, onLoadMore, isFetchingMore }: MessageListProps) {
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -204,6 +207,20 @@ export function MessageList({ messages, isLoading, emptyMessage = 'No messages y
       {messages.map((message) => (
         <MessageCard key={message.id} message={message} onReply={onReply} />
       ))}
+
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            onClick={onLoadMore}
+            disabled={isFetchingMore}
+            className="gap-2"
+          >
+            {isFetchingMore && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isFetchingMore ? 'Loading…' : 'Load more messages'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
