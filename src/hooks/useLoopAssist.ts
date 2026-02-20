@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -47,6 +47,8 @@ export function useLoopAssist(externalPageContext?: PageContext) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
   const [contextHash, setContextHash] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pageContext = externalPageContext || { type: 'general' as const };
 
   // Fetch conversations
@@ -166,6 +168,14 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     setIsStreaming(true);
     setStreamingContent('');
 
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    // 30-second timeout
+    timeoutRef.current = setTimeout(() => {
+      abortController.abort();
+    }, 30000);
+
     try {
       const response = await fetch(CHAT_URL, {
         method: 'POST',
@@ -179,6 +189,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
           orgId: currentOrg.id,
           lastContextHash: contextHash,
         }),
+        signal: abortController.signal,
       });
 
       if (!response.ok) {
@@ -266,9 +277,18 @@ export function useLoopAssist(externalPageContext?: PageContext) {
       queryClient.invalidateQueries({ queryKey: ['ai-messages', conversationId] });
       queryClient.invalidateQueries({ queryKey: ['ai-conversations'] });
     } catch (error) {
-      console.error('LoopAssist error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to get response');
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        toast.error('Response timed out. Please try a shorter question.');
+      } else {
+        console.error('LoopAssist error:', error);
+        toast.error(error instanceof Error ? error.message : 'Failed to get response');
+      }
     } finally {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      abortControllerRef.current = null;
       setIsStreaming(false);
       setStreamingContent('');
     }
@@ -365,6 +385,9 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     // Actions
     createConversation: createConversation.mutate,
     sendMessage,
+    cancelStreaming: useCallback(() => {
+      abortControllerRef.current?.abort();
+    }, []),
     handleProposal: handleProposal.mutate,
     handleProposalLoading: handleProposal.isPending,
     deleteConversation: deleteConversation.mutate,

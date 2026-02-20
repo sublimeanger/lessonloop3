@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   Loader2,
   Sparkles,
+  Square,
   X,
 } from 'lucide-react';
 import { useLoopAssist, AIMessage, AIConversation } from '@/hooks/useLoopAssist';
@@ -47,6 +48,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     streamingContent,
     pendingProposals,
     sendMessage,
+    cancelStreaming,
     handleProposal,
     handleProposalLoading,
     deleteConversation,
@@ -264,13 +266,15 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                   disabled={isStreaming}
                   className="flex-1"
                 />
-                <Button onClick={handleSend} disabled={!input.trim() || isStreaming} size="icon">
-                  {isStreaming ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
+                {isStreaming ? (
+                  <Button onClick={cancelStreaming} size="icon" variant="destructive" title="Stop generating">
+                    <Square className="h-3.5 w-3.5" />
+                  </Button>
+                ) : (
+                  <Button onClick={handleSend} disabled={!input.trim()} size="icon">
                     <Send className="h-4 w-4" />
-                  )}
-                </Button>
+                  </Button>
+                )}
               </div>
             </div>
           </>
