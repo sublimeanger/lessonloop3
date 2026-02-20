@@ -75,6 +75,7 @@ export function EmptyState({
           <img 
             src={previewImage} 
             alt={previewAlt || 'Preview of what this will look like'} 
+            loading="lazy"
             className="w-full h-auto rounded-lg"
           />
         </div>
