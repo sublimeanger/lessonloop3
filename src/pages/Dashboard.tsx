@@ -20,6 +20,7 @@ import {
   FirstRunExperience,
   UrgentActionsBar,
   LoopAssistWidget,
+  LoopAssistAlerts,
 } from '@/components/dashboard';
 import { 
   Calendar, Users, Receipt, Clock, TrendingUp, PoundSterling,
@@ -164,6 +165,12 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
         </motion.div>
 
         <motion.div variants={itemVariants}>
+          <SectionErrorBoundary name="LoopAssist Alerts">
+            <LoopAssistAlerts />
+          </SectionErrorBoundary>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Upgrade Banner">
             <UpgradeBanner />
           </SectionErrorBoundary>
@@ -257,6 +264,12 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
         </motion.div>
 
         <motion.div variants={itemVariants}>
+          <SectionErrorBoundary name="LoopAssist Alerts">
+            <LoopAssistAlerts />
+          </SectionErrorBoundary>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Upgrade Banner">
             <UpgradeBanner />
           </SectionErrorBoundary>
@@ -340,6 +353,12 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Urgent Actions">
             <UrgentActionsBar />
+          </SectionErrorBoundary>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <SectionErrorBoundary name="LoopAssist Alerts">
+            <LoopAssistAlerts />
           </SectionErrorBoundary>
         </motion.div>
 
