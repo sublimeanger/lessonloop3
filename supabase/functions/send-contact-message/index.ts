@@ -1,4 +1,5 @@
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { checkRateLimit } from "../_shared/rate-limit.ts";
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const RECIPIENT_EMAIL = 'jamie@searchflare.co.uk';
@@ -26,6 +27,33 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // --- IP-based rate limiting (5 per hour) ---
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || req.headers.get("cf-connecting-ip")
+      || "unknown";
+
+    const rlResult = await checkRateLimit(
+      `contact-${clientIp}`,
+      "send-contact-message",
+      { maxRequests: 5, windowMinutes: 60 }
+    );
+    if (!rlResult.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: "You've submitted several messages recently. Please try again later, or email us directly.",
+          retryAfterSeconds: rlResult.retryAfterSeconds,
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": String(rlResult.retryAfterSeconds ?? 300),
+          },
+        }
+      );
+    }
+
     const body: ContactRequest = await req.json();
 
     // Validate required fields
