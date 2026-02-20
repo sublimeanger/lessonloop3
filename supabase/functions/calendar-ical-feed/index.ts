@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     // Look up the calendar connection by iCal token
     const { data: connection, error: connectionError } = await supabase
       .from('calendar_connections')
-      .select('id, user_id, org_id, sync_enabled')
+      .select('id, user_id, org_id, sync_enabled, ical_token_expires_at')
       .eq('ical_token', token)
       .eq('provider', 'apple')
       .single();
@@ -56,6 +56,14 @@ Deno.serve(async (req) => {
       console.error('Invalid or expired iCal token');
       return new Response('Invalid or expired feed URL', { 
         status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
+      });
+    }
+
+    // Check token expiry
+    if (connection.ical_token_expires_at && new Date(connection.ical_token_expires_at) < new Date()) {
+      return new Response('Feed URL has expired. Please generate a new one in LessonLoop settings.', {
+        status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
       });
     }
@@ -119,6 +127,17 @@ Deno.serve(async (req) => {
     const domain = 'lessonloop.app';
     const now = formatICalDate(new Date());
     
+    // Check if token expires within 7 days for warning
+    let expiryWarning: string | null = null;
+    if (connection.ical_token_expires_at) {
+      const expiresAt = new Date(connection.ical_token_expires_at);
+      const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      if (expiresAt <= sevenDaysFromNow) {
+        const expiryDate = expiresAt.toISOString().split('T')[0];
+        expiryWarning = `Your calendar feed URL expires on ${expiryDate}. Please regenerate in Settings.`;
+      }
+    }
+
     let icalContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
@@ -128,6 +147,10 @@ Deno.serve(async (req) => {
       `X-WR-CALNAME:${orgName} Lessons`,
       `X-WR-TIMEZONE:${timezone}`,
     ];
+
+    if (expiryWarning) {
+      icalContent.push(`X-LESSONLOOP-WARNING:${expiryWarning}`);
+    }
 
     // Add each lesson as an event
     for (const lesson of lessons || []) {

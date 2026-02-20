@@ -17,6 +17,7 @@ interface CalendarConnection {
   last_sync_at: string | null;
   sync_status: 'active' | 'error' | 'disconnected';
   ical_token: string | null;
+  ical_token_expires_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -59,8 +60,9 @@ export function useCalendarConnections() {
       return `${baseUrl}/functions/v1/calendar-ical-feed?token=${appleConnection.ical_token}`;
     }
 
-    // Create a new Apple connection with iCal token
+    // Create a new Apple connection with iCal token (90-day expiry)
     const icalToken = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+    const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
 
     const { data, error } = await supabase
       .from('calendar_connections')
@@ -69,6 +71,7 @@ export function useCalendarConnections() {
         org_id: currentOrg.id,
         provider: 'apple',
         ical_token: icalToken,
+        ical_token_expires_at: expiresAt,
         sync_enabled: true,
         sync_status: 'active',
       }, {
@@ -101,10 +104,15 @@ export function useCalendarConnections() {
       if (!currentOrg || !user) throw new Error('Not authenticated');
 
       const newToken = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+      const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
 
       const { error } = await supabase
         .from('calendar_connections')
-        .update({ ical_token: newToken, updated_at: new Date().toISOString() })
+        .update({ 
+          ical_token: newToken, 
+          ical_token_expires_at: expiresAt,
+          updated_at: new Date().toISOString(),
+        })
         .eq('user_id', user.id)
         .eq('org_id', currentOrg.id)
         .eq('provider', 'apple');
