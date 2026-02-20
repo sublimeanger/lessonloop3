@@ -5,6 +5,8 @@ import { escapeHtml } from "../_shared/escape-html.ts";
 // This function runs on a schedule (e.g., daily) to send automated overdue invoice reminders
 // based on each organisation's configured reminder days (e.g., [7, 14, 30])
 
+import { validateCronAuth } from "../_shared/cron-auth.ts";
+
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop3.lovable.app";
 
 interface OverdueInvoice {
@@ -30,6 +32,9 @@ interface OverdueInvoice {
 }
 
 serve(async (req) => {
+  const cronAuthError = validateCronAuth(req);
+  if (cronAuthError) return cronAuthError;
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

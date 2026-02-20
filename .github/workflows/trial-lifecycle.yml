@@ -10,6 +10,7 @@ on:
 env:
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+  INTERNAL_CRON_SECRET: ${{ secrets.INTERNAL_CRON_SECRET }}
 
 jobs:
   send-trial-reminders:
@@ -21,6 +22,7 @@ jobs:
         run: |
           curl -X POST "${{ env.SUPABASE_URL }}/functions/v1/trial-reminder-7day" \
             -H "Authorization: Bearer ${{ env.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "x-cron-secret: ${{ env.INTERNAL_CRON_SECRET }}" \
             -H "Content-Type: application/json" \
             --fail-with-body || echo "7-day reminder completed (may have no recipients)"
 
@@ -28,6 +30,7 @@ jobs:
         run: |
           curl -X POST "${{ env.SUPABASE_URL }}/functions/v1/trial-reminder-3day" \
             -H "Authorization: Bearer ${{ env.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "x-cron-secret: ${{ env.INTERNAL_CRON_SECRET }}" \
             -H "Content-Type: application/json" \
             --fail-with-body || echo "3-day reminder completed (may have no recipients)"
 
@@ -35,6 +38,7 @@ jobs:
         run: |
           curl -X POST "${{ env.SUPABASE_URL }}/functions/v1/trial-reminder-1day" \
             -H "Authorization: Bearer ${{ env.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "x-cron-secret: ${{ env.INTERNAL_CRON_SECRET }}" \
             -H "Content-Type: application/json" \
             --fail-with-body || echo "1-day reminder completed (may have no recipients)"
 
@@ -42,6 +46,7 @@ jobs:
         run: |
           curl -X POST "${{ env.SUPABASE_URL }}/functions/v1/trial-expired" \
             -H "Authorization: Bearer ${{ env.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "x-cron-secret: ${{ env.INTERNAL_CRON_SECRET }}" \
             -H "Content-Type: application/json" \
             --fail-with-body || echo "Expired trials processed (may have no recipients)"
 
@@ -49,6 +54,7 @@ jobs:
         run: |
           curl -X POST "${{ env.SUPABASE_URL }}/functions/v1/trial-winback" \
             -H "Authorization: Bearer ${{ env.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "x-cron-secret: ${{ env.INTERNAL_CRON_SECRET }}" \
             -H "Content-Type: application/json" \
             --fail-with-body || echo "Winback emails completed (may have no recipients)"
 
