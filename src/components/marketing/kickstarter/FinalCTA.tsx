@@ -9,11 +9,20 @@ import { ChevronRight } from "lucide-react";
 
 export function FinalCTA() {
   const [email, setEmail] = useState("");
+  const [honeypot, setHoneypot] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const isDisposableDomain = (email: string) => {
+    const blocked = ['mailinator.com','guerrillamail.com','tempmail.com','throwaway.email','yopmail.com','sharklasers.com','guerrillamailblock.com','grr.la','dispostable.com','trashmail.com'];
+    const domain = email.split('@')[1]?.toLowerCase();
+    return !domain || blocked.includes(domain);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
+    if (honeypot) { toast.success("You're in! We'll notify you when we launch."); return; }
+    if (isDisposableDomain(email)) { toast.error("Please use a real email address."); return; }
     setLoading(true);
     try {
       const { error } = await supabase.from("kickstarter_signups" as any).insert({ email });
@@ -82,6 +91,7 @@ export function FinalCTA() {
             transition={{ delay: 0.3 }}
             className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto"
           >
+            <input type="text" name="website" value={honeypot} onChange={e => setHoneypot(e.target.value)} style={{ position: 'absolute', left: '-9999px' }} tabIndex={-1} autoComplete="off" aria-hidden="true" />
             <Input
               type="email"
               placeholder="Your email address"
