@@ -46,6 +46,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
+  const [contextHash, setContextHash] = useState<string | null>(null);
   const pageContext = externalPageContext || { type: 'general' as const };
 
   // Fetch conversations
@@ -119,6 +120,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     },
     onSuccess: (data) => {
       setCurrentConversationId(data.id);
+      setContextHash(null);
       queryClient.invalidateQueries({ queryKey: ['ai-conversations'] });
     },
   });
@@ -175,12 +177,19 @@ export function useLoopAssist(externalPageContext?: PageContext) {
           messages: historyMessages,
           context: pageContext,
           orgId: currentOrg.id,
+          lastContextHash: contextHash,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to get response');
+      }
+
+      // Store the context hash from response for subsequent messages
+      const newContextHash = response.headers.get('X-Context-Hash');
+      if (newContextHash) {
+        setContextHash(newContextHash);
       }
 
       if (!response.body) throw new Error('No response body');
@@ -263,7 +272,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
       setIsStreaming(false);
       setStreamingContent('');
     }
-  }, [currentOrg?.id, user?.id, session?.access_token, currentConversationId, messages, pageContext, queryClient, createConversation]);
+  }, [currentOrg?.id, user?.id, session?.access_token, currentConversationId, messages, pageContext, queryClient, createConversation, contextHash]);
 
   // Execute or cancel proposal
   const handleProposal = useMutation({
