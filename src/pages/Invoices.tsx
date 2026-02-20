@@ -33,7 +33,14 @@ export default function Invoices() {
   const { toast } = useToast();
   const isParent = currentRole === 'parent';
   const [filters, setFilters] = useState<InvoiceFilters>({});
+  const [currentPage, setCurrentPage] = useState(1);
   const { data: invoices = [], isLoading } = useInvoices(filters);
+
+  // Reset to page 1 when filters change
+  const handleFiltersChange = (newFilters: InvoiceFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  };
   const updateStatus = useUpdateInvoiceStatus();
 
   // Selection state
@@ -158,13 +165,13 @@ export default function Invoices() {
 
       {!isParent && (
         <div data-tour="invoice-stats">
-          <InvoiceStatsWidget onFilterStatus={(status) => setFilters(prev => ({ ...prev, status: status as any }))} />
+          <InvoiceStatsWidget onFilterStatus={(status) => { setFilters(prev => ({ ...prev, status: status as any })); setCurrentPage(1); }} />
         </div>
       )}
 
       <div className="mt-6 space-y-4">
         {!isParent && (
-          <InvoiceFiltersBar filters={filters} onFiltersChange={setFilters} />
+          <InvoiceFiltersBar filters={filters} onFiltersChange={handleFiltersChange} />
         )}
 
         {!isParent && (
@@ -205,6 +212,8 @@ export default function Invoices() {
               onSendReminder={(inv) => setReminderModalInvoice(inv)}
               selectedIds={selectedIds}
               onSelectionChange={setSelectedIds}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
             />
             {!isParent && (
               <ContextualHint

@@ -18,7 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Send, Eye, CreditCard, XCircle, Bell } from 'lucide-react';
+import { MoreHorizontal, Send, Eye, CreditCard, XCircle, Bell, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { InvoiceWithDetails } from '@/hooks/useInvoices';
@@ -26,6 +26,8 @@ import type { Database } from '@/integrations/supabase/types';
 import { formatCurrencyMinor, formatDateUK } from '@/lib/utils';
 
 type InvoiceStatus = Database['public']['Enums']['invoice_status'];
+
+export const INVOICES_PAGE_SIZE = 25;
 
 interface InvoiceListProps {
   invoices: InvoiceWithDetails[];
@@ -35,6 +37,8 @@ interface InvoiceListProps {
   onSendReminder: (invoice: InvoiceWithDetails) => void;
   selectedIds: Set<string>;
   onSelectionChange: (ids: Set<string>) => void;
+  currentPage: number;
+  onPageChange: (page: number) => void;
 }
 
 function getStatusBadge(status: InvoiceStatus, dueDate: string) {
@@ -146,20 +150,33 @@ export function InvoiceList({
   onSendReminder,
   selectedIds,
   onSelectionChange,
+  currentPage,
+  onPageChange,
 }: InvoiceListProps) {
   const navigate = useNavigate();
   const { currentOrg } = useOrg();
   const isMobile = useIsMobile();
   const currency = currentOrg?.currency_code || 'GBP';
 
-  const allSelected = invoices.length > 0 && invoices.every((inv) => selectedIds.has(inv.id));
-  const someSelected = invoices.some((inv) => selectedIds.has(inv.id)) && !allSelected;
+  // Pagination
+  const totalCount = invoices.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / INVOICES_PAGE_SIZE));
+  const startIndex = (currentPage - 1) * INVOICES_PAGE_SIZE;
+  const endIndex = Math.min(startIndex + INVOICES_PAGE_SIZE, totalCount);
+  const pageInvoices = invoices.slice(startIndex, endIndex);
+
+  const allSelected = pageInvoices.length > 0 && pageInvoices.every((inv) => selectedIds.has(inv.id));
+  const someSelected = pageInvoices.some((inv) => selectedIds.has(inv.id)) && !allSelected;
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      onSelectionChange(new Set(invoices.map((inv) => inv.id)));
+      const next = new Set(selectedIds);
+      pageInvoices.forEach((inv) => next.add(inv.id));
+      onSelectionChange(next);
     } else {
-      onSelectionChange(new Set());
+      const next = new Set(selectedIds);
+      pageInvoices.forEach((inv) => next.delete(inv.id));
+      onSelectionChange(next);
     }
   };
 
@@ -181,50 +198,84 @@ export function InvoiceList({
     );
   }
 
+  const paginationFooter = totalCount > INVOICES_PAGE_SIZE ? (
+    <div className="flex items-center justify-between border-t px-4 py-3">
+      <p className="text-sm text-muted-foreground">
+        Showing {startIndex + 1}–{endIndex} of {totalCount} invoices
+      </p>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage <= 1}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Previous
+        </Button>
+        <span className="text-sm text-muted-foreground px-2">
+          Page {currentPage} of {totalPages}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage >= totalPages}
+        >
+          Next
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  ) : null;
+
   // ─── Mobile card layout ───
   if (isMobile) {
     return (
-      <div className="space-y-2" role="list" aria-label="Invoices list">
-        {invoices.map((invoice) => (
-          <div
-            key={invoice.id}
-            className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent cursor-pointer"
-            onClick={() => navigate(`/invoices/${invoice.id}`)}
-            role="listitem"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-3 min-w-0">
-                <Checkbox
-                  checked={selectedIds.has(invoice.id)}
-                  onCheckedChange={(checked) => handleSelectOne(invoice.id, !!checked)}
-                  onClick={(e) => e.stopPropagation()}
-                  aria-label={`Select invoice ${invoice.invoice_number}`}
-                />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-sm">{invoice.invoice_number}</span>
-                    {getStatusBadge(invoice.status, invoice.due_date)}
+      <div>
+        <div className="space-y-2" role="list" aria-label="Invoices list">
+          {pageInvoices.map((invoice) => (
+            <div
+              key={invoice.id}
+              className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent cursor-pointer"
+              onClick={() => navigate(`/invoices/${invoice.id}`)}
+              role="listitem"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Checkbox
+                    checked={selectedIds.has(invoice.id)}
+                    onCheckedChange={(checked) => handleSelectOne(invoice.id, !!checked)}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`Select invoice ${invoice.invoice_number}`}
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-sm">{invoice.invoice_number}</span>
+                      {getStatusBadge(invoice.status, invoice.due_date)}
+                    </div>
+                    <p className="text-sm text-muted-foreground truncate mt-0.5">
+                      {getPayerName(invoice)}
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground truncate mt-0.5">
-                    {getPayerName(invoice)}
-                  </p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="font-medium text-sm">
+                    {formatCurrencyMinor(invoice.total_minor, currency)}
+                  </span>
+                  <InvoiceActions
+                    invoice={invoice}
+                    onSend={onSend}
+                    onMarkPaid={onMarkPaid}
+                    onVoid={onVoid}
+                    onSendReminder={onSendReminder}
+                  />
                 </div>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="font-medium text-sm">
-                  {formatCurrencyMinor(invoice.total_minor, currency)}
-                </span>
-                <InvoiceActions
-                  invoice={invoice}
-                  onSend={onSend}
-                  onMarkPaid={onMarkPaid}
-                  onVoid={onVoid}
-                  onSendReminder={onSendReminder}
-                />
-              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+        {paginationFooter}
       </div>
     );
   }
@@ -254,7 +305,7 @@ export function InvoiceList({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {invoices.map((invoice) => (
+          {pageInvoices.map((invoice) => (
             <TableRow
               key={invoice.id}
               className="cursor-pointer"
@@ -289,6 +340,7 @@ export function InvoiceList({
           ))}
         </TableBody>
       </Table>
+      {paginationFooter}
     </div>
   );
 }
