@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useToast } from '@/hooks/use-toast';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { format, addDays, differenceInMinutes } from 'date-fns';
 import {
@@ -152,8 +153,23 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
     fetchPayers();
   }, [currentOrg?.id]);
 
+  const { toast } = useToast();
+
   const onSubmit = async (data: InvoiceFormData) => {
     if (guardOffline()) return;
+
+    if (tab === 'manual') {
+      const invalidItems = data.items.filter(item => item.unitPrice <= 0 || item.quantity <= 0);
+      if (invalidItems.length > 0) {
+        toast({
+          title: 'Invalid amounts',
+          description: 'All items must have a price and quantity greater than zero.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     const creditIdsToApply = Array.from(selectedCredits);
     
     if (tab === 'manual') {
@@ -347,7 +363,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                         {...register(`items.${index}.unitPrice`, {
                           required: true,
                           valueAsNumber: true,
-                          min: 0,
+                          min: 0.01,
                         })}
                         className="w-24"
                       />
