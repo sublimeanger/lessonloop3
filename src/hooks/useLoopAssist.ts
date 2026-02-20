@@ -351,7 +351,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
             org_id: currentOrg.id,
             user_id: user.id,
             role: 'assistant',
-            content: `✅ **Action Executed**\n\n${resultMessage}`,
+            content: `✅ Action Executed\n\n${resultMessage}`,
           }).then(() => {
             queryClient.invalidateQueries({ queryKey: ['ai-messages', currentConversationId] });
             // P2 Fix: Scroll to bottom after action completion
