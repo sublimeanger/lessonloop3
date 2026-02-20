@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { Sentry } from '@/lib/sentry';
 
 export type AppRole = 'owner' | 'admin' | 'teacher' | 'finance' | 'parent';
 
@@ -247,6 +248,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsLoading(false);
           setIsInitialised(true);
           initialisedRef.current = true;
+
+          // Set Sentry user context on sign-in
+          Sentry.setUser({ id: newSession.user.id, email: newSession.user.email });
         }
         fetchingRef.current = false;
       } else {
@@ -256,6 +260,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsLoading(false);
           setIsInitialised(true);
           initialisedRef.current = true;
+
+          // Clear Sentry user context on sign-out
+          Sentry.setUser(null);
         }
       }
     });
