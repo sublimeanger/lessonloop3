@@ -13,7 +13,10 @@ import { WeekTimeGrid } from '@/components/calendar/WeekTimeGrid';
 import { AgendaView } from '@/components/calendar/AgendaView';
 import { StackedWeekView } from '@/components/calendar/StackedWeekView';
 import { DayTimelineView } from '@/components/calendar/DayTimelineView';
+import { MobileDayView } from '@/components/calendar/MobileDayView';
+import { MobileLessonSheet } from '@/components/calendar/MobileLessonSheet';
 import { WeekContextStrip } from '@/components/calendar/WeekContextStrip';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { LessonModal } from '@/components/calendar/LessonModal';
 import { LessonDetailPanel } from '@/components/calendar/LessonDetailPanel';
 import { LessonDetailSidePanel } from '@/components/calendar/LessonDetailSidePanel';
@@ -51,6 +54,7 @@ export default function CalendarPage() {
   const [searchParams] = useSearchParams();
   const { checkConflicts } = useConflictDetection();
   const { isOnline } = useOnlineStatus();
+  const isMobile = useIsMobile();
 
   // Calendar state
   const [currentDate, setCurrentDate] = useState(() => {
@@ -87,6 +91,10 @@ export default function CalendarPage() {
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelLesson, setSidePanelLesson] = useState<LessonWithDetails | null>(null);
   const isDesktop = useIsDesktop();
+
+  // Mobile lesson sheet state
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const [mobileSheetLesson, setMobileSheetLesson] = useState<LessonWithDetails | null>(null);
 
   // Quick-create popover state
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
@@ -182,14 +190,17 @@ export default function CalendarPage() {
 
   // ─── Core handlers ─────────────────────────────────────────
   const handleLessonClick = useCallback((lesson: LessonWithDetails) => {
-    if (isDesktop) {
+    if (isMobile) {
+      setMobileSheetLesson(lesson);
+      setMobileSheetOpen(true);
+    } else if (isDesktop) {
       setSidePanelLesson(lesson);
       setSidePanelOpen(true);
     } else {
       setDetailLesson(lesson);
       setDetailPanelOpen(true);
     }
-  }, [isDesktop]);
+  }, [isDesktop, isMobile]);
 
   const handleSlotClick = useCallback((date: Date) => {
     if (isParent) return;
@@ -452,6 +463,137 @@ export default function CalendarPage() {
   );
 
 
+  // ─── MOBILE RENDERING ───────────────────────────────────────
+  if (isMobile) {
+    return (
+      <AppLayout>
+        {/* Mobile sticky header */}
+        <div className="space-y-2 mb-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-foreground">
+                {format(currentDate, 'MMMM d')}
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                {format(currentDate, 'EEEE')}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={goToToday} className="h-8 px-3 text-xs">
+              Today
+            </Button>
+          </div>
+
+          {/* Compact week strip */}
+          <WeekContextStrip
+            currentDate={currentDate}
+            onDayClick={setCurrentDate}
+            lessonsByDay={lessonsByDay}
+            view="day"
+          />
+
+          {/* Teacher filter pills */}
+          <div data-tour="calendar-filters">
+            <CalendarFiltersBar
+              filters={filters}
+              onChange={setFilters}
+              teachers={teachers}
+              locations={locations}
+              rooms={rooms}
+              teachersWithColours={teachersWithColours}
+              lessons={lessons}
+              currentDate={currentDate}
+            />
+          </div>
+        </div>
+
+        {/* Lesson list */}
+        <SectionErrorBoundary name="Calendar">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-24">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <MobileDayView
+              currentDate={currentDate}
+              lessons={lessons}
+              teacherColourMap={teacherColourMap}
+              onLessonClick={handleLessonClick}
+              savingLessonIds={savingLessonIds}
+            />
+          )}
+        </SectionErrorBoundary>
+
+        {/* FAB */}
+        {!isParent && (
+          <button
+            onClick={() => {
+              setSelectedLesson(null);
+              const d = new Date(currentDate);
+              d.setHours(9, 0, 0, 0);
+              setSlotDate(d);
+              setSlotEndDate(undefined);
+              setIsModalOpen(true);
+            }}
+            className="fixed right-6 bottom-6 z-40 h-14 w-14 rounded-full bg-foreground text-background shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+            aria-label="New Lesson"
+            disabled={!isOnline}
+          >
+            <Plus className="h-6 w-6" />
+          </button>
+        )}
+
+        {/* Mobile bottom sheet */}
+        <MobileLessonSheet
+          lesson={mobileSheetLesson}
+          open={mobileSheetOpen}
+          onClose={() => setMobileSheetOpen(false)}
+          onEdit={(lesson) => {
+            setMobileSheetOpen(false);
+            setSelectedLesson(lesson);
+            setSlotDate(undefined);
+            setSlotEndDate(undefined);
+            setIsModalOpen(true);
+          }}
+          onOpenDetail={(lesson) => {
+            setMobileSheetOpen(false);
+            setDetailLesson(lesson);
+            setDetailPanelOpen(true);
+          }}
+          teacherColour={getTeacherColour(teacherColourMap, mobileSheetLesson?.teacher_user_id
+            ? teachers.find(t => t.userId === mobileSheetLesson.teacher_user_id)?.id ?? null
+            : null)}
+        />
+
+        {/* Lesson Modal */}
+        <LessonModal
+          open={isModalOpen}
+          onClose={handleModalClose}
+          onSaved={handleSaved}
+          lesson={selectedLesson}
+          initialDate={slotDate}
+          initialEndDate={slotEndDate}
+        />
+
+        {/* Lesson Detail Panel (for attendance/cancel actions) */}
+        <LessonDetailPanel
+          lesson={detailLesson}
+          open={detailPanelOpen}
+          onClose={() => setDetailPanelOpen(false)}
+          onEdit={handleEditFromDetail}
+          onUpdated={refetch}
+        />
+
+        <RecurringActionDialog
+          open={recurringDialogOpen}
+          onClose={() => { setRecurringDialogOpen(false); setPendingDrag(null); }}
+          onSelect={handleRecurringSelect}
+          action="edit"
+        />
+      </AppLayout>
+    );
+  }
+
+  // ─── DESKTOP RENDERING ────────────────────────────────────
   return (
     <AppLayout>
       <PageHeader
@@ -673,7 +815,6 @@ export default function CalendarPage() {
             onEdit={handleEditFromSidePanel}
             onMarkAttendance={handleSidePanelAttendance}
             teacherColour={getTeacherColour(teacherColourMap, sidePanelLesson?.teacher_user_id ? 
-              // Find teacher_id from teacher_user_id
               teachers.find(t => t.userId === sidePanelLesson.teacher_user_id)?.id ?? null
               : null)}
           />
