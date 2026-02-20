@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format, addDays, eachDayOfInterval, parseISO } from 'date-fns';
 import { getUKHolidayPresets } from '@/lib/holidayPresets';
+import { useClosureDateSettings } from '@/hooks/useClosureDateSettings';
 import { TermManagementCard } from '@/components/settings/TermManagementCard';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,19 +23,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CalendarIcon, Plus, Trash2, Loader2, Upload, Calendar as CalendarIconSolid, Info, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface ClosureDate {
-  id: string;
-  date: string;
-  reason: string;
-  location_id: string | null;
-  applies_to_all_locations: boolean;
-  location?: { name: string } | null;
-}
-
-interface Location {
-  id: string;
-  name: string;
-}
 
 
 function CancellationNoticeSetting() {
@@ -253,11 +241,18 @@ export function SchedulingSettingsTab() {
   const { toast } = useToast();
   const ukPresets = useMemo(() => getUKHolidayPresets(), []);
 
-  const [closures, setClosures] = useState<ClosureDate[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    closures,
+    locations,
+    isLoading,
+    addClosureDates: addClosureDatesHook,
+    addPreset: addPresetHook,
+    deleteClosure,
+    deleteBulk,
+    isSaving,
+  } = useClosureDateSettings();
+
   const [blockScheduling, setBlockScheduling] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
 
   // Add closure modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -269,37 +264,9 @@ export function SchedulingSettingsTab() {
   const [selectedLocationId, setSelectedLocationId] = useState<string>('all');
   const [selectedPreset, setSelectedPreset] = useState<string>('');
 
-  const fetchData = async () => {
-    if (!currentOrg) return;
-    setIsLoading(true);
-
-    // Fetch closures
-    const { data: closureData } = await supabase
-      .from('closure_dates')
-      .select('*, location:locations(name)')
-      .eq('org_id', currentOrg.id)
-      .order('date', { ascending: true });
-
-    setClosures((closureData as ClosureDate[]) || []);
-
-    // Fetch locations
-    const { data: locationData } = await supabase
-      .from('locations')
-      .select('id, name')
-      .eq('org_id', currentOrg.id)
-      .order('name');
-
-    setLocations(locationData || []);
-
-    // Get org setting
-    setBlockScheduling(currentOrg.block_scheduling_on_closures ?? true);
-    
-    setIsLoading(false);
-  };
-
   useEffect(() => {
-    fetchData();
-  }, [currentOrg?.id]);
+    setBlockScheduling(currentOrg?.block_scheduling_on_closures ?? true);
+  }, [currentOrg?.block_scheduling_on_closures]);
 
   const handleBlockSchedulingChange = async (checked: boolean) => {
     if (!currentOrg) return;
@@ -319,42 +286,13 @@ export function SchedulingSettingsTab() {
     }
   };
 
-  const addClosureDates = async (dates: { date: Date; reason: string }[]) => {
-    if (!currentOrg || !user) return;
-    setIsSaving(true);
-
-    try {
-      const inserts = dates.map(d => ({
-        org_id: currentOrg.id,
-        date: format(d.date, 'yyyy-MM-dd'),
-        reason: d.reason,
-        location_id: selectedLocationId === 'all' ? null : selectedLocationId,
-        applies_to_all_locations: selectedLocationId === 'all',
-        created_by: user.id,
-      }));
-
-      const { error } = await supabase
-        .from('closure_dates')
-        .upsert(inserts, { onConflict: 'org_id,location_id,date' });
-
-      if (error) throw error;
-
-      toast({ title: `${dates.length} closure date${dates.length > 1 ? 's' : ''} added` });
-      fetchData();
-      resetModal();
-    } catch (error: any) {
-      toast({ title: 'Error adding closures', description: error.message, variant: 'destructive' });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleAddSingle = () => {
     if (!singleDate || !reason.trim()) {
       toast({ title: 'Please fill in all fields', variant: 'destructive' });
       return;
     }
-    addClosureDates([{ date: singleDate, reason: reason.trim() }]);
+    addClosureDatesHook([{ date: singleDate, reason: reason.trim() }], selectedLocationId);
+    resetModal();
   };
 
   const handleAddRange = () => {
@@ -366,47 +304,19 @@ export function SchedulingSettingsTab() {
       date,
       reason: reason.trim(),
     }));
-    addClosureDates(dates);
+    addClosureDatesHook(dates, selectedLocationId);
+    resetModal();
   };
 
   const handleAddPreset = () => {
     const preset = ukPresets.find(p => p.name === selectedPreset);
     if (!preset) return;
-
-    const allDates: { date: Date; reason: string }[] = [];
-    for (const range of preset.dates) {
-      const dates = eachDayOfInterval({
-        start: parseISO(range.start),
-        end: parseISO(range.end),
-      }).map(date => ({ date, reason: range.reason }));
-      allDates.push(...dates);
-    }
-    addClosureDates(allDates);
+    addPresetHook(preset, selectedLocationId);
+    resetModal();
   };
 
-  const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('closure_dates').delete().eq('id', id);
-    if (error) {
-      toast({ title: 'Error deleting closure', variant: 'destructive' });
-    } else {
-      fetchData();
-    }
-  };
-
-  const handleDeleteBulk = async (reason: string) => {
-    if (!currentOrg) return;
-    const { error } = await supabase
-      .from('closure_dates')
-      .delete()
-      .eq('org_id', currentOrg.id)
-      .eq('reason', reason);
-
-    if (error) {
-      toast({ title: 'Error deleting closures', variant: 'destructive' });
-    } else {
-      toast({ title: 'Closures removed' });
-      fetchData();
-    }
+  const handleDeleteBulk = (reasonKey: string) => {
+    deleteBulk(reasonKey);
   };
 
   const resetModal = () => {
@@ -426,7 +336,7 @@ export function SchedulingSettingsTab() {
     if (!acc[key]) acc[key] = [];
     acc[key].push(closure);
     return acc;
-  }, {} as Record<string, ClosureDate[]>);
+  }, {} as Record<string, { id: string; date: string; reason: string; location_id: string | null; applies_to_all_locations: boolean; location?: { name: string } | null }[]>);
 
   if (isLoading) {
     return (

@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { logger } from '@/lib/logger';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +10,7 @@ import {
   UserPlus, Settings, FileText
 } from 'lucide-react';
 import { useOrg, OrgType } from '@/contexts/OrgContext';
-import { supabase } from '@/integrations/supabase/client';
+import { useOnboardingProgress } from '@/hooks/useOnboardingProgress';
 import { cn } from '@/lib/utils';
 
 interface ChecklistItem {
@@ -28,7 +27,6 @@ interface OnboardingChecklistProps {
   className?: string;
 }
 
-// Org-type specific checklist configurations
 const CHECKLIST_CONFIG: Record<OrgType, { id: string; title: string; description: string; href: string; icon: React.ElementType; checkKey: string }[]> = {
   solo_teacher: [
     { id: 'add-student', title: 'Add your first student', description: 'Start managing your student roster', href: '/students', icon: Users, checkKey: 'hasStudents' },
@@ -56,7 +54,6 @@ const CHECKLIST_CONFIG: Record<OrgType, { id: string; title: string; description
   ],
 };
 
-// Animated progress ring
 function ProgressRing({ progress, size = 48 }: { progress: number; size?: number }) {
   const strokeWidth = 4;
   const radius = (size - strokeWidth) / 2;
@@ -66,7 +63,6 @@ function ProgressRing({ progress, size = 48 }: { progress: number; size?: number
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg className="transform -rotate-90" width={size} height={size}>
-        {/* Background circle */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -76,7 +72,6 @@ function ProgressRing({ progress, size = 48 }: { progress: number; size?: number
           strokeWidth={strokeWidth}
           className="text-muted/30"
         />
-        {/* Progress circle */}
         <motion.circle
           cx={size / 2}
           cy={size / 2}
@@ -89,9 +84,7 @@ function ProgressRing({ progress, size = 48 }: { progress: number; size?: number
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: offset }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
-          style={{
-            strokeDasharray: circumference,
-          }}
+          style={{ strokeDasharray: circumference }}
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
@@ -103,102 +96,36 @@ function ProgressRing({ progress, size = 48 }: { progress: number; size?: number
 
 export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklistProps) {
   const { currentOrg } = useOrg();
-  const [items, setItems] = useState<ChecklistItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: status, isLoading } = useOnboardingProgress();
   const [isDismissed, setIsDismissed] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
 
-  useEffect(() => {
-    const checkStatus = async () => {
-      if (!currentOrg) {
-        setIsLoading(false);
-        return;
-      }
-      
-      setIsLoading(true);
-      
-      try {
-        // Add timeout to prevent indefinite hangs
-        const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), 5000)
-        );
-        
-        // Check completion status in parallel with timeout
-        const [studentsResult, lessonsResult, invoicesResult, locationsResult, teachersResult] = await Promise.race([
-          Promise.all([
-            supabase
-              .from('students')
-              .select('id', { count: 'exact', head: true })
-              .eq('org_id', currentOrg.id)
-              .eq('status', 'active'),
-            supabase
-              .from('lessons')
-              .select('id', { count: 'exact', head: true })
-              .eq('org_id', currentOrg.id),
-            supabase
-              .from('invoices')
-              .select('id', { count: 'exact', head: true })
-              .eq('org_id', currentOrg.id),
-            supabase
-              .from('locations')
-              .select('id', { count: 'exact', head: true })
-              .eq('org_id', currentOrg.id),
-            supabase
-              .from('org_memberships')
-              .select('id', { count: 'exact', head: true })
-              .eq('org_id', currentOrg.id)
-              .eq('status', 'active')
-              .in('role', ['teacher', 'admin']),
-          ]),
-          timeoutPromise
-        ]);
-
-        const completionStatus: Record<string, boolean> = {
-          hasStudents: (studentsResult.count || 0) > 0,
-          hasLessons: (lessonsResult.count || 0) > 0,
-          hasInvoices: (invoicesResult.count || 0) > 0,
-          hasLocations: (locationsResult.count || 0) > 0,
-          hasTeachers: (teachersResult.count || 0) > 1, // More than just owner
-          hasPolicyConfigured: (currentOrg.parent_reschedule_policy ?? 'request_only') !== 'request_only', // Changed from default
-        };
-
-        // Get org-specific checklist config
-        const orgType = currentOrg.org_type;
-        const config = CHECKLIST_CONFIG[orgType] || CHECKLIST_CONFIG.solo_teacher;
-
-        const checklistItems: ChecklistItem[] = config.map(item => ({
-          id: item.id,
-          title: item.title,
-          description: item.description,
-          href: item.href,
-          icon: item.icon,
-          completed: completionStatus[item.checkKey] || false,
-        }));
-
-      setItems(checklistItems);
-      setIsLoading(false);
-      
-        // Show celebration when all complete
-        const allComplete = checklistItems.every(item => item.completed);
-        if (allComplete && checklistItems.length > 0) {
-          setShowCelebration(true);
-          setTimeout(() => setIsDismissed(true), 3000);
-        }
-      } catch (error) {
-        logger.warn('Checklist check failed:', error);
-        setItems([]); // Hide checklist if queries fail
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkStatus();
-  }, [currentOrg]);
+  const items = useMemo<ChecklistItem[]>(() => {
+    if (!currentOrg || !status) return [];
+    const orgType = currentOrg.org_type;
+    const config = CHECKLIST_CONFIG[orgType] || CHECKLIST_CONFIG.solo_teacher;
+    return config.map(item => ({
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      href: item.href,
+      icon: item.icon,
+      completed: (status as any)[item.checkKey] || false,
+    }));
+  }, [currentOrg, status]);
 
   const completedCount = items.filter(i => i.completed).length;
   const totalCount = items.length;
   const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
   const allCompleted = completedCount === totalCount && totalCount > 0;
+
+  useEffect(() => {
+    if (allCompleted) {
+      setShowCelebration(true);
+      const timer = setTimeout(() => setIsDismissed(true), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [allCompleted]);
 
   const handleDismiss = () => {
     setIsDismissed(true);
@@ -209,7 +136,6 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
     return null;
   }
 
-  // Celebration state
   if (showCelebration) {
     return (
       <motion.div
@@ -236,7 +162,6 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
 
   return (
     <Card className={cn('relative overflow-hidden border-primary/20', className)}>
-      {/* Dismiss button */}
       <Button 
         variant="ghost" 
         size="icon" 
@@ -247,7 +172,6 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
         <X className="h-4 w-4" />
       </Button>
       
-      {/* Decorative gradient */}
       <div className="absolute -right-16 -top-16 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
       
       <CardHeader className="pb-4">
