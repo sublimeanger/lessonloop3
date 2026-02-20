@@ -37,6 +37,7 @@ import { logAudit } from '@/lib/auditLog';
 import { toast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Loader2, Columns3, Minimize2, Users, AlertTriangle, Calendar } from 'lucide-react';
+import { CalendarSkeleton } from '@/components/shared/LoadingState';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Toggle } from '@/components/ui/toggle';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -509,9 +510,7 @@ export default function CalendarPage() {
         {/* Lesson list */}
         <SectionErrorBoundary name="Calendar">
           {isLoading ? (
-            <div className="flex items-center justify-center py-24">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
+            <CalendarSkeleton />
           ) : (
             <MobileDayView
               currentDate={currentDate}
@@ -726,9 +725,7 @@ export default function CalendarPage() {
         <div className="flex-1 min-w-0">
           <SectionErrorBoundary name="Calendar">
             {isLoading ? (
-              <div className="flex items-center justify-center py-24">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
+              <CalendarSkeleton />
             ) : lessons.length === 0 && !isLoading ? (
               <EmptyState
                 icon={Calendar}

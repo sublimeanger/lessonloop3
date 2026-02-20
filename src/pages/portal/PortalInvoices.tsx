@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ListSkeleton } from '@/components/shared/LoadingState';
 import { useSearchParams } from 'react-router-dom';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { useOrgPaymentPreferences } from '@/hooks/useOrgPaymentPreferences';
@@ -182,9 +183,7 @@ export default function PortalInvoices() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+        <ListSkeleton count={3} />
       ) : !invoices || invoices.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">

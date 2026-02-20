@@ -9,10 +9,9 @@ import {
   CreditCard,
   ChevronRight,
   MessageSquare,
-  Loader2,
-  Flame,
   MapPin,
 } from 'lucide-react';
+import { PortalHomeSkeleton } from '@/components/shared/LoadingState';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { RequestModal } from '@/components/portal/RequestModal';
@@ -67,9 +66,7 @@ export default function PortalHome() {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+          <PortalHomeSkeleton />
         ) : (
           <>
             {/* 2. Next Lesson Hero Card */}

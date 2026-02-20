@@ -16,7 +16,8 @@ import {
   FirstRunExperience,
   UrgentActionsBar,
 } from '@/components/dashboard';
-import { Building2, Loader2 } from 'lucide-react';
+import { Building2 } from 'lucide-react';
+import { DashboardSkeleton } from '@/components/shared/LoadingState';
 
 export default function Dashboard() {
   const { profile } = useAuth();
@@ -40,9 +41,7 @@ export default function Dashboard() {
   if (!hasInitialised || orgLoading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+        <DashboardSkeleton />
       </AppLayout>
     );
   }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ListSkeleton } from '@/components/shared/LoadingState';
 import { logger } from '@/lib/logger';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -124,9 +125,7 @@ export default function PortalResources() {
 
         {/* Content */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+          <ListSkeleton count={3} />
         ) : filteredResources.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <FolderOpen className="h-12 w-12 text-muted-foreground/50" />
