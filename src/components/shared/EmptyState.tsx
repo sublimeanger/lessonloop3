@@ -14,7 +14,6 @@ interface EmptyStateProps {
   children?: ReactNode;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
-  // New: Visual preview of what the populated state looks like
   previewImage?: string;
   previewAlt?: string;
 }
@@ -33,45 +32,17 @@ export function EmptyState({
   previewImage,
   previewAlt,
 }: EmptyStateProps) {
-  const sizes = {
-    sm: {
-      container: 'min-h-[200px] p-4',
-      iconWrapper: 'h-12 w-12',
-      icon: 'h-6 w-6',
-      title: 'text-base',
-      description: 'text-sm',
-    },
-    md: {
-      container: 'min-h-[400px] p-8',
-      iconWrapper: 'h-16 w-16',
-      icon: 'h-8 w-8',
-      title: 'text-lg',
-      description: 'text-sm',
-    },
-    lg: {
-      container: 'min-h-[500px] p-12',
-      iconWrapper: 'h-20 w-20',
-      icon: 'h-10 w-10',
-      title: 'text-xl',
-      description: 'text-base',
-    },
-  };
-
-  const s = sizes[size];
-
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center rounded-lg border border-dashed bg-muted/30 text-center transition-colors',
-        s.container,
+        'flex flex-col items-center justify-center text-center py-20',
         className
       )}
       role="status"
       aria-label={title}
     >
-      {/* Preview image if provided */}
       {previewImage && (
-        <div className="mb-4 w-full max-w-xs opacity-60">
+        <div className="mb-6 w-full max-w-xs opacity-60">
           <img 
             src={previewImage} 
             alt={previewAlt || 'Preview of what this will look like'} 
@@ -81,17 +52,9 @@ export function EmptyState({
         </div>
       )}
       
-      <div 
-        className={cn(
-          'mx-auto flex items-center justify-center rounded-full bg-muted transition-transform',
-          s.iconWrapper
-        )}
-        aria-hidden="true"
-      >
-        <Icon className={cn('text-muted-foreground', s.icon)} />
-      </div>
-      <h3 className={cn('mt-4 font-semibold text-foreground', s.title)}>{title}</h3>
-      <p className={cn('mt-2 max-w-sm text-muted-foreground', s.description)}>{description}</p>
+      <Icon className="h-12 w-12 text-muted-foreground/30" aria-hidden="true" />
+      <h3 className="mt-4 text-lg font-semibold text-foreground">{title}</h3>
+      <p className="mt-2 max-w-sm mx-auto text-sm text-muted-foreground">{description}</p>
       
       {(actionLabel || secondaryActionLabel) && (
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
