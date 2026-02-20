@@ -113,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const mountedRef = useRef(true);
   const fetchingRef = useRef(false); // Prevent duplicate fetches
   const initialisedRef = useRef(false); // Track init state for timeout closure
+  const profileIdRef = useRef<string | null>(null); // Track profile id for closure access
 
   const refreshProfile = async () => {
     if (user) {
@@ -126,6 +127,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
   };
+
+  // Keep profileIdRef in sync with profile state
+  useEffect(() => {
+    profileIdRef.current = profile?.id ?? null;
+  }, [profile]);
 
   // Self-healing: ensure profile exists via edge function if missing
   const ensureProfileExists = async (accessToken: string): Promise<boolean> => {
@@ -216,7 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // If we're already initialised with this user's data, skip refetch
         // This handles SIGNED_IN re-emission on tab focus
-        if (initialisedRef.current && profile?.id === newSession.user.id) {
+        if (initialisedRef.current && profileIdRef.current === newSession.user.id) {
           if (import.meta.env.DEV) {
             console.log('Already initialised with same user - skipping refetch');
           }
