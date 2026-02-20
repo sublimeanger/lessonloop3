@@ -1,6 +1,7 @@
 import { CalendarFiltersBar } from './CalendarFiltersBar';
 import { HelpTooltip } from '@/components/shared/HelpTooltip';
-import type { CalendarFilters } from './types';
+import type { CalendarFilters, LessonWithDetails } from './types';
+import type { TeacherWithColour } from './teacherColours';
 
 interface CalendarFiltersBarWithHelpProps {
   filters: CalendarFilters;
@@ -8,6 +9,9 @@ interface CalendarFiltersBarWithHelpProps {
   teachers: Array<{ id: string; name: string }>;
   locations: Array<{ id: string; name: string }>;
   rooms: Array<{ id: string; name: string; location_id: string }>;
+  teachersWithColours?: TeacherWithColour[];
+  lessons?: LessonWithDetails[];
+  currentDate?: Date;
 }
 
 export function CalendarFiltersBarWithHelp(props: CalendarFiltersBarWithHelpProps) {
