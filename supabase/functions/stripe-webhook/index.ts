@@ -417,12 +417,14 @@ async function handleSubscriptionDeleted(supabase: any, subscription: Stripe.Sub
     return;
   }
 
-  // Downgrade to trial/cancelled state
+  // Mark as cancelled — keep current plan for records, do NOT grant new trial
   const { error } = await supabase
     .from("organisations")
     .update({
       subscription_status: "cancelled",
       stripe_subscription_id: null,
+      // Keep subscription_plan as-is for historical records
+      // Do NOT set trial_ends_at — that would grant free access
     })
     .eq("id", org.id);
 
