@@ -4,6 +4,7 @@ import { Sparkles, ChevronDown, Check } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { useProactiveAlerts } from '@/hooks/useProactiveAlerts';
+import { Logo, LogoWordmark } from '@/components/brand/Logo';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,39 +20,44 @@ export function Header() {
   const hasMultipleOrgs = organisations.length > 1;
 
   return (
-    <header className="sticky top-0 z-50 flex h-14 md:h-12 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-background px-4">
       <div className="flex items-center gap-2">
         <SidebarTrigger className="md:hidden" />
 
-        {/* Org switcher */}
-        {currentOrg && hasMultipleOrgs ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-1.5 text-sm font-medium h-8 px-2">
-                <span className="truncate max-w-[160px]">{currentOrg.name}</span>
-                <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
-              {organisations.map((org) => (
-                <DropdownMenuItem
-                  key={org.id}
-                  onClick={() => setCurrentOrg(org.id)}
-                  className="flex items-center justify-between"
-                >
-                  <span className="truncate">{org.name}</span>
-                  {org.id === currentOrg.id && (
-                    <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-                  )}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : currentOrg ? (
-          <span className="text-sm font-medium text-foreground truncate max-w-[200px]">
-            {currentOrg.name}
-          </span>
-        ) : null}
+        {/* Brand logo */}
+        <div className="flex items-center gap-2">
+          <Logo size="sm" />
+          <LogoWordmark className="text-sm hidden sm:block" />
+        </div>
+
+        {/* Org switcher — only if multiple orgs */}
+        {currentOrg && hasMultipleOrgs && (
+          <>
+            <span className="text-border mx-1">|</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1.5 text-sm font-medium h-8 px-2">
+                  <span className="truncate max-w-[160px]">{currentOrg.name}</span>
+                  <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52">
+                {organisations.map((org) => (
+                  <DropdownMenuItem
+                    key={org.id}
+                    onClick={() => setCurrentOrg(org.id)}
+                    className="flex items-center justify-between"
+                  >
+                    <span className="truncate">{org.name}</span>
+                    {org.id === currentOrg.id && (
+                      <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        )}
       </div>
 
       {/* Right side — LoopAssist */}
