@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { parseISO, differenceInMinutes, setHours, setMinutes, startOfDay, addDays } from 'date-fns';
 import { LessonWithDetails } from './types';
 
-const HOUR_HEIGHT = 60;
+import { HOUR_HEIGHT } from './calendarConstants';
 
 export interface DragLessonState {
   /** The lesson being dragged */
