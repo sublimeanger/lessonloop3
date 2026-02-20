@@ -1,16 +1,13 @@
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Sparkles, ChevronDown, Building2, Check } from 'lucide-react';
+import { Sparkles, ChevronDown, Check } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { useProactiveAlerts } from '@/hooks/useProactiveAlerts';
-import { Logo, LogoWordmark } from '@/components/brand/Logo';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
@@ -22,77 +19,61 @@ export function Header() {
   const hasMultipleOrgs = organisations.length > 1;
 
   return (
-    <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-50 flex h-14 md:h-12 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex items-center gap-2">
         <SidebarTrigger className="md:hidden" />
-        <div className="flex items-center gap-2">
-          <Logo size="sm" />
-          <LogoWordmark className="hidden sm:inline-flex" />
-        </div>
-        
-        {/* Org Selector */}
-        {currentOrg && (
-          <>
-            <span className="text-muted-foreground">/</span>
-            {hasMultipleOrgs ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-2 font-medium">
-                    <Building2 className="h-4 w-4" />
-                    <span className="hidden sm:inline">{currentOrg.name}</span>
-                    <ChevronDown className="h-3 w-3 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-56">
-                  <DropdownMenuLabel>Switch Organisation</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {organisations.map((org) => (
-                    <DropdownMenuItem
-                      key={org.id}
-                      onClick={() => setCurrentOrg(org.id)}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        <span>{org.name}</span>
-                      </div>
-                      {org.id === currentOrg.id && (
-                        <Check className="h-4 w-4 text-primary" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                <span className="hidden sm:inline">{currentOrg.name}</span>
-              </div>
-            )}
-          </>
-        )}
+
+        {/* Org switcher */}
+        {currentOrg && hasMultipleOrgs ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-1.5 text-sm font-medium h-8 px-2">
+                <span className="truncate max-w-[160px]">{currentOrg.name}</span>
+                <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              {organisations.map((org) => (
+                <DropdownMenuItem
+                  key={org.id}
+                  onClick={() => setCurrentOrg(org.id)}
+                  className="flex items-center justify-between"
+                >
+                  <span className="truncate">{org.name}</span>
+                  {org.id === currentOrg.id && (
+                    <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : currentOrg ? (
+          <span className="text-sm font-medium text-foreground truncate max-w-[200px]">
+            {currentOrg.name}
+          </span>
+        ) : null}
       </div>
-      
-      <Button 
-        variant="outline" 
-        size="sm" 
+
+      {/* Right side — LoopAssist */}
+      <Button
+        variant="ghost"
+        size="sm"
         className={cn(
-          "gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary relative",
-          hasCritical && "border-destructive/50 hover:border-destructive"
+          'gap-1.5 h-8 px-2.5 text-muted-foreground hover:text-foreground relative',
+          hasCritical && 'text-destructive'
         )}
         onClick={() => setIsOpen(true)}
         title="LoopAssist (Space or Cmd+J)"
         data-tour="loopassist-button"
       >
         <Sparkles className="h-4 w-4" />
-        <span className="hidden sm:inline">LoopAssist</span>
-        
-        {/* Alert badge */}
+        <span className="hidden sm:inline text-sm">LoopAssist</span>
+
         {totalActionable > 0 && (
           <span
             className={cn(
-              "absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-destructive-foreground",
-              hasCritical ? "bg-destructive" : "bg-warning"
+              'absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[9px] font-bold text-destructive-foreground',
+              hasCritical ? 'bg-destructive' : 'bg-warning'
             )}
           >
             {totalActionable > 9 ? '9+' : totalActionable}
