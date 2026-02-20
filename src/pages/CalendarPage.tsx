@@ -12,6 +12,7 @@ import { useCalendarData, useTeachersAndLocations } from '@/hooks/useCalendarDat
 import { WeekTimeGrid } from '@/components/calendar/WeekTimeGrid';
 import { AgendaView } from '@/components/calendar/AgendaView';
 import { StackedWeekView } from '@/components/calendar/StackedWeekView';
+import { DayTimelineView } from '@/components/calendar/DayTimelineView';
 import { LessonModal } from '@/components/calendar/LessonModal';
 import { LessonDetailPanel } from '@/components/calendar/LessonDetailPanel';
 import { CalendarFiltersBar } from '@/components/calendar/CalendarFiltersBar';
@@ -48,7 +49,7 @@ export default function CalendarPage() {
     const dateParam = searchParams.get('date');
     return dateParam ? new Date(dateParam) : new Date();
   });
-  const [view, setView] = useState<CalendarView>('stacked');
+  const [view, setView] = useState<CalendarView>('day');
   const [isCompact, setIsCompact] = useState(() => {
     return safeGetItem('ll-calendar-compact') === '1';
   });
@@ -405,9 +406,12 @@ export default function CalendarPage() {
     [pendingDrag, executeLessonMove]
   );
 
-  // Date display — always week range
+  // Date display
   const getDateDisplay = () => {
-    if (view === 'week') {
+    if (view === 'day') {
+      return format(currentDate, 'EEEE, d MMMM yyyy');
+    }
+    if (view === 'week' || view === 'stacked') {
       const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
       const weekEnd = addDays(weekStart, 6);
       if (weekStart.getMonth() === weekEnd.getMonth()) {
@@ -465,6 +469,9 @@ export default function CalendarPage() {
               />
             )}
             <ToggleGroup type="single" value={view} onValueChange={(v) => v && setView(v as CalendarView)} data-tour="calendar-view-toggle">
+              <ToggleGroupItem value="day" aria-label="Day view" className="h-8 w-8 p-0">
+                <Calendar className="h-3.5 w-3.5" />
+              </ToggleGroupItem>
               <ToggleGroupItem value="stacked" aria-label="Stacked view" className="h-8 w-8 p-0">
                 <Columns3 className="h-3.5 w-3.5" />
               </ToggleGroupItem>
@@ -562,6 +569,19 @@ export default function CalendarPage() {
             onLessonClick={handleLessonClick}
             teacherColourMap={teacherColourMap}
             groupByTeacher={groupByTeacher}
+          />
+        ) : view === 'day' ? (
+          <DayTimelineView
+            currentDate={currentDate}
+            lessons={lessons}
+            teacherColourMap={teacherColourMap}
+            onLessonClick={handleLessonClick}
+            onSlotClick={handleSlotClick}
+            onSlotDrag={handleSlotDrag}
+            onLessonDrop={!isParent ? handleLessonDrop : undefined}
+            onLessonResize={!isParent ? handleLessonResize : undefined}
+            isParent={isParent}
+            savingLessonIds={savingLessonIds}
           />
         ) : view === 'stacked' ? (
           <StackedWeekView
