@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import ReactMarkdown from 'react-markdown';
@@ -11,10 +11,10 @@ import {
   Send,
   Trash2,
   ChevronLeft,
-  Loader2,
   Sparkles,
   Square,
   X,
+  RotateCcw,
 } from 'lucide-react';
 import { useLoopAssist, AIMessage, AIConversation } from '@/hooks/useLoopAssist';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
@@ -28,10 +28,16 @@ import { ProactiveWelcome } from './ProactiveWelcome';
 import { LoopAssistIntroModal, useLoopAssistIntro } from './LoopAssistIntroModal';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 interface LoopAssistDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+interface FailedMessage {
+  content: string;
+  id: string;
 }
 
 export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) {
@@ -57,32 +63,50 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
 
   const [input, setInput] = useState('');
   const [showConversationList, setShowConversationList] = useState(!currentConversationId);
-  const chatInputRef = useRef<HTMLInputElement>(null);
+  const [failedMessage, setFailedMessage] = useState<FailedMessage | null>(null);
+  const chatInputRef = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length, streamingContent]);
 
   // Show intro modal on first open, focus input, and auto-send pending messages
   useEffect(() => {
     if (open) {
       checkAndShowIntro();
-      // Focus the chat input after drawer animation settles
       const timer = setTimeout(() => {
         chatInputRef.current?.focus();
-        // Check for pending message from widget
         const pending = consumePendingMessage();
         if (pending) {
           setShowConversationList(false);
-          sendMessage(pending);
+          doSend(pending);
         }
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [open, checkAndShowIntro, consumePendingMessage, sendMessage]);
+  }, [open, checkAndShowIntro, consumePendingMessage]);
+
+  const doSend = useCallback(async (content: string) => {
+    setFailedMessage(null);
+    try {
+      await sendMessage(content);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to get response';
+      toast.error(errorMsg);
+      setFailedMessage({ content, id: Date.now().toString() });
+    }
+  }, [sendMessage]);
 
   const handleSend = async () => {
     if (!input.trim() || isStreaming) return;
     const message = input;
     setInput('');
     setShowConversationList(false);
-    await sendMessage(message);
+    // Reset textarea height
+    if (chatInputRef.current) chatInputRef.current.style.height = 'auto';
+    await doSend(message);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -92,14 +116,26 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     }
   };
 
+  const handleTextareaInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    // Auto-grow up to 4 rows
+    const el = e.target;
+    el.style.height = 'auto';
+    const lineHeight = 20;
+    const maxHeight = lineHeight * 4 + 16; // 4 rows + padding
+    el.style.height = Math.min(el.scrollHeight, maxHeight) + 'px';
+  };
+
   const handleNewConversation = () => {
     setCurrentConversationId(null);
     setShowConversationList(false);
+    setFailedMessage(null);
   };
 
   const handleSelectConversation = (id: string) => {
     setCurrentConversationId(id);
     setShowConversationList(false);
+    setFailedMessage(null);
   };
 
   const handleConfirmAction = (proposalId: string) => {
@@ -114,14 +150,18 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     setInput(prompt);
   };
 
-  const suggestedPrompts = getSuggestedPrompts(pageContext.type, alerts);
+  const handleRetry = () => {
+    if (failedMessage) {
+      doSend(failedMessage.content);
+    }
+  };
 
-  // Determine if we should show proactive alerts (new conversation with no messages)
+  const suggestedPrompts = getSuggestedPrompts(pageContext.type, alerts);
   const showProactiveAlerts = !currentConversationId && messages.length === 0 && !isStreaming && alerts.length > 0;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col p-0 sm:max-w-md" hideCloseButton>
+      <SheetContent className="flex w-full flex-col p-0 sm:max-w-lg" hideCloseButton>
         <SheetHeader className="border-b px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -181,7 +221,6 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
               <div className="space-y-4 py-4">
                 {messages.length === 0 && !isStreaming && (
                   <div className="space-y-4">
-                    {/* First-run proactive welcome for new orgs */}
                     {proactiveMessage && (
                       <ProactiveWelcome
                         title={proactiveMessage.title}
@@ -195,7 +234,6 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                       />
                     )}
 
-                    {/* Proactive alerts when opening fresh */}
                     {!proactiveMessage && showProactiveAlerts && (
                       <ProactiveAlerts 
                         alerts={alerts} 
@@ -235,6 +273,24 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                   </div>
                 ))}
 
+                {/* Failed message with retry */}
+                {failedMessage && !isStreaming && (
+                  <div className="flex flex-col items-end">
+                    <div className="max-w-[85%] rounded-lg px-3 py-2 text-sm bg-destructive/10 border border-destructive/20">
+                      <div className="whitespace-pre-wrap text-foreground">{failedMessage.content}</div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-1 h-7 gap-1 text-xs text-destructive hover:text-destructive"
+                      onClick={handleRetry}
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      Retry
+                    </Button>
+                  </div>
+                )}
+
                 {isStreaming && streamingContent && (
                   <MessageBubble
                     message={{
@@ -248,9 +304,10 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                 )}
 
                 {isStreaming && !streamingContent && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">Thinking...</span>
+                  <div className="flex items-start">
+                    <div className="rounded-lg bg-muted px-4 py-3">
+                      <TypingIndicator />
+                    </div>
                   </div>
                 )}
 
@@ -265,27 +322,31 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                     isLoading={handleProposalLoading}
                   />
                 ))}
+
+                {/* Auto-scroll sentinel */}
+                <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
 
             {/* Input */}
             <div className="border-t p-4" data-tour="loopassist-input">
-              <div className="flex gap-3">
-                <Input
+              <div className="flex gap-3 items-end">
+                <Textarea
                   ref={chatInputRef}
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={handleTextareaInput}
                   onKeyDown={handleKeyDown}
                   placeholder="Ask LoopAssist..."
                   disabled={isStreaming}
-                  className="flex-1"
+                  rows={1}
+                  className="flex-1 min-h-[36px] max-h-[96px] resize-none py-2 text-sm"
                 />
                 {isStreaming ? (
-                  <Button onClick={cancelStreaming} size="icon" variant="destructive" title="Stop generating">
+                  <Button onClick={cancelStreaming} size="icon" variant="destructive" title="Stop generating" className="shrink-0">
                     <Square className="h-3.5 w-3.5" />
                   </Button>
                 ) : (
-                  <Button onClick={handleSend} disabled={!input.trim()} size="icon">
+                  <Button onClick={handleSend} disabled={!input.trim()} size="icon" className="shrink-0">
                     <Send className="h-4 w-4" />
                   </Button>
                 )}
@@ -301,6 +362,18 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
   );
 }
 
+// ─── Typing Indicator ───
+function TypingIndicator() {
+  return (
+    <div className="flex items-center gap-1 h-5" aria-label="LoopAssist is thinking">
+      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-[typing-bounce_1.4s_ease-in-out_infinite]" />
+      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-[typing-bounce_1.4s_ease-in-out_0.2s_infinite]" />
+      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-[typing-bounce_1.4s_ease-in-out_0.4s_infinite]" />
+    </div>
+  );
+}
+
+// ─── Conversation List ───
 function ConversationList({
   conversations,
   onSelect,
@@ -367,13 +440,10 @@ function ConversationList({
   );
 }
 
+// ─── Message Bubble ───
 function MessageBubble({ message, conversationId }: { message: AIMessage; conversationId: string | null }) {
   const isUser = message.role === 'user';
-  
-  // For assistant messages, strip action blocks from display
   const displayContent = isUser ? message.content : stripActionBlock(message.content);
-  
-  // Check if there's an inline action preview (for streaming)
   const hasAction = !isUser && parseActionFromResponse(message.content);
 
   return (
@@ -407,7 +477,6 @@ function MessageBubble({ message, conversationId }: { message: AIMessage; conver
           </div>
         )}
       </div>
-      {/* Feedback buttons for assistant messages */}
       {!isUser && message.id !== 'streaming' && conversationId && (
         <MessageFeedback 
           messageId={message.id} 
@@ -422,27 +491,20 @@ function MessageBubble({ message, conversationId }: { message: AIMessage; conver
 import { ProactiveAlert } from '@/hooks/useProactiveAlerts';
 
 function getSuggestedPrompts(contextType: string, alerts: ProactiveAlert[]): string[] {
-  // Context-aware suggestions based on current page AND active alerts
   const basePrompts: string[] = [];
-
-  // Add alert-driven suggestions first (most relevant)
   const hasOverdue = alerts.some(a => a.type === 'overdue');
   const hasUnmarked = alerts.some(a => a.type === 'unmarked');
 
   switch (contextType) {
     case 'calendar':
-      if (hasUnmarked) {
-        basePrompts.push("Mark yesterday's lessons as complete");
-      }
+      if (hasUnmarked) basePrompts.push("Mark yesterday's lessons as complete");
       basePrompts.push("What lessons do I have today?");
       basePrompts.push("Reschedule tomorrow's lessons by 30 minutes");
       break;
     case 'student':
       basePrompts.push("Draft a progress update for this student's parents");
       basePrompts.push("Show lesson history for this student");
-      if (hasOverdue) {
-        basePrompts.push("Send invoice reminder for this student");
-      }
+      if (hasOverdue) basePrompts.push("Send invoice reminder for this student");
       basePrompts.push("What is this student's practice streak?");
       break;
     case 'invoice':
@@ -451,17 +513,13 @@ function getSuggestedPrompts(contextType: string, alerts: ProactiveAlert[]): str
       basePrompts.push("Draft a follow-up email");
       break;
     default:
-      if (hasOverdue) {
-        basePrompts.push("Send reminders for all overdue invoices");
-      }
-      if (hasUnmarked) {
-        basePrompts.push("Mark all past lessons as complete");
-      }
+      if (hasOverdue) basePrompts.push("Send reminders for all overdue invoices");
+      if (hasUnmarked) basePrompts.push("Mark all past lessons as complete");
       basePrompts.push("Generate invoices for last month");
       basePrompts.push("Show me outstanding invoices");
       basePrompts.push("What's my completion rate this month?");
       break;
   }
 
-  return basePrompts.slice(0, 4); // Max 4 suggestions
+  return basePrompts.slice(0, 4);
 }
