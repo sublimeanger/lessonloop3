@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   CheckCircle, 
   XCircle, 
@@ -13,9 +14,12 @@ import {
   ClipboardCheck,
   CheckCircle2,
   Ban,
+  ShieldAlert,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useOrg } from '@/contexts/OrgContext';
 import { cn } from '@/lib/utils';
+import type { AppRole } from '@/contexts/AuthContext';
 
 export interface ActionEntity {
   type: 'invoice' | 'student' | 'lesson' | 'guardian';
@@ -68,6 +72,17 @@ const ACTION_LABELS: Record<string, string> = {
   send_progress_report: 'Send Progress Report',
 };
 
+const ACTION_ROLE_PERMISSIONS: Record<string, AppRole[]> = {
+  generate_billing_run: ['owner', 'admin', 'finance'],
+  send_invoice_reminders: ['owner', 'admin', 'finance'],
+  reschedule_lessons: ['owner', 'admin', 'teacher'],
+  draft_email: ['owner', 'admin', 'teacher'],
+  mark_attendance: ['owner', 'admin', 'teacher'],
+  cancel_lesson: ['owner', 'admin'],
+  complete_lessons: ['owner', 'admin', 'teacher'],
+  send_progress_report: ['owner', 'admin', 'teacher'],
+};
+
 const ENTITY_COLORS: Record<string, string> = {
   invoice: 'bg-success/10 text-success hover:bg-success/20 dark:bg-success/20 dark:text-success dark:hover:bg-success/30',
   student: 'bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30',
@@ -77,8 +92,12 @@ const ENTITY_COLORS: Record<string, string> = {
 
 export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoading }: ActionCardProps) {
   const navigate = useNavigate();
+  const { currentRole } = useOrg();
   const [isConfirming, setIsConfirming] = useState(false);
   const Icon = ACTION_ICONS[proposal.action_type] || FileText;
+
+  const allowedRoles = ACTION_ROLE_PERMISSIONS[proposal.action_type] || ['owner', 'admin'];
+  const hasPermission = currentRole ? allowedRoles.includes(currentRole) : false;
 
   const handleConfirm = async () => {
     setIsConfirming(true);
@@ -88,7 +107,6 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
   const handleEntityClick = (entity: ActionEntity) => {
     switch (entity.type) {
       case 'invoice':
-        // Invoice number might be in label, try to extract ID or navigate to invoices
         navigate('/invoices');
         break;
       case 'student':
@@ -98,10 +116,27 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
         navigate('/calendar');
         break;
       case 'guardian':
-        // No direct guardian page, could go to student or stay
         break;
     }
   };
+
+  const confirmButton = (
+    <Button
+      size="sm"
+      onClick={handleConfirm}
+      disabled={isLoading || isConfirming || !hasPermission}
+      className="flex-1"
+    >
+      {isConfirming ? (
+        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+      ) : !hasPermission ? (
+        <ShieldAlert className="mr-1 h-4 w-4" />
+      ) : (
+        <CheckCircle className="mr-1 h-4 w-4" />
+      )}
+      Confirm
+    </Button>
+  );
 
   return (
     <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-background">
@@ -153,19 +188,18 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
         )}
       </CardContent>
       <CardFooter className="gap-3 pt-2">
-        <Button
-          size="sm"
-          onClick={handleConfirm}
-          disabled={isLoading || isConfirming}
-          className="flex-1"
-        >
-          {isConfirming ? (
-            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-          ) : (
-            <CheckCircle className="mr-1 h-4 w-4" />
-          )}
-          Confirm
-        </Button>
+        {!hasPermission ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {confirmButton}
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Your role does not have permission to execute this action</p>
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          confirmButton
+        )}
         <Button
           size="sm"
           variant="outline"
@@ -192,7 +226,6 @@ export function parseActionFromResponse(content: string): ActionProposalData | n
     const jsonStr = actionBlockMatch[1].trim();
     const parsed = JSON.parse(jsonStr);
     
-    // Validate required fields
     if (!parsed.action_type || !parsed.description) {
       return null;
     }
