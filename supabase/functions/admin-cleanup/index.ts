@@ -12,6 +12,14 @@ Deno.serve(async (req) => {
 
   const corsHeaders = getCorsHeaders(req);
 
+  const isProduction = Deno.env.get("ENVIRONMENT") === "production";
+  if (isProduction) {
+    return new Response(JSON.stringify({ error: "Not available in production" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
