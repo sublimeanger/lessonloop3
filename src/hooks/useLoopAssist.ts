@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { toast } from 'sonner';
-import { parseActionFromResponse, ActionProposalData } from '@/components/looopassist/ActionCard';
+import { parseActionFromResponse, ActionProposalData } from '@/components/loopassist/ActionCard';
 
 export interface AIMessage {
   id: string;

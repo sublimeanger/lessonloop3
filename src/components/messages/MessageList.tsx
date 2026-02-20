@@ -6,7 +6,7 @@ import { Mail, MessageSquare, Clock, User, CheckCircle, AlertCircle, ChevronDown
 import { format, parseISO } from 'date-fns';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useRelatedStudent } from '@/hooks/useRelatedStudent';
-import { EntityChip } from '@/components/looopassist/EntityChip';
+import { EntityChip } from '@/components/loopassist/EntityChip';
 import type { MessageLogEntry } from '@/hooks/useMessages';
 import { sanitizeHtml, stripHtml } from '@/lib/sanitize';
 import { EmptyState } from '@/components/shared/EmptyState';

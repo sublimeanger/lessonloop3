@@ -5,7 +5,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { Header } from './Header';
 import { AppSidebar } from './AppSidebar';
 import { LoopAssistProvider, useLoopAssistUI } from '@/contexts/LoopAssistContext';
-import { LoopAssistDrawer } from '@/components/looopassist/LoopAssistDrawer';
+import { LoopAssistDrawer } from '@/components/loopassist/LoopAssistDrawer';
 import { TrialExpiredModal, TrialExpiredBanner } from '@/components/subscription';
 import { TourTrigger } from '@/components/tours/TourTrigger';
 import { useOrg } from '@/contexts/OrgContext';
