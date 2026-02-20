@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,63 +13,64 @@ import { RouteGuard, PublicRoute } from "@/components/auth/RouteGuard";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import { LoadingState } from "@/components/shared/LoadingState";
 
 // Marketing Pages
-import MarketingHome from "./pages/marketing/Home";
-import Features from "./pages/marketing/Features";
-import Pricing from "./pages/marketing/Pricing";
-import About from "./pages/marketing/About";
-import Blog from "./pages/marketing/Blog";
-import BlogPost from "./pages/marketing/BlogPost";
-import Contact from "./pages/marketing/Contact";
-import Privacy from "./pages/marketing/Privacy";
-import Terms from "./pages/marketing/Terms";
-import GDPR from "./pages/marketing/GDPR";
-import Cookies from "./pages/marketing/Cookies";
-import Kickstarter from "./pages/marketing/Kickstarter";
+const MarketingHome = lazy(() => import("./pages/marketing/Home"));
+const Features = lazy(() => import("./pages/marketing/Features"));
+const Pricing = lazy(() => import("./pages/marketing/Pricing"));
+const About = lazy(() => import("./pages/marketing/About"));
+const Blog = lazy(() => import("./pages/marketing/Blog"));
+const BlogPost = lazy(() => import("./pages/marketing/BlogPost"));
+const Contact = lazy(() => import("./pages/marketing/Contact"));
+const Privacy = lazy(() => import("./pages/marketing/Privacy"));
+const Terms = lazy(() => import("./pages/marketing/Terms"));
+const GDPR = lazy(() => import("./pages/marketing/GDPR"));
+const Cookies = lazy(() => import("./pages/marketing/Cookies"));
+const Kickstarter = lazy(() => import("./pages/marketing/Kickstarter"));
 
 // Auth Pages
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import Onboarding from "./pages/Onboarding";
-import AcceptInvite from "./pages/AcceptInvite";
-import VerifyEmail from "./pages/VerifyEmail";
+const Login = lazy(() => import("./pages/Login"));
+const Signup = lazy(() => import("./pages/Signup"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
+const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 
 // App Pages
-import Dashboard from "./pages/Dashboard";
-import CalendarPage from "./pages/CalendarPage";
-import Students from "./pages/Students";
-import StudentDetail from "./pages/StudentDetail";
-import StudentsImport from "./pages/StudentsImport";
-import Teachers from "./pages/Teachers";
-import Locations from "./pages/Locations";
-import Invoices from "./pages/Invoices";
-import InvoiceDetail from "./pages/InvoiceDetail";
-import Reports from "./pages/Reports";
-import PayrollReport from "./pages/reports/Payroll";
-import RevenueReport from "./pages/reports/Revenue";
-import OutstandingReport from "./pages/reports/Outstanding";
-import LessonsDeliveredReport from "./pages/reports/LessonsDelivered";
-import CancellationReport from "./pages/reports/Cancellations";
-import UtilisationReport from "./pages/reports/Utilisation";
-import Messages from "./pages/Messages";
-import Settings from "./pages/Settings";
-import NotFound from "./pages/NotFound";
-import Practice from "./pages/Practice";
-import Resources from "./pages/Resources";
-import DailyRegister from "./pages/DailyRegister";
-import BatchAttendance from "./pages/BatchAttendance";
-import Help from "./pages/Help";
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const CalendarPage = lazy(() => import("./pages/CalendarPage"));
+const Students = lazy(() => import("./pages/Students"));
+const StudentDetail = lazy(() => import("./pages/StudentDetail"));
+const StudentsImport = lazy(() => import("./pages/StudentsImport"));
+const Teachers = lazy(() => import("./pages/Teachers"));
+const Locations = lazy(() => import("./pages/Locations"));
+const Invoices = lazy(() => import("./pages/Invoices"));
+const InvoiceDetail = lazy(() => import("./pages/InvoiceDetail"));
+const Reports = lazy(() => import("./pages/Reports"));
+const PayrollReport = lazy(() => import("./pages/reports/Payroll"));
+const RevenueReport = lazy(() => import("./pages/reports/Revenue"));
+const OutstandingReport = lazy(() => import("./pages/reports/Outstanding"));
+const LessonsDeliveredReport = lazy(() => import("./pages/reports/LessonsDelivered"));
+const CancellationReport = lazy(() => import("./pages/reports/Cancellations"));
+const UtilisationReport = lazy(() => import("./pages/reports/Utilisation"));
+const Messages = lazy(() => import("./pages/Messages"));
+const Settings = lazy(() => import("./pages/Settings"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Practice = lazy(() => import("./pages/Practice"));
+const Resources = lazy(() => import("./pages/Resources"));
+const DailyRegister = lazy(() => import("./pages/DailyRegister"));
+const BatchAttendance = lazy(() => import("./pages/BatchAttendance"));
+const Help = lazy(() => import("./pages/Help"));
 
 // Portal Pages
-import PortalHome from "./pages/portal/PortalHome";
-import PortalSchedule from "./pages/portal/PortalSchedule";
-import PortalPractice from "./pages/portal/PortalPractice";
-import PortalResources from "./pages/portal/PortalResources";
-import PortalInvoices from "./pages/portal/PortalInvoices";
-import PortalMessages from "./pages/portal/PortalMessages";
+const PortalHome = lazy(() => import("./pages/portal/PortalHome"));
+const PortalSchedule = lazy(() => import("./pages/portal/PortalSchedule"));
+const PortalPractice = lazy(() => import("./pages/portal/PortalPractice"));
+const PortalResources = lazy(() => import("./pages/portal/PortalResources"));
+const PortalInvoices = lazy(() => import("./pages/portal/PortalInvoices"));
+const PortalMessages = lazy(() => import("./pages/portal/PortalMessages"));
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -108,6 +110,12 @@ const queryClient = new QueryClient({
   },
 });
 
+const PageLoader = () => (
+  <div className="flex min-h-screen items-center justify-center">
+    <LoadingState message="Loading…" />
+  </div>
+);
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -121,6 +129,7 @@ const App = () => (
                   <OfflineBanner />
                   <Toaster />
                   <Sonner />
+                  <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public auth routes */}
               <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
@@ -305,6 +314,7 @@ const App = () => (
               {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+                  </Suspense>
                 </TourProvider>
               </LoopAssistProvider>
             </OrgProvider>
