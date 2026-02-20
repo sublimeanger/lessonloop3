@@ -295,9 +295,9 @@ function TeacherCard({ teacher, studentCount }: { teacher: any; studentCount: nu
           )}
         </div>
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          {teacher.email && <span>{teacher.email}</span>}
+          {teacher.email && <span className="hidden sm:inline">{teacher.email}</span>}
           {teacher.phone && (
-            <span className="flex items-center gap-1">
+            <span className="items-center gap-1 hidden sm:flex">
               <Phone className="h-3 w-3" />
               {teacher.phone}
             </span>
