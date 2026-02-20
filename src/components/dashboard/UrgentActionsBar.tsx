@@ -1,28 +1,25 @@
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, ChevronRight, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUrgentActions, UrgentAction } from '@/hooks/useUrgentActions';
 import { cn } from '@/lib/utils';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 const DISMISS_KEY = 'urgent_actions_dismissed';
 
 function getIsDismissed(): boolean {
   try {
-    const stored = sessionStorage.getItem(DISMISS_KEY);
-    return stored === 'true';
+    return sessionStorage.getItem(DISMISS_KEY) === 'true';
   } catch {
     return false;
   }
 }
 
-function setDismissed(): void {
+function setDismissedStorage(): void {
   try {
     sessionStorage.setItem(DISMISS_KEY, 'true');
-  } catch {
-    // Session storage not available
-  }
+  } catch {}
 }
 
 export function UrgentActionsBar() {
@@ -31,15 +28,14 @@ export function UrgentActionsBar() {
 
   const handleDismiss = () => {
     setIsDismissed(true);
-    setDismissed();
+    setDismissedStorage();
   };
-  const [expandedAction, setExpandedAction] = useState<string | null>(null);
 
-  if (isLoading || !hasActions || isDismissed) {
-    return null;
-  }
+  if (isLoading || !hasActions || isDismissed) return null;
 
-  const hasErrors = actions.some(a => a.severity === 'error');
+  const summaryParts = actions.map(
+    (a) => `${a.count} ${a.label.toLowerCase()}`
+  );
 
   return (
     <AnimatePresence>
@@ -49,48 +45,30 @@ export function UrgentActionsBar() {
         exit={{ opacity: 0, height: 0 }}
         className="overflow-hidden"
       >
-        <div
-          className={cn(
-            'flex items-center gap-3 rounded-lg border px-4 py-3',
-            hasErrors
-              ? 'border-destructive/30 bg-destructive/5'
-              : 'border-warning/30 bg-warning/5'
-          )}
-        >
-          <div
-            className={cn(
-              'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-              hasErrors ? 'bg-destructive/10' : 'bg-warning/10'
-            )}
-          >
-            <AlertTriangle
-              className={cn(
-                'h-4 w-4',
-                hasErrors ? 'text-destructive' : 'text-warning'
-              )}
-            />
-          </div>
-
-          <div className="flex flex-1 flex-wrap items-center gap-x-4 gap-y-2">
-            <span className="text-sm font-medium">
-              {totalCount} {totalCount === 1 ? 'item needs' : 'items need'} attention
-            </span>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {actions.map((action, index) => (
-                <ActionChip key={action.id} action={action} index={index} />
+        <div className="flex items-center gap-2 rounded-lg bg-warning/10 border border-warning/20 px-3 py-2">
+          <div className="flex-1 min-w-0">
+            <span className="text-sm text-warning-foreground">
+              {summaryParts.map((part, i) => (
+                <span key={i}>
+                  {i > 0 && <span className="mx-1 text-warning/50">·</span>}
+                  <Link
+                    to={actions[i].href}
+                    className="hover:underline underline-offset-2"
+                  >
+                    {part}
+                  </Link>
+                </span>
               ))}
-            </div>
+            </span>
           </div>
-
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+            className="h-6 w-6 shrink-0 text-warning hover:text-warning-foreground hover:bg-warning/20"
             onClick={handleDismiss}
             aria-label="Dismiss"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </Button>
         </div>
       </motion.div>
@@ -98,31 +76,11 @@ export function UrgentActionsBar() {
   );
 }
 
-function ActionChip({ action, index }: { action: UrgentAction; index: number }) {
-  return (
-    <Link
-      to={action.href}
-      className={cn(
-        'group inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm transition-colors',
-        action.severity === 'error'
-          ? 'bg-destructive/10 text-destructive hover:bg-destructive/20'
-          : 'bg-warning/10 text-warning hover:bg-warning/20'
-      )}
-    >
-      <span className="font-medium">{action.count}</span>
-      <span>{action.label}</span>
-      <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-    </Link>
-  );
-}
-
 // Compact version for smaller spaces
 export function UrgentActionsBadge() {
   const { actions, hasActions, totalCount } = useUrgentActions();
 
-  if (!hasActions) {
-    return null;
-  }
+  if (!hasActions) return null;
 
   const hasErrors = actions.some(a => a.severity === 'error');
 
