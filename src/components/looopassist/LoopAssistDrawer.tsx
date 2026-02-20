@@ -35,7 +35,7 @@ interface LoopAssistDrawerProps {
 }
 
 export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) {
-  const { pageContext } = useLoopAssistUI();
+  const { pageContext, consumePendingMessage } = useLoopAssistUI();
   const { showIntro, setShowIntro, checkAndShowIntro } = useLoopAssistIntro();
   const { alerts } = useProactiveAlerts();
   const { proactiveMessage, dismissProactiveMessage } = useLoopAssistFirstRun();
@@ -59,17 +59,23 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
   const [showConversationList, setShowConversationList] = useState(!currentConversationId);
   const chatInputRef = useRef<HTMLInputElement>(null);
 
-  // Show intro modal on first open & focus input
+  // Show intro modal on first open, focus input, and auto-send pending messages
   useEffect(() => {
     if (open) {
       checkAndShowIntro();
       // Focus the chat input after drawer animation settles
       const timer = setTimeout(() => {
         chatInputRef.current?.focus();
+        // Check for pending message from widget
+        const pending = consumePendingMessage();
+        if (pending) {
+          setShowConversationList(false);
+          sendMessage(pending);
+        }
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [open, checkAndShowIntro]);
+  }, [open, checkAndShowIntro, consumePendingMessage, sendMessage]);
 
   const handleSend = async () => {
     if (!input.trim() || isStreaming) return;

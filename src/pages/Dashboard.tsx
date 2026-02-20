@@ -19,6 +19,7 @@ import {
   QuickActionsGrid,
   FirstRunExperience,
   UrgentActionsBar,
+  LoopAssistWidget,
 } from '@/components/dashboard';
 import { 
   Calendar, Users, Receipt, Clock, TrendingUp, PoundSterling,
@@ -174,6 +175,10 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
           </SectionErrorBoundary>
         </motion.div>
 
+        <motion.div variants={itemVariants}>
+          <LoopAssistWidget />
+        </motion.div>
+
         {/* Stats Grid — 6 cards, 2 cols mobile, 3 cols desktop */}
         <motion.div variants={itemVariants}>
           {isLoading ? (
@@ -257,6 +262,10 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
           </SectionErrorBoundary>
         </motion.div>
 
+        <motion.div variants={itemVariants}>
+          <LoopAssistWidget />
+        </motion.div>
+
         {/* Stats Grid — 2 cols mobile, 3 cols desktop */}
         <motion.div variants={itemVariants}>
           {isLoading ? (
@@ -338,6 +347,10 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
           <SectionErrorBoundary name="Upgrade Banner">
             <UpgradeBanner variant="compact" />
           </SectionErrorBoundary>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <LoopAssistWidget />
         </motion.div>
 
         {/* Stats Grid — 2 cols mobile, 4 cols desktop */}
