@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { format, subMonths, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
+import { sanitiseCSVCell } from '@/lib/utils';
 
 // ==================== REVENUE REPORT ====================
 export interface RevenueByMonth {
@@ -578,7 +579,7 @@ export function exportAgeingToCSV(data: AgeingData, orgName: string): void {
   const rows = ['Invoice Number,Payer,Due Date,Days Overdue,Amount (£),Bucket'];
   for (const bucket of data.buckets) {
     for (const inv of bucket.invoices) {
-      rows.push(`${inv.invoiceNumber},"${inv.payerName}",${inv.dueDate},${inv.daysOverdue},${(inv.totalMinor / 100).toFixed(2)},${bucket.label}`);
+      rows.push(`${inv.invoiceNumber},"${sanitiseCSVCell(inv.payerName)}",${inv.dueDate},${inv.daysOverdue},${(inv.totalMinor / 100).toFixed(2)},${bucket.label}`);
     }
   }
   rows.push('');
@@ -590,13 +591,13 @@ export function exportLessonsDeliveredToCSV(data: LessonsDeliveredData, orgName:
   const rows = ['By Teacher'];
   rows.push('Teacher,Completed Lessons,Total Hours,Cancelled');
   for (const t of data.byTeacher) {
-    rows.push(`"${t.teacherName}",${t.completedLessons},${(t.totalMinutes / 60).toFixed(1)},${t.cancelledLessons}`);
+    rows.push(`"${sanitiseCSVCell(t.teacherName)}",${t.completedLessons},${(t.totalMinutes / 60).toFixed(1)},${t.cancelledLessons}`);
   }
   rows.push('');
   rows.push('By Location');
   rows.push('Location,Completed Lessons,Total Hours');
   for (const l of data.byLocation) {
-    rows.push(`"${l.locationName}",${l.completedLessons},${(l.totalMinutes / 60).toFixed(1)}`);
+    rows.push(`"${sanitiseCSVCell(l.locationName)}",${l.completedLessons},${(l.totalMinutes / 60).toFixed(1)}`);
   }
   downloadCSV(rows.join('\n'), `lessons_delivered_${orgName}_report.csv`);
 }
@@ -611,13 +612,13 @@ export function exportCancellationToCSV(data: CancellationData, orgName: string)
   rows.push('By Reason');
   rows.push('Reason,Count');
   for (const r of data.byReason) {
-    rows.push(`"${r.reason}",${r.count}`);
+    rows.push(`"${sanitiseCSVCell(r.reason)}",${r.count}`);
   }
   rows.push('');
   rows.push('By Teacher');
   rows.push('Teacher,Cancelled,Total,Rate');
   for (const t of data.byTeacher) {
-    rows.push(`"${t.teacherName}",${t.cancelled},${t.total},${t.rate.toFixed(1)}%`);
+    rows.push(`"${sanitiseCSVCell(t.teacherName)}",${t.cancelled},${t.total},${t.rate.toFixed(1)}%`);
   }
   downloadCSV(rows.join('\n'), `cancellation_${orgName}_report.csv`);
 }
