@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { escapeHtml } from "../_shared/escape-html.ts";
 
 // Get frontend URL from environment or use default
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://id-preview--c541d756-90e7-442a-ba85-0c723aeabc14.lovable.app";
@@ -110,10 +111,10 @@ const handler = async (req: Request): Promise<Response> => {
     const bankDetailsHtml = hasBankDetails ? `
       <div style="background: #f0f9ff; padding: 16px 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #bae6fd;">
         <p style="margin: 0 0 8px; font-weight: 600; color: #0c4a6e;">Bank Transfer Details</p>
-        <p style="margin: 4px 0; font-size: 14px;"><strong>Account Name:</strong> ${orgPaymentPrefs.bank_account_name}</p>
-        <p style="margin: 4px 0; font-size: 14px;"><strong>Sort Code:</strong> ${orgPaymentPrefs.bank_sort_code}</p>
-        <p style="margin: 4px 0; font-size: 14px;"><strong>Account Number:</strong> ${orgPaymentPrefs.bank_account_number}</p>
-        <p style="margin: 4px 0; font-size: 14px;"><strong>Reference:</strong> ${bankRef}</p>
+        <p style="margin: 4px 0; font-size: 14px;"><strong>Account Name:</strong> ${escapeHtml(orgPaymentPrefs.bank_account_name)}</p>
+        <p style="margin: 4px 0; font-size: 14px;"><strong>Sort Code:</strong> ${escapeHtml(orgPaymentPrefs.bank_sort_code)}</p>
+        <p style="margin: 4px 0; font-size: 14px;"><strong>Account Number:</strong> ${escapeHtml(orgPaymentPrefs.bank_account_number)}</p>
+        <p style="margin: 4px 0; font-size: 14px;"><strong>Reference:</strong> ${escapeHtml(bankRef)}</p>
       </div>` : "";
 
     // CTA section based on payment preferences
@@ -132,34 +133,34 @@ const handler = async (req: Request): Promise<Response> => {
 
     const invoiceDetailsBlock = `
       <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <p style="margin: 5px 0;"><strong>Invoice Number:</strong> ${invoiceNumber}</p>
-        <p style="margin: 5px 0;"><strong>Amount Due:</strong> ${amount}</p>
-        <p style="margin: 5px 0;"><strong>Due Date:</strong> ${dueDate}</p>
+        <p style="margin: 5px 0;"><strong>Invoice Number:</strong> ${escapeHtml(invoiceNumber)}</p>
+        <p style="margin: 5px 0;"><strong>Amount Due:</strong> ${escapeHtml(amount)}</p>
+        <p style="margin: 5px 0;"><strong>Due Date:</strong> ${escapeHtml(dueDate)}</p>
       </div>`;
 
     const htmlContent = isReminder
       ? `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h1 style="color: #333; margin-bottom: 20px;">Payment Reminder</h1>
-          <p>Dear ${recipientName},</p>
+          <p>Dear ${escapeHtml(recipientName)},</p>
           <p>This is a friendly reminder that payment for the following invoice is due:</p>
           ${invoiceDetailsBlock}
-          ${customMessage ? `<p>${customMessage}</p>` : ""}
+          ${customMessage ? `<p>${escapeHtml(customMessage)}</p>` : ""}
           ${payOnlineCta}
           ${bankTransferCta}
           ${secondaryBankDetails}
-          <p>Thank you,<br>${orgName}</p>
+          <p>Thank you,<br>${escapeHtml(orgName)}</p>
         </div>`
       : `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #333; margin-bottom: 20px;">Invoice ${invoiceNumber}</h1>
-          <p>Dear ${recipientName},</p>
+          <h1 style="color: #333; margin-bottom: 20px;">Invoice ${escapeHtml(invoiceNumber)}</h1>
+          <p>Dear ${escapeHtml(recipientName)},</p>
           <p>Please find below the details of your invoice:</p>
           ${invoiceDetailsBlock}
-          ${customMessage ? `<p>${customMessage}</p>` : ""}
+          ${customMessage ? `<p>${escapeHtml(customMessage)}</p>` : ""}
           ${payOnlineCta}
           ${bankTransferCta}
           ${secondaryBankDetails}
           <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
-          <p>Thank you for your business,<br>${orgName}</p>
+          <p>Thank you for your business,<br>${escapeHtml(orgName)}</p>
         </div>`;
 
     // Log message to message_log
