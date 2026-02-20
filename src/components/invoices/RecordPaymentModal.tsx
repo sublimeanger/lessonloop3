@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,8 @@ import { useOrg } from '@/contexts/OrgContext';
 import type { InvoiceWithDetails } from '@/hooks/useInvoices';
 import type { Database } from '@/integrations/supabase/types';
 import { formatCurrencyMinor } from '@/lib/utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 
 type PaymentMethod = Database['public']['Enums']['payment_method'];
 
@@ -46,12 +48,26 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<PaymentMethod>('bank_transfer');
   const [reference, setReference] = useState('');
+  const [confirmOverpay, setConfirmOverpay] = useState(false);
+
+  const totalPaid = invoice?.payments?.reduce((sum, p) => sum + p.amount_minor, 0) || 0;
+  const outstandingAmount = invoice ? invoice.total_minor - totalPaid : 0;
+
+  const amountMinor = useMemo(() => {
+    const parsed = parseFloat(amount);
+    return isNaN(parsed) ? 0 : Math.round(parsed * 100);
+  }, [amount]);
+
+  const isOverpayment = amountMinor > outstandingAmount && outstandingAmount > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!invoice) return;
 
-    const amountMinor = Math.round(parseFloat(amount) * 100);
+    if (isOverpayment && !confirmOverpay) {
+      setConfirmOverpay(true);
+      return;
+    }
 
     await recordPayment.mutateAsync({
       invoice_id: invoice.id,
@@ -62,13 +78,10 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
 
     setAmount('');
     setReference('');
+    setConfirmOverpay(false);
     onOpenChange(false);
   };
 
-  const outstandingAmount = invoice
-    ? invoice.total_minor -
-      (invoice.payments?.reduce((sum, p) => sum + p.amount_minor, 0) || 0)
-    : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -97,14 +110,29 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
                 type="number"
                 step="0.01"
                 min="0.01"
-                max={outstandingAmount / 100}
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => {
+                  setAmount(e.target.value);
+                  setConfirmOverpay(false);
+                }}
                 className="pl-7"
                 placeholder="0.00"
                 required
               />
             </div>
+            {totalPaid > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Already paid: {formatCurrencyMinor(totalPaid, currency)}
+              </p>
+            )}
+            {isOverpayment && (
+              <Alert variant="destructive" className="py-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  This payment of {formatCurrencyMinor(amountMinor, currency)} exceeds the remaining balance of {formatCurrencyMinor(outstandingAmount, currency)}.
+                </AlertDescription>
+              </Alert>
+            )}
             <Button
               type="button"
               variant="link"
@@ -147,7 +175,11 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
               Cancel
             </Button>
             <Button type="submit" disabled={recordPayment.isPending || !amount}>
-              {recordPayment.isPending ? 'Recording...' : 'Record Payment'}
+              {recordPayment.isPending
+                ? 'Recording...'
+                : confirmOverpay
+                  ? 'Confirm Overpayment'
+                  : 'Record Payment'}
             </Button>
           </DialogFooter>
         </form>
