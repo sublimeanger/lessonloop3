@@ -52,6 +52,7 @@ serve(async (req) => {
         org_id,
         invoice_number,
         total_minor,
+        currency_code,
         status,
         payer_guardian_id,
         payer_student_id,
@@ -94,7 +95,7 @@ serve(async (req) => {
                       "Customer";
 
     // Get currency code
-    const currencyCode = ((invoice.organisations as any)?.currency_code || "GBP").toLowerCase();
+    const currencyCode = (invoice.currency_code || (invoice.organisations as any)?.currency_code || "GBP").toLowerCase();
 
     // Fetch org's Stripe Connect info and payment preferences
     const { data: orgConnect } = await supabase
