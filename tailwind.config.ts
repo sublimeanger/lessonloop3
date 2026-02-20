@@ -14,15 +14,16 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        sans: ['"DM Sans"', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'Consolas', 'monospace'],
       },
-      fontWeight: {
-        light: '300',
-        normal: '400',
-        medium: '500',
-        semibold: '600',
-        bold: '700',
-        extrabold: '800',
+      fontSize: {
+        'page-title': ['1.75rem', { lineHeight: '2rem', fontWeight: '700', letterSpacing: '-0.025em' }],
+        'section-title': ['1.125rem', { lineHeight: '1.5rem', fontWeight: '600', letterSpacing: '-0.015em' }],
+        'body-strong': ['0.875rem', { lineHeight: '1.25rem', fontWeight: '600' }],
+        'body': ['0.875rem', { lineHeight: '1.25rem', fontWeight: '400' }],
+        'caption': ['0.75rem', { lineHeight: '1rem', fontWeight: '500' }],
+        'micro': ['0.6875rem', { lineHeight: '0.875rem', fontWeight: '500' }],
       },
       colors: {
         border: "hsl(var(--border))",
