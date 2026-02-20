@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { format, startOfMonth, endOfMonth, subMonths, differenceInMinutes } from 'date-fns';
 import {
   Dialog,
@@ -44,6 +44,16 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
   const { data: terms = [] } = useTerms();
   const [step, setStep] = useState<'config' | 'preview' | 'complete'>('config');
   const lastMonth = subMonths(new Date(), 1);
+  const stepFocusRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-focus the first interactive element when step changes
+  useEffect(() => {
+    if (open) {
+      requestAnimationFrame(() => {
+        stepFocusRef.current?.focus();
+      });
+    }
+  }, [open, step]);
 
   const [config, setConfig] = useState({
     runType: 'monthly' as BillingRunType,
@@ -301,6 +311,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                 Cancel
               </Button>
               <Button
+                ref={step === 'config' ? stepFocusRef : undefined}
                 onClick={() => setStep('preview')}
                 disabled={
                   loadingLessons ||
@@ -406,6 +417,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                 Back
               </Button>
               <Button
+                ref={step === 'preview' ? stepFocusRef : undefined}
                 onClick={handleGenerate}
                 disabled={createBillingRun.isPending || payerGroups.size === 0}
               >
@@ -435,7 +447,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
             </div>
 
             <DialogFooter>
-              <Button onClick={handleClose}>Done</Button>
+              <Button ref={step === 'complete' ? stepFocusRef : undefined} onClick={handleClose}>Done</Button>
             </DialogFooter>
           </div>
         )}

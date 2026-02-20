@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -58,6 +58,16 @@ export function ComposeMessageModal({
   const { data: templates } = useMessageTemplates();
   const sendMessage = useSendMessage();
   const { isOnline, guardOffline } = useOnlineStatus();
+  const subjectInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus the subject field when modal opens (or To field if guardian not preselected)
+  useEffect(() => {
+    if (open) {
+      requestAnimationFrame(() => {
+        subjectInputRef.current?.focus();
+      });
+    }
+  }, [open]);
 
   // Pre-select guardian if provided
   useEffect(() => {
@@ -240,6 +250,7 @@ export function ComposeMessageModal({
           <div className="space-y-2">
             <Label htmlFor="subject">Subject *</Label>
             <Input
+              ref={subjectInputRef}
               id="subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}

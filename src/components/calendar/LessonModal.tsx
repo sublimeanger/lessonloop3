@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { format, addMinutes, setHours, setMinutes, startOfDay, parseISO, addWeeks } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { useOrg } from '@/contexts/OrgContext';
@@ -90,6 +90,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   const lastCheckKeyRef = useRef<string>('');
   const checkConflictsRef = useRef(checkConflicts);
   checkConflictsRef.current = checkConflicts;
+  const studentSelectorRef = useRef<HTMLButtonElement>(null);
 
   const orgTimezone = currentOrg?.timezone || 'Europe/London';
 
@@ -159,6 +160,11 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     setRecurringEditMode(null);
     conflictCheckRef.current = 0;
     lastCheckKeyRef.current = '';
+
+    // Auto-focus the student selector after modal renders
+    requestAnimationFrame(() => {
+      studentSelectorRef.current?.focus();
+    });
   }, [open, lesson, initialDate, initialEndDate, user?.id, orgTimezone, currentOrg?.default_lesson_length_mins]);
 
   useEffect(() => {
@@ -768,6 +774,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
         {isMobile ? (
           <>
             <Button
+              ref={studentSelectorRef}
               variant="outline"
               className="w-full justify-start text-left font-normal min-h-[44px]"
               onClick={() => setStudentSheetOpen(true)}
@@ -801,7 +808,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
         ) : (
           <Popover open={studentsOpen} onOpenChange={setStudentsOpen}>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-start text-left font-normal">
+              <Button ref={studentSelectorRef} variant="outline" className="w-full justify-start text-left font-normal">
                 {selectedStudents.length === 0 ? (
                   <span className="text-muted-foreground">Select student{lessonType === 'group' ? 's' : ''}...</span>
                 ) : (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,11 +56,17 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
 
   const [input, setInput] = useState('');
   const [showConversationList, setShowConversationList] = useState(!currentConversationId);
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
-  // Show intro modal on first open
+  // Show intro modal on first open & focus input
   useEffect(() => {
     if (open) {
       checkAndShowIntro();
+      // Focus the chat input after drawer animation settles
+      const timer = setTimeout(() => {
+        chatInputRef.current?.focus();
+      }, 300);
+      return () => clearTimeout(timer);
     }
   }, [open, checkAndShowIntro]);
 
@@ -259,6 +265,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
             <div className="border-t p-4" data-tour="loopassist-input">
               <div className="flex gap-3">
                 <Input
+                  ref={chatInputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
