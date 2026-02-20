@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format, addDays, eachDayOfInterval, parseISO } from 'date-fns';
+import { getUKHolidayPresets } from '@/lib/holidayPresets';
 import { TermManagementCard } from '@/components/settings/TermManagementCard';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,30 +36,6 @@ interface Location {
   name: string;
 }
 
-// UK school holiday presets
-const UK_PRESETS = [
-  { name: 'Christmas 2024/25', dates: [
-    { start: '2024-12-21', end: '2025-01-05', reason: 'Christmas Holiday' }
-  ]},
-  { name: 'February Half Term 2025', dates: [
-    { start: '2025-02-17', end: '2025-02-21', reason: 'February Half Term' }
-  ]},
-  { name: 'Easter 2025', dates: [
-    { start: '2025-04-07', end: '2025-04-21', reason: 'Easter Holiday' }
-  ]},
-  { name: 'May Half Term 2025', dates: [
-    { start: '2025-05-26', end: '2025-05-30', reason: 'May Half Term' }
-  ]},
-  { name: 'Summer 2025', dates: [
-    { start: '2025-07-21', end: '2025-09-01', reason: 'Summer Holiday' }
-  ]},
-  { name: 'October Half Term 2025', dates: [
-    { start: '2025-10-27', end: '2025-10-31', reason: 'October Half Term' }
-  ]},
-  { name: 'Christmas 2025/26', dates: [
-    { start: '2025-12-22', end: '2026-01-04', reason: 'Christmas Holiday' }
-  ]},
-];
 
 function CancellationNoticeSetting() {
   const { noticeHours, updateNoticeHours } = useCancellationNoticeSetting();
@@ -274,6 +251,7 @@ export function SchedulingSettingsTab() {
   const { currentOrg, refreshOrganisations } = useOrg();
   const { user } = useAuth();
   const { toast } = useToast();
+  const ukPresets = useMemo(() => getUKHolidayPresets(), []);
 
   const [closures, setClosures] = useState<ClosureDate[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -392,7 +370,7 @@ export function SchedulingSettingsTab() {
   };
 
   const handleAddPreset = () => {
-    const preset = UK_PRESETS.find(p => p.name === selectedPreset);
+    const preset = ukPresets.find(p => p.name === selectedPreset);
     if (!preset) return;
 
     const allDates: { date: Date; reason: string }[] = [];
@@ -717,27 +695,30 @@ export function SchedulingSettingsTab() {
             )}
 
             {addMode === 'preset' && (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>Select UK School Holiday</Label>
                 <Select value={selectedPreset} onValueChange={setSelectedPreset}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choose a holiday period" />
                   </SelectTrigger>
                   <SelectContent>
-                    {UK_PRESETS.map(preset => (
+                    {ukPresets.map(preset => (
                       <SelectItem key={preset.name} value={preset.name}>
                         {preset.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  These are approximate dates based on typical UK school calendars. Please verify with your local education authority.
+                </p>
                 {selectedPreset && (
                   <Alert>
                     <Info className="h-4 w-4" />
                     <AlertDescription>
-                      {UK_PRESETS.find(p => p.name === selectedPreset)?.dates.map(d => (
-                        <div key={d.start}>
-                          {format(parseISO(d.start), 'd MMM')} – {format(parseISO(d.end), 'd MMM yyyy')}
+                      {ukPresets.find(p => p.name === selectedPreset)?.dates.map(dr => (
+                        <div key={dr.start}>
+                          {format(parseISO(dr.start), 'd MMM')} – {format(parseISO(dr.end), 'd MMM yyyy')}
                         </div>
                       ))}
                     </AlertDescription>
