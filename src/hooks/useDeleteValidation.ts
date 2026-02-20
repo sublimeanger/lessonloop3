@@ -30,40 +30,39 @@ export function useDeleteValidation() {
     const blocks: DeletionBlock[] = [];
     const warnings: string[] = [];
 
-    // Check for future lessons
+    // Check for future lessons (warn, don't block — soft-delete will remove participations)
     const now = new Date().toISOString();
-    const { data: futureLessons, count: lessonCount } = await supabase
+    const { count: lessonCount } = await supabase
       .from('lesson_participants')
-      .select('lesson:lessons!inner(id, title, start_at)', { count: 'exact' })
+      .select('id', { count: 'exact', head: true })
+      .eq('student_id', studentId)
+      .eq('org_id', currentOrg.id)
+      .filter('lesson_id', 'in', `(select id from lessons where start_at > '${now}' and status = 'scheduled' and org_id = '${currentOrg.id}')`);
+
+    // Fallback: query via inner join
+    const { count: futureLessonCount } = await supabase
+      .from('lesson_participants')
+      .select('lesson:lessons!inner(id)', { count: 'exact' })
       .eq('student_id', studentId)
       .eq('org_id', currentOrg.id)
       .gte('lesson.start_at', now)
-      .neq('lesson.status', 'cancelled');
+      .eq('lesson.status', 'scheduled');
 
-    if (lessonCount && lessonCount > 0) {
-      blocks.push({
-        reason: `Student has ${lessonCount} upcoming lesson${lessonCount > 1 ? 's' : ''} scheduled`,
-        entityType: 'lessons',
-        count: lessonCount,
-        details: 'Cancel or reassign these lessons before deleting the student.',
-      });
+    const upcomingCount = futureLessonCount || 0;
+    if (upcomingCount > 0) {
+      warnings.push(`This student has ${upcomingCount} upcoming lesson${upcomingCount > 1 ? 's' : ''}. They will be removed from these lessons.`);
     }
 
-    // Check for unpaid invoices
-    const { data: unpaidInvoices, count: invoiceCount } = await supabase
+    // Check for unpaid invoices (warn, don't block)
+    const { count: invoiceCount } = await supabase
       .from('invoices')
-      .select('id, invoice_number, total_minor', { count: 'exact' })
+      .select('id', { count: 'exact', head: true })
       .eq('payer_student_id', studentId)
       .eq('org_id', currentOrg.id)
       .in('status', ['sent', 'overdue']);
 
     if (invoiceCount && invoiceCount > 0) {
-      blocks.push({
-        reason: `Student has ${invoiceCount} unpaid invoice${invoiceCount > 1 ? 's' : ''}`,
-        entityType: 'invoices',
-        count: invoiceCount,
-        details: 'Mark invoices as paid or void before deleting the student.',
-      });
+      warnings.push(`Student has ${invoiceCount} unpaid invoice${invoiceCount > 1 ? 's' : ''} totalling outstanding balance. These invoices will remain on record.`);
     }
 
     // Check for unredeemed credits
@@ -79,7 +78,7 @@ export function useDeleteValidation() {
     }
 
     return {
-      canDelete: blocks.length === 0,
+      canDelete: true,
       blocks,
       warnings,
     };

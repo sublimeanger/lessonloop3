@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { DeleteValidationDialog } from '@/components/shared/DeleteValidationDialog';
+import { useDeleteValidation, DeletionCheckResult } from '@/hooks/useDeleteValidation';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -83,6 +84,11 @@ export default function StudentDetail() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isGuardianDialogOpen, setIsGuardianDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteCheckResult, setDeleteCheckResult] = useState<DeletionCheckResult | null>(null);
+  const [isDeleteChecking, setIsDeleteChecking] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { checkStudentDeletion } = useDeleteValidation();
   
   // Edit form
   const [firstName, setFirstName] = useState('');
@@ -241,14 +247,56 @@ export default function StudentDetail() {
     setIsSaving(false);
   };
 
-  const handleDelete = async () => {
+  const handleDeleteClick = async () => {
     if (!student) return;
-    const { error } = await supabase.from('students').delete().eq('id', student.id);
-    if (error) {
-      toast({ title: 'Error deleting', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Student deleted' });
-      navigate('/students');
+    setDeleteDialogOpen(true);
+    setIsDeleteChecking(true);
+    setDeleteCheckResult(null);
+    const result = await checkStudentDeletion(student.id);
+    setDeleteCheckResult(result);
+    setIsDeleteChecking(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!student || !currentOrg) return;
+    setIsDeleting(true);
+
+    try {
+      // 1. Remove lesson_participants for FUTURE scheduled lessons only (keep historical)
+      const now = new Date().toISOString();
+      const { data: futureLessonIds } = await supabase
+        .from('lesson_participants')
+        .select('id, lesson:lessons!inner(id, start_at, status)')
+        .eq('student_id', student.id)
+        .eq('org_id', currentOrg.id)
+        .gte('lesson.start_at', now)
+        .eq('lesson.status', 'scheduled');
+
+      if (futureLessonIds && futureLessonIds.length > 0) {
+        const idsToDelete = futureLessonIds.map(lp => lp.id);
+        await supabase
+          .from('lesson_participants')
+          .delete()
+          .in('id', idsToDelete);
+      }
+
+      // 2. Soft-delete: set deleted_at and status to inactive
+      const { error } = await supabase
+        .from('students')
+        .update({ deleted_at: now, status: 'inactive' })
+        .eq('id', student.id);
+
+      if (error) {
+        toast({ title: 'Error deleting', description: error.message, variant: 'destructive' });
+      } else {
+        toast({ title: 'Student archived', description: `${student.first_name} ${student.last_name} has been soft-deleted. Historical records preserved.` });
+        navigate('/students');
+      }
+    } catch (err: any) {
+      toast({ title: 'Error deleting', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
     }
   };
 
@@ -414,23 +462,9 @@ export default function StudentDetail() {
               {isEditing ? 'Cancel' : 'Edit'}
             </Button>
             {isOrgAdmin && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete student?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently delete {fullName} and all their records.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <Button variant="destructive" size="icon" onClick={handleDeleteClick}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
             )}
           </div>
         }
@@ -942,6 +976,18 @@ export default function StudentDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete validation dialog */}
+      <DeleteValidationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        entityName={fullName}
+        entityType="Student"
+        checkResult={deleteCheckResult}
+        isLoading={isDeleteChecking}
+        onConfirmDelete={handleConfirmDelete}
+        isDeleting={isDeleting}
+      />
     </AppLayout>
   );
 }
