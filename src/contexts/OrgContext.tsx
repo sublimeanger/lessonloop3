@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth, AppRole } from './AuthContext';
+import { Sentry } from '@/lib/sentry';
 
 export type OrgType = 'solo_teacher' | 'studio' | 'academy' | 'agency';
 export type MembershipStatus = 'active' | 'invited' | 'disabled';
@@ -164,6 +165,11 @@ export function OrgProvider({ children }: { children: ReactNode }) {
 
       setCurrentOrgState(selectedOrg);
       setCurrentRole(selectedRole);
+
+      // Tag Sentry events with the active org
+      if (selectedOrg) {
+        Sentry.setTag('org_id', selectedOrg.id);
+      }
     } catch (error) {
       console.error('Error in fetchOrganisations:', error);
     } finally {

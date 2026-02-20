@@ -1,3 +1,4 @@
+import './lib/sentry'; // Initialise Sentry before anything else
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
