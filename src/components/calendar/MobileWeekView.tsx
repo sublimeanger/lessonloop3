@@ -292,6 +292,7 @@ export function MobileWeekView({
                       slotDate.setHours(9, 0, 0, 0);
                       onSlotClick(slotDate);
                     }}
+                    aria-label={`Add lesson on ${format(day, 'EEEE, d MMMM')}`}
                     className="flex items-center justify-center py-1 text-muted-foreground/30 hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" />
@@ -304,18 +305,21 @@ export function MobileWeekView({
       </div>
 
       {/* Dot indicators */}
-      <div className="flex items-center justify-center gap-1.5 py-2 bg-background border-t">
+      <div className="flex items-center justify-center gap-1.5 py-2 bg-background border-t" role="tablist" aria-label="Day navigation">
         {days.map((day, idx) => (
           <button
             key={idx}
             onClick={() => scrollToDay(idx)}
+            role="tab"
+            aria-selected={idx === activeDotIndex}
+            aria-current={isToday(day) ? 'date' : undefined}
             className={cn(
               'h-1.5 rounded-full transition-all duration-200',
               idx === activeDotIndex
                 ? 'w-4 bg-primary'
                 : 'w-1.5 bg-muted-foreground/25'
             )}
-            aria-label={format(day, 'EEEE d')}
+            aria-label={`Day ${idx + 1} of ${days.length}, ${format(day, 'EEEE d MMMM')}`}
           />
         ))}
       </div>

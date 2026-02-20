@@ -318,13 +318,15 @@ export function WeekTimeGrid({
     <div ref={scrollViewportRef}>
       <ScrollArea className="h-[calc(100vh-260px)]">
         <div
+          role="grid"
+          aria-label="Weekly calendar"
           className={cn('relative select-none', (isLessonDragging || isResizing) && 'cursor-grabbing')}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         >
           {/* ── Sticky day headers ── */}
-          <div className="sticky top-0 z-20 flex bg-background border-b">
+          <div className="sticky top-0 z-20 flex bg-background border-b" role="row">
             <div className="w-16 shrink-0" />
             {days.map((day) => {
               const closure = getClosureForDay(day);
@@ -332,6 +334,8 @@ export function WeekTimeGrid({
               return (
                 <div
                   key={day.toISOString()}
+                  aria-label={format(day, 'EEEE, d MMMM')}
+                  role="columnheader"
                   className={cn(
                     'flex-1 text-center py-2 border-l',
                     today && 'bg-primary/5',
@@ -370,7 +374,7 @@ export function WeekTimeGrid({
           {/* ── Time grid body ── */}
           <div className="flex">
             {/* Time gutter */}
-            <div className="w-16 shrink-0">
+            <div className="w-16 shrink-0" aria-hidden="true">
               {HOURS.map((hour) => (
                 <div key={hour} className="relative border-b" style={{ height: HOUR_HEIGHT }}>
                   <span className="absolute -top-2.5 right-2 text-xs text-muted-foreground tabular-nums">
@@ -396,6 +400,8 @@ export function WeekTimeGrid({
                 return (
                   <div
                     key={day.toISOString()}
+                    role="gridcell"
+                    aria-label={format(day, 'EEEE, d MMMM')}
                     className={cn(
                       'flex-1 relative border-l',
                       today && 'bg-primary/[0.03]',
@@ -451,7 +457,7 @@ export function WeekTimeGrid({
                           }}
                           role="button"
                           tabIndex={0}
-                          aria-label={`${lesson.title} - ${format(parseISO(lesson.start_at), 'HH:mm')}`}
+                          aria-label={`${lesson.title}, ${format(parseISO(lesson.start_at), 'EEEE')} at ${format(parseISO(lesson.start_at), 'h:mm a')}, ${lesson.status}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             if (!isLessonDragging && !isResizing) onLessonClick(lesson);
