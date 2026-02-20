@@ -60,6 +60,19 @@ export function RescheduleSlotPicker({
     },
   });
 
+  // Fetch teacher's time-off blocks
+  const { data: timeOffBlocks } = useQuery({
+    queryKey: ['teacher-time-off', teacherUserId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('time_off_blocks')
+        .select('*')
+        .eq('teacher_user_id', teacherUserId);
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Fetch teacher's existing lessons for conflict checking
   const { data: teacherLessons, isLoading: lessonsLoading } = useQuery({
     queryKey: ['teacher-lessons-for-reschedule', teacherUserId, format(selectedDate, 'yyyy-MM-dd')],
@@ -144,13 +157,20 @@ export function RescheduleSlotPicker({
         }
         
         // Check for conflicts with existing lessons
-        const hasConflict = teacherLessons?.some(lesson => {
+        const hasLessonConflict = teacherLessons?.some(lesson => {
           const lessonStart = parseISO(lesson.start_at);
           const lessonEnd = parseISO(lesson.end_at);
           return slotStart < lessonEnd && slotEnd > lessonStart;
         });
+
+        // Check for conflicts with time-off blocks
+        const hasTimeOffConflict = timeOffBlocks?.some(block => {
+          const offStart = parseISO(block.start_at);
+          const offEnd = parseISO(block.end_at);
+          return slotStart < offEnd && slotEnd > offStart;
+        });
         
-        if (!hasConflict) {
+        if (!hasLessonConflict && !hasTimeOffConflict) {
           // Check if this matches the original time (preferred)
           const originalDate = parseISO(originalStart);
           const isPreferred = slotStart.getHours() === originalDate.getHours() && 
@@ -164,7 +184,7 @@ export function RescheduleSlotPicker({
     });
     
     return slots;
-  }, [selectedDate, availabilityBlocks, teacherLessons, closures, originalDuration, lessonsLoading, originalStart]);
+  }, [selectedDate, availabilityBlocks, teacherLessons, timeOffBlocks, closures, originalDuration, lessonsLoading, originalStart]);
 
   // Disable dates that are closures or in the past
   const disabledDates = useMemo(() => {
