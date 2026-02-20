@@ -197,10 +197,12 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
-    // 30-second timeout
+    // 45-second timeout
     timeoutRef.current = setTimeout(() => {
       abortController.abort();
-    }, 30000);
+    }, 45000);
+
+    let assistantContent = '';
 
     try {
       const response = await fetch(CHAT_URL, {
@@ -233,7 +235,6 @@ export function useLoopAssist(externalPageContext?: PageContext) {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let assistantContent = '';
       let textBuffer = '';
 
       while (true) {
@@ -304,8 +305,24 @@ export function useLoopAssist(externalPageContext?: PageContext) {
       queryClient.invalidateQueries({ queryKey: ['ai-messages', conversationId] });
       queryClient.invalidateQueries({ queryKey: ['ai-conversations'] });
     } catch (error) {
+      // Save partial response if we got streaming content before the error
+      if (assistantContent && conversationId && currentOrg?.id && user?.id) {
+        try {
+          await supabase.from('ai_messages').insert({
+            conversation_id: conversationId,
+            org_id: currentOrg.id,
+            user_id: user.id,
+            role: 'assistant',
+            content: assistantContent + '\n\n_[Response interrupted — please try again]_',
+          });
+          queryClient.invalidateQueries({ queryKey: ['ai-messages', conversationId] });
+        } catch {
+          // Ignore save error — best effort
+        }
+      }
+
       if (error instanceof DOMException && error.name === 'AbortError') {
-        throw new Error('Response timed out. Please try a shorter question.');
+        throw new Error('LoopAssist took too long to respond — this can happen with complex queries. Try again or ask a simpler question.');
       } else {
         logger.error('LoopAssist error:', error);
         throw error instanceof Error ? error : new Error('Failed to get response');
