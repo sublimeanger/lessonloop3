@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { sanitiseCSVCell } from '@/lib/utils';
+import { sanitiseCSVCell, currencySymbol } from '@/lib/utils';
 
 export interface TeacherPayrollSummary {
   teacherId: string;          // Now teachers.id
@@ -216,11 +216,12 @@ function calculatePayroll(
   };
 }
 
-export function exportPayrollToCSV(data: PayrollData, orgName: string): void {
+export function exportPayrollToCSV(data: PayrollData, orgName: string, currencyCode = 'GBP'): void {
   const rows: string[] = [];
+  const sym = currencySymbol(currencyCode);
   
   // Header
-  rows.push('Teacher,Pay Rate Type,Pay Rate Value,Completed Lessons,Total Hours,Gross Owed (£)');
+  rows.push(`Teacher,Pay Rate Type,Pay Rate Value,Completed Lessons,Total Hours,Gross Owed (${sym})`);
   
   // Data rows
   for (const teacher of data.teachers) {

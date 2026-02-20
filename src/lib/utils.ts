@@ -47,6 +47,15 @@ export function formatCurrencyMinor(amountMinor: number, currencyCode = 'GBP'): 
 }
 
 /**
+ * Return the narrow currency symbol for a given ISO 4217 code.
+ * e.g. 'GBP' → '£', 'USD' → '$', 'EUR' → '€'
+ */
+export function currencySymbol(code: string): string {
+  return new Intl.NumberFormat('en', { style: 'currency', currency: code })
+    .formatToParts(0).find(p => p.type === 'currency')?.value || code;
+}
+
+/**
  * Sanitise a string for safe CSV inclusion.
  * Prefixes cells starting with formula characters (=, +, -, @, \t, \r)
  * with a single quote to prevent Excel/Sheets formula injection.
