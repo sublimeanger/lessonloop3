@@ -26,11 +26,20 @@ const wordVariants = {
 export function KickstarterHero() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [honeypot, setHoneypot] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const isDisposableDomain = (email: string) => {
+    const blocked = ['mailinator.com','guerrillamail.com','tempmail.com','throwaway.email','yopmail.com','sharklasers.com','guerrillamailblock.com','grr.la','dispostable.com','trashmail.com'];
+    const domain = email.split('@')[1]?.toLowerCase();
+    return !domain || blocked.includes(domain);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
+    if (honeypot) { toast.success("You're in! We'll notify you when we launch."); return; }
+    if (isDisposableDomain(email)) { toast.error("Please use a real email address."); return; }
     setLoading(true);
     try {
       const { error } = await supabase.from("kickstarter_signups" as any).insert({ email, name: name || null });
@@ -141,6 +150,7 @@ export function KickstarterHero() {
           >
             <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-2xl p-6">
               <p className="text-white font-semibold mb-4">Get notified on launch day</p>
+              <input type="text" name="website" value={honeypot} onChange={e => setHoneypot(e.target.value)} style={{ position: 'absolute', left: '-9999px' }} tabIndex={-1} autoComplete="off" aria-hidden="true" />
               <div className="flex flex-col sm:flex-row gap-3">
                 <Input
                   placeholder="Your name"
