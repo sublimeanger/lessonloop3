@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -184,7 +185,7 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
           setTimeout(() => setIsDismissed(true), 3000);
         }
       } catch (error) {
-        console.warn('Checklist check failed:', error);
+        logger.warn('Checklist check failed:', error);
         setItems([]); // Hide checklist if queries fail
       } finally {
         setIsLoading(false);

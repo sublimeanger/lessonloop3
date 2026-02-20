@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -218,7 +219,7 @@ export function useSendInternalMessage() {
           }
         );
       } catch (emailError) {
-        console.error('Failed to send email notification:', emailError);
+        logger.error('Failed to send email notification:', emailError);
         // Don't throw - the message was saved successfully
       }
 

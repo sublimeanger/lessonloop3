@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef, ReactNod
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Sentry } from '@/lib/sentry';
+import { logger } from '@/lib/logger';
 
 export type AppRole = 'owner' | 'admin' | 'teacher' | 'finance' | 'parent';
 
@@ -44,7 +45,7 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
   const start = Date.now();
   const timeoutPromise = new Promise<null>((resolve) => 
     setTimeout(() => {
-      console.warn(`Profile fetch timeout after 5s`);
+      logger.warn('Profile fetch timeout after 5s');
       resolve(null);
     }, 5000)
   );
@@ -57,16 +58,14 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
         .eq('id', userId)
         .maybeSingle();
 
-      if (import.meta.env.DEV) {
-        console.log(`Profile fetch took ${Date.now() - start}ms`);
-      }
+      logger.debug(`Profile fetch took ${Date.now() - start}ms`);
       if (error) {
-        console.warn('Profile fetch failed:', error.message);
+        logger.warn('Profile fetch failed:', error.message);
         return null;
       }
       return data as Profile | null;
     } catch (err) {
-      console.warn(`Profile fetch exception after ${Date.now() - start}ms:`, err);
+      logger.warn(`Profile fetch exception after ${Date.now() - start}ms:`, err);
       return null;
     }
   })();
@@ -79,7 +78,7 @@ async function fetchRoles(userId: string): Promise<AppRole[]> {
   const start = Date.now();
   const timeoutPromise = new Promise<AppRole[]>((resolve) => 
     setTimeout(() => {
-      console.warn(`Roles fetch timeout after 5s`);
+      logger.warn('Roles fetch timeout after 5s');
       resolve([]);
     }, 5000)
   );
@@ -87,16 +86,14 @@ async function fetchRoles(userId: string): Promise<AppRole[]> {
   const fetchPromise = (async () => {
     try {
       const { data, error } = await supabase.rpc('get_user_roles', { _user_id: userId });
-      if (import.meta.env.DEV) {
-        console.log(`Roles fetch took ${Date.now() - start}ms`);
-      }
+      logger.debug(`Roles fetch took ${Date.now() - start}ms`);
       if (error) {
-        console.warn('Roles fetch failed:', error.message);
+        logger.warn('Roles fetch failed:', error.message);
         return [];
       }
       return (data as AppRole[]) || [];
     } catch (err) {
-      console.warn(`Roles fetch exception after ${Date.now() - start}ms:`, err);
+      logger.warn(`Roles fetch exception after ${Date.now() - start}ms:`, err);
       return [];
     }
   })();
@@ -149,12 +146,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('[Auth] Profile ensure result:', data.created ? 'created' : 'exists');
+        logger.debug('[Auth] Profile ensure result:', data.created ? 'created' : 'exists');
         return true;
       }
       return false;
     } catch (err) {
-      console.warn('[Auth] Profile ensure failed:', err);
+      logger.warn('[Auth] Profile ensure failed:', err);
       return false;
     }
   };
@@ -162,7 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Retry profile fetch if missing after init, with self-healing
   useEffect(() => {
     if (isInitialised && user && !profile && session) {
-      console.log('[Auth] Profile missing after init - attempting recovery');
+      logger.debug('[Auth] Profile missing after init - attempting recovery');
       
       const recoverProfile = async () => {
         // First try to ensure profile exists
@@ -184,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Hard timeout - 4 seconds max for initial load
     const hardTimeout = setTimeout(() => {
       if (mountedRef.current && !initialisedRef.current) {
-        console.warn('Auth hard timeout - forcing completion');
+        logger.warn('Auth hard timeout - forcing completion');
         setIsLoading(false);
         setIsInitialised(true);
         initialisedRef.current = true;
@@ -197,10 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mountedRef.current) return;
       
-      // Only log in dev
-      if (import.meta.env.DEV) {
-        console.log('Auth state change:', event, 'isInitialised:', isInitialised);
-      }
+      logger.debug('Auth state change:', event, 'isInitialised:', isInitialised);
       
       setSession(newSession);
       setUser(newSession?.user ?? null);
@@ -209,9 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Skip profile refetch on token refresh or if already initialised
         // This prevents UI churn when returning to an inactive tab
         if (event === 'TOKEN_REFRESHED') {
-          if (import.meta.env.DEV) {
-            console.log('Token refreshed - skipping profile refetch');
-          }
+          logger.debug('Token refreshed - skipping profile refetch');
           // Still mark as initialised if we weren't already
           if (!initialisedRef.current && mountedRef.current) {
             setIsLoading(false);
@@ -224,9 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // If we're already initialised with this user's data, skip refetch
         // This handles SIGNED_IN re-emission on tab focus
         if (initialisedRef.current && profileIdRef.current === newSession.user.id) {
-          if (import.meta.env.DEV) {
-            console.log('Already initialised with same user - skipping refetch');
-          }
+          logger.debug('Already initialised with same user - skipping refetch');
           return;
         }
         
@@ -273,7 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('getSession error:', error);
+          logger.error('getSession error:', error);
         }
         
         if (!mountedRef.current) return;
@@ -287,7 +277,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // If there IS a session, the onAuthStateChange will handle it
         
       } catch (err) {
-        console.error('Auth init error:', err);
+        logger.error('Auth init error:', err);
         if (mountedRef.current) {
           setIsLoading(false);
           setIsInitialised(true);

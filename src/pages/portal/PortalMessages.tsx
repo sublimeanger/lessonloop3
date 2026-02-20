@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -31,7 +32,7 @@ export default function PortalMessages() {
       if (unreadIds.length > 0) {
         supabase.functions.invoke('mark-messages-read', {
           body: { message_ids: unreadIds },
-        }).catch(console.error);
+        }).catch((err: unknown) => logger.error('Failed to mark messages read:', err));
       }
     }
   }, [activeTab, messages]);

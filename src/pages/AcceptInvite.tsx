@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -75,7 +76,7 @@ export default function AcceptInvite() {
       setOrganisation(data.organisation);
       setIsLoading(false);
     } catch (err: any) {
-      console.error('Error fetching invite:', err);
+      logger.error('Error fetching invite:', err);
       setError('Failed to load invitation');
       setIsLoading(false);
     }

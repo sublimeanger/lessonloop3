@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { logger } from "@/lib/logger";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Send, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -114,7 +115,7 @@ export function MarketingChatWidget() {
         upsert("I'm sorry, I couldn't generate a response. Please try again or use our contact form.");
       }
     } catch (e) {
-      console.error("Chat stream error:", e);
+      logger.error("Chat stream error:", e);
       upsert("Sorry, something went wrong. Please try again.");
     } finally {
       setIsLoading(false);

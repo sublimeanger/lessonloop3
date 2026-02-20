@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -153,7 +154,7 @@ export function useUrgentActions() {
 
         setActions(urgentActions);
       } catch (error) {
-        console.error('Error fetching urgent actions:', error);
+        logger.error('Error fetching urgent actions:', error);
         setActions([]);
       } finally {
         setIsLoading(false);

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -413,7 +414,7 @@ export default function StudentDetail() {
       });
 
       if (emailError) {
-        console.error('Email error:', emailError);
+        logger.error('Email error:', emailError);
         // Don't fail - invite was created
       }
 

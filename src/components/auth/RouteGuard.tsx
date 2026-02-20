@@ -1,4 +1,5 @@
 import { ReactNode, useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -28,7 +29,7 @@ function AuthLoading({ onLogout, onForceRedirect }: { onLogout?: () => void; onF
 
   useEffect(() => {
     if (forceTimeout && onForceRedirect) {
-      console.warn('[RouteGuard] Force timeout reached - redirecting');
+      logger.warn('[RouteGuard] Force timeout reached - redirecting');
       onForceRedirect();
     }
   }, [forceTimeout, onForceRedirect]);
@@ -103,7 +104,7 @@ export function RouteGuard({
     // If profile is null after auth init, treat as needing onboarding
     // The onboarding page will self-heal and create profile if needed
     if (profile === null) {
-      console.warn('[RouteGuard] Profile is null - redirecting to onboarding for self-heal');
+      logger.warn('[RouteGuard] Profile is null - redirecting to onboarding for self-heal');
       return <Navigate to="/onboarding" replace />;
     }
     if (!profile.has_completed_onboarding) {

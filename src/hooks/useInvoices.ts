@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { toast } from 'sonner';
@@ -266,7 +267,7 @@ export function useCreateInvoice() {
           .in('id', data.credit_ids);
 
         if (redeemError) {
-          console.error('Failed to mark credits as redeemed:', redeemError);
+          logger.error('Failed to mark credits as redeemed:', redeemError);
           // Don't throw - invoice is created, credits can be manually managed
         }
       }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -170,7 +171,7 @@ export default function BatchAttendance() {
         description: `${upserts.length} records updated successfully.`,
       });
     } catch (err) {
-      console.error('Failed to save attendance:', err);
+      logger.error('Failed to save attendance:', err);
       toast({
         title: 'Failed to save',
         description: 'Please try again.',

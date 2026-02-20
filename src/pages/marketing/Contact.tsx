@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { logger } from "@/lib/logger";
 import { motion } from "framer-motion";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { MessageSquare, Clock, HelpCircle, Loader2, CheckCircle } from "lucide-react";
@@ -82,7 +83,7 @@ export default function Contact() {
       toast.success("Message sent! We'll get back to you soon.");
       setFormData({ firstName: "", lastName: "", email: "", subject: "", message: "" });
     } catch (error: any) {
-      console.error('Contact form error:', error);
+      logger.error('Contact form error:', error);
       toast.error(error.message || "Failed to send message. Please try again.");
     } finally {
       setIsSubmitting(false);

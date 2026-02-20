@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -56,7 +57,7 @@ export default function Onboarding() {
       // If profile exists and onboarding is complete, and user didn't explicitly request new org
       // redirect them to dashboard (they probably hit this page accidentally)
       if (profile?.has_completed_onboarding && !isNewOrg) {
-        console.log('[Onboarding] Already completed - redirecting to dashboard');
+        logger.debug('[Onboarding] Already completed - redirecting to dashboard');
         navigate('/dashboard', { replace: true });
         return;
       }
@@ -66,7 +67,7 @@ export default function Onboarding() {
         return;
       }
 
-      console.log('[Onboarding] Profile missing - calling profile-ensure');
+      logger.debug('[Onboarding] Profile missing - calling profile-ensure');
       try {
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const response = await fetch(`${supabaseUrl}/functions/v1/profile-ensure`, {
@@ -80,7 +81,7 @@ export default function Onboarding() {
 
         if (response.ok) {
           const data = await response.json();
-          console.log('[Onboarding] Profile ensure result:', data.created ? 'created' : 'exists');
+          logger.debug('[Onboarding] Profile ensure result:', data.created ? 'created' : 'exists');
           await refreshProfile();
           
           // After refresh, re-fetch profile to check if onboarding was already completed
@@ -91,13 +92,13 @@ export default function Onboarding() {
             .single();
           
           if (freshProfile?.has_completed_onboarding && !isNewOrg) {
-            console.log('[Onboarding] Already completed after refresh - redirecting to dashboard');
+            logger.debug('[Onboarding] Already completed after refresh - redirecting to dashboard');
             navigate('/dashboard', { replace: true });
             return;
           }
         }
       } catch (err) {
-        console.warn('[Onboarding] Profile ensure failed:', err);
+        logger.warn('[Onboarding] Profile ensure failed:', err);
       }
       
       setProfileReady(true);
@@ -200,12 +201,12 @@ export default function Onboarding() {
       }
 
       const result = await response.json();
-      console.log('[Onboarding] Setup complete:', result);
+      logger.debug('[Onboarding] Setup complete:', result);
 
       await refreshProfile();
       setStep('success');
     } catch (err) {
-      console.error('[Onboarding] Error:', err);
+      logger.error('[Onboarding] Error:', err);
       const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
       setError(message);
       setStep('error');

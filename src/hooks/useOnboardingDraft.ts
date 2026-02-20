@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 
 const STORAGE_KEY = 'lessonloop_onboarding_draft';
 
@@ -56,7 +57,7 @@ export function useOnboardingDraft() {
         }
       }
     } catch (e) {
-      console.warn('Failed to restore onboarding draft:', e);
+      logger.warn('Failed to restore onboarding draft:', e);
     }
   }, []);
 
@@ -67,7 +68,7 @@ export function useOnboardingDraft() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       } catch (e) {
-        console.warn('Failed to save onboarding draft:', e);
+        logger.warn('Failed to save onboarding draft:', e);
       }
       return updated;
     });
@@ -77,7 +78,7 @@ export function useOnboardingDraft() {
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch (e) {
-      console.warn('Failed to clear onboarding draft:', e);
+      logger.warn('Failed to clear onboarding draft:', e);
     }
     setDraftState(defaultDraft);
     setHasRestoredDraft(false);

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 import { format, addMinutes, setHours, setMinutes, startOfDay, parseISO, addWeeks } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { useOrg } from '@/contexts/OrgContext';
@@ -216,7 +217,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     
     const hardTimeout = setTimeout(() => {
       if (!completed) {
-        console.warn('Conflict check hard timeout triggered');
+        logger.warn('Conflict check hard timeout triggered');
         completeCheck([{
           type: 'teacher',
           severity: 'warning',
@@ -252,7 +253,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
           completeCheck(results);
         }
       } catch (error) {
-        console.error('Conflict check failed:', error);
+        logger.error('Conflict check failed:', error);
         if (conflictCheckRef.current === thisCheckId) {
           completeCheck([{
             type: 'teacher',

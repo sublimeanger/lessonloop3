@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/lib/logger';
 import { useToast } from '@/hooks/use-toast';
 
 export function useNotesNotification() {
@@ -29,7 +30,7 @@ export function useNotesNotification() {
 
       return data;
     } catch (error: any) {
-      console.error('Failed to send notes notification:', error);
+      logger.error('Failed to send notes notification:', error);
       // Don't show error toast - notification is optional
       return null;
     }

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -36,7 +37,7 @@ export function useUnreadMessagesCount() {
         .eq('status', 'sent');
 
       if (error) {
-        console.error('Error fetching unread messages count:', error);
+        logger.error('Error fetching unread messages count:', error);
         return 0;
       }
 

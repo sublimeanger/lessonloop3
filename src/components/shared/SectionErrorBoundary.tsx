@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 
 interface Props {
@@ -28,8 +29,8 @@ export class SectionErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error(`[SectionErrorBoundary] "${this.props.name}" failed:`, error);
-    console.error('Component stack:', errorInfo.componentStack);
+    logger.error(`[SectionErrorBoundary] "${this.props.name}" failed:`, error);
+    logger.error('Component stack:', errorInfo.componentStack);
   }
 
   handleRetry = () => {

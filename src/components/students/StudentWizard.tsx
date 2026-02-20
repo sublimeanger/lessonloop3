@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -171,7 +172,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
             .single();
           
           if (guardianError) {
-            console.error('Guardian creation failed:', guardianError);
+            logger.error('Guardian creation failed:', guardianError);
             toast({ 
               title: 'Student created, guardian failed', 
               description: 'The student was created but we couldn\'t add the guardian. You can add them later.',
@@ -204,7 +205,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
             });
           
           if (linkError) {
-            console.error('Guardian link failed:', linkError);
+            logger.error('Guardian link failed:', linkError);
           } else {
             guardianInfo = {
               name: guardianName,
@@ -239,7 +240,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
       onSuccess?.();
       
     } catch (error: any) {
-      console.error('Student creation error:', error);
+      logger.error('Student creation error:', error);
       toast({ 
         title: 'Error creating student', 
         description: error.message, 

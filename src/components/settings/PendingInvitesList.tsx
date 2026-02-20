@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -47,7 +48,7 @@ export function PendingInvitesList({ refreshKey = 0, roleFilter }: PendingInvite
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching invites:', error);
+      logger.error('Error fetching invites:', error);
     }
     setInvites((data || []) as Invite[]);
     setIsLoading(false);

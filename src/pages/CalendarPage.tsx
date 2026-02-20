@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { logger } from '@/lib/logger';
 import { useSearchParams } from 'react-router-dom';
 import { format, addWeeks, subWeeks, startOfWeek, addDays } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -282,7 +283,7 @@ export default function CalendarPage() {
         });
         refetch();
       } catch (err) {
-        console.error('Failed to reschedule lesson:', err);
+        logger.error('Failed to reschedule lesson:', err);
         // Revert optimistic update
         setLessons(prev => prev.map(l => {
           if (l.id === lesson.id) {

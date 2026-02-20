@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import {
   Dialog,
   DialogContent,
@@ -76,7 +77,7 @@ export function InviteMemberDialog({ open, onOpenChange, onInviteSent }: InviteM
       });
       toast({ title: 'Invite sent', description: `Invitation sent to ${email.trim()}` });
     } catch (emailError: any) {
-      console.error('Email error:', emailError);
+      logger.error('Email error:', emailError);
       toast({ title: 'Invite created', description: 'Email may not have been sent.' });
     }
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { logger } from '@/lib/logger';
 import { format, addMinutes, setHours, setMinutes, startOfDay } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 import { useOrg } from '@/contexts/OrgContext';
@@ -130,7 +131,7 @@ export function QuickCreatePopover({
       onSaved();
       onClose();
     } catch (err) {
-      console.error('Quick create failed:', err);
+      logger.error('Quick create failed:', err);
       toast({
         title: 'Failed to create lesson',
         description: 'Please try again or use the full form.',

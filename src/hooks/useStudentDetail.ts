@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 
@@ -58,7 +59,7 @@ export function useStudentLessons(studentId: string | undefined) {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching student lessons:', error);
+        logger.error('Error fetching student lessons:', error);
         throw error;
       }
 
@@ -118,7 +119,7 @@ export function useStudentInvoices(studentId: string | undefined) {
         .eq('student_id', studentId);
 
       if (itemError) {
-        console.error('Error fetching invoice items:', itemError);
+        logger.error('Error fetching invoice items:', itemError);
         throw itemError;
       }
 
@@ -159,7 +160,7 @@ export function useStudentInvoices(studentId: string | undefined) {
         .order('issue_date', { ascending: false });
 
       if (error) {
-        console.error('Error fetching invoices:', error);
+        logger.error('Error fetching invoices:', error);
         throw error;
       }
 

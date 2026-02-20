@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg, OrgType } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -275,7 +276,7 @@ export function useFirstRunExperience(): FirstRunState & {
           hasTeachers,
         });
       } catch (error) {
-        console.error('Error checking first-run status:', error);
+        logger.error('Error checking first-run status:', error);
         setState(prev => ({ ...prev, isLoading: false }));
       }
     };
@@ -297,7 +298,7 @@ export function useFirstRunExperience(): FirstRunState & {
 
       setState(prev => ({ ...prev, isFirstRun: false }));
     } catch (error) {
-      console.error('Error completing first-run:', error);
+      logger.error('Error completing first-run:', error);
     }
   }, [user, state.path]);
 
