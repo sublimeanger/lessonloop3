@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { escapeHtml } from "../_shared/escape-html.ts";
 
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://id-preview--c541d756-90e7-442a-ba85-0c723aeabc14.lovable.app";
 
@@ -124,17 +125,17 @@ const handler = async (req: Request): Promise<Response> => {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <h1 style="color: #333; margin-bottom: 20px;">Lesson Notes Update</h1>
         <p>Dear Parent/Guardian,</p>
-        <p>${teacherName} has added notes for an upcoming lesson:</p>
+        <p>${escapeHtml(teacherName)} has added notes for an upcoming lesson:</p>
         <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <p style="margin: 5px 0;"><strong>Lesson:</strong> ${lessonTitle}</p>
-          <p style="margin: 5px 0;"><strong>Date:</strong> ${lessonDate}</p>
+          <p style="margin: 5px 0;"><strong>Lesson:</strong> ${escapeHtml(lessonTitle)}</p>
+          <p style="margin: 5px 0;"><strong>Date:</strong> ${escapeHtml(lessonDate)}</p>
           <p style="margin: 15px 0 5px;"><strong>Notes:</strong></p>
-          <p style="margin: 5px 0; white-space: pre-wrap; background: #fff; padding: 10px; border-radius: 4px;">${notesShared}</p>
+          <p style="margin: 5px 0; white-space: pre-wrap; background: #fff; padding: 10px; border-radius: 4px;">${escapeHtml(notesShared)}</p>
         </div>
         <p style="text-align: center;">
           <a href="${portalLink}" style="${buttonStyle}">View in Portal</a>
         </p>
-        <p>Thank you,<br>${orgName}</p>
+        <p>Thank you,<br>${escapeHtml(orgName)}</p>
       </div>
     `;
 

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { escapeHtml } from "../_shared/escape-html.ts";
 
 interface SendMessageRequest {
   org_id: string;
@@ -122,13 +123,13 @@ const handler = async (req: Request): Promise<Response> => {
             subject: data.subject,
             html: `
               <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #333;">${data.subject}</h2>
+                <h2 style="color: #333;">${escapeHtml(data.subject)}</h2>
                 <div style="white-space: pre-wrap; color: #555; line-height: 1.6;">
-                  ${data.body.replace(/\n/g, "<br>")}
+                  ${escapeHtml(data.body).replace(/\n/g, "<br>")}
                 </div>
                 <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;" />
                 <p style="color: #999; font-size: 12px;">
-                  This message was sent via ${orgName} on LessonLoop.
+                  This message was sent via ${escapeHtml(orgName)} on LessonLoop.
                 </p>
               </div>
             `,

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { escapeHtml } from "../_shared/escape-html.ts";
 
 interface InviteEmailRequest {
   inviteId: string;
@@ -66,13 +67,13 @@ serve(async (req: Request): Promise<Response> => {
 
     console.log("Sending invite email to:", recipientEmail, "for org:", orgName);
 
-    const subject = `You've been invited to join ${orgName}`;
+    const subject = `You've been invited to join ${escapeHtml(orgName)}`;
     const body = `
       <h2>You're invited!</h2>
-      <p>${inviterName} has invited you to join <strong>${orgName}</strong> as a <strong>${recipientRole}</strong>.</p>
+      <p>${escapeHtml(inviterName)} has invited you to join <strong>${escapeHtml(orgName)}</strong> as a <strong>${escapeHtml(recipientRole)}</strong>.</p>
       <p>Click the link below to accept the invitation and set up your account:</p>
       <p><a href="${inviteUrl}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Accept Invitation</a></p>
-      <p>Or copy this link: ${inviteUrl}</p>
+      <p>Or copy this link: ${escapeHtml(inviteUrl)}</p>
       <p>This invitation will expire in 7 days.</p>
       <p>If you didn't expect this invitation, you can safely ignore this email.</p>
     `;

@@ -53,14 +53,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Sanitize inputs for email
-    const sanitize = (str: string) => str.replace(/[<>]/g, '');
+    // Sanitize inputs for email — use full HTML entity escaping
+    const escapeHtml = (str: string): string =>
+      str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
     const sanitizedData = {
-      firstName: sanitize(body.firstName.slice(0, 50)),
-      lastName: sanitize(body.lastName.slice(0, 50)),
+      firstName: escapeHtml(body.firstName.slice(0, 50)),
+      lastName: escapeHtml(body.lastName.slice(0, 50)),
       email: body.email.slice(0, 255),
-      subject: sanitize(body.subject.slice(0, 100)),
-      message: sanitize(body.message.slice(0, 2000)),
+      subject: escapeHtml(body.subject.slice(0, 100)),
+      message: escapeHtml(body.message.slice(0, 2000)),
     };
 
     if (!RESEND_API_KEY) {

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { escapeHtml } from "../_shared/escape-html.ts";
 
 // This function runs on a schedule (e.g., daily) to send automated overdue invoice reminders
 // based on each organisation's configured reminder days (e.g., [7, 14, 30])
@@ -148,11 +149,11 @@ serve(async (req) => {
             <h1 style="color: ${urgencyLevel === "urgent" ? "#dc2626" : "#333"}; margin-bottom: 20px;">
               Payment ${urgencyLevel === "urgent" ? "Urgently Required" : "Reminder"}
             </h1>
-            <p>Dear ${recipientName},</p>
-            <p>Invoice <strong>${invoice.invoice_number}</strong> is now <strong>${daysOverdue} days overdue</strong>.</p>
+            <p>Dear ${escapeHtml(recipientName)},</p>
+            <p>Invoice <strong>${escapeHtml(invoice.invoice_number)}</strong> is now <strong>${daysOverdue} days overdue</strong>.</p>
             <div style="background: ${urgencyLevel === "urgent" ? "#fef2f2" : "#f5f5f5"}; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${urgencyLevel === "urgent" ? "#dc2626" : "#2563eb"};">
-              <p style="margin: 5px 0;"><strong>Invoice Number:</strong> ${invoice.invoice_number}</p>
-              <p style="margin: 5px 0;"><strong>Amount Due:</strong> ${amount}</p>
+              <p style="margin: 5px 0;"><strong>Invoice Number:</strong> ${escapeHtml(invoice.invoice_number)}</p>
+              <p style="margin: 5px 0;"><strong>Amount Due:</strong> ${escapeHtml(amount)}</p>
               <p style="margin: 5px 0;"><strong>Original Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
               <p style="margin: 5px 0; color: ${urgencyLevel === "urgent" ? "#dc2626" : "#666"};"><strong>Days Overdue:</strong> ${daysOverdue}</p>
             </div>
@@ -166,7 +167,7 @@ serve(async (req) => {
             <p style="font-size: 12px; color: #666;">
               If you have already made payment, please disregard this email. Payments may take 1-2 business days to process.
             </p>
-            <p>Thank you,<br>${orgName}</p>
+            <p>Thank you,<br>${escapeHtml(orgName)}</p>
           </div>
         `;
 
