@@ -182,6 +182,12 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
     teacherCounts.set(key, (teacherCounts.get(key) || 0) + 1);
   });
 
+  // NEW: Fetch teachers for workload display
+  const { data: teachers } = await supabase
+    .from("teachers")
+    .select("id, display_name, user_id")
+    .eq("org_id", orgId);
+
   // NEW: Fetch unmarked past lessons (yesterday and before)
   const yesterdayStr = new Date(today.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
   const { data: unmarkedLessons } = await supabase
@@ -193,6 +199,14 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
     .gte("start_at", `${weekAgoStr}T00:00:00`)
     .order("start_at", { ascending: false })
     .limit(20);
+
+  // NEW: Fetch paid invoices this month for financial summary
+  const { data: paidInvoicesThisMonth } = await supabase
+    .from("invoices")
+    .select("total_minor")
+    .eq("org_id", orgId)
+    .eq("status", "paid")
+    .gte("issue_date", monthStartStr);
 
   // Build invoice summary with citations
   let invoiceSummary = "";
@@ -268,7 +282,7 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
     }
   }
 
-  // NEW: Build cancellations summary
+  // Build cancellations summary
   let cancellationSummary = "";
   if ((recentCancellations || []).length > 0) {
     cancellationSummary += `\n\nRECENT CANCELLATIONS (last 7 days): ${recentCancellations.length}`;
@@ -281,13 +295,13 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
     });
   }
 
-  // NEW: Build attendance/performance summary
+  // Build attendance/performance summary
   let performanceSummary = `\n\nTHIS MONTH PERFORMANCE:`;
   performanceSummary += `\n- Lessons scheduled: ${totalMonthly}`;
   performanceSummary += `\n- Completed: ${completedCount} (${completionRate}% completion rate)`;
   performanceSummary += `\n- Cancelled: ${cancelledCount}`;
 
-  // NEW: Build rate cards summary
+  // Build rate cards summary
   let rateCardSummary = "";
   if ((rateCards || []).length > 0) {
     rateCardSummary += `\n\nRATE CARDS:`;
@@ -296,7 +310,7 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
     });
   }
 
-  // NEW: Build payments summary
+  // Build payments summary
   let paymentSummary = "";
   if ((recentPayments || []).length > 0) {
     const totalReceived = recentPayments.reduce((sum: number, p: Payment) => sum + p.amount_minor, 0);
@@ -309,7 +323,7 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
     paymentSummary += `\n- Methods: ${Object.entries(methodCounts).map(([m, c]) => `${m} (${c})`).join(", ")}`;
   }
 
-  // NEW: Unmarked lessons alert
+  // Unmarked lessons alert
   let unmarkedSummary = "";
   if ((unmarkedLessons || []).length > 0) {
     unmarkedSummary += `\n\nUNMARKED PAST LESSONS (${unmarkedLessons.length}):`;
@@ -322,16 +336,42 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
     }
   }
 
+  // Teacher workload summary
+  let teacherWorkloadSummary = "";
+  if (teachers && teachers.length > 0 && teacherCounts.size > 0) {
+    teacherWorkloadSummary += `\n\nTEACHER WORKLOAD (next 7 days):`;
+    const teacherMap = new Map(teachers.map((t: any) => [t.id, t.display_name]));
+    const userMap = new Map(teachers.filter((t: any) => t.user_id).map((t: any) => [t.user_id, t.display_name]));
+    for (const [key, count] of teacherCounts) {
+      const name = teacherMap.get(key) || userMap.get(key) || "Unknown";
+      teacherWorkloadSummary += `\n- ${name}: ${count} lessons`;
+    }
+  }
+
+  // Financial summary
+  const revenueThisMonth = (paidInvoicesThisMonth || []).reduce((sum: number, i: any) => sum + i.total_minor, 0);
+  const overdueTotal = overdueList.reduce((sum: number, i: Invoice) => sum + i.total_minor, 0);
+  const sentTotal = sentList.reduce((sum: number, i: Invoice) => sum + i.total_minor, 0);
+
+  let financialSummary = `\n\nFINANCIAL SUMMARY:`;
+  financialSummary += `\n- Revenue this month: ${fmtCurrency(revenueThisMonth)}`;
+  financialSummary += `\n- Outstanding: ${fmtCurrency(sentTotal)} across ${sentList.length} invoices`;
+  financialSummary += `\n- Overdue: ${fmtCurrency(overdueTotal)} across ${overdueList.length} invoices`;
+  if (recentPayments && recentPayments.length > 0) {
+    const weekPayments = recentPayments.reduce((sum: number, p: Payment) => sum + p.amount_minor, 0);
+    financialSummary += `\n- Payments received (last 7 days): ${fmtCurrency(weekPayments)}`;
+  }
+
   return {
     summary: invoiceSummary + lessonSummary + studentSummary + guardianSummary + 
-             cancellationSummary + performanceSummary + rateCardSummary + paymentSummary + unmarkedSummary,
+             cancellationSummary + performanceSummary + rateCardSummary + paymentSummary + 
+             unmarkedSummary + teacherWorkloadSummary + financialSummary,
     entities: {
       invoices: overdueInvoices || [],
       lessons: upcomingLessons || [],
       students: students || [],
       guardians: guardians || [],
     },
-    // Expose section summaries for role-based filtering
     sections: {
       invoiceSummary,
       lessonSummary,
@@ -342,6 +382,8 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
       rateCardSummary,
       paymentSummary,
       unmarkedSummary,
+      teacherWorkloadSummary,
+      financialSummary,
     },
   };
 }
@@ -475,10 +517,15 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
 
   // Invoices — hidden from teacher role
   if (userRole !== "teacher") {
+    const guardianIds = guardianLinks.map((link: any) => link.guardians?.id).filter(Boolean);
+    const payerFilter = guardianIds.length > 0
+      ? `payer_student_id.eq.${studentId},payer_guardian_id.in.(${guardianIds.join(',')})`
+      : `payer_student_id.eq.${studentId}`;
+
     const { data: studentInvoices } = await supabase
       .from("invoices")
       .select("id, invoice_number, status, total_minor, due_date")
-      .or(`payer_student_id.eq.${studentId}`)
+      .or(payerFilter)
       .eq("org_id", orgId)
       .order("created_at", { ascending: false })
       .limit(10);
