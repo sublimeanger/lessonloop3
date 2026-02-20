@@ -969,49 +969,82 @@ Currency: ${orgData.currency_code}`
 
     const fullContext = SYSTEM_PROMPT + timeContext + orgContext + pageContextInfo + dataContext;
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: fullContext },
-          ...messages,
-        ],
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 4096,
+        system: fullContext,
+        messages: messages.map((m: any) => ({
+          role: m.role === "system" ? "user" : m.role,
+          content: m.content,
+        })),
         stream: true,
       }),
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
+      if (response.status === 429 || response.status === 529) {
+        return new Response(JSON.stringify({ error: "AI service is busy. Please try again in a moment." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add more credits." }), {
-          status: 402,
+      if (response.status === 401) {
+        console.error("Anthropic API key invalid");
+        return new Response(JSON.stringify({ error: "AI service configuration error" }), {
+          status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("Anthropic API error:", response.status, errorText);
       return new Response(JSON.stringify({ error: "AI service error" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(response.body, {
+    // Transform Anthropic SSE stream into simplified format for frontend
+    const transform = new TransformStream({
+      transform(chunk, controller) {
+        const text = new TextDecoder().decode(chunk);
+        const lines = text.split('\n');
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+              controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ text: parsed.delta.text })}\n\n`));
+            }
+            if (parsed.type === 'message_stop') {
+              controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+            }
+            if (parsed.type === 'error') {
+              console.error("Anthropic stream error:", parsed.error);
+              controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ error: parsed.error?.message || "AI error" })}\n\n`));
+              controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+            }
+          } catch {
+            // Skip non-JSON lines (event: type lines, comments, etc.)
+          }
+        }
+      },
+    });
+
+    return new Response(response.body!.pipeThrough(transform), {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream", "X-Context-Hash": contextHash },
     });
   } catch (e) {
