@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { logger } from '@/lib/logger';
 import { safeGetItem, safeSetItem } from '@/lib/storage';
 import { useSearchParams } from 'react-router-dom';
@@ -16,6 +16,8 @@ import { DayTimelineView } from '@/components/calendar/DayTimelineView';
 import { WeekContextStrip } from '@/components/calendar/WeekContextStrip';
 import { LessonModal } from '@/components/calendar/LessonModal';
 import { LessonDetailPanel } from '@/components/calendar/LessonDetailPanel';
+import { LessonDetailSidePanel } from '@/components/calendar/LessonDetailSidePanel';
+import { getTeacherColour } from '@/components/calendar/teacherColours';
 import { CalendarFiltersBar } from '@/components/calendar/CalendarFiltersBar';
 import { MarkDayCompleteButton } from '@/components/calendar/MarkDayCompleteButton';
 import { RecurringActionDialog, RecurringActionMode } from '@/components/calendar/RecurringActionDialog';
@@ -35,6 +37,11 @@ import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Loader2, Columns3, M
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Toggle } from '@/components/ui/toggle';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+
+const LG_QUERY = '(min-width: 1024px)';
+const subscribe = (cb: () => void) => { const mql = window.matchMedia(LG_QUERY); mql.addEventListener('change', cb); return () => mql.removeEventListener('change', cb); };
+const getSnapshot = () => window.matchMedia(LG_QUERY).matches;
+function useIsDesktop() { return useSyncExternalStore(subscribe, getSnapshot, () => true); }
 
 export default function CalendarPage() {
   const { currentRole, currentOrg } = useOrg();
@@ -75,6 +82,11 @@ export default function CalendarPage() {
   // Detail panel state
   const [detailPanelOpen, setDetailPanelOpen] = useState(false);
   const [detailLesson, setDetailLesson] = useState<LessonWithDetails | null>(null);
+
+  // Side panel state (desktop lg+)
+  const [sidePanelOpen, setSidePanelOpen] = useState(false);
+  const [sidePanelLesson, setSidePanelLesson] = useState<LessonWithDetails | null>(null);
+  const isDesktop = useIsDesktop();
 
   // Quick-create popover state
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
@@ -170,9 +182,14 @@ export default function CalendarPage() {
 
   // ─── Core handlers ─────────────────────────────────────────
   const handleLessonClick = useCallback((lesson: LessonWithDetails) => {
-    setDetailLesson(lesson);
-    setDetailPanelOpen(true);
-  }, []);
+    if (isDesktop) {
+      setSidePanelLesson(lesson);
+      setSidePanelOpen(true);
+    } else {
+      setDetailLesson(lesson);
+      setDetailPanelOpen(true);
+    }
+  }, [isDesktop]);
 
   const handleSlotClick = useCallback((date: Date) => {
     if (isParent) return;
@@ -203,6 +220,21 @@ export default function CalendarPage() {
     setDetailPanelOpen(false);
     setIsModalOpen(true);
   };
+
+  const handleEditFromSidePanel = useCallback((lesson: LessonWithDetails) => {
+    setSidePanelOpen(false);
+    setSelectedLesson(lesson);
+    setSlotDate(undefined);
+    setSlotEndDate(undefined);
+    setIsModalOpen(true);
+  }, []);
+
+  const handleSidePanelAttendance = useCallback((lesson: LessonWithDetails, status: string) => {
+    // For "cancel" action, open the existing detail panel which has full cancel/attendance logic
+    setSidePanelOpen(false);
+    setDetailLesson(lesson);
+    setDetailPanelOpen(true);
+  }, []);
 
   const handleModalClose = () => {
     setIsModalOpen(false);
@@ -547,87 +579,106 @@ export default function CalendarPage() {
         </Alert>
       )}
 
-      {/* Calendar content */}
-      <SectionErrorBoundary name="Calendar">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-24">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : lessons.length === 0 && !isLoading ? (
-          <EmptyState
-            icon={Calendar}
-            title="Your calendar is empty"
-            description="Schedule your first lesson to get started!"
-            actionLabel={!isParent ? "Create Lesson" : undefined}
-            onAction={() => {
-              setSelectedLesson(null);
-              setSlotDate(undefined);
-              setIsModalOpen(true);
-            }}
-            previewImage="/previews/calendar-preview.svg"
-            previewAlt="Example calendar"
-          />
-        ) : view === 'agenda' ? (
-          <AgendaView
-            currentDate={currentDate}
-            lessons={lessons}
-            onLessonClick={handleLessonClick}
-            teacherColourMap={teacherColourMap}
-            groupByTeacher={groupByTeacher}
-          />
-        ) : view === 'day' ? (
-          <DayTimelineView
-            currentDate={currentDate}
-            lessons={lessons}
-            teacherColourMap={teacherColourMap}
-            onLessonClick={handleLessonClick}
-            onSlotClick={handleSlotClick}
-            onSlotDrag={handleSlotDrag}
-            onLessonDrop={!isParent ? handleLessonDrop : undefined}
-            onLessonResize={!isParent ? handleLessonResize : undefined}
-            isParent={isParent}
-            savingLessonIds={savingLessonIds}
-          />
-        ) : view === 'stacked' ? (
-          <StackedWeekView
-            currentDate={currentDate}
-            lessons={lessons}
-            teacherColourMap={teacherColourMap}
-            onLessonClick={handleLessonClick}
-            onDayClick={(date) => {
-              if (isParent) return;
-              setQuickCreateStart(date);
-              setQuickCreateEnd(undefined);
-              setQuickCreateOpen(true);
-            }}
-            isParent={isParent}
-            compact={isCompact}
-          />
-        ) : (
-          <div data-tour="calendar-grid" data-hint="calendar-grid">
-            <WeekTimeGrid
-              currentDate={currentDate}
-              lessons={lessons}
-              teacherColourMap={teacherColourMap}
-              onLessonClick={handleLessonClick}
-              onSlotClick={handleSlotClick}
-              onSlotDrag={handleSlotDrag}
-              onLessonDrop={!isParent ? handleLessonDrop : undefined}
-              onLessonResize={!isParent ? handleLessonResize : undefined}
-              isParent={isParent}
-              savingLessonIds={savingLessonIds}
-            />
-            {!isParent && (
-              <ContextualHint
-                id="calendar-create-lesson"
-                message="Click any time slot to create a lesson, or drag to set the duration. Grab a lesson card to reschedule it."
-                position="top"
-                targetSelector="[data-hint='calendar-grid']"
+      {/* Calendar content + side panel */}
+      <div className="flex gap-0 min-h-0">
+        <div className="flex-1 min-w-0">
+          <SectionErrorBoundary name="Calendar">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-24">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : lessons.length === 0 && !isLoading ? (
+              <EmptyState
+                icon={Calendar}
+                title="Your calendar is empty"
+                description="Schedule your first lesson to get started!"
+                actionLabel={!isParent ? "Create Lesson" : undefined}
+                onAction={() => {
+                  setSelectedLesson(null);
+                  setSlotDate(undefined);
+                  setIsModalOpen(true);
+                }}
+                previewImage="/previews/calendar-preview.svg"
+                previewAlt="Example calendar"
               />
+            ) : view === 'agenda' ? (
+              <AgendaView
+                currentDate={currentDate}
+                lessons={lessons}
+                onLessonClick={handleLessonClick}
+                teacherColourMap={teacherColourMap}
+                groupByTeacher={groupByTeacher}
+              />
+            ) : view === 'day' ? (
+              <DayTimelineView
+                currentDate={currentDate}
+                lessons={lessons}
+                teacherColourMap={teacherColourMap}
+                onLessonClick={handleLessonClick}
+                onSlotClick={handleSlotClick}
+                onSlotDrag={handleSlotDrag}
+                onLessonDrop={!isParent ? handleLessonDrop : undefined}
+                onLessonResize={!isParent ? handleLessonResize : undefined}
+                isParent={isParent}
+                savingLessonIds={savingLessonIds}
+              />
+            ) : view === 'stacked' ? (
+              <StackedWeekView
+                currentDate={currentDate}
+                lessons={lessons}
+                teacherColourMap={teacherColourMap}
+                onLessonClick={handleLessonClick}
+                onDayClick={(date) => {
+                  if (isParent) return;
+                  setQuickCreateStart(date);
+                  setQuickCreateEnd(undefined);
+                  setQuickCreateOpen(true);
+                }}
+                isParent={isParent}
+                compact={isCompact}
+              />
+            ) : (
+              <div data-tour="calendar-grid" data-hint="calendar-grid">
+                <WeekTimeGrid
+                  currentDate={currentDate}
+                  lessons={lessons}
+                  teacherColourMap={teacherColourMap}
+                  onLessonClick={handleLessonClick}
+                  onSlotClick={handleSlotClick}
+                  onSlotDrag={handleSlotDrag}
+                  onLessonDrop={!isParent ? handleLessonDrop : undefined}
+                  onLessonResize={!isParent ? handleLessonResize : undefined}
+                  isParent={isParent}
+                  savingLessonIds={savingLessonIds}
+                />
+                {!isParent && (
+                  <ContextualHint
+                    id="calendar-create-lesson"
+                    message="Click any time slot to create a lesson, or drag to set the duration. Grab a lesson card to reschedule it."
+                    position="top"
+                    targetSelector="[data-hint='calendar-grid']"
+                  />
+                )}
+              </div>
             )}
-          </div>
+          </SectionErrorBoundary>
+        </div>
+
+        {/* Desktop side panel */}
+        {isDesktop && (
+          <LessonDetailSidePanel
+            lesson={sidePanelLesson}
+            open={sidePanelOpen}
+            onClose={() => setSidePanelOpen(false)}
+            onEdit={handleEditFromSidePanel}
+            onMarkAttendance={handleSidePanelAttendance}
+            teacherColour={getTeacherColour(teacherColourMap, sidePanelLesson?.teacher_user_id ? 
+              // Find teacher_id from teacher_user_id
+              teachers.find(t => t.userId === sidePanelLesson.teacher_user_id)?.id ?? null
+              : null)}
+          />
         )}
-      </SectionErrorBoundary>
+      </div>
 
       {/* Keyboard shortcuts hint — desktop only */}
       <div className="mt-3 text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
