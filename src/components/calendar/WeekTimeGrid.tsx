@@ -31,9 +31,8 @@ import { useResizeLesson } from './useResizeLesson';
 
 // ─── Constants ───────────────────────────────────────────────
 const HOUR_HEIGHT = 60;
-const START_HOUR = 7;
-const END_HOUR = 21;
-const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
+const DEFAULT_START_HOUR = 7;
+const DEFAULT_END_HOUR = 21;
 
 interface ClosureInfo {
   date: Date;
@@ -52,15 +51,15 @@ function resolveColourByUserId(
   return TEACHER_COLOURS[0];
 }
 
-function getTimeFromY(y: number): { hour: number; minute: number } {
-  const totalMinutes = (y / HOUR_HEIGHT) * 60 + START_HOUR * 60;
+function getTimeFromY(y: number, startHour: number, endHour: number): { hour: number; minute: number } {
+  const totalMinutes = (y / HOUR_HEIGHT) * 60 + startHour * 60;
   const hour = Math.floor(totalMinutes / 60);
   const minute = Math.round((totalMinutes % 60) / 15) * 15;
-  return { hour: Math.min(Math.max(hour, START_HOUR), END_HOUR), minute: minute % 60 };
+  return { hour: Math.min(Math.max(hour, startHour), endHour), minute: minute % 60 };
 }
 
-function formatTimeFromTop(top: number): string {
-  const { hour, minute } = getTimeFromY(top);
+function formatTimeFromTop(top: number, startHour: number, endHour: number): string {
+  const { hour, minute } = getTimeFromY(top, startHour, endHour);
   return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
 }
 
@@ -92,6 +91,9 @@ export function WeekTimeGrid({
   savingLessonIds,
 }: WeekTimeGridProps) {
   const { currentOrg } = useOrg();
+  const START_HOUR = currentOrg?.schedule_start_hour ?? DEFAULT_START_HOUR;
+  const END_HOUR = currentOrg?.schedule_end_hour ?? DEFAULT_END_HOUR;
+  const HOURS = useMemo(() => Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i), [START_HOUR, END_HOUR]);
   const isMobile = useIsMobile();
   const [closures, setClosures] = useState<ClosureInfo[]>([]);
   const dayColumnsRef = useRef<HTMLDivElement>(null);
@@ -148,6 +150,8 @@ export function WeekTimeGrid({
     onDrop: handleLessonDrop,
     gridRef: dayColumnsRef,
     scrollViewportRef,
+    startHour: START_HOUR,
+    endHour: END_HOUR,
   });
 
   // ─── Drag-to-resize hook ──────────────────────────────────
@@ -162,6 +166,8 @@ export function WeekTimeGrid({
     onResize: handleLessonResize,
     gridRef: dayColumnsRef,
     scrollViewportRef,
+    startHour: START_HOUR,
+    endHour: END_HOUR,
   });
 
   // ─── Fetch closures ──────────────────────────────────────
@@ -225,7 +231,7 @@ export function WeekTimeGrid({
     if (!day) return;
     const y = getAccurateY(e);
     if (y < 0) return;
-    const { hour, minute } = getTimeFromY(y);
+    const { hour, minute } = getTimeFromY(y, START_HOUR, END_HOUR);
     const startDate = setMinutes(setHours(startOfDay(day), hour), minute);
     setSlotDragStart({ date: startDate, y });
     setSlotDragEnd(y + (HOUR_HEIGHT / 2));
@@ -258,8 +264,8 @@ export function WeekTimeGrid({
     if (wasSlotDragging.current) {
       const startY = Math.min(slotDragStart.y, slotDragEnd);
       const endY = Math.max(slotDragStart.y, slotDragEnd);
-      const { hour: startHour, minute: startMin } = getTimeFromY(startY);
-      const { hour: endHour, minute: endMin } = getTimeFromY(endY);
+      const { hour: startHour, minute: startMin } = getTimeFromY(startY, START_HOUR, END_HOUR);
+      const { hour: endHour, minute: endMin } = getTimeFromY(endY, START_HOUR, END_HOUR);
       const startDate = setMinutes(setHours(startOfDay(slotDragStart.date), startHour), startMin);
       let endDate = setMinutes(setHours(startOfDay(slotDragStart.date), endHour), endMin);
       if (differenceInMinutes(endDate, startDate) < 15) {
@@ -280,7 +286,7 @@ export function WeekTimeGrid({
     if (!day) return;
     const y = getAccurateY(e);
     if (y < 0) return;
-    const { hour, minute } = getTimeFromY(y);
+    const { hour, minute } = getTimeFromY(y, START_HOUR, END_HOUR);
     const clickDate = setMinutes(setHours(startOfDay(day), hour), minute);
     onSlotClick(clickDate);
   };
@@ -546,7 +552,7 @@ export function WeekTimeGrid({
                         </div>
                         {/* Time tooltip */}
                         <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-[10px] font-mono px-1.5 py-0.5 rounded shadow">
-                          {formatTimeFromTop(dragState.currentTop)}
+                          {formatTimeFromTop(dragState.currentTop, START_HOUR, END_HOUR)}
                         </div>
                       </div>
                     )}

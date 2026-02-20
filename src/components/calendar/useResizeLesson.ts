@@ -3,8 +3,6 @@ import { parseISO, differenceInMinutes } from 'date-fns';
 import { LessonWithDetails } from './types';
 
 const HOUR_HEIGHT = 60;
-const START_HOUR = 7;
-const END_HOUR = 21;
 const MIN_DURATION = 15; // minutes
 
 export interface ResizeState {
@@ -21,6 +19,8 @@ interface UseResizeLessonOptions {
   onResize: (lesson: LessonWithDetails, newEndDate: Date) => void;
   gridRef: React.RefObject<HTMLDivElement | null>;
   scrollViewportRef: React.RefObject<HTMLDivElement | null>;
+  startHour?: number;
+  endHour?: number;
 }
 
 function snapToGrid(y: number): number {
@@ -28,7 +28,7 @@ function snapToGrid(y: number): number {
   return Math.round(y / quarterHeight) * quarterHeight;
 }
 
-export function useResizeLesson({ onResize, gridRef, scrollViewportRef }: UseResizeLessonOptions) {
+export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHour = 7, endHour = 21 }: UseResizeLessonOptions) {
   const [resizeState, setResizeState] = useState<ResizeState | null>(null);
   const isResizingRef = useRef(false);
 
@@ -42,8 +42,8 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef }: UseRes
       const startMinutes = start.getHours() * 60 + start.getMinutes();
       const endMinutes = end.getHours() * 60 + end.getMinutes();
 
-      const top = ((startMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
-      const bottom = ((endMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+      const top = ((startMinutes - startHour * 60) / 60) * HOUR_HEIGHT;
+      const bottom = ((endMinutes - startHour * 60) / 60) * HOUR_HEIGHT;
 
       isResizingRef.current = true;
       setResizeState({
@@ -69,7 +69,7 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef }: UseRes
 
       // Enforce minimum duration (15 minutes = HOUR_HEIGHT/4)
       const minBottom = resizeState.top + (MIN_DURATION / 60) * HOUR_HEIGHT;
-      const maxBottom = (END_HOUR - START_HOUR + 1) * HOUR_HEIGHT;
+      const maxBottom = (endHour - startHour + 1) * HOUR_HEIGHT;
       const snapped = snapToGrid(Math.min(Math.max(y, minBottom), maxBottom));
 
       setResizeState((prev) => (prev ? { ...prev, currentBottom: snapped } : null));
@@ -90,13 +90,13 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef }: UseRes
 
     // Compute new end time from currentBottom
     const endMinutesFromGridTop = (currentBottom / HOUR_HEIGHT) * 60;
-    const totalEndMinutes = endMinutesFromGridTop + START_HOUR * 60;
-    const endHour = Math.floor(totalEndMinutes / 60);
+    const totalEndMinutes = endMinutesFromGridTop + startHour * 60;
+    const endHr = Math.floor(totalEndMinutes / 60);
     const endMinute = Math.round(totalEndMinutes % 60);
 
     const originalStart = parseISO(lesson.start_at);
     const newEnd = new Date(originalStart);
-    newEnd.setHours(endHour, endMinute, 0, 0);
+    newEnd.setHours(endHr, endMinute, 0, 0);
 
     setResizeState(null);
     onResize(lesson, newEnd);

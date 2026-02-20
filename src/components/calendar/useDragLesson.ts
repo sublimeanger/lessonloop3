@@ -3,8 +3,6 @@ import { parseISO, differenceInMinutes, setHours, setMinutes, startOfDay, addDay
 import { LessonWithDetails } from './types';
 
 const HOUR_HEIGHT = 60;
-const START_HOUR = 7;
-const END_HOUR = 21;
 
 export interface DragLessonState {
   /** The lesson being dragged */
@@ -24,14 +22,16 @@ interface UseDragLessonOptions {
   onDrop: (lesson: LessonWithDetails, newStart: Date, newEnd: Date) => void;
   gridRef: React.RefObject<HTMLDivElement | null>;
   scrollViewportRef: React.RefObject<HTMLDivElement | null>;
+  startHour?: number;
+  endHour?: number;
 }
 
-function getTimeFromY(y: number): { hour: number; minute: number } {
-  const totalMinutes = (y / HOUR_HEIGHT) * 60 + START_HOUR * 60;
+function getTimeFromY(y: number, startHour: number, endHour: number): { hour: number; minute: number } {
+  const totalMinutes = (y / HOUR_HEIGHT) * 60 + startHour * 60;
   const hour = Math.floor(totalMinutes / 60);
   const minute = Math.round((totalMinutes % 60) / 15) * 15;
   return {
-    hour: Math.min(Math.max(hour, START_HOUR), END_HOUR),
+    hour: Math.min(Math.max(hour, startHour), endHour),
     minute: minute >= 60 ? 0 : minute,
   };
 }
@@ -41,7 +41,7 @@ function snapToGrid(y: number): number {
   return Math.round(y / quarterHeight) * quarterHeight;
 }
 
-export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef }: UseDragLessonOptions) {
+export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef, startHour = 7, endHour = 21 }: UseDragLessonOptions) {
   const [dragState, setDragState] = useState<DragLessonState | null>(null);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startMousePos = useRef<{ x: number; y: number } | null>(null);
@@ -63,7 +63,7 @@ export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef }: UseD
 
         const lessonStart = parseISO(lesson.start_at);
         const startMinutes = lessonStart.getHours() * 60 + lessonStart.getMinutes();
-        const top = ((startMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+        const top = ((startMinutes - startHour * 60) / 60) * HOUR_HEIGHT;
 
         // Find which day column the lesson is in
         const dayIndex = days.findIndex(
@@ -139,7 +139,7 @@ export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef }: UseD
     }
 
     // Compute new start time
-    const { hour, minute } = getTimeFromY(currentTop);
+    const { hour, minute } = getTimeFromY(currentTop, startHour, endHour);
     const newDay = days[currentDayIndex];
     const newStart = setMinutes(setHours(startOfDay(newDay), hour), minute);
 
