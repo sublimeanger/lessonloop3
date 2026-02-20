@@ -82,6 +82,26 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // --- JWT Auth ---
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseAuth = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const payload: SyncPayload = await req.json();
     const { lesson_id, action } = payload;
 
@@ -134,6 +154,22 @@ Deno.serve(async (req) => {
     if (!teacherUserId || !orgId) {
       return new Response(JSON.stringify({ message: 'No teacher to sync' }), {
         status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // --- Authorisation: user must be a member of the lesson's org ---
+    const { data: membership } = await supabase
+      .from('org_memberships')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('org_id', orgId)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (!membership) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

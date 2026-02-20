@@ -67,30 +67,46 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Check if this is a scheduled call or manual trigger
-    let connectionId: string | null = null;
-    let userId: string | null = null;
-
-    try {
-      const body = await req.json();
-      connectionId = body.connection_id;
-      userId = body.user_id;
-    } catch {
-      // No body - fetch all active connections
+    // --- JWT Auth ---
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseAuth = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Get connections to sync
+    // Optionally accept a specific connection_id from request body
+    let connectionId: string | null = null;
+    try {
+      const body = await req.json();
+      connectionId = body.connection_id || null;
+    } catch {
+      // No body
+    }
+
+    // Get connections to sync — always scoped to the authenticated user
     let query = supabase
       .from('calendar_connections')
       .select('*')
       .eq('provider', 'google')
       .eq('sync_enabled', true)
-      .eq('sync_status', 'active');
+      .eq('sync_status', 'active')
+      .eq('user_id', user.id);
 
     if (connectionId) {
       query = query.eq('id', connectionId);
-    } else if (userId) {
-      query = query.eq('user_id', userId);
     }
 
     const { data: connections, error: connectionsError } = await query;
