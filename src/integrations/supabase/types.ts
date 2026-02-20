@@ -3069,6 +3069,10 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_parent_dashboard_data: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: Json
+      }
       get_student_ids_for_parent: {
         Args: { _user_id: string }
         Returns: string[]
