@@ -17,14 +17,15 @@ export function useOrgPaymentPreferences() {
   return useQuery({
     queryKey: ['org-payment-prefs', orgId],
     queryFn: async (): Promise<OrgPaymentPreferences> => {
+      // Use the restricted parent_org_info view to minimise data surface
       const { data, error } = await supabase
-        .from('organisations')
+        .from('parent_org_info' as any)
         .select('online_payments_enabled, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix')
         .eq('id', orgId!)
         .single();
 
       if (error) throw error;
-      return data as OrgPaymentPreferences;
+      return data as unknown as OrgPaymentPreferences;
     },
     enabled: !!orgId,
     staleTime: 5 * 60 * 1000,
