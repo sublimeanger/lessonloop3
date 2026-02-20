@@ -58,6 +58,12 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
     return isNaN(parsed) ? 0 : Math.round(parsed * 100);
   }, [amount]);
 
+  const currencySymbol = useMemo(() =>
+    new Intl.NumberFormat('en', { style: 'currency', currency })
+      .formatToParts(0).find(p => p.type === 'currency')?.value || '£',
+    [currency]
+  );
+
   const isOverpayment = amountMinor > outstandingAmount && outstandingAmount > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -103,7 +109,7 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
             <Label htmlFor="amount">Amount</Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                £
+                {currencySymbol}
               </span>
               <Input
                 id="amount"
