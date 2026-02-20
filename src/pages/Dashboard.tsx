@@ -11,10 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   DashboardHero,
-  DashboardStats,
   TodayTimeline, 
   QuickActionsGrid,
-  WeeklyActivity,
   FirstRunExperience,
   UrgentActionsBar,
 } from '@/components/dashboard';
@@ -125,17 +123,8 @@ function StaffDashboard({ firstName }: { firstName: string }) {
           <UpgradeBanner />
         </SectionErrorBoundary>
 
-        {/* Stat Cards Row */}
-        <SectionErrorBoundary name="Stats">
-          <DashboardStats
-            stats={stats}
-            isLoading={isLoading}
-            currencyCode={currentOrg?.currency_code || 'GBP'}
-          />
-        </SectionErrorBoundary>
-
-        {/* Main content: Timeline + Quick Actions + Activity */}
-        <div className="grid gap-6 lg:grid-cols-12">
+        {/* Main content: Timeline + Quick Actions */}
+        <div className="grid gap-6 lg:grid-cols-8">
           <SectionErrorBoundary name="Today's Timeline">
             <TodayTimeline className="lg:col-span-5" />
           </SectionErrorBoundary>
@@ -143,13 +132,6 @@ function StaffDashboard({ firstName }: { firstName: string }) {
             <QuickActionsGrid
               variant={currentOrg?.org_type === 'academy' || currentOrg?.org_type === 'agency' ? 'academy' : 'solo'}
               className="lg:col-span-3"
-            />
-          </SectionErrorBoundary>
-          <SectionErrorBoundary name="Weekly Activity">
-            <WeeklyActivity
-              lessonsThisWeek={stats?.lessonsThisWeek ?? 0}
-              hoursThisWeek={stats?.hoursThisWeek ?? 0}
-              className="lg:col-span-4"
             />
           </SectionErrorBoundary>
         </div>
