@@ -86,97 +86,60 @@ export function useGuardianInfo() {
   });
 }
 
-export function useChildrenWithDetails() {
+export function useParentDashboardData() {
   const { user } = useAuth();
   const { currentOrg } = useOrg();
 
   return useQuery({
-    queryKey: ['children-details', user?.id, currentOrg?.id],
+    queryKey: ['parent-dashboard-data', user?.id, currentOrg?.id],
     queryFn: async () => {
-      if (!user || !currentOrg) return [];
+      if (!user || !currentOrg) return null;
 
-      // Get students linked to this parent
-      const { data: guardianData } = await supabase
-        .from('guardians')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('org_id', currentOrg.id)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc('get_parent_dashboard_data', {
+        _user_id: user.id,
+        _org_id: currentOrg.id,
+      });
 
-      if (!guardianData) return [];
+      if (error) throw error;
 
-      const { data: links } = await supabase
-        .from('student_guardians')
-        .select('student_id')
-        .eq('guardian_id', guardianData.id);
-
-      if (!links || links.length === 0) return [];
-
-      const studentIds = links.map(l => l.student_id);
-
-      // Get students
-      const { data: students } = await supabase
-        .from('students')
-        .select('id, first_name, last_name, status, dob')
-        .in('id', studentIds);
-
-      if (!students) return [];
-
-      // Get upcoming lessons for each student
-      const now = new Date().toISOString();
-      const children: ChildWithDetails[] = [];
-
-      for (const student of students) {
-        // Get lesson participants for this student
-        const { data: lessonParticipants } = await supabase
-          .from('lesson_participants')
-          .select(`
-            lesson:lessons!inner (
-              id,
-              title,
-              start_at,
-              end_at,
-              status,
-              teacher_user_id
-            )
-          `)
-          .eq('student_id', student.id)
-          .gte('lesson.start_at', now)
-          .eq('lesson.status', 'scheduled')
-          .order('lesson(start_at)', { ascending: true })
-          .limit(10);
-
-        // Get outstanding invoices for this student/guardian
-        const { data: invoices } = await supabase
-          .from('invoices')
-          .select('total_minor')
-          .or(`payer_student_id.eq.${student.id},payer_guardian_id.eq.${guardianData.id}`)
-          .in('status', ['sent', 'overdue']);
-
-        const outstandingBalance = invoices?.reduce((sum, inv) => sum + inv.total_minor, 0) || 0;
-        const lessons = lessonParticipants?.map(lp => (lp.lesson as any)) || [];
-
-        children.push({
-          id: student.id,
-          first_name: student.first_name,
-          last_name: student.last_name,
-          status: student.status as 'active' | 'inactive',
-          dob: student.dob,
-          upcoming_lesson_count: lessons.length,
-          next_lesson: lessons[0] ? {
-            id: lessons[0].id,
-            title: lessons[0].title,
-            start_at: lessons[0].start_at,
-            end_at: lessons[0].end_at,
-          } : undefined,
-          outstanding_balance: outstandingBalance,
-        });
-      }
-
-      return children;
+      return data as {
+        guardian_id: string;
+        children: Array<{
+          id: string;
+          first_name: string;
+          last_name: string;
+          status: string;
+          dob: string | null;
+          upcoming_lesson_count: number;
+          next_lesson: { id: string; title: string; start_at: string; end_at: string } | null;
+          outstanding_balance: number;
+        }>;
+        next_lesson: { id: string; title: string; start_at: string; end_at: string; location_name: string | null } | null;
+        outstanding_balance: number;
+        overdue_count: number;
+        oldest_unpaid_invoice_id: string | null;
+      };
     },
     enabled: !!user && !!currentOrg,
   });
+}
+
+export function useChildrenWithDetails() {
+  const dashboardQuery = useParentDashboardData();
+
+  return {
+    ...dashboardQuery,
+    data: (dashboardQuery.data?.children || []).map((child) => ({
+      id: child.id,
+      first_name: child.first_name,
+      last_name: child.last_name,
+      status: child.status as 'active' | 'inactive',
+      dob: child.dob,
+      upcoming_lesson_count: child.upcoming_lesson_count,
+      next_lesson: child.next_lesson || undefined,
+      outstanding_balance: child.outstanding_balance,
+    })) as ChildWithDetails[],
+  };
 }
 
 export function useParentLessons(options?: { studentId?: string; status?: string }) {
@@ -413,11 +376,13 @@ export function useCreateMessageRequest() {
 export function useParentSummary() {
   const { user } = useAuth();
   const { currentOrg } = useOrg();
+  const dashboardQuery = useParentDashboardData();
 
   return useQuery({
-    queryKey: ['parent-summary', user?.id, currentOrg?.id],
+    queryKey: ['parent-summary', user?.id, currentOrg?.id, dashboardQuery.data],
     queryFn: async () => {
-      if (!user || !currentOrg) {
+      const dashData = dashboardQuery.data;
+      if (!user || !currentOrg || !dashData) {
         return {
           nextLesson: null,
           outstandingBalance: 0,
@@ -427,84 +392,15 @@ export function useParentSummary() {
         };
       }
 
-      // Get next lesson
-      const { data: guardianData } = await supabase
-        .from('guardians')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('org_id', currentOrg.id)
-        .maybeSingle();
-
-      let nextLesson = null;
-      let outstandingBalance = 0;
-      let overdueInvoices = 0;
-      let oldestUnpaidInvoiceId: string | null = null;
-
-      if (guardianData) {
-        // Get student IDs
-        const { data: links } = await supabase
-          .from('student_guardians')
-          .select('student_id')
-          .eq('guardian_id', guardianData.id);
-
-        const studentIds = links?.map(l => l.student_id) || [];
-
-        if (studentIds.length > 0) {
-          // Next lesson
-          const now = new Date().toISOString();
-          const { data: lessonData } = await supabase
-            .from('lesson_participants')
-            .select(`
-              lesson:lessons!inner (
-                id,
-                title,
-                start_at,
-                end_at,
-                location:locations(name)
-              )
-            `)
-            .in('student_id', studentIds)
-            .gte('lesson.start_at', now)
-            .order('lesson(start_at)', { ascending: true })
-            .limit(1);
-
-          if (lessonData && lessonData.length > 0) {
-            const lesson = (lessonData[0] as any).lesson;
-            nextLesson = {
-              id: lesson.id,
-              title: lesson.title,
-              start_at: lesson.start_at,
-              end_at: lesson.end_at,
-              location_name: lesson.location?.name,
-            };
-          }
-        }
-
-        // Outstanding invoices - fetch with due_date to find oldest
-        const { data: invoices } = await supabase
-          .from('invoices')
-          .select('id, total_minor, status, due_date')
-          .eq('payer_guardian_id', guardianData.id)
-          .in('status', ['sent', 'overdue'])
-          .order('due_date', { ascending: true });
-
-        if (invoices && invoices.length > 0) {
-          outstandingBalance = invoices.reduce((sum, inv) => sum + inv.total_minor, 0);
-          overdueInvoices = invoices.filter(inv => inv.status === 'overdue').length;
-          // First invoice is oldest (sorted by due_date ascending)
-          oldestUnpaidInvoiceId = invoices[0].id;
-        }
-      }
-
-      // Get unread messages count from message_log
+      // Only unread messages still needs a separate query
       let unreadMessages = 0;
-      if (guardianData) {
+      if (dashData.guardian_id) {
         const { count } = await supabase
           .from('message_log')
           .select('id', { count: 'exact', head: true })
           .eq('org_id', currentOrg.id)
           .eq('recipient_type', 'guardian')
-          .eq('recipient_id', guardianData.id)
+          .eq('recipient_id', dashData.guardian_id)
           .is('read_at', null)
           .eq('status', 'sent');
 
@@ -512,13 +408,19 @@ export function useParentSummary() {
       }
 
       return {
-        nextLesson,
-        outstandingBalance,
-        overdueInvoices,
+        nextLesson: dashData.next_lesson ? {
+          id: dashData.next_lesson.id,
+          title: dashData.next_lesson.title,
+          start_at: dashData.next_lesson.start_at,
+          end_at: dashData.next_lesson.end_at,
+          location_name: dashData.next_lesson.location_name,
+        } : null,
+        outstandingBalance: dashData.outstanding_balance,
+        overdueInvoices: dashData.overdue_count,
         unreadMessages,
-        oldestUnpaidInvoiceId,
+        oldestUnpaidInvoiceId: dashData.oldest_unpaid_invoice_id,
       };
     },
-    enabled: !!user && !!currentOrg,
+    enabled: !!user && !!currentOrg && !!dashboardQuery.data,
   });
 }
