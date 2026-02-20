@@ -531,6 +531,8 @@ export default function CalendarPage() {
             locations={locations}
             rooms={rooms}
             teachersWithColours={teachersWithColours}
+            lessons={lessons}
+            currentDate={currentDate}
           />
         </div>
       </div>

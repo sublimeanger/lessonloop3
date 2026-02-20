@@ -1,7 +1,8 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarFilters } from './types';
 import { TeacherWithColour } from './teacherColours';
 import { cn } from '@/lib/utils';
+import { LessonWithDetails } from './types';
+import { format, parseISO } from 'date-fns';
 
 interface CalendarFiltersBarProps {
   filters: CalendarFilters;
@@ -10,81 +11,161 @@ interface CalendarFiltersBarProps {
   locations: { id: string; name: string }[];
   rooms: { id: string; name: string; location_id: string }[];
   teachersWithColours?: TeacherWithColour[];
+  lessons?: LessonWithDetails[];
+  currentDate?: Date;
 }
 
-export function CalendarFiltersBar({ filters, onChange, teachers, locations, rooms, teachersWithColours }: CalendarFiltersBarProps) {
-  const filteredRooms = filters.location_id 
-    ? rooms.filter(r => r.location_id === filters.location_id)
-    : [];
+export function CalendarFiltersBar({
+  filters,
+  onChange,
+  teachers,
+  locations,
+  teachersWithColours,
+  lessons = [],
+  currentDate,
+}: CalendarFiltersBarProps) {
+  const dayKey = currentDate ? format(currentDate, 'yyyy-MM-dd') : null;
 
-  // Find the selected teacher's colour for the trigger dot
-  const selectedTeacher = teachersWithColours?.find(t => t.id === filters.teacher_id);
+  // Count lessons for a given teacher on the current day
+  const countForTeacher = (teacherId: string | null) => {
+    if (!dayKey) return 0;
+    return lessons.filter((l) => {
+      const lessonDay = format(parseISO(l.start_at), 'yyyy-MM-dd');
+      if (lessonDay !== dayKey) return false;
+      if (teacherId && l.teacher_user_id !== (teachersWithColours?.find(t => t.id === teacherId)?.userId ?? teacherId)) {
+        // Match by teacher_id field if available
+        return false;
+      }
+      return teacherId ? true : true;
+    }).length;
+  };
+
+  // Count lessons for a given location on the current day
+  const countForLocation = (locationId: string | null) => {
+    if (!dayKey) return 0;
+    return lessons.filter((l) => {
+      const lessonDay = format(parseISO(l.start_at), 'yyyy-MM-dd');
+      if (lessonDay !== dayKey) return false;
+      if (locationId && l.location_id !== locationId) return false;
+      return true;
+    }).length;
+  };
+
+  const totalCount = dayKey
+    ? lessons.filter((l) => format(parseISO(l.start_at), 'yyyy-MM-dd') === dayKey).length
+    : lessons.length;
+
+  const teacherList = teachersWithColours || teachers.map(t => ({ ...t, userId: null, colour: undefined as any }));
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {/* Teacher filter with colour dots */}
-      <Select 
-        value={filters.teacher_id || 'all'} 
-        onValueChange={(v) => onChange({ ...filters, teacher_id: v === 'all' ? null : v })}
+    <div
+      className="flex items-center gap-1.5 overflow-x-auto pb-0.5"
+      style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+    >
+      {/* All pill */}
+      <button
+        onClick={() => onChange({ ...filters, teacher_id: null })}
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all cursor-pointer shrink-0',
+          !filters.teacher_id
+            ? 'bg-foreground text-background shadow-sm'
+            : 'bg-muted/50 text-foreground hover:bg-muted'
+        )}
       >
-        <SelectTrigger className="w-[160px] sm:w-[200px] h-9">
-          <div className="flex items-center gap-2 truncate">
-            {selectedTeacher && (
-              <span className={cn('h-2.5 w-2.5 rounded-full shrink-0', selectedTeacher.colour.bg)} />
+        All
+        {totalCount > 0 && (
+          <span className={cn(
+            'text-[10px] opacity-70',
+            !filters.teacher_id ? 'text-background/70' : ''
+          )}>
+            ({totalCount})
+          </span>
+        )}
+      </button>
+
+      {/* Teacher pills */}
+      {teacherList.map((teacher) => {
+        const isSelected = filters.teacher_id === teacher.id;
+        const count = countForTeacher(teacher.id);
+        const colour = 'colour' in teacher && teacher.colour ? teacher.colour : null;
+        const firstName = teacher.name.split(' ')[0];
+
+        return (
+          <button
+            key={teacher.id}
+            onClick={() =>
+              onChange({
+                ...filters,
+                teacher_id: isSelected ? null : teacher.id,
+              })
+            }
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all cursor-pointer shrink-0',
+              isSelected
+                ? 'text-white shadow-sm'
+                : 'bg-muted/50 text-foreground hover:bg-muted'
             )}
-            <SelectValue placeholder="All teachers" />
-          </div>
-        </SelectTrigger>
-        <SelectContent className="z-[60]">
-          <SelectItem value="all">
-            <span className="font-medium">All teachers</span>
-          </SelectItem>
-          {(teachersWithColours || teachers.map(t => ({ ...t, userId: null, colour: undefined }))).map((t) => (
-            <SelectItem key={t.id} value={t.id}>
-              <div className="flex items-center gap-2">
-                {'colour' in t && t.colour && (
-                  <span className={cn('h-2.5 w-2.5 rounded-full shrink-0', t.colour.bg)} />
-                )}
-                <span className="truncate">{t.name}</span>
-              </div>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+            style={
+              isSelected && colour
+                ? { backgroundColor: colour.hex }
+                : undefined
+            }
+          >
+            {colour && !isSelected && (
+              <span className={cn('h-2 w-2 rounded-full shrink-0', colour.bg)} />
+            )}
+            {firstName}
+            {count > 0 && (
+              <span className={cn(
+                'text-[10px] opacity-70',
+                isSelected ? 'text-white/70' : ''
+              )}>
+                ({count})
+              </span>
+            )}
+          </button>
+        );
+      })}
 
-      {/* Location filter */}
-      <Select 
-        value={filters.location_id || 'all'} 
-        onValueChange={(v) => onChange({ ...filters, location_id: v === 'all' ? null : v, room_id: null })}
-      >
-        <SelectTrigger className="w-[140px] sm:w-[180px] h-9">
-          <SelectValue placeholder="All locations" />
-        </SelectTrigger>
-        <SelectContent className="z-[60]">
-          <SelectItem value="all">All locations</SelectItem>
-          {locations.map((l) => (
-            <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      {/* Room filter (conditional) */}
-      {filters.location_id && filteredRooms.length > 0 && (
-        <Select 
-          value={filters.room_id || 'all'} 
-          onValueChange={(v) => onChange({ ...filters, room_id: v === 'all' ? null : v })}
-        >
-          <SelectTrigger className="w-[120px] sm:w-[150px] h-9">
-            <SelectValue placeholder="All rooms" />
-          </SelectTrigger>
-          <SelectContent className="z-[60]">
-            <SelectItem value="all">All rooms</SelectItem>
-            {filteredRooms.map((r) => (
-              <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Divider */}
+      {locations.length > 0 && (
+        <div className="h-5 w-px bg-border shrink-0 mx-0.5" />
       )}
+
+      {/* Location pills */}
+      {locations.map((location) => {
+        const isSelected = filters.location_id === location.id;
+        const count = countForLocation(location.id);
+
+        return (
+          <button
+            key={location.id}
+            onClick={() =>
+              onChange({
+                ...filters,
+                location_id: isSelected ? null : location.id,
+                room_id: null,
+              })
+            }
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all cursor-pointer shrink-0',
+              isSelected
+                ? 'bg-foreground text-background shadow-sm'
+                : 'bg-muted/50 text-foreground hover:bg-muted'
+            )}
+          >
+            {location.name}
+            {count > 0 && (
+              <span className={cn(
+                'text-[10px] opacity-70',
+                isSelected ? 'text-background/70' : ''
+              )}>
+                ({count})
+              </span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
