@@ -538,6 +538,7 @@ export type Database = {
           calendar_name: string | null
           created_at: string
           ical_token: string | null
+          ical_token_expires_at: string | null
           id: string
           last_sync_at: string | null
           org_id: string
@@ -555,6 +556,7 @@ export type Database = {
           calendar_name?: string | null
           created_at?: string
           ical_token?: string | null
+          ical_token_expires_at?: string | null
           id?: string
           last_sync_at?: string | null
           org_id: string
@@ -572,6 +574,7 @@ export type Database = {
           calendar_name?: string | null
           created_at?: string
           ical_token?: string | null
+          ical_token_expires_at?: string | null
           id?: string
           last_sync_at?: string | null
           org_id?: string

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { format, differenceInDays } from 'date-fns';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+
 import { 
   Calendar, 
   CheckCircle2, 
@@ -243,6 +245,27 @@ export function CalendarIntegrationsTab() {
 
               {existingIcalUrl || icalUrl ? (
                 <div className="space-y-3">
+                  {/* Expiry warning */}
+                  {appleConnection?.ical_token_expires_at && (() => {
+                    const expiresAt = new Date(appleConnection.ical_token_expires_at);
+                    const daysLeft = differenceInDays(expiresAt, new Date());
+                    if (daysLeft <= 7) {
+                      return (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>
+                            Your iCal feed URL expires on {format(expiresAt, 'dd MMM yyyy')}. Please regenerate it below.
+                          </AlertDescription>
+                        </Alert>
+                      );
+                    }
+                    return (
+                      <p className="text-xs text-muted-foreground">
+                        Feed URL expires on {format(expiresAt, 'dd MMM yyyy')} ({daysLeft} days remaining)
+                      </p>
+                    );
+                  })()}
+
                   <div className="space-y-2">
                     <Label>Your iCal Feed URL</Label>
                     <div className="flex gap-2">
