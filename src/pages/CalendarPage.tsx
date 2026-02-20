@@ -80,7 +80,10 @@ export default function CalendarPage() {
   const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
 
   // Fetch lessons
-  const { lessons, isLoading, isCapReached, refetch } = useCalendarData(currentDate, view, filters);
+  const { lessons, setLessons, isLoading, isCapReached, refetch } = useCalendarData(currentDate, view, filters);
+
+  // Track lesson IDs that are currently being saved (optimistic update in flight)
+  const [savingLessonIds, setSavingLessonIds] = useState<Set<string>>(new Set());
 
   // Teacher colour map
   const teacherColourMap = useMemo(() => buildTeacherColourMap(teachers), [teachers]);
@@ -170,9 +173,45 @@ export default function CalendarPage() {
   // ─── Drag-to-reschedule handler ────────────────────────────
   const executeLessonMove = useCallback(
     async (lesson: LessonWithDetails, newStart: Date, newEnd: Date, mode: RecurringActionMode | 'single') => {
+      // Snapshot original times for rollback
+      const originalStartAt = lesson.start_at;
+      const originalEndAt = lesson.end_at;
+
+      // Optimistic update — immediately move the lesson in local state
+      const affectedIds = new Set<string>();
+      if (mode === 'this_and_future' && lesson.recurrence_id) {
+        // Pre-compute affected IDs from current lessons
+        const currentLessons = lessons;
+        currentLessons.forEach(l => {
+          if (l.recurrence_id === lesson.recurrence_id && l.start_at >= lesson.start_at) {
+            affectedIds.add(l.id);
+          }
+        });
+        // Update all future lessons in the series optimistically
+        const offset = newStart.getTime() - new Date(originalStartAt).getTime();
+        const newDuration = newEnd.getTime() - newStart.getTime();
+        setLessons(prev => prev.map(l => {
+          if (affectedIds.has(l.id)) {
+            const shiftedStart = new Date(new Date(l.start_at).getTime() + offset);
+            const shiftedEnd = new Date(shiftedStart.getTime() + newDuration);
+            return { ...l, start_at: shiftedStart.toISOString(), end_at: shiftedEnd.toISOString() };
+          }
+          return l;
+        }));
+      } else {
+        affectedIds.add(lesson.id);
+        setLessons(prev => prev.map(l =>
+          l.id === lesson.id
+            ? { ...l, start_at: newStart.toISOString(), end_at: newEnd.toISOString() }
+            : l
+        ));
+      }
+
+      // Mark as saving (pulsing animation)
+      setSavingLessonIds(prev => new Set([...prev, ...affectedIds]));
+
       try {
         if (mode === 'this_and_future' && lesson.recurrence_id) {
-          // Update this and all future lessons in the series
           const { error } = await supabase
             .from('lessons')
             .update({
@@ -180,11 +219,10 @@ export default function CalendarPage() {
               end_at: newEnd.toISOString(),
             })
             .eq('recurrence_id', lesson.recurrence_id)
-            .gte('start_at', lesson.start_at);
+            .gte('start_at', originalStartAt);
 
           if (error) throw error;
         } else {
-          // Update just this lesson — mark as series exception if recurring
           const updatePayload: Record<string, unknown> = {
             start_at: newStart.toISOString(),
             end_at: newEnd.toISOString(),
@@ -207,14 +245,28 @@ export default function CalendarPage() {
         refetch();
       } catch (err) {
         console.error('Failed to reschedule lesson:', err);
+        // Revert optimistic update
+        setLessons(prev => prev.map(l => {
+          if (l.id === lesson.id) {
+            return { ...l, start_at: originalStartAt, end_at: originalEndAt };
+          }
+          return l;
+        }));
+        refetch(); // Full refetch to restore canonical state
         toast({
           title: 'Failed to reschedule',
-          description: 'An error occurred. Please try again.',
+          description: 'An error occurred. The lesson has been restored to its original time.',
           variant: 'destructive',
+        });
+      } finally {
+        setSavingLessonIds(prev => {
+          const next = new Set(prev);
+          affectedIds.forEach(id => next.delete(id));
+          return next;
         });
       }
     },
-    [refetch]
+    [refetch, setLessons, lessons]
   );
 
   const handleLessonDrop = useCallback(
@@ -483,6 +535,7 @@ export default function CalendarPage() {
             onLessonDrop={!isParent ? handleLessonDrop : undefined}
             onLessonResize={!isParent ? handleLessonResize : undefined}
             isParent={isParent}
+            savingLessonIds={savingLessonIds}
           />
           {!isParent && (
             <ContextualHint

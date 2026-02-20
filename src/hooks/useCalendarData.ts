@@ -175,7 +175,7 @@ export function useCalendarData(
     };
   }, [fetchLessons]);
 
-  return { lessons, isLoading, isCapReached, refetch: fetchLessons };
+  return { lessons, setLessons, isLoading, isCapReached, refetch: fetchLessons };
 }
 
 export function useTeachersAndLocations() {
