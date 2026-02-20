@@ -3,7 +3,6 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { ContextualHint } from '@/components/shared/ContextualHint';
 import { Receipt, Plus, PlayCircle } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useInvoices, useUpdateInvoiceStatus, type InvoiceFilters, type InvoiceWithDetails } from '@/hooks/useInvoices';
@@ -17,6 +16,7 @@ import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
 import { SendInvoiceModal } from '@/components/invoices/SendInvoiceModal';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { useToast } from '@/hooks/use-toast';
+import { isBefore, parseISO } from 'date-fns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +36,6 @@ export default function Invoices() {
   const [currentPage, setCurrentPage] = useState(1);
   const { data: invoices = [], isLoading } = useInvoices(filters);
 
-  // Reset to page 1 when filters change
   const handleFiltersChange = (newFilters: InvoiceFilters) => {
     setFilters(newFilters);
     setCurrentPage(1);
@@ -56,7 +55,21 @@ export default function Invoices() {
   const [voidConfirmInvoice, setVoidConfirmInvoice] = useState<InvoiceWithDetails | null>(null);
   const [bulkVoidConfirmOpen, setBulkVoidConfirmOpen] = useState(false);
 
-  // Calculate bulk action counts
+  // Status counts for filter pills (computed from all invoices, not filtered)
+  const { data: allInvoices = [] } = useInvoices({});
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: allInvoices.length, draft: 0, sent: 0, paid: 0, overdue: 0, void: 0 };
+    const today = new Date();
+    allInvoices.forEach((inv) => {
+      if (inv.status === 'sent' && isBefore(parseISO(inv.due_date), today)) {
+        counts.overdue++;
+      } else {
+        counts[inv.status] = (counts[inv.status] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [allInvoices]);
+
   const { draftCount, voidableCount, voidableInvoices } = useMemo(() => {
     const selected = invoices.filter((inv) => selectedIds.has(inv.id));
     return {
@@ -95,11 +108,7 @@ export default function Invoices() {
     if (failCount === 0) {
       toast({ title: 'Invoices sent', description: `${successCount} invoice${successCount !== 1 ? 's' : ''} sent successfully.` });
     } else {
-      toast({
-        title: 'Some invoices failed',
-        description: `${successCount} sent, ${failCount} failed.`,
-        variant: 'destructive',
-      });
+      toast({ title: 'Some invoices failed', description: `${successCount} sent, ${failCount} failed.`, variant: 'destructive' });
     }
   };
 
@@ -122,11 +131,7 @@ export default function Invoices() {
     if (failCount === 0) {
       toast({ title: 'Invoices voided', description: `${successCount} invoice${successCount !== 1 ? 's' : ''} voided.` });
     } else {
-      toast({
-        title: 'Some invoices failed',
-        description: `${successCount} voided, ${failCount} failed.`,
-        variant: 'destructive',
-      });
+      toast({ title: 'Some invoices failed', description: `${successCount} voided, ${failCount} failed.`, variant: 'destructive' });
     }
   };
 
@@ -141,37 +146,37 @@ export default function Invoices() {
   return (
     <AppLayout>
       <PageHeader
-        title={isParent ? 'Invoices & Payments' : 'Invoices'}
-        description={isParent ? 'View and pay your invoices' : 'Create and manage invoices'}
-        breadcrumbs={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: isParent ? 'Invoices & Payments' : 'Invoices' },
-        ]}
+        title={isParent ? 'Invoices & Payments' : `Invoices${allInvoices.length > 0 ? ` (${allInvoices.length})` : ''}`}
         actions={
           !isParent && (
             <div className="flex gap-2">
-              <Button variant="outline" className="gap-2" onClick={() => setBillingRunOpen(true)} data-tour="billing-run-button">
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setBillingRunOpen(true)} data-tour="billing-run-button">
                 <PlayCircle className="h-4 w-4" />
-                Billing Run
+                <span className="hidden sm:inline">Billing Run</span>
               </Button>
-              <Button className="gap-2" onClick={() => setCreateModalOpen(true)} data-tour="create-invoice-button">
+              <Button size="sm" className="gap-1.5" onClick={() => setCreateModalOpen(true)} data-tour="create-invoice-button">
                 <Plus className="h-4 w-4" />
-                Create Invoice
+                <span className="hidden sm:inline">Create Invoice</span>
               </Button>
             </div>
           )
         }
       />
 
+      {/* Inline stats bar */}
       {!isParent && (
-        <div data-tour="invoice-stats">
-          <InvoiceStatsWidget onFilterStatus={(status) => { setFilters(prev => ({ ...prev, status: status as any })); setCurrentPage(1); }} />
+        <div className="mb-4" data-tour="invoice-stats">
+          <InvoiceStatsWidget onFilterStatus={(status) => { handleFiltersChange({ ...filters, status: status as any }); }} />
         </div>
       )}
 
-      <div className="mt-6 space-y-4">
+      <div className="space-y-4">
         {!isParent && (
-          <InvoiceFiltersBar filters={filters} onFiltersChange={handleFiltersChange} />
+          <InvoiceFiltersBar
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            statusCounts={statusCounts}
+          />
         )}
 
         {!isParent && (
@@ -203,7 +208,7 @@ export default function Invoices() {
             previewAlt="Example invoice list"
           />
         ) : (
-          <div data-tour="invoice-list" data-hint="invoice-list">
+          <div className="rounded-lg border bg-card" data-tour="invoice-list">
             <InvoiceList
               invoices={invoices}
               onSend={(inv) => setSendModalInvoice(inv)}
@@ -215,14 +220,6 @@ export default function Invoices() {
               currentPage={currentPage}
               onPageChange={setCurrentPage}
             />
-            {!isParent && (
-              <ContextualHint
-                id="invoice-actions"
-                message="Use 'Billing Run' to generate invoices automatically from delivered lessons"
-                position="top"
-                targetSelector="[data-tour='billing-run-button']"
-              />
-            )}
           </div>
         )}
       </div>
@@ -247,7 +244,6 @@ export default function Invoices() {
         isReminder
       />
 
-      {/* Void confirmation dialog (single) */}
       <AlertDialog open={!!voidConfirmInvoice} onOpenChange={(open) => !open && setVoidConfirmInvoice(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -265,7 +261,6 @@ export default function Invoices() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Bulk void confirmation dialog */}
       <AlertDialog open={bulkVoidConfirmOpen} onOpenChange={setBulkVoidConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

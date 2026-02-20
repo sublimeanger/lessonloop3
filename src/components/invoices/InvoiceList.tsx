@@ -1,13 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import { parseISO, isBefore } from 'date-fns';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -20,10 +12,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Send, Eye, CreditCard, XCircle, Bell, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
-import { useIsMobile } from '@/hooks/use-mobile';
 import type { InvoiceWithDetails } from '@/hooks/useInvoices';
 import type { Database } from '@/integrations/supabase/types';
 import { formatCurrencyMinor, formatDateUK } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 type InvoiceStatus = Database['public']['Enums']['invoice_status'];
 
@@ -41,53 +33,45 @@ interface InvoiceListProps {
   onPageChange: (page: number) => void;
 }
 
-function getStatusBadge(status: InvoiceStatus, dueDate: string) {
-  const today = new Date();
-  const due = parseISO(dueDate);
-  const isOverdue = status === 'sent' && isBefore(due, today);
+function StatusBadge({ status, dueDate }: { status: InvoiceStatus; dueDate: string }) {
+  const isOverdue = status === 'sent' && isBefore(parseISO(dueDate), new Date());
+  const effectiveStatus = isOverdue ? 'overdue' : status;
 
-  if (isOverdue) {
-    return <Badge variant="destructive">Overdue</Badge>;
-  }
-
-  const variants: Record<InvoiceStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-    draft: 'secondary',
-    sent: 'default',
-    paid: 'default',
-    overdue: 'destructive',
-    void: 'outline',
+  const config: Record<string, { label: string; className: string; dot?: string }> = {
+    draft: { label: 'Draft', className: 'bg-muted text-muted-foreground border-transparent' },
+    sent: { label: 'Sent', className: 'bg-primary/10 text-primary border-primary/20' },
+    paid: { label: 'Paid', className: 'bg-success/10 text-success border-success/20' },
+    overdue: {
+      label: 'Overdue',
+      className: 'bg-destructive/10 text-destructive border-destructive/20',
+      dot: 'bg-destructive animate-pulse',
+    },
+    void: { label: 'Void', className: 'bg-muted text-muted-foreground border-transparent' },
   };
 
-  const labels: Record<InvoiceStatus, string> = {
-    draft: 'Draft',
-    sent: 'Sent',
-    paid: 'Paid',
-    overdue: 'Overdue',
-    void: 'Void',
-  };
+  const c = config[effectiveStatus] || config.draft;
 
   return (
-    <Badge
-      variant={variants[status]}
-      className={status === 'paid' ? 'bg-success hover:bg-success/90' : undefined}
-    >
-      {labels[status]}
-    </Badge>
+    <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium', c.className)}>
+      {c.dot && <span className={cn('h-1.5 w-1.5 rounded-full', c.dot)} />}
+      {c.label}
+    </span>
   );
 }
 
 function getPayerName(invoice: InvoiceWithDetails): string {
-  if (invoice.payer_guardian) {
-    return invoice.payer_guardian.full_name;
-  }
-  if (invoice.payer_student) {
-    return `${invoice.payer_student.first_name} ${invoice.payer_student.last_name}`;
-  }
+  if (invoice.payer_guardian) return invoice.payer_guardian.full_name;
+  if (invoice.payer_student) return `${invoice.payer_student.first_name} ${invoice.payer_student.last_name}`;
   return 'Unknown';
 }
 
-// ─── Actions dropdown (shared between table and card) ───
-function InvoiceActions({ invoice, onSend, onMarkPaid, onVoid, onSendReminder }: {
+function InvoiceActions({
+  invoice,
+  onSend,
+  onMarkPaid,
+  onVoid,
+  onSendReminder,
+}: {
   invoice: InvoiceWithDetails;
   onSend: (inv: InvoiceWithDetails) => void;
   onMarkPaid: (inv: InvoiceWithDetails) => void;
@@ -98,7 +82,7 @@ function InvoiceActions({ invoice, onSend, onMarkPaid, onVoid, onSendReminder }:
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
+        <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
@@ -128,10 +112,7 @@ function InvoiceActions({ invoice, onSend, onMarkPaid, onVoid, onSendReminder }:
         {invoice.status !== 'void' && invoice.status !== 'paid' && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => onVoid(invoice)}
-              className="text-destructive"
-            >
+            <DropdownMenuItem onClick={() => onVoid(invoice)} className="text-destructive">
               <XCircle className="mr-2 h-4 w-4" />
               Void
             </DropdownMenuItem>
@@ -155,7 +136,6 @@ export function InvoiceList({
 }: InvoiceListProps) {
   const navigate = useNavigate();
   const { currentOrg } = useOrg();
-  const isMobile = useIsMobile();
   const currency = currentOrg?.currency_code || 'GBP';
 
   // Pagination
@@ -169,24 +149,19 @@ export function InvoiceList({
   const someSelected = pageInvoices.some((inv) => selectedIds.has(inv.id)) && !allSelected;
 
   const handleSelectAll = (checked: boolean) => {
+    const next = new Set(selectedIds);
     if (checked) {
-      const next = new Set(selectedIds);
       pageInvoices.forEach((inv) => next.add(inv.id));
-      onSelectionChange(next);
     } else {
-      const next = new Set(selectedIds);
       pageInvoices.forEach((inv) => next.delete(inv.id));
-      onSelectionChange(next);
     }
+    onSelectionChange(next);
   };
 
   const handleSelectOne = (id: string, checked: boolean) => {
     const next = new Set(selectedIds);
-    if (checked) {
-      next.add(id);
-    } else {
-      next.delete(id);
-    }
+    if (checked) next.add(id);
+    else next.delete(id);
     onSelectionChange(next);
   };
 
@@ -199,147 +174,116 @@ export function InvoiceList({
   }
 
   const paginationFooter = totalCount > INVOICES_PAGE_SIZE ? (
-    <div className="flex items-center justify-between border-t px-4 py-3">
-      <p className="text-sm text-muted-foreground">
-        Showing {startIndex + 1}–{endIndex} of {totalCount} invoices
+    <div className="flex items-center justify-between px-2 py-3">
+      <p className="text-xs text-muted-foreground">
+        {startIndex + 1}–{endIndex} of {totalCount}
       </p>
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage <= 1}
-        >
+      <div className="flex items-center gap-1">
+        <Button variant="ghost" size="sm" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage <= 1}>
           <ChevronLeft className="h-4 w-4" />
-          Previous
         </Button>
-        <span className="text-sm text-muted-foreground px-2">
-          Page {currentPage} of {totalPages}
+        <span className="text-xs text-muted-foreground px-2">
+          {currentPage}/{totalPages}
         </span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage >= totalPages}
-        >
-          Next
+        <Button variant="ghost" size="sm" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage >= totalPages}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
     </div>
   ) : null;
 
-  // ─── Mobile card layout ───
-  if (isMobile) {
-    return (
-      <div>
-        <div className="space-y-2" role="list" aria-label="Invoices list">
-          {pageInvoices.map((invoice) => (
-            <div
-              key={invoice.id}
-              className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent cursor-pointer"
-              onClick={() => navigate(`/invoices/${invoice.id}`)}
-              role="listitem"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-3 min-w-0">
-                  <Checkbox
-                    checked={selectedIds.has(invoice.id)}
-                    onCheckedChange={(checked) => handleSelectOne(invoice.id, !!checked)}
-                    onClick={(e) => e.stopPropagation()}
-                    aria-label={`Select invoice ${invoice.invoice_number}`}
-                  />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-sm">{invoice.invoice_number}</span>
-                      {getStatusBadge(invoice.status, invoice.due_date)}
-                    </div>
-                    <p className="text-sm text-muted-foreground truncate mt-0.5">
-                      {getPayerName(invoice)}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <span className="font-medium text-sm">
-                    {formatCurrencyMinor(invoice.total_minor, currency)}
-                  </span>
-                  <InvoiceActions
-                    invoice={invoice}
-                    onSend={onSend}
-                    onMarkPaid={onMarkPaid}
-                    onVoid={onVoid}
-                    onSendReminder={onSendReminder}
-                  />
-                </div>
+  return (
+    <div>
+      {/* Select all row */}
+      <div className="flex items-center gap-3 px-3 py-2 text-xs text-muted-foreground border-b">
+        <Checkbox
+          checked={allSelected}
+          onCheckedChange={handleSelectAll}
+          aria-label="Select all"
+          className={someSelected ? 'data-[state=checked]:bg-primary data-[state=unchecked]:bg-primary/50' : ''}
+          {...(someSelected ? { 'data-state': 'indeterminate' } : {})}
+        />
+        <span className="flex-1">Invoice</span>
+        <span className="hidden sm:block w-28">Due</span>
+        <span className="hidden sm:block w-20">Status</span>
+        <span className="w-24 text-right">Amount</span>
+        <span className="w-7" />
+      </div>
+
+      {/* Invoice rows */}
+      <div className="divide-y divide-border" role="list" aria-label="Invoices list">
+        {pageInvoices.map((invoice) => (
+          <div
+            key={invoice.id}
+            onClick={() => navigate(`/invoices/${invoice.id}`)}
+            className={cn(
+              'flex items-center gap-3 px-3 py-3 cursor-pointer transition-colors hover:bg-muted/30 group',
+              selectedIds.has(invoice.id) && 'bg-primary/5',
+            )}
+            role="listitem"
+          >
+            {/* Checkbox */}
+            <div onClick={(e) => e.stopPropagation()}>
+              <Checkbox
+                checked={selectedIds.has(invoice.id)}
+                onCheckedChange={(checked) => handleSelectOne(invoice.id, !!checked)}
+                aria-label={`Select invoice ${invoice.invoice_number}`}
+              />
+            </div>
+
+            {/* Invoice info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-foreground truncate">
+                  {getPayerName(invoice)}
+                </span>
+                {/* Mobile-only status */}
+                <span className="sm:hidden">
+                  <StatusBadge status={invoice.status} dueDate={invoice.due_date} />
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xs font-mono text-muted-foreground">
+                  {invoice.invoice_number}
+                </span>
+                {/* Mobile-only due date */}
+                <span className="text-xs text-muted-foreground sm:hidden">
+                  · Due {formatDateUK(parseISO(invoice.due_date), 'dd MMM')}
+                </span>
               </div>
             </div>
-          ))}
-        </div>
-        {paginationFooter}
-      </div>
-    );
-  }
 
-  // ─── Desktop table layout ───
-  return (
-    <div className="rounded-lg border bg-card">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[40px]">
-              <Checkbox
-                checked={allSelected}
-                onCheckedChange={handleSelectAll}
-                aria-label="Select all"
-                className={someSelected ? 'data-[state=checked]:bg-primary data-[state=unchecked]:bg-primary/50' : ''}
-                {...(someSelected ? { 'data-state': 'indeterminate' } : {})}
-              />
-            </TableHead>
-            <TableHead>Invoice #</TableHead>
-            <TableHead>Payer</TableHead>
-            <TableHead>Issue Date</TableHead>
-            <TableHead>Due Date</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Amount</TableHead>
-            <TableHead className="w-[50px]" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {pageInvoices.map((invoice) => (
-            <TableRow
-              key={invoice.id}
-              className="cursor-pointer"
-              data-selected={selectedIds.has(invoice.id) ? '' : undefined}
-              onClick={() => navigate(`/invoices/${invoice.id}`)}
-            >
-              <TableCell onClick={(e) => e.stopPropagation()}>
-                <Checkbox
-                  checked={selectedIds.has(invoice.id)}
-                  onCheckedChange={(checked) => handleSelectOne(invoice.id, !!checked)}
-                  aria-label={`Select invoice ${invoice.invoice_number}`}
-                />
-              </TableCell>
-              <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
-              <TableCell>{getPayerName(invoice)}</TableCell>
-              <TableCell>{formatDateUK(parseISO(invoice.issue_date), 'dd MMM yyyy')}</TableCell>
-              <TableCell>{formatDateUK(parseISO(invoice.due_date), 'dd MMM yyyy')}</TableCell>
-              <TableCell>{getStatusBadge(invoice.status, invoice.due_date)}</TableCell>
-              <TableCell className="text-right font-medium">
+            {/* Due date — desktop */}
+            <div className="hidden sm:block w-28 shrink-0">
+              <span className="text-xs text-muted-foreground">
+                {formatDateUK(parseISO(invoice.due_date), 'dd MMM yyyy')}
+              </span>
+            </div>
+
+            {/* Status — desktop */}
+            <div className="hidden sm:block w-20 shrink-0">
+              <StatusBadge status={invoice.status} dueDate={invoice.due_date} />
+            </div>
+
+            {/* Amount */}
+            <div className="w-24 text-right shrink-0">
+              <span className="text-sm font-mono font-semibold text-foreground">
                 {formatCurrencyMinor(invoice.total_minor, currency)}
-              </TableCell>
-              <TableCell>
-                <InvoiceActions
-                  invoice={invoice}
-                  onSend={onSend}
-                  onMarkPaid={onMarkPaid}
-                  onVoid={onVoid}
-                  onSendReminder={onSendReminder}
-                />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+              </span>
+            </div>
+
+            {/* Actions */}
+            <InvoiceActions
+              invoice={invoice}
+              onSend={onSend}
+              onMarkPaid={onMarkPaid}
+              onVoid={onVoid}
+              onSendReminder={onSendReminder}
+            />
+          </div>
+        ))}
+      </div>
+
       {paginationFooter}
     </div>
   );
