@@ -539,47 +539,70 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
           }
         }
 
-        for (const lessonDate of lessonsToCreate) {
-          const lessonEndAt = addMinutes(lessonDate, durationMins);
-          
-          const { data: newLesson, error } = await supabase
+        // Cap at 200 lessons
+        const MAX_RECURRING = 200;
+        if (lessonsToCreate.length > MAX_RECURRING) {
+          toast({
+            title: 'Series capped',
+            description: `Maximum of ${MAX_RECURRING} recurring lessons allowed. Only the first ${MAX_RECURRING} will be created.`,
+            variant: 'destructive',
+          });
+          lessonsToCreate.splice(MAX_RECURRING);
+        }
+
+        const title = generateTitle();
+
+        // Build all lesson objects
+        const allLessonRows = lessonsToCreate.map(lessonDate => ({
+          org_id: currentOrg.id,
+          lesson_type: lessonType,
+          teacher_user_id: teacherUserId,
+          teacher_id: teacherId,
+          location_id: locationId,
+          room_id: roomId,
+          start_at: lessonDate.toISOString(),
+          end_at: addMinutes(lessonDate, durationMins).toISOString(),
+          title,
+          notes_private: notesPrivate || null,
+          notes_shared: notesShared || null,
+          status: 'scheduled' as const,
+          created_by: user.id,
+          recurrence_id: recurrenceId,
+        }));
+
+        try {
+          // Batch insert all lessons in one call
+          const { data: insertedLessons, error: lessonError } = await supabase
             .from('lessons')
-            .insert({
-              org_id: currentOrg.id,
-              lesson_type: lessonType,
-              teacher_user_id: teacherUserId,
-              teacher_id: teacherId,
-              location_id: locationId,
-              room_id: roomId,
-              start_at: lessonDate.toISOString(),
-              end_at: lessonEndAt.toISOString(),
-              title: generateTitle(),
-              notes_private: notesPrivate || null,
-              notes_shared: notesShared || null,
-              status: 'scheduled',
-              created_by: user.id,
-              recurrence_id: recurrenceId,
-            })
-            .select()
-            .single();
+            .insert(allLessonRows)
+            .select('id, start_at');
 
-          if (error) throw error;
+          if (lessonError) throw lessonError;
 
-          if (newLesson && selectedStudents.length > 0) {
-            await supabase.from('lesson_participants').insert(
+          // Batch insert all participants
+          if (insertedLessons && selectedStudents.length > 0) {
+            const allParticipants = insertedLessons.flatMap(lesson =>
               selectedStudents.map(studentId => ({
                 org_id: currentOrg.id,
-                lesson_id: newLesson.id,
+                lesson_id: lesson.id,
                 student_id: studentId,
               }))
             );
 
-            if (notesShared && lessonDate === lessonsToCreate[0]) {
-              const zonedLessonDate = toZonedTime(lessonDate, orgTimezone);
+            const { error: partError } = await supabase
+              .from('lesson_participants')
+              .insert(allParticipants);
+
+            if (partError) throw partError;
+
+            // Send notes notification once for the first lesson only
+            if (notesShared && insertedLessons.length > 0) {
+              const firstLesson = insertedLessons[0];
+              const zonedLessonDate = toZonedTime(new Date(firstLesson.start_at), orgTimezone);
               sendNotesNotification({
-                lessonId: newLesson.id,
+                lessonId: firstLesson.id,
                 notesShared,
-                lessonTitle: generateTitle(),
+                lessonTitle: title,
                 lessonDate: format(zonedLessonDate, 'EEEE, d MMMM yyyy \'at\' HH:mm'),
                 teacherName: selectedTeacher?.name || profile?.full_name || 'Your teacher',
                 orgName: currentOrg.name,
@@ -587,6 +610,13 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
               });
             }
           }
+        } catch (batchError: any) {
+          toast({
+            title: 'Error creating lessons',
+            description: `${batchError.message}. Partial creation may have occurred — please check the calendar.`,
+            variant: 'destructive',
+          });
+          throw batchError;
         }
 
         toast({ 
