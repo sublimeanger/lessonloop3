@@ -2,7 +2,22 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { LessonWithDetails, CalendarFilters } from '@/components/calendar/types';
-import { startOfWeek, endOfWeek, startOfDay, endOfDay, addDays } from 'date-fns';
+import { startOfWeek, endOfWeek, startOfDay, endOfDay, addDays, format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
+
+/**
+ * Converts a UTC ISO string to a "fake-local" ISO string whose wall-clock
+ * values match the org timezone. Downstream code that calls parseISO().getHours()
+ * will then get the correct org-local hour regardless of the browser's timezone.
+ *
+ * Example: "2025-06-15T14:00:00Z" with tz "Europe/London" (BST = UTC+1)
+ *  → toZonedTime gives a Date whose getHours() = 15
+ *  → we format it as "2025-06-15T15:00:00.000Z" (fake UTC)
+ */
+function toOrgLocalIso(utcIso: string, timezone: string): string {
+  const zoned = toZonedTime(utcIso, timezone);
+  return format(zoned, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+}
 
 const LESSONS_PAGE_SIZE = 500;
 
@@ -127,9 +142,14 @@ export function useCalendarData(
         attendanceMap.set(a.lesson_id, [...existing, a]);
       });
 
-      // Enrich lessons with related data from maps
+      // Enrich lessons with related data from maps and convert to org timezone
+      const orgTimezone = currentOrg.timezone || 'Europe/London';
       const enrichedLessons: LessonWithDetails[] = lessonsData.map((lesson) => ({
         ...lesson,
+        // Convert UTC times to org-local "fake UTC" strings so downstream
+        // parseISO().getHours() returns org-local wall-clock hours
+        start_at: toOrgLocalIso(lesson.start_at, orgTimezone),
+        end_at: toOrgLocalIso(lesson.end_at, orgTimezone),
         teacher: teacherMap.get(lesson.teacher_user_id),
         participants: participantsMap.get(lesson.id) as any || [],
         attendance: attendanceMap.get(lesson.id) || [],
