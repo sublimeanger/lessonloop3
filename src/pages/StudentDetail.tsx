@@ -89,7 +89,18 @@ export default function StudentDetail() {
   const [deleteCheckResult, setDeleteCheckResult] = useState<DeletionCheckResult | null>(null);
   const [isDeleteChecking, setIsDeleteChecking] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { checkStudentDeletion } = useDeleteValidation();
+  const { checkStudentDeletion, checkGuardianDeletion } = useDeleteValidation();
+
+  // Guardian delete validation
+  const [guardianDeleteDialog, setGuardianDeleteDialog] = useState<{
+    open: boolean;
+    sgId: string;
+    guardianName: string;
+    guardianId: string;
+    checkResult: DeletionCheckResult | null;
+    isChecking: boolean;
+    isDeleting: boolean;
+  }>({ open: false, sgId: '', guardianName: '', guardianId: '', checkResult: null, isChecking: false, isDeleting: false });
   
   // Edit form
   const [firstName, setFirstName] = useState('');
@@ -369,13 +380,31 @@ export default function StudentDetail() {
     setIsNewGuardian(false);
   };
 
-  const removeGuardian = async (sgId: string) => {
-    const { error } = await supabase.from('student_guardians').delete().eq('id', sgId);
+  const initiateGuardianRemoval = async (sg: StudentGuardian) => {
+    if (!sg.guardian) return;
+    setGuardianDeleteDialog({
+      open: true,
+      sgId: sg.id,
+      guardianName: sg.guardian.full_name,
+      guardianId: sg.guardian_id,
+      checkResult: null,
+      isChecking: true,
+      isDeleting: false,
+    });
+    const result = await checkGuardianDeletion(sg.guardian_id);
+    setGuardianDeleteDialog(prev => ({ ...prev, checkResult: result, isChecking: false }));
+  };
+
+  const confirmGuardianRemoval = async () => {
+    setGuardianDeleteDialog(prev => ({ ...prev, isDeleting: true }));
+    const { error } = await supabase.from('student_guardians').delete().eq('id', guardianDeleteDialog.sgId);
     if (error) {
       toast({ title: 'Error removing guardian', description: error.message, variant: 'destructive' });
     } else {
+      toast({ title: 'Guardian removed' });
       fetchGuardians();
     }
+    setGuardianDeleteDialog(prev => ({ ...prev, open: false, isDeleting: false }));
   };
 
   const handleInviteGuardian = async (guardian: Guardian, existingInviteId?: string) => {
@@ -689,7 +718,7 @@ export default function StudentDetail() {
                           return null;
                         })()}
                         {isOrgAdmin && (
-                          <Button variant="ghost" size="sm" onClick={() => removeGuardian(sg.id)}>Remove</Button>
+                          <Button variant="ghost" size="sm" onClick={() => initiateGuardianRemoval(sg)}>Remove</Button>
                         )}
                       </div>
                     </div>
@@ -988,6 +1017,18 @@ export default function StudentDetail() {
         isLoading={isDeleteChecking}
         onConfirmDelete={handleConfirmDelete}
         isDeleting={isDeleting}
+      />
+
+      {/* Guardian delete validation dialog */}
+      <DeleteValidationDialog
+        open={guardianDeleteDialog.open}
+        onOpenChange={(open) => setGuardianDeleteDialog(prev => ({ ...prev, open }))}
+        entityName={guardianDeleteDialog.guardianName}
+        entityType="Guardian"
+        checkResult={guardianDeleteDialog.checkResult}
+        isLoading={guardianDeleteDialog.isChecking}
+        onConfirmDelete={confirmGuardianRemoval}
+        isDeleting={guardianDeleteDialog.isDeleting}
       />
     </AppLayout>
   );
