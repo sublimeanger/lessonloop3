@@ -2,7 +2,7 @@ import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { ThreadMessage } from '@/hooks/useMessageThreads';
 import { useRelatedStudent } from '@/hooks/useRelatedStudent';
-import { EntityChip } from '@/components/looopassist/EntityChip';
+import { EntityChip } from '@/components/loopassist/EntityChip';
 import { sanitizeHtml } from '@/lib/sanitize';
 
 interface ThreadMessageItemProps {
