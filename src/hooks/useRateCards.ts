@@ -113,6 +113,36 @@ export function useDeleteRateCard() {
     mutationFn: async (id: string) => {
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
+      // Fetch all rate cards to check if this is the only one or the default
+      const { data: allCards } = await supabase
+        .from('rate_cards')
+        .select('id, is_default')
+        .eq('org_id', currentOrg.id);
+
+      const cards = allCards || [];
+      const target = cards.find(c => c.id === id);
+
+      if (cards.length <= 1) {
+        throw new Error('Cannot delete the only rate card. Create another one first.');
+      }
+
+      if (target?.is_default) {
+        throw new Error('Cannot delete the default rate card. Set another card as default first.');
+      }
+
+      // Warn about students using this rate card (non-blocking)
+      const { count: studentCount } = await supabase
+        .from('students')
+        .select('id', { count: 'exact', head: true })
+        .eq('default_rate_card_id', id);
+
+      if ((studentCount ?? 0) > 0) {
+        toast({
+          title: `${studentCount} student${studentCount !== 1 ? 's' : ''} use this rate card`,
+          description: 'They will fall back to the org default rate.',
+        });
+      }
+
       const { error } = await supabase
         .from('rate_cards')
         .delete()
@@ -126,7 +156,7 @@ export function useDeleteRateCard() {
       toast({ title: 'Rate card deleted', description: 'The rate card has been removed.' });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: 'Cannot delete rate card', description: error.message, variant: 'destructive' });
     },
   });
 }
