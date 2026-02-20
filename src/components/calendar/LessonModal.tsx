@@ -11,6 +11,8 @@ import { useClosurePatternCheck, formatClosureConflicts } from '@/hooks/useClosu
 import { supabase } from '@/integrations/supabase/client';
 import { LessonWithDetails, LessonFormData, ConflictResult, LessonStatus, LessonType } from './types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,6 +28,7 @@ import { CalendarIcon, Check, Loader2, AlertCircle, AlertTriangle, X, Plus } fro
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RecurringEditDialog, RecurringEditMode } from './RecurringEditDialog';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface LessonModalProps {
   open: boolean;
@@ -52,22 +55,21 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   const { teachers, locations, rooms, students } = useTeachersAndLocations();
   const { checkConflicts } = useConflictDetection();
   const { sendNotesNotification } = useNotesNotification();
+  const isMobile = useIsMobile();
 
   const [isSaving, setIsSaving] = useState(false);
-  // Conflict state - only UI display, check tracking is done via refs
   const [conflictState, setConflictState] = useState<{
     isChecking: boolean;
     conflicts: ConflictResult[];
   }>({ isChecking: false, conflicts: [] });
   const [studentsOpen, setStudentsOpen] = useState(false);
+  const [studentSheetOpen, setStudentSheetOpen] = useState(false);
   
-  // Recurring edit state
   const [showRecurringDialog, setShowRecurringDialog] = useState(false);
   const [recurringEditMode, setRecurringEditMode] = useState<RecurringEditMode | null>(null);
 
-  // Form state
   const [lessonType, setLessonType] = useState<LessonType>('private');
-  const [teacherId, setTeacherId] = useState(''); // teachers.id (new model)
+  const [teacherId, setTeacherId] = useState('');
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [locationId, setLocationId] = useState<string | null>(null);
   const [roomId, setRoomId] = useState<string | null>(null);
@@ -81,16 +83,13 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]);
   const [recurrenceEndDate, setRecurrenceEndDate] = useState<Date | null>(null);
 
-  // Track the current conflict check to avoid stale updates - use refs to prevent re-renders
   const conflictCheckRef = useRef<number>(0);
   const lastCheckKeyRef = useRef<string>('');
   const checkConflictsRef = useRef(checkConflicts);
   checkConflictsRef.current = checkConflicts;
 
-  // Get org timezone, default to Europe/London
   const orgTimezone = currentOrg?.timezone || 'Europe/London';
 
-  // Calculate total lessons for closure pattern check
   const estimatedTotalLessons = useMemo(() => {
     if (!isRecurring || recurrenceDays.length === 0) return 0;
     const endDate = recurrenceEndDate || addWeeks(selectedDate, 12);
@@ -98,7 +97,6 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     return Math.max(1, Math.ceil(weeksDiff / 1) * recurrenceDays.length);
   }, [isRecurring, recurrenceDays, recurrenceEndDate, selectedDate]);
 
-  // Check for closure date conflicts in recurring series
   const closureCheck = useClosurePatternCheck(
     isRecurring && recurrenceDays.length > 0 ? selectedDate : null,
     1,
@@ -113,10 +111,8 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     if (lesson) {
       const start = parseISO(lesson.start_at);
       const end = parseISO(lesson.end_at);
-      // Convert from UTC to org timezone for display
       const zonedStart = toZonedTime(start, orgTimezone);
       setLessonType(lesson.lesson_type);
-      // Map lesson's teacher_id (or fallback to finding teacher by user_id for backward compat)
       const lessonTeacherId = (lesson as any).teacher_id || teachers.find(t => t.userId === lesson.teacher_user_id)?.id || '';
       setTeacherId(lessonTeacherId);
       setSelectedStudents(lesson.participants?.map(p => p.student.id) || []);
@@ -130,7 +126,6 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       setStatus(lesson.status);
       setIsRecurring(!!lesson.recurrence_id);
     } else {
-      // New lesson - auto-select first teacher (or the one matching current user)
       setLessonType('private');
       const currentUserTeacher = teachers.find(t => t.userId === user?.id);
       setTeacherId(currentUserTeacher?.id || teachers[0]?.id || '');
@@ -145,10 +140,8 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       setRecurrenceEndDate(null);
 
       if (initialDate) {
-        // initialDate is already in local browser time from the calendar grid
         setSelectedDate(initialDate);
         setStartTime(format(initialDate, 'HH:mm'));
-        // Set duration from org default
         setDurationMins(currentOrg?.default_lesson_length_mins || 60);
       } else {
         setDurationMins(currentOrg?.default_lesson_length_mins || 60);
@@ -165,34 +158,27 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     lastCheckKeyRef.current = '';
   }, [open, lesson, initialDate, initialEndDate, user?.id, orgTimezone, currentOrg?.default_lesson_length_mins]);
 
-  // Auto-select teacher if only one
   useEffect(() => {
     if (teachers.length === 1 && !teacherId) {
       setTeacherId(teachers[0].id);
     }
   }, [teachers, teacherId]);
 
-  // Filter rooms by location
   const filteredRooms = useMemo(() => {
     if (!locationId) return [];
     return rooms.filter(r => r.location_id === locationId);
   }, [locationId, rooms]);
 
-  // Check conflicts on key field changes with debounce
-  // Simplified approach: memoize key to prevent duplicate checks
   const conflictCheckKey = useMemo(() => {
     if (!open || !teacherId || !selectedDate) return null;
     const sortedStudents = [...selectedStudents].sort().join(',');
     return `${teacherId}-${format(selectedDate, 'yyyy-MM-dd')}-${startTime}-${durationMins}-${roomId || 'none'}-${locationId || 'none'}-${sortedStudents}-${lesson?.id || 'new'}`;
   }, [open, teacherId, selectedDate, startTime, durationMins, roomId, locationId, selectedStudents, lesson?.id]);
 
-  // Stable ref for teachers to avoid infinite re-render loop
-  // (teachers array is recreated each render by useTeachersAndLocations)
   const teachersRef = useRef(teachers);
   teachersRef.current = teachers;
 
   useEffect(() => {
-    // Early return if no valid key - clear state
     if (!conflictCheckKey) {
       setConflictState(prev =>
         prev.isChecking || prev.conflicts.length > 0
@@ -203,27 +189,22 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       return;
     }
 
-    // Skip if we already checked this exact configuration
     if (conflictCheckKey === lastCheckKeyRef.current) {
       return;
     }
 
-    // Mark as processing and increment check counter
     lastCheckKeyRef.current = conflictCheckKey;
     const thisCheckId = ++conflictCheckRef.current;
     let completed = false;
     
-    // Helper to safely update state only if this check is still active
     const completeCheck = (conflicts: ConflictResult[]) => {
       if (completed) return;
       completed = true;
       setConflictState({ isChecking: false, conflicts });
     };
     
-    // Show loading immediately
     setConflictState({ isChecking: true, conflicts: [] });
     
-    // Hard timeout failsafe
     const hardTimeout = setTimeout(() => {
       if (!completed) {
         console.warn('Conflict check hard timeout triggered');
@@ -235,7 +216,6 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       }
     }, 4000);
     
-    // Debounced async check
     const debounceTimer = setTimeout(async () => {
       if (completed) return;
       
@@ -245,7 +225,6 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
         const startAtUtc = fromZonedTime(localDateTime, orgTimezone);
         const endAtUtc = addMinutes(startAtUtc, durationMins);
 
-        // Lookup teacher's user_id from stable ref
         const selectedTeacher = teachersRef.current.find(t => t.id === teacherId);
         const teacherUserId = selectedTeacher?.userId || null;
 
@@ -253,14 +232,13 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
           start_at: startAtUtc,
           end_at: endAtUtc,
           teacher_user_id: teacherUserId,
-          teacher_id: teacherId, // Pass teacher_id for unlinked teacher fallback
+          teacher_id: teacherId,
           room_id: roomId,
           location_id: locationId,
           student_ids: selectedStudents,
           exclude_lesson_id: lesson?.id,
         });
 
-        // Only update if this is still the active check
         if (conflictCheckRef.current === thisCheckId) {
           completeCheck(results);
         }
@@ -303,6 +281,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
     if (lessonType === 'private') {
       setSelectedStudents([studentId]);
       setStudentsOpen(false);
+      setStudentSheetOpen(false);
       
       if (!lesson) {
         const student = students.find(s => s.id === studentId);
@@ -364,11 +343,9 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       return;
     }
 
-    // Lookup teacher details for dual-write
     const selectedTeacher = teachers.find(t => t.id === teacherId);
-    const teacherUserId = selectedTeacher?.userId || null; // null for unlinked teachers
+    const teacherUserId = selectedTeacher?.userId || null;
 
-    // Check for blocking conflicts - use current conflict state
     const blockingConflicts = conflictState.conflicts.filter(c => c.severity === 'error');
     if (blockingConflicts.length > 0) {
       toast({ 
@@ -383,8 +360,6 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
     try {
       const [hour, minute] = startTime.split(':').map(Number);
-      
-      // Build the date/time in the org's timezone, then convert to UTC for storage
       const localDateTime = setMinutes(setHours(startOfDay(selectedDate), hour), minute);
       const startAtUtc = fromZonedTime(localDateTime, orgTimezone);
       const endAtUtc = addMinutes(startAtUtc, durationMins);
@@ -416,7 +391,6 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
         const title = generateTitle();
 
         try {
-          // 1. Update the first (selected) lesson with all fields including notes/status
           const { error: firstError } = await supabase
             .from('lessons')
             .update({
@@ -437,11 +411,9 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
           if (firstError) throw firstError;
 
-          // 2. Batch update remaining future lessons (non-time fields)
           const futureIds = lessonIdsToUpdate.filter(id => id !== lesson.id);
 
           if (futureIds.length > 0 && editMode === 'this_and_future') {
-            // Batch update non-time fields for all future lessons
             const { error: batchError } = await supabase
               .from('lessons')
               .update({
@@ -457,17 +429,13 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
             if (batchError) throw batchError;
 
-            // Apply time shift if time or duration changed
             if (timeOffsetMs !== 0 || originalDuration !== newDuration) {
-              // Fetch current times for future lessons, then batch update in chunks
               const { data: futureTimes } = await supabase
                 .from('lessons')
                 .select('id, start_at')
                 .in('id', futureIds);
 
               if (futureTimes && futureTimes.length > 0) {
-                // Update each future lesson's time (unavoidable without RPC, but
-                // we've already reduced from 4 calls/lesson to 1 call/lesson)
                 await Promise.all(futureTimes.map(fl => {
                   const shiftedStart = new Date(parseISO(fl.start_at).getTime() + timeOffsetMs);
                   const shiftedEnd = new Date(shiftedStart.getTime() + newDuration);
@@ -483,13 +451,11 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
             }
           }
 
-          // 3. Batch delete ALL participants for affected lessons in one call
           await supabase
             .from('lesson_participants')
             .delete()
             .in('lesson_id', lessonIdsToUpdate);
 
-          // 4. Batch insert all new participants in one call
           if (selectedStudents.length > 0) {
             const allParticipants = lessonIdsToUpdate.flatMap(lessonId =>
               selectedStudents.map(studentId => ({
@@ -556,17 +522,15 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
           if (recError) throw recError;
           recurrenceId = recurrence.id;
 
-          // Use org timezone for accurate day-of-week matching
           const endDate = recurrenceEndDate 
             ? fromZonedTime(
                 setHours(startOfDay(recurrenceEndDate), 23),
                 orgTimezone
               )
-            : addMinutes(startAtUtc, 90 * 24 * 60); // 90 days default
+            : addMinutes(startAtUtc, 90 * 24 * 60);
           let currentDate = new Date(startAtUtc);
           
           while (currentDate <= endDate) {
-            // Convert UTC to org timezone for accurate day-of-week check
             const zonedDate = toZonedTime(currentDate, orgTimezone);
             const dayOfWeek = zonedDate.getDay();
             if (recurrenceDays.includes(dayOfWeek) && currentDate.getTime() > startAtUtc.getTime()) {
@@ -576,7 +540,6 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
           }
         }
 
-        // Cap at 200 lessons
         const MAX_RECURRING = 200;
         if (lessonsToCreate.length > MAX_RECURRING) {
           toast({
@@ -589,7 +552,6 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
         const title = generateTitle();
 
-        // Build all lesson objects
         const allLessonRows = lessonsToCreate.map(lessonDate => ({
           org_id: currentOrg.id,
           lesson_type: lessonType,
@@ -608,7 +570,6 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
         }));
 
         try {
-          // Batch insert all lessons in one call
           const { data: insertedLessons, error: lessonError } = await supabase
             .from('lessons')
             .insert(allLessonRows)
@@ -616,7 +577,6 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
           if (lessonError) throw lessonError;
 
-          // Batch insert all participants
           if (insertedLessons && selectedStudents.length > 0) {
             const allParticipants = insertedLessons.flatMap(lesson =>
               selectedStudents.map(studentId => ({
@@ -632,7 +592,6 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
             if (partError) throw partError;
 
-            // Send notes notification once for the first lesson only
             if (notesShared && insertedLessons.length > 0) {
               const firstLesson = insertedLessons[0];
               const zonedLessonDate = toZonedTime(new Date(firstLesson.start_at), orgTimezone);
@@ -678,9 +637,462 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
   const errors = conflictState.conflicts.filter(c => c.severity === 'error');
   const warnings = conflictState.conflicts.filter(c => c.severity === 'warning');
-
-  // Disable save button if checking conflicts OR if there are blocking errors
   const isSaveDisabled = isSaving || conflictState.isChecking || errors.length > 0;
+
+  // ─── Student selector content (shared between mobile sheet & desktop popover) ───
+  const studentSelectorContent = (
+    <Command>
+      <CommandInput placeholder="Search students..." className="min-h-[44px]" />
+      <CommandList className={isMobile ? "max-h-[60vh]" : ""}>
+        <CommandEmpty>No students found.</CommandEmpty>
+        <CommandGroup>
+          {students.map((student) => (
+            <CommandItem
+              key={student.id}
+              onSelect={() => handleStudentToggle(student.id)}
+              className="min-h-[44px]"
+            >
+              <Checkbox
+                checked={selectedStudents.includes(student.id)}
+                className="mr-2"
+              />
+              {student.name}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </CommandList>
+    </Command>
+  );
+
+  // ─── Duration selector: chips on mobile, dropdown on desktop ───
+  const durationSelector = isMobile ? (
+    <div className="space-y-2">
+      <Label>Duration</Label>
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
+        {DURATION_OPTIONS.map((d) => (
+          <button
+            key={d}
+            type="button"
+            onClick={() => setDurationMins(d)}
+            className={cn(
+              "shrink-0 min-h-[44px] px-4 rounded-full text-sm font-medium border transition-colors",
+              durationMins === d
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-foreground border-border hover:bg-accent"
+            )}
+          >
+            {d} min
+          </button>
+        ))}
+      </div>
+    </div>
+  ) : (
+    <div className="space-y-2">
+      <Label>Duration</Label>
+      <Select value={durationMins.toString()} onValueChange={(v) => setDurationMins(Number(v))}>
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {DURATION_OPTIONS.map((d) => (
+            <SelectItem key={d} value={d.toString()}>{d} min</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
+  // ─── Form body (shared between Dialog & Drawer) ───
+  const formBody = (
+    <div className="space-y-4 py-4">
+      {/* Lesson Type */}
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant={lessonType === 'private' ? 'default' : 'outline'}
+          className="flex-1 min-h-[44px]"
+          onClick={() => {
+            setLessonType('private');
+            if (selectedStudents.length > 1) {
+              setSelectedStudents([selectedStudents[0]]);
+            }
+          }}
+        >
+          Private Lesson
+        </Button>
+        <Button
+          type="button"
+          variant={lessonType === 'group' ? 'default' : 'outline'}
+          className="flex-1 min-h-[44px]"
+          onClick={() => setLessonType('group')}
+        >
+          Group Lesson
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Teacher</Label>
+        <Select value={teacherId} onValueChange={setTeacherId}>
+          <SelectTrigger className="min-h-[44px]">
+            <SelectValue placeholder="Select teacher" />
+          </SelectTrigger>
+          <SelectContent>
+            {teachers.map((t) => (
+              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Students */}
+      <div className="space-y-2">
+        <Label>Student{lessonType === 'group' ? 's' : ''}</Label>
+        {isMobile ? (
+          <>
+            <Button
+              variant="outline"
+              className="w-full justify-start text-left font-normal min-h-[44px]"
+              onClick={() => setStudentSheetOpen(true)}
+            >
+              {selectedStudents.length === 0 ? (
+                <span className="text-muted-foreground">Select student{lessonType === 'group' ? 's' : ''}...</span>
+              ) : (
+                <span className="truncate">
+                  {selectedStudents.map(id => students.find(s => s.id === id)?.name).join(', ')}
+                </span>
+              )}
+            </Button>
+            <Sheet open={studentSheetOpen} onOpenChange={setStudentSheetOpen}>
+              <SheetContent side="bottom" className="h-[85vh] p-0" hideCloseButton>
+                <SheetHeader className="p-4 border-b">
+                  <SheetTitle>Select Student{lessonType === 'group' ? 's' : ''}</SheetTitle>
+                </SheetHeader>
+                <div className="flex-1 overflow-y-auto">
+                  {studentSelectorContent}
+                </div>
+                {lessonType === 'group' && (
+                  <div className="p-4 border-t">
+                    <Button className="w-full min-h-[44px]" onClick={() => setStudentSheetOpen(false)}>
+                      Done ({selectedStudents.length} selected)
+                    </Button>
+                  </div>
+                )}
+              </SheetContent>
+            </Sheet>
+          </>
+        ) : (
+          <Popover open={studentsOpen} onOpenChange={setStudentsOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full justify-start text-left font-normal">
+                {selectedStudents.length === 0 ? (
+                  <span className="text-muted-foreground">Select student{lessonType === 'group' ? 's' : ''}...</span>
+                ) : (
+                  <span className="truncate">
+                    {selectedStudents.map(id => students.find(s => s.id === id)?.name).join(', ')}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-full p-0" align="start">
+              {studentSelectorContent}
+            </PopoverContent>
+          </Popover>
+        )}
+        {selectedStudents.length > 0 && lessonType === 'group' && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {selectedStudents.map(id => {
+              const student = students.find(s => s.id === id);
+              return (
+                <Badge key={id} variant="secondary" className="gap-1">
+                  {student?.name}
+                  <X 
+                    className="h-3 w-3 cursor-pointer" 
+                    onClick={() => setSelectedStudents(prev => prev.filter(s => s !== id))}
+                  />
+                </Badge>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Date & Time */}
+      <div className={cn("grid gap-3", isMobile ? "grid-cols-1" : "grid-cols-3")}>
+        <div className="space-y-2">
+          <Label>Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full justify-start text-left font-normal min-h-[44px]">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {format(selectedDate, 'dd MMM yyyy')}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start" side={isMobile ? "top" : "bottom"}>
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => date && setSelectedDate(date)}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="space-y-2">
+          <Label>Time</Label>
+          <Select value={startTime} onValueChange={setStartTime}>
+            <SelectTrigger className="min-h-[44px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              {TIME_OPTIONS.map((time) => (
+                <SelectItem key={time} value={time}>{time}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {durationSelector}
+      </div>
+
+      {/* Location & Room */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label>Location</Label>
+          <Select value={locationId || 'none'} onValueChange={(v) => { setLocationId(v === 'none' ? null : v); setRoomId(null); }}>
+            <SelectTrigger className="min-h-[44px]">
+              <SelectValue placeholder="Select location" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No location</SelectItem>
+              {locations.map((l) => (
+                <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Room</Label>
+          <Select 
+            value={roomId || 'none'} 
+            onValueChange={(v) => setRoomId(v === 'none' ? null : v)}
+            disabled={!locationId}
+          >
+            <SelectTrigger className="min-h-[44px]">
+              <SelectValue placeholder={locationId ? "Select room" : "Select location first"} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No room</SelectItem>
+              {filteredRooms.map((r) => (
+                <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Recurrence */}
+      {!lesson && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between min-h-[44px]">
+            <Label htmlFor="recurring">Recurring lesson</Label>
+            <Switch
+              id="recurring"
+              checked={isRecurring}
+              onCheckedChange={setIsRecurring}
+            />
+          </div>
+          
+          {isRecurring && (
+            <div className="space-y-3 pl-1 border-l-2 border-primary/20 ml-1">
+              <div className="space-y-2">
+                <Label className="text-sm">Repeat on</Label>
+                <div className="flex gap-1 flex-wrap">
+                  {DAY_NAMES.map((day, i) => (
+                    <Button
+                      key={day}
+                      type="button"
+                      size="sm"
+                      variant={recurrenceDays.includes(i) ? 'default' : 'outline'}
+                      className="w-10 h-10 text-xs"
+                      onClick={() => handleRecurrenceDayToggle(i)}
+                    >
+                      {day}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">End date (optional)</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal min-h-[44px]">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {recurrenceEndDate ? format(recurrenceEndDate, 'dd MMM yyyy') : 'No end date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start" side={isMobile ? "top" : "bottom"}>
+                    <Calendar
+                      mode="single"
+                      selected={recurrenceEndDate || undefined}
+                      onSelect={(date) => setRecurrenceEndDate(date || null)}
+                      disabled={(date) => date < selectedDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {closureCheck.hasConflicts && (
+                <Alert className="border-secondary bg-secondary/10">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    <p className="font-medium">{closureCheck.warningMessage}</p>
+                    <p className="text-xs mt-1 text-muted-foreground">
+                      These lessons will be skipped automatically.
+                    </p>
+                    {closureCheck.conflicts.length <= 5 && (
+                      <ul className="text-xs mt-2 space-y-0.5 text-muted-foreground">
+                        {closureCheck.conflicts.map((c, i) => (
+                          <li key={i}>
+                            • {format(c.date, 'EEE, d MMM')}: {c.reason}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Notes */}
+      <div className="space-y-2">
+        <Label>Shared notes (visible to parents)</Label>
+        <Textarea
+          value={notesShared}
+          onChange={(e) => setNotesShared(e.target.value)}
+          placeholder="Add lesson notes that parents can see..."
+          rows={2}
+          className="min-h-[44px]"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Private notes (visible to staff only)</Label>
+        <Textarea
+          value={notesPrivate}
+          onChange={(e) => setNotesPrivate(e.target.value)}
+          placeholder="Add internal notes about this lesson..."
+          rows={2}
+          className="min-h-[44px]"
+        />
+      </div>
+
+      {/* Status (edit mode only) */}
+      {lesson && (
+        <div className="space-y-2">
+          <Label>Status</Label>
+          <Select value={status} onValueChange={(v) => setStatus(v as LessonStatus)}>
+            <SelectTrigger className="min-h-[44px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="scheduled">Scheduled</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Conflict alerts */}
+      <div className="min-h-[60px]">
+        {conflictState.isChecking && (
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Checking for conflicts...
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-xs h-7"
+              onClick={() => setConflictState({ 
+                isChecking: false, 
+                conflicts: [{
+                  type: 'teacher',
+                  severity: 'warning',
+                  message: 'Conflict check skipped. Please verify manually.',
+                }]
+              })}
+            >
+              Skip
+            </Button>
+          </div>
+        )}
+        
+        {!conflictState.isChecking && errors.length > 0 && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {errors.map((e, i) => (
+                <div key={i}>{e.message}</div>
+              ))}
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {!conflictState.isChecking && warnings.length > 0 && (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {warnings.map((w, i) => (
+                <div key={i}>{w.message}</div>
+              ))}
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
+    </div>
+  );
+
+  // ─── Footer buttons (shared) ───
+  const footerButtons = (
+    <>
+      <Button variant="outline" onClick={onClose} className="min-h-[44px]">Cancel</Button>
+      <Button onClick={handleSaveClick} disabled={isSaveDisabled} className="min-h-[44px]">
+        {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+        {conflictState.isChecking ? 'Checking...' : (lesson ? 'Save Changes' : 'Create Lesson')}
+      </Button>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        <Drawer open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+          <DrawerContent className="max-h-[92vh]">
+            <DrawerHeader>
+              <DrawerTitle>{lesson ? 'Edit Lesson' : 'New Lesson'}</DrawerTitle>
+            </DrawerHeader>
+            <div className="overflow-y-auto px-4 flex-1">
+              {formBody}
+            </div>
+            <DrawerFooter className="sticky bottom-0 bg-background border-t pt-3 pb-safe flex-row gap-2">
+              {footerButtons}
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+        <RecurringEditDialog
+          open={showRecurringDialog}
+          onClose={() => setShowRecurringDialog(false)}
+          onSelect={handleRecurringModeSelect}
+        />
+      </>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -689,364 +1101,13 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
           <DialogTitle>{lesson ? 'Edit Lesson' : 'New Lesson'}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          {/* Lesson Type */}
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant={lessonType === 'private' ? 'default' : 'outline'}
-              className="flex-1"
-              onClick={() => {
-                setLessonType('private');
-                if (selectedStudents.length > 1) {
-                  setSelectedStudents([selectedStudents[0]]);
-                }
-              }}
-            >
-              Private Lesson
-            </Button>
-            <Button
-              type="button"
-              variant={lessonType === 'group' ? 'default' : 'outline'}
-              className="flex-1"
-              onClick={() => setLessonType('group')}
-            >
-              Group Lesson
-            </Button>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Teacher</Label>
-            <Select value={teacherId} onValueChange={setTeacherId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select teacher" />
-              </SelectTrigger>
-              <SelectContent>
-                {teachers.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Students */}
-          <div className="space-y-2">
-            <Label>Student{lessonType === 'group' ? 's' : ''}</Label>
-            <Popover open={studentsOpen} onOpenChange={setStudentsOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-start text-left font-normal">
-                  {selectedStudents.length === 0 ? (
-                    <span className="text-muted-foreground">Select student{lessonType === 'group' ? 's' : ''}...</span>
-                  ) : (
-                    <span className="truncate">
-                      {selectedStudents.map(id => students.find(s => s.id === id)?.name).join(', ')}
-                    </span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-full p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search students..." />
-                  <CommandList>
-                    <CommandEmpty>No students found.</CommandEmpty>
-                    <CommandGroup>
-                      {students.map((student) => (
-                        <CommandItem
-                          key={student.id}
-                          onSelect={() => handleStudentToggle(student.id)}
-                        >
-                          <Checkbox
-                            checked={selectedStudents.includes(student.id)}
-                            className="mr-2"
-                          />
-                          {student.name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-            {selectedStudents.length > 0 && lessonType === 'group' && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {selectedStudents.map(id => {
-                  const student = students.find(s => s.id === id);
-                  return (
-                    <Badge key={id} variant="secondary" className="gap-1">
-                      {student?.name}
-                      <X 
-                        className="h-3 w-3 cursor-pointer" 
-                        onClick={() => setSelectedStudents(prev => prev.filter(s => s !== id))}
-                      />
-                    </Badge>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Date & Time */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-2">
-              <Label>Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {format(selectedDate, 'dd MMM')}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(date) => date && setSelectedDate(date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-2">
-              <Label>Time</Label>
-              <Select value={startTime} onValueChange={setStartTime}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  {TIME_OPTIONS.map((time) => (
-                    <SelectItem key={time} value={time}>{time}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Duration</Label>
-              <Select value={durationMins.toString()} onValueChange={(v) => setDurationMins(Number(v))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DURATION_OPTIONS.map((d) => (
-                    <SelectItem key={d} value={d.toString()}>{d} min</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Location & Room */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Location</Label>
-              <Select value={locationId || 'none'} onValueChange={(v) => { setLocationId(v === 'none' ? null : v); setRoomId(null); }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select location" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No location</SelectItem>
-                  {locations.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Room</Label>
-              <Select 
-                value={roomId || 'none'} 
-                onValueChange={(v) => setRoomId(v === 'none' ? null : v)}
-                disabled={!locationId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={locationId ? "Select room" : "Select location first"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No room</SelectItem>
-                  {filteredRooms.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Recurrence */}
-          {!lesson && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="recurring">Recurring lesson</Label>
-                <Switch
-                  id="recurring"
-                  checked={isRecurring}
-                  onCheckedChange={setIsRecurring}
-                />
-              </div>
-              
-              {isRecurring && (
-                <div className="space-y-3 pl-1 border-l-2 border-primary/20 ml-1">
-                  <div className="space-y-2">
-                    <Label className="text-sm">Repeat on</Label>
-                    <div className="flex gap-1">
-                      {DAY_NAMES.map((day, i) => (
-                        <Button
-                          key={day}
-                          type="button"
-                          size="sm"
-                          variant={recurrenceDays.includes(i) ? 'default' : 'outline'}
-                          className="w-10 h-8 text-xs"
-                          onClick={() => handleRecurrenceDayToggle(i)}
-                        >
-                          {day}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm">End date (optional)</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-start text-left font-normal">
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {recurrenceEndDate ? format(recurrenceEndDate, 'dd MMM yyyy') : 'No end date'}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={recurrenceEndDate || undefined}
-                          onSelect={(date) => setRecurrenceEndDate(date || null)}
-                          disabled={(date) => date < selectedDate}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  {/* Closure pattern warnings */}
-                  {closureCheck.hasConflicts && (
-                    <Alert className="border-secondary bg-secondary/10">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription>
-                        <p className="font-medium">{closureCheck.warningMessage}</p>
-                        <p className="text-xs mt-1 text-muted-foreground">
-                          These lessons will be skipped automatically.
-                        </p>
-                        {closureCheck.conflicts.length <= 5 && (
-                          <ul className="text-xs mt-2 space-y-0.5 text-muted-foreground">
-                            {closureCheck.conflicts.map((c, i) => (
-                              <li key={i}>
-                                • {format(c.date, 'EEE, d MMM')}: {c.reason}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label>Shared notes (visible to parents)</Label>
-            <Textarea
-              value={notesShared}
-              onChange={(e) => setNotesShared(e.target.value)}
-              placeholder="Add lesson notes that parents can see..."
-              rows={2}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Private notes (visible to staff only)</Label>
-            <Textarea
-              value={notesPrivate}
-              onChange={(e) => setNotesPrivate(e.target.value)}
-              placeholder="Add internal notes about this lesson..."
-              rows={2}
-            />
-          </div>
-
-          {/* Status (edit mode only) */}
-          {lesson && (
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as LessonStatus)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="scheduled">Scheduled</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Conflict alerts - fixed min-height to prevent layout shifts */}
-          <div className="min-h-[60px]">
-            {conflictState.isChecking && (
-              <div className="flex items-center justify-between py-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Checking for conflicts...
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-7"
-                  onClick={() => setConflictState({ 
-                    isChecking: false, 
-                    conflicts: [{
-                      type: 'teacher',
-                      severity: 'warning',
-                      message: 'Conflict check skipped. Please verify manually.',
-                    }]
-                  })}
-                >
-                  Skip
-                </Button>
-              </div>
-            )}
-            
-            {!conflictState.isChecking && errors.length > 0 && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  {errors.map((e, i) => (
-                    <div key={i}>{e.message}</div>
-                  ))}
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            {!conflictState.isChecking && warnings.length > 0 && (
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  {warnings.map((w, i) => (
-                    <div key={i}>{w.message}</div>
-                  ))}
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
-        </div>
+        {formBody}
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSaveClick} disabled={isSaveDisabled}>
-            {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            {conflictState.isChecking ? 'Checking...' : (lesson ? 'Save Changes' : 'Create Lesson')}
-          </Button>
+          {footerButtons}
         </DialogFooter>
       </DialogContent>
 
-      {/* Recurring Edit Choice Dialog */}
       <RecurringEditDialog
         open={showRecurringDialog}
         onClose={() => setShowRecurringDialog(false)}
