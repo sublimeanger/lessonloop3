@@ -31,14 +31,14 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1,
+      staggerChildren: 0.08,
     },
   },
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] as const } },
 };
 
 export default function Dashboard() {
@@ -51,7 +51,6 @@ export default function Dashboard() {
   const isSoloTeacher = currentOrg?.org_type === 'solo_teacher' || currentOrg?.org_type === 'studio';
   const isAcademyOrAgency = currentOrg?.org_type === 'academy' || currentOrg?.org_type === 'agency';
 
-  // Redirect parents to portal
   useEffect(() => {
     if (isParent) {
       navigate('/portal/home', { replace: true });
@@ -60,12 +59,8 @@ export default function Dashboard() {
 
   const firstName = profile?.full_name?.split(' ')[0] || 'there';
 
-  // Don't render anything for parents (they'll be redirected)
-  if (isParent) {
-    return null;
-  }
+  if (isParent) return null;
 
-  // Show loading while org context initialises
   if (!hasInitialised || orgLoading) {
     return (
       <AppLayout>
@@ -76,11 +71,10 @@ export default function Dashboard() {
     );
   }
 
-  // Handle no organisation state
   if (!hasOrgs || !currentOrg) {
     return (
       <AppLayout>
-        <div className="mx-auto max-w-md py-12">
+        <div className="mx-auto max-w-md py-12 px-4">
           <Card>
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
@@ -102,7 +96,6 @@ export default function Dashboard() {
     );
   }
 
-  // Teacher view within academy/agency
   if (isTeacher && isAcademyOrAgency) {
     return <TeacherDashboard firstName={firstName} />;
   }
@@ -114,7 +107,7 @@ export default function Dashboard() {
   return <SoloTeacherDashboard firstName={firstName} />;
 }
 
-// Hook to only animate on first mount, not on re-navigation
+// Hook to only animate on first mount
 function useFirstMount() {
   const hasAnimated = useRef(false);
   const isFirst = !hasAnimated.current;
@@ -139,12 +132,11 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
   return (
     <AppLayout>
       <motion.div
-        className="space-y-6"
+        className="space-y-4 sm:space-y-6"
         variants={isFirstMount ? containerVariants : undefined}
         initial={isFirstMount ? "hidden" : false}
         animate="visible"
       >
-        {/* Hero Section */}
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Dashboard Hero">
             <DashboardHero
@@ -158,40 +150,36 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
           </SectionErrorBoundary>
         </motion.div>
 
-        {/* First Run Experience */}
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="First Run Experience">
             <FirstRunExperience />
           </SectionErrorBoundary>
         </motion.div>
 
-        {/* Urgent Actions Bar */}
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Urgent Actions">
             <UrgentActionsBar />
           </SectionErrorBoundary>
         </motion.div>
 
-        {/* Upgrade Banner */}
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Upgrade Banner">
             <UpgradeBanner />
           </SectionErrorBoundary>
         </motion.div>
 
-        {/* Onboarding Checklist */}
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Onboarding Checklist">
             <OnboardingChecklist />
           </SectionErrorBoundary>
         </motion.div>
 
-        {/* Stats Grid — 6 cards */}
+        {/* Stats Grid — 6 cards, 2 cols mobile, 3 cols desktop */}
         <motion.div variants={itemVariants}>
           {isLoading ? (
             <GridSkeleton count={6} columns={3} />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
               <StatCard title="Today's Lessons" value={stats?.todayLessons ?? 0} subtitle="Scheduled for today" icon={Calendar} href="/calendar" variant="teal" />
               <StatCard title="Active Students" value={stats?.activeStudents ?? 0} subtitle="Currently enrolled" icon={Users} href="/students" variant="coral" />
               <StatCard title="This Week" value={`${stats?.lessonsThisWeek ?? 0} lessons`} subtitle={`${stats?.hoursThisWeek ?? 0} teaching hours`} icon={Clock} href="/calendar" variant="emerald" />
@@ -202,8 +190,8 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
           )}
         </motion.div>
 
-        {/* Main Content Grid */}
-        <motion.div variants={itemVariants} className="grid gap-6 lg:grid-cols-8">
+        {/* Main Content Grid — stacked on mobile, side-by-side on lg */}
+        <motion.div variants={itemVariants} className="grid gap-4 sm:gap-6 lg:grid-cols-8">
           <SectionErrorBoundary name="Today's Timeline">
             <TodayTimeline className="lg:col-span-5" />
           </SectionErrorBoundary>
@@ -233,12 +221,11 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
   return (
     <AppLayout>
       <motion.div
-        className="space-y-6"
+        className="space-y-4 sm:space-y-6"
         variants={isFirstMount ? containerVariants : undefined}
         initial={isFirstMount ? "hidden" : false}
         animate="visible"
       >
-        {/* Hero Section */}
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Dashboard Hero">
             <DashboardHero
@@ -252,33 +239,30 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
           </SectionErrorBoundary>
         </motion.div>
 
-        {/* First Run Experience */}
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="First Run Experience">
             <FirstRunExperience />
           </SectionErrorBoundary>
         </motion.div>
 
-        {/* Urgent Actions Bar */}
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Urgent Actions">
             <UrgentActionsBar />
           </SectionErrorBoundary>
         </motion.div>
 
-        {/* Upgrade Banner */}
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Upgrade Banner">
             <UpgradeBanner />
           </SectionErrorBoundary>
         </motion.div>
 
-        {/* Stats Grid — 6 cards */}
+        {/* Stats Grid — 2 cols mobile, 3 cols desktop */}
         <motion.div variants={itemVariants}>
           {isLoading ? (
             <GridSkeleton count={6} columns={3} />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
               <StatCard title="Today's Lessons" value={stats?.todayLessons ?? 0} subtitle="Across all teachers" icon={Calendar} href="/calendar" variant="teal" />
               <StatCard title="Active Students" value={stats?.activeStudents ?? 0} subtitle="Currently enrolled" icon={Users} href="/students" variant="coral" />
               <StatCard title="This Week" value={`${stats?.lessonsThisWeek ?? 0} lessons`} subtitle={`${stats?.hoursThisWeek ?? 0} teaching hours`} icon={Clock} href="/calendar" variant="emerald" />
@@ -290,30 +274,30 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
         </motion.div>
 
         {/* Main Content Grid */}
-        <motion.div variants={itemVariants} className="grid gap-6 lg:grid-cols-12">
+        <motion.div variants={itemVariants} className="grid gap-4 sm:gap-6 lg:grid-cols-12">
           <SectionErrorBoundary name="Today's Timeline">
             <TodayTimeline className="lg:col-span-5" />
           </SectionErrorBoundary>
           
-          <div className="lg:col-span-4 space-y-6">
+          <div className="lg:col-span-4 space-y-4 sm:space-y-6">
             {/* Cancellation Alert Card */}
             <Card className="border-amber-200/50 bg-amber-50/30">
-              <CardContent className="p-4">
+              <CardContent className="p-3 sm:p-4">
                 <Link to="/reports/cancellations" className="flex items-center gap-3 group">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100">
-                    <AlertCircle className="h-5 w-5 text-amber-600" />
+                  <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-amber-100 shrink-0">
+                    <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">Cancellation Tracking</p>
                     <p className="text-xs text-muted-foreground">Monitor patterns and rates</p>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
                 </Link>
               </CardContent>
             </Card>
             
             <SectionErrorBoundary name="Quick Actions">
-              <QuickActionsGrid variant="academy" className="" />
+              <QuickActionsGrid variant="academy" />
             </SectionErrorBoundary>
           </div>
         </motion.div>
@@ -329,12 +313,11 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
   return (
     <AppLayout>
       <motion.div
-        className="space-y-6 max-w-4xl"
+        className="space-y-4 sm:space-y-6 max-w-4xl"
         variants={isFirstMount ? containerVariants : undefined}
         initial={isFirstMount ? "hidden" : false}
         animate="visible"
       >
-        {/* Hero Section */}
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Dashboard Hero">
             <DashboardHero
@@ -345,26 +328,24 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
           </SectionErrorBoundary>
         </motion.div>
 
-        {/* Urgent Actions Bar */}
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Urgent Actions">
             <UrgentActionsBar />
           </SectionErrorBoundary>
         </motion.div>
 
-        {/* Upgrade Banner */}
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Upgrade Banner">
             <UpgradeBanner variant="compact" />
           </SectionErrorBoundary>
         </motion.div>
 
-        {/* Stats Grid */}
+        {/* Stats Grid — 2 cols mobile, 4 cols desktop */}
         <motion.div variants={itemVariants}>
           {isLoading ? (
             <GridSkeleton count={4} columns={4} />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
               <StatCard title="Today" value={stats?.todayLessons ?? 0} subtitle="Lessons today" icon={Calendar} variant="teal" />
               <StatCard title="This Month" value={stats?.lessonsThisMonth ?? 0} subtitle="Lessons this month" icon={Clock} variant="coral" />
               <StatCard title="My Students" value={stats?.myStudentsCount ?? 0} subtitle="Assigned to you" icon={Users} href="/students" variant="violet" />
@@ -374,7 +355,7 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
         </motion.div>
 
         {/* Main Content Grid */}
-        <motion.div variants={itemVariants} className="grid gap-6 lg:grid-cols-5">
+        <motion.div variants={itemVariants} className="grid gap-4 sm:gap-6 lg:grid-cols-5">
           <SectionErrorBoundary name="Today's Timeline">
             <TodayTimeline className="lg:col-span-3" />
           </SectionErrorBoundary>
