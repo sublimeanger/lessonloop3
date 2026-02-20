@@ -81,7 +81,14 @@ export function OrgMembersTab() {
     fetchMembers();
   }, [currentOrg?.id]);
 
+  const ASSIGNABLE_ROLES: AppRole[] = ['admin', 'teacher', 'finance'];
+
   const handleRoleChange = async (memberId: string, newRole: AppRole) => {
+    if (!ASSIGNABLE_ROLES.includes(newRole)) {
+      toast({ title: 'Invalid role', variant: 'destructive' });
+      return;
+    }
+
     setUpdatingMember(memberId);
     
     const { error } = await supabase
