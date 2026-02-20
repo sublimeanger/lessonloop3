@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,128 +11,24 @@ import { Loader2, Mail, Shield, UserMinus, UserPlus } from 'lucide-react';
 import { InviteMemberDialog } from './InviteMemberDialog';
 import { PendingInvitesList } from './PendingInvitesList';
 
-interface Member {
-  id: string;
-  user_id: string;
-  role: AppRole;
-  status: string;
-  profile?: {
-    full_name: string | null;
-    email: string | null;
-  };
-}
+const getRoleBadgeColor = (role: AppRole) => {
+  switch (role) {
+    case 'owner': return 'bg-primary text-primary-foreground';
+    case 'admin': return 'bg-info text-info-foreground';
+    case 'teacher': return 'bg-success text-success-foreground';
+    case 'finance': return 'bg-warning text-warning-foreground';
+    case 'parent': return 'bg-accent text-accent-foreground';
+    default: return 'bg-muted';
+  }
+};
 
 export function OrgMembersTab() {
-  const { currentOrg, currentRole, isOrgAdmin, isOrgOwner } = useOrg();
+  const { currentOrg, isOrgAdmin } = useOrg();
   const { user } = useAuth();
-  const { toast } = useToast();
-  
-  const [members, setMembers] = useState<Member[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [updatingMember, setUpdatingMember] = useState<string | null>(null);
+  const { members, isLoading, changeRole, disableMember, updatingMember } = useOrgMembers();
+
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [inviteRefreshKey, setInviteRefreshKey] = useState(0);
-
-  const fetchMembers = async () => {
-    if (!currentOrg) return;
-    setIsLoading(true);
-    
-    const { data: memberData } = await supabase
-      .from('org_memberships')
-      .select('*')
-      .eq('org_id', currentOrg.id)
-      .neq('status', 'disabled');
-    
-    if (!memberData || memberData.length === 0) {
-      setMembers([]);
-      setIsLoading(false);
-      return;
-    }
-
-    // Batch-fetch all profiles in one query
-    const userIds = memberData.map(m => m.user_id);
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, full_name, email')
-      .in('id', userIds);
-
-    const profileMap = new Map(
-      (profiles || []).map(p => [p.id, { full_name: p.full_name, email: p.email }])
-    );
-
-    const membersWithProfiles: Member[] = memberData.map(member => ({
-      ...member,
-      profile: profileMap.get(member.user_id) || undefined,
-    }));
-    
-    // Sort: owner first, then by name
-    membersWithProfiles.sort((a, b) => {
-      if (a.role === 'owner') return -1;
-      if (b.role === 'owner') return 1;
-      return (a.profile?.full_name || '').localeCompare(b.profile?.full_name || '');
-    });
-    
-    setMembers(membersWithProfiles);
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    fetchMembers();
-  }, [currentOrg?.id]);
-
-  const ASSIGNABLE_ROLES: AppRole[] = ['admin', 'teacher', 'finance'];
-
-  const handleRoleChange = async (memberId: string, newRole: AppRole) => {
-    if (!ASSIGNABLE_ROLES.includes(newRole)) {
-      toast({ title: 'Invalid role', variant: 'destructive' });
-      return;
-    }
-
-    setUpdatingMember(memberId);
-    
-    const { error } = await supabase
-      .from('org_memberships')
-      .update({ role: newRole })
-      .eq('id', memberId);
-    
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Role updated' });
-      fetchMembers();
-    }
-    
-    setUpdatingMember(null);
-  };
-
-  const handleDisableMember = async (memberId: string, memberName: string) => {
-    setUpdatingMember(memberId);
-    
-    const { error } = await supabase
-      .from('org_memberships')
-      .update({ status: 'disabled' })
-      .eq('id', memberId);
-    
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Member disabled', description: `${memberName} no longer has access.` });
-      fetchMembers();
-    }
-    
-    setUpdatingMember(null);
-  };
-
-  const getRoleBadgeColor = (role: AppRole) => {
-    switch (role) {
-      case 'owner': return 'bg-primary text-primary-foreground';
-      case 'admin': return 'bg-info text-info-foreground';
-      case 'teacher': return 'bg-success text-success-foreground';
-      case 'finance': return 'bg-warning text-warning-foreground';
-      case 'parent': return 'bg-accent text-accent-foreground';
-      default: return 'bg-muted';
-    }
-  };
 
   if (isLoading) {
     return (
@@ -171,10 +66,9 @@ export function OrgMembersTab() {
           {members.map((member) => {
             const isCurrentUser = member.user_id === user?.id;
             const isTargetOwner = member.role === 'owner';
-            // Admins (and owners) can manage non-owner members; owners remain uneditable by admins
             const canEditRole = isOrgAdmin && !isCurrentUser && !isTargetOwner;
             const canDisable = isOrgAdmin && !isCurrentUser && !isTargetOwner;
-            
+
             return (
               <div
                 key={member.id}
@@ -201,12 +95,12 @@ export function OrgMembersTab() {
                     )}
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   {canEditRole ? (
                     <Select
                       value={member.role}
-                      onValueChange={(value) => handleRoleChange(member.id, value as AppRole)}
+                      onValueChange={(value) => changeRole({ memberId: member.id, newRole: value as AppRole })}
                       disabled={updatingMember === member.id}
                     >
                       <SelectTrigger className="w-28">
@@ -223,7 +117,7 @@ export function OrgMembersTab() {
                       {member.role}
                     </Badge>
                   )}
-                  
+
                   {canDisable && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -246,7 +140,7 @@ export function OrgMembersTab() {
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={() => handleDisableMember(member.id, member.profile?.full_name || member.profile?.email || 'Member')}
+                            onClick={() => disableMember({ memberId: member.id, memberName: member.profile?.full_name || member.profile?.email || 'Member' })}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
                             Disable Access
@@ -259,14 +153,13 @@ export function OrgMembersTab() {
               </div>
             );
           })}
-          
+
           {members.length === 0 && (
             <p className="text-center text-muted-foreground py-8">No members found</p>
           )}
 
-          {/* Pending invites section */}
           <PendingInvitesList refreshKey={inviteRefreshKey} />
-          
+
           {!isOrgAdmin && (
             <p className="text-sm text-muted-foreground">
               Only organisation owners and admins can change member roles or disable access.
