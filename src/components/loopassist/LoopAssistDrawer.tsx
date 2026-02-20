@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 import {
   MessageSquare,
   Plus,
@@ -21,7 +22,7 @@ import { useLoopAssist, AIMessage, AIConversation } from '@/hooks/useLoopAssist'
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { useProactiveAlerts, ProactiveAlert } from '@/hooks/useProactiveAlerts';
 import { useLoopAssistFirstRun } from '@/hooks/useLoopAssistFirstRun';
-import { renderMessageWithChips } from './EntityChip';
+import { preprocessEntityChips, EntityChip } from './EntityChip';
 import { ActionCard, stripActionBlock, parseActionFromResponse } from './ActionCard';
 import { MessageFeedback } from './MessageFeedback';
 import { ProactiveAlerts } from './ProactiveAlerts';
@@ -562,6 +563,7 @@ function ConversationList({
 function MessageBubble({ message, conversationId }: { message: AIMessage; conversationId: string | null }) {
   const isUser = message.role === 'user';
   const displayContent = isUser ? message.content : stripActionBlock(message.content);
+  const processedContent = isUser ? displayContent : preprocessEntityChips(displayContent);
   const hasAction = !isUser && parseActionFromResponse(message.content);
 
   return (
@@ -577,15 +579,30 @@ function MessageBubble({ message, conversationId }: { message: AIMessage; conver
         ) : (
           <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:mb-1 [&_p:last-child]:mb-0 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0 [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-sm [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_h1]:mb-1 [&_h2]:mb-1 [&_h3]:mb-1 [&_pre]:bg-background/50 [&_pre]:text-xs [&_pre]:p-2 [&_pre]:rounded">
             <ReactMarkdown
+              rehypePlugins={[rehypeRaw]}
               components={{
-                p: ({ children }) => <p className="mb-1 last:mb-0">{renderMessageWithChips(String(children))}</p>,
+                p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
                 strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
                 em: ({ children }) => <em>{children}</em>,
                 a: ({ href, children }) => <a href={href} className="text-primary underline" target="_blank" rel="noopener noreferrer">{children}</a>,
-                li: ({ children }) => <li className="my-0">{renderMessageWithChips(String(children))}</li>,
+                li: ({ children }) => <li className="my-0">{children}</li>,
+                span: ({ node, ...props }: any) => {
+                  const entityType = props['data-entity-type'];
+                  if (entityType) {
+                    return (
+                      <EntityChip
+                        type={entityType}
+                        id={props['data-entity-id'] || ''}
+                        label={props['data-entity-label'] || ''}
+                        className="mx-0.5 inline-flex"
+                      />
+                    );
+                  }
+                  return <span {...props} />;
+                },
               }}
             >
-              {displayContent}
+              {processedContent}
             </ReactMarkdown>
           </div>
         )}

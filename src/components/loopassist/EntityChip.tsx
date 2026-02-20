@@ -58,6 +58,32 @@ export function EntityChip({ type, id, label, className }: EntityChipProps) {
   );
 }
 
+// Preprocess entity chip patterns into HTML spans for use with rehype-raw
+export function preprocessEntityChips(content: string): string {
+  return content
+    .replace(/\[Invoice:(LL-\d{4}-\d{5})\]/g, (_, num) =>
+      `<span data-entity-type="invoice" data-entity-id="${num}" data-entity-label="${num}">${num}</span>`
+    )
+    .replace(/\[Student:([a-f0-9-]{36}):([^\]]+)\]/g, (_, id, name) =>
+      `<span data-entity-type="student" data-entity-id="${id}" data-entity-label="${name}">${name}</span>`
+    )
+    .replace(/\[Student:([a-f0-9-]{36})\](?!:)/g, (_, id) =>
+      `<span data-entity-type="student" data-entity-id="${id}" data-entity-label="Student">Student</span>`
+    )
+    .replace(/\[Lesson:([a-f0-9-]{36}):([^\]]+)\]/g, (_, id, title) =>
+      `<span data-entity-type="lesson" data-entity-id="${id}" data-entity-label="${title}">${title}</span>`
+    )
+    .replace(/\[Lesson:([a-f0-9-]{36})\](?!:)/g, (_, id) =>
+      `<span data-entity-type="lesson" data-entity-id="${id}" data-entity-label="Lesson">Lesson</span>`
+    )
+    .replace(/\[Guardian:([a-f0-9-]{36}):([^\]]+)\]/g, (_, id, name) =>
+      `<span data-entity-type="guardian" data-entity-id="${id}" data-entity-label="${name}">${name}</span>`
+    )
+    .replace(/\[Guardian:([a-f0-9-]{36})\](?!:)/g, (_, id) =>
+      `<span data-entity-type="guardian" data-entity-id="${id}" data-entity-label="Guardian">Guardian</span>`
+    );
+}
+
 // Parse message content and extract entity references
 export function parseEntityReferences(content: string): Array<{
   type: EntityType;
