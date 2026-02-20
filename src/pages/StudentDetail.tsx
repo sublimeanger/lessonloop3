@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Mail, Phone, Calendar, Edit, Trash2, Plus, UserPlus, MessageSquare, Send, Receipt, Music, Copy } from 'lucide-react';
+import { DetailSkeleton } from '@/components/shared/LoadingState';
 import { useStudentMessages } from '@/hooks/useMessages';
 import { MessageList } from '@/components/messages/MessageList';
 import { ComposeMessageModal } from '@/components/messages/ComposeMessageModal';
@@ -467,9 +468,7 @@ export default function StudentDetail() {
   if (isLoading || !student) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+        <DetailSkeleton />
       </AppLayout>
     );
   }

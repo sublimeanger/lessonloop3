@@ -12,6 +12,7 @@ import { useDeleteValidation, DeletionCheckResult } from '@/hooks/useDeleteValid
 import { DeleteValidationDialog } from '@/components/shared/DeleteValidationDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ListSkeleton } from '@/components/shared/LoadingState';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -312,9 +313,7 @@ export default function Teachers() {
       )}
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+        <ListSkeleton count={3} />
       ) : teachers.length === 0 ? (
         <EmptyState
           icon={GraduationCap}

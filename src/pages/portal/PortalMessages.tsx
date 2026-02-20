@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ListSkeleton } from '@/components/shared/LoadingState';
 import { logger } from '@/lib/logger';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -116,9 +117,7 @@ export default function PortalMessages() {
         {/* Inbox - messages received from staff */}
         <TabsContent value="inbox">
           {messagesLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
+            <ListSkeleton count={3} />
           ) : !messages || messages.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
@@ -180,9 +179,7 @@ export default function PortalMessages() {
         {/* Requests - existing request flow */}
         <TabsContent value="requests">
           {requestsLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
+            <ListSkeleton count={2} />
           ) : !requests || requests.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
