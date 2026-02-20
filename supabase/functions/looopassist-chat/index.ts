@@ -79,7 +79,18 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
   const monthStartStr = monthStart.toISOString().split("T")[0];
 
-  // Fetch overdue and outstanding invoices
+  // Fetch accurate financial totals via RPC (avoids row-limit issues)
+  const { data: invoiceStatsRaw } = await supabase.rpc("get_invoice_stats", { _org_id: orgId });
+  const invoiceStats = invoiceStatsRaw as {
+    total_outstanding: number;
+    overdue: number;
+    overdue_count: number;
+    draft_count: number;
+    paid_total: number;
+    paid_count: number;
+  } | null;
+
+  // Fetch sample overdue and outstanding invoices for citations (limited list is fine here)
   const { data: overdueInvoices } = await supabase
     .from("invoices")
     .select(`
@@ -214,24 +225,35 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
   const overdueList = (overdueInvoices || []).filter((i: Invoice) => i.status === "overdue");
   const sentList = (overdueInvoices || []).filter((i: Invoice) => i.status === "sent");
 
+  // Use RPC totals for accurate counts (the fetched list is limited to 20 for citations)
+  const rpcOverdueTotal = invoiceStats?.overdue ?? 0;
+  const rpcOutstandingTotal = invoiceStats?.total_outstanding ?? 0;
+  const rpcOverdueCount = invoiceStats?.overdue_count ?? 0;
+  // Outstanding (non-overdue) = total outstanding minus overdue
+  const rpcSentTotal = rpcOutstandingTotal - rpcOverdueTotal;
+
   if (overdueList.length > 0) {
-    const overdueTotal = overdueList.reduce((sum: number, i: Invoice) => sum + i.total_minor, 0);
-    invoiceSummary += `\n\nOVERDUE INVOICES (${overdueList.length}, total ${fmtCurrency(overdueTotal)}):`;
+    invoiceSummary += `\n\nOVERDUE INVOICES (${rpcOverdueCount} total, ${fmtCurrency(rpcOverdueTotal)}):`;
     overdueList.slice(0, 10).forEach((inv: Invoice) => {
       const payer = inv.guardians?.full_name || 
         (inv.students ? `${inv.students.first_name} ${inv.students.last_name}` : "Unknown");
       invoiceSummary += `\n- [Invoice:${inv.invoice_number}] ${fmtCurrency(inv.total_minor)} due ${inv.due_date} (${payer})`;
     });
+    if (rpcOverdueCount > overdueList.length) {
+      invoiceSummary += `\n... and ${rpcOverdueCount - overdueList.length} more overdue invoices`;
+    }
   }
 
   if (sentList.length > 0) {
-    const sentTotal = sentList.reduce((sum: number, i: Invoice) => sum + i.total_minor, 0);
-    invoiceSummary += `\n\nOUTSTANDING INVOICES (${sentList.length}, total ${fmtCurrency(sentTotal)}):`;
+    invoiceSummary += `\n\nOUTSTANDING INVOICES (${fmtCurrency(rpcSentTotal)} total):`;
     sentList.slice(0, 10).forEach((inv: Invoice) => {
       const payer = inv.guardians?.full_name || 
         (inv.students ? `${inv.students.first_name} ${inv.students.last_name}` : "Unknown");
       invoiceSummary += `\n- [Invoice:${inv.invoice_number}] ${fmtCurrency(inv.total_minor)} due ${inv.due_date} (${payer})`;
     });
+    if (sentList.length >= 10) {
+      invoiceSummary += `\n... showing 10 of outstanding invoices`;
+    }
   }
 
   // Build lesson summary with citations
@@ -349,15 +371,13 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
     }
   }
 
-  // Financial summary
+  // Financial summary — use RPC totals for accuracy
   const revenueThisMonth = (paidInvoicesThisMonth || []).reduce((sum: number, i: any) => sum + i.total_minor, 0);
-  const overdueTotal = overdueList.reduce((sum: number, i: Invoice) => sum + i.total_minor, 0);
-  const sentTotal = sentList.reduce((sum: number, i: Invoice) => sum + i.total_minor, 0);
 
   let financialSummary = `\n\nFINANCIAL SUMMARY:`;
   financialSummary += `\n- Revenue this month: ${fmtCurrency(revenueThisMonth)}`;
-  financialSummary += `\n- Outstanding: ${fmtCurrency(sentTotal)} across ${sentList.length} invoices`;
-  financialSummary += `\n- Overdue: ${fmtCurrency(overdueTotal)} across ${overdueList.length} invoices`;
+  financialSummary += `\n- Total outstanding: ${fmtCurrency(rpcOutstandingTotal)}`;
+  financialSummary += `\n- Of which overdue: ${fmtCurrency(rpcOverdueTotal)} (${rpcOverdueCount} invoices)`;
   if (recentPayments && recentPayments.length > 0) {
     const weekPayments = recentPayments.reduce((sum: number, p: Payment) => sum + p.amount_minor, 0);
     financialSummary += `\n- Payments received (last 7 days): ${fmtCurrency(weekPayments)}`;

@@ -500,12 +500,15 @@ export function useDashboardStats() {
         .eq('org_id', currentOrg.id)
         .eq('status', 'active');
 
-      // Outstanding invoices
-      const { data: outstandingData } = await supabase
-        .from('invoices')
-        .select('total_minor')
-        .eq('org_id', currentOrg.id)
-        .in('status', ['sent', 'overdue']);
+      // Outstanding invoices — use RPC for accurate totals (no row-limit issues)
+      const { data: invoiceStatsRaw } = await supabase.rpc('get_invoice_stats', {
+        _org_id: currentOrg.id,
+      });
+      const invoiceStats = invoiceStatsRaw as {
+        total_outstanding: number;
+        overdue: number;
+        paid_total: number;
+      } | null;
 
       // Hours this week (completed lessons)
       const { data: weekLessons } = await supabase
@@ -532,7 +535,7 @@ export function useDashboardStats() {
 
       const todayLessons = todayLessonsData?.length || 0;
       const activeStudents = studentsData?.length || 0;
-      const outstandingAmount = (outstandingData || []).reduce((sum, inv) => sum + inv.total_minor, 0) / 100;
+      const outstandingAmount = (invoiceStats?.total_outstanding ?? 0) / 100;
       
       let hoursThisWeek = 0;
       let lessonsThisWeek = 0;
