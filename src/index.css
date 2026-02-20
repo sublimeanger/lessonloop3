@@ -129,6 +129,12 @@
 @layer base {
   * {
     @apply border-border;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  
+  button, a, [role="button"] {
+    transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+    transition-duration: 150ms;
   }
   
   body {
