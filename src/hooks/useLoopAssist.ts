@@ -257,14 +257,21 @@ export function useLoopAssist(externalPageContext?: PageContext) {
 
           try {
             const parsed = JSON.parse(jsonStr);
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) {
-              assistantContent += delta;
+            // Simplified format from server-side transform: { text: "..." }
+            if (parsed.text) {
+              assistantContent += parsed.text;
               setStreamingContent(assistantContent);
             }
-          } catch {
-            textBuffer = line + '\n' + textBuffer;
-            break;
+            // Handle streaming errors
+            if (parsed.error) {
+              throw new Error(parsed.error);
+            }
+          } catch (e) {
+            if (e instanceof SyntaxError) {
+              textBuffer = line + '\n' + textBuffer;
+              break;
+            }
+            throw e;
           }
         }
       }
