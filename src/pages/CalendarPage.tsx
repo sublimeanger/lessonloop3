@@ -105,28 +105,51 @@ export default function CalendarPage() {
 
   // Keyboard navigation
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      switch (e.key) {
-        case 'ArrowLeft': navigatePrev(); break;
-        case 'ArrowRight': navigateNext(); break;
-        case 't': case 'T': goToToday(); break;
-        case 'n': case 'N':
-          if (!isParent) {
-            setSelectedLesson(null);
-            setSlotDate(undefined);
-            setSlotEndDate(undefined);
-            setIsModalOpen(true);
-          }
-          break;
-        case 'w': setView('week'); break;
-        case 'a': setView('agenda'); break;
-        case 's': setView('stacked'); break;
+    const handleCalendarToday = () => goToToday();
+    const handleCalendarPrev = () => navigatePrev();
+    const handleCalendarNext = () => navigateNext();
+    const handleCalendarNewLesson = () => {
+      if (!isParent) {
+        setSelectedLesson(null);
+        setSlotDate(undefined);
+        setSlotEndDate(undefined);
+        setIsModalOpen(true);
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    const handleCalendarViewWeek = () => setView('week');
+    const handleCalendarViewStacked = () => setView('stacked');
+
+    window.addEventListener('calendar-today', handleCalendarToday);
+    window.addEventListener('calendar-prev', handleCalendarPrev);
+    window.addEventListener('calendar-next', handleCalendarNext);
+    window.addEventListener('calendar-new-lesson', handleCalendarNewLesson);
+    window.addEventListener('calendar-view-week', handleCalendarViewWeek);
+    window.addEventListener('calendar-view-stacked', handleCalendarViewStacked);
+
+    return () => {
+      window.removeEventListener('calendar-today', handleCalendarToday);
+      window.removeEventListener('calendar-prev', handleCalendarPrev);
+      window.removeEventListener('calendar-next', handleCalendarNext);
+      window.removeEventListener('calendar-new-lesson', handleCalendarNewLesson);
+      window.removeEventListener('calendar-view-week', handleCalendarViewWeek);
+      window.removeEventListener('calendar-view-stacked', handleCalendarViewStacked);
+    };
   }, [currentDate, view, isParent]);
+
+  // Handle ?action=new query param from command palette
+  useEffect(() => {
+    if (searchParams.get('action') === 'new' && !isParent && !isModalOpen) {
+      setSelectedLesson(null);
+      setSlotDate(undefined);
+      setSlotEndDate(undefined);
+      setIsModalOpen(true);
+      
+      // Clean up URL
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('action');
+      window.history.replaceState(null, '', `?${newParams.toString()}`);
+    }
+  }, [searchParams, isParent, isModalOpen]);
 
   // ─── Core handlers ─────────────────────────────────────────
   const handleLessonClick = useCallback((lesson: LessonWithDetails) => {
@@ -405,7 +428,7 @@ export default function CalendarPage() {
           !isParent && (
             <Button onClick={() => { setSelectedLesson(null); setSlotDate(undefined); setIsModalOpen(true); }} className="gap-2" data-tour="create-lesson-button" disabled={!isOnline}>
               <Plus className="h-4 w-4" />
-              New Lesson
+              New Lesson <span className="ml-1 text-[10px] opacity-60 bg-primary-foreground/20 px-1 rounded">N</span>
             </Button>
           )
         }

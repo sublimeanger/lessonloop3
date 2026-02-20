@@ -81,6 +81,7 @@ export function Header() {
           hasCritical && "border-destructive/50 hover:border-destructive"
         )}
         onClick={() => setIsOpen(true)}
+        title="LoopAssist (Space or Cmd+J)"
         data-tour="loopassist-button"
       >
         <Sparkles className="h-4 w-4" />
