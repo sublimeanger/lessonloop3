@@ -194,7 +194,7 @@ function SidebarNavItem({ item, collapsed }: { item: NavItem; collapsed: boolean
     <SidebarMenuButton asChild>
       <NavLink
         to={item.url}
-        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-medium"
       >
         <item.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.5} />
@@ -242,17 +242,10 @@ export function AppSidebar() {
           {collapsed ? (
             <Logo size="sm" className="brightness-0 invert opacity-90" />
           ) : (
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
                 <Logo size="sm" className="brightness-0 invert opacity-90" />
                 <LogoWordmark variant="white" className="text-base" />
               </div>
-              {currentOrg?.name && (
-                <p className="text-[11px] text-sidebar-foreground/50 truncate pl-0.5">
-                  {currentOrg.name}
-                </p>
-              )}
-            </div>
           )}
         </div>
         <SidebarSeparator className="bg-sidebar-border mb-1" />
@@ -261,7 +254,7 @@ export function AppSidebar() {
         {navGroups.map((group, gi) => (
           <SidebarGroup key={gi} className="py-1">
             {group.label && !collapsed && (
-              <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 px-4 mb-0.5">
+              <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/60 px-4 mb-0.5">
                 {group.label}
               </SidebarGroupLabel>
             )}
@@ -288,7 +281,7 @@ export function AppSidebar() {
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => openLoopAssist(true)}
-                    className="flex items-center justify-center rounded-lg p-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    className="flex items-center justify-center rounded-lg p-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   >
                     <Sparkles className="h-[18px] w-[18px]" strokeWidth={1.5} />
                   </button>
@@ -298,7 +291,7 @@ export function AppSidebar() {
             ) : (
               <button
                 onClick={() => openLoopAssist(true)}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ring-1 ring-sidebar-border"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ring-1 ring-sidebar-border"
               >
                 <Sparkles className="h-[18px] w-[18px] text-sidebar-primary" strokeWidth={1.5} />
                 <span>LoopAssist</span>
@@ -329,7 +322,7 @@ export function AppSidebar() {
               <div className="truncate text-sm font-medium text-sidebar-foreground">
                 {profile?.full_name || 'User'}
               </div>
-              <div className="truncate text-[11px] text-sidebar-foreground/50">
+              <div className="truncate text-[11px] text-sidebar-foreground/60">
                 {getRoleLabel(currentRole)}
               </div>
             </div>
@@ -340,7 +333,7 @@ export function AppSidebar() {
                 variant="ghost"
                 size="icon"
                 onClick={handleSignOut}
-                className="h-7 w-7 shrink-0 text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                className="h-7 w-7 shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
                 title="Sign out"
               >
                 <LogOut className="h-4 w-4" />
