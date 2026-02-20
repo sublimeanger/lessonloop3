@@ -22,18 +22,18 @@ import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 
 // Marketing Pages – grouped into one chunk via shared comment
-const MarketingHome = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Home"));
-const Features = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Features"));
-const Pricing = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Pricing"));
-const About = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/About"));
-const Blog = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Blog"));
-const BlogPost = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/BlogPost"));
-const Contact = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Contact"));
-const Privacy = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Privacy"));
-const Terms = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Terms"));
-const GDPR = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/GDPR"));
-const Cookies = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Cookies"));
-const Kickstarter = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Kickstarter"));
+const MarketingHome = lazy(() => import("./pages/marketing/Home"));
+const Features = lazy(() => import("./pages/marketing/Features"));
+const Pricing = lazy(() => import("./pages/marketing/Pricing"));
+const About = lazy(() => import("./pages/marketing/About"));
+const Blog = lazy(() => import("./pages/marketing/Blog"));
+const BlogPost = lazy(() => import("./pages/marketing/BlogPost"));
+const Contact = lazy(() => import("./pages/marketing/Contact"));
+const Privacy = lazy(() => import("./pages/marketing/Privacy"));
+const Terms = lazy(() => import("./pages/marketing/Terms"));
+const GDPR = lazy(() => import("./pages/marketing/GDPR"));
+const Cookies = lazy(() => import("./pages/marketing/Cookies"));
+const Kickstarter = lazy(() => import("./pages/marketing/Kickstarter"));
 
 // Auth Pages (lazy – not entry points)
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -68,12 +68,12 @@ const BatchAttendance = lazy(() => import("./pages/BatchAttendance"));
 const Help = lazy(() => import("./pages/Help"));
 
 // Portal Pages – grouped into one chunk
-const PortalHome = lazy(() => import(/* webpackChunkName: "portal" */ "./pages/portal/PortalHome"));
-const PortalSchedule = lazy(() => import(/* webpackChunkName: "portal" */ "./pages/portal/PortalSchedule"));
-const PortalPractice = lazy(() => import(/* webpackChunkName: "portal" */ "./pages/portal/PortalPractice"));
-const PortalResources = lazy(() => import(/* webpackChunkName: "portal" */ "./pages/portal/PortalResources"));
-const PortalInvoices = lazy(() => import(/* webpackChunkName: "portal" */ "./pages/portal/PortalInvoices"));
-const PortalMessages = lazy(() => import(/* webpackChunkName: "portal" */ "./pages/portal/PortalMessages"));
+const PortalHome = lazy(() => import("./pages/portal/PortalHome"));
+const PortalSchedule = lazy(() => import("./pages/portal/PortalSchedule"));
+const PortalPractice = lazy(() => import("./pages/portal/PortalPractice"));
+const PortalResources = lazy(() => import("./pages/portal/PortalResources"));
+const PortalInvoices = lazy(() => import("./pages/portal/PortalInvoices"));
+const PortalMessages = lazy(() => import("./pages/portal/PortalMessages"));
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
