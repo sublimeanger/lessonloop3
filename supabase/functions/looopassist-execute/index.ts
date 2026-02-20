@@ -177,6 +177,33 @@ serve(async (req) => {
         result.message = `${msg}\n\nNote: Messages are queued for your review in the Messages page. They are not sent automatically.`;
       }
 
+      // Build structured result block for the chat
+      let resultBlock = '';
+      const typedForBlock = proposal as ActionProposal;
+      if (newStatus === "executed" && result.entities && Array.isArray(result.entities)) {
+        resultBlock = '\n\n```result\n' + JSON.stringify({
+          action_type: typedForBlock.proposal.action_type,
+          status: 'success',
+          summary: result.message,
+          entities: result.entities,
+        }) + '\n```';
+      }
+
+      const resultMessage = newStatus === "executed"
+        ? `✓ ${result.message}${resultBlock}`
+        : `✗ ${result.message || result.error}`;
+
+      // Write result as assistant message in the conversation
+      if (typedForBlock.conversation_id) {
+        await supabase.from("ai_messages").insert({
+          conversation_id: typedForBlock.conversation_id,
+          org_id: typedForBlock.org_id,
+          user_id: typedForBlock.user_id,
+          role: "assistant",
+          content: resultMessage,
+        });
+      }
+
       // Update proposal status
       await supabase
         .from("ai_action_proposals")
@@ -434,11 +461,20 @@ async function executeGenerateBillingRun(
     message += ` Skipped ${skippedCount} lesson${skippedCount !== 1 ? 's' : ''} already invoiced.`;
   }
 
+  // Build entities for structured result card
+  const entities = invoiceNumbers.map((num: string) => ({
+    type: 'invoice',
+    id: num,
+    label: num,
+    detail: 'Draft created',
+  }));
+
   return {
     message,
     invoices_created: invoicesCreated,
     invoice_numbers: invoiceNumbers,
     skipped_already_invoiced: skippedCount,
+    entities,
   };
 }
 
@@ -499,10 +535,24 @@ async function executeSendInvoiceReminders(
     results.push(`${invoice.invoice_number}: Queued for ${recipientEmail}`);
   }
 
+  // Build entities for structured result
+  const entities = (invoices || [])
+    .filter((inv: any) => {
+      const email = inv.guardians?.email || inv.students?.email;
+      return !!email;
+    })
+    .map((inv: any) => ({
+      type: 'invoice' as const,
+      id: inv.invoice_number,
+      label: inv.invoice_number,
+      detail: `→ ${inv.guardians?.email || inv.students?.email}`,
+    }));
+
   return {
     message: `Queued ${remindersSent} payment reminder(s) — review and send from Messages`,
     reminders_sent: remindersSent,
     details: results,
+    entities,
   };
 }
 
@@ -573,10 +623,18 @@ async function executeRescheduleLessons(
     }
   }
 
+  const entities = (lessons || []).map((l: any) => ({
+    type: 'lesson' as const,
+    id: l.id,
+    label: l.title,
+    detail: 'Rescheduled',
+  }));
+
   return {
     message: `Rescheduled ${lessonsUpdated} lesson(s)`,
     lessons_updated: lessonsUpdated,
     details: results,
+    entities,
   };
 }
 
@@ -635,6 +693,12 @@ async function executeDraftEmail(
     message: `Email draft created for ${guardian.full_name} — review in Messages before sending`,
     draft_id: messageLog.id,
     recipient_email: guardian.email,
+    entities: [{
+      type: 'guardian' as const,
+      id: guardianId,
+      label: guardian.full_name,
+      detail: 'Draft created',
+    }],
   };
 }
 
@@ -717,10 +781,32 @@ async function executeMarkAttendance(
     after: { records, results },
   });
 
+  const entities = (records || []).map((r: any) => {
+    const participant = (lessons || []).length > 0 ? null : null; // already logged in results
+    return {
+      type: 'student' as const,
+      id: r.student_id,
+      label: r.student_id, // Will be resolved from results
+      detail: r.status,
+    };
+  });
+
+  // Enrich entity labels from results text
+  const enrichedEntities = results.map((res: string, i: number) => {
+    const parts = res.split(':');
+    return {
+      type: 'student' as const,
+      id: records[i]?.student_id || '',
+      label: parts[0]?.trim() || 'Student',
+      detail: parts[1]?.trim() || '',
+    };
+  });
+
   return {
     message: `Marked attendance for ${markedCount} student(s)`,
     marked_count: markedCount,
     details: results,
+    entities: enrichedEntities,
   };
 }
 
@@ -831,11 +917,19 @@ async function executeCancelLesson(
     message += ` and issued ${creditsIssued} make-up credit(s)`;
   }
 
+  const entities = (lessons || []).map((l: any) => ({
+    type: 'lesson' as const,
+    id: l.id,
+    label: l.title,
+    detail: 'Cancelled',
+  }));
+
   return {
     message,
     cancelled_count: cancelledCount,
     credits_issued: creditsIssued,
     details: results,
+    entities,
   };
 }
 
@@ -888,10 +982,18 @@ async function executeCompleteLessons(
     after: { lesson_ids: lessonIds, results },
   });
 
+  const entities = (lessons || []).map((l: any) => ({
+    type: 'lesson' as const,
+    id: l.id,
+    label: l.title,
+    detail: 'Marked complete',
+  }));
+
   return {
     message: `Marked ${completedCount} lesson(s) as completed`,
     completed_count: completedCount,
     details: results,
+    entities,
   };
 }
 
@@ -1061,5 +1163,19 @@ async function executeSendProgressReport(
       attendance_rate: attendanceRate,
       practice_minutes: totalPracticeMinutes,
     },
+    entities: [
+      {
+        type: 'student' as const,
+        id: studentId,
+        label: studentName,
+        detail: 'Report queued',
+      },
+      {
+        type: 'guardian' as const,
+        id: guardian.id,
+        label: guardian.full_name,
+        detail: `→ ${guardian.email}`,
+      },
+    ],
   };
 }
