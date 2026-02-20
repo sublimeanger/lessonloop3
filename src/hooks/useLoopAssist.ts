@@ -158,12 +158,33 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     // Refresh messages to show user message
     queryClient.invalidateQueries({ queryKey: ['ai-messages', conversationId] });
 
-    // Build message history for context
-    const historyMessages = messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
-    historyMessages.push({ role: 'user', content });
+    // Build message history with truncation to manage token limits
+    const MAX_HISTORY = 10;
+    const allMessages = messages.map((m) => ({ role: m.role, content: m.content }));
+    allMessages.push({ role: 'user', content });
+
+    let historyMessages: { role: string; content: string }[];
+
+    if (allMessages.length <= MAX_HISTORY + 1) {
+      // +1 for the new message; fits within limit
+      historyMessages = allMessages;
+    } else {
+      const firstUserMsg = allMessages.find((m) => m.role === 'user');
+      const trimmedCount = allMessages.length - MAX_HISTORY;
+      const recentMessages = allMessages.slice(-MAX_HISTORY);
+
+      const summaryNote: { role: string; content: string } = {
+        role: 'system',
+        content: `Previous conversation context: [${trimmedCount} messages trimmed]. The user has been asking about "${firstUserMsg?.content?.slice(0, 80) || 'general topics'}".`,
+      };
+
+      // Include first user message for context, summary, then recent messages
+      historyMessages = [
+        ...(firstUserMsg && !recentMessages.includes(firstUserMsg) ? [firstUserMsg] : []),
+        summaryNote,
+        ...recentMessages,
+      ];
+    }
 
     setIsStreaming(true);
     setStreamingContent('');
