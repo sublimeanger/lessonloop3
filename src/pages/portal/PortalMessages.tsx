@@ -12,6 +12,7 @@ import { useParentMessages } from '@/hooks/useMessages';
 import { RequestModal } from '@/components/portal/RequestModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect } from 'react';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 export default function PortalMessages() {
   const [requestModalOpen, setRequestModalOpen] = useState(false);
@@ -147,7 +148,7 @@ export default function PortalMessages() {
                     {/<[a-z][\s\S]*>/i.test(msg.body) ? (
                       <div
                         className="text-sm text-muted-foreground prose prose-sm max-w-none dark:prose-invert [&_a]:text-primary [&_a]:underline"
-                        dangerouslySetInnerHTML={{ __html: msg.body }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.body) }}
                       />
                     ) : (
                       <div className="whitespace-pre-wrap text-sm text-muted-foreground">

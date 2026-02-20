@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { ThreadMessage } from '@/hooks/useMessageThreads';
 import { useRelatedStudent } from '@/hooks/useRelatedStudent';
 import { EntityChip } from '@/components/looopassist/EntityChip';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 interface ThreadMessageItemProps {
   message: ThreadMessage;
@@ -34,7 +35,7 @@ export function ThreadMessageItem({ message }: ThreadMessageItemProps) {
       {/<[a-z][\s\S]*>/i.test(message.body) ? (
         <div
           className="text-sm prose prose-sm max-w-none dark:prose-invert [&_a]:text-primary [&_a]:underline"
-          dangerouslySetInnerHTML={{ __html: message.body }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(message.body) }}
         />
       ) : (
         <div className="whitespace-pre-wrap text-sm">{message.body}</div>
