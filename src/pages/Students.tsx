@@ -229,7 +229,7 @@ export default function Students() {
                     {student.status}
                   </Badge>
                 </div>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-4 text-sm text-muted-foreground hidden sm:flex">
                   {student.email && (
                     <span className="flex items-center gap-1 truncate">
                       <Mail className="h-3 w-3" aria-hidden="true" />

@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Send, Eye, CreditCard, XCircle, Bell } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { InvoiceWithDetails } from '@/hooks/useInvoices';
 import type { Database } from '@/integrations/supabase/types';
 import { formatCurrencyMinor, formatDateUK } from '@/lib/utils';
@@ -81,6 +82,62 @@ function getPayerName(invoice: InvoiceWithDetails): string {
   return 'Unknown';
 }
 
+// ─── Actions dropdown (shared between table and card) ───
+function InvoiceActions({ invoice, onSend, onMarkPaid, onVoid, onSendReminder }: {
+  invoice: InvoiceWithDetails;
+  onSend: (inv: InvoiceWithDetails) => void;
+  onMarkPaid: (inv: InvoiceWithDetails) => void;
+  onVoid: (inv: InvoiceWithDetails) => void;
+  onSendReminder: (inv: InvoiceWithDetails) => void;
+}) {
+  const navigate = useNavigate();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+        <Button variant="ghost" size="icon" className="h-8 w-8">
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuItem onClick={() => navigate(`/invoices/${invoice.id}`)}>
+          <Eye className="mr-2 h-4 w-4" />
+          View
+        </DropdownMenuItem>
+        {invoice.status === 'draft' && (
+          <DropdownMenuItem onClick={() => onSend(invoice)}>
+            <Send className="mr-2 h-4 w-4" />
+            Send
+          </DropdownMenuItem>
+        )}
+        {(invoice.status === 'sent' || invoice.status === 'overdue') && (
+          <>
+            <DropdownMenuItem onClick={() => onMarkPaid(invoice)}>
+              <CreditCard className="mr-2 h-4 w-4" />
+              Record Payment
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSendReminder(invoice)}>
+              <Bell className="mr-2 h-4 w-4" />
+              Send Reminder
+            </DropdownMenuItem>
+          </>
+        )}
+        {invoice.status !== 'void' && invoice.status !== 'paid' && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => onVoid(invoice)}
+              className="text-destructive"
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              Void
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function InvoiceList({
   invoices,
   onSend,
@@ -92,6 +149,7 @@ export function InvoiceList({
 }: InvoiceListProps) {
   const navigate = useNavigate();
   const { currentOrg } = useOrg();
+  const isMobile = useIsMobile();
   const currency = currentOrg?.currency_code || 'GBP';
 
   const allSelected = invoices.length > 0 && invoices.every((inv) => selectedIds.has(inv.id));
@@ -123,6 +181,55 @@ export function InvoiceList({
     );
   }
 
+  // ─── Mobile card layout ───
+  if (isMobile) {
+    return (
+      <div className="space-y-2" role="list" aria-label="Invoices list">
+        {invoices.map((invoice) => (
+          <div
+            key={invoice.id}
+            className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent cursor-pointer"
+            onClick={() => navigate(`/invoices/${invoice.id}`)}
+            role="listitem"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-3 min-w-0">
+                <Checkbox
+                  checked={selectedIds.has(invoice.id)}
+                  onCheckedChange={(checked) => handleSelectOne(invoice.id, !!checked)}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`Select invoice ${invoice.invoice_number}`}
+                />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-sm">{invoice.invoice_number}</span>
+                    {getStatusBadge(invoice.status, invoice.due_date)}
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate mt-0.5">
+                    {getPayerName(invoice)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <span className="font-medium text-sm">
+                  {formatCurrencyMinor(invoice.total_minor, currency)}
+                </span>
+                <InvoiceActions
+                  invoice={invoice}
+                  onSend={onSend}
+                  onMarkPaid={onMarkPaid}
+                  onVoid={onVoid}
+                  onSendReminder={onSendReminder}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // ─── Desktop table layout ───
   return (
     <div className="rounded-lg border bg-card">
       <Table>
@@ -170,49 +277,13 @@ export function InvoiceList({
                 {formatCurrencyMinor(invoice.total_minor, currency)}
               </TableCell>
               <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenuItem onClick={() => navigate(`/invoices/${invoice.id}`)}>
-                      <Eye className="mr-2 h-4 w-4" />
-                      View
-                    </DropdownMenuItem>
-                    {invoice.status === 'draft' && (
-                      <DropdownMenuItem onClick={() => onSend(invoice)}>
-                        <Send className="mr-2 h-4 w-4" />
-                        Send
-                      </DropdownMenuItem>
-                    )}
-                    {(invoice.status === 'sent' || invoice.status === 'overdue') && (
-                      <>
-                        <DropdownMenuItem onClick={() => onMarkPaid(invoice)}>
-                          <CreditCard className="mr-2 h-4 w-4" />
-                          Record Payment
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onSendReminder(invoice)}>
-                          <Bell className="mr-2 h-4 w-4" />
-                          Send Reminder
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    {invoice.status !== 'void' && invoice.status !== 'paid' && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => onVoid(invoice)}
-                          className="text-destructive"
-                        >
-                          <XCircle className="mr-2 h-4 w-4" />
-                          Void
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <InvoiceActions
+                  invoice={invoice}
+                  onSend={onSend}
+                  onMarkPaid={onMarkPaid}
+                  onVoid={onVoid}
+                  onSendReminder={onSendReminder}
+                />
               </TableCell>
             </TableRow>
           ))}
