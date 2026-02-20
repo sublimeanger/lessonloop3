@@ -15,6 +15,8 @@ import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { StudentWizard } from '@/components/students/StudentWizard';
 import { Plus, Search, Users, Upload, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
+import { useInvoices } from '@/hooks/useInvoices';
 
 type StudentStatus = 'active' | 'inactive';
 
@@ -279,6 +281,9 @@ export default function Students() {
         }
       />
 
+      {/* LoopAssist overdue banner */}
+      <StudentsOverdueBanner />
+
       {/* Search + Filter bar */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" data-tour="student-filters">
         <div className="relative w-full sm:max-w-xs">
@@ -326,5 +331,22 @@ export default function Students() {
         onSuccess={fetchStudents}
       />
     </AppLayout>
+  );
+}
+
+function StudentsOverdueBanner() {
+  const { data: overdueInvoices = [] } = useInvoices({ status: 'overdue' });
+  // Count unique students with overdue invoices
+  const studentIds = new Set(overdueInvoices.map(inv => inv.payer_student_id).filter(Boolean));
+  const count = studentIds.size;
+
+  if (count === 0) return null;
+
+  return (
+    <LoopAssistPageBanner
+      bannerKey="students_overdue"
+      message={`${count} student${count !== 1 ? 's have' : ' has'} overdue invoices — Ask LoopAssist to send reminders`}
+      prompt="Send reminders for students with overdue invoices"
+    />
   );
 }
