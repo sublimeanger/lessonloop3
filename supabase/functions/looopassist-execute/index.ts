@@ -221,12 +221,50 @@ async function executeGenerateBillingRun(
     throw new Error("start_date and end_date are required");
   }
 
+  // Fetch ALL rate cards for the org (not just the default)
+  const { data: rateCards, error: rateCardsError } = await supabase
+    .from("rate_cards")
+    .select("id, rate_amount, duration_mins, is_default")
+    .eq("org_id", orgId);
+
+  if (rateCardsError) throw rateCardsError;
+
+  if (!rateCards || rateCards.length === 0) {
+    throw new Error(
+      "No rate cards configured for this organisation. Please add rate cards in Settings → Rate Cards before running billing."
+    );
+  }
+
+  // Build lookup structures
+  const rateByDuration = new Map<number, number>();
+  let defaultRate: number | null = null;
+
+  for (const rc of rateCards) {
+    const amount = Math.round(Number(rc.rate_amount));
+    rateByDuration.set(rc.duration_mins, amount);
+    if (rc.is_default) {
+      defaultRate = amount;
+    }
+  }
+
+  // If no card is explicitly marked as default, use the first one
+  if (defaultRate === null) {
+    defaultRate = Math.round(Number(rateCards[0].rate_amount));
+  }
+
+  // Build a map of rate_card id → amount for student-specific lookups
+  const rateById = new Map<string, number>();
+  for (const rc of rateCards) {
+    rateById.set(rc.id, Math.round(Number(rc.rate_amount)));
+  }
+
+  // Fetch lessons with participants and student details
   const { data: lessons, error: lessonsError } = await supabase
     .from("lessons")
     .select(`
       id, title, start_at, end_at, teacher_id, teacher_user_id,
       teacher:teachers!lessons_teacher_id_fkey(id, display_name),
-      lesson_participants(student_id, students(id, first_name, last_name, student_guardians(guardian_id, is_primary_payer)))
+      lesson_participants(student_id, students(id, first_name, last_name, default_rate_card_id, student_guardians(guardian_id, is_primary_payer)))
     `)
     .eq("org_id", orgId)
     .eq("status", "completed")
@@ -241,24 +279,42 @@ async function executeGenerateBillingRun(
     .eq("id", orgId)
     .single();
 
-  const { data: rateCard } = await supabase
-    .from("rate_cards")
-    .select("rate_amount")
-    .eq("org_id", orgId)
-    .eq("is_default", true)
-    .single();
+  /**
+   * Resolve the rate for a lesson + student combination.
+   * Priority:
+   *   1. Student's default_rate_card_id (if set and still exists)
+   *   2. Rate card matching lesson duration
+   *   3. Org default rate card
+   */
+  function resolveRate(lesson: any, student: any): number {
+    // 1. Student-specific rate card
+    if (student?.default_rate_card_id) {
+      const studentRate = rateById.get(student.default_rate_card_id);
+      if (studentRate !== undefined) return studentRate;
+    }
 
-  const lessonRate = rateCard?.rate_amount ? Math.round(Number(rateCard.rate_amount) * 100) : 3000;
+    // 2. Match by lesson duration
+    const startMs = new Date(lesson.start_at).getTime();
+    const endMs = new Date(lesson.end_at).getTime();
+    const durationMins = Math.round((endMs - startMs) / 60000);
+    const durationRate = rateByDuration.get(durationMins);
+    if (durationRate !== undefined) return durationRate;
 
-  const payerMap = new Map<string, { type: 'guardian' | 'student'; id: string; name: string; lessons: any[] }>();
+    // 3. Fall back to default rate card
+    return defaultRate!;
+  }
+
+  // Group lessons by payer
+  const payerMap = new Map<string, { type: 'guardian' | 'student'; id: string; name: string; lessons: { lesson: any; student: any; rate: number }[] }>();
 
   for (const lesson of lessons || []) {
     for (const participant of lesson.lesson_participants || []) {
       const student = participant.students;
       if (!student) continue;
 
+      const rate = resolveRate(lesson, student);
       const primaryGuardian = student.student_guardians?.find((sg: any) => sg.is_primary_payer);
-      
+
       let payerKey: string;
       let payerInfo: { type: 'guardian' | 'student'; id: string; name: string };
 
@@ -273,7 +329,7 @@ async function executeGenerateBillingRun(
       if (!payerMap.has(payerKey)) {
         payerMap.set(payerKey, { ...payerInfo, lessons: [] });
       }
-      payerMap.get(payerKey)!.lessons.push({ lesson, student });
+      payerMap.get(payerKey)!.lessons.push({ lesson, student, rate });
     }
   }
 
@@ -283,7 +339,7 @@ async function executeGenerateBillingRun(
   for (const [, payer] of payerMap) {
     const { data: invoiceNumber } = await supabase.rpc("generate_invoice_number", { _org_id: orgId });
 
-    const subtotal = payer.lessons.length * lessonRate;
+    const subtotal = payer.lessons.reduce((sum, item) => sum + item.rate, 0);
     const taxRate = org?.vat_enabled ? Number(org.vat_rate) : 0;
     const tax = Math.round(subtotal * taxRate / 100);
     const total = subtotal + tax;
@@ -311,13 +367,13 @@ async function executeGenerateBillingRun(
 
     if (invoiceError) throw invoiceError;
 
-    const items = payer.lessons.map(({ lesson, student }) => ({
+    const items = payer.lessons.map(({ lesson, student, rate }) => ({
       org_id: orgId,
       invoice_id: invoice.id,
       description: `Lesson: ${lesson.title} on ${new Date(lesson.start_at).toLocaleDateString('en-GB')}`,
       quantity: 1,
-      unit_price_minor: lessonRate,
-      amount_minor: lessonRate,
+      unit_price_minor: rate,
+      amount_minor: rate,
       linked_lesson_id: lesson.id,
       student_id: student.id,
     }));
