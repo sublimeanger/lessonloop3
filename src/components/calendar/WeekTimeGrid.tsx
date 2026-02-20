@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
+import { useClosureDates } from '@/hooks/useCalendarData';
 import {
   format,
   startOfWeek,
@@ -23,7 +24,7 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useOrg } from '@/contexts/OrgContext';
-import { supabase } from '@/integrations/supabase/client';
+
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileWeekView } from './MobileWeekView';
 import { useDragLesson, DragLessonState } from './useDragLesson';
@@ -33,11 +34,6 @@ import { useResizeLesson } from './useResizeLesson';
 const HOUR_HEIGHT = 60;
 const DEFAULT_START_HOUR = 7;
 const DEFAULT_END_HOUR = 21;
-
-interface ClosureInfo {
-  date: Date;
-  reason: string;
-}
 
 // ─── Helpers ─────────────────────────────────────────────────
 function resolveColourByUserId(
@@ -95,7 +91,9 @@ export function WeekTimeGrid({
   const END_HOUR = currentOrg?.schedule_end_hour ?? DEFAULT_END_HOUR;
   const HOURS = useMemo(() => Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i), [START_HOUR, END_HOUR]);
   const isMobile = useIsMobile();
-  const [closures, setClosures] = useState<ClosureInfo[]>([]);
+  const weekStart = useMemo(() => startOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]);
+  const weekEnd = useMemo(() => endOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]);
+  const { data: closures } = useClosureDates(weekStart, weekEnd);
   const dayColumnsRef = useRef<HTMLDivElement>(null);
   const scrollViewportRef = useRef<HTMLDivElement>(null);
   const hasScrolledRef = useRef(false);
@@ -170,23 +168,7 @@ export function WeekTimeGrid({
     endHour: END_HOUR,
   });
 
-  // ─── Fetch closures ──────────────────────────────────────
-  useEffect(() => {
-    if (!currentOrg) return;
-    const start = startOfWeek(currentDate, { weekStartsOn: 1 });
-    const end = endOfWeek(currentDate, { weekStartsOn: 1 });
-    supabase
-      .from('closure_dates')
-      .select('date, reason')
-      .eq('org_id', currentOrg.id)
-      .gte('date', format(start, 'yyyy-MM-dd'))
-      .lte('date', format(end, 'yyyy-MM-dd'))
-      .then(({ data }) => {
-        if (data) setClosures(data.map((c) => ({ date: parseISO(c.date), reason: c.reason })));
-      });
-  }, [currentOrg, currentDate]);
-
-  const getClosureForDay = (day: Date): ClosureInfo | undefined =>
+  const getClosureForDay = (day: Date) =>
     closures.find((c) => isSameDay(c.date, day));
 
   // ─── Auto-scroll to current time on mount ─────────────────

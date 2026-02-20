@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { LessonWithDetails, CalendarFilters } from '@/components/calendar/types';
-import { startOfWeek, endOfWeek, startOfDay, endOfDay, addDays, format } from 'date-fns';
+import { startOfWeek, endOfWeek, startOfDay, endOfDay, addDays, format, parseISO } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 
 /**
@@ -254,4 +255,33 @@ export function useTeachersAndLocations() {
   }, [currentOrg]);
 
   return { teachers, locations, rooms, students, isLoading };
+}
+
+export interface ClosureInfo {
+  date: Date;
+  reason: string;
+}
+
+export function useClosureDates(startDate: Date, endDate: Date) {
+  const { currentOrg } = useOrg();
+  const startStr = format(startDate, 'yyyy-MM-dd');
+  const endStr = format(endDate, 'yyyy-MM-dd');
+
+  const { data = [], isLoading } = useQuery({
+    queryKey: ['closure-dates', currentOrg?.id, startStr, endStr],
+    queryFn: async () => {
+      if (!currentOrg) return [];
+      const { data } = await supabase
+        .from('closure_dates')
+        .select('date, reason')
+        .eq('org_id', currentOrg.id)
+        .gte('date', startStr)
+        .lte('date', endStr);
+      return (data || []).map((c) => ({ date: parseISO(c.date), reason: c.reason }));
+    },
+    enabled: !!currentOrg,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  return { data, isLoading };
 }
