@@ -63,6 +63,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_action_proposals_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_conversations: {
@@ -96,6 +103,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_conversations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
         ]
@@ -159,6 +173,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_interaction_metrics_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_messages: {
@@ -207,6 +228,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_messages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       attendance_records: {
@@ -253,6 +281,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
           {
@@ -306,6 +341,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "audit_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       availability_blocks: {
@@ -345,6 +387,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "availability_blocks_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
           {
@@ -409,6 +458,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "availability_templates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       billing_runs: {
@@ -457,6 +513,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
           {
@@ -526,6 +589,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_connections_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
         ]
@@ -624,6 +694,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "closure_dates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       external_busy_blocks: {
@@ -675,6 +752,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "external_busy_blocks_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       guardians: {
@@ -717,6 +801,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guardians_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
         ]
@@ -773,6 +864,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "internal_messages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "internal_messages_parent_message_id_fkey"
             columns: ["parent_message_id"]
             isOneToOne: false
@@ -821,6 +919,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invites_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
           {
@@ -895,6 +1000,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
           {
@@ -983,6 +1095,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "invoices_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "invoices_payer_guardian_id_fkey"
             columns: ["payer_guardian_id"]
             isOneToOne: false
@@ -1061,6 +1180,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_participants_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
           {
@@ -1161,6 +1287,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "lessons_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lessons_recurrence_id_fkey"
             columns: ["recurrence_id"]
             isOneToOne: false
@@ -1254,6 +1387,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "locations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       make_up_credits: {
@@ -1315,6 +1455,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_credits_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
           {
@@ -1382,6 +1529,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_batches_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
         ]
@@ -1469,6 +1623,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "message_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "message_log_parent_message_id_fkey"
             columns: ["parent_message_id"]
             isOneToOne: false
@@ -1549,6 +1710,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "message_requests_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "message_requests_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
@@ -1596,6 +1764,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "message_templates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       notification_preferences: {
@@ -1640,6 +1815,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notification_preferences_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       org_memberships: {
@@ -1673,6 +1855,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_memberships_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
         ]
@@ -1885,6 +2074,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "payments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       practice_assignments: {
@@ -1942,6 +2138,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_assignments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
           {
@@ -2033,6 +2236,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "practice_logs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "practice_logs_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
@@ -2078,6 +2288,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_streaks_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
           {
@@ -2134,6 +2351,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "profiles_current_org_id_fkey"
+            columns: ["current_org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       rate_cards: {
@@ -2176,6 +2400,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rate_cards_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
         ]
@@ -2252,6 +2483,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "recurrence_rules_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       resource_shares: {
@@ -2285,6 +2523,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resource_shares_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
           {
@@ -2351,6 +2596,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "resources_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       rooms: {
@@ -2397,6 +2649,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rooms_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
         ]
@@ -2468,6 +2727,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "stripe_checkout_sessions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       student_guardians: {
@@ -2523,6 +2789,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "student_guardians_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "student_guardians_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
@@ -2565,6 +2838,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_teacher_assignments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
           {
@@ -2695,6 +2975,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "students_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       teacher_profiles: {
@@ -2752,6 +3039,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_profiles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
         ]
@@ -2819,6 +3113,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "teachers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       terms: {
@@ -2855,6 +3156,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "terms_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
         ]
@@ -2895,6 +3203,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "time_off_blocks_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_roles: {
@@ -2920,6 +3235,45 @@ export type Database = {
       }
     }
     Views: {
+      parent_org_info: {
+        Row: {
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_reference_prefix: string | null
+          bank_sort_code: string | null
+          cancellation_notice_hours: number | null
+          currency_code: string | null
+          id: string | null
+          name: string | null
+          online_payments_enabled: boolean | null
+          parent_reschedule_policy: string | null
+        }
+        Insert: {
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_reference_prefix?: string | null
+          bank_sort_code?: string | null
+          cancellation_notice_hours?: number | null
+          currency_code?: string | null
+          id?: string | null
+          name?: string | null
+          online_payments_enabled?: boolean | null
+          parent_reschedule_policy?: string | null
+        }
+        Update: {
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_reference_prefix?: string | null
+          bank_sort_code?: string | null
+          cancellation_notice_hours?: number | null
+          currency_code?: string | null
+          id?: string | null
+          name?: string | null
+          online_payments_enabled?: boolean | null
+          parent_reschedule_policy?: string | null
+        }
+        Relationships: []
+      }
       teacher_profiles_public: {
         Row: {
           bio: string | null
@@ -2967,6 +3321,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teachers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
         ]
@@ -3036,6 +3397,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teachers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
         ]
