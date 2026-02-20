@@ -26,8 +26,8 @@ export function Header() {
 
         {/* Brand logo */}
         <div className="flex items-center gap-2">
-          <Logo size="sm" />
-          <LogoWordmark className="text-sm hidden sm:block" />
+          <Logo size="md" />
+          <LogoWordmark className="text-base hidden sm:block" />
         </div>
 
         {/* Org switcher — only if multiple orgs */}
