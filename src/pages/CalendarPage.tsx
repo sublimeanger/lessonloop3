@@ -20,6 +20,7 @@ import { QuickCreatePopover } from '@/components/calendar/QuickCreatePopover';
 import { ContextualHint } from '@/components/shared/ContextualHint';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -34,6 +35,7 @@ export default function CalendarPage() {
   const { teachers, locations, rooms } = useTeachersAndLocations();
   const [searchParams] = useSearchParams();
   const { checkConflicts } = useConflictDetection();
+  const { isOnline } = useOnlineStatus();
 
   // Calendar state
   const [currentDate, setCurrentDate] = useState(() => {
@@ -390,7 +392,7 @@ export default function CalendarPage() {
         ]}
         actions={
           !isParent && (
-            <Button onClick={() => { setSelectedLesson(null); setSlotDate(undefined); setIsModalOpen(true); }} className="gap-2" data-tour="create-lesson-button">
+            <Button onClick={() => { setSelectedLesson(null); setSlotDate(undefined); setIsModalOpen(true); }} className="gap-2" data-tour="create-lesson-button" disabled={!isOnline}>
               <Plus className="h-4 w-4" />
               New Lesson
             </Button>

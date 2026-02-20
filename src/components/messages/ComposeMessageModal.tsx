@@ -22,6 +22,7 @@ import { Loader2 } from 'lucide-react';
 import { useSendMessage, useMessageTemplates } from '@/hooks/useMessages';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 interface Guardian {
   id: string;
@@ -56,6 +57,7 @@ export function ComposeMessageModal({
   const { currentOrg } = useOrg();
   const { data: templates } = useMessageTemplates();
   const sendMessage = useSendMessage();
+  const { isOnline, guardOffline } = useOnlineStatus();
 
   // Pre-select guardian if provided
   useEffect(() => {
@@ -115,6 +117,7 @@ export function ComposeMessageModal({
   const selectedGuardian = guardians.find(g => g.id === selectedGuardianId) || preselectedGuardian;
 
   const handleSend = async () => {
+    if (guardOffline()) return;
     if (!selectedGuardian || !selectedGuardian.email || !subject.trim() || !body.trim()) return;
 
     await sendMessage.mutateAsync({
@@ -263,7 +266,7 @@ export function ComposeMessageModal({
           </Button>
           <Button
             onClick={handleSend}
-            disabled={!hasValidRecipient || !subject.trim() || !body.trim() || sendMessage.isPending}
+            disabled={!hasValidRecipient || !subject.trim() || !body.trim() || sendMessage.isPending || !isOnline}
           >
             {sendMessage.isPending ? (
               <>
