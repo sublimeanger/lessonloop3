@@ -97,6 +97,84 @@ function CancellationNoticeSetting() {
   );
 }
 
+function ScheduleHoursSetting() {
+  const { currentOrg, refreshOrganisations } = useOrg();
+  const { toast } = useToast();
+  const [startHour, setStartHour] = useState(currentOrg?.schedule_start_hour ?? 7);
+  const [endHour, setEndHour] = useState(currentOrg?.schedule_end_hour ?? 21);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setStartHour(currentOrg?.schedule_start_hour ?? 7);
+    setEndHour(currentOrg?.schedule_end_hour ?? 21);
+  }, [currentOrg?.schedule_start_hour, currentOrg?.schedule_end_hour]);
+
+  const hasChanges = startHour !== (currentOrg?.schedule_start_hour ?? 7) || endHour !== (currentOrg?.schedule_end_hour ?? 21);
+
+  const handleSave = async () => {
+    if (!currentOrg) return;
+    if (endHour <= startHour) {
+      toast({ title: 'End hour must be after start hour', variant: 'destructive' });
+      return;
+    }
+    setIsSaving(true);
+    const { error } = await supabase
+      .from('organisations')
+      .update({ schedule_start_hour: startHour, schedule_end_hour: endHour })
+      .eq('id', currentOrg.id);
+    setIsSaving(false);
+    if (error) {
+      toast({ title: 'Error saving schedule hours', variant: 'destructive' });
+    } else {
+      toast({ title: 'Schedule hours updated' });
+      refreshOrganisations();
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="font-medium">Calendar visible hours</div>
+      <div className="text-sm text-muted-foreground">
+        Set the start and end hours shown on the calendar time grid
+      </div>
+      <div className="flex items-center gap-3 mt-2">
+        <div className="flex items-center gap-2">
+          <Label htmlFor="start-hour" className="text-sm whitespace-nowrap">From</Label>
+          <Input
+            id="start-hour"
+            type="number"
+            min={0}
+            max={22}
+            value={startHour}
+            onChange={(e) => setStartHour(Math.min(22, Math.max(0, parseInt(e.target.value) || 0)))}
+            className="w-20"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="end-hour" className="text-sm whitespace-nowrap">To</Label>
+          <Input
+            id="end-hour"
+            type="number"
+            min={1}
+            max={23}
+            value={endHour}
+            onChange={(e) => setEndHour(Math.min(23, Math.max(1, parseInt(e.target.value) || 1)))}
+            className="w-20"
+          />
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleSave}
+          disabled={!hasChanges || isSaving}
+        >
+          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 type ReschedulePolicy = 'self_service' | 'request_only' | 'admin_locked';
 
 function ParentReschedulePolicySetting() {
@@ -406,6 +484,10 @@ export function SchedulingSettingsTab() {
               onCheckedChange={handleBlockSchedulingChange}
             />
           </div>
+          
+          <Separator />
+
+          <ScheduleHoursSetting />
           
           <Separator />
           

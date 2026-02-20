@@ -28,6 +28,9 @@ export interface Organisation {
   buffer_minutes_between_locations?: number | null;
   overdue_reminder_days?: number[] | null;
   auto_pause_lessons_after_days?: number | null;
+  // Schedule display hours
+  schedule_start_hour?: number;
+  schedule_end_hour?: number;
   // Parent portal scheduling policy
   parent_reschedule_policy?: 'self_service' | 'request_only' | 'admin_locked';
   // Subscription fields

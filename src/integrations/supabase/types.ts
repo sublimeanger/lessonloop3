@@ -1713,6 +1713,8 @@ export type Database = {
           parent_reschedule_policy: string | null
           payment_methods_enabled: string[] | null
           platform_fee_percent: number | null
+          schedule_end_hour: number
+          schedule_start_hour: number
           stripe_connect_account_id: string | null
           stripe_connect_onboarded_at: string | null
           stripe_connect_status: string | null
@@ -1761,6 +1763,8 @@ export type Database = {
           parent_reschedule_policy?: string | null
           payment_methods_enabled?: string[] | null
           platform_fee_percent?: number | null
+          schedule_end_hour?: number
+          schedule_start_hour?: number
           stripe_connect_account_id?: string | null
           stripe_connect_onboarded_at?: string | null
           stripe_connect_status?: string | null
@@ -1809,6 +1813,8 @@ export type Database = {
           parent_reschedule_policy?: string | null
           payment_methods_enabled?: string[] | null
           platform_fee_percent?: number | null
+          schedule_end_hour?: number
+          schedule_start_hour?: number
           stripe_connect_account_id?: string | null
           stripe_connect_onboarded_at?: string | null
           stripe_connect_status?: string | null
