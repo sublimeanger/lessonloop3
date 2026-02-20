@@ -3,6 +3,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
 interface CleanupRequest {
   user_ids?: string[];
+  org_id?: string;
   delete_incomplete_onboarding?: boolean;
 }
 
@@ -46,31 +47,59 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if user is an owner in any org
-    const { data: membership } = await userClient
-      .from('org_memberships')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('role', 'owner')
-      .maybeSingle();
-
-    if (!membership) {
-      return new Response(
-        JSON.stringify({ error: 'Only owners can perform cleanup' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Org ownership is now verified below after resolving orgId
 
     const body: CleanupRequest = await req.json();
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false }
     });
 
+    // Resolve org scope
+    const { data: profile } = await userClient
+      .from('profiles')
+      .select('current_org_id')
+      .eq('id', user.id)
+      .single();
+
+    const orgId = body.org_id || profile?.current_org_id;
+    if (!orgId) {
+      return new Response(
+        JSON.stringify({ error: 'Could not determine org scope' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify caller is owner in THIS org
+    const { data: orgMembership } = await userClient
+      .from('org_memberships')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('org_id', orgId)
+      .eq('role', 'owner')
+      .maybeSingle();
+
+    if (!orgMembership) {
+      return new Response(
+        JSON.stringify({ error: 'Only owners of this org can perform cleanup' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`[admin-cleanup] Triggered by user ${user.id} for org ${orgId}`);
+
+    // Get all user IDs that belong to this org
+    const { data: orgMembers } = await adminClient
+      .from('org_memberships')
+      .select('user_id')
+      .eq('org_id', orgId);
+
+    const orgUserIds = new Set(orgMembers?.map(m => m.user_id) || []);
+
     const deleted: string[] = [];
     const errors: string[] = [];
 
     // Get user IDs to delete
-    let userIdsToDelete: string[] = body.user_ids || [];
+    let userIdsToDelete: string[] = (body.user_ids || []).filter(id => orgUserIds.has(id));
 
     if (body.delete_incomplete_onboarding) {
       const { data: incompleteProfiles } = await adminClient
@@ -79,10 +108,10 @@ Deno.serve(async (req) => {
         .eq('has_completed_onboarding', false);
 
       if (incompleteProfiles) {
-        userIdsToDelete = [...new Set([
-          ...userIdsToDelete,
-          ...incompleteProfiles.map(p => p.id)
-        ])];
+        const incompleteOrgIds = incompleteProfiles
+          .map(p => p.id)
+          .filter(id => orgUserIds.has(id));
+        userIdsToDelete = [...new Set([...userIdsToDelete, ...incompleteOrgIds])];
       }
     }
 
@@ -108,7 +137,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log('[admin-cleanup] Deleted:', deleted.length, 'Errors:', errors.length);
+    console.log(`[admin-cleanup] Org ${orgId} | Deleted: ${deleted.length} | Errors: ${errors.length}`);
 
     return new Response(
       JSON.stringify({ 
