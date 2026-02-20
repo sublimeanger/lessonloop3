@@ -62,6 +62,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   const { isOnline, guardOffline } = useOnlineStatus();
 
   const [isSaving, setIsSaving] = useState(false);
+  const [savingProgress, setSavingProgress] = useState('');
   const [conflictState, setConflictState] = useState<{
     isChecking: boolean;
     conflicts: ConflictResult[];
@@ -447,21 +448,27 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
                 .in('id', futureIds);
 
               if (futureTimes && futureTimes.length > 0) {
-                await Promise.all(futureTimes.map(fl => {
-                  const shiftedStart = new Date(parseISO(fl.start_at).getTime() + timeOffsetMs);
-                  const shiftedEnd = new Date(shiftedStart.getTime() + newDuration);
-                  return supabase
-                    .from('lessons')
-                    .update({
-                      start_at: shiftedStart.toISOString(),
-                      end_at: shiftedEnd.toISOString(),
-                    })
-                    .eq('id', fl.id);
-                }));
+                const CHUNK_SIZE = 50;
+                for (let i = 0; i < futureTimes.length; i += CHUNK_SIZE) {
+                  const chunk = futureTimes.slice(i, i + CHUNK_SIZE);
+                  setSavingProgress(`Updating ${Math.min(i + CHUNK_SIZE, futureTimes.length)} of ${futureTimes.length} lessons…`);
+                  await Promise.all(chunk.map(fl => {
+                    const shiftedStart = new Date(parseISO(fl.start_at).getTime() + timeOffsetMs);
+                    const shiftedEnd = new Date(shiftedStart.getTime() + newDuration);
+                    return supabase
+                      .from('lessons')
+                      .update({
+                        start_at: shiftedStart.toISOString(),
+                        end_at: shiftedEnd.toISOString(),
+                      })
+                      .eq('id', fl.id);
+                  }));
+                }
               }
             }
           }
 
+          setSavingProgress('Updating participants…');
           await supabase
             .from('lesson_participants')
             .delete()
@@ -651,6 +658,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       toast({ title: 'Error saving lesson', description: error.message, variant: 'destructive' });
     } finally {
       setIsSaving(false);
+      setSavingProgress('');
     }
   };
 
@@ -1090,7 +1098,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       <Button variant="outline" onClick={onClose} className="min-h-[44px]">Cancel</Button>
       <Button onClick={handleSaveClick} disabled={isSaveDisabled} className="min-h-[44px]">
         {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-        {conflictState.isChecking ? 'Checking...' : (lesson ? 'Save Changes' : 'Create Lesson')}
+        {isSaving && savingProgress ? savingProgress : conflictState.isChecking ? 'Checking...' : (lesson ? 'Save Changes' : 'Create Lesson')}
       </Button>
     </>
   );
