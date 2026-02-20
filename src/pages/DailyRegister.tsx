@@ -57,7 +57,7 @@ export default function DailyRegister() {
   const lessons = allLessons?.filter(lesson => 
     !teacherFilter || lesson.teacher_id === teacherFilter || 
     // Fallback: for legacy lessons without teacher_id, check teacher_user_id matches linked user
-    (!lesson.teacher_id && lesson.teacher_user_id === user?.id && teacherFilter === localStorage.getItem('register_teacher_filter'))
+    (!lesson.teacher_id && lesson.teacher_user_id === user?.id && teacherFilter !== null)
   );
 
   const goToPrevDay = () => setSelectedDate(prev => subDays(prev, 1));
