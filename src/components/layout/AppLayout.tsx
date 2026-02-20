@@ -7,6 +7,8 @@ import { LoopAssistDrawer } from '@/components/looopassist/LoopAssistDrawer';
 import { TrialExpiredModal, TrialExpiredBanner } from '@/components/subscription';
 import { TourTrigger } from '@/components/tours/TourTrigger';
 import { useOrg } from '@/contexts/OrgContext';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { KeyboardShortcutsDialog, CommandPalette } from '@/components/shared/KeyboardShortcuts';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -15,6 +17,15 @@ interface AppLayoutProps {
 function AppLayoutInner({ children }: AppLayoutProps) {
   const { isOpen, setIsOpen } = useLoopAssistUI();
   const { currentRole } = useOrg();
+  
+  // Initialize keyboard shortcuts
+  const { 
+    showShortcuts, 
+    setShowShortcuts, 
+    searchOpen, 
+    setSearchOpen, 
+    shortcuts 
+  } = useKeyboardShortcuts();
   
   // Only show LoopAssist for staff roles (not parents)
   const showLoopAssist = currentRole && currentRole !== 'parent';
@@ -34,6 +45,17 @@ function AppLayoutInner({ children }: AppLayoutProps) {
       )}
       <TrialExpiredModal />
       <TourTrigger />
+      
+      {/* Keyboard Shortcuts UI */}
+      <KeyboardShortcutsDialog 
+        open={showShortcuts} 
+        onOpenChange={setShowShortcuts} 
+        shortcuts={shortcuts} 
+      />
+      <CommandPalette 
+        open={searchOpen} 
+        onOpenChange={setSearchOpen} 
+      />
     </div>
   );
 }
