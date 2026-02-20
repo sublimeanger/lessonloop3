@@ -71,6 +71,44 @@ serve(async (req) => {
         });
       }
 
+      // Role-based authorization check
+      const ACTION_ROLE_PERMISSIONS: Record<string, string[]> = {
+        generate_billing_run: ['owner', 'admin', 'finance'],
+        send_invoice_reminders: ['owner', 'admin', 'finance'],
+        reschedule_lessons: ['owner', 'admin', 'teacher'],
+        draft_email: ['owner', 'admin', 'teacher'],
+        mark_attendance: ['owner', 'admin', 'teacher'],
+        cancel_lesson: ['owner', 'admin'],
+        complete_lessons: ['owner', 'admin', 'teacher'],
+        send_progress_report: ['owner', 'admin', 'teacher'],
+      };
+
+      const { data: membership, error: membershipError } = await supabase
+        .from("org_memberships")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("org_id", proposal.org_id)
+        .eq("status", "active")
+        .single();
+
+      if (membershipError || !membership) {
+        return new Response(JSON.stringify({ error: "You are not an active member of this organisation" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const typedProposalCheck = proposal as ActionProposal;
+      const actionType = typedProposalCheck.proposal.action_type;
+      const allowedRoles = ACTION_ROLE_PERMISSIONS[actionType] || ['owner', 'admin'];
+
+      if (!allowedRoles.includes(membership.role)) {
+        return new Response(JSON.stringify({ error: "Your role does not have permission to execute this action" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Execute based on proposal type
       let result: Record<string, unknown> = {};
       let newStatus = "executed";
