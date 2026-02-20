@@ -16,10 +16,12 @@ import {
   CheckCircle2,
   Ban,
   ShieldAlert,
+  AlertTriangle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useOrg } from '@/contexts/OrgContext';
 import { cn } from '@/lib/utils';
+import { format, parseISO } from 'date-fns';
 import type { AppRole } from '@/contexts/AuthContext';
 
 export interface ActionEntity {
@@ -84,6 +86,8 @@ const ACTION_ROLE_PERMISSIONS: Record<string, AppRole[]> = {
   send_progress_report: ['owner', 'admin', 'teacher'],
 };
 
+const DESTRUCTIVE_ACTIONS = new Set(['cancel_lesson', 'generate_billing_run']);
+
 const ENTITY_COLORS: Record<string, string> = {
   invoice: 'bg-success/10 text-success hover:bg-success/20 dark:bg-success/20 dark:text-success dark:hover:bg-success/30',
   student: 'bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30',
@@ -91,18 +95,76 @@ const ENTITY_COLORS: Record<string, string> = {
   guardian: 'bg-warning/10 text-warning hover:bg-warning/20 dark:bg-warning/20 dark:text-warning dark:hover:bg-warning/30',
 };
 
+function getPreviewText(proposal: ActionProposalData): string | null {
+  const { action_type, entities, params } = proposal;
+
+  switch (action_type) {
+    case 'cancel_lesson': {
+      const lesson = entities.find(e => e.type === 'lesson');
+      if (lesson && params.date) {
+        const dateStr = typeof params.date === 'string' ? safeFormatDate(params.date) : '';
+        const timeStr = typeof params.time === 'string' ? params.time : '';
+        return `This will cancel "${lesson.label}"${dateStr ? ` on ${dateStr}` : ''}${timeStr ? ` at ${timeStr}` : ''}`;
+      }
+      return lesson ? `This will cancel "${lesson.label}"` : null;
+    }
+    case 'generate_billing_run': {
+      const lessonCount = typeof params.lesson_count === 'number' ? params.lesson_count : entities.filter(e => e.type === 'lesson').length;
+      const start = typeof params.start_date === 'string' ? safeFormatDate(params.start_date) : null;
+      const end = typeof params.end_date === 'string' ? safeFormatDate(params.end_date) : null;
+      const countStr = lessonCount > 0 ? `${lessonCount} lessons` : 'lessons';
+      if (start && end) {
+        return `This will create invoices for ${countStr} from ${start} to ${end}`;
+      }
+      return `This will create invoices for ${countStr}`;
+    }
+    case 'mark_attendance': {
+      const studentCount = entities.filter(e => e.type === 'student').length;
+      const status = typeof params.status === 'string' ? params.status : 'present';
+      const lesson = entities.find(e => e.type === 'lesson');
+      const lessonLabel = lesson ? ` for "${lesson.label}"` : '';
+      return `This will mark ${studentCount} student${studentCount !== 1 ? 's' : ''} as ${status}${lessonLabel}`;
+    }
+    case 'send_invoice_reminders': {
+      const invoiceCount = typeof params.invoice_count === 'number' ? params.invoice_count : entities.filter(e => e.type === 'invoice').length;
+      return `This will send reminders for ${invoiceCount} overdue invoice${invoiceCount !== 1 ? 's' : ''}`;
+    }
+    default:
+      return null;
+  }
+}
+
+function safeFormatDate(dateStr: string): string {
+  try {
+    return format(parseISO(dateStr), 'd MMM yyyy');
+  } catch {
+    return dateStr;
+  }
+}
+
 export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoading }: ActionCardProps) {
   const navigate = useNavigate();
   const { currentRole } = useOrg();
   const [isConfirming, setIsConfirming] = useState(false);
+  const [awaitingSecondConfirm, setAwaitingSecondConfirm] = useState(false);
   const Icon = ACTION_ICONS[proposal.action_type] || FileText;
 
   const allowedRoles = ACTION_ROLE_PERMISSIONS[proposal.action_type] || ['owner', 'admin'];
   const hasPermission = currentRole ? allowedRoles.includes(currentRole) : false;
+  const isDestructive = DESTRUCTIVE_ACTIONS.has(proposal.action_type);
+  const previewText = getPreviewText(proposal);
 
   const handleConfirm = async () => {
+    if (isDestructive && !awaitingSecondConfirm) {
+      setAwaitingSecondConfirm(true);
+      return;
+    }
     setIsConfirming(true);
     onConfirm(proposalId);
+  };
+
+  const handleCancelSecondStep = () => {
+    setAwaitingSecondConfirm(false);
   };
 
   const handleEntityClick = (entity: ActionEntity) => {
@@ -121,12 +183,28 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
     }
   };
 
-  const confirmButton = (
+  const confirmButton = awaitingSecondConfirm ? (
+    <Button
+      size="sm"
+      variant="destructive"
+      onClick={handleConfirm}
+      disabled={isLoading || isConfirming}
+      className="flex-1"
+    >
+      {isConfirming ? (
+        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+      ) : (
+        <AlertTriangle className="mr-1 h-4 w-4" />
+      )}
+      Yes, I'm sure
+    </Button>
+  ) : (
     <Button
       size="sm"
       onClick={handleConfirm}
       disabled={isLoading || isConfirming || !hasPermission}
       className="flex-1"
+      variant={isDestructive ? 'destructive' : 'default'}
     >
       {isConfirming ? (
         <Loader2 className="mr-1 h-4 w-4 animate-spin" />
@@ -140,11 +218,20 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
   );
 
   return (
-    <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-background">
+    <Card className={cn(
+      'border-primary/20 bg-gradient-to-br from-primary/5 to-background',
+      awaitingSecondConfirm && 'border-destructive/30 bg-gradient-to-br from-destructive/5 to-background'
+    )}>
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
-          <div className="rounded-full bg-primary/10 p-2">
-            <Icon className="h-4 w-4 text-primary" />
+          <div className={cn(
+            'rounded-full p-2',
+            awaitingSecondConfirm ? 'bg-destructive/10' : 'bg-primary/10'
+          )}>
+            <Icon className={cn(
+              'h-4 w-4',
+              awaitingSecondConfirm ? 'text-destructive' : 'text-primary'
+            )} />
           </div>
           <CardTitle className="text-sm font-semibold">
             {ACTION_LABELS[proposal.action_type] || proposal.action_type}
@@ -153,6 +240,28 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">{proposal.description}</p>
+
+        {/* Detailed preview */}
+        {previewText && (
+          <div className={cn(
+            'rounded-md border px-3 py-2 text-xs',
+            isDestructive
+              ? 'border-destructive/20 bg-destructive/5 text-destructive'
+              : 'border-primary/20 bg-primary/5 text-foreground'
+          )}>
+            {previewText}
+          </div>
+        )}
+
+        {/* 2-step confirmation warning */}
+        {awaitingSecondConfirm && (
+          <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+            <p className="text-xs text-destructive">
+              This action cannot be undone. Are you sure you want to proceed?
+            </p>
+          </div>
+        )}
         
         {proposal.entities.length > 0 && (
           <div className="space-y-1">
@@ -204,11 +313,11 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
         <Button
           size="sm"
           variant="outline"
-          onClick={() => onCancel(proposalId)}
+          onClick={awaitingSecondConfirm ? handleCancelSecondStep : () => onCancel(proposalId)}
           disabled={isLoading || isConfirming}
         >
           <XCircle className="mr-1 h-4 w-4" />
-          Cancel
+          {awaitingSecondConfirm ? 'Go Back' : 'Cancel'}
         </Button>
       </CardFooter>
     </Card>
