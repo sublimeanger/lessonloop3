@@ -6,11 +6,25 @@
  * - Onboarding (PlanSelector.tsx)
  * - Settings (BillingTab.tsx)
  * - Edge functions (stripe-subscription-checkout)
+ * - Subscription hooks (useSubscription.ts, useFeatureGate.ts)
+ *
+ * CANONICAL PLAN KEY MAPPING
+ * ──────────────────────────
+ * DB enum (subscription_plan)  →  Display key (PlanKey)  →  User-facing name
+ * ─────────────────────────────────────────────────────────────────────────────
+ * 'solo_teacher'               →  'teacher'              →  'Teacher'
+ * 'academy'                    →  'studio'               →  'Studio'
+ * 'agency'                     →  'agency'               →  'Agency'
+ * 'trial'                      →  (n/a, handled separately) → 'Free Trial'
+ * 'custom'                     →  (n/a, handled separately) → 'Custom'
+ *
+ * The DB enum values are historical and should NOT be changed.
+ * All user-facing surfaces should use PLAN_DISPLAY_NAMES for labels.
  */
 
 export type PlanKey = 'teacher' | 'studio' | 'agency';
 
-// Map old plan keys to new ones for database compatibility
+/** Database enum value → display PlanKey */
 export const PLAN_KEY_MAP: Record<string, PlanKey> = {
   solo_teacher: 'teacher',
   academy: 'studio',
@@ -19,11 +33,28 @@ export const PLAN_KEY_MAP: Record<string, PlanKey> = {
   studio: 'studio',
 };
 
-// Map new plan keys to database enum values
+/** Display PlanKey → database enum value */
 export const DB_PLAN_MAP: Record<PlanKey, string> = {
   teacher: 'solo_teacher',
   studio: 'academy',
   agency: 'agency',
+};
+
+/**
+ * Canonical user-facing plan names.
+ * Import this instead of defining local name maps.
+ * Includes trial/custom for subscription status display.
+ */
+export const PLAN_DISPLAY_NAMES: Record<string, string> = {
+  // DB enum values
+  solo_teacher: 'Teacher',
+  academy: 'Studio',
+  agency: 'Agency',
+  trial: 'Free Trial',
+  custom: 'Custom',
+  // Display keys (for convenience)
+  teacher: 'Teacher',
+  studio: 'Studio',
 };
 
 export interface PlanConfig {
