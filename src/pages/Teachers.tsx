@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -7,19 +7,31 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useUsageCounts } from '@/hooks/useUsageCounts';
-import { useTeachers, useTeacherMutations, useTeacherStudentCounts } from '@/hooks/useTeachers';
+import { useTeachers, useTeacherMutations, useTeacherStudentCounts, Teacher } from '@/hooks/useTeachers';
 import { Progress } from '@/components/ui/progress';
-import { Plus, GraduationCap, Loader2, UserPlus, Lock, Link2, Link2Off, Phone } from 'lucide-react';
+import { Plus, GraduationCap, Loader2, UserPlus, Lock, Link2, Link2Off, Phone, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InviteMemberDialog } from '@/components/settings/InviteMemberDialog';
 import { PendingInvitesList } from '@/components/settings/PendingInvitesList';
+
+interface RemovalDialogState {
+  open: boolean;
+  teacher: Teacher | null;
+  lessonCount: number;
+  lessons: { id: string; title: string; start_at: string }[];
+  reassignTeacherId: string;
+  action: 'reassign' | 'cancel' | '';
+  isProcessing: boolean;
+}
 
 export default function Teachers() {
   const { currentOrg, isOrgAdmin } = useOrg();
@@ -27,9 +39,8 @@ export default function Teachers() {
   const { toast } = useToast();
   const { limits, canAddTeacher, usage } = useUsageCounts();
   
-  // Fetch teachers from new teachers table
   const { data: teachers = [], isLoading, refetch } = useTeachers();
-  const { createTeacher } = useTeacherMutations();
+  const { createTeacher, deleteTeacher } = useTeacherMutations();
   const { data: studentCounts = {} } = useTeacherStudentCounts();
   
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
@@ -37,30 +48,32 @@ export default function Teachers() {
   const [isSaving, setIsSaving] = useState(false);
   const [inviteRefreshKey, setInviteRefreshKey] = useState(0);
   
-  // Create teacher form (unlinked)
+  // Create teacher form
   const [newTeacherName, setNewTeacherName] = useState('');
   const [newTeacherEmail, setNewTeacherEmail] = useState('');
   const [newTeacherPhone, setNewTeacherPhone] = useState('');
+
+  // Removal dialog
+  const [removal, setRemoval] = useState<RemovalDialogState>({
+    open: false, teacher: null, lessonCount: 0, lessons: [],
+    reassignTeacherId: '', action: '', isProcessing: false,
+  });
 
   const handleCreateTeacher = async () => {
     if (!newTeacherName.trim()) {
       toast({ title: 'Name required', variant: 'destructive' });
       return;
     }
-    
     if (!canAddTeacher) {
       toast({ title: 'Teacher limit reached', variant: 'destructive' });
       return;
     }
-    
     setIsSaving(true);
-    
     await createTeacher.mutateAsync({
       display_name: newTeacherName.trim(),
       email: newTeacherEmail.trim() || undefined,
       phone: newTeacherPhone.trim() || undefined,
     });
-    
     setIsCreateDialogOpen(false);
     setNewTeacherName('');
     setNewTeacherEmail('');
@@ -68,6 +81,92 @@ export default function Teachers() {
     setIsSaving(false);
   };
 
+  const initiateRemoval = async (teacher: Teacher) => {
+    // Query future scheduled lessons for this teacher
+    const { data: futureLessons, count } = await supabase
+      .from('lessons')
+      .select('id, title, start_at', { count: 'exact' })
+      .eq('teacher_id', teacher.id)
+      .eq('status', 'scheduled')
+      .gte('start_at', new Date().toISOString())
+      .order('start_at', { ascending: true })
+      .limit(10);
+
+    setRemoval({
+      open: true,
+      teacher,
+      lessonCount: count ?? 0,
+      lessons: futureLessons || [],
+      reassignTeacherId: '',
+      action: (count ?? 0) > 0 ? '' : 'reassign', // No lessons = skip action choice
+      isProcessing: false,
+    });
+  };
+
+  const processRemoval = async () => {
+    if (!removal.teacher || !currentOrg) return;
+    setRemoval(prev => ({ ...prev, isProcessing: true }));
+
+    const { teacher, action, reassignTeacherId, lessonCount } = removal;
+    let reassignedCount = 0;
+    let cancelledCount = 0;
+
+    try {
+      if (lessonCount > 0) {
+        if (action === 'reassign' && reassignTeacherId) {
+          // Find the new teacher's user_id for teacher_user_id column
+          const newTeacher = teachers.find(t => t.id === reassignTeacherId);
+          const { error } = await supabase
+            .from('lessons')
+            .update({ 
+              teacher_id: reassignTeacherId,
+              teacher_user_id: newTeacher?.user_id || null,
+            })
+            .eq('teacher_id', teacher.id)
+            .eq('status', 'scheduled')
+            .gte('start_at', new Date().toISOString());
+
+          if (error) throw error;
+          reassignedCount = lessonCount;
+        } else if (action === 'cancel') {
+          const { error } = await supabase
+            .from('lessons')
+            .update({ 
+              status: 'cancelled' as any,
+              cancellation_reason: `Teacher ${teacher.display_name} removed from organisation`,
+              cancelled_at: new Date().toISOString(),
+            })
+            .eq('teacher_id', teacher.id)
+            .eq('status', 'scheduled')
+            .gte('start_at', new Date().toISOString());
+
+          if (error) throw error;
+          cancelledCount = lessonCount;
+        }
+      }
+
+      // Soft-delete the teacher
+      await deleteTeacher.mutateAsync(teacher.id);
+
+      // Summary notification
+      const parts: string[] = [`${teacher.display_name} has been removed.`];
+      if (reassignedCount > 0) {
+        const newName = teachers.find(t => t.id === reassignTeacherId)?.display_name || 'another teacher';
+        parts.push(`${reassignedCount} lesson${reassignedCount !== 1 ? 's' : ''} reassigned to ${newName}.`);
+      }
+      if (cancelledCount > 0) {
+        parts.push(`${cancelledCount} lesson${cancelledCount !== 1 ? 's' : ''} cancelled.`);
+      }
+
+      toast({ title: 'Teacher removed', description: parts.join(' ') });
+    } catch (err: any) {
+      toast({ title: 'Error removing teacher', description: err.message, variant: 'destructive' });
+    }
+
+    setRemoval(prev => ({ ...prev, open: false, isProcessing: false }));
+  };
+
+  const otherTeachers = teachers.filter(t => t.id !== removal.teacher?.id && t.status === 'active');
   const linkedTeachers = teachers.filter(t => t.isLinked);
   const unlinkedTeachers = teachers.filter(t => !t.isLinked);
 
@@ -167,7 +266,7 @@ export default function Teachers() {
 
           <TabsContent value="all" className="space-y-2">
             {teachers.map((teacher) => (
-              <TeacherCard key={teacher.id} teacher={teacher} studentCount={studentCounts[teacher.id] || 0} />
+              <TeacherCard key={teacher.id} teacher={teacher} studentCount={studentCounts[teacher.id] || 0} isAdmin={isOrgAdmin} onRemove={initiateRemoval} />
             ))}
           </TabsContent>
 
@@ -176,7 +275,7 @@ export default function Teachers() {
               <p className="text-sm text-muted-foreground py-4">No linked teachers yet.</p>
             ) : (
               linkedTeachers.map((teacher) => (
-                <TeacherCard key={teacher.id} teacher={teacher} studentCount={studentCounts[teacher.id] || 0} />
+                <TeacherCard key={teacher.id} teacher={teacher} studentCount={studentCounts[teacher.id] || 0} isAdmin={isOrgAdmin} onRemove={initiateRemoval} />
               ))
             )}
           </TabsContent>
@@ -190,7 +289,7 @@ export default function Teachers() {
                   Unlinked teachers can be assigned to lessons but cannot log in. Send them an invite to link their account.
                 </p>
                 {unlinkedTeachers.map((teacher) => (
-                  <TeacherCard key={teacher.id} teacher={teacher} studentCount={studentCounts[teacher.id] || 0} />
+                  <TeacherCard key={teacher.id} teacher={teacher} studentCount={studentCounts[teacher.id] || 0} isAdmin={isOrgAdmin} onRemove={initiateRemoval} />
                 ))}
               </>
             )}
@@ -198,19 +297,19 @@ export default function Teachers() {
         </Tabs>
       )}
 
-      {/* Pending Invites (reusable component) */}
+      {/* Pending Invites */}
       <div className="mt-6">
         <PendingInvitesList refreshKey={inviteRefreshKey} roleFilter={['admin', 'teacher', 'finance']} />
       </div>
 
-      {/* Shared Invite Dialog */}
+      {/* Invite Dialog */}
       <InviteMemberDialog
         open={isInviteDialogOpen}
         onOpenChange={setIsInviteDialogOpen}
         onInviteSent={() => setInviteRefreshKey(k => k + 1)}
       />
 
-      {/* Create Teacher Dialog (unlinked) */}
+      {/* Create Teacher Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -222,34 +321,16 @@ export default function Teachers() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="name">Display Name *</Label>
-              <Input
-                id="name"
-                value={newTeacherName}
-                onChange={(e) => setNewTeacherName(e.target.value)}
-                placeholder="Amy Brown"
-              />
+              <Input id="name" value={newTeacherName} onChange={(e) => setNewTeacherName(e.target.value)} placeholder="Amy Brown" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="teacherEmail">Email (optional)</Label>
-              <Input
-                id="teacherEmail"
-                type="email"
-                value={newTeacherEmail}
-                onChange={(e) => setNewTeacherEmail(e.target.value)}
-                placeholder="amy@example.com"
-              />
-              <p className="text-xs text-muted-foreground">
-                If provided, the account will be linked when they accept an invitation with this email.
-              </p>
+              <Input id="teacherEmail" type="email" value={newTeacherEmail} onChange={(e) => setNewTeacherEmail(e.target.value)} placeholder="amy@example.com" />
+              <p className="text-xs text-muted-foreground">If provided, the account will be linked when they accept an invitation with this email.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone (optional)</Label>
-              <Input
-                id="phone"
-                value={newTeacherPhone}
-                onChange={(e) => setNewTeacherPhone(e.target.value)}
-                placeholder="07123 456789"
-              />
+              <Input id="phone" value={newTeacherPhone} onChange={(e) => setNewTeacherPhone(e.target.value)} placeholder="07123 456789" />
             </div>
           </div>
           <DialogFooter>
@@ -260,12 +341,117 @@ export default function Teachers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Teacher Removal Safety Dialog */}
+      <AlertDialog open={removal.open} onOpenChange={(open) => setRemoval(prev => ({ ...prev, open }))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {removal.teacher?.display_name}?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                {removal.lessonCount > 0 ? (
+                  <>
+                    <p className="text-destructive font-medium">
+                      This teacher has {removal.lessonCount} upcoming lesson{removal.lessonCount !== 1 ? 's' : ''}.
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Completed lessons will keep the original teacher for reporting accuracy. Choose how to handle upcoming lessons:
+                    </p>
+
+                    <div className="space-y-2 pt-1">
+                      <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent transition-colors">
+                        <input
+                          type="radio"
+                          name="removal-action"
+                          checked={removal.action === 'reassign'}
+                          onChange={() => setRemoval(prev => ({ ...prev, action: 'reassign' }))}
+                          className="mt-1"
+                        />
+                        <div>
+                          <span className="font-medium text-sm">Reassign to another teacher</span>
+                          <p className="text-xs text-muted-foreground">All upcoming lessons will be transferred</p>
+                        </div>
+                      </label>
+
+                      {removal.action === 'reassign' && (
+                        <div className="ml-8">
+                          <Select value={removal.reassignTeacherId} onValueChange={(v) => setRemoval(prev => ({ ...prev, reassignTeacherId: v }))}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a teacher..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {otherTeachers.map(t => (
+                                <SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {otherTeachers.length === 0 && (
+                            <p className="text-xs text-destructive mt-1">No other active teachers available.</p>
+                          )}
+                        </div>
+                      )}
+
+                      <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent transition-colors">
+                        <input
+                          type="radio"
+                          name="removal-action"
+                          checked={removal.action === 'cancel'}
+                          onChange={() => setRemoval(prev => ({ ...prev, action: 'cancel' }))}
+                          className="mt-1"
+                        />
+                        <div>
+                          <span className="font-medium text-sm">Cancel all upcoming lessons</span>
+                          <p className="text-xs text-muted-foreground">Lessons will be marked as cancelled</p>
+                        </div>
+                      </label>
+                    </div>
+
+                    {removal.lessons.length > 0 && (
+                      <div className="text-xs text-muted-foreground border rounded p-2 max-h-24 overflow-y-auto space-y-1">
+                        {removal.lessons.map(l => (
+                          <div key={l.id}>
+                            {new Date(l.start_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} — {l.title}
+                          </div>
+                        ))}
+                        {removal.lessonCount > removal.lessons.length && (
+                          <div className="text-muted-foreground/60">... and {removal.lessonCount - removal.lessons.length} more</div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p>This teacher has no upcoming lessons. They will be deactivated and historical records preserved.</p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removal.isProcessing}>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={processRemoval}
+              disabled={
+                removal.isProcessing ||
+                (removal.lessonCount > 0 && removal.action === '') ||
+                (removal.action === 'reassign' && !removal.reassignTeacherId)
+              }
+            >
+              {removal.isProcessing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</> : 'Remove Teacher'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
 
 // Teacher card component
-function TeacherCard({ teacher, studentCount }: { teacher: any; studentCount: number }) {
+function TeacherCard({ teacher, studentCount, isAdmin, onRemove }: { 
+  teacher: Teacher; 
+  studentCount: number; 
+  isAdmin: boolean;
+  onRemove: (teacher: Teacher) => void;
+}) {
   const navigate = useNavigate();
   
   return (
@@ -308,6 +494,19 @@ function TeacherCard({ teacher, studentCount }: { teacher: any; studentCount: nu
           </span>
         </div>
       </div>
+      {isAdmin && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(teacher);
+          }}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 }
