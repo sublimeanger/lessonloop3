@@ -379,7 +379,17 @@ export function useUnbilledLessons(
     queryFn: async () => {
       if (!currentOrg?.id) return [];
 
-      // Get all lessons in range
+      // Get unbilled lesson IDs via server-side RPC
+      const { data: unbilledIds, error: rpcError } = await supabase.rpc('get_unbilled_lesson_ids', {
+        _org_id: currentOrg.id,
+        _start: dateRange.from,
+        _end: dateRange.to,
+      });
+
+      if (rpcError) throw rpcError;
+      if (!unbilledIds || unbilledIds.length === 0) return [];
+
+      // Fetch full lesson details for unbilled lessons
       let lessonsQuery = supabase
         .from('lessons')
         .select(`
@@ -387,6 +397,7 @@ export function useUnbilledLessons(
           title,
           start_at,
           end_at,
+          status,
           teacher_user_id,
           lesson_participants(
             student:students(
@@ -401,14 +412,13 @@ export function useUnbilledLessons(
           )
         `)
         .eq('org_id', currentOrg.id)
-        .gte('start_at', dateRange.from)
-        .lte('start_at', dateRange.to);
+        .in('id', unbilledIds as string[]);
 
-      // Filter by status based on billing mode
-      if (billingMode === 'upfront') {
-        lessonsQuery = lessonsQuery.in('status', ['scheduled', 'completed'] as const);
-      } else {
+      // Filter by billing mode status
+      if (billingMode === 'delivered') {
         lessonsQuery = lessonsQuery.eq('status', 'completed');
+      } else {
+        lessonsQuery = lessonsQuery.in('status', ['scheduled', 'completed'] as const);
       }
 
       if (teacherId) {
@@ -418,19 +428,7 @@ export function useUnbilledLessons(
       const { data: lessons, error: lessonsError } = await lessonsQuery;
       if (lessonsError) throw lessonsError;
 
-      // Get already billed lesson IDs
-      const { data: billedItems, error: billedError } = await supabase
-        .from('invoice_items')
-        .select('linked_lesson_id')
-        .eq('org_id', currentOrg.id)
-        .not('linked_lesson_id', 'is', null);
-
-      if (billedError) throw billedError;
-
-      const billedLessonIds = new Set(billedItems?.map((i) => i.linked_lesson_id) || []);
-
-      // Filter out already billed lessons
-      return lessons?.filter((l) => !billedLessonIds.has(l.id)) || [];
+      return lessons || [];
     },
     enabled: !!currentOrg?.id && !!dateRange.from && !!dateRange.to,
   });

@@ -3077,6 +3077,10 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: string
       }
+      get_unbilled_lesson_ids: {
+        Args: { _end: string; _org_id: string; _start: string }
+        Returns: string[]
+      }
       get_user_id_by_email: { Args: { _email: string }; Returns: string }
       get_user_org_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_roles: {
