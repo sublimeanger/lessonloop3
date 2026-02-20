@@ -29,6 +29,7 @@ import { useRateCards, findRateForDuration } from '@/hooks/useRateCards';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAvailableCreditsForPayer, AvailableCredit } from '@/hooks/useAvailableCredits';
 import { Badge } from '@/components/ui/badge';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 interface CreateInvoiceModalProps {
   open: boolean;
@@ -65,6 +66,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
   const { currentOrg } = useOrg();
   const createInvoice = useCreateInvoice();
   const { data: rateCards = [] } = useRateCards();
+  const { isOnline, guardOffline } = useOnlineStatus();
   const [tab, setTab] = useState<'manual' | 'lessons'>('manual');
   const [guardians, setGuardians] = useState<Guardian[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -151,6 +153,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
   }, [currentOrg?.id]);
 
   const onSubmit = async (data: InvoiceFormData) => {
+    if (guardOffline()) return;
     const creditIdsToApply = Array.from(selectedCredits);
     
     if (tab === 'manual') {
@@ -507,7 +510,8 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                 type="submit"
                 disabled={
                   createInvoice.isPending ||
-                  (tab === 'lessons' && selectedLessons.size === 0)
+                  (tab === 'lessons' && selectedLessons.size === 0) ||
+                  !isOnline
                 }
               >
                 {createInvoice.isPending ? 'Creating...' : 'Create Invoice'}

@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RecurringEditDialog, RecurringEditMode } from './RecurringEditDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 interface LessonModalProps {
   open: boolean;
@@ -56,6 +57,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   const { checkConflicts } = useConflictDetection();
   const { sendNotesNotification } = useNotesNotification();
   const isMobile = useIsMobile();
+  const { isOnline, guardOffline } = useOnlineStatus();
 
   const [isSaving, setIsSaving] = useState(false);
   const [conflictState, setConflictState] = useState<{
@@ -310,6 +312,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   };
 
   const handleSaveClick = () => {
+    if (guardOffline()) return;
     if (lesson?.recurrence_id && !recurringEditMode) {
       setShowRecurringDialog(true);
       return;
@@ -637,7 +640,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
 
   const errors = conflictState.conflicts.filter(c => c.severity === 'error');
   const warnings = conflictState.conflicts.filter(c => c.severity === 'warning');
-  const isSaveDisabled = isSaving || conflictState.isChecking || errors.length > 0;
+  const isSaveDisabled = isSaving || conflictState.isChecking || errors.length > 0 || !isOnline;
 
   // ─── Student selector content (shared between mobile sheet & desktop popover) ───
   const studentSelectorContent = (
