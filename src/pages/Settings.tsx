@@ -1,4 +1,4 @@
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useEffect, ChangeEvent, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -24,7 +24,18 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Upload, X } from 'lucide-react';
+import { Loader2, Upload, X, LogOut, ShieldAlert } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface NotificationPreferences {
   email_lesson_reminders: boolean;
@@ -74,6 +85,7 @@ export default function Settings() {
     email_marketing: false,
   });
   const [notifSaving, setNotifSaving] = useState(false);
+  const [globalSignOutLoading, setGlobalSignOutLoading] = useState(false);
 
   // Sync profile data
   useEffect(() => {
@@ -293,6 +305,17 @@ export default function Settings() {
       setNotifSaving(false);
     }
   };
+
+  const handleGlobalSignOut = async () => {
+    setGlobalSignOutLoading(true);
+    try {
+      await supabase.auth.signOut({ scope: 'global' });
+      // Global sign-out will trigger onAuthStateChange and redirect
+    } catch (error: any) {
+      toast({ title: 'Error', description: 'Failed to sign out of all devices', variant: 'destructive' });
+      setGlobalSignOutLoading(false);
+    }
+  };
   
   return (
     <AppLayout>
@@ -383,6 +406,56 @@ export default function Settings() {
                 {profileSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Save Changes
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Security Section */}
+          <Card className="border-destructive/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShieldAlert className="h-5 w-5 text-destructive" />
+                Security
+              </CardTitle>
+              <CardDescription>
+                Manage sessions across your devices
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Sign out of all devices</p>
+                  <p className="text-sm text-muted-foreground">
+                    This will end all active sessions, including this one. You'll need to log in again.
+                  </p>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign Out All
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Sign out of all devices?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will immediately end all your active sessions on every device. You will be signed out and redirected to the login page.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleGlobalSignOut}
+                        disabled={globalSignOutLoading}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {globalSignOutLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Yes, sign out everywhere
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
