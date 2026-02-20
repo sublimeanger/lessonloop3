@@ -45,3 +45,15 @@ export function formatCurrency(
 export function formatCurrencyMinor(amountMinor: number, currencyCode = 'GBP'): string {
   return formatCurrency(amountMinor, currencyCode, { fromMinor: true });
 }
+
+/**
+ * Sanitise a string for safe CSV inclusion.
+ * Prefixes cells starting with formula characters (=, +, -, @, \t, \r)
+ * with a single quote to prevent Excel/Sheets formula injection.
+ */
+export function sanitiseCSVCell(value: string): string {
+  if (/^[=+\-@\t\r]/.test(value)) {
+    return "'" + value;
+  }
+  return value;
+}
