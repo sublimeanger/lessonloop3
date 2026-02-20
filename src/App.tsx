@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
+import { logger } from "@/lib/logger";
 import { toast } from "@/hooks/use-toast";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -77,9 +78,7 @@ const PortalMessages = lazy(() => import(/* webpackChunkName: "portal" */ "./pag
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error, query) => {
-      if (import.meta.env.DEV) {
-        console.error(`[QueryCache] Error in query ${JSON.stringify(query.queryKey)}:`, error);
-      }
+      logger.error(`[QueryCache] Error in query ${JSON.stringify(query.queryKey)}:`, error);
       if (
         error instanceof TypeError &&
         error.message.toLowerCase().includes('fetch')
@@ -94,9 +93,7 @@ const queryClient = new QueryClient({
   }),
   mutationCache: new MutationCache({
     onError: (error) => {
-      if (import.meta.env.DEV) {
-        console.error('[MutationCache] Mutation error:', error);
-      }
+      logger.error('[MutationCache] Mutation error:', error);
     },
   }),
   defaultOptions: {

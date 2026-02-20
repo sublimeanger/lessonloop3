@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef, ReactNod
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth, AppRole } from './AuthContext';
 import { Sentry } from '@/lib/sentry';
+import { logger } from '@/lib/logger';
 
 export type OrgType = 'solo_teacher' | 'studio' | 'academy' | 'agency';
 export type MembershipStatus = 'active' | 'invited' | 'disabled';
@@ -116,7 +117,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       if (!mountedRef.current) return;
 
       if (membershipError) {
-        console.error('Error fetching memberships:', membershipError);
+        logger.error('Error fetching memberships:', membershipError);
         setIsLoading(false);
         setHasInitialised(true);
         return;
@@ -171,7 +172,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         Sentry.setTag('org_id', selectedOrg.id);
       }
     } catch (error) {
-      console.error('Error in fetchOrganisations:', error);
+      logger.error('Error in fetchOrganisations:', error);
     } finally {
       if (mountedRef.current) {
         setIsLoading(false);

@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { logger } from '@/lib/logger';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -301,7 +302,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         toast.error('Response timed out. Please try a shorter question.');
       } else {
-        console.error('LoopAssist error:', error);
+        logger.error('LoopAssist error:', error);
         toast.error(error instanceof Error ? error.message : 'Failed to get response');
       }
     } finally {

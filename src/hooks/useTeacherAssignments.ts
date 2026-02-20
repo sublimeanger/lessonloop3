@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 
@@ -27,7 +28,7 @@ export function useTeacherAssignmentCounts() {
         .eq('org_id', currentOrg.id);
       
       if (error) {
-        console.error('Error fetching assignment counts:', error);
+        logger.error('Error fetching assignment counts:', error);
         setIsLoading(false);
         return;
       }

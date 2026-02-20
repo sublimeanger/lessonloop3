@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -69,7 +70,7 @@ function ResourceDownloadButton({ filePath, fileName }: ResourceDownloadButtonPr
         document.body.removeChild(a);
       }
     } catch (error) {
-      console.error('Download failed:', error);
+      logger.error('Download failed:', error);
     } finally {
       setIsDownloading(false);
     }

@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/lib/logger';
 
 /**
  * Fire-and-forget audit log helper.
@@ -27,6 +28,6 @@ export function logAudit(
       after: (details?.after ?? null) as any,
     }])
     .then(({ error }) => {
-      if (error) console.warn('[audit] Failed to log:', error.message);
+      if (error) logger.warn('[audit] Failed to log:', error.message);
     });
 }

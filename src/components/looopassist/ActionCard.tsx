@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -237,7 +238,7 @@ export function parseActionFromResponse(content: string): ActionProposalData | n
       params: parsed.params || {},
     };
   } catch (e) {
-    console.error('Failed to parse action block:', e);
+    logger.error('Failed to parse action block:', e);
     return null;
   }
 }

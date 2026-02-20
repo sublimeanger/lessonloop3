@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { logger } from "@/lib/logger";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
@@ -40,7 +41,7 @@ export default function BlogPost() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error("Failed to copy link:", err);
+      logger.error("Failed to copy link:", err);
     }
   };
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import { jsPDF } from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -91,7 +92,7 @@ export function useInvoicePdf() {
         description: `Invoice ${invoiceNumber} downloaded.`,
       });
     } catch (error: any) {
-      console.error('PDF generation error:', error);
+      logger.error('PDF generation error:', error);
       toast({
         title: 'Download Failed',
         description: error.message || 'Failed to generate invoice PDF.',

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg, OrgType } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -119,7 +120,7 @@ export function useLoopAssistFirstRun() {
         const message = getProactiveMessage(currentOrg.org_type, hasStudents, hasLocations);
         setProactiveMessage(message);
       } catch (error) {
-        console.error('Error checking org status for LoopAssist:', error);
+        logger.error('Error checking org status for LoopAssist:', error);
       } finally {
         setIsLoading(false);
       }

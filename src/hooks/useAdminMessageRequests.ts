@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useToast } from '@/hooks/use-toast';
@@ -189,10 +190,10 @@ export function useUpdateMessageRequest() {
           );
 
           if (!response.ok) {
-            console.error('Failed to send notification email:', await response.text());
+            logger.error('Failed to send notification email:', await response.text());
           }
         } catch (emailError) {
-          console.error('Error sending notification email:', emailError);
+          logger.error('Error sending notification email:', emailError);
         }
       }
 

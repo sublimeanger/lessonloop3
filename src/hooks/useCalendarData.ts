@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { LessonWithDetails, CalendarFilters } from '@/components/calendar/types';
@@ -86,7 +87,7 @@ export function useCalendarData(
       const { data: lessonsData, error } = await query;
 
       if (error || !lessonsData) {
-        console.error('Error fetching lessons:', error);
+        logger.error('Error fetching lessons:', error);
         setLessons([]);
         setIsCapReached(false);
         setIsLoading(false);
@@ -158,7 +159,7 @@ export function useCalendarData(
       setLessons(enrichedLessons);
     } catch (error) {
       if ((error as Error).name !== 'AbortError') {
-        console.error('Error fetching lessons:', error);
+        logger.error('Error fetching lessons:', error);
         setLessons([]);
       }
     } finally {

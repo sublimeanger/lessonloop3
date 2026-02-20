@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -42,7 +43,7 @@ export function MessageFeedback({ messageId, conversationId, className }: Messag
       });
 
       if (error) {
-        console.error('Failed to save feedback:', error);
+        logger.error('Failed to save feedback:', error);
         // Still show visual feedback even if save fails
       }
       
@@ -52,7 +53,7 @@ export function MessageFeedback({ messageId, conversationId, className }: Messag
         toast('Feedback recorded. We will work on improving.', { duration: 2000 });
       }
     } catch (error) {
-      console.error('Failed to submit feedback:', error);
+      logger.error('Failed to submit feedback:', error);
     } finally {
       setIsSubmitting(false);
     }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
@@ -77,7 +78,7 @@ export function useCalendarConnections() {
       .single();
 
     if (error) {
-      console.error('Error creating iCal connection:', error);
+      logger.error('Error creating iCal connection:', error);
       return null;
     }
 
@@ -144,7 +145,7 @@ export function useCalendarConnections() {
         throw new Error('No auth URL returned');
       }
     } catch (error: any) {
-      console.error('Error starting Google OAuth:', error);
+      logger.error('Error starting Google OAuth:', error);
       toast({
         title: 'Connection failed',
         description: error.message || 'Could not connect to Google Calendar',

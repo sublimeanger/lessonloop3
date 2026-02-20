@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { logger } from '@/lib/logger';
 import { format, getDay, differenceInMinutes, addMinutes, subMinutes } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
@@ -61,7 +62,7 @@ export function useConflictDetection() {
         try {
           return await checkFn();
         } catch (error) {
-          console.warn(`Conflict check failed: ${fallbackMessage}`, error);
+          logger.warn(`Conflict check failed: ${fallbackMessage}`, error);
           return [];
         }
       };
@@ -160,13 +161,13 @@ export function useConflictDetection() {
           );
           conflicts.push(...studentConflicts);
         } catch (studentError) {
-          console.warn('Student conflict check failed, continuing without:', studentError);
+          logger.warn('Student conflict check failed, continuing without:', studentError);
           // Don't block - just skip student conflict checking
         }
       }
 
     } catch (error) {
-      console.error('Conflict detection error:', error);
+      logger.error('Conflict detection error:', error);
       // Return empty array - allow lesson creation even if conflict check completely fails
       // This is better than blocking the user entirely
       return [];
