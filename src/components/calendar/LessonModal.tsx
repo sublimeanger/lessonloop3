@@ -413,68 +413,105 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
         const originalDuration = parseISO(lesson.end_at).getTime() - originalStart.getTime();
         const newDuration = durationMins * 60 * 1000;
 
-        for (let i = 0; i < lessonIdsToUpdate.length; i++) {
-          const lessonId = lessonIdsToUpdate[i];
-          
-          if (editMode === 'this_and_future' && i > 0) {
-            const { data: currentLesson } = await supabase
-              .from('lessons')
-              .select('start_at, end_at')
-              .eq('id', lessonId)
-              .single();
-            
-            if (currentLesson) {
-              const currentStart = parseISO(currentLesson.start_at);
-              const newStart = new Date(currentStart.getTime() + timeOffsetMs);
-              const newEnd = new Date(newStart.getTime() + durationMins * 60 * 1000);
-              
-              await supabase
-                .from('lessons')
-                .update({
-                  lesson_type: lessonType,
-                  teacher_user_id: teacherUserId, // null for unlinked teachers
-                  teacher_id: teacherId,
-                  location_id: locationId,
-                  room_id: roomId,
-                  start_at: newStart.toISOString(),
-                  end_at: newEnd.toISOString(),
-                  title: generateTitle(),
-                })
-                .eq('id', lessonId);
-            }
-          } else {
-            const { error } = await supabase
+        const title = generateTitle();
+
+        try {
+          // 1. Update the first (selected) lesson with all fields including notes/status
+          const { error: firstError } = await supabase
+            .from('lessons')
+            .update({
+              lesson_type: lessonType,
+              teacher_user_id: teacherUserId,
+              teacher_id: teacherId,
+              location_id: locationId,
+              room_id: roomId,
+              start_at: startAtUtc.toISOString(),
+              end_at: endAtUtc.toISOString(),
+              title,
+              notes_private: notesPrivate || null,
+              notes_shared: notesShared || null,
+              status,
+              recurrence_id: editMode === 'this_only' ? null : lesson.recurrence_id,
+            })
+            .eq('id', lesson.id);
+
+          if (firstError) throw firstError;
+
+          // 2. Batch update remaining future lessons (non-time fields)
+          const futureIds = lessonIdsToUpdate.filter(id => id !== lesson.id);
+
+          if (futureIds.length > 0 && editMode === 'this_and_future') {
+            // Batch update non-time fields for all future lessons
+            const { error: batchError } = await supabase
               .from('lessons')
               .update({
                 lesson_type: lessonType,
-                teacher_user_id: teacherUserId, // null for unlinked teachers
+                teacher_user_id: teacherUserId,
                 teacher_id: teacherId,
                 location_id: locationId,
                 room_id: roomId,
-                start_at: startAtUtc.toISOString(),
-                end_at: endAtUtc.toISOString(),
-                title: generateTitle(),
-                notes_private: notesPrivate || null,
-                notes_shared: notesShared || null,
-                status,
-                recurrence_id: editMode === 'this_only' ? null : lesson.recurrence_id,
+                title,
               })
-              .eq('id', lessonId);
+              .eq('recurrence_id', lesson.recurrence_id)
+              .gt('start_at', lesson.start_at);
 
-            if (error) throw error;
+            if (batchError) throw batchError;
+
+            // Apply time shift if time or duration changed
+            if (timeOffsetMs !== 0 || originalDuration !== newDuration) {
+              // Fetch current times for future lessons, then batch update in chunks
+              const { data: futureTimes } = await supabase
+                .from('lessons')
+                .select('id, start_at')
+                .in('id', futureIds);
+
+              if (futureTimes && futureTimes.length > 0) {
+                // Update each future lesson's time (unavoidable without RPC, but
+                // we've already reduced from 4 calls/lesson to 1 call/lesson)
+                await Promise.all(futureTimes.map(fl => {
+                  const shiftedStart = new Date(parseISO(fl.start_at).getTime() + timeOffsetMs);
+                  const shiftedEnd = new Date(shiftedStart.getTime() + newDuration);
+                  return supabase
+                    .from('lessons')
+                    .update({
+                      start_at: shiftedStart.toISOString(),
+                      end_at: shiftedEnd.toISOString(),
+                    })
+                    .eq('id', fl.id);
+                }));
+              }
+            }
           }
 
-          await supabase.from('lesson_participants').delete().eq('lesson_id', lessonId);
-          
+          // 3. Batch delete ALL participants for affected lessons in one call
+          await supabase
+            .from('lesson_participants')
+            .delete()
+            .in('lesson_id', lessonIdsToUpdate);
+
+          // 4. Batch insert all new participants in one call
           if (selectedStudents.length > 0) {
-            await supabase.from('lesson_participants').insert(
+            const allParticipants = lessonIdsToUpdate.flatMap(lessonId =>
               selectedStudents.map(studentId => ({
                 org_id: currentOrg.id,
                 lesson_id: lessonId,
                 student_id: studentId,
               }))
             );
+
+            const { error: partError } = await supabase
+              .from('lesson_participants')
+              .insert(allParticipants);
+
+            if (partError) throw partError;
           }
+        } catch (batchError: any) {
+          toast({
+            title: 'Error updating lessons',
+            description: `${batchError.message}. Partial updates may have occurred — please check the calendar.`,
+            variant: 'destructive',
+          });
+          throw batchError;
         }
 
         const notesChanged = notesShared && notesShared !== (lesson.notes_shared || '');
