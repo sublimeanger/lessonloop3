@@ -80,6 +80,19 @@ export function RouteGuard({
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
+  // SPECIAL: Verify-email page - just need auth, nothing else
+  if (location.pathname === '/verify-email' && user) {
+    return <>{children}</>;
+  }
+
+  // Email verification check - block unverified users from protected routes
+  // Allow /onboarding and /verify-email through
+  if (requireAuth && user && !user.email_confirmed_at) {
+    if (location.pathname !== '/onboarding') {
+      return <Navigate to="/verify-email" replace />;
+    }
+  }
+
   // SPECIAL: Onboarding page - just need auth, nothing else
   if (location.pathname === '/onboarding' && user) {
     return <>{children}</>;
