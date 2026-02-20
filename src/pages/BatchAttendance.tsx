@@ -1,17 +1,19 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { logger } from '@/lib/logger';
-import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
+import { format, parseISO, startOfDay, endOfDay, addDays, subDays, isToday, isFuture } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle2, Save, UserCheck } from 'lucide-react';
+import { Loader2, CheckCircle2, Save, UserCheck, ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -34,20 +36,20 @@ export default function BatchAttendance() {
   const { currentOrg } = useOrg();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [lessons, setLessons] = useState<LessonRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  // Map: lessonId -> studentId -> status
   const [attendance, setAttendance] = useState<Map<string, Map<string, AttendanceStatus>>>(new Map());
 
-  const today = useMemo(() => new Date(), []);
+  const isFutureDate = isFuture(startOfDay(selectedDate));
 
   useEffect(() => {
     if (!currentOrg) return;
     const fetchData = async () => {
       setIsLoading(true);
-      const dayStart = startOfDay(today).toISOString();
-      const dayEnd = endOfDay(today).toISOString();
+      const dayStart = startOfDay(selectedDate).toISOString();
+      const dayEnd = endOfDay(selectedDate).toISOString();
 
       const { data: lessonsData } = await supabase
         .from('lessons')
@@ -85,7 +87,6 @@ export default function BatchAttendance() {
 
       setLessons(rows);
 
-      // Initialize attendance map from existing records
       const map = new Map<string, Map<string, AttendanceStatus>>();
       rows.forEach((lesson) => {
         const studentMap = new Map<string, AttendanceStatus>();
@@ -98,7 +99,7 @@ export default function BatchAttendance() {
       setIsLoading(false);
     };
     fetchData();
-  }, [currentOrg, today]);
+  }, [currentOrg, selectedDate]);
 
   const setStudentAttendance = useCallback(
     (lessonId: string, studentId: string, status: AttendanceStatus) => {
@@ -188,11 +189,19 @@ export default function BatchAttendance() {
     0
   );
 
+  const goToPrevDay = () => setSelectedDate((prev) => subDays(prev, 1));
+  const goToNextDay = () => setSelectedDate((prev) => addDays(prev, 1));
+  const goToToday = () => setSelectedDate(new Date());
+
+  const dateLabel = isToday(selectedDate)
+    ? 'Today'
+    : format(selectedDate, 'EEEE, d MMMM yyyy');
+
   return (
     <AppLayout>
       <PageHeader
         title="Batch Attendance"
-        description={`Mark attendance for all of today's lessons — ${format(today, 'EEEE, d MMMM yyyy')}`}
+        description={`Mark attendance for ${isToday(selectedDate) ? "today's" : format(selectedDate, 'd MMMM yyyy') + "'s"} lessons`}
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Calendar', href: '/calendar' },
@@ -200,17 +209,58 @@ export default function BatchAttendance() {
         ]}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={markAllPresent} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={markAllPresent} disabled={isFutureDate} className="gap-1.5">
               <UserCheck className="h-4 w-4" />
               Mark All Present
             </Button>
-            <Button onClick={handleSave} disabled={isSaving} className="gap-1.5">
+            <Button onClick={handleSave} disabled={isSaving || isFutureDate} className="gap-1.5">
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save All ({markedCount}/{totalStudents})
             </Button>
           </div>
         }
       />
+
+      {/* Date Navigation */}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={goToPrevDay}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="min-w-[200px] justify-start gap-2">
+                <CalendarIcon className="h-4 w-4" />
+                {dateLabel}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => date && setSelectedDate(date)}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+          <Button variant="outline" size="icon" onClick={goToNextDay}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {!isToday(selectedDate) && (
+          <Button variant="ghost" size="sm" onClick={goToToday}>
+            Go to Today
+          </Button>
+        )}
+      </div>
+
+      {isFutureDate && (
+        <div className="mb-4 rounded-md border border-warning/30 bg-warning/10 px-4 py-2 text-sm text-warning">
+          Attendance cannot be recorded for future dates.
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-24">
@@ -220,9 +270,9 @@ export default function BatchAttendance() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <CheckCircle2 className="h-12 w-12 text-muted-foreground/40" />
-            <h3 className="mt-4 text-lg font-medium">No lessons today</h3>
+            <h3 className="mt-4 text-lg font-medium">No lessons</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              There are no scheduled or completed lessons for today.
+              There are no scheduled or completed lessons for {isToday(selectedDate) ? 'today' : format(selectedDate, 'd MMMM yyyy')}.
             </p>
           </CardContent>
         </Card>
