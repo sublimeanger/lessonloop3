@@ -142,16 +142,11 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
   };
 
   const handleGenerate = async () => {
-    const defaultRate = rateCards.find(r => r.is_default)?.rate_amount || 
-                        rateCards[0]?.rate_amount || 
-                        3000;
-    
     await createBillingRun.mutateAsync({
       run_type: config.runType,
       start_date: config.startDate,
       end_date: config.endDate,
       generate_invoices: true,
-      lesson_rate_minor: defaultRate,
       billing_mode: config.billingMode,
       term_id: config.termId || undefined,
     });

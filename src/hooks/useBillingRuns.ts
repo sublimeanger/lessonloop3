@@ -1,8 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { differenceInMinutes } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { findRateForDuration } from '@/hooks/useRateCards';
 import type { Database } from '@/integrations/supabase/types';
 
 type BillingRun = Database['public']['Tables']['billing_runs']['Row'];
@@ -48,7 +50,7 @@ export function useCreateBillingRun() {
       start_date: string;
       end_date: string;
       generate_invoices: boolean;
-      lesson_rate_minor: number;
+      fallback_rate_minor?: number;
       billing_mode?: 'delivered' | 'upfront';
       term_id?: string;
     }) => {
@@ -81,7 +83,15 @@ export function useCreateBillingRun() {
       }
 
       try {
-        // 2. Determine which lesson statuses to include based on billing mode
+        // 2. Fetch rate cards for per-lesson pricing
+        const { data: rateCards } = await supabase
+          .from('rate_cards')
+          .select('*')
+          .eq('org_id', currentOrg.id);
+
+        const fallbackRate = data.fallback_rate_minor ?? 3000;
+
+        // 3. Determine which lesson statuses to include based on billing mode
         const billingMode = data.billing_mode || 'delivered';
         const statusFilter: Array<'scheduled' | 'completed' | 'cancelled'> = billingMode === 'upfront'
           ? ['scheduled', 'completed']
@@ -198,7 +208,13 @@ export function useCreateBillingRun() {
           dueDate.setDate(dueDate.getDate() + 14);
 
           for (const [, payer] of payerGroups) {
-            const subtotal = payer.lessons.length * data.lesson_rate_minor;
+            // Calculate per-lesson rates based on duration and rate cards
+            const lessonRates = payer.lessons.map((lesson) => {
+              const durationMins = differenceInMinutes(new Date(lesson.end_at), new Date(lesson.start_at));
+              return findRateForDuration(durationMins, rateCards || [], fallbackRate);
+            });
+            const subtotal = lessonRates.reduce((sum, r) => sum + r, 0);
+
             const vatRate = currentOrg.vat_enabled ? currentOrg.vat_rate : 0;
             const taxMinor = Math.round(subtotal * (vatRate / 100));
             const total = subtotal + taxMinor;
@@ -227,13 +243,13 @@ export function useCreateBillingRun() {
             invoiceIds.push(invoice.id);
             totalAmount += total;
 
-            const items = payer.lessons.map((lesson) => ({
+            const items = payer.lessons.map((lesson, idx) => ({
               invoice_id: invoice.id,
               org_id: currentOrg.id,
               description: lesson.title,
               quantity: 1,
-              unit_price_minor: data.lesson_rate_minor,
-              amount_minor: data.lesson_rate_minor,
+              unit_price_minor: lessonRates[idx],
+              amount_minor: lessonRates[idx],
               linked_lesson_id: lesson.id,
             }));
 
