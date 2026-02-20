@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { logger } from '@/lib/logger';
 import { safeGetItem, safeSetItem } from '@/lib/storage';
 import { useSearchParams } from 'react-router-dom';
-import { format, addWeeks, subWeeks, startOfWeek, addDays } from 'date-fns';
+import { format, addWeeks, subWeeks, startOfWeek, addDays, parseISO } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { WeekTimeGrid } from '@/components/calendar/WeekTimeGrid';
 import { AgendaView } from '@/components/calendar/AgendaView';
 import { StackedWeekView } from '@/components/calendar/StackedWeekView';
 import { DayTimelineView } from '@/components/calendar/DayTimelineView';
+import { WeekContextStrip } from '@/components/calendar/WeekContextStrip';
 import { LessonModal } from '@/components/calendar/LessonModal';
 import { LessonDetailPanel } from '@/components/calendar/LessonDetailPanel';
 import { CalendarFiltersBar } from '@/components/calendar/CalendarFiltersBar';
@@ -94,6 +95,18 @@ export default function CalendarPage() {
 
   // Track lesson IDs that are currently being saved (optimistic update in flight)
   const [savingLessonIds, setSavingLessonIds] = useState<Set<string>>(new Set());
+
+  // Lessons grouped by day for the week strip
+  const lessonsByDay = useMemo(() => {
+    const map = new Map<string, LessonWithDetails[]>();
+    for (const lesson of lessons) {
+      const key = format(parseISO(lesson.start_at), 'yyyy-MM-dd');
+      const arr = map.get(key) ?? [];
+      arr.push(lesson);
+      map.set(key, arr);
+    }
+    return map;
+  }, [lessons]);
 
   // Teacher colour map
   const teacherColourMap = useMemo(() => buildTeacherColourMap(teachers), [teachers]);
@@ -406,21 +419,6 @@ export default function CalendarPage() {
     [pendingDrag, executeLessonMove]
   );
 
-  // Date display
-  const getDateDisplay = () => {
-    if (view === 'day') {
-      return format(currentDate, 'EEEE, d MMMM yyyy');
-    }
-    if (view === 'week' || view === 'stacked') {
-      const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-      const weekEnd = addDays(weekStart, 6);
-      if (weekStart.getMonth() === weekEnd.getMonth()) {
-        return `${format(weekStart, 'd')} – ${format(weekEnd, 'd MMMM yyyy')}`;
-      }
-      return `${format(weekStart, 'd MMM')} – ${format(weekEnd, 'd MMM yyyy')}`;
-    }
-    return format(currentDate, 'MMMM yyyy');
-  };
 
   return (
     <AppLayout>
@@ -443,21 +441,18 @@ export default function CalendarPage() {
 
       {/* Toolbar */}
       <div className="mb-3 space-y-2">
-        {/* Row 1: Navigation + view toggle */}
-        <div className="flex items-center justify-between gap-1">
-          <div className="flex items-center gap-1 min-w-0">
+        {/* Row 1: Navigation + week strip + view toggle */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1 shrink-0">
             <Button variant="outline" size="sm" onClick={goToToday} className="shrink-0 h-8 px-2.5 text-xs sm:text-sm sm:px-3">
               Today
             </Button>
-            <div className="flex items-center shrink-0">
-              <Button variant="ghost" size="icon" onClick={navigatePrev} className="h-8 w-8">
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={navigateNext} className="h-8 w-8">
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-            <span className="font-medium truncate text-xs sm:text-sm">{getDateDisplay()}</span>
+            <Button variant="ghost" size="icon" onClick={navigatePrev} className="h-8 w-8">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={navigateNext} className="h-8 w-8">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
 
           <div className="flex items-center gap-1 shrink-0">
@@ -518,6 +513,14 @@ export default function CalendarPage() {
             )}
           </div>
         </div>
+
+        {/* Week context strip */}
+        <WeekContextStrip
+          currentDate={currentDate}
+          onDayClick={setCurrentDate}
+          lessonsByDay={lessonsByDay}
+          view={view}
+        />
 
         {/* Row 2: Filters */}
         <div data-tour="calendar-filters">
