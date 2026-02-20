@@ -4,3 +4,4 @@ export { TodayTimeline } from './TodayTimeline';
 export { QuickActionsGrid } from './QuickActionsGrid';
 export { FirstRunExperience } from './FirstRunExperience';
 export { UrgentActionsBar, UrgentActionsBadge } from './UrgentActionsBar';
+export { LoopAssistWidget } from './LoopAssistWidget';
