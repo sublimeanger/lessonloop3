@@ -136,50 +136,32 @@ export function useInvoiceStats() {
     queryFn: async () => {
       if (!currentOrg?.id) return null;
 
-      const today = new Date().toISOString().split('T')[0];
-
-      const { data: invoices, error } = await supabase
-        .from('invoices')
-        .select('status, total_minor, due_date')
-        .eq('org_id', currentOrg.id);
+      const { data, error } = await supabase.rpc('get_invoice_stats', {
+        _org_id: currentOrg.id,
+      });
 
       if (error) throw error;
 
-      const stats = {
-        totalOutstanding: 0,
-        overdue: 0,
-        overdueCount: 0,
-        draft: 0,
-        draftCount: 0,
-        sent: 0,
-        sentCount: 0,
-        paid: 0,
-        paidCount: 0,
+      const result = data as {
+        total_outstanding: number;
+        overdue: number;
+        overdue_count: number;
+        draft_count: number;
+        paid_total: number;
+        paid_count: number;
       };
 
-      invoices?.forEach((inv) => {
-        if (inv.status === 'draft') {
-          stats.draft += inv.total_minor;
-          stats.draftCount++;
-        } else if (inv.status === 'sent') {
-          stats.sent += inv.total_minor;
-          stats.sentCount++;
-          stats.totalOutstanding += inv.total_minor;
-          if (inv.due_date < today) {
-            stats.overdue += inv.total_minor;
-            stats.overdueCount++;
-          }
-        } else if (inv.status === 'overdue') {
-          stats.overdue += inv.total_minor;
-          stats.overdueCount++;
-          stats.totalOutstanding += inv.total_minor;
-        } else if (inv.status === 'paid') {
-          stats.paid += inv.total_minor;
-          stats.paidCount++;
-        }
-      });
-
-      return stats;
+      return {
+        totalOutstanding: result.total_outstanding ?? 0,
+        overdue: result.overdue ?? 0,
+        overdueCount: result.overdue_count ?? 0,
+        draft: 0,
+        draftCount: result.draft_count ?? 0,
+        sent: 0,
+        sentCount: 0,
+        paid: result.paid_total ?? 0,
+        paidCount: result.paid_count ?? 0,
+      };
     },
     enabled: !!currentOrg?.id,
   });
