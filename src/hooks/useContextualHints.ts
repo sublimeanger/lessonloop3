@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { safeGetItem, safeSetItem, safeRemoveItem } from '@/lib/storage';
 
 const HINTS_STORAGE_KEY = 'lessonloop_seen_hints';
 
@@ -9,7 +10,7 @@ interface SeenHints {
 export function useContextualHints() {
   const [seenHints, setSeenHints] = useState<SeenHints>(() => {
     try {
-      const stored = localStorage.getItem(HINTS_STORAGE_KEY);
+      const stored = safeGetItem(HINTS_STORAGE_KEY);
       return stored ? JSON.parse(stored) : {};
     } catch {
       return {};
@@ -24,7 +25,7 @@ export function useContextualHints() {
     setSeenHints(prev => {
       const updated = { ...prev, [hintId]: true };
       try {
-        localStorage.setItem(HINTS_STORAGE_KEY, JSON.stringify(updated));
+        safeSetItem(HINTS_STORAGE_KEY, JSON.stringify(updated));
       } catch {
         // Storage full or unavailable
       }
@@ -35,7 +36,7 @@ export function useContextualHints() {
   const resetAllHints = useCallback(() => {
     setSeenHints({});
     try {
-      localStorage.removeItem(HINTS_STORAGE_KEY);
+      safeRemoveItem(HINTS_STORAGE_KEY);
     } catch {
       // Storage unavailable
     }
@@ -46,7 +47,7 @@ export function useContextualHints() {
       const updated = { ...prev };
       delete updated[hintId];
       try {
-        localStorage.setItem(HINTS_STORAGE_KEY, JSON.stringify(updated));
+        safeSetItem(HINTS_STORAGE_KEY, JSON.stringify(updated));
       } catch {
         // Storage unavailable
       }

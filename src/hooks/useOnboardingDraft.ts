@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { logger } from '@/lib/logger';
+import { safeGetItem, safeSetItem, safeRemoveItem } from '@/lib/storage';
 
 const STORAGE_KEY = 'lessonloop_onboarding_draft';
 
@@ -46,7 +47,7 @@ export function useOnboardingDraft() {
   // Load draft from localStorage on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = safeGetItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as OnboardingDraft;
         // Only restore if saved within last 24 hours
@@ -66,7 +67,7 @@ export function useOnboardingDraft() {
     setDraftState((prev) => {
       const updated = { ...prev, ...updates, lastSaved: Date.now() };
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        safeSetItem(STORAGE_KEY, JSON.stringify(updated));
       } catch (e) {
         logger.warn('Failed to save onboarding draft:', e);
       }
@@ -76,7 +77,7 @@ export function useOnboardingDraft() {
 
   const clearDraft = useCallback(() => {
     try {
-      localStorage.removeItem(STORAGE_KEY);
+      safeRemoveItem(STORAGE_KEY);
     } catch (e) {
       logger.warn('Failed to clear onboarding draft:', e);
     }

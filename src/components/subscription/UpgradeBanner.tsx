@@ -6,6 +6,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { PLAN_NAMES } from '@/hooks/useFeatureGate';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
+import { safeGetItem, safeSetItem } from '@/lib/storage';
 import { differenceInHours } from 'date-fns';
 
 interface UpgradeBannerProps {
@@ -24,7 +25,7 @@ export function UpgradeBanner({
   const { plan, isTrialing, trialDaysRemaining, trialEndsAt, isTrialExpired, isPastDue, canUpgrade } = useSubscription();
   const [isDismissed, setIsDismissed] = useState(() => {
     if (!dismissible) return false;
-    return localStorage.getItem(storageKey) === 'true';
+    return safeGetItem(storageKey) === 'true';
   });
   const [hoursRemaining, setHoursRemaining] = useState(0);
 
@@ -47,7 +48,7 @@ export function UpgradeBanner({
 
   const handleDismiss = () => {
     setIsDismissed(true);
-    localStorage.setItem(storageKey, 'true');
+    safeSetItem(storageKey, 'true');
   };
 
   // Format countdown for final days

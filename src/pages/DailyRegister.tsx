@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { safeGetItem, safeSetItem } from '@/lib/storage';
 import { format, addDays, subDays, isToday } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -34,7 +35,7 @@ export default function DailyRegister() {
   // Now uses teacher_id (from teachers table) instead of auth user id
   const [teacherFilter, setTeacherFilter] = useState<string | null>(() => {
     // Initialize from localStorage for persistence
-    const stored = localStorage.getItem('register_teacher_filter');
+    const stored = safeGetItem('register_teacher_filter');
     return stored || null;
   });
 
@@ -48,7 +49,7 @@ export default function DailyRegister() {
       const myLesson = allLessons.find(l => l.teacher_user_id === user.id);
       if (myLesson?.teacher_id) {
         setTeacherFilter(myLesson.teacher_id);
-        localStorage.setItem('register_teacher_filter', myLesson.teacher_id);
+        safeSetItem('register_teacher_filter', myLesson.teacher_id);
       }
     }
   }, [currentRole, user?.id, teacherFilter, allLessons]);

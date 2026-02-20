@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import { safeGetItem, safeSetItem, safeRemoveItem } from '@/lib/storage';
 import Joyride, { CallBackProps, STATUS, Step, EVENTS, ACTIONS } from 'react-joyride';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -187,7 +188,7 @@ export function TourProvider({ children }: TourProviderProps) {
   // Load completed tours from localStorage (could also be from DB)
   useEffect(() => {
     if (user) {
-      const stored = localStorage.getItem(`lessonloop_tours_${user.id}`);
+      const stored = safeGetItem(`lessonloop_tours_${user.id}`);
       if (stored) {
         try {
           setCompletedTours(JSON.parse(stored));
@@ -205,7 +206,7 @@ export function TourProvider({ children }: TourProviderProps) {
       setCompletedTours(prev => {
         if (prev.includes(tourName)) return prev;
         const updated = [...prev, tourName];
-        localStorage.setItem(`lessonloop_tours_${user.id}`, JSON.stringify(updated));
+        safeSetItem(`lessonloop_tours_${user.id}`, JSON.stringify(updated));
         return updated;
       });
     }
@@ -233,7 +234,7 @@ export function TourProvider({ children }: TourProviderProps) {
   const resetTours = useCallback(() => {
     if (user) {
       setCompletedTours([]);
-      localStorage.removeItem(`lessonloop_tours_${user.id}`);
+      safeRemoveItem(`lessonloop_tours_${user.id}`);
     }
   }, [user]);
 

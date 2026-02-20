@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { logger } from '@/lib/logger';
+import { safeGetItem, safeSetItem } from '@/lib/storage';
 import { useSearchParams } from 'react-router-dom';
 import { format, addWeeks, subWeeks, startOfWeek, addDays } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -49,7 +50,7 @@ export default function CalendarPage() {
   });
   const [view, setView] = useState<CalendarView>('stacked');
   const [isCompact, setIsCompact] = useState(() => {
-    try { return localStorage.getItem('ll-calendar-compact') === '1'; } catch { return false; }
+    return safeGetItem('ll-calendar-compact') === '1';
   });
   const [groupByTeacher, setGroupByTeacher] = useState(false);
   const [filters, setFilters] = useState<CalendarFilters>(() => ({
@@ -60,7 +61,7 @@ export default function CalendarPage() {
 
   // Persist compact preference
   useEffect(() => {
-    try { localStorage.setItem('ll-calendar-compact', isCompact ? '1' : '0'); } catch {}
+    safeSetItem('ll-calendar-compact', isCompact ? '1' : '0');
   }, [isCompact]);
 
   // Lesson modal state
