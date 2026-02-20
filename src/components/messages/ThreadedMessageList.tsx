@@ -35,8 +35,7 @@ export function ThreadedMessageList({ searchQuery }: ThreadedMessageListProps) {
     return threads.filter(thread =>
       thread.subject.toLowerCase().includes(query) ||
       thread.recipient_name?.toLowerCase().includes(query) ||
-      thread.recipient_email.toLowerCase().includes(query) ||
-      thread.messages.some(msg => msg.body.toLowerCase().includes(query))
+      thread.recipient_email.toLowerCase().includes(query)
     );
   }, [threads, searchQuery]);
 

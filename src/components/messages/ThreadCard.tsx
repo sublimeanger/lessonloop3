@@ -13,10 +13,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { useReplyToMessage, MessageThread } from '@/hooks/useMessageThreads';
+import { useReplyToMessage, useThreadMessages, MessageThread } from '@/hooks/useMessageThreads';
 import { useRelatedStudent } from '@/hooks/useRelatedStudent';
 import { EntityChip } from '@/components/looopassist/EntityChip';
 import { ThreadMessageItem } from './ThreadMessageItem';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ThreadCardProps {
   thread: MessageThread;
@@ -29,22 +30,26 @@ interface ThreadCardProps {
 export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyingTo }: ThreadCardProps) {
   const replyMutation = useReplyToMessage();
   const [replyBody, setReplyBody] = useState('');
-  const latestMessage = thread.messages[thread.messages.length - 1];
 
-  // Find the first related_id across all messages in the thread
-  const relatedStudentId = thread.messages.find(m => m.related_id)?.related_id;
-  const { data: relatedStudent } = useRelatedStudent(relatedStudentId);
+  // Lazy-load full message bodies only when expanded
+  const { data: messages, isLoading: messagesLoading } = useThreadMessages(
+    thread.thread_id,
+    isExpanded
+  );
+
+  const latestMessage = messages?.[messages.length - 1];
+  const { data: relatedStudent } = useRelatedStudent(thread.related_id);
 
   const handleSendReply = async () => {
-    if (!replyBody.trim()) return;
+    if (!replyBody.trim() || !latestMessage) return;
 
     await replyMutation.mutateAsync({
       parentMessageId: latestMessage.id,
       threadId: thread.thread_id,
       recipientEmail: thread.recipient_email,
       recipientName: thread.recipient_name,
-      recipientType: latestMessage.recipient_type,
-      recipientId: latestMessage.recipient_id,
+      recipientType: thread.recipient_type,
+      recipientId: thread.recipient_id,
       subject: thread.subject,
       body: replyBody.trim(),
     });
@@ -102,11 +107,18 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
 
         <CollapsibleContent>
           <div className="border-t">
-            {/* Thread messages */}
+            {/* Thread messages — lazy loaded */}
             <div className="divide-y">
-              {thread.messages.map((msg) => (
-                <ThreadMessageItem key={msg.id} message={msg} />
-              ))}
+              {messagesLoading ? (
+                <div className="p-4 space-y-3">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : (
+                messages?.map((msg) => (
+                  <ThreadMessageItem key={msg.id} message={msg} />
+                ))
+              )}
             </div>
 
             {/* Reply section */}
