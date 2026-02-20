@@ -291,6 +291,7 @@ export default function BlogPost() {
               src={post.featuredImage} 
               alt={post.title}
               className="w-full h-64 lg:h-96 object-cover"
+              loading="eager"
             />
           </motion.div>
         </div>
@@ -410,6 +411,7 @@ export default function BlogPost() {
                         src={relatedPost.featuredImage} 
                         alt={relatedPost.title}
                         className="w-full h-48 object-cover"
+                        loading="lazy"
                       />
                       <div className="p-6">
                         <Badge variant="secondary" className="mb-3 bg-primary/10 text-primary">

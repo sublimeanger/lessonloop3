@@ -5,7 +5,7 @@ import { ChevronRight, Play, Calendar, Clock, CheckCircle2, Bell, Users, Music, 
 import { useState, useMemo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format, addDays, startOfWeek } from "date-fns";
-import dashboardHero from "@/assets/marketing/dashboard-hero-hd.png";
+import { dashboardHeroHd, dashboardHero } from "@/assets/marketing";
 
 // Word-by-word animation variants
 const containerVariants = {
@@ -328,9 +328,12 @@ export function HeroSection() {
           {/* Real Dashboard Screenshot */}
           <img 
             src={dashboardHero} 
+            srcSet={`${dashboardHero} 1280w, ${dashboardHeroHd} 1920w`}
+            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 80vw, 1200px"
             alt="LessonLoop dashboard showing lessons, invoices, and student management" 
             className="w-full" 
             loading="eager"
+            fetchPriority="high"
           />
         </div>
 
