@@ -2,8 +2,9 @@ import { Link } from 'react-router-dom';
 import { useTodayLessons, TodayLesson } from '@/hooks/useTodayLessons';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Calendar, CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
+import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { cn } from '@/lib/utils';
 
 interface TodayTimelineProps {
@@ -70,6 +71,8 @@ function LessonRow({ lesson }: { lesson: TodayLesson }) {
 }
 
 function EmptyTimeline() {
+  const { openDrawerWithMessage } = useLoopAssistUI();
+
   return (
     <div className="flex flex-col items-center justify-center py-8 sm:py-10 text-center">
       <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-muted/50 flex items-center justify-center mb-3">
@@ -77,6 +80,13 @@ function EmptyTimeline() {
       </div>
       <p className="text-sm font-medium text-foreground">No lessons today</p>
       <p className="text-xs text-muted-foreground mt-0.5">Your schedule is clear.</p>
+      <button
+        onClick={() => openDrawerWithMessage("What's coming up this week?")}
+        className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+      >
+        <Sparkles className="h-3 w-3" />
+        <span>or ask LoopAssist →</span>
+      </button>
     </div>
   );
 }
