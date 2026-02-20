@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -7,32 +7,16 @@ import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
 import { MapPin, User, Receipt, Edit, Loader2, Check, X } from 'lucide-react';
+import { useTeachersAndLocations } from '@/hooks/useCalendarData';
+import { useRateCards } from '@/hooks/useRateCards';
 
 interface TeachingDefaultsCardProps {
   studentId: string;
   defaultLocationId: string | null;
-  defaultTeacherId: string | null; // Now teachers.id
+  defaultTeacherId: string | null;
   defaultRateCardId: string | null;
   onUpdate?: () => void;
   readOnly?: boolean;
-}
-
-interface Location {
-  id: string;
-  name: string;
-  location_type: string;
-}
-
-interface Teacher {
-  id: string;
-  display_name: string;
-}
-
-interface RateCard {
-  id: string;
-  name: string;
-  rate_amount: number;
-  duration_mins: number;
 }
 
 export function TeachingDefaultsCard({ 
@@ -43,70 +27,40 @@ export function TeachingDefaultsCard({
   onUpdate,
   readOnly = false
 }: TeachingDefaultsCardProps) {
-  const { currentOrg, isOrgAdmin } = useOrg();
+  const { isOrgAdmin } = useOrg();
   const { toast } = useToast();
   
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   
-  // Options
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [rateCards, setRateCards] = useState<RateCard[]>([]);
-  
-  // Current display values
-  const [locationName, setLocationName] = useState<string | null>(null);
-  const [teacherName, setTeacherName] = useState<string | null>(null);
-  const [rateCardName, setRateCardName] = useState<string | null>(null);
+  // Use shared cached hooks instead of local fetches
+  const { teachers, locations } = useTeachersAndLocations();
+  const { data: rateCards = [], isLoading: rateCardsLoading } = useRateCards();
+
+  const isLoading = !teachers.length && !locations.length && rateCardsLoading;
   
   // Edit form values
   const [editLocationId, setEditLocationId] = useState(defaultLocationId || '');
   const [editTeacherId, setEditTeacherId] = useState(defaultTeacherId || '');
   const [editRateCardId, setEditRateCardId] = useState(defaultRateCardId || '');
   
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!currentOrg) return;
-      setIsLoading(true);
-      
-      // Fetch options - now using teachers table instead of org_memberships
-      const [locsRes, teachersRes, ratesRes] = await Promise.all([
-        supabase.from('locations').select('id, name, location_type').eq('org_id', currentOrg.id).order('name'),
-        supabase.from('teachers').select('id, display_name').eq('org_id', currentOrg.id).eq('status', 'active').order('display_name'),
-        supabase.from('rate_cards').select('id, name, rate_amount, duration_mins').eq('org_id', currentOrg.id).order('name'),
-      ]);
-      
-      setLocations(locsRes.data || []);
-      setRateCards(ratesRes.data || []);
-      
-      const teacherList = (teachersRes.data || []).map((t: any) => ({
-        id: t.id,
-        display_name: t.display_name,
-      }));
-      setTeachers(teacherList);
-      
-      // Set display names
-      if (defaultLocationId) {
-        const loc = locsRes.data?.find(l => l.id === defaultLocationId);
-        setLocationName(loc?.name || null);
-      }
-      if (defaultTeacherId) {
-        const teacher = teacherList.find((t: Teacher) => t.id === defaultTeacherId);
-        setTeacherName(teacher?.display_name || null);
-      }
-      if (defaultRateCardId) {
-        const rate = ratesRes.data?.find(r => r.id === defaultRateCardId);
-        if (rate) {
-          setRateCardName(`${rate.name} - £${(rate.rate_amount / 100).toFixed(2)} / ${rate.duration_mins} mins`);
-        }
-      }
-      
-      setIsLoading(false);
-    };
-    
-    fetchData();
-  }, [currentOrg, defaultLocationId, defaultTeacherId, defaultRateCardId]);
+  // Derive display names from cached data
+  const locationName = useMemo(() => {
+    if (!defaultLocationId) return null;
+    return locations.find(l => l.id === defaultLocationId)?.name || null;
+  }, [locations, defaultLocationId]);
+
+  const teacherName = useMemo(() => {
+    if (!defaultTeacherId) return null;
+    return teachers.find(t => t.id === defaultTeacherId)?.name || null;
+  }, [teachers, defaultTeacherId]);
+
+  const rateCardName = useMemo(() => {
+    if (!defaultRateCardId) return null;
+    const rate = rateCards.find(r => r.id === defaultRateCardId);
+    if (!rate) return null;
+    return `${rate.name} - £${(rate.rate_amount / 100).toFixed(2)} / ${rate.duration_mins} mins`;
+  }, [rateCards, defaultRateCardId]);
   
   const handleSave = async () => {
     setIsSaving(true);
@@ -115,7 +69,7 @@ export function TeachingDefaultsCard({
       .from('students')
       .update({
         default_location_id: editLocationId || null,
-        default_teacher_id: editTeacherId || null, // Now uses teacher_id
+        default_teacher_id: editTeacherId || null,
         default_rate_card_id: editRateCardId || null,
       })
       .eq('id', studentId);
@@ -124,21 +78,6 @@ export function TeachingDefaultsCard({
       toast({ title: 'Error saving defaults', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Teaching defaults updated' });
-      
-      // Update display names
-      const loc = locations.find(l => l.id === editLocationId);
-      setLocationName(loc?.name || null);
-      
-      const teacher = teachers.find(t => t.id === editTeacherId);
-      setTeacherName(teacher?.display_name || null);
-      
-      const rate = rateCards.find(r => r.id === editRateCardId);
-      if (rate) {
-        setRateCardName(`${rate.name} - £${(rate.rate_amount / 100).toFixed(2)} / ${rate.duration_mins} mins`);
-      } else {
-        setRateCardName(null);
-      }
-      
       setIsEditing(false);
       onUpdate?.();
     }
@@ -219,7 +158,7 @@ export function TeachingDefaultsCard({
                 <SelectContent>
                   <SelectItem value="none">No default</SelectItem>
                   {teachers.map(t => (
-                    <SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
