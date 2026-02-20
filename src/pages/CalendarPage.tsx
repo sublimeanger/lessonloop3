@@ -19,6 +19,7 @@ import { CalendarView, CalendarFilters, LessonWithDetails } from '@/components/c
 import { buildTeacherColourMap } from '@/components/calendar/teacherColours';
 import { QuickCreatePopover } from '@/components/calendar/QuickCreatePopover';
 import { ContextualHint } from '@/components/shared/ContextualHint';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
@@ -26,7 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { logAudit } from '@/lib/auditLog';
 import { toast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Loader2, Columns3, Minimize2, Users, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Loader2, Columns3, Minimize2, Users, AlertTriangle, Calendar } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Toggle } from '@/components/ui/toggle';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -538,6 +539,20 @@ export default function CalendarPage() {
           <div className="flex items-center justify-center py-24">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
+        ) : lessons.length === 0 && !isLoading ? (
+          <EmptyState
+            icon={Calendar}
+            title="Your calendar is empty"
+            description="Schedule your first lesson to get started!"
+            actionLabel={!isParent ? "Create Lesson" : undefined}
+            onAction={() => {
+              setSelectedLesson(null);
+              setSlotDate(undefined);
+              setIsModalOpen(true);
+            }}
+            previewImage="/previews/calendar-preview.svg"
+            previewAlt="Example calendar"
+          />
         ) : view === 'agenda' ? (
           <AgendaView
             currentDate={currentDate}

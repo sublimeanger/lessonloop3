@@ -110,8 +110,8 @@ export default function RevenueReport() {
       ) : !data || data.months.length === 0 ? (
         <EmptyState
           icon={PoundSterling}
-          title="No paid invoices"
-          description="There are no paid invoices in the selected date range."
+          title="Not enough data for reports yet"
+          description="Reports will populate as you complete lessons and generate invoices."
         />
       ) : (
         <>

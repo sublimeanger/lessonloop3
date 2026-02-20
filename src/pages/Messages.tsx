@@ -241,7 +241,7 @@ export default function Messages() {
             <MessageList
               messages={filteredMessages || []}
               isLoading={isLoading}
-              emptyMessage="No messages sent yet. Click 'New Message' to send your first message."
+              emptyMessage="Use messages to communicate with parents about lessons, payments, and progress."
               hasMore={hasMore}
               onLoadMore={() => loadMore()}
               isFetchingMore={isFetchingMore}
