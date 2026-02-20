@@ -4,11 +4,10 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-export interface ThreadMessage {
+/** Lightweight message used for thread listing (no body) */
+export interface ThreadListingMessage {
   id: string;
-  org_id: string;
   subject: string;
-  body: string;
   recipient_email: string;
   recipient_name: string | null;
   recipient_type: string | null;
@@ -26,6 +25,12 @@ export interface ThreadMessage {
   sender_profile?: { full_name: string; email: string } | null;
 }
 
+/** Full message with body — loaded when a thread is expanded */
+export interface ThreadMessage extends ThreadListingMessage {
+  body: string;
+  org_id: string;
+}
+
 export interface MessageThread {
   thread_id: string;
   subject: string;
@@ -34,9 +39,19 @@ export interface MessageThread {
   message_count: number;
   latest_message_at: string;
   has_unread: boolean;
-  messages: ThreadMessage[];
+  /** IDs of messages in this thread (for counting / ordering) */
+  message_ids: string[];
+  /** Lightweight listing data from first message */
+  latest_status: string;
+  related_id: string | null;
+  recipient_type: string | null;
+  recipient_id: string | null;
 }
 
+/**
+ * Fetches thread listing data — no message bodies, capped at 500 rows.
+ * Client-side groups into threads for the list view.
+ */
 export function useMessageThreads() {
   const { currentOrg } = useOrg();
 
@@ -45,40 +60,31 @@ export function useMessageThreads() {
     queryFn: async () => {
       if (!currentOrg) return [];
 
-      // Get all messages with thread info
       const { data: messages, error } = await supabase
         .from('message_log')
-        .select('*')
+        .select('id, subject, recipient_email, recipient_name, recipient_type, recipient_id, related_id, sender_user_id, status, created_at, sent_at, read_at, thread_id, parent_message_id, channel, message_type')
         .eq('org_id', currentOrg.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
 
-      // Get sender profiles
-      const senderIds = [...new Set(messages?.map(m => m.sender_user_id).filter(Boolean))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .in('id', senderIds as string[]);
-
-      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
-
-      // Group by thread_id (or use message id as thread for standalone messages)
+      // Group into threads
       const threadMap = new Map<string, MessageThread>();
 
       for (const msg of messages || []) {
         const threadId = msg.thread_id || msg.id;
-        const msgWithProfile = {
-          ...msg,
-          sender_profile: msg.sender_user_id ? profileMap.get(msg.sender_user_id) || null : null,
-        };
 
         if (threadMap.has(threadId)) {
           const thread = threadMap.get(threadId)!;
-          thread.messages.push(msgWithProfile);
+          thread.message_ids.push(msg.id);
           thread.message_count++;
           if (new Date(msg.created_at) > new Date(thread.latest_message_at)) {
             thread.latest_message_at = msg.created_at;
+            thread.latest_status = msg.status;
+          }
+          if (!thread.related_id && msg.related_id) {
+            thread.related_id = msg.related_id;
           }
         } else {
           threadMap.set(threadId, {
@@ -86,27 +92,67 @@ export function useMessageThreads() {
             subject: msg.subject,
             recipient_name: msg.recipient_name,
             recipient_email: msg.recipient_email,
+            recipient_type: msg.recipient_type,
+            recipient_id: msg.recipient_id,
             message_count: 1,
             latest_message_at: msg.created_at,
-            has_unread: false, // For outbound messages, we track via status
-            messages: [msgWithProfile],
+            has_unread: false,
+            message_ids: [msg.id],
+            latest_status: msg.status,
+            related_id: msg.related_id,
           });
         }
       }
 
-      // Sort messages within each thread by date (oldest first)
-      for (const thread of threadMap.values()) {
-        thread.messages.sort((a, b) => 
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        );
-      }
-
-      // Convert to array and sort by latest message
       return Array.from(threadMap.values()).sort(
         (a, b) => new Date(b.latest_message_at).getTime() - new Date(a.latest_message_at).getTime()
       );
     },
     enabled: !!currentOrg,
+  });
+}
+
+/**
+ * Loads full message bodies for a specific thread — only called when expanded.
+ */
+export function useThreadMessages(threadId: string | null, enabled: boolean) {
+  const { currentOrg } = useOrg();
+
+  return useQuery({
+    queryKey: ['thread-messages', currentOrg?.id, threadId],
+    queryFn: async (): Promise<ThreadMessage[]> => {
+      if (!currentOrg || !threadId) return [];
+
+      // A thread could be a single standalone message (thread_id == message id)
+      // or multiple messages sharing the same thread_id
+      const { data: messages, error } = await supabase
+        .from('message_log')
+        .select('*')
+        .eq('org_id', currentOrg.id)
+        .or(`thread_id.eq.${threadId},id.eq.${threadId}`)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      if (!messages?.length) return [];
+
+      // Attach sender profiles
+      const senderIds = [...new Set(messages.map(m => m.sender_user_id).filter(Boolean))];
+      let profileMap = new Map<string, { full_name: string; email: string }>();
+      if (senderIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', senderIds as string[]);
+        profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      }
+
+      return messages.map(msg => ({
+        ...msg,
+        sender_profile: msg.sender_user_id ? profileMap.get(msg.sender_user_id) || null : null,
+      }));
+    },
+    enabled: !!currentOrg && !!threadId && enabled,
+    staleTime: 30_000,
   });
 }
 
@@ -138,7 +184,6 @@ export function useReplyToMessage() {
     }) => {
       if (!currentOrg || !user) throw new Error('Not authenticated');
 
-      // Call send-message edge function with threading info included atomically
       const { data: result, error } = await supabase.functions.invoke('send-message', {
         body: {
           org_id: currentOrg.id,
@@ -158,8 +203,9 @@ export function useReplyToMessage() {
       if (error) throw error;
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['message-threads'] });
+      queryClient.invalidateQueries({ queryKey: ['thread-messages'] });
       queryClient.invalidateQueries({ queryKey: ['message-log'] });
       toast({ title: 'Reply sent', description: 'Your reply has been sent.' });
     },
