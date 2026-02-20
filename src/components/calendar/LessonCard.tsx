@@ -80,6 +80,7 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
       return (
         <div
           onClick={onClick}
+          aria-label={`${lesson.title}, ${format(startTime, 'EEEE')} at ${format(startTime, 'h:mm a')}, ${lesson.status}`}
           className={cn(
             'px-1 py-px cursor-pointer transition-colors rounded-sm flex items-center gap-1 min-h-0',
             colour.bgLight,
@@ -113,6 +114,7 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
     return (
       <div
         onClick={onClick}
+        aria-label={`${lesson.title}, ${format(startTime, 'EEEE')} at ${format(startTime, 'h:mm a')}, ${lesson.status}`}
         className={cn(
           'px-1 sm:px-1.5 py-0.5 sm:py-1 cursor-pointer transition-colors rounded-sm',
           colour.bgLight,
@@ -164,6 +166,7 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
     return (
       <div
         onClick={onClick}
+        aria-label={`${lesson.title}, ${format(startTime, 'EEEE')} at ${format(startTime, 'h:mm a')}, ${lesson.status}`}
         className={cn(
           'flex items-center gap-3 sm:gap-4 rounded-lg p-3 sm:p-4 cursor-pointer transition-colors',
           colour.bgLight,
@@ -215,6 +218,7 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
       <TooltipTrigger asChild>
         <div
           onClick={onClick}
+          aria-label={`${lesson.title}, ${format(startTime, 'EEEE')} at ${format(startTime, 'h:mm a')}, ${lesson.status}`}
           className={cn(
             'h-full w-full rounded-sm px-1.5 py-1 cursor-pointer overflow-hidden text-xs transition-all hover:shadow-md group relative',
             colour.bgLight,
