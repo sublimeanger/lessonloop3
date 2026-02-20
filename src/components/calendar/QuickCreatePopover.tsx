@@ -6,6 +6,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useTeachersAndLocations } from '@/hooks/useCalendarData';
+import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { supabase } from '@/integrations/supabase/client';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ export function QuickCreatePopover({
   const { user } = useAuth();
   const { toast } = useToast();
   const { teachers, students } = useTeachersAndLocations();
+  const { checkConflicts } = useConflictDetection();
 
   const [studentId, setStudentId] = useState('');
   const [teacherId, setTeacherId] = useState('');
@@ -94,6 +96,28 @@ export function QuickCreatePopover({
       const student = students.find(s => s.id === studentId);
       const teacher = teachers.find(t => t.id === teacherId);
       const title = `Lesson – ${student?.name || 'Student'}`;
+
+      // Conflict check before insert
+      const conflicts = await checkConflicts({
+        start_at: startAtUtc,
+        end_at: endAtUtc,
+        teacher_id: teacherId,
+        teacher_user_id: teacher?.userId || null,
+        room_id: null,
+        location_id: student?.default_location_id || null,
+        student_ids: [studentId],
+      });
+
+      const blocking = conflicts.filter(c => c.severity === 'error');
+      if (blocking.length > 0) {
+        toast({
+          title: 'Scheduling conflict',
+          description: blocking[0].message,
+          variant: 'destructive',
+        });
+        setIsSaving(false);
+        return;
+      }
 
       // Insert lesson
       const { data: newLesson, error: lessonError } = await supabase
