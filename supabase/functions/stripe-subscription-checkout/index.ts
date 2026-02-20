@@ -6,50 +6,49 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 // Trial period in days
 const TRIAL_DAYS = 30;
 
-// Price IDs for each plan - set via environment variables in Stripe Dashboard
-// Map supports both old (solo_teacher/academy) and new (teacher/studio) plan keys
+// ─── CANONICAL PLAN CONFIG ───────────────────────────────────────
+// DB enum values: solo_teacher, academy, agency
+// User-facing keys: teacher, studio, agency
+// All incoming plan keys are normalised via CANONICAL_KEY before lookup.
+// ─────────────────────────────────────────────────────────────────
+
+/** Normalise any incoming plan key to a canonical key */
+const CANONICAL_KEY: Record<string, string> = {
+  solo_teacher: 'teacher',
+  academy: 'studio',
+  teacher: 'teacher',
+  studio: 'studio',
+  agency: 'agency',
+};
+
+/** Stripe Price IDs per canonical plan */
 const PLAN_PRICES: Record<string, { monthly: string; yearly: string }> = {
-  // New plan keys
   teacher: {
-    monthly: Deno.env.get("STRIPE_PRICE_TEACHER_MONTHLY") || Deno.env.get("STRIPE_PRICE_SOLO_MONTHLY") || "price_teacher_monthly",
-    yearly: Deno.env.get("STRIPE_PRICE_TEACHER_YEARLY") || Deno.env.get("STRIPE_PRICE_SOLO_YEARLY") || "price_teacher_yearly",
+    monthly: Deno.env.get("STRIPE_PRICE_TEACHER_MONTHLY") || "price_teacher_monthly",
+    yearly: Deno.env.get("STRIPE_PRICE_TEACHER_YEARLY") || "price_teacher_yearly",
   },
   studio: {
-    monthly: Deno.env.get("STRIPE_PRICE_STUDIO_MONTHLY") || Deno.env.get("STRIPE_PRICE_ACADEMY_MONTHLY") || "price_studio_monthly",
-    yearly: Deno.env.get("STRIPE_PRICE_STUDIO_YEARLY") || Deno.env.get("STRIPE_PRICE_ACADEMY_YEARLY") || "price_studio_yearly",
+    monthly: Deno.env.get("STRIPE_PRICE_STUDIO_MONTHLY") || "price_studio_monthly",
+    yearly: Deno.env.get("STRIPE_PRICE_STUDIO_YEARLY") || "price_studio_yearly",
   },
   agency: {
     monthly: Deno.env.get("STRIPE_PRICE_AGENCY_MONTHLY") || "price_agency_monthly",
     yearly: Deno.env.get("STRIPE_PRICE_AGENCY_YEARLY") || "price_agency_yearly",
   },
-  // Legacy plan key mappings
-  solo_teacher: {
-    monthly: Deno.env.get("STRIPE_PRICE_TEACHER_MONTHLY") || Deno.env.get("STRIPE_PRICE_SOLO_MONTHLY") || "price_teacher_monthly",
-    yearly: Deno.env.get("STRIPE_PRICE_TEACHER_YEARLY") || Deno.env.get("STRIPE_PRICE_SOLO_YEARLY") || "price_teacher_yearly",
-  },
-  academy: {
-    monthly: Deno.env.get("STRIPE_PRICE_STUDIO_MONTHLY") || Deno.env.get("STRIPE_PRICE_ACADEMY_MONTHLY") || "price_studio_monthly",
-    yearly: Deno.env.get("STRIPE_PRICE_STUDIO_YEARLY") || Deno.env.get("STRIPE_PRICE_ACADEMY_YEARLY") || "price_studio_yearly",
-  },
 };
 
-// Plan limits - now all unlimited students
+/** Plan limits per canonical plan */
 const PLAN_LIMITS: Record<string, { max_students: number; max_teachers: number }> = {
   teacher: { max_students: 9999, max_teachers: 1 },
   studio: { max_students: 9999, max_teachers: 5 },
   agency: { max_students: 9999, max_teachers: 9999 },
-  // Legacy mappings
-  solo_teacher: { max_students: 9999, max_teachers: 1 },
-  academy: { max_students: 9999, max_teachers: 5 },
 };
 
-// Map new plan keys to database enum values
+/** Canonical key → DB enum value (for writing to organisations table) */
 const DB_PLAN_MAP: Record<string, string> = {
   teacher: 'solo_teacher',
   studio: 'academy',
   agency: 'agency',
-  solo_teacher: 'solo_teacher',
-  academy: 'academy',
 };
 
 serve(async (req) => {
@@ -91,9 +90,9 @@ serve(async (req) => {
       throw new Error("orgId and plan are required");
     }
 
-    // Validate plan (support both old and new plan keys)
-    const validPlans = ["teacher", "studio", "agency", "solo_teacher", "academy"];
-    if (!validPlans.includes(plan)) {
+    // Normalise plan key to canonical form
+    const canonicalPlan = CANONICAL_KEY[plan];
+    if (!canonicalPlan) {
       throw new Error("Invalid plan");
     }
 
@@ -176,15 +175,15 @@ serve(async (req) => {
       );
     }
 
-    // Get the price ID for the selected plan
-    const priceId = PLAN_PRICES[plan]?.[interval];
+    // Get the price ID for the selected plan (using canonical key)
+    const priceId = PLAN_PRICES[canonicalPlan]?.[interval];
     if (!priceId) {
       throw new Error("Invalid plan configuration");
     }
 
     // Get plan limits
-    const planLimits = PLAN_LIMITS[plan] || PLAN_LIMITS.teacher;
-    const dbPlanKey = DB_PLAN_MAP[plan] || plan;
+    const planLimits = PLAN_LIMITS[canonicalPlan] || PLAN_LIMITS.teacher;
+    const dbPlanKey = DB_PLAN_MAP[canonicalPlan] || canonicalPlan;
 
     // Build success/cancel URLs
     const baseUrl = successUrl?.split("?")[0] || `${req.headers.get("origin")}/settings`;

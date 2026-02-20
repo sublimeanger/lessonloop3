@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useSubscription, SubscriptionPlan } from './useSubscription';
+import { PLAN_DISPLAY_NAMES } from '@/lib/pricing-config';
 
 export type Feature = 
   | 'advanced_reports'
@@ -68,13 +69,13 @@ export const FEATURE_NAMES: Record<Feature, string> = {
   calendar_sync: 'Calendar Sync',
 };
 
-// Human-readable plan names - matches new pricing branding
+// Human-readable plan names — delegates to canonical PLAN_DISPLAY_NAMES
 export const PLAN_NAMES: Record<SubscriptionPlan, string> = {
-  trial: 'Trial',
-  solo_teacher: 'Teacher',
-  academy: 'Studio',
-  agency: 'Agency',
-  custom: 'Custom',
+  trial: PLAN_DISPLAY_NAMES['trial'] || 'Free Trial',
+  solo_teacher: PLAN_DISPLAY_NAMES['solo_teacher'] || 'Teacher',
+  academy: PLAN_DISPLAY_NAMES['academy'] || 'Studio',
+  agency: PLAN_DISPLAY_NAMES['agency'] || 'Agency',
+  custom: PLAN_DISPLAY_NAMES['custom'] || 'Custom',
 };
 
 export interface FeatureGateResult {
