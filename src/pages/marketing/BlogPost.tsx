@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { logger } from "@/lib/logger";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -6,22 +6,31 @@ import { motion } from "framer-motion";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Calendar, Clock, User, Share2, Twitter, Linkedin, Copy, Check } from "lucide-react";
-import { getPostBySlug, getRelatedPosts } from "@/data/blogPosts";
-import { useState } from "react";
+import type { BlogPost as BlogPostType } from "@/data/blogPosts";
 
 export default function BlogPost() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
-  
-  const post = slug ? getPostBySlug(slug) : undefined;
-  
+  const [post, setPost] = useState<BlogPostType | null>(null);
+  const [relatedPosts, setRelatedPosts] = useState<BlogPostType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
-    if (!post && slug) {
-      navigate("/blog", { replace: true });
-    }
-  }, [post, slug, navigate]);
+    if (!slug) return;
+    import("@/data/blogPosts").then(mod => {
+      const found = mod.getPostBySlug(slug);
+      if (!found) {
+        navigate("/blog", { replace: true });
+        return;
+      }
+      setPost(found);
+      setRelatedPosts(mod.getRelatedPosts(found.relatedPosts));
+      setIsLoading(false);
+    });
+  }, [slug, navigate]);
 
   useEffect(() => {
     if (post) {
@@ -29,11 +38,19 @@ export default function BlogPost() {
     }
   }, [post]);
 
-  if (!post) {
-    return null;
+  if (isLoading || !post) {
+    return (
+      <MarketingLayout>
+        <section className="pt-28 pb-12 lg:pt-36 lg:pb-16">
+          <div className="container mx-auto px-6 lg:px-8 space-y-4">
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-12 w-3/4" />
+            <Skeleton className="h-6 w-1/2" />
+          </div>
+        </section>
+      </MarketingLayout>
+    );
   }
-
-  const relatedPosts = getRelatedPosts(post.relatedPosts);
   const currentUrl = window.location.href;
 
   const handleCopyLink = async () => {
