@@ -202,81 +202,106 @@ export function useCreateBillingRun() {
 
         let invoiceIds: string[] = [];
         let totalAmount = 0;
+        const failedPayers: Array<{ payerName: string; payerEmail: string | null; error: string }> = [];
 
         if (data.generate_invoices) {
           const dueDate = new Date();
           dueDate.setDate(dueDate.getDate() + 14);
 
           for (const [, payer] of payerGroups) {
-            // Calculate per-lesson rates based on duration and rate cards
-            const lessonRates = payer.lessons.map((lesson) => {
-              const durationMins = differenceInMinutes(new Date(lesson.end_at), new Date(lesson.start_at));
-              return findRateForDuration(durationMins, rateCards || [], fallbackRate);
-            });
-            const subtotal = lessonRates.reduce((sum, r) => sum + r, 0);
+            try {
+              // Calculate per-lesson rates based on duration and rate cards
+              const lessonRates = payer.lessons.map((lesson) => {
+                const durationMins = differenceInMinutes(new Date(lesson.end_at), new Date(lesson.start_at));
+                return findRateForDuration(durationMins, rateCards || [], fallbackRate);
+              });
+              const subtotal = lessonRates.reduce((sum, r) => sum + r, 0);
 
-            const vatRate = currentOrg.vat_enabled ? currentOrg.vat_rate : 0;
-            const taxMinor = Math.round(subtotal * (vatRate / 100));
-            const total = subtotal + taxMinor;
+              const vatRate = currentOrg.vat_enabled ? currentOrg.vat_rate : 0;
+              const taxMinor = Math.round(subtotal * (vatRate / 100));
+              const total = subtotal + taxMinor;
 
-            const { data: invoice, error: invoiceError } = await supabase
-              .from('invoices')
-              .insert({
+              const { data: invoice, error: invoiceError } = await supabase
+                .from('invoices')
+                .insert({
+                  org_id: currentOrg.id,
+                  invoice_number: '',
+                  due_date: dueDate.toISOString().split('T')[0],
+                  payer_guardian_id: payer.payerType === 'guardian' ? payer.payerId : null,
+                  payer_student_id: payer.payerType === 'student' ? payer.payerId : null,
+                  subtotal_minor: subtotal,
+                  tax_minor: taxMinor,
+                  total_minor: total,
+                  vat_rate: vatRate,
+                  currency_code: currentOrg.currency_code,
+                  status: 'draft',
+                  term_id: data.term_id || null,
+                } as any)
+                .select()
+                .single();
+
+              if (invoiceError) throw invoiceError;
+
+              invoiceIds.push(invoice.id);
+              totalAmount += total;
+
+              const items = payer.lessons.map((lesson, idx) => ({
+                invoice_id: invoice.id,
                 org_id: currentOrg.id,
-                invoice_number: '',
-                due_date: dueDate.toISOString().split('T')[0],
-                payer_guardian_id: payer.payerType === 'guardian' ? payer.payerId : null,
-                payer_student_id: payer.payerType === 'student' ? payer.payerId : null,
-                subtotal_minor: subtotal,
-                tax_minor: taxMinor,
-                total_minor: total,
-                vat_rate: vatRate,
-                currency_code: currentOrg.currency_code,
-                status: 'draft',
-                term_id: data.term_id || null,
-              } as any)
-              .select()
-              .single();
+                description: lesson.title,
+                quantity: 1,
+                unit_price_minor: lessonRates[idx],
+                amount_minor: lessonRates[idx],
+                linked_lesson_id: lesson.id,
+              }));
 
-            if (invoiceError) throw invoiceError;
+              const { error: itemsError } = await supabase
+                .from('invoice_items')
+                .insert(items);
 
-            invoiceIds.push(invoice.id);
-            totalAmount += total;
-
-            const items = payer.lessons.map((lesson, idx) => ({
-              invoice_id: invoice.id,
-              org_id: currentOrg.id,
-              description: lesson.title,
-              quantity: 1,
-              unit_price_minor: lessonRates[idx],
-              amount_minor: lessonRates[idx],
-              linked_lesson_id: lesson.id,
-            }));
-
-            const { error: itemsError } = await supabase
-              .from('invoice_items')
-              .insert(items);
-
-            if (itemsError) throw itemsError;
+              if (itemsError) throw itemsError;
+            } catch (payerError: any) {
+              console.error(`[BillingRun] Failed for payer ${payer.payerName} (${payer.payerEmail}):`, payerError);
+              failedPayers.push({
+                payerName: payer.payerName,
+                payerEmail: payer.payerEmail,
+                error: payerError.message || 'Unknown error',
+              });
+            }
           }
         }
 
-        // 3. Update billing run to 'completed' with summary
+        // Determine final status
+        const totalPayers = payerGroups.size;
+        const failedCount = failedPayers.length;
+        let finalStatus: string;
+        if (failedCount === 0) {
+          finalStatus = 'completed';
+        } else if (failedCount < totalPayers) {
+          finalStatus = 'partial';
+        } else {
+          finalStatus = 'failed';
+        }
+
+        const summary = {
+          invoiceCount: invoiceIds.length,
+          totalAmount,
+          invoiceIds,
+          ...(failedPayers.length > 0 ? { failedPayers } : {}),
+        };
+
+        // Update billing run with final status and summary
         const { error: updateError } = await supabase
           .from('billing_runs')
           .update({
-            status: 'completed',
-            summary: {
-              invoiceCount: invoiceIds.length,
-              totalAmount,
-              invoiceIds,
-            },
+            status: finalStatus,
+            summary,
           } as any)
           .eq('id', billingRun.id);
 
         if (updateError) throw updateError;
 
-        return { ...billingRun, status: 'completed', summary: { invoiceCount: invoiceIds.length, totalAmount, invoiceIds } };
+        return { ...billingRun, status: finalStatus, summary };
       } catch (innerError) {
         // Mark billing run as failed so the date range can be retried
         await supabase
@@ -291,9 +316,17 @@ export function useCreateBillingRun() {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
       const summary = data.summary as any;
-      toast.success(
-        `Billing run completed: ${summary.invoiceCount} invoices created`
-      );
+      const failed = summary.failedPayers?.length || 0;
+
+      if (data.status === 'completed') {
+        toast.success(`Billing run completed: ${summary.invoiceCount} invoices created`);
+      } else if (data.status === 'partial') {
+        toast.warning(
+          `${summary.invoiceCount} of ${summary.invoiceCount + failed} invoices created. ${failed} failed — check billing run details`
+        );
+      } else {
+        toast.error(`Billing run failed: all ${failed} invoices could not be created`);
+      }
     },
     onError: (error) => {
       toast.error('Billing run failed: ' + error.message);
