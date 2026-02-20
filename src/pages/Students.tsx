@@ -301,13 +301,11 @@ export default function Students() {
         <EmptyState
           icon={Users}
           title={searchQuery ? 'No students found' : 'No students yet'}
-          description={searchQuery ? 'Try adjusting your search terms.' : 'Add your first student to get started.'}
+          description={searchQuery ? 'Try adjusting your search terms.' : 'Add your first student to start managing lessons and billing.'}
           actionLabel={searchQuery ? undefined : 'Add Student'}
           onAction={searchQuery ? undefined : openAddWizard}
           secondaryActionLabel={searchQuery ? undefined : 'Import from CSV'}
           onSecondaryAction={searchQuery ? undefined : () => (window.location.href = '/students/import')}
-          previewImage={searchQuery ? undefined : '/previews/students-preview.svg'}
-          previewAlt="Example student list"
         />
       ) : (
         <div className="space-y-2" role="list" aria-label="Students list" data-tour="student-list">

@@ -161,12 +161,12 @@ export default function Practice() {
               {loadingAssignments ? (
                 <p className="text-muted-foreground text-center py-4">Loading...</p>
               ) : assignments.filter(a => a.status === 'active').length === 0 ? (
-                <div className="text-center py-8">
-                  <Music className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No active assignments</p>
+              <div className="flex flex-col items-center justify-center text-center py-12">
+                  <Music className="h-12 w-12 text-muted-foreground/30" />
+                  <h3 className="mt-4 text-lg font-semibold text-foreground">No practice logged</h3>
+                  <p className="mt-2 max-w-sm mx-auto text-sm text-muted-foreground">Students can log practice from their portal</p>
                   <Button 
-                    variant="outline" 
-                    className="mt-4"
+                    className="mt-6"
                     onClick={() => setShowCreateModal(true)}
                   >
                     Create Assignment

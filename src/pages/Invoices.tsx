@@ -194,18 +194,16 @@ export default function Invoices() {
         {invoices.length === 0 ? (
           <EmptyState
             icon={Receipt}
-            title={isParent ? 'No invoices yet' : 'No invoices yet'}
+            title="No invoices"
             description={
               isParent
                 ? "You don't have any invoices yet. They will appear here when your teacher creates them."
-                : 'Run a billing cycle to generate invoices for completed lessons, or create one manually.'
+                : 'Create an invoice or run billing to generate invoices for completed lessons.'
             }
             actionLabel={!isParent ? 'Start Billing Run' : undefined}
             onAction={!isParent ? () => setBillingRunOpen(true) : undefined}
             secondaryActionLabel={!isParent ? 'Create Manually' : undefined}
             onSecondaryAction={!isParent ? () => setCreateModalOpen(true) : undefined}
-            previewImage={!isParent ? '/previews/invoices-preview.svg' : undefined}
-            previewAlt="Example invoice list"
           />
         ) : (
           <div className="rounded-lg border bg-card" data-tour="invoice-list">

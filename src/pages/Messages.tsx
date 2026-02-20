@@ -18,7 +18,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Search, Filter, Loader2, Users, User, ChevronDown, MessageSquare, List, GitBranch } from 'lucide-react';
+import { Plus, Search, Filter, Users, User, ChevronDown, MessageSquare, List, GitBranch } from 'lucide-react';
+import { ListSkeleton } from '@/components/shared/LoadingState';
 
 import { useOrg } from '@/contexts/OrgContext';
 import { useMessageLog } from '@/hooks/useMessages';
@@ -234,9 +235,7 @@ export default function Messages() {
           {viewMode === 'threaded' ? (
             <ThreadedMessageList searchQuery={searchQuery} />
           ) : isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
+            <ListSkeleton count={3} />
           ) : (
             <MessageList
               messages={filteredMessages || []}

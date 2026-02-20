@@ -729,16 +729,14 @@ export default function CalendarPage() {
             ) : lessons.length === 0 && !isLoading ? (
               <EmptyState
                 icon={Calendar}
-                title="Your calendar is empty"
-                description="Schedule your first lesson to get started!"
+                title="Your day is free"
+                description="No lessons scheduled. Create your first lesson to get started!"
                 actionLabel={!isParent ? "Create Lesson" : undefined}
                 onAction={() => {
                   setSelectedLesson(null);
                   setSlotDate(undefined);
                   setIsModalOpen(true);
                 }}
-                previewImage="/previews/calendar-preview.svg"
-                previewAlt="Example calendar"
               />
             ) : view === 'agenda' ? (
               <AgendaView
