@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
 interface InviteEmailRequest {
   inviteId: string;
@@ -20,6 +21,32 @@ serve(async (req: Request): Promise<Response> => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // --- JWT Auth ---
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseAuth = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // --- Rate limiting ---
+    const rlResult = await checkRateLimit(user.id, "send-invite-email");
+    if (!rlResult.allowed) {
+      return rateLimitResponse(corsHeaders, rlResult);
+    }
 
     const { inviteId, guardianId }: InviteEmailRequest = await req.json();
 
@@ -49,6 +76,23 @@ serve(async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ error: "Invite not found" }),
         { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // --- Authorisation: only admin/owner of the invite's org ---
+    const { data: membership } = await supabase
+      .from("org_memberships")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("org_id", invite.org_id)
+      .in("role", ["owner", "admin"])
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (!membership) {
+      return new Response(
+        JSON.stringify({ error: "Forbidden — admin or owner role required" }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
