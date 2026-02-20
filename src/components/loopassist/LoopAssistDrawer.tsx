@@ -624,35 +624,74 @@ function MessageBubble({ message, conversationId }: { message: AIMessage; conver
 }
 
 function getSuggestedPrompts(contextType: string, alerts: ProactiveAlert[]): string[] {
-  const basePrompts: string[] = [];
+  const now = new Date();
+  const hour = now.getHours();
+  const dayOfWeek = now.getDay();
+  const dayOfMonth = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+  const isMorning = hour >= 6 && hour < 12;
+  const isEvening = hour >= 17;
+  const isMonday = dayOfWeek === 1;
+  const isFriday = dayOfWeek === 5;
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  const isEndOfMonth = dayOfMonth >= daysInMonth - 3;
+  const isStartOfMonth = dayOfMonth <= 3;
+
   const hasOverdue = alerts.some(a => a.type === 'overdue');
   const hasUnmarked = alerts.some(a => a.type === 'unmarked');
 
+  const prompts: string[] = [];
+
   switch (contextType) {
     case 'calendar':
-      if (hasUnmarked) basePrompts.push("Mark yesterday's lessons as complete");
-      basePrompts.push("What lessons do I have today?");
-      basePrompts.push("Reschedule tomorrow's lessons by 30 minutes");
+      if (hasUnmarked) prompts.push("Mark yesterday's lessons as complete");
+      if (isMorning) prompts.push("What's on my schedule today?");
+      else if (isEvening) prompts.push("What lessons do I have tomorrow?");
+      else prompts.push("What's on my schedule today?");
+      if (isFriday) prompts.push("Wrap up this week's attendance");
+      prompts.push("Reschedule tomorrow's lessons by 30 minutes");
       break;
+
     case 'student':
-      basePrompts.push("Draft a progress update for this student's parents");
-      basePrompts.push("Show lesson history for this student");
-      if (hasOverdue) basePrompts.push("Send invoice reminder for this student");
-      basePrompts.push("What is this student's practice streak?");
+      prompts.push("Draft a progress update for this student's parents");
+      prompts.push("Show lesson history for this student");
+      if (hasOverdue) prompts.push("Send invoice reminder for this student");
+      prompts.push("What is this student's practice streak?");
       break;
+
     case 'invoice':
-      basePrompts.push("Send a payment reminder for this invoice");
-      basePrompts.push("Show payment history");
-      basePrompts.push("Draft a follow-up email");
+      prompts.push("Send a payment reminder for this invoice");
+      prompts.push("Show payment history");
+      prompts.push("Draft a follow-up email");
       break;
+
     default:
-      if (hasOverdue) basePrompts.push("Send reminders for all overdue invoices");
-      if (hasUnmarked) basePrompts.push("Mark all past lessons as complete");
-      basePrompts.push("Generate invoices for last month");
-      basePrompts.push("Show me outstanding invoices");
-      basePrompts.push("What's my completion rate this month?");
+      if (hasOverdue) prompts.push("Send reminders for all overdue invoices");
+      if (hasUnmarked) prompts.push("Mark all past lessons as complete");
+
+      if (isMonday && isMorning) {
+        prompts.push("What's my week looking like?");
+      } else if (isFriday) {
+        prompts.push("How did this week go?");
+      } else if (isWeekend) {
+        prompts.push("What's coming up next week?");
+      } else if (isMorning) {
+        prompts.push("What's on today?");
+      } else if (isEvening) {
+        prompts.push("Summary of today");
+      }
+
+      if (isEndOfMonth) {
+        prompts.push("Generate invoices for this month");
+      } else if (isStartOfMonth) {
+        prompts.push("Revenue summary for last month");
+      }
+
+      prompts.push("Show me outstanding invoices");
+      prompts.push("What's my completion rate this month?");
       break;
   }
 
-  return basePrompts.slice(0, 4);
+  return [...new Set(prompts)].slice(0, 4);
 }
