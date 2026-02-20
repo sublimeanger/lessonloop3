@@ -6,12 +6,61 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Check, X } from 'lucide-react';
 import { LogoHorizontal } from '@/components/brand/Logo';
 import { Separator } from '@/components/ui/separator';
 import { GoogleIcon } from '@/components/icons/GoogleIcon';
 import { AppleIcon } from '@/components/icons/AppleIcon';
 import { lovable } from '@/integrations/lovable';
+
+function getPasswordScore(pw: string): number {
+  let score = 0;
+  if (pw.length >= 6) score++;
+  if (pw.length >= 8) score++;
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw) || /[^a-zA-Z0-9]/.test(pw)) score++;
+  return score;
+}
+
+const strengthConfig = [
+  { label: 'Weak', color: 'bg-destructive' },
+  { label: 'Fair', color: 'bg-orange-500' },
+  { label: 'Good', color: 'bg-yellow-500' },
+  { label: 'Strong', color: 'bg-success' },
+] as const;
+
+function PasswordStrength({ password, visible }: { password: string; visible: boolean }) {
+  if (!visible) return null;
+  const score = getPasswordScore(password);
+  const config = strengthConfig[Math.max(0, score - 1)] ?? strengthConfig[0];
+  const meetsMinLength = password.length >= 6;
+
+  return (
+    <div className="space-y-1.5 pt-1">
+      <div className="flex gap-1">
+        {[1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className={`h-1 flex-1 rounded-full transition-colors ${
+              password.length > 0 && i <= score ? config.color : 'bg-muted'
+            }`}
+          />
+        ))}
+      </div>
+      {password.length > 0 && (
+        <p className="text-xs text-muted-foreground">{config.label}</p>
+      )}
+      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+        {meetsMinLength ? (
+          <Check className="h-3 w-3 text-success" />
+        ) : (
+          <X className="h-3 w-3 text-destructive" />
+        )}
+        Must be at least 6 characters
+      </div>
+    </div>
+  );
+}
 
 export default function Signup() {
   const { signUp } = useAuth();
@@ -23,6 +72,7 @@ export default function Signup() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isAppleLoading, setIsAppleLoading] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
 
   const handleGoogleSignup = async () => {
     setIsGoogleLoading(true);
@@ -193,9 +243,12 @@ export default function Signup() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
                 disabled={isLoading}
                 autoComplete="new-password"
               />
+              <PasswordStrength password={password} visible={passwordFocused || password.length > 0} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm password</Label>
