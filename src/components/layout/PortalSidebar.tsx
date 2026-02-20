@@ -10,13 +10,13 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrg } from '@/contexts/OrgContext';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -31,7 +31,7 @@ const portalNav = [
   { title: 'Schedule', url: '/portal/schedule', icon: Calendar },
   { title: 'Practice', url: '/portal/practice', icon: Music },
   { title: 'Resources', url: '/portal/resources', icon: FolderOpen },
-  { title: 'Invoices & Payments', url: '/portal/invoices', icon: CreditCard },
+  { title: 'Invoices', url: '/portal/invoices', icon: CreditCard },
   { title: 'Messages', url: '/portal/messages', icon: MessageSquare },
 ];
 
@@ -45,8 +45,17 @@ function getInitials(name: string | null | undefined): string {
     .slice(0, 2);
 }
 
+// Generate a soft colour from a name for student avatars
+function nameToSoftColour(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 55%, 88%)`;
+}
+
 export function PortalSidebar() {
   const { profile, signOut } = useAuth();
+  const { currentOrg } = useOrg();
   const { data: unreadCount } = useUnreadMessagesCount();
   const navigate = useNavigate();
 
@@ -56,12 +65,19 @@ export function PortalSidebar() {
   };
 
   return (
-    <Sidebar className="border-r">
-      <SidebarContent className="pt-4">
+    <Sidebar className="border-r bg-white dark:bg-card">
+      <SidebarContent className="pt-5 px-3">
+        {/* Org / school branding */}
+        <div className="mb-4 px-2">
+          <span className="text-sm font-semibold text-foreground tracking-tight">
+            {currentOrg?.name || 'Parent Portal'}
+          </span>
+        </div>
+
+
+
+        {/* Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Parent Portal
-          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {portalNav.map((item) => {
@@ -73,7 +89,7 @@ export function PortalSidebar() {
                     <SidebarMenuButton asChild>
                       <NavLink
                         to={item.url}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                         activeClassName="bg-primary/10 text-primary font-medium"
                       >
                         <item.icon className="h-4 w-4 shrink-0" />
@@ -96,16 +112,13 @@ export function PortalSidebar() {
       <SidebarFooter className="border-t p-4">
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9">
-            <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+            <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
               {getInitials(profile?.full_name)}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 overflow-hidden">
             <div className="truncate text-sm font-medium">
               {profile?.full_name || 'Parent'}
-            </div>
-            <div className="truncate text-xs text-muted-foreground">
-              Parent Portal
             </div>
           </div>
           <Button
