@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useDeleteValidation, DeletionCheckResult } from '@/hooks/useDeleteValidation';
+import { DeleteValidationDialog } from '@/components/shared/DeleteValidationDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
@@ -42,6 +44,15 @@ export default function Teachers() {
   const { data: teachers = [], isLoading, refetch } = useTeachers();
   const { createTeacher, deleteTeacher } = useTeacherMutations();
   const { data: studentCounts = {} } = useTeacherStudentCounts();
+  const { checkTeacherRemoval } = useDeleteValidation();
+
+  // Pre-check validation dialog
+  const [preCheckDialog, setPreCheckDialog] = useState<{
+    open: boolean;
+    teacher: Teacher | null;
+    checkResult: DeletionCheckResult | null;
+    isChecking: boolean;
+  }>({ open: false, teacher: null, checkResult: null, isChecking: false });
   
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -82,6 +93,19 @@ export default function Teachers() {
   };
 
   const initiateRemoval = async (teacher: Teacher) => {
+    // First, run validation check
+    setPreCheckDialog({ open: true, teacher, checkResult: null, isChecking: true });
+    const result = await checkTeacherRemoval(teacher.id);
+    
+    if (!result.canDelete) {
+      // Has blocking issues — show DeleteValidationDialog
+      setPreCheckDialog(prev => ({ ...prev, checkResult: result, isChecking: false }));
+      return;
+    }
+    
+    // No blocking issues — close pre-check and show the detailed removal dialog
+    setPreCheckDialog({ open: false, teacher: null, checkResult: null, isChecking: false });
+
     // Query future scheduled lessons for this teacher
     const { data: futureLessons, count } = await supabase
       .from('lessons')
@@ -98,7 +122,7 @@ export default function Teachers() {
       lessonCount: count ?? 0,
       lessons: futureLessons || [],
       reassignTeacherId: '',
-      action: (count ?? 0) > 0 ? '' : 'reassign', // No lessons = skip action choice
+      action: (count ?? 0) > 0 ? '' : 'reassign',
       isProcessing: false,
     });
   };
@@ -341,6 +365,23 @@ export default function Teachers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Teacher Pre-Check Validation Dialog */}
+      <DeleteValidationDialog
+        open={preCheckDialog.open}
+        onOpenChange={(open) => setPreCheckDialog(prev => ({ ...prev, open }))}
+        entityName={preCheckDialog.teacher?.display_name || 'Teacher'}
+        entityType="Teacher"
+        checkResult={preCheckDialog.checkResult}
+        isLoading={preCheckDialog.isChecking}
+        onConfirmDelete={() => {
+          // If validation passed with warnings only, proceed to removal dialog
+          if (preCheckDialog.teacher) {
+            setPreCheckDialog({ open: false, teacher: null, checkResult: null, isChecking: false });
+            initiateRemoval(preCheckDialog.teacher);
+          }
+        }}
+      />
 
       {/* Teacher Removal Safety Dialog */}
       <AlertDialog open={removal.open} onOpenChange={(open) => setRemoval(prev => ({ ...prev, open }))}>
