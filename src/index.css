@@ -64,15 +64,15 @@
     
     --radius: 0.625rem;
     
-    /* Sidebar - Light */
-    --sidebar-background: 220 20% 98%;
-    --sidebar-foreground: 220 60% 12%;
-    --sidebar-primary: 174 100% 38%;
+    /* Sidebar - Dark Ink (always dark regardless of theme) */
+    --sidebar-background: 220 60% 10%;
+    --sidebar-foreground: 220 20% 80%;
+    --sidebar-primary: 174 100% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 174 80% 92%;
-    --sidebar-accent-foreground: 220 60% 12%;
-    --sidebar-border: 220 20% 90%;
-    --sidebar-ring: 174 100% 38%;
+    --sidebar-accent: 220 50% 16%;
+    --sidebar-accent-foreground: 220 20% 92%;
+    --sidebar-border: 220 50% 16%;
+    --sidebar-ring: 174 100% 42%;
   }
 
   .dark {
