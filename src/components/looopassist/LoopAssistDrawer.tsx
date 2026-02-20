@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import ReactMarkdown from 'react-markdown';
 import {
   MessageSquare,
   Plus,
@@ -377,9 +378,23 @@ function MessageBubble({ message, conversationId }: { message: AIMessage; conver
           isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'
         )}
       >
-        <div className="whitespace-pre-wrap">
-          {isUser ? displayContent : renderMessageWithChips(displayContent)}
-        </div>
+        {isUser ? (
+          <div className="whitespace-pre-wrap">{displayContent}</div>
+        ) : (
+          <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:mb-1 [&_p:last-child]:mb-0 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0 [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-sm [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_h1]:mb-1 [&_h2]:mb-1 [&_h3]:mb-1 [&_pre]:bg-background/50 [&_pre]:text-xs [&_pre]:p-2 [&_pre]:rounded">
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => <p className="mb-1 last:mb-0">{renderMessageWithChips(String(children))}</p>,
+                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                em: ({ children }) => <em>{children}</em>,
+                a: ({ href, children }) => <a href={href} className="text-primary underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+                li: ({ children }) => <li className="my-0">{renderMessageWithChips(String(children))}</li>,
+              }}
+            >
+              {displayContent}
+            </ReactMarkdown>
+          </div>
+        )}
         {hasAction && (
           <div className="mt-2 text-xs text-muted-foreground italic">
             Action proposal below ↓
