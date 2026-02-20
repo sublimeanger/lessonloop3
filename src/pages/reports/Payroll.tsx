@@ -179,7 +179,7 @@ export default function PayrollReport() {
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold text-primary">
-                  {formatCurrency(data.totalGrossOwed)}
+                  {fmtCurrency(data.totalGrossOwed)}
                 </p>
               </CardContent>
             </Card>
@@ -225,7 +225,7 @@ export default function PayrollReport() {
                           </div>
                           <div className="text-right min-w-[100px]">
                             <p className="text-sm text-muted-foreground">Gross Owed</p>
-                            <p className="font-bold text-primary">{formatCurrency(teacher.grossOwed)}</p>
+                            <p className="font-bold text-primary">{fmtCurrency(teacher.grossOwed)}</p>
                           </div>
                           {expandedTeachers.has(teacher.teacherId) ? (
                             <ChevronDown className="h-5 w-5 text-muted-foreground" />
@@ -254,7 +254,7 @@ export default function PayrollReport() {
                                   </TableCell>
                                   <TableCell className="text-right">{lesson.durationMins} min</TableCell>
                                   <TableCell className="text-right font-medium">
-                                    {formatCurrency(lesson.calculatedPay)}
+                                    {fmtCurrency(lesson.calculatedPay)}
                                   </TableCell>
                                 </TableRow>
                               ))}
