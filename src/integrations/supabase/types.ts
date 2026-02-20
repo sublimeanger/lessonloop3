@@ -3064,6 +3064,7 @@ export type Database = {
         Args: { _user_id: string }
         Returns: string[]
       }
+      get_invoice_stats: { Args: { _org_id: string }; Returns: Json }
       get_org_role: {
         Args: { _org_id: string; _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
