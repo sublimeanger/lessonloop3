@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { logger } from '@/lib/logger';
-import { format, parseISO, startOfDay, endOfDay, addDays, subDays, isToday, isFuture } from 'date-fns';
+import { useState, useCallback, useEffect } from 'react';
+import { format, parseISO, startOfDay, addDays, subDays, isToday, isFuture } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -9,97 +8,35 @@ import { Badge } from '@/components/ui/badge';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { supabase } from '@/integrations/supabase/client';
-import { useOrg } from '@/contexts/OrgContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+import { useBatchAttendanceLessons, useSaveBatchAttendance } from '@/hooks/useRegisterData';
 import { Loader2, CheckCircle2, Save, UserCheck, ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
 type AttendanceStatus = Database['public']['Enums']['attendance_status'];
 
-interface LessonRow {
-  id: string;
-  title: string;
-  start_at: string;
-  end_at: string;
-  status: string;
-  participants: {
-    student_id: string;
-    student_name: string;
-    current_status: AttendanceStatus | null;
-  }[];
-}
-
 export default function BatchAttendance() {
-  const { currentOrg } = useOrg();
-  const { user } = useAuth();
-  const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [lessons, setLessons] = useState<LessonRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [attendance, setAttendance] = useState<Map<string, Map<string, AttendanceStatus>>>(new Map());
-
+  const dateKey = format(selectedDate, 'yyyy-MM-dd');
   const isFutureDate = isFuture(startOfDay(selectedDate));
 
+  const { data: lessons = [], isLoading } = useBatchAttendanceLessons(selectedDate);
+  const saveMutation = useSaveBatchAttendance(dateKey);
+
+  const [attendance, setAttendance] = useState<Map<string, Map<string, AttendanceStatus>>>(new Map());
+
+  // Sync attendance map when query data changes
   useEffect(() => {
-    if (!currentOrg) return;
-    const fetchData = async () => {
-      setIsLoading(true);
-      const dayStart = startOfDay(selectedDate).toISOString();
-      const dayEnd = endOfDay(selectedDate).toISOString();
-
-      const { data: lessonsData } = await supabase
-        .from('lessons')
-        .select(`
-          id, title, start_at, end_at, status,
-          lesson_participants(student_id, student:students(id, first_name, last_name)),
-          attendance_records(student_id, attendance_status)
-        `)
-        .eq('org_id', currentOrg.id)
-        .gte('start_at', dayStart)
-        .lte('start_at', dayEnd)
-        .in('status', ['scheduled', 'completed'])
-        .order('start_at', { ascending: true });
-
-      if (!lessonsData) {
-        setIsLoading(false);
-        return;
-      }
-
-      const rows: LessonRow[] = lessonsData.map((l: any) => ({
-        id: l.id,
-        title: l.title,
-        start_at: l.start_at,
-        end_at: l.end_at,
-        status: l.status,
-        participants: (l.lesson_participants || []).map((p: any) => {
-          const existing = (l.attendance_records || []).find((a: any) => a.student_id === p.student_id);
-          return {
-            student_id: p.student_id,
-            student_name: p.student ? `${p.student.first_name} ${p.student.last_name}` : 'Unknown',
-            current_status: existing?.attendance_status || null,
-          };
-        }),
-      }));
-
-      setLessons(rows);
-
-      const map = new Map<string, Map<string, AttendanceStatus>>();
-      rows.forEach((lesson) => {
-        const studentMap = new Map<string, AttendanceStatus>();
-        lesson.participants.forEach((p) => {
-          if (p.current_status) studentMap.set(p.student_id, p.current_status);
-        });
-        map.set(lesson.id, studentMap);
+    const map = new Map<string, Map<string, AttendanceStatus>>();
+    lessons.forEach((lesson) => {
+      const studentMap = new Map<string, AttendanceStatus>();
+      lesson.participants.forEach((p) => {
+        if (p.current_status) studentMap.set(p.student_id, p.current_status);
       });
-      setAttendance(map);
-      setIsLoading(false);
-    };
-    fetchData();
-  }, [currentOrg, selectedDate]);
+      map.set(lesson.id, studentMap);
+    });
+    setAttendance(map);
+  }, [lessons]);
 
   const setStudentAttendance = useCallback(
     (lessonId: string, studentId: string, status: AttendanceStatus) => {
@@ -130,64 +67,10 @@ export default function BatchAttendance() {
     });
   }, [lessons]);
 
-  const handleSave = async () => {
-    if (!currentOrg || !user) return;
-    setIsSaving(true);
-
-    try {
-      const upserts: {
-        lesson_id: string;
-        student_id: string;
-        attendance_status: AttendanceStatus;
-        org_id: string;
-        recorded_by: string;
-      }[] = [];
-
-      attendance.forEach((studentMap, lessonId) => {
-        studentMap.forEach((status, studentId) => {
-          upserts.push({
-            lesson_id: lessonId,
-            student_id: studentId,
-            attendance_status: status,
-            org_id: currentOrg.id,
-            recorded_by: user.id,
-          });
-        });
-      });
-
-      if (upserts.length === 0) {
-        toast({ title: 'Nothing to save', description: 'No attendance records marked.' });
-        setIsSaving(false);
-        return;
-      }
-
-      const { error } = await supabase
-        .from('attendance_records')
-        .upsert(upserts, { onConflict: 'lesson_id,student_id' });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Attendance saved',
-        description: `${upserts.length} records updated successfully.`,
-      });
-    } catch (err) {
-      logger.error('Failed to save attendance:', err);
-      toast({
-        title: 'Failed to save',
-        description: 'Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  const handleSave = () => saveMutation.mutate(attendance);
 
   const totalStudents = lessons.reduce((sum, l) => sum + l.participants.length, 0);
-  const markedCount = Array.from(attendance.values()).reduce(
-    (sum, m) => sum + m.size,
-    0
-  );
+  const markedCount = Array.from(attendance.values()).reduce((sum, m) => sum + m.size, 0);
 
   const goToPrevDay = () => setSelectedDate((prev) => subDays(prev, 1));
   const goToNextDay = () => setSelectedDate((prev) => addDays(prev, 1));
@@ -213,8 +96,8 @@ export default function BatchAttendance() {
               <UserCheck className="h-4 w-4" />
               Mark All Present
             </Button>
-            <Button onClick={handleSave} disabled={isSaving || isFutureDate} className="gap-1.5">
-              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            <Button onClick={handleSave} disabled={saveMutation.isPending || isFutureDate} className="gap-1.5">
+              {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save All ({markedCount}/{totalStudents})
             </Button>
           </div>

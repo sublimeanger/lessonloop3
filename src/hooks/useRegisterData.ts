@@ -225,3 +225,121 @@ export function useMarkLessonComplete() {
     },
   });
 }
+
+// ── Batch Attendance hooks ──
+
+export interface BatchLessonRow {
+  id: string;
+  title: string;
+  start_at: string;
+  end_at: string;
+  status: string;
+  participants: {
+    student_id: string;
+    student_name: string;
+    current_status: 'present' | 'absent' | 'late' | null;
+  }[];
+}
+
+export function useBatchAttendanceLessons(date: Date) {
+  const { currentOrg } = useOrg();
+
+  return useQuery({
+    queryKey: ['batch-attendance-lessons', currentOrg?.id, format(date, 'yyyy-MM-dd')],
+    queryFn: async (): Promise<BatchLessonRow[]> => {
+      if (!currentOrg) return [];
+
+      const dayStart = startOfDay(date).toISOString();
+      const dayEnd = endOfDay(date).toISOString();
+
+      const { data: lessonsData, error } = await supabase
+        .from('lessons')
+        .select(`
+          id, title, start_at, end_at, status,
+          lesson_participants(student_id, student:students(id, first_name, last_name)),
+          attendance_records(student_id, attendance_status)
+        `)
+        .eq('org_id', currentOrg.id)
+        .gte('start_at', dayStart)
+        .lte('start_at', dayEnd)
+        .in('status', ['scheduled', 'completed'])
+        .order('start_at', { ascending: true });
+
+      if (error) throw error;
+
+      return (lessonsData || []).map((l: any) => ({
+        id: l.id,
+        title: l.title,
+        start_at: l.start_at,
+        end_at: l.end_at,
+        status: l.status,
+        participants: (l.lesson_participants || []).map((p: any) => {
+          const existing = (l.attendance_records || []).find((a: any) => a.student_id === p.student_id);
+          return {
+            student_id: p.student_id,
+            student_name: p.student ? `${p.student.first_name} ${p.student.last_name}` : 'Unknown',
+            current_status: existing?.attendance_status || null,
+          };
+        }),
+      }));
+    },
+    enabled: !!currentOrg?.id,
+  });
+}
+
+export function useSaveBatchAttendance(dateKey: string) {
+  const { currentOrg } = useOrg();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (attendance: Map<string, Map<string, string>>) => {
+      if (!currentOrg || !user) throw new Error('No organisation or user');
+
+      const upserts: {
+        lesson_id: string;
+        student_id: string;
+        attendance_status: string;
+        org_id: string;
+        recorded_by: string;
+      }[] = [];
+
+      attendance.forEach((studentMap, lessonId) => {
+        studentMap.forEach((status, studentId) => {
+          upserts.push({
+            lesson_id: lessonId,
+            student_id: studentId,
+            attendance_status: status as any,
+            org_id: currentOrg.id,
+            recorded_by: user.id,
+          });
+        });
+      });
+
+      if (upserts.length === 0) {
+        return { count: 0 };
+      }
+
+      const { error } = await supabase
+        .from('attendance_records')
+        .upsert(upserts as any, { onConflict: 'lesson_id,student_id' });
+
+      if (error) throw error;
+      return { count: upserts.length };
+    },
+    onSuccess: (data) => {
+      if (data.count === 0) {
+        toast({ title: 'Nothing to save', description: 'No attendance records marked.' });
+      } else {
+        toast({ title: 'Attendance saved', description: `${data.count} records updated successfully.` });
+      }
+      queryClient.invalidateQueries({ queryKey: ['batch-attendance-lessons', currentOrg?.id, dateKey] });
+      queryClient.invalidateQueries({ queryKey: ['register-lessons'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance'] });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Failed to save', description: error.message || 'Please try again.', variant: 'destructive' });
+    },
+  });
+}
