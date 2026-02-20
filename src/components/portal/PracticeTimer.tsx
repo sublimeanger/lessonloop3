@@ -3,9 +3,31 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Play, Pause, Square, Timer, Music } from 'lucide-react';
+import { Play, Pause, Square, Timer, Music, RotateCcw } from 'lucide-react';
 import { useLogPractice, useParentPracticeAssignments } from '@/hooks/usePractice';
 import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+
+// ─── localStorage helpers (safe for private browsing) ────────
+const STORAGE_KEYS = {
+  isRunning: 'practiceTimer_isRunning',
+  startedAt: 'practiceTimer_startedAt',
+  pausedElapsed: 'practiceTimer_pausedElapsed',
+  studentId: 'practiceTimer_studentId',
+  assignmentId: 'practiceTimer_assignmentId',
+} as const;
+
+function storageSet(key: string, value: string) {
+  try { localStorage.setItem(key, value); } catch {}
+}
+function storageGet(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function storageClear() {
+  try {
+    Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
+  } catch {}
+}
 
 interface PracticeTimerProps {
   onComplete?: () => void;
@@ -17,7 +39,9 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>('');
   const [notes, setNotes] = useState('');
+  const [resumed, setResumed] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startedAtRef = useRef<number | null>(null);
 
   const { data: assignments = [], isLoading } = useParentPracticeAssignments();
   const logPractice = useLogPractice();
@@ -26,10 +50,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
   const studentAssignments = assignments.reduce((acc, assignment) => {
     const studentId = assignment.student_id;
     if (!acc[studentId]) {
-      acc[studentId] = {
-        student: assignment.student,
-        assignments: [],
-      };
+      acc[studentId] = { student: assignment.student, assignments: [] };
     }
     acc[studentId].assignments.push(assignment);
     return acc;
@@ -45,11 +66,38 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
     }
   }, [students, selectedStudentId]);
 
-  // Timer logic
+  // ─── Restore session on mount ─────────────────────────────
   useEffect(() => {
-    if (isRunning) {
+    const wasRunning = storageGet(STORAGE_KEYS.isRunning) === 'true';
+    if (!wasRunning) return;
+
+    const savedStartedAt = Number(storageGet(STORAGE_KEYS.startedAt));
+    const savedPausedElapsed = Number(storageGet(STORAGE_KEYS.pausedElapsed) || '0');
+    const savedStudent = storageGet(STORAGE_KEYS.studentId) || '';
+    const savedAssignment = storageGet(STORAGE_KEYS.assignmentId) || '';
+
+    if (!savedStartedAt) { storageClear(); return; }
+
+    const elapsed = savedPausedElapsed + Math.floor((Date.now() - savedStartedAt) / 1000);
+    // Cap at 4 hours to discard stale sessions
+    if (elapsed > 14400) { storageClear(); return; }
+
+    setSelectedStudentId(savedStudent);
+    setSelectedAssignmentId(savedAssignment);
+    setElapsedSeconds(elapsed);
+    startedAtRef.current = savedStartedAt;
+    setIsRunning(true);
+    setResumed(true);
+    setTimeout(() => setResumed(false), 4000);
+  }, []);
+
+  // ─── Timer tick (uses wall-clock for accuracy) ────────────
+  useEffect(() => {
+    if (isRunning && startedAtRef.current) {
+      const pausedElapsed = Number(storageGet(STORAGE_KEYS.pausedElapsed) || '0');
       intervalRef.current = setInterval(() => {
-        setElapsedSeconds(prev => prev + 1);
+        const now = Date.now();
+        setElapsedSeconds(pausedElapsed + Math.floor((now - startedAtRef.current!) / 1000));
       }, 1000);
     } else {
       if (intervalRef.current) {
@@ -58,21 +106,38 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
       }
     }
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
+  }, [isRunning]);
+
+  // ─── beforeunload warning ─────────────────────────────────
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isRunning) e.preventDefault();
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
   }, [isRunning]);
 
   const formatTime = (totalSeconds: number) => {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-    
     if (hours > 0) {
       return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // ─── Persist helpers ──────────────────────────────────────
+  const persistRunning = () => {
+    const now = Date.now();
+    startedAtRef.current = now;
+    storageSet(STORAGE_KEYS.isRunning, 'true');
+    storageSet(STORAGE_KEYS.startedAt, String(now));
+    storageSet(STORAGE_KEYS.pausedElapsed, String(elapsedSeconds));
+    storageSet(STORAGE_KEYS.studentId, selectedStudentId);
+    storageSet(STORAGE_KEYS.assignmentId, selectedAssignmentId);
   };
 
   const handleStart = () => {
@@ -80,18 +145,23 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
       toast.error('Please select a student first');
       return;
     }
+    persistRunning();
     setIsRunning(true);
   };
 
   const handlePause = () => {
     setIsRunning(false);
+    // Save elapsed so far, clear startedAt
+    storageSet(STORAGE_KEYS.isRunning, 'false');
+    storageSet(STORAGE_KEYS.pausedElapsed, String(elapsedSeconds));
   };
 
   const handleStop = async () => {
     setIsRunning(false);
-    
+    storageClear();
+
     const durationMinutes = Math.max(1, Math.round(elapsedSeconds / 60));
-    
+
     if (elapsedSeconds < 60) {
       toast.error('Practice must be at least 1 minute');
       return;
@@ -104,7 +174,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
     }
 
     const assignment = selectedStudent.assignments.find(a => a.id === selectedAssignmentId);
-    
+
     try {
       await logPractice.mutateAsync({
         org_id: assignment?.org_id || selectedStudent.assignments[0]?.org_id,
@@ -113,9 +183,10 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
         duration_minutes: durationMinutes,
         notes: notes || undefined,
       });
-      
+
       toast.success(`Practice logged: ${durationMinutes} minutes`);
       setElapsedSeconds(0);
+      startedAtRef.current = null;
       setNotes('');
       onComplete?.();
     } catch (error: any) {
@@ -126,7 +197,9 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
   const handleReset = () => {
     setIsRunning(false);
     setElapsedSeconds(0);
+    startedAtRef.current = null;
     setNotes('');
+    storageClear();
   };
 
   if (isLoading) {
@@ -153,7 +226,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
     );
   }
 
-  const currentStudentAssignments = selectedStudentId 
+  const currentStudentAssignments = selectedStudentId
     ? studentAssignments[selectedStudentId]?.assignments || []
     : [];
 
@@ -166,11 +239,19 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Resumed banner */}
+        {resumed && (
+          <Alert>
+            <RotateCcw className="h-4 w-4" />
+            <AlertDescription>Resuming practice session…</AlertDescription>
+          </Alert>
+        )}
+
         {/* Student selector */}
         {students.length > 1 && (
           <div className="space-y-2">
             <label className="text-sm font-medium">Student</label>
-            <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+            <Select value={selectedStudentId} onValueChange={setSelectedStudentId} disabled={isRunning}>
               <SelectTrigger>
                 <SelectValue placeholder="Select student" />
               </SelectTrigger>
@@ -189,7 +270,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
         {currentStudentAssignments.length > 0 && (
           <div className="space-y-2">
             <label className="text-sm font-medium">Practice Assignment (optional)</label>
-            <Select value={selectedAssignmentId} onValueChange={setSelectedAssignmentId}>
+            <Select value={selectedAssignmentId} onValueChange={setSelectedAssignmentId} disabled={isRunning}>
               <SelectTrigger>
                 <SelectValue placeholder="Select assignment" />
               </SelectTrigger>
@@ -222,8 +303,8 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
         {/* Controls */}
         <div className="flex justify-center gap-3">
           {!isRunning ? (
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               onClick={handleStart}
               disabled={!selectedStudentId}
               className="gap-2"
@@ -237,12 +318,12 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
               Pause
             </Button>
           )}
-          
+
           {elapsedSeconds > 0 && (
             <>
-              <Button 
-                size="lg" 
-                variant="success" 
+              <Button
+                size="lg"
+                variant="success"
                 onClick={handleStop}
                 disabled={logPractice.isPending}
                 className="gap-2"
