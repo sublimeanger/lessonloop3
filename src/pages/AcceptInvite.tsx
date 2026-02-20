@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle, XCircle, Music } from 'lucide-react';
+import { PasswordStrengthIndicator, PASSWORD_MIN_LENGTH } from '@/components/auth/PasswordStrengthIndicator';
 
 interface InviteDetails {
   email: string;
@@ -128,8 +129,12 @@ export default function AcceptInvite() {
       return;
     }
     
-    if (password.length < 6) {
-      toast({ title: 'Password must be at least 6 characters', variant: 'destructive' });
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      toast({
+        title: 'Password too short',
+        description: `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`,
+        variant: 'destructive',
+      });
       return;
     }
     
@@ -305,6 +310,7 @@ export default function AcceptInvite() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Create a password"
             />
+            <PasswordStrengthIndicator password={password} visible={password.length > 0} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm Password</Label>
