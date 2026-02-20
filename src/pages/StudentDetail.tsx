@@ -26,6 +26,7 @@ import { StudentPracticePanel } from '@/components/students/StudentPracticePanel
 import { useStudentLessons, useStudentInvoices } from '@/hooks/useStudentDetail';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
 import { TeachingDefaultsCard } from '@/components/students/TeachingDefaultsCard';
+import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 
 type StudentStatus = 'active' | 'inactive';
 type RelationshipType = 'mother' | 'father' | 'guardian' | 'other';
@@ -452,6 +453,7 @@ export default function StudentDetail() {
         </TabsList>
 
         <TabsContent value="overview">
+          <SectionErrorBoundary name="Overview">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -543,13 +545,17 @@ export default function StudentDetail() {
               readOnly={!isOrgAdmin}
             />
           </div>
+          </SectionErrorBoundary>
         </TabsContent>
 
         <TabsContent value="teachers">
-          <TeacherAssignmentsPanel studentId={id!} />
+          <SectionErrorBoundary name="Teacher Assignments">
+            <TeacherAssignmentsPanel studentId={id!} />
+          </SectionErrorBoundary>
         </TabsContent>
 
         <TabsContent value="guardians">
+          <SectionErrorBoundary name="Guardians">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -657,9 +663,11 @@ export default function StudentDetail() {
               )}
             </CardContent>
           </Card>
+          </SectionErrorBoundary>
         </TabsContent>
 
         <TabsContent value="lessons">
+          <SectionErrorBoundary name="Lessons">
           <Card>
             <CardHeader>
               <CardTitle>Lesson History</CardTitle>
@@ -713,9 +721,11 @@ export default function StudentDetail() {
               )}
             </CardContent>
           </Card>
+          </SectionErrorBoundary>
         </TabsContent>
 
         <TabsContent value="invoices">
+          <SectionErrorBoundary name="Invoices">
           <Card>
             <CardHeader>
               <CardTitle>Invoices</CardTitle>
@@ -762,17 +772,23 @@ export default function StudentDetail() {
               )}
             </CardContent>
           </Card>
+          </SectionErrorBoundary>
         </TabsContent>
 
         <TabsContent value="practice">
-          <StudentPracticePanel studentId={student.id} studentName={fullName} />
+          <SectionErrorBoundary name="Practice">
+            <StudentPracticePanel studentId={student.id} studentName={fullName} />
+          </SectionErrorBoundary>
         </TabsContent>
 
         <TabsContent value="credits">
-          <MakeUpCreditsPanel studentId={student.id} studentName={fullName} />
+          <SectionErrorBoundary name="Credits">
+            <MakeUpCreditsPanel studentId={student.id} studentName={fullName} />
+          </SectionErrorBoundary>
         </TabsContent>
 
         <TabsContent value="notes">
+          <SectionErrorBoundary name="Notes">
           <Card>
             <CardHeader>
               <CardTitle>Notes</CardTitle>
@@ -785,9 +801,11 @@ export default function StudentDetail() {
               </div>
             </CardContent>
           </Card>
+          </SectionErrorBoundary>
         </TabsContent>
 
         <TabsContent value="messages">
+          <SectionErrorBoundary name="Messages">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -831,6 +849,7 @@ export default function StudentDetail() {
               )}
             </CardContent>
           </Card>
+          </SectionErrorBoundary>
         </TabsContent>
       </Tabs>
 

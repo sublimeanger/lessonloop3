@@ -18,6 +18,7 @@ import { CalendarView, CalendarFilters, LessonWithDetails } from '@/components/c
 import { buildTeacherColourMap } from '@/components/calendar/teacherColours';
 import { QuickCreatePopover } from '@/components/calendar/QuickCreatePopover';
 import { ContextualHint } from '@/components/shared/ContextualHint';
+import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -496,57 +497,59 @@ export default function CalendarPage() {
       )}
 
       {/* Calendar content */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-24">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : view === 'agenda' ? (
-        <AgendaView
-          currentDate={currentDate}
-          lessons={lessons}
-          onLessonClick={handleLessonClick}
-          teacherColourMap={teacherColourMap}
-          groupByTeacher={groupByTeacher}
-        />
-      ) : view === 'stacked' ? (
-        <StackedWeekView
-          currentDate={currentDate}
-          lessons={lessons}
-          teacherColourMap={teacherColourMap}
-          onLessonClick={handleLessonClick}
-          onDayClick={(date) => {
-            if (isParent) return;
-            setQuickCreateStart(date);
-            setQuickCreateEnd(undefined);
-            setQuickCreateOpen(true);
-          }}
-          isParent={isParent}
-          compact={isCompact}
-        />
-      ) : (
-        <div data-tour="calendar-grid" data-hint="calendar-grid">
-          <WeekTimeGrid
+      <SectionErrorBoundary name="Calendar">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : view === 'agenda' ? (
+          <AgendaView
+            currentDate={currentDate}
+            lessons={lessons}
+            onLessonClick={handleLessonClick}
+            teacherColourMap={teacherColourMap}
+            groupByTeacher={groupByTeacher}
+          />
+        ) : view === 'stacked' ? (
+          <StackedWeekView
             currentDate={currentDate}
             lessons={lessons}
             teacherColourMap={teacherColourMap}
             onLessonClick={handleLessonClick}
-            onSlotClick={handleSlotClick}
-            onSlotDrag={handleSlotDrag}
-            onLessonDrop={!isParent ? handleLessonDrop : undefined}
-            onLessonResize={!isParent ? handleLessonResize : undefined}
+            onDayClick={(date) => {
+              if (isParent) return;
+              setQuickCreateStart(date);
+              setQuickCreateEnd(undefined);
+              setQuickCreateOpen(true);
+            }}
             isParent={isParent}
-            savingLessonIds={savingLessonIds}
+            compact={isCompact}
           />
-          {!isParent && (
-            <ContextualHint
-              id="calendar-create-lesson"
-              message="Click any time slot to create a lesson, or drag to set the duration. Grab a lesson card to reschedule it."
-              position="top"
-              targetSelector="[data-hint='calendar-grid']"
+        ) : (
+          <div data-tour="calendar-grid" data-hint="calendar-grid">
+            <WeekTimeGrid
+              currentDate={currentDate}
+              lessons={lessons}
+              teacherColourMap={teacherColourMap}
+              onLessonClick={handleLessonClick}
+              onSlotClick={handleSlotClick}
+              onSlotDrag={handleSlotDrag}
+              onLessonDrop={!isParent ? handleLessonDrop : undefined}
+              onLessonResize={!isParent ? handleLessonResize : undefined}
+              isParent={isParent}
+              savingLessonIds={savingLessonIds}
             />
-          )}
-        </div>
-      )}
+            {!isParent && (
+              <ContextualHint
+                id="calendar-create-lesson"
+                message="Click any time slot to create a lesson, or drag to set the duration. Grab a lesson card to reschedule it."
+                position="top"
+                targetSelector="[data-hint='calendar-grid']"
+              />
+            )}
+          </div>
+        )}
+      </SectionErrorBoundary>
 
       {/* Keyboard shortcuts hint — desktop only */}
       <div className="mt-3 text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
