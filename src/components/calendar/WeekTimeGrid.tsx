@@ -75,6 +75,8 @@ interface WeekTimeGridProps {
   onLessonDrop?: (lesson: LessonWithDetails, newStart: Date, newEnd: Date) => void;
   onLessonResize?: (lesson: LessonWithDetails, newEnd: Date) => void;
   isParent: boolean;
+  /** Set of lesson IDs currently being saved (optimistic update in progress) */
+  savingLessonIds?: Set<string>;
 }
 
 export function WeekTimeGrid({
@@ -87,6 +89,7 @@ export function WeekTimeGrid({
   onLessonDrop,
   onLessonResize,
   isParent,
+  savingLessonIds,
 }: WeekTimeGridProps) {
   const { currentOrg } = useOrg();
   const isMobile = useIsMobile();
@@ -299,6 +302,7 @@ export function WeekTimeGrid({
         isParent={isParent}
         closures={closures}
         currentDate={currentDate}
+        savingLessonIds={savingLessonIds}
       />
     );
   }
@@ -471,6 +475,7 @@ export function WeekTimeGrid({
                             showResizeHandle={!isParent && !!onLessonResize}
                             onResizeStart={(e) => startResize(lesson, e)}
                             compact={totalColumns >= 3}
+                            isSaving={savingLessonIds?.has(lesson.id)}
                           />
                         </div>
                       );

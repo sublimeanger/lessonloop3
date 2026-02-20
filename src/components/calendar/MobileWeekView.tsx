@@ -33,6 +33,7 @@ interface MobileWeekViewProps {
   isParent: boolean;
   closures: ClosureInfo[];
   currentDate: Date;
+  savingLessonIds?: Set<string>;
 }
 
 export function MobileWeekView({
@@ -45,6 +46,7 @@ export function MobileWeekView({
   isParent,
   closures,
   currentDate,
+  savingLessonIds,
 }: MobileWeekViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeDotIndex, setActiveDotIndex] = useState(0);
@@ -275,6 +277,7 @@ export function MobileWeekView({
                           onClick={() => { if (!dragLesson) onLessonClick(lesson); }}
                           variant="stacked"
                           teacherColour={colour}
+                          isSaving={savingLessonIds?.has(lesson.id)}
                         />
                       </div>
                     );

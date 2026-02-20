@@ -17,6 +17,8 @@ interface LessonCardProps {
   onResizeStart?: (e: React.MouseEvent | React.TouchEvent) => void;
   /** Ultra-compact mode for narrow columns (≥3 overlapping) */
   compact?: boolean;
+  /** Show a pulsing animation while saving */
+  isSaving?: boolean;
 }
 
 /**
@@ -58,7 +60,7 @@ function buildSecondaryLine(lesson: LessonWithDetails): string {
   return '';
 }
 
-export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColour, showResizeHandle, onResizeStart, compact }: LessonCardProps) {
+export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColour, showResizeHandle, onResizeStart, compact, isSaving }: LessonCardProps) {
   const startTime = parseISO(lesson.start_at);
   const endTime = parseISO(lesson.end_at);
   const duration = differenceInMinutes(endTime, startTime);
@@ -81,7 +83,8 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
           className={cn(
             'px-1 py-px cursor-pointer transition-colors rounded-sm flex items-center gap-1 min-h-0',
             colour.bgLight,
-            isCancelled && 'opacity-40'
+            isCancelled && 'opacity-40',
+            isSaving && 'animate-pulse ring-1 ring-primary/30'
           )}
         >
           <span className={cn(
@@ -113,7 +116,8 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
         className={cn(
           'px-1 sm:px-1.5 py-0.5 sm:py-1 cursor-pointer transition-colors rounded-sm',
           colour.bgLight,
-          isCancelled && 'opacity-40'
+          isCancelled && 'opacity-40',
+          isSaving && 'animate-pulse ring-1 ring-primary/30'
         )}
       >
         {/* Time */}
@@ -214,7 +218,8 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
           className={cn(
             'h-full w-full rounded-sm px-1.5 py-1 cursor-pointer overflow-hidden text-xs transition-all hover:shadow-md group relative',
             colour.bgLight,
-            isCancelled && 'opacity-50'
+            isCancelled && 'opacity-50',
+            isSaving && 'animate-pulse ring-1 ring-primary/30'
           )}
         >
           <div className={cn(
