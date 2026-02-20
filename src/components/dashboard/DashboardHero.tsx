@@ -21,7 +21,6 @@ interface DashboardHeroProps {
 function SunScene() {
   return (
     <svg viewBox="0 0 120 120" className="h-full w-full" aria-hidden="true">
-      {/* Warm glow */}
       <defs>
         <radialGradient id="sun-glow" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="hsl(45, 100%, 60%)" stopOpacity="0.4" />
@@ -35,14 +34,12 @@ function SunScene() {
         animate={{ scale: [1, 1.15, 1] }}
         transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
       />
-      {/* Sun body */}
       <motion.circle
         cx="60" cy="60" r="22"
         fill="hsl(45, 100%, 58%)"
         animate={{ scale: [1, 1.05, 1] }}
         transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
       />
-      {/* Sun rays */}
       {Array.from({ length: 8 }).map((_, i) => {
         const angle = (i * 45) * (Math.PI / 180);
         const x1 = 60 + Math.cos(angle) * 30;
@@ -61,7 +58,6 @@ function SunScene() {
           />
         );
       })}
-      {/* Small cloud */}
       <motion.g
         animate={{ x: [0, 8, 0] }}
         transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
@@ -89,14 +85,12 @@ function AfternoonScene() {
         animate={{ scale: [1, 1.1, 1] }}
         transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
       />
-      {/* Warm sun */}
       <motion.circle
         cx="60" cy="65" r="20"
         fill="hsl(35, 95%, 55%)"
         animate={{ y: [0, -2, 0] }}
         transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
       />
-      {/* Clouds drifting */}
       <motion.g
         animate={{ x: [0, 12, 0] }}
         transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
@@ -131,10 +125,8 @@ function EveningScene() {
         animate={{ scale: [1, 1.08, 1] }}
         transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
       />
-      {/* Moon crescent */}
       <circle cx="60" cy="55" r="18" fill="hsl(45, 50%, 90%)" />
       <circle cx="68" cy="48" r="14" fill="hsl(220, 40%, 18%)" opacity="0.85" />
-      {/* Stars */}
       {[
         { cx: 25, cy: 30, r: 1.5, delay: 0 },
         { cx: 90, cy: 25, r: 1.2, delay: 0.5 },
@@ -213,7 +205,7 @@ function StatPill({
     <Link to={href}>
       <motion.div
         className={cn(
-          'group flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all',
+          'group flex items-center gap-1.5 sm:gap-2 rounded-full border px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm transition-all',
           'hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5',
           highlight 
             ? 'bg-destructive/5 border-destructive/20 text-destructive' 
@@ -222,9 +214,9 @@ function StatPill({
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
-        <Icon className="h-3.5 w-3.5 opacity-60" />
+        <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-60 shrink-0" />
         <span className="font-mono font-semibold">{value}</span>
-        <span className="text-muted-foreground text-xs">{label}</span>
+        <span className="text-muted-foreground text-[10px] sm:text-xs hidden xs:inline">{label}</span>
       </motion.div>
     </Link>
   );
@@ -298,7 +290,8 @@ export function DashboardHero({
   return (
     <motion.div
       className={cn(
-        'relative overflow-hidden rounded-2xl border p-6 md:p-8',
+        'relative overflow-hidden rounded-2xl border',
+        'p-4 sm:p-6 md:p-8',
         'bg-gradient-to-br',
         theme.bg,
         theme.border,
@@ -309,23 +302,24 @@ export function DashboardHero({
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       data-tour="dashboard-hero"
     >
-      <div className="relative z-10 flex items-start justify-between gap-4">
+      <div className="relative z-10 flex items-start justify-between gap-3 sm:gap-4">
         {/* Text content */}
-        <div className="flex-1 space-y-3 min-w-0">
+        <div className="flex-1 space-y-2 sm:space-y-3 min-w-0">
           {/* Date badge */}
           <motion.div
-            className="inline-flex items-center gap-1.5 rounded-full bg-background/60 border border-border/40 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm"
+            className="inline-flex items-center gap-1.5 rounded-full bg-background/60 border border-border/40 px-2.5 py-0.5 sm:px-3 sm:py-1 text-[11px] sm:text-xs font-medium text-muted-foreground backdrop-blur-sm"
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
           >
             <Calendar className="h-3 w-3" />
-            {format(new Date(), 'EEEE, d MMMM yyyy')}
+            <span className="hidden sm:inline">{format(new Date(), 'EEEE, d MMMM yyyy')}</span>
+            <span className="sm:hidden">{format(new Date(), 'EEE, d MMM')}</span>
           </motion.div>
 
           {/* Greeting with animated wave */}
           <motion.h1
-            className="text-2xl font-bold tracking-tight md:text-3xl"
+            className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
@@ -347,7 +341,7 @@ export function DashboardHero({
           {/* Sub-message for new users */}
           {!hasStudents && (
             <motion.p
-              className="text-sm text-muted-foreground"
+              className="text-xs sm:text-sm text-muted-foreground"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
@@ -359,7 +353,7 @@ export function DashboardHero({
           {/* Stat pills */}
           {pills.length > 0 && (
             <motion.div
-              className="flex flex-wrap gap-2 pt-1"
+              className="flex flex-wrap gap-1.5 sm:gap-2 pt-0.5 sm:pt-1"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
@@ -373,7 +367,7 @@ export function DashboardHero({
           {/* All clear message */}
           {hasStudents && pills.length === 0 && (
             <motion.p
-              className="text-sm text-muted-foreground"
+              className="text-xs sm:text-sm text-muted-foreground"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
@@ -383,9 +377,9 @@ export function DashboardHero({
           )}
         </div>
 
-        {/* Animated sky scene */}
+        {/* Animated sky scene — visible on mobile too but smaller */}
         <motion.div
-          className="hidden sm:block h-28 w-28 md:h-32 md:w-32 shrink-0"
+          className="h-16 w-16 sm:h-24 sm:w-24 md:h-32 md:w-32 shrink-0"
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2, type: 'spring', stiffness: 200, damping: 20 }}

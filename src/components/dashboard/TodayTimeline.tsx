@@ -21,18 +21,18 @@ function LessonRow({ lesson }: { lesson: TodayLesson }) {
     <Link
       to={`/calendar?date=${lessonDate}`}
       className={cn(
-        'flex items-stretch gap-0 py-2.5 px-1 transition-colors hover:bg-muted/50 rounded-lg group',
+        'flex items-stretch gap-0 py-2 sm:py-2.5 px-1 transition-colors hover:bg-muted/50 rounded-lg group',
         isCancelled && 'opacity-40',
       )}
     >
       {/* Time */}
-      <div className="w-14 shrink-0 text-right pr-3 pt-0.5">
-        <span className="text-sm font-mono font-semibold text-foreground tabular-nums">
+      <div className="w-12 sm:w-14 shrink-0 text-right pr-2 sm:pr-3 pt-0.5">
+        <span className="text-xs sm:text-sm font-mono font-semibold text-foreground tabular-nums">
           {format(lesson.startAt, 'H:mm')}
         </span>
       </div>
 
-      {/* Color bar — using primary for now, teacher color would need extra data */}
+      {/* Color bar */}
       <div
         className={cn(
           'w-[3px] rounded-full shrink-0 self-stretch',
@@ -41,24 +41,24 @@ function LessonRow({ lesson }: { lesson: TodayLesson }) {
       />
 
       {/* Content */}
-      <div className="flex-1 min-w-0 pl-3">
-        <div className="flex items-center gap-2">
+      <div className="flex-1 min-w-0 pl-2 sm:pl-3">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <span className={cn(
-            'text-sm font-semibold text-foreground truncate',
+            'text-xs sm:text-sm font-semibold text-foreground truncate',
             isCancelled && 'line-through',
           )}>
             {studentName}
           </span>
           {isCompleted && (
-            <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
+            <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-success shrink-0" />
           )}
           {isNow && (
-            <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">
+            <span className="text-[9px] sm:text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">
               NOW
             </span>
           )}
         </div>
-        <p className="text-xs text-muted-foreground truncate mt-0.5">
+        <p className="text-[11px] sm:text-xs text-muted-foreground truncate mt-0.5">
           {lesson.title !== studentName ? `${lesson.title} · ` : ''}
           {lesson.duration}min
           {lesson.teacherName && ` · ${lesson.teacherName}`}
@@ -71,9 +71,9 @@ function LessonRow({ lesson }: { lesson: TodayLesson }) {
 
 function EmptyTimeline() {
   return (
-    <div className="flex flex-col items-center justify-center py-10 text-center">
-      <div className="h-12 w-12 rounded-xl bg-muted/50 flex items-center justify-center mb-3">
-        <Calendar className="h-6 w-6 text-muted-foreground/50" />
+    <div className="flex flex-col items-center justify-center py-8 sm:py-10 text-center">
+      <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-muted/50 flex items-center justify-center mb-3">
+        <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground/50" />
       </div>
       <p className="text-sm font-medium text-foreground">No lessons today</p>
       <p className="text-xs text-muted-foreground mt-0.5">Your schedule is clear.</p>
@@ -83,9 +83,9 @@ function EmptyTimeline() {
 
 function AllDone({ completedCount }: { completedCount: number }) {
   return (
-    <div className="flex flex-col items-center justify-center py-10 text-center">
-      <div className="h-12 w-12 rounded-xl bg-success/10 flex items-center justify-center mb-3">
-        <CheckCircle2 className="h-6 w-6 text-success" />
+    <div className="flex flex-col items-center justify-center py-8 sm:py-10 text-center">
+      <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-success/10 flex items-center justify-center mb-3">
+        <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-success" />
       </div>
       <p className="text-sm font-medium text-foreground">All done for today ✓</p>
       <p className="text-xs text-muted-foreground mt-0.5">
@@ -102,31 +102,30 @@ export function TodayTimeline({ className }: TodayTimelineProps) {
   const upcomingOrInProgress = activeLessons.filter(l => l.status === 'upcoming' || l.status === 'in-progress');
   const completedCount = activeLessons.filter(l => l.status === 'completed').length;
 
-  // If all lessons are done and it's past the last one
   const allDone = activeLessons.length > 0 && upcomingOrInProgress.length === 0;
 
-  // Show next 6 upcoming, or all if fewer
   const displayLessons = allDone
-    ? activeLessons.slice(-3) // show last 3 completed
+    ? activeLessons.slice(-3)
     : (lessons || []).slice(0, 6);
 
   return (
     <Card className={cn('', className)} data-tour="today-timeline">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2 sm:pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold">Today's Schedule</CardTitle>
           {activeLessons.length > 0 && (
             <Link
               to="/calendar"
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              View full calendar
+              <span className="hidden sm:inline">View full calendar</span>
+              <span className="sm:hidden">Calendar</span>
               <ArrowRight className="h-3 w-3" />
             </Link>
           )}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pb-4">
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
