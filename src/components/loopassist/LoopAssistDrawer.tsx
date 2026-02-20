@@ -24,6 +24,7 @@ import { useProactiveAlerts, ProactiveAlert } from '@/hooks/useProactiveAlerts';
 import { useLoopAssistFirstRun } from '@/hooks/useLoopAssistFirstRun';
 import { preprocessEntityChips, EntityChip } from './EntityChip';
 import { ActionCard, stripActionBlock, parseActionFromResponse } from './ActionCard';
+import { ResultCard, parseResultFromResponse, stripResultBlock } from './ResultCard';
 import { MessageFeedback } from './MessageFeedback';
 import { ProactiveAlerts } from './ProactiveAlerts';
 import { ProactiveWelcome } from './ProactiveWelcome';
@@ -562,12 +563,14 @@ function ConversationList({
 // ─── Message Bubble ───
 function MessageBubble({ message, conversationId }: { message: AIMessage; conversationId: string | null }) {
   const isUser = message.role === 'user';
-  const displayContent = isUser ? message.content : stripActionBlock(message.content);
+  const rawContent = isUser ? message.content : stripActionBlock(message.content);
+  const displayContent = isUser ? rawContent : stripResultBlock(rawContent);
   const processedContent = isUser ? displayContent : preprocessEntityChips(displayContent);
   const hasAction = !isUser && parseActionFromResponse(message.content);
+  const resultData = !isUser ? parseResultFromResponse(message.content) : null;
 
   return (
-    <div className={cn('flex flex-col', isUser ? 'items-end' : 'items-start')}>
+    <div className={cn('flex flex-col gap-2', isUser ? 'items-end' : 'items-start')}>
       <div
         className={cn(
           'max-w-[85%] rounded-lg px-3 py-2 text-sm',
@@ -612,6 +615,11 @@ function MessageBubble({ message, conversationId }: { message: AIMessage; conver
           </div>
         )}
       </div>
+      {resultData && (
+        <div className="max-w-[85%]">
+          <ResultCard result={resultData} />
+        </div>
+      )}
       {!isUser && message.id !== 'streaming' && conversationId && (
         <MessageFeedback 
           messageId={message.id} 
