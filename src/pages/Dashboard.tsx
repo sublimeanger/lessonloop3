@@ -8,6 +8,7 @@ import { useDashboardStats } from '@/hooks/useReports';
 import { useTeacherDashboardStats } from '@/hooks/useTeacherDashboard';
 import { OnboardingChecklist } from '@/components/shared/OnboardingChecklist';
 import { GridSkeleton } from '@/components/shared/LoadingState';
+import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { UpgradeBanner } from '@/components/subscription';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -145,34 +146,44 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
       >
         {/* Hero Section */}
         <motion.div variants={itemVariants}>
-          <DashboardHero
-            firstName={firstName}
-            todayLessons={stats?.todayLessons}
-            outstandingAmount={stats?.outstandingAmount}
-            currencyCode={currentOrg?.currency_code}
-            hasStudents={(stats?.activeStudents ?? 0) > 0}
-            hasLessons={(stats?.totalLessons ?? 0) > 0}
-          />
+          <SectionErrorBoundary name="Dashboard Hero">
+            <DashboardHero
+              firstName={firstName}
+              todayLessons={stats?.todayLessons}
+              outstandingAmount={stats?.outstandingAmount}
+              currencyCode={currentOrg?.currency_code}
+              hasStudents={(stats?.activeStudents ?? 0) > 0}
+              hasLessons={(stats?.totalLessons ?? 0) > 0}
+            />
+          </SectionErrorBoundary>
         </motion.div>
 
         {/* First Run Experience */}
         <motion.div variants={itemVariants}>
-          <FirstRunExperience />
+          <SectionErrorBoundary name="First Run Experience">
+            <FirstRunExperience />
+          </SectionErrorBoundary>
         </motion.div>
 
         {/* Urgent Actions Bar */}
         <motion.div variants={itemVariants}>
-          <UrgentActionsBar />
+          <SectionErrorBoundary name="Urgent Actions">
+            <UrgentActionsBar />
+          </SectionErrorBoundary>
         </motion.div>
 
         {/* Upgrade Banner */}
         <motion.div variants={itemVariants}>
-          <UpgradeBanner />
+          <SectionErrorBoundary name="Upgrade Banner">
+            <UpgradeBanner />
+          </SectionErrorBoundary>
         </motion.div>
 
         {/* Onboarding Checklist */}
         <motion.div variants={itemVariants}>
-          <OnboardingChecklist />
+          <SectionErrorBoundary name="Onboarding Checklist">
+            <OnboardingChecklist />
+          </SectionErrorBoundary>
         </motion.div>
 
         {/* Stats Grid */}
@@ -219,8 +230,12 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
 
         {/* Main Content Grid */}
         <motion.div variants={itemVariants} className="grid gap-6 lg:grid-cols-5">
-          <TodayTimeline className="lg:col-span-3" />
-          <QuickActionsGrid variant="solo" className="lg:col-span-2" />
+          <SectionErrorBoundary name="Today's Timeline">
+            <TodayTimeline className="lg:col-span-3" />
+          </SectionErrorBoundary>
+          <SectionErrorBoundary name="Quick Actions">
+            <QuickActionsGrid variant="solo" className="lg:col-span-2" />
+          </SectionErrorBoundary>
         </motion.div>
       </motion.div>
     </AppLayout>
@@ -251,29 +266,37 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
       >
         {/* Hero Section */}
         <motion.div variants={itemVariants}>
-          <DashboardHero
-            firstName={firstName}
-            todayLessons={stats?.todayLessons}
-            outstandingAmount={stats?.outstandingAmount}
-            currencyCode={currentOrg?.currency_code}
-            hasStudents={(stats?.activeStudents ?? 0) > 0}
-            hasLessons={(stats?.totalLessons ?? 0) > 0}
-          />
+          <SectionErrorBoundary name="Dashboard Hero">
+            <DashboardHero
+              firstName={firstName}
+              todayLessons={stats?.todayLessons}
+              outstandingAmount={stats?.outstandingAmount}
+              currencyCode={currentOrg?.currency_code}
+              hasStudents={(stats?.activeStudents ?? 0) > 0}
+              hasLessons={(stats?.totalLessons ?? 0) > 0}
+            />
+          </SectionErrorBoundary>
         </motion.div>
 
         {/* First Run Experience */}
         <motion.div variants={itemVariants}>
-          <FirstRunExperience />
+          <SectionErrorBoundary name="First Run Experience">
+            <FirstRunExperience />
+          </SectionErrorBoundary>
         </motion.div>
 
         {/* Urgent Actions Bar */}
         <motion.div variants={itemVariants}>
-          <UrgentActionsBar />
+          <SectionErrorBoundary name="Urgent Actions">
+            <UrgentActionsBar />
+          </SectionErrorBoundary>
         </motion.div>
 
         {/* Upgrade Banner */}
         <motion.div variants={itemVariants}>
-          <UpgradeBanner />
+          <SectionErrorBoundary name="Upgrade Banner">
+            <UpgradeBanner />
+          </SectionErrorBoundary>
         </motion.div>
 
         {/* Stats Grid */}
@@ -320,7 +343,9 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
 
         {/* Main Content Grid */}
         <motion.div variants={itemVariants} className="grid gap-6 lg:grid-cols-5">
-          <TodayTimeline className="lg:col-span-3" />
+          <SectionErrorBoundary name="Today's Timeline">
+            <TodayTimeline className="lg:col-span-3" />
+          </SectionErrorBoundary>
           
           <div className="space-y-6 lg:col-span-2">
             {/* Cancellation Alert Card */}
@@ -339,7 +364,9 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
               </Card>
             </Link>
             
-            <QuickActionsGrid variant="academy" />
+            <SectionErrorBoundary name="Quick Actions">
+              <QuickActionsGrid variant="academy" />
+            </SectionErrorBoundary>
           </div>
         </motion.div>
       </motion.div>
@@ -361,21 +388,27 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
       >
         {/* Hero Section */}
         <motion.div variants={itemVariants}>
-          <DashboardHero
-            firstName={firstName}
-            todayLessons={stats?.todayLessons}
-            hasStudents={(stats?.myStudentsCount ?? 0) > 0}
-          />
+          <SectionErrorBoundary name="Dashboard Hero">
+            <DashboardHero
+              firstName={firstName}
+              todayLessons={stats?.todayLessons}
+              hasStudents={(stats?.myStudentsCount ?? 0) > 0}
+            />
+          </SectionErrorBoundary>
         </motion.div>
 
         {/* Urgent Actions Bar */}
         <motion.div variants={itemVariants}>
-          <UrgentActionsBar />
+          <SectionErrorBoundary name="Urgent Actions">
+            <UrgentActionsBar />
+          </SectionErrorBoundary>
         </motion.div>
 
         {/* Upgrade Banner */}
         <motion.div variants={itemVariants}>
-          <UpgradeBanner variant="compact" />
+          <SectionErrorBoundary name="Upgrade Banner">
+            <UpgradeBanner variant="compact" />
+          </SectionErrorBoundary>
         </motion.div>
 
         {/* Stats Grid */}
@@ -422,8 +455,12 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
 
         {/* Main Content Grid */}
         <motion.div variants={itemVariants} className="grid gap-6 lg:grid-cols-5">
-          <TodayTimeline className="lg:col-span-3" />
-          <QuickActionsGrid variant="teacher" className="lg:col-span-2" />
+          <SectionErrorBoundary name="Today's Timeline">
+            <TodayTimeline className="lg:col-span-3" />
+          </SectionErrorBoundary>
+          <SectionErrorBoundary name="Quick Actions">
+            <QuickActionsGrid variant="teacher" className="lg:col-span-2" />
+          </SectionErrorBoundary>
         </motion.div>
       </motion.div>
     </AppLayout>
