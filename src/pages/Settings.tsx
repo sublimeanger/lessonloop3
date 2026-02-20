@@ -1,4 +1,4 @@
-import { useState, useEffect, ChangeEvent, useCallback } from 'react';
+import { useState, useEffect, useRef, ChangeEvent, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -24,6 +24,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Loader2, Upload, X, LogOut, ShieldAlert } from 'lucide-react';
 import {
   AlertDialog,
@@ -42,6 +43,76 @@ interface NotificationPreferences {
   email_invoice_reminders: boolean;
   email_payment_receipts: boolean;
   email_marketing: boolean;
+}
+
+// ─── Tab bar with horizontal scroll + gradient fade on mobile ───
+function MobileTabBar({ initialTab, isOrgAdmin, isOrgOwner }: { initialTab: string; isOrgAdmin: boolean; isOrgOwner: boolean }) {
+  const isMobile = useIsMobile();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showFade, setShowFade] = useState(true);
+
+  // Auto-scroll active tab into view on mount
+  useEffect(() => {
+    if (!isMobile || !scrollRef.current) return;
+    const activeTab = scrollRef.current.querySelector('[data-state="active"]') as HTMLElement | null;
+    if (activeTab) {
+      activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  }, [isMobile, initialTab]);
+
+  // Track scroll position to show/hide fade
+  useEffect(() => {
+    if (!isMobile) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 8;
+      setShowFade(!atEnd);
+    };
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [isMobile]);
+
+  const tabs = (
+    <>
+      <TabsTrigger value="profile">Profile</TabsTrigger>
+      <TabsTrigger value="organisation">Organisation</TabsTrigger>
+      {(isOrgAdmin || isOrgOwner) && <TabsTrigger value="members">Members</TabsTrigger>}
+      {(isOrgAdmin || isOrgOwner) && <TabsTrigger value="scheduling">Scheduling</TabsTrigger>}
+      {(isOrgAdmin || isOrgOwner) && <TabsTrigger value="audit">Audit Log</TabsTrigger>}
+      {(isOrgAdmin || isOrgOwner) && <TabsTrigger value="privacy">Privacy &amp; GDPR</TabsTrigger>}
+      {(isOrgAdmin || isOrgOwner) && <TabsTrigger value="rate-cards">Rate Cards</TabsTrigger>}
+      <TabsTrigger value="availability">Availability</TabsTrigger>
+      <TabsTrigger value="calendar">Calendar Sync</TabsTrigger>
+      <TabsTrigger value="billing">Billing</TabsTrigger>
+      <TabsTrigger value="notifications">Notifications</TabsTrigger>
+      <TabsTrigger value="help-tours">Help &amp; Tours</TabsTrigger>
+    </>
+  );
+
+  if (!isMobile) {
+    return (
+      <TabsList className="w-full overflow-x-auto flex-nowrap justify-start h-auto gap-1 scrollbar-hide">
+        {tabs}
+      </TabsList>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <TabsList
+        ref={scrollRef}
+        className="w-full overflow-x-auto flex-nowrap justify-start h-auto gap-1 scrollbar-hide scroll-smooth snap-x snap-mandatory"
+      >
+        {tabs}
+      </TabsList>
+      {/* Right gradient fade indicator */}
+      {showFade && (
+        <div className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none bg-gradient-to-l from-background to-transparent z-10 rounded-r-md" />
+      )}
+    </div>
+  );
 }
 
 export default function Settings() {
@@ -329,30 +400,7 @@ export default function Settings() {
       />
 
       <Tabs defaultValue={initialTab} className="space-y-6">
-        <TabsList className="w-full overflow-x-auto flex-nowrap justify-start h-auto gap-1 scrollbar-hide">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="organisation">Organisation</TabsTrigger>
-          {(isOrgAdmin || isOrgOwner) && (
-            <TabsTrigger value="members">Members</TabsTrigger>
-          )}
-          {(isOrgAdmin || isOrgOwner) && (
-            <TabsTrigger value="scheduling">Scheduling</TabsTrigger>
-          )}
-          {(isOrgAdmin || isOrgOwner) && (
-            <TabsTrigger value="audit">Audit Log</TabsTrigger>
-          )}
-          {(isOrgAdmin || isOrgOwner) && (
-            <TabsTrigger value="privacy">Privacy & GDPR</TabsTrigger>
-          )}
-          {(isOrgAdmin || isOrgOwner) && (
-            <TabsTrigger value="rate-cards">Rate Cards</TabsTrigger>
-          )}
-          <TabsTrigger value="availability">Availability</TabsTrigger>
-          <TabsTrigger value="calendar">Calendar Sync</TabsTrigger>
-          <TabsTrigger value="billing">Billing</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="help-tours">Help & Tours</TabsTrigger>
-        </TabsList>
+        <MobileTabBar initialTab={initialTab} isOrgAdmin={isOrgAdmin} isOrgOwner={isOrgOwner} />
 
         <TabsContent value="profile">
           <Card>
