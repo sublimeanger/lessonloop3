@@ -8,13 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useRelatedStudent } from '@/hooks/useRelatedStudent';
 import { EntityChip } from '@/components/looopassist/EntityChip';
 import type { MessageLogEntry } from '@/hooks/useMessages';
-
-// Strip HTML tags from message body for preview
-function stripHtml(html: string): string {
-  const tmp = document.createElement('div');
-  tmp.innerHTML = html;
-  return tmp.textContent || tmp.innerText || '';
-}
+import { sanitizeHtml, stripHtml } from '@/lib/sanitize';
 
 // Check if a string contains HTML tags
 function isHtml(str: string): boolean {
@@ -129,7 +123,7 @@ function MessageCard({ message, onReply }: { message: MessageLogEntry; onReply?:
             {isHtml(message.body) ? (
               <div
                 className="text-sm bg-muted/50 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert [&_a]:text-primary [&_a]:underline"
-                dangerouslySetInnerHTML={{ __html: message.body }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(message.body) }}
               />
             ) : (
               <div className="whitespace-pre-wrap text-sm bg-muted/50 rounded-lg p-4">
