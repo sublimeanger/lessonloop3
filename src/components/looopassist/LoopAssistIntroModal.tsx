@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { safeGetItem, safeSetItem } from '@/lib/storage';
 import {
   Dialog,
   DialogContent,
@@ -23,14 +24,14 @@ export function LoopAssistIntroModal({ open, onOpenChange }: LoopAssistIntroModa
   // Check if user has seen the intro
   useEffect(() => {
     if (user) {
-      const seen = localStorage.getItem(`lessonloop_loopassist_intro_${user.id}`);
+      const seen = safeGetItem(`lessonloop_loopassist_intro_${user.id}`);
       setHasSeenIntro(!!seen);
     }
   }, [user]);
 
   const handleDismiss = () => {
     if (user) {
-      localStorage.setItem(`lessonloop_loopassist_intro_${user.id}`, 'true');
+      safeSetItem(`lessonloop_loopassist_intro_${user.id}`, 'true');
     }
     setHasSeenIntro(true);
     onOpenChange(false);
@@ -133,7 +134,7 @@ export function useLoopAssistIntro() {
 
   const checkAndShowIntro = () => {
     if (user) {
-      const seen = localStorage.getItem(`lessonloop_loopassist_intro_${user.id}`);
+      const seen = safeGetItem(`lessonloop_loopassist_intro_${user.id}`);
       if (!seen) {
         setShowIntro(true);
       }

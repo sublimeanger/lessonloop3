@@ -7,8 +7,9 @@ import { Play, Pause, Square, Timer, Music, RotateCcw } from 'lucide-react';
 import { useLogPractice, useParentPracticeAssignments } from '@/hooks/usePractice';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { safeGetItem, safeSetItem, safeRemoveItem } from '@/lib/storage';
 
-// ─── localStorage helpers (safe for private browsing) ────────
+// ─── localStorage keys ────────
 const STORAGE_KEYS = {
   isRunning: 'practiceTimer_isRunning',
   startedAt: 'practiceTimer_startedAt',
@@ -18,15 +19,13 @@ const STORAGE_KEYS = {
 } as const;
 
 function storageSet(key: string, value: string) {
-  try { localStorage.setItem(key, value); } catch {}
+  safeSetItem(key, value);
 }
 function storageGet(key: string): string | null {
-  try { return localStorage.getItem(key); } catch { return null; }
+  return safeGetItem(key);
 }
 function storageClear() {
-  try {
-    Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
-  } catch {}
+  Object.values(STORAGE_KEYS).forEach(k => safeRemoveItem(k));
 }
 
 interface PracticeTimerProps {

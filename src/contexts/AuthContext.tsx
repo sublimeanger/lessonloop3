@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Sentry } from '@/lib/sentry';
 import { logger } from '@/lib/logger';
+import { safeRemoveItem } from '@/lib/storage';
 
 export type AppRole = 'owner' | 'admin' | 'teacher' | 'finance' | 'parent';
 
@@ -326,7 +327,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Explicitly clear localStorage auth tokens
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     if (projectId) {
-      localStorage.removeItem(`sb-${projectId}-auth-token`);
+      safeRemoveItem(`sb-${projectId}-auth-token`);
     }
     
     setIsLoading(false);

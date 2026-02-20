@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { logger } from '@/lib/logger';
+import { safeGetItem, safeSetItem } from '@/lib/storage';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg, OrgType } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -91,7 +92,7 @@ export function useLoopAssistFirstRun() {
       }
 
       // Check if we've already shown proactive message for this org
-      const shown = localStorage.getItem(STORAGE_KEY);
+      const shown = safeGetItem(STORAGE_KEY);
       const shownOrgs: string[] = shown ? JSON.parse(shown) : [];
       
       if (shownOrgs.includes(currentOrg.id)) {
@@ -133,12 +134,12 @@ export function useLoopAssistFirstRun() {
     if (!currentOrg) return;
 
     // Mark this org as having seen the proactive message
-    const shown = localStorage.getItem(STORAGE_KEY);
+    const shown = safeGetItem(STORAGE_KEY);
     const shownOrgs: string[] = shown ? JSON.parse(shown) : [];
     
     if (!shownOrgs.includes(currentOrg.id)) {
       shownOrgs.push(currentOrg.id);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(shownOrgs));
+      safeSetItem(STORAGE_KEY, JSON.stringify(shownOrgs));
     }
 
     setProactiveMessage(null);
