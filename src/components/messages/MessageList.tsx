@@ -9,6 +9,7 @@ import { useRelatedStudent } from '@/hooks/useRelatedStudent';
 import { EntityChip } from '@/components/looopassist/EntityChip';
 import type { MessageLogEntry } from '@/hooks/useMessages';
 import { sanitizeHtml, stripHtml } from '@/lib/sanitize';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 // Check if a string contains HTML tags
 function isHtml(str: string): boolean {
@@ -186,13 +187,11 @@ export function MessageList({ messages, isLoading, emptyMessage = 'No messages y
 
   if (!messages || messages.length === 0) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <MessageSquare className="h-12 w-12 text-muted-foreground/40" />
-          <h3 className="mt-4 text-lg font-medium">No messages</h3>
-          <p className="mt-1 text-sm text-muted-foreground">{emptyMessage}</p>
-        </CardContent>
-      </Card>
+      <EmptyState
+        icon={MessageSquare}
+        title="No messages yet"
+        description={emptyMessage}
+      />
     );
   }
 

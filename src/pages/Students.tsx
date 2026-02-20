@@ -192,9 +192,9 @@ export default function Students() {
       ) : filteredStudents.length === 0 ? (
         <EmptyState
           icon={Users}
-          title={searchQuery ? 'No students found' : 'No students yet'}
-          description={searchQuery ? 'Try adjusting your search terms.' : 'Add your first student to get started with lesson scheduling and billing.'}
-          actionLabel={searchQuery ? undefined : 'Add Your First Student'}
+          title={searchQuery ? 'No students found' : 'Add your first student to get started'}
+          description={searchQuery ? 'Try adjusting your search terms.' : 'Add students to schedule lessons, track attendance, and send invoices.'}
+          actionLabel={searchQuery ? undefined : 'Add Student'}
           onAction={searchQuery ? undefined : openAddWizard}
           secondaryActionLabel={searchQuery ? undefined : 'Import from CSV'}
           onSecondaryAction={searchQuery ? undefined : () => window.location.href = '/students/import'}
