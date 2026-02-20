@@ -13,26 +13,28 @@ import { RouteGuard, PublicRoute } from "@/components/auth/RouteGuard";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
-import { LoadingState } from "@/components/shared/LoadingState";
+import { AppShellSkeleton } from "@/components/shared/LoadingState";
 
-// Marketing Pages
-const MarketingHome = lazy(() => import("./pages/marketing/Home"));
-const Features = lazy(() => import("./pages/marketing/Features"));
-const Pricing = lazy(() => import("./pages/marketing/Pricing"));
-const About = lazy(() => import("./pages/marketing/About"));
-const Blog = lazy(() => import("./pages/marketing/Blog"));
-const BlogPost = lazy(() => import("./pages/marketing/BlogPost"));
-const Contact = lazy(() => import("./pages/marketing/Contact"));
-const Privacy = lazy(() => import("./pages/marketing/Privacy"));
-const Terms = lazy(() => import("./pages/marketing/Terms"));
-const GDPR = lazy(() => import("./pages/marketing/GDPR"));
-const Cookies = lazy(() => import("./pages/marketing/Cookies"));
-const Kickstarter = lazy(() => import("./pages/marketing/Kickstarter"));
+// Eagerly loaded entry-point pages (auth)
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
 
-// Auth Pages
-const Login = lazy(() => import("./pages/Login"));
-const Signup = lazy(() => import("./pages/Signup"));
-const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+// Marketing Pages – grouped into one chunk via shared comment
+const MarketingHome = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Home"));
+const Features = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Features"));
+const Pricing = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Pricing"));
+const About = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/About"));
+const Blog = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Blog"));
+const BlogPost = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/BlogPost"));
+const Contact = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Contact"));
+const Privacy = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Privacy"));
+const Terms = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Terms"));
+const GDPR = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/GDPR"));
+const Cookies = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Cookies"));
+const Kickstarter = lazy(() => import(/* webpackChunkName: "marketing" */ "./pages/marketing/Kickstarter"));
+
+// Auth Pages (lazy – not entry points)
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
@@ -64,13 +66,13 @@ const DailyRegister = lazy(() => import("./pages/DailyRegister"));
 const BatchAttendance = lazy(() => import("./pages/BatchAttendance"));
 const Help = lazy(() => import("./pages/Help"));
 
-// Portal Pages
-const PortalHome = lazy(() => import("./pages/portal/PortalHome"));
-const PortalSchedule = lazy(() => import("./pages/portal/PortalSchedule"));
-const PortalPractice = lazy(() => import("./pages/portal/PortalPractice"));
-const PortalResources = lazy(() => import("./pages/portal/PortalResources"));
-const PortalInvoices = lazy(() => import("./pages/portal/PortalInvoices"));
-const PortalMessages = lazy(() => import("./pages/portal/PortalMessages"));
+// Portal Pages – grouped into one chunk
+const PortalHome = lazy(() => import(/* webpackChunkName: "portal" */ "./pages/portal/PortalHome"));
+const PortalSchedule = lazy(() => import(/* webpackChunkName: "portal" */ "./pages/portal/PortalSchedule"));
+const PortalPractice = lazy(() => import(/* webpackChunkName: "portal" */ "./pages/portal/PortalPractice"));
+const PortalResources = lazy(() => import(/* webpackChunkName: "portal" */ "./pages/portal/PortalResources"));
+const PortalInvoices = lazy(() => import(/* webpackChunkName: "portal" */ "./pages/portal/PortalInvoices"));
+const PortalMessages = lazy(() => import(/* webpackChunkName: "portal" */ "./pages/portal/PortalMessages"));
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -78,7 +80,6 @@ const queryClient = new QueryClient({
       if (import.meta.env.DEV) {
         console.error(`[QueryCache] Error in query ${JSON.stringify(query.queryKey)}:`, error);
       }
-      // Show toast on first retry for network errors
       if (
         error instanceof TypeError &&
         error.message.toLowerCase().includes('fetch')
@@ -110,12 +111,6 @@ const queryClient = new QueryClient({
   },
 });
 
-const PageLoader = () => (
-  <div className="flex min-h-screen items-center justify-center">
-    <LoadingState message="Loading…" />
-  </div>
-);
-
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -129,29 +124,29 @@ const App = () => (
                   <OfflineBanner />
                   <Toaster />
                   <Sonner />
-                  <Suspense fallback={<PageLoader />}>
+                  <Suspense fallback={<AppShellSkeleton />}>
             <Routes>
-              {/* Public auth routes */}
+              {/* Public auth routes – eagerly loaded */}
               <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
               <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
               <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
               <Route path="/accept-invite" element={<AcceptInvite />} />
               
-              {/* Onboarding (requires auth but not onboarding completion) */}
+              {/* Onboarding */}
               <Route path="/onboarding" element={
                 <RouteGuard requireOnboarding={false}>
                   <Onboarding />
                 </RouteGuard>
               } />
 
-              {/* Email verification (requires auth but not onboarding/verification) */}
+              {/* Email verification */}
               <Route path="/verify-email" element={
                 <RouteGuard requireOnboarding={false}>
                   <VerifyEmail />
                 </RouteGuard>
               } />
               
-              {/* Portal routes (parent only) */}
+              {/* Portal routes (parent only) – portal chunk */}
               <Route path="/portal/home" element={
                 <RouteGuard allowedRoles={['parent']}>
                   <PortalHome />
@@ -296,7 +291,7 @@ const App = () => (
                 </RouteGuard>
               } />
               
-              {/* Public Marketing Routes */}
+              {/* Public Marketing Routes – marketing chunk */}
               <Route path="/" element={<MarketingHome />} />
               <Route path="/features" element={<Features />} />
               <Route path="/pricing" element={<Pricing />} />
