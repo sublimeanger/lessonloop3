@@ -10,9 +10,11 @@ import { UpgradeBanner } from '@/components/subscription';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
-  DashboardHero, 
+  DashboardHero,
+  DashboardStats,
   TodayTimeline, 
   QuickActionsGrid,
+  WeeklyActivity,
   FirstRunExperience,
   UrgentActionsBar,
 } from '@/components/dashboard';
@@ -95,13 +97,13 @@ function StaffDashboard({ firstName }: { firstName: string }) {
 
   return (
     <AppLayout>
-      <div className="space-y-6 max-w-4xl">
-        {/* Urgent actions — top of page */}
+      <div className="space-y-6">
+        {/* Urgent actions — full width */}
         <SectionErrorBoundary name="Urgent Actions">
           <UrgentActionsBar />
         </SectionErrorBoundary>
 
-        {/* Hero — greeting + inline stats */}
+        {/* Hero — greeting + date */}
         <SectionErrorBoundary name="Dashboard Hero">
           <DashboardHero
             firstName={firstName}
@@ -113,7 +115,7 @@ function StaffDashboard({ firstName }: { firstName: string }) {
           />
         </SectionErrorBoundary>
 
-        {/* First Run Experience (only shows for brand new users) */}
+        {/* First Run Experience */}
         <SectionErrorBoundary name="First Run Experience">
           <FirstRunExperience />
         </SectionErrorBoundary>
@@ -123,15 +125,31 @@ function StaffDashboard({ firstName }: { firstName: string }) {
           <UpgradeBanner />
         </SectionErrorBoundary>
 
-        {/* Main content: Timeline + Quick Actions */}
-        <div className="grid gap-6 lg:grid-cols-5">
+        {/* Stat Cards Row */}
+        <SectionErrorBoundary name="Stats">
+          <DashboardStats
+            stats={stats}
+            isLoading={isLoading}
+            currencyCode={currentOrg?.currency_code || 'GBP'}
+          />
+        </SectionErrorBoundary>
+
+        {/* Main content: Timeline + Quick Actions + Activity */}
+        <div className="grid gap-6 lg:grid-cols-12">
           <SectionErrorBoundary name="Today's Timeline">
-            <TodayTimeline className="lg:col-span-3" />
+            <TodayTimeline className="lg:col-span-5" />
           </SectionErrorBoundary>
           <SectionErrorBoundary name="Quick Actions">
             <QuickActionsGrid
               variant={currentOrg?.org_type === 'academy' || currentOrg?.org_type === 'agency' ? 'academy' : 'solo'}
-              className="lg:col-span-2"
+              className="lg:col-span-3"
+            />
+          </SectionErrorBoundary>
+          <SectionErrorBoundary name="Weekly Activity">
+            <WeeklyActivity
+              lessonsThisWeek={stats?.lessonsThisWeek ?? 0}
+              hoursThisWeek={stats?.hoursThisWeek ?? 0}
+              className="lg:col-span-4"
             />
           </SectionErrorBoundary>
         </div>
