@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { format, subMonths, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
-import { sanitiseCSVCell } from '@/lib/utils';
+import { sanitiseCSVCell, currencySymbol } from '@/lib/utils';
 
 // ==================== REVENUE REPORT ====================
 export interface RevenueByMonth {
@@ -564,8 +564,9 @@ export function useDashboardStats() {
 }
 
 // ==================== CSV EXPORT HELPERS ====================
-export function exportRevenueToCSV(data: RevenueData, orgName: string): void {
-  const rows = ['Month,Paid Amount (£),Invoice Count'];
+export function exportRevenueToCSV(data: RevenueData, orgName: string, currencyCode = 'GBP'): void {
+  const sym = currencySymbol(currencyCode);
+  const rows = [`Month,Paid Amount (${sym}),Invoice Count`];
   for (const m of data.months) {
     rows.push(`${m.monthLabel},${m.paidAmount.toFixed(2)},${m.invoiceCount}`);
   }
@@ -575,8 +576,9 @@ export function exportRevenueToCSV(data: RevenueData, orgName: string): void {
   downloadCSV(rows.join('\n'), `revenue_${orgName}_report.csv`);
 }
 
-export function exportAgeingToCSV(data: AgeingData, orgName: string): void {
-  const rows = ['Invoice Number,Payer,Due Date,Days Overdue,Amount (£),Bucket'];
+export function exportAgeingToCSV(data: AgeingData, orgName: string, currencyCode = 'GBP'): void {
+  const sym = currencySymbol(currencyCode);
+  const rows = [`Invoice Number,Payer,Due Date,Days Overdue,Amount (${sym}),Bucket`];
   for (const bucket of data.buckets) {
     for (const inv of bucket.invoices) {
       rows.push(`${inv.invoiceNumber},"${sanitiseCSVCell(inv.payerName)}",${inv.dueDate},${inv.daysOverdue},${(inv.totalMinor / 100).toFixed(2)},${bucket.label}`);

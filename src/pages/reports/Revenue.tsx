@@ -26,7 +26,7 @@ export default function RevenueReport() {
 
   const handleExport = () => {
     if (data && currentOrg) {
-      exportRevenueToCSV(data, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'));
+      exportRevenueToCSV(data, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'), currentOrg.currency_code);
     }
   };
 

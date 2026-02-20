@@ -38,7 +38,7 @@ export default function PayrollReport() {
 
   const handleExport = () => {
     if (data && currentOrg) {
-      exportPayrollToCSV(data, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'));
+      exportPayrollToCSV(data, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'), currentOrg.currency_code);
     }
   };
 

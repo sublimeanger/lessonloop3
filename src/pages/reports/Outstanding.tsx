@@ -31,7 +31,7 @@ export default function OutstandingReport() {
 
   const handleExport = () => {
     if (data && currentOrg) {
-      exportAgeingToCSV(data, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'));
+      exportAgeingToCSV(data, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'), currentOrg.currency_code);
     }
   };
 
