@@ -62,11 +62,13 @@ interface Payment {
 }
 
 // Build comprehensive context for Q&A
-async function buildDataContext(supabase: any, orgId: string): Promise<{
+async function buildDataContext(supabase: any, orgId: string, currencyCode: string = 'GBP'): Promise<{
   summary: string;
   entities: { invoices: Invoice[]; lessons: Lesson[]; students: Student[]; guardians: Guardian[] };
   sections: Record<string, string>;
 }> {
+  const fmtCurrency = (minor: number) =>
+    new Intl.NumberFormat('en-GB', { style: 'currency', currency: currencyCode }).format(minor / 100);
   const today = new Date();
   const todayStr = today.toISOString().split("T")[0];
   const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -199,21 +201,21 @@ async function buildDataContext(supabase: any, orgId: string): Promise<{
 
   if (overdueList.length > 0) {
     const overdueTotal = overdueList.reduce((sum: number, i: Invoice) => sum + i.total_minor, 0);
-    invoiceSummary += `\n\nOVERDUE INVOICES (${overdueList.length}, total £${(overdueTotal / 100).toFixed(2)}):`;
+    invoiceSummary += `\n\nOVERDUE INVOICES (${overdueList.length}, total ${fmtCurrency(overdueTotal)}):`;
     overdueList.slice(0, 10).forEach((inv: Invoice) => {
       const payer = inv.guardians?.full_name || 
         (inv.students ? `${inv.students.first_name} ${inv.students.last_name}` : "Unknown");
-      invoiceSummary += `\n- [Invoice:${inv.invoice_number}] £${(inv.total_minor / 100).toFixed(2)} due ${inv.due_date} (${payer})`;
+      invoiceSummary += `\n- [Invoice:${inv.invoice_number}] ${fmtCurrency(inv.total_minor)} due ${inv.due_date} (${payer})`;
     });
   }
 
   if (sentList.length > 0) {
     const sentTotal = sentList.reduce((sum: number, i: Invoice) => sum + i.total_minor, 0);
-    invoiceSummary += `\n\nOUTSTANDING INVOICES (${sentList.length}, total £${(sentTotal / 100).toFixed(2)}):`;
+    invoiceSummary += `\n\nOUTSTANDING INVOICES (${sentList.length}, total ${fmtCurrency(sentTotal)}):`;
     sentList.slice(0, 10).forEach((inv: Invoice) => {
       const payer = inv.guardians?.full_name || 
         (inv.students ? `${inv.students.first_name} ${inv.students.last_name}` : "Unknown");
-      invoiceSummary += `\n- [Invoice:${inv.invoice_number}] £${(inv.total_minor / 100).toFixed(2)} due ${inv.due_date} (${payer})`;
+      invoiceSummary += `\n- [Invoice:${inv.invoice_number}] ${fmtCurrency(inv.total_minor)} due ${inv.due_date} (${payer})`;
     });
   }
 
@@ -290,7 +292,7 @@ async function buildDataContext(supabase: any, orgId: string): Promise<{
   if ((rateCards || []).length > 0) {
     rateCardSummary += `\n\nRATE CARDS:`;
     rateCards.forEach((rc: RateCard) => {
-      rateCardSummary += `\n- ${rc.name}: £${rc.rate_amount.toFixed(2)} (${rc.duration_mins} mins)${rc.is_default ? " [DEFAULT]" : ""}`;
+      rateCardSummary += `\n- ${rc.name}: ${fmtCurrency(Math.round(rc.rate_amount * 100))} (${rc.duration_mins} mins)${rc.is_default ? " [DEFAULT]" : ""}`;
     });
   }
 
@@ -303,7 +305,7 @@ async function buildDataContext(supabase: any, orgId: string): Promise<{
       methodCounts[p.method] = (methodCounts[p.method] || 0) + 1;
     });
     paymentSummary += `\n\nPAYMENTS RECEIVED (last 7 days):`;
-    paymentSummary += `\n- Total: £${(totalReceived / 100).toFixed(2)} from ${recentPayments.length} payments`;
+    paymentSummary += `\n- Total: ${fmtCurrency(totalReceived)} from ${recentPayments.length} payments`;
     paymentSummary += `\n- Methods: ${Object.entries(methodCounts).map(([m, c]) => `${m} (${c})`).join(", ")}`;
   }
 
@@ -345,7 +347,9 @@ async function buildDataContext(supabase: any, orgId: string): Promise<{
 }
 
 // Build deep student context when viewing a specific student
-async function buildStudentContext(supabase: any, orgId: string, studentId: string, userRole?: string): Promise<string> {
+async function buildStudentContext(supabase: any, orgId: string, studentId: string, userRole?: string, currencyCode: string = 'GBP'): Promise<string> {
+  const fmtCurrency = (minor: number) =>
+    new Intl.NumberFormat('en-GB', { style: 'currency', currency: currencyCode }).format(minor / 100);
   // Fetch student with all related data
   const { data: student } = await supabase
     .from("students")
@@ -489,7 +493,7 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
       const outstandingCount = sorted.filter((i: Invoice) => i.status === "sent").length;
       context += `\n\nInvoices (${sorted.length} shown, ${overdueCount} overdue, ${outstandingCount} outstanding):`;
       sorted.slice(0, 5).forEach((inv: Invoice) => {
-        context += `\n  - [Invoice:${inv.invoice_number}] ${inv.status} £${(inv.total_minor / 100).toFixed(2)}`;
+        context += `\n  - [Invoice:${inv.invoice_number}] ${inv.status} ${fmtCurrency(inv.total_minor)}`;
       });
       if (sorted.length > 5) {
         context += `\n  ... and ${sorted.length - 5} more invoices`;
@@ -506,7 +510,7 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
 
     if (credits && credits.length > 0) {
       const totalCredit = credits.reduce((sum: number, c: { credit_value_minor: number }) => sum + c.credit_value_minor, 0);
-      context += `\n\nAvailable Make-up Credits: ${credits.length} (£${(totalCredit / 100).toFixed(2)} value)`;
+      context += `\n\nAvailable Make-up Credits: ${credits.length} (${fmtCurrency(totalCredit)} value)`;
     }
   }
 
@@ -576,7 +580,7 @@ This allows users to click through to view details.
 Guidelines:
 - Be concise and professional
 - Use UK English spelling and date formats (DD/MM/YYYY)
-- Currency is GBP (£)
+- Currency is determined by the organisation settings (shown in ORGANISATION context below)
 - When answering questions, cite specific entities using the formats above
 - When proposing actions, clearly describe what will happen
 - For read-only questions, provide helpful answers based on the context
@@ -770,12 +774,23 @@ serve(async (req) => {
       });
     }
 
+    // Fetch org data early so currency_code is available for context builders
+    const { data: orgData } = await supabase
+      .from("organisations")
+      .select("name, org_type, currency_code")
+      .eq("id", orgId)
+      .single();
+
+    const currencyCode = orgData?.currency_code || 'GBP';
+    const fmtCurrency = (minor: number) =>
+      new Intl.NumberFormat('en-GB', { style: 'currency', currency: currencyCode }).format(minor / 100);
+
     // Build context from the current page/entity
     let pageContextInfo = "";
     if (context) {
       if (context.type === "student" && context.id) {
         // Use deep student context for student pages (role-filtered later)
-        pageContextInfo = await buildStudentContext(supabase, orgId, context.id, membership.role);
+        pageContextInfo = await buildStudentContext(supabase, orgId, context.id, membership.role, currencyCode);
       } else if (context.type === "invoice" && context.id) {
         // Teachers shouldn't see invoice detail via AI
         if (membership.role === "teacher") {
@@ -799,7 +814,7 @@ serve(async (req) => {
             pageContextInfo = `\n\nCURRENT PAGE - Invoice: [Invoice:${invoice.invoice_number}]
 Invoice ID: ${invoice.id}
 Status: ${invoice.status}
-Total: £${(invoice.total_minor / 100).toFixed(2)}
+Total: ${fmtCurrency(invoice.total_minor)}
 Due: ${invoice.due_date}
 Payer: [${payerType}:${payerId}] ${payer}
 Items: ${invoice.invoice_items?.length || 0}`;
@@ -835,13 +850,6 @@ Todays scheduled lessons: ${todayLessons?.length || 0}`;
       }
     }
 
-    // Fetch org summary and comprehensive data
-    const { data: orgData } = await supabase
-      .from("organisations")
-      .select("name, org_type, currency_code")
-      .eq("id", orgId)
-      .single();
-
     const userRole = membership.role;
 
     // ── Context hash caching ──────────────────────────────────
@@ -849,7 +857,7 @@ Todays scheduled lessons: ${todayLessons?.length || 0}`;
     let filteredSummary = "";
     let contextHash = "";
 
-    const { sections } = await buildDataContext(supabase, orgId);
+    const { sections } = await buildDataContext(supabase, orgId, currencyCode);
 
     // ── Role-based data filtering ──────────────────────────────
     if (userRole === "teacher") {
