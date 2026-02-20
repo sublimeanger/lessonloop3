@@ -30,10 +30,7 @@ import { MobileWeekView } from './MobileWeekView';
 import { useDragLesson, DragLessonState } from './useDragLesson';
 import { useResizeLesson } from './useResizeLesson';
 
-// ─── Constants ───────────────────────────────────────────────
-const HOUR_HEIGHT = 60;
-const DEFAULT_START_HOUR = 7;
-const DEFAULT_END_HOUR = 21;
+import { HOUR_HEIGHT, DEFAULT_START_HOUR, DEFAULT_END_HOUR } from './calendarConstants';
 
 // ─── Helpers ─────────────────────────────────────────────────
 function resolveColourByUserId(

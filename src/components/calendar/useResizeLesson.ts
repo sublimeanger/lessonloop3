@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { parseISO, differenceInMinutes } from 'date-fns';
 import { LessonWithDetails } from './types';
 
-const HOUR_HEIGHT = 60;
+import { HOUR_HEIGHT } from './calendarConstants';
 const MIN_DURATION = 15; // minutes
 
 export interface ResizeState {
