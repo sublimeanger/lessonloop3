@@ -168,6 +168,14 @@ serve(async (req) => {
         result = { error: execError instanceof Error ? execError.message : "Execution failed" };
       }
 
+      // Append messaging note for actions that involve messages
+      const MESSAGING_ACTIONS = ["send_invoice_reminders", "draft_email", "send_progress_report"];
+      const typedForNote = proposal as ActionProposal;
+      if (newStatus === "executed" && MESSAGING_ACTIONS.includes(typedForNote.proposal.action_type)) {
+        const msg = result.message as string || "";
+        result.message = `${msg}\n\nNote: Messages are queued for your review in the Messages page. They are not sent automatically.`;
+      }
+
       // Update proposal status
       await supabase
         .from("ai_action_proposals")
@@ -454,17 +462,16 @@ async function executeSendInvoiceReminders(
       subject: `Payment Reminder: Invoice ${invoice.invoice_number}`,
       body: `Dear ${recipientName},\n\nThis is a friendly reminder that invoice ${invoice.invoice_number} for £${(invoice.total_minor / 100).toFixed(2)} is outstanding. The due date was ${invoice.due_date}.\n\nPlease arrange payment at your earliest convenience.\n\nThank you.`,
       message_type: "invoice_reminder",
-      status: "sent",
-      sent_at: new Date().toISOString(),
+      status: "queued",
       related_id: invoice.id,
     });
 
     remindersSent++;
-    results.push(`${invoice.invoice_number}: Reminder sent to ${recipientEmail}`);
+    results.push(`${invoice.invoice_number}: Queued for ${recipientEmail}`);
   }
 
   return {
-    message: `Sent ${remindersSent} payment reminder(s)`,
+    message: `Queued ${remindersSent} payment reminder(s) — review and send from Messages`,
     reminders_sent: remindersSent,
     details: results,
   };
@@ -596,7 +603,7 @@ async function executeDraftEmail(
   if (msgError) throw msgError;
 
   return {
-    message: `Email draft created for ${guardian.full_name}`,
+    message: `Email draft created for ${guardian.full_name} — review in Messages before sending`,
     draft_id: messageLog.id,
     recipient_email: guardian.email,
   };
@@ -1005,8 +1012,7 @@ async function executeSendProgressReport(
       subject: `Progress Report: ${studentName}`,
       body: reportBody,
       message_type: "progress_report",
-      status: sendImmediately ? "sent" : "draft",
-      sent_at: sendImmediately ? new Date().toISOString() : null,
+      status: sendImmediately ? "queued" : "draft",
       related_id: studentId,
     })
     .select()
@@ -1016,8 +1022,8 @@ async function executeSendProgressReport(
 
   return {
     message: sendImmediately 
-      ? `Progress report sent to ${guardian.full_name}`
-      : `Progress report draft created for ${guardian.full_name}`,
+      ? `Progress report queued for ${guardian.full_name} — review in Messages before it sends`
+      : `Progress report draft created for ${guardian.full_name} — review in Messages before sending`,
     draft_id: messageLog.id,
     recipient_email: guardian.email,
     summary: {
