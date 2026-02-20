@@ -119,6 +119,15 @@ export function QuickCreatePopover({
         return;
       }
 
+      // Show non-blocking warnings but allow creation
+      const warnings = conflicts.filter(c => c.severity === 'warning');
+      if (warnings.length > 0) {
+        toast({
+          title: 'Scheduling warning',
+          description: warnings.map(w => w.message).join('; '),
+        });
+      }
+
       // Insert lesson
       const { data: newLesson, error: lessonError } = await supabase
         .from('lessons')
