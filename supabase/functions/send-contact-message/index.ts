@@ -10,6 +10,7 @@ interface ContactRequest {
   email: string;
   subject: string;
   message: string;
+  website?: string; // honeypot field
 }
 
 Deno.serve(async (req) => {
@@ -55,6 +56,14 @@ Deno.serve(async (req) => {
     }
 
     const body: ContactRequest = await req.json();
+
+    // Honeypot check — bots fill this hidden field; silently discard
+    if (body.website) {
+      return new Response(
+        JSON.stringify({ success: true, message: 'Message sent successfully' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Validate required fields
     if (!body.firstName || !body.lastName || !body.email || !body.subject || !body.message) {
