@@ -58,5 +58,13 @@ jobs:
             -H "Content-Type: application/json" \
             --fail-with-body || echo "Winback emails completed (may have no recipients)"
 
+      - name: Send iCal feed expiry reminders
+        run: |
+          curl -X POST "${{ env.SUPABASE_URL }}/functions/v1/ical-expiry-reminder" \
+            -H "Authorization: Bearer ${{ env.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "x-cron-secret: ${{ env.INTERNAL_CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --fail-with-body || echo "iCal expiry reminders completed (may have no recipients)"
+
       - name: Log completion
         run: echo "Trial lifecycle emails processed at $(date -u)"
