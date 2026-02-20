@@ -1,6 +1,7 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { parseISO, isBefore } from 'date-fns';
 import { useEffect, useState } from 'react';
+import { useOrgPaymentPreferences } from '@/hooks/useOrgPaymentPreferences';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +14,7 @@ import { useInvoice, useUpdateInvoiceStatus } from '@/hooks/useInvoices';
 import { useStripePayment } from '@/hooks/useStripePayment';
 import { useInvoicePdf } from '@/hooks/useInvoicePdf';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+
 import { LoadingState } from '@/components/shared/LoadingState';
 import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
 import { SendInvoiceModal } from '@/components/invoices/SendInvoiceModal';
@@ -75,18 +76,7 @@ export default function InvoiceDetail() {
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
   const [voidConfirmOpen, setVoidConfirmOpen] = useState(false);
-  const [orgPaymentPrefs, setOrgPaymentPrefs] = useState<any>(null);
-
-  // Fetch org payment preferences for parent view
-  useEffect(() => {
-    if (!currentOrg?.id || !isParent) return;
-    supabase
-      .from('organisations')
-      .select('online_payments_enabled, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix')
-      .eq('id', currentOrg.id)
-      .single()
-      .then(({ data }) => { if (data) setOrgPaymentPrefs(data); });
-  }, [currentOrg?.id, isParent]);
+  const { data: orgPaymentPrefs } = useOrgPaymentPreferences();
 
   const onlinePaymentsEnabled = orgPaymentPrefs?.online_payments_enabled !== false;
   const hasBankDetails = !!(orgPaymentPrefs?.bank_account_name && orgPaymentPrefs?.bank_sort_code && orgPaymentPrefs?.bank_account_number);
