@@ -1,5 +1,13 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+
+function redactEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!local || !domain) return "***@***";
+  const visible = local.charAt(0);
+  return `${visible}***@${domain}`;
+}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -9,6 +17,20 @@ Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
 
   try {
+    // IP-based rate limiting — 5 requests per minute
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+
+    const rlResult = await checkRateLimit(supabaseAdmin, `ip:${clientIp}`, "invite_get", 5, 60);
+    if (!rlResult.allowed) {
+      return rateLimitResponse(rlResult, corsHeaders);
+    }
+
     const { token } = await req.json();
 
     if (!token) {
@@ -17,13 +39,6 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    // Use service role to bypass RLS
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
-    );
 
     // Fetch invite by token
     const { data: invite, error: inviteError } = await supabaseAdmin
@@ -74,12 +89,12 @@ Deno.serve(async (req) => {
       console.error("Error fetching organisation:", orgError);
     }
 
-    // Return minimal safe payload
+    // Return minimal safe payload with redacted email
     return new Response(
       JSON.stringify({
         invite: {
           org_id: invite.org_id,
-          email: invite.email,
+          email: redactEmail(invite.email),
           role: invite.role,
           expires_at: invite.expires_at,
         },
