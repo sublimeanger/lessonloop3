@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useTodayLessons, TodayLesson } from '@/hooks/useTodayLessons';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar, CheckCircle2, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
@@ -110,40 +111,43 @@ export function TodayTimeline({ className }: TodayTimelineProps) {
     : (lessons || []).slice(0, 6);
 
   return (
-    <div className={cn('', className)} data-tour="today-timeline">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-foreground">Today's Schedule</h2>
-        {activeLessons.length > 0 && (
-          <Link
-            to="/calendar"
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            View full calendar
-            <ArrowRight className="h-3 w-3" />
-          </Link>
+    <Card className={cn('', className)} data-tour="today-timeline">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold">Today's Schedule</CardTitle>
+          {activeLessons.length > 0 && (
+            <Link
+              to="/calendar"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              View full calendar
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex gap-3 py-2">
+                <Skeleton className="h-5 w-12" />
+                <Skeleton className="h-5 w-full" />
+              </div>
+            ))}
+          </div>
+        ) : activeLessons.length === 0 ? (
+          <EmptyTimeline />
+        ) : allDone ? (
+          <AllDone completedCount={completedCount} />
+        ) : (
+          <div className="divide-y divide-border">
+            {displayLessons.map((lesson) => (
+              <LessonRow key={lesson.id} lesson={lesson} />
+            ))}
+          </div>
         )}
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="flex gap-3 py-2">
-              <Skeleton className="h-5 w-12" />
-              <Skeleton className="h-5 w-full" />
-            </div>
-          ))}
-        </div>
-      ) : activeLessons.length === 0 ? (
-        <EmptyTimeline />
-      ) : allDone ? (
-        <AllDone completedCount={completedCount} />
-      ) : (
-        <div className="divide-y divide-border">
-          {displayLessons.map((lesson) => (
-            <LessonRow key={lesson.id} lesson={lesson} />
-          ))}
-        </div>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   );
 }
