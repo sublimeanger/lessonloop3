@@ -281,6 +281,27 @@ async function executeGenerateBillingRun(
 
   if (lessonsError) throw lessonsError;
 
+  // ── Duplicate protection: skip already-invoiced lessons ──
+  const lessonIds = (lessons || []).map((l: any) => l.id);
+  let alreadyInvoicedIds = new Set<string>();
+
+  if (lessonIds.length > 0) {
+    // Query in batches of 100 to avoid query-string limits
+    for (let i = 0; i < lessonIds.length; i += 100) {
+      const batch = lessonIds.slice(i, i + 100);
+      const { data: existingItems } = await supabase
+        .from("invoice_items")
+        .select("linked_lesson_id")
+        .in("linked_lesson_id", batch);
+      for (const item of existingItems || []) {
+        if (item.linked_lesson_id) alreadyInvoicedIds.add(item.linked_lesson_id);
+      }
+    }
+  }
+
+  const uninvoicedLessons = (lessons || []).filter((l: any) => !alreadyInvoicedIds.has(l.id));
+  const skippedCount = (lessons?.length || 0) - uninvoicedLessons.length;
+
   const { data: org } = await supabase
     .from("organisations")
     .select("vat_enabled, vat_rate, currency_code")
@@ -315,7 +336,7 @@ async function executeGenerateBillingRun(
   // Group lessons by payer
   const payerMap = new Map<string, { type: 'guardian' | 'student'; id: string; name: string; lessons: { lesson: any; student: any; rate: number }[] }>();
 
-  for (const lesson of lessons || []) {
+  for (const lesson of uninvoicedLessons) {
     for (const participant of lesson.lesson_participants || []) {
       const student = participant.students;
       if (!student) continue;
@@ -401,15 +422,22 @@ async function executeGenerateBillingRun(
     status: "completed",
     summary: {
       invoices_created: invoicesCreated,
-      total_lessons: lessons?.length || 0,
+      total_lessons: uninvoicedLessons.length,
+      skipped_already_invoiced: skippedCount,
       invoice_numbers: invoiceNumbers,
     },
   });
 
+  let message = `Billing run completed. Created ${invoicesCreated} draft invoices for ${uninvoicedLessons.length} lessons.`;
+  if (skippedCount > 0) {
+    message += ` Skipped ${skippedCount} lesson${skippedCount !== 1 ? 's' : ''} already invoiced.`;
+  }
+
   return {
-    message: `Billing run completed. Created ${invoicesCreated} draft invoices for ${lessons?.length || 0} lessons.`,
+    message,
     invoices_created: invoicesCreated,
     invoice_numbers: invoiceNumbers,
+    skipped_already_invoiced: skippedCount,
   };
 }
 
