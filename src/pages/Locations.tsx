@@ -65,6 +65,15 @@ export default function Locations() {
   const [roomName, setRoomName] = useState('');
   const [roomCapacity, setRoomCapacity] = useState('');
 
+  // Room delete safety dialog
+  const [deleteRoomDialog, setDeleteRoomDialog] = useState<{
+    open: boolean;
+    roomId: string;
+    roomName: string;
+    lessonCount: number;
+    isDeleting: boolean;
+  }>({ open: false, roomId: '', roomName: '', lessonCount: 0, isDeleting: false });
+
   // Delete safety dialog
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
@@ -199,13 +208,12 @@ export default function Locations() {
   const initiateDeleteLocation = async (location: Location) => {
     if (!currentOrg) return;
 
-    // Check future lessons
+    // Check scheduled AND completed lessons (as requested)
     const { count: lessonCount } = await supabase
       .from('lessons')
       .select('id', { count: 'exact', head: true })
       .eq('location_id', location.id)
-      .eq('status', 'scheduled')
-      .gte('start_at', new Date().toISOString());
+      .in('status', ['scheduled', 'completed']);
 
     // Check rooms
     const { count: roomCount } = await supabase
@@ -223,7 +231,6 @@ export default function Locations() {
     const lessons = lessonCount ?? 0;
     const rooms = roomCount ?? 0;
     const students = studentCount ?? 0;
-    const canDelete = lessons === 0;
 
     setDeleteDialog({
       open: true,
@@ -232,7 +239,7 @@ export default function Locations() {
       lessonCount: lessons,
       roomCount: rooms,
       studentCount: students,
-      canDelete,
+      canDelete: true,
       isDeleting: false,
     });
   };
@@ -309,13 +316,32 @@ export default function Locations() {
     setIsSaving(false);
   };
 
-  const deleteRoom = async (id: string) => {
-    const { error } = await supabase.from('rooms').delete().eq('id', id);
+  const initiateDeleteRoom = async (room: Room) => {
+    const { count } = await supabase
+      .from('lessons')
+      .select('id', { count: 'exact', head: true })
+      .eq('room_id', room.id)
+      .in('status', ['scheduled', 'completed']);
+
+    setDeleteRoomDialog({
+      open: true,
+      roomId: room.id,
+      roomName: room.name,
+      lessonCount: count ?? 0,
+      isDeleting: false,
+    });
+  };
+
+  const confirmDeleteRoom = async () => {
+    setDeleteRoomDialog(prev => ({ ...prev, isDeleting: true }));
+    const { error } = await supabase.from('rooms').delete().eq('id', deleteRoomDialog.roomId);
     if (error) {
-      toast({ title: 'Error deleting', description: error.message, variant: 'destructive' });
+      toast({ title: 'Error deleting room', description: error.message, variant: 'destructive' });
     } else {
+      toast({ title: 'Room deleted' });
       fetchLocations();
     }
+    setDeleteRoomDialog(prev => ({ ...prev, open: false, isDeleting: false }));
   };
 
   const getLocationTypeIcon = (type: LocationType) => {
@@ -453,7 +479,7 @@ export default function Locations() {
                                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openRoomDialog(location.id, room)}>
                                     <Edit className="h-3 w-3" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => deleteRoom(room.id)}>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => initiateDeleteRoom(room)}>
                                     <Trash2 className="h-3 w-3" />
                                   </Button>
                                 </div>
@@ -564,7 +590,7 @@ export default function Locations() {
               <div className="space-y-2">
                 {deleteDialog.lessonCount > 0 && (
                   <p className="text-destructive font-medium">
-                    ⚠ This location has {deleteDialog.lessonCount} upcoming lesson{deleteDialog.lessonCount !== 1 ? 's' : ''}. Please reassign or cancel them before deleting.
+                    ⚠ This location has {deleteDialog.lessonCount} scheduled/completed lesson{deleteDialog.lessonCount !== 1 ? 's' : ''}. Deleting it will remove the location from these lessons. Are you sure?
                   </p>
                 )}
                 {deleteDialog.roomCount > 0 && (
@@ -573,8 +599,8 @@ export default function Locations() {
                 {deleteDialog.studentCount > 0 && (
                   <p>⚠ {deleteDialog.studentCount} student{deleteDialog.studentCount !== 1 ? 's have' : ' has'} this as their default location. Their default will be cleared.</p>
                 )}
-                {deleteDialog.canDelete && deleteDialog.roomCount === 0 && deleteDialog.studentCount === 0 && (
-                  <p>This action cannot be undone.</p>
+                {deleteDialog.lessonCount === 0 && deleteDialog.roomCount === 0 && deleteDialog.studentCount === 0 && (
+                  <p>Delete this location? This cannot be undone.</p>
                 )}
               </div>
             </AlertDialogDescription>
@@ -587,9 +613,35 @@ export default function Locations() {
                 disabled={deleteDialog.isDeleting}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                {deleteDialog.isDeleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</> : 'Delete Location'}
+                {deleteDialog.isDeleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</> : deleteDialog.lessonCount > 0 ? 'Delete Anyway' : 'Delete Location'}
               </AlertDialogAction>
             )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Room Safety Dialog */}
+      <AlertDialog open={deleteRoomDialog.open} onOpenChange={(open) => setDeleteRoomDialog(prev => ({ ...prev, open }))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete room "{deleteRoomDialog.roomName}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteRoomDialog.lessonCount > 0
+                ? `This room has ${deleteRoomDialog.lessonCount} scheduled/completed lesson${deleteRoomDialog.lessonCount !== 1 ? 's' : ''}. Deleting it will remove the room from these lessons. Are you sure?`
+                : 'Delete this room? This cannot be undone.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteRoomDialog.isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteRoom}
+              disabled={deleteRoomDialog.isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteRoomDialog.isDeleting
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</>
+                : deleteRoomDialog.lessonCount > 0 ? 'Delete Anyway' : 'Delete Room'}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
