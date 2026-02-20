@@ -9,6 +9,7 @@ import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { useNotesNotification } from '@/hooks/useNotesNotification';
 import { useClosurePatternCheck, formatClosureConflicts } from '@/hooks/useClosurePatternCheck';
 import { supabase } from '@/integrations/supabase/client';
+import { logAudit } from '@/lib/auditLog';
 import { LessonWithDetails, LessonFormData, ConflictResult, LessonStatus, LessonType } from './types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
@@ -498,6 +499,13 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
         }
 
         const updatedCount = lessonIdsToUpdate.length;
+
+        // Fire-and-forget audit log for update
+        logAudit(currentOrg.id, user.id, 'update', 'lesson', lesson.id, {
+          before: { title: lesson.title, start_at: lesson.start_at, teacher_id: (lesson as any).teacher_id, status: lesson.status },
+          after: { title: generateTitle(), start_at: startAtUtc.toISOString(), teacher_id: teacherId, status },
+        });
+
         toast({
           title: updatedCount > 1 
             ? `${updatedCount} lessons updated` 
@@ -608,6 +616,13 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
                 orgId: currentOrg.id,
               });
             }
+          }
+
+          // Fire-and-forget audit log for create
+          if (insertedLessons && insertedLessons.length > 0) {
+            logAudit(currentOrg.id, user.id, 'create', 'lesson', insertedLessons[0].id, {
+              after: { title, start_at: startAtUtc.toISOString(), teacher_id: teacherId, count: insertedLessons.length },
+            });
           }
         } catch (batchError: any) {
           toast({

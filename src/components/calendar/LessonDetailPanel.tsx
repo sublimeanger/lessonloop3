@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useMakeUpCredits } from '@/hooks/useMakeUpCredits';
 import { useRateCards, findRateForDuration } from '@/hooks/useRateCards';
 import { supabase } from '@/integrations/supabase/client';
+import { logAudit } from '@/lib/auditLog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -207,6 +208,9 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           .update(cancelData)
           .eq('id', lesson.id);
         if (error) throw error;
+        logAudit(currentOrg!.id, user.id, 'cancel', 'lesson', lesson.id, {
+          after: { reason: cancellationReason || null },
+        });
         toast({ title: 'Lesson cancelled' });
       } else {
         // Cancel this and all future lessons in series
@@ -216,6 +220,9 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           .eq('recurrence_id', lesson.recurrence_id)
           .gte('start_at', lesson.start_at);
         if (error) throw error;
+        logAudit(currentOrg!.id, user.id, 'cancel', 'lesson', lesson.id, {
+          after: { reason: cancellationReason || null, scope: 'this_and_future' },
+        });
         toast({ title: 'Series cancelled', description: 'This and all future lessons have been cancelled.' });
       }
       setCancellationReason('');
@@ -243,6 +250,9 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           .delete()
           .eq('id', lesson.id);
         if (error) throw error;
+        logAudit(currentOrg!.id, user!.id, 'delete', 'lesson', lesson.id, {
+          before: { title: lesson.title, start_at: lesson.start_at },
+        });
         toast({ title: 'Lesson deleted' });
       } else {
         // Delete this and all future lessons in series
@@ -252,6 +262,9 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           .eq('recurrence_id', lesson.recurrence_id)
           .gte('start_at', lesson.start_at);
         if (error) throw error;
+        logAudit(currentOrg!.id, user!.id, 'delete', 'lesson', lesson.id, {
+          before: { title: lesson.title, start_at: lesson.start_at, scope: 'this_and_future' },
+        });
         toast({ title: 'Series deleted', description: 'This and all future lessons have been deleted.' });
       }
       onUpdated();

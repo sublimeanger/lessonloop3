@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useCalendarData, useTeachersAndLocations } from '@/hooks/useCalendarData';
 import { WeekTimeGrid } from '@/components/calendar/WeekTimeGrid';
 import { AgendaView } from '@/components/calendar/AgendaView';
@@ -22,6 +23,7 @@ import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { supabase } from '@/integrations/supabase/client';
+import { logAudit } from '@/lib/auditLog';
 import { toast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Loader2, Columns3, Minimize2, Users, AlertTriangle } from 'lucide-react';
@@ -30,7 +32,8 @@ import { Toggle } from '@/components/ui/toggle';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function CalendarPage() {
-  const { currentRole } = useOrg();
+  const { currentRole, currentOrg } = useOrg();
+  const { user } = useAuth();
   const isParent = currentRole === 'parent';
   const { teachers, locations, rooms } = useTeachersAndLocations();
   const [searchParams] = useSearchParams();
@@ -239,6 +242,14 @@ export default function CalendarPage() {
             .eq('id', lesson.id);
 
           if (error) throw error;
+        }
+
+        // Fire-and-forget audit log for reschedule
+        if (currentOrg && user) {
+          logAudit(currentOrg.id, user.id, 'reschedule', 'lesson', lesson.id, {
+            before: { start_at: originalStartAt, end_at: originalEndAt },
+            after: { start_at: newStart.toISOString(), end_at: newEnd.toISOString() },
+          });
         }
 
         toast({
