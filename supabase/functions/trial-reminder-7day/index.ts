@@ -80,7 +80,7 @@ serve(async (req) => {
               </p>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="https://lessonloop.net/settings?tab=billing" 
+                <a href="${Deno.env.get('FRONTEND_URL') || 'https://lessonloop.net'}/settings?tab=billing" 
                    style="background: #14b8a6; color: white; padding: 12px 24px; 
                           text-decoration: none; border-radius: 8px; font-weight: bold;">
                   Add Payment Method
