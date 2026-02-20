@@ -59,7 +59,7 @@ export default function Messages() {
   const [replyTarget, setReplyTarget] = useState<Guardian | null>(null);
   const [replyStudentId, setReplyStudentId] = useState<string | undefined>(undefined);
 
-  const { data: messages, isLoading } = useMessageLog({
+  const { data: messages, isLoading, hasMore, loadMore, isFetchingMore } = useMessageLog({
     channel: channelFilter === 'all' ? undefined : channelFilter,
   });
   const { data: pendingCount } = usePendingRequestsCount();
@@ -113,6 +113,9 @@ export default function Messages() {
           messages={filteredMessages || []}
           isLoading={isLoading}
           emptyMessage="You haven't received any messages yet."
+          hasMore={hasMore}
+          onLoadMore={() => loadMore()}
+          isFetchingMore={isFetchingMore}
         />
       </AppLayout>
     );
@@ -239,6 +242,9 @@ export default function Messages() {
               messages={filteredMessages || []}
               isLoading={isLoading}
               emptyMessage="No messages sent yet. Click 'New Message' to send your first message."
+              hasMore={hasMore}
+              onLoadMore={() => loadMore()}
+              isFetchingMore={isFetchingMore}
               onReply={(msg: MessageLogEntry) => {
                 if (msg.recipient_id && msg.recipient_email) {
                   setReplyTarget({

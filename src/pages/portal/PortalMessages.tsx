@@ -18,7 +18,7 @@ export default function PortalMessages() {
   const [activeTab, setActiveTab] = useState('inbox');
 
   const { data: requests, isLoading: requestsLoading } = useMessageRequests();
-  const { data: messages, isLoading: messagesLoading } = useParentMessages();
+  const { data: messages, isLoading: messagesLoading, hasMore, loadMore, isFetchingMore } = useParentMessages();
 
   // Mark messages as read when inbox tab is viewed
   useEffect(() => {
@@ -157,6 +157,20 @@ export default function PortalMessages() {
                   </CardContent>
                 </Card>
               ))}
+
+              {hasMore && (
+                <div className="flex justify-center pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => loadMore()}
+                    disabled={isFetchingMore}
+                    className="gap-2"
+                  >
+                    {isFetchingMore && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {isFetchingMore ? 'Loading…' : 'Load more messages'}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </TabsContent>

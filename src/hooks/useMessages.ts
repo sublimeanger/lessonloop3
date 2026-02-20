@@ -1,8 +1,10 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+
+const PAGE_SIZE = 50;
 
 export interface MessageTemplate {
   id: string;
@@ -72,7 +74,7 @@ export function useMessageTemplates() {
   });
 }
 
-// Fetch message log with filters
+// Cursor-based paginated message log with filters
 export function useMessageLog(filters?: {
   studentId?: string;
   guardianId?: string;
@@ -82,16 +84,17 @@ export function useMessageLog(filters?: {
   const { currentOrg } = useOrg();
   const { user } = useAuth();
 
-  return useQuery({
+  const infiniteQuery = useInfiniteQuery({
     queryKey: ['message-log', currentOrg?.id, filters],
-    queryFn: async () => {
-      if (!currentOrg || !user) return [];
+    queryFn: async ({ pageParam }: { pageParam: string | null }) => {
+      if (!currentOrg || !user) return { data: [], nextCursor: null };
 
       let query = supabase
         .from('message_log')
         .select('*')
         .eq('org_id', currentOrg.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(PAGE_SIZE);
 
       if (filters?.guardianId) {
         query = query.eq('recipient_id', filters.guardianId);
@@ -105,48 +108,95 @@ export function useMessageLog(filters?: {
       if (filters?.studentId) {
         query = query.eq('related_id', filters.studentId);
       }
+      if (pageParam) {
+        query = query.lt('created_at', pageParam);
+      }
 
-      const { data, error } = await query.limit(100);
+      const { data, error } = await query;
       if (error) throw error;
 
-      return (data || []) as unknown as MessageLogEntry[];
+      const rows = (data || []) as unknown as MessageLogEntry[];
+      return {
+        data: rows,
+        nextCursor: rows.length === PAGE_SIZE ? rows[rows.length - 1].created_at : null,
+      };
     },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: !!currentOrg && !!user,
   });
+
+  // Flatten pages for backwards-compatible .data usage
+  const allMessages = infiniteQuery.data?.pages.flatMap((p) => p.data) ?? [];
+
+  return {
+    data: allMessages,
+    isLoading: infiniteQuery.isLoading,
+    isError: infiniteQuery.isError,
+    error: infiniteQuery.error,
+    hasMore: infiniteQuery.hasNextPage ?? false,
+    loadMore: infiniteQuery.fetchNextPage,
+    isFetchingMore: infiniteQuery.isFetchingNextPage,
+  };
 }
 
-// Fetch messages for a specific student (all guardians)
+// Cursor-based paginated messages for a specific student
 export function useStudentMessages(studentId: string | undefined) {
   const { currentOrg } = useOrg();
 
-  return useQuery({
+  const infiniteQuery = useInfiniteQuery({
     queryKey: ['student-messages', currentOrg?.id, studentId],
-    queryFn: async () => {
-      if (!currentOrg || !studentId) return [];
+    queryFn: async ({ pageParam }: { pageParam: string | null }) => {
+      if (!currentOrg || !studentId) return { data: [], nextCursor: null };
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('message_log')
         .select('*')
         .eq('org_id', currentOrg.id)
         .eq('related_id', studentId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(PAGE_SIZE);
 
+      if (pageParam) {
+        query = query.lt('created_at', pageParam);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-      return (data || []) as unknown as MessageLogEntry[];
+
+      const rows = (data || []) as unknown as MessageLogEntry[];
+      return {
+        data: rows,
+        nextCursor: rows.length === PAGE_SIZE ? rows[rows.length - 1].created_at : null,
+      };
     },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: !!currentOrg && !!studentId,
   });
+
+  const allMessages = infiniteQuery.data?.pages.flatMap((p) => p.data) ?? [];
+
+  return {
+    data: allMessages,
+    isLoading: infiniteQuery.isLoading,
+    isError: infiniteQuery.isError,
+    error: infiniteQuery.error,
+    hasMore: infiniteQuery.hasNextPage ?? false,
+    loadMore: infiniteQuery.fetchNextPage,
+    isFetchingMore: infiniteQuery.isFetchingNextPage,
+  };
 }
 
-// Fetch messages for parent portal
+// Cursor-based paginated messages for parent portal
 export function useParentMessages() {
   const { currentOrg } = useOrg();
   const { user } = useAuth();
 
-  return useQuery({
+  const infiniteQuery = useInfiniteQuery({
     queryKey: ['parent-messages', currentOrg?.id, user?.id],
-    queryFn: async () => {
-      if (!currentOrg || !user) return [];
+    queryFn: async ({ pageParam }: { pageParam: string | null }) => {
+      if (!currentOrg || !user) return { data: [], nextCursor: null };
 
       // Get guardian ID for current user
       const { data: guardian } = await supabase
@@ -156,21 +206,46 @@ export function useParentMessages() {
         .eq('org_id', currentOrg.id)
         .maybeSingle();
 
-      if (!guardian) return [];
+      if (!guardian) return { data: [], nextCursor: null };
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('message_log')
         .select('*')
         .eq('org_id', currentOrg.id)
         .eq('recipient_id', guardian.id)
         .eq('recipient_type', 'guardian')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(PAGE_SIZE);
 
+      if (pageParam) {
+        query = query.lt('created_at', pageParam);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-      return (data || []) as MessageLogEntry[];
+
+      const rows = (data || []) as MessageLogEntry[];
+      return {
+        data: rows,
+        nextCursor: rows.length === PAGE_SIZE ? rows[rows.length - 1].created_at : null,
+      };
     },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: !!currentOrg && !!user,
   });
+
+  const allMessages = infiniteQuery.data?.pages.flatMap((p) => p.data) ?? [];
+
+  return {
+    data: allMessages,
+    isLoading: infiniteQuery.isLoading,
+    isError: infiniteQuery.isError,
+    error: infiniteQuery.error,
+    hasMore: infiniteQuery.hasNextPage ?? false,
+    loadMore: infiniteQuery.fetchNextPage,
+    isFetchingMore: infiniteQuery.isFetchingNextPage,
+  };
 }
 
 // Send a message via edge function
