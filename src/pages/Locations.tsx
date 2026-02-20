@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,9 +16,11 @@ import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { FeatureGate } from '@/components/subscription';
 import { useDeleteValidation, DeletionCheckResult } from '@/hooks/useDeleteValidation';
 import { DeleteValidationDialog } from '@/components/shared/DeleteValidationDialog';
-import { Plus, MapPin, ChevronDown, Loader2, Building, Trash2, Edit, DoorOpen, Lock, Sparkles } from 'lucide-react';
+import { Plus, MapPin, ChevronDown, Loader2, Trash2, Edit, DoorOpen, Lock, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type LocationType = 'school' | 'studio' | 'home' | 'online';
+type FilterTab = 'all' | LocationType;
 
 interface Room {
   id: string;
@@ -39,6 +41,21 @@ interface Location {
   rooms?: Room[];
 }
 
+const LOCATION_TYPE_ICONS: Record<LocationType, string> = {
+  online: '🌐',
+  home: '🏠',
+  school: '🏫',
+  studio: '🎵',
+};
+
+const FILTER_PILLS: { value: FilterTab; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'studio', label: 'Studio' },
+  { value: 'school', label: 'School' },
+  { value: 'home', label: 'Home' },
+  { value: 'online', label: 'Online' },
+];
+
 export default function Locations() {
   const { currentOrg, isOrgAdmin } = useOrg();
   const { toast } = useToast();
@@ -47,6 +64,8 @@ export default function Locations() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedLocations, setExpandedLocations] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
+  const [filterTab, setFilterTab] = useState<FilterTab>('all');
   
   // Location dialog
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
@@ -86,6 +105,30 @@ export default function Locations() {
     isChecking: boolean;
     isDeleting: boolean;
   }>({ open: false, roomId: '', roomName: '', checkResult: null, isChecking: false, isDeleting: false });
+
+  // Filtered locations
+  const filteredLocations = useMemo(() => {
+    let list = locations;
+    if (filterTab !== 'all') list = list.filter(l => l.location_type === filterTab);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(l =>
+        l.name.toLowerCase().includes(q) ||
+        l.address_line_1?.toLowerCase().includes(q) ||
+        l.city?.toLowerCase().includes(q) ||
+        l.postcode?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [locations, filterTab, search]);
+
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: locations.length };
+    FILTER_PILLS.forEach(p => { if (p.value !== 'all') counts[p.value] = 0; });
+    locations.forEach(l => { counts[l.location_type] = (counts[l.location_type] || 0) + 1; });
+    return counts;
+  }, [locations]);
+
   const fetchLocations = async () => {
     if (!currentOrg) return;
     setIsLoading(true);
@@ -102,7 +145,6 @@ export default function Locations() {
       return;
     }
     
-    // Fetch rooms for each location
     const locationsWithRooms: Location[] = [];
     for (const loc of locData || []) {
       const { data: rooms } = await supabase
@@ -163,7 +205,6 @@ export default function Locations() {
       return;
     }
     
-    // Check multi-location gate when adding (not editing)
     if (!editingLocation && !hasMultiLocation && locations.length >= 1) {
       toast({ 
         title: 'Multi-location requires upgrade', 
@@ -223,7 +264,6 @@ export default function Locations() {
     setDeleteLocDialog(prev => ({ ...prev, isDeleting: true }));
     const { locationId } = deleteLocDialog;
 
-    // Delete rooms first
     const { data: rooms } = await supabase.from('rooms').select('id').eq('location_id', locationId);
     if (rooms && rooms.length > 0) {
       const { error: roomErr } = await supabase.from('rooms').delete().eq('location_id', locationId);
@@ -317,45 +357,68 @@ export default function Locations() {
     setDeleteRoomDialog(prev => ({ ...prev, open: false, isDeleting: false }));
   };
 
-  const getLocationTypeIcon = (type: LocationType) => {
-    switch (type) {
-      case 'online': return '🌐';
-      case 'home': return '🏠';
-      case 'school': return '🏫';
-      default: return '🎵';
-    }
-  };
-
-  // Solo Teacher: Allow only 1 location, additional locations need upgrade
   const canAddLocation = hasMultiLocation || locations.length === 0;
 
   return (
     <AppLayout>
       <PageHeader
-        title="Locations"
-        description="Manage your teaching venues and rooms"
+        title={`Locations${locations.length > 0 ? ` (${locations.length})` : ''}`}
         breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Locations' }]}
         actions={
           isOrgAdmin && (
             <Button 
+              size="sm"
               onClick={() => openLocationDialog()} 
-              className="gap-2"
+              className="gap-1.5"
               disabled={!canAddLocation}
             >
               {!canAddLocation && <Lock className="h-4 w-4" />}
               <Plus className="h-4 w-4" />
-              Add Location
+              <span className="hidden sm:inline">Add Location</span>
             </Button>
           )
         }
       />
 
-      {/* Multi-location upgrade prompt for Solo Teacher */}
+      {/* Multi-location upgrade prompt */}
       {!hasMultiLocation && locations.length >= 1 && (
-        <div className="mb-6">
+        <div className="mb-4">
           <FeatureGate feature="multi_location">
             <div />
           </FeatureGate>
+        </div>
+      )}
+
+      {/* Search + Filter pills */}
+      {locations.length > 0 && (
+        <div className="space-y-3 mb-4">
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search locations..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-9"
+            />
+          </div>
+
+          <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-0.5 w-fit overflow-x-auto">
+            {FILTER_PILLS.map((pill) => (
+              <button
+                key={pill.value}
+                onClick={() => setFilterTab(pill.value)}
+                className={cn(
+                  'rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all',
+                  filterTab === pill.value
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {pill.label}
+                <span className="ml-1 text-muted-foreground">({typeCounts[pill.value] || 0})</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -364,107 +427,106 @@ export default function Locations() {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : locations.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center py-12">
-            <MapPin className="h-12 w-12 text-muted-foreground/40" />
-            <h3 className="mt-4 text-lg font-medium">No locations yet</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Add your first teaching location to get started.</p>
-            {isOrgAdmin && (
-              <Button onClick={() => openLocationDialog()} className="mt-4 gap-2">
-                <Plus className="h-4 w-4" />
-                Add Your First Location
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={MapPin}
+          title="No locations yet"
+          description="Add your first teaching location to get started with scheduling."
+          actionLabel={isOrgAdmin ? 'Add Your First Location' : undefined}
+          onAction={isOrgAdmin ? () => openLocationDialog() : undefined}
+        />
+      ) : filteredLocations.length === 0 ? (
+        <div className="rounded-lg border bg-card p-8 text-center">
+          <p className="text-muted-foreground">No locations match your search</p>
+        </div>
       ) : (
-        <div className="space-y-4">
-          {locations.map((location) => (
+        <div className="space-y-3">
+          {filteredLocations.map((location) => (
             <Collapsible
               key={location.id}
               open={expandedLocations.has(location.id)}
               onOpenChange={() => toggleExpanded(location.id)}
             >
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="text-2xl shrink-0">{getLocationTypeIcon(location.location_type)}</span>
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <CardTitle className="text-lg truncate">{location.name}</CardTitle>
-                          {location.is_primary && <Badge>Primary</Badge>}
-                          <Badge variant="outline" className="capitalize">{location.location_type}</Badge>
-                        </div>
-                        {(location.address_line_1 || location.city) && (
-                          <CardDescription className="truncate">
-                            {[location.address_line_1, location.city, location.postcode].filter(Boolean).join(', ')}
-                          </CardDescription>
-                        )}
-                      </div>
+              <div className="rounded-xl border bg-card shadow-sm transition-all hover:shadow-md">
+                {/* Location header */}
+                <div className="flex items-center gap-4 p-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-lg shrink-0">
+                    {LOCATION_TYPE_ICONS[location.location_type]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold truncate">{location.name}</span>
+                      {location.is_primary && <Badge className="text-[10px] shrink-0">Primary</Badge>}
+                      <Badge variant="outline" className="capitalize text-[10px] shrink-0">{location.location_type}</Badge>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {isOrgAdmin && (
-                        <>
-                          <Button variant="ghost" size="icon" onClick={() => openLocationDialog(location)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => initiateDeleteLocation(location)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                      {(location.address_line_1 || location.city) && (
+                        <span className="truncate">
+                          {[location.address_line_1, location.city, location.postcode].filter(Boolean).join(', ')}
+                        </span>
                       )}
-                      <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="sm" className="gap-2">
-                          <DoorOpen className="h-4 w-4" />
-                          <span className="hidden sm:inline">{location.rooms?.length || 0} Rooms</span>
-                          <span className="sm:hidden">{location.rooms?.length || 0}</span>
-                          <ChevronDown className={`h-4 w-4 transition-transform ${expandedLocations.has(location.id) ? 'rotate-180' : ''}`} />
-                        </Button>
-                      </CollapsibleTrigger>
                     </div>
                   </div>
-                </CardHeader>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {isOrgAdmin && (
+                      <>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openLocationDialog(location)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => initiateDeleteLocation(location)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
+                        <DoorOpen className="h-4 w-4" />
+                        <span className="hidden sm:inline">{location.rooms?.length || 0} Room{(location.rooms?.length || 0) !== 1 ? 's' : ''}</span>
+                        <span className="sm:hidden">{location.rooms?.length || 0}</span>
+                        <ChevronDown className={cn('h-3 w-3 transition-transform', expandedLocations.has(location.id) && 'rotate-180')} />
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                </div>
+
+                {/* Rooms panel */}
                 <CollapsibleContent>
-                  <CardContent className="pt-0">
-                    <div className="border-t pt-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-medium text-muted-foreground">Rooms</h4>
-                        {isOrgAdmin && (
-                          <Button variant="outline" size="sm" onClick={() => openRoomDialog(location.id)} className="gap-1">
-                            <Plus className="h-3 w-3" />
-                            Add Room
-                          </Button>
-                        )}
-                      </div>
-                      {!location.rooms || location.rooms.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-4 text-center">No rooms yet. Add rooms to schedule lessons in specific spaces.</p>
-                      ) : (
-                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                          {location.rooms.map((room) => (
-                            <div key={room.id} className="flex items-center justify-between rounded-lg border p-3">
-                              <div>
-                                <span className="font-medium">{room.name}</span>
-                                {room.capacity && <span className="text-sm text-muted-foreground ml-2">(Cap: {room.capacity})</span>}
-                              </div>
-                              {isOrgAdmin && (
-                                <div className="flex gap-1">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openRoomDialog(location.id, room)}>
-                                    <Edit className="h-3 w-3" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => initiateDeleteRoom(room)}>
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
+                  <div className="border-t px-4 py-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Rooms</h4>
+                      {isOrgAdmin && (
+                        <Button variant="outline" size="sm" onClick={() => openRoomDialog(location.id)} className="gap-1 h-7 text-xs">
+                          <Plus className="h-3 w-3" />
+                          Add Room
+                        </Button>
                       )}
                     </div>
-                  </CardContent>
+                    {!location.rooms || location.rooms.length === 0 ? (
+                      <p className="text-xs text-muted-foreground py-3 text-center">No rooms yet. Add rooms to schedule lessons in specific spaces.</p>
+                    ) : (
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {location.rooms.map((room) => (
+                          <div key={room.id} className="flex items-center justify-between rounded-lg border bg-muted/30 p-2.5">
+                            <div className="min-w-0">
+                              <span className="text-sm font-medium">{room.name}</span>
+                              {room.capacity && <span className="text-xs text-muted-foreground ml-1.5">(Cap: {room.capacity})</span>}
+                            </div>
+                            {isOrgAdmin && (
+                              <div className="flex gap-0.5 shrink-0">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openRoomDialog(location.id, room)}>
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => initiateDeleteRoom(room)}>
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </CollapsibleContent>
-              </Card>
+              </div>
             </Collapsible>
           ))}
         </div>
