@@ -1,51 +1,69 @@
 import { useMemo, useState } from 'react';
-import { startOfWeek, addDays, format, isToday } from 'date-fns';
+import { startOfWeek, addDays, format, isToday, isWeekend, parseISO } from 'date-fns';
 import { LessonWithDetails } from './types';
-import { LessonCard } from './LessonCard';
 import { TeacherWithColour, getTeacherColour, TEACHER_COLOURS, TeacherColourEntry } from './teacherColours';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
-const COMPACT_THRESHOLD = 8;
-const VISIBLE_WHEN_COLLAPSED = 5;
+const VISIBLE_WHEN_COLLAPSED = 6;
 
-interface TeacherGroup {
-  teacherId: string | null;
-  teacherName: string;
+/** Inline stacked card — color bar + time + student name */
+function StackedCard({
+  lesson,
+  colour,
+  compact,
+  onClick,
+}: {
+  lesson: LessonWithDetails;
   colour: TeacherColourEntry;
-  lessons: LessonWithDetails[];
-}
+  compact: boolean;
+  onClick: () => void;
+}) {
+  const startTime = parseISO(lesson.start_at);
+  const isCancelled = lesson.status === 'cancelled';
+  const isGroup = (lesson.participants?.length ?? 0) > 1;
 
-function groupByTeacher(
-  lessons: LessonWithDetails[],
-  colourMap: Map<string, TeacherWithColour>
-): TeacherGroup[] {
-  const map = new Map<string, TeacherGroup>();
-
-  for (const lesson of lessons) {
-    const tid = (lesson as any).teacher_id || null;
-    const key = tid || '__none__';
-    if (!map.has(key)) {
-      const teacherName = lesson.teacher?.full_name || lesson.teacher?.email || 'Unassigned';
-      map.set(key, {
-        teacherId: tid,
-        teacherName,
-        colour: getTeacherColour(colourMap, tid),
-        lessons: [],
-      });
-    }
-    map.get(key)!.lessons.push(lesson);
+  // Student display
+  let studentLabel: string;
+  if (isGroup) {
+    studentLabel = `♪ Group (${lesson.participants!.length})`;
+  } else if (lesson.participants?.[0]) {
+    const s = lesson.participants[0].student;
+    studentLabel = compact ? s.first_name : `${s.first_name} ${s.last_name}`;
+  } else {
+    studentLabel = lesson.title;
   }
 
-  // Sort groups alphabetically
-  const groups = Array.from(map.values());
-  groups.sort((a, b) => a.teacherName.localeCompare(b.teacherName));
-  // Sort lessons within each group by time
-  for (const g of groups) {
-    g.lessons.sort((a, b) => a.start_at.localeCompare(b.start_at));
-  }
-  return groups;
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'w-full flex items-stretch gap-0 text-left rounded-sm transition-colors hover:bg-muted/60 active:bg-muted',
+        isCancelled && 'opacity-40',
+      )}
+    >
+      {/* Color bar */}
+      <div
+        className="w-[3px] rounded-full shrink-0 my-0.5"
+        style={{ backgroundColor: colour.hex }}
+      />
+      {/* Content */}
+      <div className="flex-1 min-w-0 pl-1 pr-0.5 py-px">
+        <span className={cn(
+          'text-[9px] sm:text-[10px] font-mono text-muted-foreground tabular-nums',
+          isCancelled && 'line-through',
+        )}>
+          {format(startTime, 'H:mm')}
+        </span>
+        <span className={cn(
+          'ml-1 text-[10px] sm:text-xs font-semibold text-foreground truncate',
+          isCancelled && 'line-through text-muted-foreground',
+        )}>
+          {studentLabel}
+        </span>
+      </div>
+    </button>
+  );
 }
 
 interface StackedWeekViewProps {
@@ -96,64 +114,65 @@ export function StackedWeekView({
     });
   };
 
+  // Compute grid template: weekdays 1fr, empty weekends 0.6fr
+  const gridCols = useMemo(() => {
+    return days.map((day) => {
+      const key = format(day, 'yyyy-MM-dd');
+      const count = lessonsByDay.get(key)?.length ?? 0;
+      const weekend = isWeekend(day);
+      return weekend && count === 0 ? '0.6fr' : '1fr';
+    }).join(' ');
+  }, [days, lessonsByDay]);
+
   return (
-    <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden border">
+    <div
+      className="grid gap-px bg-border rounded-lg overflow-hidden border"
+      style={{ gridTemplateColumns: gridCols }}
+    >
       {days.map((day) => {
         const key = format(day, 'yyyy-MM-dd');
         const dayLessons = lessonsByDay.get(key) || [];
         const today = isToday(day);
         const count = dayLessons.length;
-        const isHighVolume = count > COMPACT_THRESHOLD;
         const isExpanded = expandedDays.has(key);
-        const useCompact = compact || isHighVolume;
 
-        // Teacher grouping for high-volume days
-        const teacherGroups = isHighVolume
-          ? groupByTeacher(dayLessons, teacherColourMap)
-          : null;
-
-        // For non-grouped, determine visible lessons
-        const visibleLessons = !teacherGroups
+        const visibleLessons = isExpanded
           ? dayLessons
-          : []; // handled by groups
+          : dayLessons.slice(0, VISIBLE_WHEN_COLLAPSED);
+        const hiddenCount = count - VISIBLE_WHEN_COLLAPSED;
 
         return (
           <div
             key={key}
             className={cn(
-              'bg-background flex flex-col min-h-[200px]',
-              today && 'bg-accent/30'
+              'bg-background flex flex-col min-h-[280px]',
+              today && 'border-l-2 border-l-primary',
             )}
           >
-            {/* Day header */}
+            {/* Day header — compact */}
             <div
               className={cn(
-                'px-1.5 py-1.5 text-center border-b select-none',
-                today
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted/50 text-muted-foreground'
+                'px-1.5 py-1 text-center border-b select-none',
+                'bg-muted/50 text-muted-foreground',
               )}
             >
               <div className="text-[10px] sm:text-xs font-medium uppercase tracking-wide">
                 {format(day, 'EEE')}
               </div>
-              <div className="flex items-center justify-center gap-1">
+              <div className="flex items-center justify-center gap-0.5">
+                {today && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                )}
                 <span className={cn(
                   'text-sm sm:text-lg font-bold leading-tight',
-                  today ? 'text-primary-foreground' : 'text-foreground'
+                  today ? 'text-primary' : 'text-foreground'
                 )}>
                   {format(day, 'd')}
                 </span>
                 {count > 0 && (
-                  <Badge
-                    variant="secondary"
-                    className={cn(
-                      'text-[9px] px-1 py-0 h-4 leading-none',
-                      today && 'bg-primary-foreground/20 text-primary-foreground'
-                    )}
-                  >
-                    {count}
-                  </Badge>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground font-normal">
+                    ({count})
+                  </span>
                 )}
               </div>
             </div>
@@ -185,105 +204,46 @@ export function StackedWeekView({
                 >
                   <span className="hidden sm:inline">No lessons</span>
                 </div>
-              ) : teacherGroups ? (
-                // Teacher-grouped layout for high-volume days
-                <div className="space-y-1">
-                  {teacherGroups.map((group) => {
-                    const groupLessons = isExpanded
-                      ? group.lessons
-                      : group.lessons.slice(0, 3);
-                    return (
-                      <div key={group.teacherId || '__none__'}>
-                        {/* Teacher sub-header */}
-                        <div className={cn(
-                          'flex items-center gap-1 px-0.5 py-0.5 rounded-sm mb-0.5',
-                          group.colour.bgLight
-                        )}>
-                          <div
-                            className="h-2 w-2 rounded-full shrink-0"
-                            style={{ backgroundColor: group.colour.hex }}
-                          />
-                          <span className={cn(
-                            'text-[9px] sm:text-[10px] font-semibold truncate',
-                            group.colour.text
-                          )}>
-                            {group.teacherName}
-                            <span className="font-normal ml-0.5 opacity-70">({group.lessons.length})</span>
-                          </span>
-                        </div>
-                        <div className="space-y-0.5">
-                          {groupLessons.map((lesson) => (
-                            <LessonCard
-                              key={lesson.id}
-                              lesson={lesson}
-                              variant="stacked"
-                              teacherColour={group.colour}
-                              onClick={() => onLessonClick(lesson)}
-                              compact={useCompact}
-                            />
-                          ))}
-                          {!isExpanded && group.lessons.length > 3 && (
-                            <div className="text-[9px] text-muted-foreground/60 pl-1">
-                              +{group.lessons.length - 3} more
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {/* Expand/Collapse toggle */}
-                  <button
-                    className="w-full flex items-center justify-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors py-0.5"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleExpanded(key);
-                    }}
-                  >
-                    {isExpanded ? (
-                      <>
-                        <ChevronUp className="h-3 w-3" />
-                        <span>Show less</span>
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="h-3 w-3" />
-                        <span>Show all {count}</span>
-                      </>
-                    )}
-                  </button>
-                </div>
               ) : (
-                // Standard flat layout
-                <div className="space-y-0.5">
-                  {(isHighVolume && !isExpanded
-                    ? visibleLessons.slice(0, VISIBLE_WHEN_COLLAPSED)
-                    : visibleLessons
-                  ).map((lesson) => {
+                <div className="space-y-px">
+                  {visibleLessons.map((lesson) => {
                     const colour = getTeacherColour(
                       teacherColourMap,
                       (lesson as any).teacher_id || null
                     );
                     return (
-                      <LessonCard
+                      <StackedCard
                         key={lesson.id}
                         lesson={lesson}
-                        variant="stacked"
-                        teacherColour={colour}
+                        colour={colour}
+                        compact={compact}
                         onClick={() => onLessonClick(lesson)}
-                        compact={useCompact}
                       />
                     );
                   })}
-                  {isHighVolume && !isExpanded && (
+                  {/* Show more / show less pill */}
+                  {count > VISIBLE_WHEN_COLLAPSED && (
                     <button
-                      className="w-full flex items-center justify-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors py-0.5"
+                      className={cn(
+                        'mx-auto flex items-center justify-center gap-0.5 rounded-full px-2.5 py-0.5 text-[10px] sm:text-xs',
+                        'bg-muted/50 hover:bg-muted text-muted-foreground transition-colors',
+                      )}
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleExpanded(key);
                       }}
                     >
-                      <ChevronDown className="h-3 w-3" />
-                      <span>Show {count - VISIBLE_WHEN_COLLAPSED} more</span>
+                      {isExpanded ? (
+                        <>
+                          <ChevronUp className="h-3 w-3" />
+                          Show less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-3 w-3" />
+                          +{hiddenCount} more
+                        </>
+                      )}
                     </button>
                   )}
                 </div>
