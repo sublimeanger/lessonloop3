@@ -1,4 +1,5 @@
-// Invoice PDF generator — zero external dependencies, zero imports
+// Invoice PDF generator — zero external dependencies except Supabase auth
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
 function pdfStr(t: string): string {
@@ -152,6 +153,27 @@ Deno.serve(async (req: Request): Promise<Response> => {
   try {
     const sbUrl = Deno.env.get("SUPABASE_URL")!;
     const sbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    // --- Auth: validate JWT ---
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseAuth = createClient(sbUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     let invoiceId = url.searchParams.get("invoiceId");
     if (!invoiceId && req.method === "POST") {
@@ -160,15 +182,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     if (!invoiceId) {
-      const testContent = [
-        tx(50, 750, "F2", 24, "Test Invoice PDF", 0, 0, 0),
-        tx(50, 720, "F1", 12, "Zero-dependency PDF generation working.", 0.3, 0.3, 0.3),
-        tx(50, 700, "F1", 10, "Generated: " + new Date().toISOString(), 0.5, 0.5, 0.5),
-      ].join("\n");
-      const p = buildPdf(testContent);
-      return new Response(p, {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/pdf", "Content-Disposition": 'attachment; filename="test.pdf"' },
+      return new Response(JSON.stringify({ error: "invoiceId is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -193,6 +209,51 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     const inv = data[0];
+
+    // --- Authorisation: user must be org staff OR the invoice payer ---
+    const orgId = inv.org_id;
+    const serviceClient = createClient(sbUrl, sbKey);
+
+    // Check org membership
+    const { data: membership } = await serviceClient
+      .from("org_memberships")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("org_id", orgId)
+      .eq("status", "active")
+      .limit(1)
+      .maybeSingle();
+
+    if (!membership) {
+      // Check if parent linked to invoice payer
+      let isLinkedParent = false;
+      if (inv.payer_guardian_id) {
+        const { data: guardian } = await serviceClient
+          .from("guardians")
+          .select("id")
+          .eq("id", inv.payer_guardian_id)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (guardian) isLinkedParent = true;
+      }
+      if (!isLinkedParent && inv.payer_student_id) {
+        const { data: guardianLink } = await serviceClient
+          .from("student_guardians")
+          .select("id, guardian:guardians!inner(user_id)")
+          .eq("student_id", inv.payer_student_id)
+          .limit(100);
+        if (guardianLink?.some((gl: any) => gl.guardian?.user_id === user.id)) {
+          isLinkedParent = true;
+        }
+      }
+      if (!isLinkedParent) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const org = inv.organisations;
     const payer = inv.payer_guardian
       ? inv.payer_guardian.full_name
