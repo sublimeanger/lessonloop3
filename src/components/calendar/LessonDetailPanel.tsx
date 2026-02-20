@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { format, parseISO, differenceInMinutes, differenceInHours } from 'date-fns';
 import { LessonWithDetails, AttendanceStatus } from './types';
 import { RecurringActionDialog, RecurringActionMode } from './RecurringActionDialog';
@@ -41,6 +41,16 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
   const { toast } = useToast();
   const { createCredit, checkCreditEligibility } = useMakeUpCredits();
   const { data: rateCards } = useRateCards();
+  const firstActionRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-focus first action button when panel opens
+  useEffect(() => {
+    if (open && lesson) {
+      requestAnimationFrame(() => {
+        firstActionRef.current?.focus();
+      });
+    }
+  }, [open, lesson?.id]);
   
   const [savingAttendance, setSavingAttendance] = useState<string | null>(null);
   const [actionInProgress, setActionInProgress] = useState(false);
@@ -292,7 +302,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           {lesson.status !== 'cancelled' && (
             <div className="space-y-2">
               <div className="grid grid-cols-2 gap-2">
-                <Button onClick={onEdit} variant="outline" className="gap-2" disabled={actionInProgress}>
+                <Button ref={firstActionRef} onClick={onEdit} variant="outline" className="gap-2" disabled={actionInProgress}>
                   <CalendarClock className="h-4 w-4" />
                   Reschedule
                 </Button>
