@@ -67,6 +67,8 @@ export function useRevenueReport(startDate: string, endDate: string) {
       return { months, totalRevenue, averageMonthly };
     },
     enabled: !!currentOrg && !!startDate && !!endDate,
+    staleTime: 10 * 60 * 1000, // 10 min — expensive aggregation
+    gcTime: 15 * 60 * 1000,
   });
 }
 
@@ -175,6 +177,8 @@ export function useAgeingReport() {
       return { buckets, totalOutstanding, totalOverdue };
     },
     enabled: !!currentOrg,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   });
 }
 
@@ -330,6 +334,8 @@ export function useLessonsDeliveredReport(startDate: string, endDate: string) {
       return { byTeacher, byLocation, totalCompleted, totalCancelled, totalMinutes };
     },
     enabled: !!currentOrg && !!startDate && !!endDate,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   });
 }
 
@@ -442,6 +448,8 @@ export function useCancellationReport(startDate: string, endDate: string) {
       return { totalScheduled, totalCompleted, totalCancelled, cancellationRate, byReason, byTeacher };
     },
     enabled: !!currentOrg && !!startDate && !!endDate,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   });
 }
 
@@ -549,6 +557,8 @@ export function useDashboardStats() {
       };
     },
     enabled: !!currentOrg,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   });
 }
 

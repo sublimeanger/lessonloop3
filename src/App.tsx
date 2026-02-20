@@ -1,7 +1,8 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OrgProvider } from "@/contexts/OrgContext";
@@ -70,13 +71,39 @@ import PortalInvoices from "./pages/portal/PortalInvoices";
 import PortalMessages from "./pages/portal/PortalMessages";
 
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error, query) => {
+      if (import.meta.env.DEV) {
+        console.error(`[QueryCache] Error in query ${JSON.stringify(query.queryKey)}:`, error);
+      }
+      // Show toast on first retry for network errors
+      if (
+        error instanceof TypeError &&
+        error.message.toLowerCase().includes('fetch')
+      ) {
+        toast({
+          title: 'Connection issue',
+          description: 'Retrying…',
+          variant: 'destructive',
+        });
+      }
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      if (import.meta.env.DEV) {
+        console.error('[MutationCache] Mutation error:', error);
+      }
+    },
+  }),
   defaultOptions: {
     queries: {
-      // Disable automatic refetch on window focus to prevent
-      // unwanted refreshes when returning to inactive tabs
       refetchOnWindowFocus: false,
-      // Keep data fresh for 5 minutes before considering stale
       staleTime: 5 * 60 * 1000,
+      retry: 3,
+    },
+    mutations: {
+      retry: false,
     },
   },
 });
