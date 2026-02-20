@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import ReactMarkdown from 'react-markdown';
@@ -18,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useLoopAssist, AIMessage, AIConversation } from '@/hooks/useLoopAssist';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
-import { useProactiveAlerts } from '@/hooks/useProactiveAlerts';
+import { useProactiveAlerts, ProactiveAlert } from '@/hooks/useProactiveAlerts';
 import { useLoopAssistFirstRun } from '@/hooks/useLoopAssistFirstRun';
 import { renderMessageWithChips } from './EntityChip';
 import { ActionCard, stripActionBlock, parseActionFromResponse } from './ActionCard';
@@ -39,6 +40,8 @@ interface FailedMessage {
   content: string;
   id: string;
 }
+
+type DrawerView = 'landing' | 'chat' | 'history';
 
 export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) {
   const { pageContext, consumePendingMessage } = useLoopAssistUI();
@@ -62,7 +65,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
   } = useLoopAssist(pageContext);
 
   const [input, setInput] = useState('');
-  const [showConversationList, setShowConversationList] = useState(!currentConversationId);
+  const [view, setView] = useState<DrawerView>('landing');
   const [failedMessage, setFailedMessage] = useState<FailedMessage | null>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -72,21 +75,20 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, streamingContent]);
 
-  // Show intro modal on first open, focus input, and auto-send pending messages
+  // On open: default to landing, or chat if pending message
   useEffect(() => {
     if (open) {
       checkAndShowIntro();
-      const timer = setTimeout(() => {
-        chatInputRef.current?.focus();
-        const pending = consumePendingMessage();
-        if (pending) {
-          setShowConversationList(false);
-          doSend(pending);
-        }
-      }, 300);
-      return () => clearTimeout(timer);
+      const pending = consumePendingMessage();
+      if (pending) {
+        setView('chat');
+        doSend(pending);
+      } else {
+        setView('landing');
+      }
+      setTimeout(() => chatInputRef.current?.focus(), 300);
     }
-  }, [open, checkAndShowIntro, consumePendingMessage]);
+  }, [open]);
 
   const doSend = useCallback(async (content: string) => {
     setFailedMessage(null);
@@ -103,8 +105,6 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     if (!input.trim() || isStreaming) return;
     const message = input;
     setInput('');
-    setShowConversationList(false);
-    // Reset textarea height
     if (chatInputRef.current) chatInputRef.current.style.height = 'auto';
     await doSend(message);
   };
@@ -118,23 +118,22 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
 
   const handleTextareaInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
-    // Auto-grow up to 4 rows
     const el = e.target;
     el.style.height = 'auto';
     const lineHeight = 20;
-    const maxHeight = lineHeight * 4 + 16; // 4 rows + padding
+    const maxHeight = lineHeight * 4 + 16;
     el.style.height = Math.min(el.scrollHeight, maxHeight) + 'px';
   };
 
   const handleNewConversation = () => {
     setCurrentConversationId(null);
-    setShowConversationList(false);
+    setView('chat');
     setFailedMessage(null);
   };
 
   const handleSelectConversation = (id: string) => {
     setCurrentConversationId(id);
-    setShowConversationList(false);
+    setView('chat');
     setFailedMessage(null);
   };
 
@@ -146,10 +145,6 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     handleProposal({ proposalId, action: 'cancel' });
   };
 
-  const handleSuggestedPrompt = (prompt: string) => {
-    setInput(prompt);
-  };
-
   const handleRetry = () => {
     if (failedMessage) {
       doSend(failedMessage.content);
@@ -157,7 +152,6 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
   };
 
   const suggestedPrompts = getSuggestedPrompts(pageContext.type, alerts);
-  const showProactiveAlerts = !currentConversationId && messages.length === 0 && !isStreaming && alerts.length > 0;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -165,12 +159,15 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
         <SheetHeader className="border-b px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {!showConversationList && currentConversationId && (
+              {(view === 'chat' || view === 'history') && (
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => setShowConversationList(true)}
+                  onClick={() => {
+                    setView('landing');
+                    setCurrentConversationId(null);
+                  }}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -207,63 +204,32 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
           </div>
         )}
 
-        {showConversationList ? (
-          <ConversationList
+        {view === 'landing' && (
+          <LandingView
+            alerts={alerts}
+            proactiveMessage={proactiveMessage}
+            suggestedPrompts={suggestedPrompts}
             conversations={conversations}
-            onSelect={handleSelectConversation}
-            onDelete={deleteConversation}
-            onNew={handleNewConversation}
+            onSendMessage={(msg) => {
+              setView('chat');
+              doSend(msg);
+            }}
+            onSelectConversation={handleSelectConversation}
+            onViewAllHistory={() => setView('history')}
+            onDismissProactive={dismissProactiveMessage}
+            dismissProactiveMessage={dismissProactiveMessage}
           />
-        ) : (
+        )}
+
+        {view === 'chat' && (
           <>
             {/* Messages */}
             <ScrollArea className="flex-1 px-4">
               <div className="space-y-4 py-4">
                 {messages.length === 0 && !isStreaming && (
-                  <div className="space-y-4">
-                    {proactiveMessage && (
-                      <ProactiveWelcome
-                        title={proactiveMessage.title}
-                        message={proactiveMessage.message}
-                        suggestedPrompts={proactiveMessage.suggestedPrompts}
-                        onPromptClick={(prompt) => {
-                          dismissProactiveMessage();
-                          handleSuggestedPrompt(prompt);
-                        }}
-                        onDismiss={dismissProactiveMessage}
-                      />
-                    )}
-
-                    {!proactiveMessage && showProactiveAlerts && (
-                      <ProactiveAlerts 
-                        alerts={alerts} 
-                        onSuggestedAction={handleSuggestedPrompt}
-                      />
-                    )}
-
-                    {!proactiveMessage && (
-                      <>
-                        <div className="text-center text-muted-foreground">
-                          <Sparkles className="mx-auto mb-2 h-8 w-8 text-primary/50" />
-                          <p className="text-sm">How can I help you today?</p>
-                        </div>
-                        {suggestedPrompts.length > 0 && (
-                          <div className="flex flex-wrap gap-2" data-tour="loopassist-prompts">
-                            {suggestedPrompts.map((prompt, i) => (
-                              <Button
-                                key={i}
-                                variant="outline"
-                                size="sm"
-                                className="h-auto whitespace-normal text-left text-xs"
-                                onClick={() => handleSuggestedPrompt(prompt)}
-                              >
-                                {prompt}
-                              </Button>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    )}
+                  <div className="text-center text-muted-foreground">
+                    <Sparkles className="mx-auto mb-2 h-8 w-8 text-primary/50" />
+                    <p className="text-sm">Start a new conversation</p>
                   </div>
                 )}
 
@@ -311,7 +277,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                   </div>
                 )}
 
-                {/* Pending action proposals with rich cards */}
+                {/* Pending action proposals */}
                 {pendingProposals.map((proposal) => (
                   <ActionCard
                     key={proposal.id}
@@ -323,12 +289,11 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                   />
                 ))}
 
-                {/* Auto-scroll sentinel */}
                 <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
 
-            {/* Input */}
+            {/* Chat Input */}
             <div className="border-t p-4" data-tour="loopassist-input">
               <div className="flex gap-3 items-end">
                 <Textarea
@@ -354,11 +319,164 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
             </div>
           </>
         )}
+
+        {view === 'history' && (
+          <ConversationList
+            conversations={conversations}
+            onSelect={handleSelectConversation}
+            onDelete={deleteConversation}
+            onNew={handleNewConversation}
+          />
+        )}
       </SheetContent>
 
       {/* Intro Modal */}
       <LoopAssistIntroModal open={showIntro} onOpenChange={setShowIntro} />
     </Sheet>
+  );
+}
+
+// ─── Landing View ───
+function LandingView({
+  alerts,
+  proactiveMessage,
+  suggestedPrompts,
+  conversations,
+  onSendMessage,
+  onSelectConversation,
+  onViewAllHistory,
+  onDismissProactive,
+  dismissProactiveMessage,
+}: {
+  alerts: ProactiveAlert[];
+  proactiveMessage: any;
+  suggestedPrompts: string[];
+  conversations: AIConversation[];
+  onSendMessage: (msg: string) => void;
+  onSelectConversation: (id: string) => void;
+  onViewAllHistory: () => void;
+  onDismissProactive: () => void;
+  dismissProactiveMessage: () => void;
+}) {
+  const [input, setInput] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }, []);
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+    onSendMessage(input.trim());
+    setInput('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  return (
+    <ScrollArea className="flex-1">
+      <div className="p-4 space-y-4">
+        {/* Proactive Welcome (first run only) */}
+        {proactiveMessage && (
+          <ProactiveWelcome
+            title={proactiveMessage.title}
+            message={proactiveMessage.message}
+            suggestedPrompts={proactiveMessage.suggestedPrompts}
+            onPromptClick={(prompt) => {
+              dismissProactiveMessage();
+              onSendMessage(prompt);
+            }}
+            onDismiss={onDismissProactive}
+          />
+        )}
+
+        {/* Proactive Alerts */}
+        {!proactiveMessage && alerts.length > 0 && (
+          <ProactiveAlerts alerts={alerts} onSuggestedAction={onSendMessage} />
+        )}
+
+        {/* Main input area */}
+        {!proactiveMessage && (
+          <div className="space-y-3">
+            <div className="text-center">
+              <Sparkles className="mx-auto mb-2 h-8 w-8 text-primary/50" />
+              <p className="text-sm text-muted-foreground">How can I help you today?</p>
+            </div>
+
+            {/* Quick input */}
+            <div className="flex gap-2" data-tour="loopassist-input">
+              <Input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask LoopAssist..."
+                className="flex-1 text-sm"
+              />
+              <Button onClick={handleSend} disabled={!input.trim()} size="icon" className="shrink-0">
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Suggested prompts */}
+            {suggestedPrompts.length > 0 && (
+              <div className="flex flex-wrap gap-2 justify-center" data-tour="loopassist-prompts">
+                {suggestedPrompts.map((prompt, i) => (
+                  <Button
+                    key={i}
+                    variant="outline"
+                    size="sm"
+                    className="h-auto whitespace-normal text-left text-xs"
+                    onClick={() => onSendMessage(prompt)}
+                  >
+                    {prompt}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Recent conversations */}
+        {conversations.length > 0 && (
+          <div className="pt-2 border-t">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-muted-foreground">Recent conversations</p>
+              {conversations.length > 5 && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-xs text-muted-foreground"
+                  onClick={onViewAllHistory}
+                >
+                  View all
+                </Button>
+              )}
+            </div>
+            <div className="space-y-1">
+              {conversations.slice(0, 5).map((conv) => (
+                <button
+                  key={conv.id}
+                  className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent transition-colors"
+                  onClick={() => onSelectConversation(conv.id)}
+                >
+                  <MessageSquare className="h-3 w-3 text-muted-foreground shrink-0" />
+                  <span className="truncate text-xs">{conv.title}</span>
+                  <span className="ml-auto text-[10px] text-muted-foreground shrink-0">
+                    {format(new Date(conv.updated_at), 'dd/MM')}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </ScrollArea>
   );
 }
 
@@ -487,8 +605,6 @@ function MessageBubble({ message, conversationId }: { message: AIMessage; conver
     </div>
   );
 }
-
-import { ProactiveAlert } from '@/hooks/useProactiveAlerts';
 
 function getSuggestedPrompts(contextType: string, alerts: ProactiveAlert[]): string[] {
   const basePrompts: string[] = [];
