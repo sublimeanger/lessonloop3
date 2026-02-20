@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PortalLayout } from '@/components/layout/PortalLayout';
+import { useOrgPaymentPreferences } from '@/hooks/useOrgPaymentPreferences';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +20,7 @@ import { useParentInvoices } from '@/hooks/useParentPortal';
 import { useStripePayment } from '@/hooks/useStripePayment';
 import { useInvoicePdf } from '@/hooks/useInvoicePdf';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+
 
 function formatCurrency(amountMinor: number, currencyCode: string = 'GBP'): string {
   return new Intl.NumberFormat('en-GB', {
@@ -37,26 +38,7 @@ export default function PortalInvoices() {
   const { data: invoices, isLoading, refetch } = useParentInvoices({ status: statusFilter });
   const { initiatePayment, isLoading: isPaymentLoading } = useStripePayment();
   const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
-  const [orgPaymentPrefs, setOrgPaymentPrefs] = useState<{
-    online_payments_enabled: boolean;
-    bank_account_name: string | null;
-    bank_sort_code: string | null;
-    bank_account_number: string | null;
-    bank_reference_prefix: string | null;
-  } | null>(null);
-
-  // Fetch org payment preferences
-  useEffect(() => {
-    if (!currentOrg?.id) return;
-    supabase
-      .from('organisations')
-      .select('online_payments_enabled, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix')
-      .eq('id', currentOrg.id)
-      .single()
-      .then(({ data }) => {
-        if (data) setOrgPaymentPrefs(data as any);
-      });
-  }, [currentOrg?.id]);
+  const { data: orgPaymentPrefs } = useOrgPaymentPreferences();
 
   const onlinePaymentsEnabled = orgPaymentPrefs?.online_payments_enabled !== false;
   const hasBankDetails = !!(orgPaymentPrefs?.bank_account_name && orgPaymentPrefs?.bank_sort_code && orgPaymentPrefs?.bank_account_number);
