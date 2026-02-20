@@ -115,7 +115,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Rate limiting
     const rateLimitResult = await checkRateLimit(user.id, "send-bulk-message");
     if (!rateLimitResult.allowed) {
-      return rateLimitResponse(corsHeaders, rateLimitResult.retryAfterSeconds);
+      return rateLimitResponse(corsHeaders, rateLimitResult);
     }
 
     const data: BulkMessageRequest = await req.json();

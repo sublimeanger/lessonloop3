@@ -42,7 +42,7 @@ serve(async (req) => {
     // Rate limiting - GDPR operations are sensitive
     const rateLimitResult = await checkRateLimit(user.id, "gdpr-delete", { maxRequests: 5, windowMinutes: 5 });
     if (!rateLimitResult.allowed) {
-      return rateLimitResponse(corsHeaders, rateLimitResult.retryAfterSeconds);
+      return rateLimitResponse(corsHeaders, rateLimitResult);
     }
 
     // Get request body

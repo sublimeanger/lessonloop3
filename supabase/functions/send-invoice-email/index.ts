@@ -55,7 +55,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Rate limiting check
     const rateLimitResult = await checkRateLimit(user.id, "send-invoice-email");
     if (!rateLimitResult.allowed) {
-      return rateLimitResponse(corsHeaders, rateLimitResult.retryAfterSeconds);
+      return rateLimitResponse(corsHeaders, rateLimitResult);
     }
 
     const {

@@ -124,7 +124,7 @@ serve(async (req) => {
     // Rate limiting
     const rateLimitResult = await checkRateLimit(user.id, "csv-import");
     if (!rateLimitResult.allowed) {
-      return rateLimitResponse(corsHeaders, rateLimitResult.retryAfterSeconds);
+      return rateLimitResponse(corsHeaders, rateLimitResult);
     }
 
     const { headers, sampleRows, orgId } = await req.json();
