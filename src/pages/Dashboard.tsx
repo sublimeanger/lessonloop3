@@ -21,8 +21,8 @@ import {
   UrgentActionsBar,
 } from '@/components/dashboard';
 import { 
-  Calendar, Users, Receipt, Clock, TrendingUp, 
-  Building2, Loader2, AlertCircle, ChevronRight 
+  Calendar, Users, Receipt, Clock, TrendingUp, PoundSterling,
+  Building2, Loader2, AlertCircle, ChevronRight, BookOpen
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -186,16 +186,18 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
           </SectionErrorBoundary>
         </motion.div>
 
-        {/* Stats Grid */}
+        {/* Stats Grid — 6 cards */}
         <motion.div variants={itemVariants}>
           {isLoading ? (
-            <GridSkeleton count={4} columns={4} />
+            <GridSkeleton count={6} columns={3} />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <StatCard title="Today's Lessons" value={stats?.todayLessons ?? 0} subtitle="Scheduled for today" icon={Calendar} href="/calendar" variant="teal" />
               <StatCard title="Active Students" value={stats?.activeStudents ?? 0} subtitle="Currently enrolled" icon={Users} href="/students" variant="coral" />
-              <StatCard title="Outstanding" value={formatCurrency((stats?.outstandingAmount ?? 0) / 100)} subtitle={(stats?.outstandingAmount ?? 0) > 0 ? 'View ageing report' : 'All invoices paid'} icon={Receipt} href="/reports/outstanding" variant="violet" />
-              <StatCard title="This Week" value={`${stats?.hoursThisWeek ?? 0}h`} subtitle={`${stats?.lessonsThisWeek ?? 0} lessons scheduled`} icon={Clock} href="/calendar" variant="emerald" />
+              <StatCard title="This Week" value={`${stats?.lessonsThisWeek ?? 0} lessons`} subtitle={`${stats?.hoursThisWeek ?? 0} teaching hours`} icon={Clock} href="/calendar" variant="emerald" />
+              <StatCard title="Revenue (MTD)" value={formatCurrency((stats?.revenueMTD ?? 0) / 100)} subtitle="Month to date" icon={PoundSterling} href="/reports/revenue" variant="violet" />
+              <StatCard title="Outstanding" value={formatCurrency((stats?.outstandingAmount ?? 0) / 100)} subtitle={(stats?.outstandingAmount ?? 0) > 0 ? 'View ageing report' : 'All invoices paid'} icon={Receipt} href="/reports/outstanding" variant="coral" />
+              <StatCard title="Total Lessons" value={stats?.totalLessons ?? 0} subtitle="All time" icon={BookOpen} href="/reports/lessons-delivered" variant="teal" />
             </div>
           )}
         </motion.div>
@@ -271,16 +273,18 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
           </SectionErrorBoundary>
         </motion.div>
 
-        {/* Stats Grid */}
+        {/* Stats Grid — 6 cards */}
         <motion.div variants={itemVariants}>
           {isLoading ? (
-            <GridSkeleton count={4} columns={4} />
+            <GridSkeleton count={6} columns={3} />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <StatCard title="Today's Lessons" value={stats?.todayLessons ?? 0} subtitle="Across all teachers" icon={Calendar} href="/calendar" variant="teal" />
               <StatCard title="Active Students" value={stats?.activeStudents ?? 0} subtitle="Currently enrolled" icon={Users} href="/students" variant="coral" />
-              <StatCard title="Revenue (MTD)" value={formatCurrency((stats?.revenueMTD ?? 0) / 100)} subtitle="Month to date" icon={TrendingUp} href="/reports/revenue" variant="emerald" />
+              <StatCard title="This Week" value={`${stats?.lessonsThisWeek ?? 0} lessons`} subtitle={`${stats?.hoursThisWeek ?? 0} teaching hours`} icon={Clock} href="/calendar" variant="emerald" />
+              <StatCard title="Revenue (MTD)" value={formatCurrency((stats?.revenueMTD ?? 0) / 100)} subtitle="Month to date" icon={PoundSterling} href="/reports/revenue" variant="emerald" />
               <StatCard title="Outstanding" value={formatCurrency((stats?.outstandingAmount ?? 0) / 100)} subtitle="Awaiting payment" icon={Receipt} href="/reports/outstanding" variant="violet" />
+              <StatCard title="Total Lessons" value={stats?.totalLessons ?? 0} subtitle="All time" icon={BookOpen} href="/reports/lessons-delivered" variant="teal" />
             </div>
           )}
         </motion.div>
