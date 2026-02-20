@@ -4,6 +4,7 @@ import { jsPDF } from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrencyMinor, formatDateUK } from '@/lib/utils';
 import { parseISO } from 'date-fns';
 
@@ -38,6 +39,7 @@ export function useInvoicePdf() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { currentOrg } = useOrg();
+  const { user } = useAuth();
 
   const downloadPdf = async (invoiceId: string, invoiceNumber: string) => {
     setIsLoading(true);
@@ -86,6 +88,19 @@ export function useInvoicePdf() {
       };
 
       generatePdf(fullInvoice, orgDetails, currency, invoiceNumber);
+
+      // Audit log: PDF generated
+      if (currentOrg?.id && user?.id) {
+        supabase.from('audit_log').insert({
+          action: 'pdf_generated',
+          entity_type: 'invoice',
+          entity_id: invoiceId,
+          actor_user_id: user.id,
+          org_id: currentOrg.id,
+        }).then(({ error: auditErr }) => {
+          if (auditErr) logger.error('Audit log error:', auditErr);
+        });
+      }
 
       toast({
         title: 'Download Complete',
