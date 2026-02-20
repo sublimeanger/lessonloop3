@@ -138,6 +138,7 @@ Deno.serve(async (req) => {
     });
   }
 
+  try {
     // --- IP-based rate limiting ---
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
       || req.headers.get("cf-connecting-ip")
