@@ -1,5 +1,6 @@
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
-
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "../_shared/rate-limit.ts";
 const SYSTEM_PROMPT = `You are LessonLoop's friendly AI assistant on our marketing website. You help prospective customers learn about LessonLoop — the UK's purpose-built scheduling, invoicing, and management platform for music teachers, studios, and teaching agencies.
 
 ## Your Personality
@@ -137,7 +138,52 @@ Deno.serve(async (req) => {
     });
   }
 
-  try {
+    // --- IP-based rate limiting ---
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || req.headers.get("cf-connecting-ip")
+      || "unknown";
+
+    // Per-IP limit: 20 requests/hour
+    const ipResult = await checkRateLimit(
+      `marketing-${clientIp}`,
+      "marketing-chat",
+      { maxRequests: 20, windowMinutes: 60 }
+    );
+    if (!ipResult.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: "You've sent quite a few messages! Please try again in a few minutes, or contact us directly via our contact form.",
+          retryAfterSeconds: ipResult.retryAfterSeconds,
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": String(ipResult.retryAfterSeconds ?? 300),
+          },
+        }
+      );
+    }
+
+    // Global daily cap: 1000 requests/day across all IPs
+    const dailyResult = await checkRateLimit(
+      "marketing-chat-global",
+      "marketing-chat-daily",
+      { maxRequests: 1000, windowMinutes: 1440 }
+    );
+    if (!dailyResult.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: "Our chat assistant is undergoing maintenance. Please use our contact form or email us directly.",
+        }),
+        {
+          status: 503,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const { messages } = await req.json();
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {

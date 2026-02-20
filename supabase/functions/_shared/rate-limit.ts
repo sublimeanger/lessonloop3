@@ -23,6 +23,10 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   "stripe-create-checkout": { maxRequests: 10, windowMinutes: 60 },
   "record-payment":        { maxRequests: 10,  windowMinutes: 60 },
 
+  // Marketing chat (IP-based)
+  "marketing-chat":        { maxRequests: 20,  windowMinutes: 60 },
+  "marketing-chat-daily":  { maxRequests: 1000, windowMinutes: 1440 },
+
   // Data imports
   "csv-import":            { maxRequests: 10,  windowMinutes: 10 },
 
