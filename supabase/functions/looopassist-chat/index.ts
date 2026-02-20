@@ -239,7 +239,7 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
         const studentNames = l.lesson_participants?.map(p => 
           p.students ? `${p.students.first_name} ${p.students.last_name}` : ""
         ).filter(Boolean).join(", ") || "No students";
-        lessonSummary += `\n  - [Lesson:${l.id}] ${time} ${l.title} with ${studentNames}`;
+        lessonSummary += `\n  - [Lesson:${l.id}:${l.title}] ${time} with ${studentNames}`;
       });
     });
   }
@@ -249,7 +249,7 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
   if ((students || []).length > 0) {
     studentSummary += `\n\nACTIVE STUDENTS (${students.length}):`;
     students.slice(0, 15).forEach((s: Student) => {
-      studentSummary += `\n- [Student:${s.id}] ${s.first_name} ${s.last_name}`;
+      studentSummary += `\n- [Student:${s.id}:${s.first_name} ${s.last_name}]`;
     });
     if (students.length > 15) {
       studentSummary += `\n... and ${students.length - 15} more`;
@@ -261,7 +261,7 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
   if ((guardians || []).length > 0) {
     guardianSummary += `\n\nGUARDIANS (${guardians.length}):`;
     guardians.slice(0, 10).forEach((g: Guardian) => {
-      guardianSummary += `\n- [Guardian:${g.id}] ${g.full_name}${g.email ? ` (${g.email})` : ""}`;
+      guardianSummary += `\n- [Guardian:${g.id}:${g.full_name}]${g.email ? ` (${g.email})` : ""}`;
     });
     if (guardians.length > 10) {
       guardianSummary += `\n... and ${guardians.length - 10} more`;
@@ -315,7 +315,7 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
     unmarkedSummary += `\n\nUNMARKED PAST LESSONS (${unmarkedLessons.length}):`;
     unmarkedLessons.slice(0, 5).forEach((l: any) => {
       const date = new Date(l.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-      unmarkedSummary += `\n- [Lesson:${l.id}] ${date}: ${l.title}`;
+      unmarkedSummary += `\n- [Lesson:${l.id}:${l.title}] ${date}`;
     });
     if (unmarkedLessons.length > 5) {
       unmarkedSummary += `\n... and ${unmarkedLessons.length - 5} more unmarked lessons`;
@@ -362,7 +362,7 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
 
   if (!student) return "";
 
-  let context = `\n\nDEEP STUDENT CONTEXT for [Student:${student.id}] ${student.first_name} ${student.last_name}:`;
+  let context = `\n\nDEEP STUDENT CONTEXT for [Student:${student.id}:${student.first_name} ${student.last_name}]:`;
   context += `\nStatus: ${student.status}`;
   context += `\nEmail: ${student.email || "Not provided"}`;
   context += `\nPhone: ${student.phone || "Not provided"}`;
@@ -375,7 +375,7 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
     context += "\n\nGuardians:";
     guardianLinks.forEach((link: any) => {
       if (link.guardians) {
-        context += `\n  - [Guardian:${link.guardians.id}] ${link.guardians.full_name} (${link.relationship})`;
+        context += `\n  - [Guardian:${link.guardians.id}:${link.guardians.full_name}] (${link.relationship})`;
         if (userRole !== "teacher" && link.guardians.email) {
           context += ` - ${link.guardians.email}`;
         }
@@ -398,7 +398,7 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
     context += `\n\nUpcoming Lessons (${upcoming.length}):`;
     upcoming.forEach((lp: any) => {
       const date = new Date(lp.lessons.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-      context += `\n  - [Lesson:${lp.lessons.id}] ${date}: ${lp.lessons.title}`;
+      context += `\n  - [Lesson:${lp.lessons.id}:${lp.lessons.title}] ${date}`;
     });
   }
 
@@ -416,7 +416,7 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
     context += `\n\nRecent Completed Lessons (${completed.length}):`;
     completed.forEach((lp: any) => {
       const date = new Date(lp.lessons.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-      context += `\n  - [Lesson:${lp.lessons.id}] ${date}: ${lp.lessons.title} (${lp.lessons.status})`;
+      context += `\n  - [Lesson:${lp.lessons.id}:${lp.lessons.title}] ${date} (${lp.lessons.status})`;
     });
   }
 
