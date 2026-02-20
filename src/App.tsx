@@ -33,6 +33,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Onboarding from "./pages/Onboarding";
 import AcceptInvite from "./pages/AcceptInvite";
+import VerifyEmail from "./pages/VerifyEmail";
 
 // App Pages
 import Dashboard from "./pages/Dashboard";
@@ -104,6 +105,13 @@ const App = () => (
               <Route path="/onboarding" element={
                 <RouteGuard requireOnboarding={false}>
                   <Onboarding />
+                </RouteGuard>
+              } />
+
+              {/* Email verification (requires auth but not onboarding/verification) */}
+              <Route path="/verify-email" element={
+                <RouteGuard requireOnboarding={false}>
+                  <VerifyEmail />
                 </RouteGuard>
               } />
               
