@@ -23,12 +23,15 @@ export interface RevenueByMonth {
   monthLabel: string; // e.g. "Jan 2026"
   paidAmount: number;
   invoiceCount: number;
+  previousPaidAmount?: number;
 }
 
 export interface RevenueData {
   months: RevenueByMonth[];
   totalRevenue: number;
   averageMonthly: number;
+  previousPeriodRevenue: number;
+  growthPercent: number | null; // null if no previous data
 }
 
 export function useRevenueReport(startDate: string, endDate: string) {
@@ -37,51 +40,83 @@ export function useRevenueReport(startDate: string, endDate: string) {
   return useQuery({
     queryKey: ['revenue-report', currentOrg?.id, startDate, endDate],
     queryFn: async (): Promise<RevenueData> => {
-      if (!currentOrg) return { months: [], totalRevenue: 0, averageMonthly: 0 };
+      if (!currentOrg) return { months: [], totalRevenue: 0, averageMonthly: 0, previousPeriodRevenue: 0, growthPercent: null };
 
-      const { data: invoices, error } = await supabase
-        .from('invoices')
-        .select('id, total_minor, issue_date, status')
-        .eq('org_id', currentOrg.id)
-        .eq('status', 'paid')
-        .gte('issue_date', startDate)
-        .lte('issue_date', endDate)
-        .limit(10000);
+      // Calculate previous period dates (same duration, shifted back)
+      const startParsed = parseISO(startDate);
+      const endParsed = parseISO(endDate);
+      const durationMonths = Math.round((endParsed.getTime() - startParsed.getTime()) / (30.44 * 24 * 60 * 60 * 1000)) + 1;
+      const prevStartDate = format(subMonths(startParsed, durationMonths), 'yyyy-MM-dd');
+      const prevEndDate = format(subMonths(endParsed, durationMonths), 'yyyy-MM-dd');
 
-      if (error) throw error;
+      // Fetch current and previous period invoices in parallel
+      const [currentResult, prevResult] = await Promise.all([
+        supabase
+          .from('invoices')
+          .select('id, total_minor, issue_date, status')
+          .eq('org_id', currentOrg.id)
+          .eq('status', 'paid')
+          .gte('issue_date', startDate)
+          .lte('issue_date', endDate)
+          .limit(10000),
+        supabase
+          .from('invoices')
+          .select('id, total_minor, issue_date, status')
+          .eq('org_id', currentOrg.id)
+          .eq('status', 'paid')
+          .gte('issue_date', prevStartDate)
+          .lte('issue_date', prevEndDate)
+          .limit(10000),
+      ]);
 
-      // Group by month
+      if (currentResult.error) throw currentResult.error;
+
+      // Group current period by month
       const monthMap = new Map<string, { paidAmount: number; invoiceCount: number }>();
-      
-      for (const inv of invoices || []) {
-        const monthKey = inv.issue_date.substring(0, 7); // YYYY-MM
+      for (const inv of currentResult.data || []) {
+        const monthKey = inv.issue_date.substring(0, 7);
         const existing = monthMap.get(monthKey) || { paidAmount: 0, invoiceCount: 0 };
         existing.paidAmount += inv.total_minor / 100;
         existing.invoiceCount += 1;
         monthMap.set(monthKey, existing);
       }
 
+      // Group previous period by month (offset to align with current period months)
+      const prevMonthMap = new Map<string, number>();
+      for (const inv of prevResult.data || []) {
+        const monthKey = inv.issue_date.substring(0, 7);
+        prevMonthMap.set(monthKey, (prevMonthMap.get(monthKey) || 0) + inv.total_minor / 100);
+      }
+
       // Build continuous array of all months in range
       const months: RevenueByMonth[] = [];
       let cursor = startOfMonth(parseISO(startDate));
       const rangeEnd = startOfMonth(parseISO(endDate));
+      let prevCursor = startOfMonth(parseISO(prevStartDate));
 
       while (cursor <= rangeEnd) {
         const key = format(cursor, 'yyyy-MM');
+        const prevKey = format(prevCursor, 'yyyy-MM');
         const data = monthMap.get(key) || { paidAmount: 0, invoiceCount: 0 };
         months.push({
           month: key,
           monthLabel: format(cursor, 'MMM yyyy'),
           paidAmount: data.paidAmount,
           invoiceCount: data.invoiceCount,
+          previousPaidAmount: prevMonthMap.get(prevKey) || 0,
         });
         cursor = addMonths(cursor, 1);
+        prevCursor = addMonths(prevCursor, 1);
       }
 
       const totalRevenue = months.reduce((sum, m) => sum + m.paidAmount, 0);
       const averageMonthly = months.length > 0 ? totalRevenue / months.length : 0;
+      const previousPeriodRevenue = (prevResult.data || []).reduce((sum, inv) => sum + inv.total_minor / 100, 0);
+      const growthPercent = previousPeriodRevenue > 0
+        ? ((totalRevenue - previousPeriodRevenue) / previousPeriodRevenue) * 100
+        : null;
 
-      return { months, totalRevenue, averageMonthly };
+      return { months, totalRevenue, averageMonthly, previousPeriodRevenue, growthPercent };
     },
     enabled: !!currentOrg && !!startDate && !!endDate,
     staleTime: 10 * 60 * 1000, // 10 min — expensive aggregation

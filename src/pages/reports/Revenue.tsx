@@ -12,7 +12,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { useRevenueReport, exportRevenueToCSV } from '@/hooks/useReports';
 import { useOrg } from '@/contexts/OrgContext';
 import { formatCurrency, currencySymbol } from '@/lib/utils';
-import { Download, TrendingUp, PoundSterling, FileSpreadsheet, Receipt } from 'lucide-react';
+import { Download, TrendingUp, TrendingDown, FileSpreadsheet, Receipt } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
 
@@ -93,6 +93,16 @@ export default function RevenueReport() {
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold text-primary">{fmtCurrency(data.totalRevenue)}</p>
+                {data.growthPercent !== null && (
+                  <div className={`flex items-center gap-1 text-sm mt-1 ${data.growthPercent >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {data.growthPercent >= 0 ? (
+                      <TrendingUp className="h-4 w-4" />
+                    ) : (
+                      <TrendingDown className="h-4 w-4" />
+                    )}
+                    <span>{data.growthPercent >= 0 ? '+' : ''}{data.growthPercent.toFixed(1)}% vs previous period</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
             <Card>
@@ -137,10 +147,14 @@ export default function RevenueReport() {
                       className="text-xs"
                     />
                     <Tooltip 
-                      formatter={(value: number) => [fmtCurrency(value), 'Revenue']}
+                      formatter={(value: number, name: string) => [
+                        fmtCurrency(value),
+                        name === 'paidAmount' ? 'Current' : 'Previous Period',
+                      ]}
                       labelClassName="font-medium"
                     />
-                    <Bar dataKey="paidAmount" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="previousPaidAmount" name="Previous Period" fill="hsl(var(--muted-foreground) / 0.25)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="paidAmount" name="Current" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

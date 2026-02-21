@@ -10,14 +10,15 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { useAgeingReport, exportAgeingToCSV } from '@/hooks/useReports';
 import { useOrg } from '@/contexts/OrgContext';
 import { formatCurrency, formatDateUK } from '@/lib/utils';
-import { Download, Clock, AlertTriangle, CheckCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Download, Clock, AlertTriangle, CheckCircle, ChevronDown, ChevronRight, Send, Megaphone } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
 export default function OutstandingReport() {
   const { currentOrg } = useOrg();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { data, isLoading, error } = useAgeingReport();
   const [expandedBuckets, setExpandedBuckets] = useState<Set<string>>(new Set(['Current (0-7 days)']));
 
@@ -139,6 +140,20 @@ export default function OutstandingReport() {
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
+                        {bucket.label.includes('30+') && bucket.count > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toast({ title: 'Coming soon', description: 'Bulk reminders coming soon.' });
+                            }}
+                          >
+                            <Megaphone className="h-3.5 w-3.5" />
+                            Chase All
+                          </Button>
+                        )}
                         <Badge variant={getBucketBadgeVariant(bucket.label)}>
                           {fmtCurrency(bucket.totalAmount)}
                         </Badge>
@@ -161,6 +176,7 @@ export default function OutstandingReport() {
                               <TableHead>Due Date</TableHead>
                               <TableHead className="text-right">Days Overdue</TableHead>
                               <TableHead className="text-right">Amount</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -185,6 +201,19 @@ export default function OutstandingReport() {
                                 </TableCell>
                                 <TableCell className="text-right font-medium">
                                   {fmtCurrency(inv.totalMinor / 100)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {inv.daysOverdue > 0 && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="gap-1.5 h-8"
+                                      onClick={() => navigate(`/invoices/${inv.id}?action=remind`)}
+                                    >
+                                      <Send className="h-3.5 w-3.5" />
+                                      Remind
+                                    </Button>
+                                  )}
                                 </TableCell>
                               </TableRow>
                             ))}
