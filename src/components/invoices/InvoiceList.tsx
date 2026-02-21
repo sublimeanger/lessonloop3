@@ -243,7 +243,7 @@ export function InvoiceList({
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs font-mono text-muted-foreground">
+                <span className="text-xs tabular-nums text-muted-foreground">
                   {invoice.invoice_number}
                 </span>
                 {/* Mobile-only due date */}
@@ -267,7 +267,7 @@ export function InvoiceList({
 
             {/* Amount */}
             <div className="w-24 text-right shrink-0">
-              <span className="text-sm font-mono font-semibold text-foreground">
+              <span className="text-sm font-semibold tabular-nums text-foreground">
                 {formatCurrencyMinor(invoice.total_minor, currency)}
               </span>
             </div>

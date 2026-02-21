@@ -103,10 +103,10 @@ export function MobileDayView({
             >
               {/* Time column */}
               <div className="w-14 shrink-0 flex flex-col items-end justify-start pr-3 pt-0.5">
-                <span className="text-sm font-semibold font-mono text-foreground leading-tight">
+                <span className="text-sm font-semibold tabular-nums text-foreground leading-tight">
                   {format(startTime, 'HH:mm')}
                 </span>
-                <span className="text-[11px] font-mono text-muted-foreground leading-tight">
+                <span className="text-[11px] tabular-nums text-muted-foreground leading-tight">
                   {format(endTime, 'HH:mm')}
                 </span>
               </div>

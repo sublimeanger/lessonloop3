@@ -143,12 +143,12 @@ function InvoiceDemo() {
         {items.map((item, i) => (
           <div key={i} className="flex justify-between text-xs text-muted-foreground py-1">
             <span>{item.name}</span>
-            <span className="font-mono">{item.amount}</span>
+            <span className="tabular-nums">{item.amount}</span>
           </div>
         ))}
         <div className="flex justify-between text-sm font-semibold text-foreground pt-2 mt-2 border-t border-border">
           <span>Total</span>
-          <span className="font-mono">£135</span>
+          <span className="tabular-nums">£135</span>
         </div>
       </motion.div>
       <motion.div

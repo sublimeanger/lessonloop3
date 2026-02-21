@@ -50,7 +50,7 @@ function StackedCard({
       {/* Content */}
       <div className="flex-1 min-w-0 pl-1 pr-0.5 py-px">
         <span className={cn(
-          'text-[9px] sm:text-[10px] font-mono text-muted-foreground tabular-nums',
+          'text-[9px] sm:text-[10px] text-muted-foreground tabular-nums',
           isCancelled && 'line-through',
         )}>
           {format(startTime, 'H:mm')}

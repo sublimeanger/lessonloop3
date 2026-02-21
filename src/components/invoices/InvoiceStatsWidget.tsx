@@ -77,12 +77,12 @@ export function InvoiceStatsWidget({ onFilterStatus }: InvoiceStatsWidgetProps =
                 stat.color,
               )}
             >
-              <span className="font-mono font-semibold text-foreground">{stat.value}</span>
+              <span className="font-semibold tabular-nums text-foreground">{stat.value}</span>
               <span>{stat.label}</span>
             </button>
           ) : (
             <span className={cn('inline-flex items-center gap-1', stat.color)}>
-              <span className="font-mono font-semibold text-foreground">{stat.value}</span>
+              <span className="font-semibold tabular-nums text-foreground">{stat.value}</span>
               <span>{stat.label}</span>
             </span>
           )}

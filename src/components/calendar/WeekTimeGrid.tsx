@@ -536,7 +536,7 @@ export function WeekTimeGrid({
                           />
                         </div>
                         {/* Time tooltip */}
-                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-[10px] font-mono px-1.5 py-0.5 rounded shadow">
+                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-[10px] tabular-nums px-1.5 py-0.5 rounded shadow">
                           {formatTimeFromTop(dragState.currentTop, START_HOUR, END_HOUR)}
                         </div>
                       </div>

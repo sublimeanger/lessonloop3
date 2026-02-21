@@ -81,7 +81,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
         <div className="flex items-center gap-4 p-4">
           {/* Time */}
           <div className="w-28 shrink-0">
-            <div className="font-mono text-sm font-medium">{timeDisplay}</div>
+            <div className="text-sm font-medium tabular-nums">{timeDisplay}</div>
           </div>
 
           {/* Lesson Info */}

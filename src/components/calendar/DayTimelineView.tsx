@@ -219,7 +219,7 @@ export function DayTimelineView({
               className="relative"
               style={{ height: DAY_HOUR_HEIGHT }}
             >
-              <span className="absolute -top-2 right-2 text-caption text-muted-foreground font-mono tabular-nums">
+              <span className="absolute -top-2 right-2 text-caption text-muted-foreground tabular-nums">
                 {format(setHours(new Date(), hour), 'HH:mm')}
               </span>
             </div>
@@ -339,7 +339,7 @@ export function DayTimelineView({
                     </p>
                   )}
                   {height >= 60 && (
-                    <p className="text-micro text-muted-foreground font-mono tabular-nums mt-0.5">
+                    <p className="text-micro text-muted-foreground tabular-nums mt-0.5">
                       {startTime}–{endTime}
                     </p>
                   )}
