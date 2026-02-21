@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { DateRangeFilter } from '@/components/reports/DateRangeFilter';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
-import { LoadingState } from '@/components/shared/LoadingState';
+import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useCancellationReport, exportCancellationToCSV } from '@/hooks/useReports';
 import { useOrg } from '@/contexts/OrgContext';
@@ -74,7 +74,7 @@ export default function CancellationReport() {
       />
 
       {isLoading ? (
-        <LoadingState />
+        <ReportSkeleton variant="summary-chart-table" />
       ) : error ? (
         <EmptyState icon={XCircle} title="Error loading report" description={error.message} />
       ) : !data || data.totalScheduled === 0 ? (
