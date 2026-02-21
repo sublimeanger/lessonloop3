@@ -290,14 +290,6 @@ export default function PortalSchedule() {
                   </span>
                 </Button>
               )}
-              {/* Message button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleRequestChange({ id: lesson.id, title: lesson.title })}
-              >
-                <MessageSquare className="h-4 w-4" />
-              </Button>
             </div>
           )}
         </div>
