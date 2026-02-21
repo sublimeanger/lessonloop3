@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { LoadingState } from '@/components/shared/LoadingState';
+import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useAgeingReport, exportAgeingToCSV } from '@/hooks/useReports';
 import { useOrg } from '@/contexts/OrgContext';
@@ -79,7 +79,7 @@ export default function OutstandingReport() {
       />
 
       {isLoading ? (
-        <LoadingState />
+        <ReportSkeleton variant="summary-table" />
       ) : error ? (
         <EmptyState icon={Clock} title="Error loading report" description={error.message} />
       ) : !data || data.totalOutstanding === 0 ? (

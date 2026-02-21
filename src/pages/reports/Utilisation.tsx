@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { LoadingState } from '@/components/shared/LoadingState';
+import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -290,7 +290,7 @@ export default function UtilisationReport() {
       </Card>
 
       {isLoading ? (
-        <LoadingState />
+        <ReportSkeleton variant="summary-chart" />
       ) : error ? (
         <EmptyState icon={MapPin} title="Error loading report" description={error.message} />
       ) : !data || data.rooms.length === 0 ? (

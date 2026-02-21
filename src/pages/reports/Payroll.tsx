@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { DateRangeFilter } from '@/components/reports/DateRangeFilter';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { LoadingState } from '@/components/shared/LoadingState';
+import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { usePayroll, exportPayrollToCSV } from '@/hooks/usePayroll';
 import { useOrg } from '@/contexts/OrgContext';
@@ -93,7 +93,7 @@ export default function PayrollReport() {
       />
 
       {isLoading ? (
-        <LoadingState />
+        <ReportSkeleton variant="summary-table" />
       ) : error ? (
         <EmptyState
           icon={FileSpreadsheet}
