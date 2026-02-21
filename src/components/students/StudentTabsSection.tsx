@@ -7,6 +7,7 @@ import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { TeacherAssignmentsPanel } from './TeacherAssignmentsPanel';
 import { MakeUpCreditsPanel } from './MakeUpCreditsPanel';
 import { StudentPracticePanel } from './StudentPracticePanel';
+import { StudentLessonNotes } from './StudentLessonNotes';
 import { StudentInfoCard } from './StudentInfoCard';
 import { GuardiansCard } from './GuardiansCard';
 import { MessageList } from '@/components/messages/MessageList';
@@ -211,18 +212,7 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
 
       <TabsContent value="notes">
         <SectionErrorBoundary name="Notes">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notes</CardTitle>
-              <CardDescription>Lesson notes and progress observations</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center py-8 text-center">
-                <p className="font-medium">No notes yet</p>
-                <p className="mt-1 text-sm text-muted-foreground">Add notes after lessons to track progress.</p>
-              </div>
-            </CardContent>
-          </Card>
+          <StudentLessonNotes studentId={student.id} />
         </SectionErrorBoundary>
       </TabsContent>
 
