@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { format, isSameDay, parseISO, isToday, differenceInMinutes, addMinutes, setHours, setMinutes, startOfDay } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { LessonCard } from './LessonCard';
-import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS } from './teacherColours';
+import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS, getTeacherColour } from './teacherColours';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Plus } from 'lucide-react';
@@ -12,15 +12,11 @@ interface ClosureInfo {
   reason: string;
 }
 
-function resolveColourByUserId(
+function resolveColour(
   colourMap: Map<string, TeacherWithColour>,
-  teacherUserId: string | null | undefined
+  teacherId: string | null | undefined
 ): TeacherColourEntry {
-  if (!teacherUserId) return TEACHER_COLOURS[0];
-  for (const entry of colourMap.values()) {
-    if (entry.userId === teacherUserId) return entry.colour;
-  }
-  return TEACHER_COLOURS[0];
+  return getTeacherColour(colourMap, teacherId);
 }
 
 interface MobileWeekViewProps {
@@ -258,9 +254,9 @@ export function MobileWeekView({
                 {/* Stacked lesson cards */}
                 <div className="flex-1 p-0.5 space-y-px">
                   {dayLessons.map((lesson) => {
-                    const colour = resolveColourByUserId(
+                    const colour = resolveColour(
                       teacherColourMap,
-                      lesson.teacher_user_id
+                      lesson.teacher_id
                     );
                     const isDragging = dragLesson?.id === lesson.id;
                     return (

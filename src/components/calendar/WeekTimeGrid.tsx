@@ -19,7 +19,7 @@ import { LessonWithDetails } from './types';
 import { LessonCard } from './LessonCard';
 import { computeOverlapLayout } from './overlapLayout';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS } from './teacherColours';
+import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS, getTeacherColour } from './teacherColours';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -33,15 +33,11 @@ import { useResizeLesson } from './useResizeLesson';
 import { HOUR_HEIGHT, DEFAULT_START_HOUR, DEFAULT_END_HOUR } from './calendarConstants';
 
 // ─── Helpers ─────────────────────────────────────────────────
-function resolveColourByUserId(
+function resolveColour(
   colourMap: Map<string, TeacherWithColour>,
-  teacherUserId: string | null | undefined
+  teacherId: string | null | undefined
 ): TeacherColourEntry {
-  if (!teacherUserId) return TEACHER_COLOURS[0];
-  for (const entry of colourMap.values()) {
-    if (entry.userId === teacherUserId) return entry.colour;
-  }
-  return TEACHER_COLOURS[0];
+  return getTeacherColour(colourMap, teacherId);
 }
 
 function getTimeFromY(y: number, startHour: number, endHour: number): { hour: number; minute: number } {
@@ -462,7 +458,7 @@ export function WeekTimeGrid({
                             onClick={() => {
                               if (!isLessonDragging && !isResizing) onLessonClick(lesson);
                             }}
-                            teacherColour={resolveColourByUserId(teacherColourMap, lesson.teacher_user_id)}
+                            teacherColour={resolveColour(teacherColourMap, lesson.teacher_id)}
                             showResizeHandle={!isParent && !!onLessonResize}
                             onResizeStart={(e) => startResize(lesson, e)}
                             compact={totalColumns >= 3}
@@ -505,7 +501,7 @@ export function WeekTimeGrid({
                                   lesson={lesson}
                                   variant="stacked"
                                   onClick={() => onLessonClick(lesson)}
-                                  teacherColour={resolveColourByUserId(teacherColourMap, lesson.teacher_user_id)}
+                                  teacherColour={resolveColour(teacherColourMap, lesson.teacher_id)}
                                 />
                               ))}
                             </div>
@@ -532,7 +528,7 @@ export function WeekTimeGrid({
                           <LessonCard
                             lesson={dragState.lesson}
                             onClick={() => {}}
-                            teacherColour={resolveColourByUserId(teacherColourMap, dragState.lesson.teacher_user_id)}
+                            teacherColour={resolveColour(teacherColourMap, dragState.lesson.teacher_id)}
                           />
                         </div>
                         {/* Time tooltip */}

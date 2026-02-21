@@ -11,7 +11,8 @@ export interface Lesson {
   end_at: string;
   lesson_type: LessonType;
   status: LessonStatus;
-  teacher_user_id: string;
+  teacher_id: string | null;
+  teacher_user_id?: string | null;
   location_id: string | null;
   room_id: string | null;
   online_meeting_url: string | null;
@@ -29,7 +30,7 @@ export interface LessonWithDetails extends Lesson {
   teacher?: {
     full_name: string | null;
     email: string | null;
-  };
+  } | null;
   location?: {
     name: string;
   };
@@ -52,7 +53,8 @@ export interface LessonWithDetails extends Lesson {
 
 export interface LessonFormData {
   lesson_type: LessonType;
-  teacher_user_id: string;
+  teacher_id: string;
+  teacher_user_id?: string | null;
   student_ids: string[];
   location_id: string | null;
   room_id: string | null;

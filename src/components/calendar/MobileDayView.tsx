@@ -1,19 +1,15 @@
 import { useMemo } from 'react';
 import { format, parseISO, differenceInMinutes, isSameDay } from 'date-fns';
 import { LessonWithDetails } from './types';
-import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS } from './teacherColours';
+import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS, getTeacherColour } from './teacherColours';
 import { cn } from '@/lib/utils';
 import { Calendar as CalendarIcon } from 'lucide-react';
 
-function resolveColourByUserId(
+function resolveColour(
   colourMap: Map<string, TeacherWithColour>,
-  teacherUserId: string | null | undefined
+  teacherId: string | null | undefined
 ): TeacherColourEntry {
-  if (!teacherUserId) return TEACHER_COLOURS[0];
-  for (const entry of colourMap.values()) {
-    if (entry.userId === teacherUserId) return entry.colour;
-  }
-  return TEACHER_COLOURS[0];
+  return getTeacherColour(colourMap, teacherId);
 }
 
 interface MobileDayViewProps {
@@ -58,7 +54,7 @@ export function MobileDayView({
         const startTime = parseISO(lesson.start_at);
         const endTime = parseISO(lesson.end_at);
         const duration = differenceInMinutes(endTime, startTime);
-        const colour = resolveColourByUserId(teacherColourMap, lesson.teacher_user_id);
+        const colour = resolveColour(teacherColourMap, lesson.teacher_id);
         const isCancelled = lesson.status === 'cancelled';
         const isCompleted = lesson.status === 'completed';
         const isSaving = savingLessonIds?.has(lesson.id);

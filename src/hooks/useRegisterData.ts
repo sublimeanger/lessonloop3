@@ -74,10 +74,22 @@ export function useRegisterData(date: Date) {
         .lte('start_at', dayEnd)
         .order('start_at', { ascending: true });
 
-      // Filter by teacher's teacher_id (lookup by user_id) for teacher role
+      // Filter by teacher_id for teacher role
       if (isTeacher && user) {
-        // Use teacher_user_id for backward compat until all data migrated
-        query = query.eq('teacher_user_id', user.id);
+        // Look up teacher record by user_id, then filter by teacher_id
+        const { data: teacherRecord } = await supabase
+          .from('teachers')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('org_id', currentOrg.id)
+          .maybeSingle();
+        
+        if (teacherRecord) {
+          query = query.eq('teacher_id', teacherRecord.id);
+        } else {
+          // Fallback for legacy data
+          query = query.eq('teacher_user_id', user.id);
+        }
       }
 
       const { data: lessonsData, error } = await query;

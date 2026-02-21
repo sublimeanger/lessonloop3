@@ -98,9 +98,7 @@ export function CalendarMobileLayout({
         onClose={() => actions.setMobileSheetOpen(false)}
         onEdit={actions.openEditFromMobileSheet}
         onOpenDetail={actions.openDetailFromMobileSheet}
-        teacherColour={getTeacherColour(teacherColourMap, actions.mobileSheetLesson?.teacher_user_id
-          ? teachers.find(t => t.userId === actions.mobileSheetLesson!.teacher_user_id)?.id ?? null
-          : null)}
+        teacherColour={getTeacherColour(teacherColourMap, actions.mobileSheetLesson?.teacher_id ?? null)}
       />
     </AppLayout>
   );
