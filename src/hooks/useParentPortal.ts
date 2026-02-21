@@ -168,7 +168,16 @@ export function useParentLessons(options?: { studentId?: string; status?: string
 
       if (!links || links.length === 0) return [];
 
-      let studentIds = links.map(l => l.student_id);
+      // Filter to only active, non-deleted students
+      const { data: activeStudents } = await supabase
+        .from('students')
+        .select('id')
+        .in('id', links.map(l => l.student_id))
+        .eq('status', 'active')
+        .is('deleted_at', null);
+
+      let studentIds = activeStudents?.map(s => s.id) || [];
+      if (studentIds.length === 0) return [];
       if (options?.studentId) {
         studentIds = studentIds.filter(id => id === options.studentId);
       }
