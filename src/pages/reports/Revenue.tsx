@@ -72,7 +72,7 @@ export default function RevenueReport() {
         <EmptyState icon={FileSpreadsheet} title="Error loading report" description={error.message} />
       ) : !data || data.months.length === 0 ? (
         <EmptyState
-          icon={PoundSterling}
+          icon={TrendingUp}
           title="Not enough data for reports yet"
           description="Reports will populate as you complete lessons and generate invoices."
         >
@@ -87,7 +87,7 @@ export default function RevenueReport() {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription className="flex items-center gap-2">
-                  <PoundSterling className="h-4 w-4" />
+                  <TrendingUp className="h-4 w-4" />
                   Total Revenue
                 </CardDescription>
               </CardHeader>

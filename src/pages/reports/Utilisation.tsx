@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { SortableTableHead } from '@/components/reports/SortableTableHead';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
@@ -15,6 +16,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Download, MapPin, Clock, TrendingUp, Building2 } from 'lucide-react';
+import { useSortableTable } from '@/hooks/useSortableTable';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 // Default working hours
@@ -359,45 +361,7 @@ export default function UtilisationReport() {
           )}
 
           {/* Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Room Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Room</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead className="text-center">Capacity</TableHead>
-                    <TableHead className="text-right">Lessons</TableHead>
-                    <TableHead className="text-right">Booked Time</TableHead>
-                    <TableHead className="text-right">Utilisation</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.rooms.map((room) => (
-                    <TableRow key={room.roomId}>
-                      <TableCell className="font-medium">{room.roomName}</TableCell>
-                      <TableCell className="text-muted-foreground">{room.locationName}</TableCell>
-                      <TableCell className="text-center">
-                        {room.capacity ? room.capacity : '-'}
-                      </TableCell>
-                      <TableCell className="text-right">{room.lessonCount}</TableCell>
-                      <TableCell className="text-right">{formatHoursMinutes(room.bookedMinutes)}</TableCell>
-                      <TableCell className="text-right font-medium">
-                        {Math.round(room.utilisationPercent)}%
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {getUtilisationBadge(room.utilisationPercent)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <UtilisationRoomTable rooms={data.rooms} />
 
           {/* Tips */}
           <Card className="mt-6">
@@ -419,5 +383,61 @@ export default function UtilisationReport() {
         </>
       )}
     </AppLayout>
+  );
+}
+
+type UtilSortField = 'roomName' | 'lessonCount' | 'utilisationPercent';
+
+const utilComparators: Record<UtilSortField, (a: RoomUtilisationData, b: RoomUtilisationData) => number> = {
+  roomName: (a, b) => a.roomName.localeCompare(b.roomName),
+  lessonCount: (a, b) => a.lessonCount - b.lessonCount,
+  utilisationPercent: (a, b) => a.utilisationPercent - b.utilisationPercent,
+};
+
+function UtilisationRoomTable({ rooms }: { rooms: RoomUtilisationData[] }) {
+  const { sorted, sort, toggle } = useSortableTable<RoomUtilisationData, UtilSortField>(
+    rooms, 'utilisationPercent', 'desc', utilComparators
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Room Details</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <SortableTableHead label="Room" field="roomName" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} />
+              <TableHead>Location</TableHead>
+              <TableHead className="text-center">Capacity</TableHead>
+              <SortableTableHead label="Lessons" field="lessonCount" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} className="text-right" />
+              <TableHead className="text-right">Booked Time</TableHead>
+              <SortableTableHead label="Utilisation" field="utilisationPercent" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} className="text-right" />
+              <TableHead className="text-center">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sorted.map((room) => (
+              <TableRow key={room.roomId}>
+                <TableCell className="font-medium">{room.roomName}</TableCell>
+                <TableCell className="text-muted-foreground">{room.locationName}</TableCell>
+                <TableCell className="text-center">
+                  {room.capacity ? room.capacity : '-'}
+                </TableCell>
+                <TableCell className="text-right">{room.lessonCount}</TableCell>
+                <TableCell className="text-right">{formatHoursMinutes(room.bookedMinutes)}</TableCell>
+                <TableCell className="text-right font-medium">
+                  {Math.round(room.utilisationPercent)}%
+                </TableCell>
+                <TableCell className="text-center">
+                  {getUtilisationBadge(room.utilisationPercent)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }

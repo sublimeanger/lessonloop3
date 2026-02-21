@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -10,7 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { usePayroll, exportPayrollToCSV } from '@/hooks/usePayroll';
+import { SortableTableHead } from '@/components/reports/SortableTableHead';
+import { usePayroll, exportPayrollToCSV, type TeacherPayrollSummary } from '@/hooks/usePayroll';
+import { useSortableTable } from '@/hooks/useSortableTable';
 import { useOrg } from '@/contexts/OrgContext';
 import { formatCurrency, formatDateUK } from '@/lib/utils';
 import { Download, ChevronDown, ChevronRight, Banknote, Clock, Users, FileSpreadsheet, AlertTriangle } from 'lucide-react';
@@ -162,88 +164,143 @@ export default function PayrollReport() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {data.teachers.map((teacher) => (
-                  <Collapsible
-                    key={teacher.teacherId}
-                    open={expandedTeachers.has(teacher.teacherId)}
-                    onOpenChange={() => toggleTeacher(teacher.teacherId)}
-                  >
-                    <div className="rounded-lg border bg-card">
-                      <CollapsibleTrigger className="flex w-full items-center justify-between p-4 hover:bg-muted/50">
-                        <div className="flex items-center gap-4">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
-                            {teacher.teacherName[0]}
-                          </div>
-                          <div className="text-left">
-                            <p className="font-medium">{teacher.teacherName}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {getPayRateLabel(teacher.payRateType, teacher.payRateValue)}
-                            </p>
-                            {teacher.payRateType === 'percentage' && teacher.lessons.some(l => l.hasWarning) && (
-                              <p className="text-xs text-warning flex items-center gap-1 mt-0.5">
-                                <AlertTriangle className="h-3 w-3" />
-                                Revenue data needed — ensure lessons have been invoiced.
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-6">
-                          <div className="text-right">
-                            <p className="text-sm text-muted-foreground">Lessons</p>
-                            <p className="font-medium">{teacher.completedLessons}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-muted-foreground">Hours</p>
-                            <p className="font-medium">{teacher.totalHours}</p>
-                          </div>
-                          <div className="text-right min-w-[100px]">
-                            <p className="text-sm text-muted-foreground">Gross Owed</p>
-                            <p className="font-bold text-primary">{fmtCurrency(teacher.grossOwed)}</p>
-                          </div>
-                          {expandedTeachers.has(teacher.teacherId) ? (
-                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                          ) : (
-                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                          )}
-                        </div>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="border-t px-4 pb-4 pt-2">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Lesson</TableHead>
-                                <TableHead>Date</TableHead>
-                                <TableHead className="text-right">Duration</TableHead>
-                                <TableHead className="text-right">Pay</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {teacher.lessons.map((lesson) => (
-                                <TableRow key={lesson.id}>
-                                  <TableCell className="font-medium">{lesson.title}</TableCell>
-                                  <TableCell>
-                                    {format(new Date(lesson.startAt), 'd MMM yyyy, HH:mm')}
-                                  </TableCell>
-                                  <TableCell className="text-right">{lesson.durationMins} min</TableCell>
-                                  <TableCell className="text-right font-medium">
-                                    {fmtCurrency(lesson.calculatedPay)}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </CollapsibleContent>
-                    </div>
-                  </Collapsible>
-                ))}
-              </div>
+              <PayrollTeacherList
+                teachers={data.teachers}
+                expandedTeachers={expandedTeachers}
+                toggleTeacher={toggleTeacher}
+                fmtCurrency={fmtCurrency}
+                getPayRateLabel={getPayRateLabel}
+              />
             </CardContent>
           </Card>
         </>
       )}
     </AppLayout>
+  );
+}
+
+type PayrollSortField = 'name' | 'lessons' | 'hours' | 'gross';
+
+const payrollComparators: Record<PayrollSortField, (a: TeacherPayrollSummary, b: TeacherPayrollSummary) => number> = {
+  name: (a, b) => a.teacherName.localeCompare(b.teacherName),
+  lessons: (a, b) => a.completedLessons - b.completedLessons,
+  hours: (a, b) => a.totalHours - b.totalHours,
+  gross: (a, b) => a.grossOwed - b.grossOwed,
+};
+
+function PayrollTeacherList({
+  teachers,
+  expandedTeachers,
+  toggleTeacher,
+  fmtCurrency,
+  getPayRateLabel,
+}: {
+  teachers: TeacherPayrollSummary[];
+  expandedTeachers: Set<string>;
+  toggleTeacher: (id: string) => void;
+  fmtCurrency: (n: number) => string;
+  getPayRateLabel: (type: string | null, value: number) => string;
+}) {
+  const { sorted, sort, toggle } = useSortableTable<TeacherPayrollSummary, PayrollSortField>(
+    teachers, 'name', 'asc', payrollComparators
+  );
+
+  return (
+    <div className="space-y-2">
+      {/* Sort controls */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2 px-1">
+        <span>Sort by:</span>
+        {([
+          { field: 'name' as const, label: 'Name' },
+          { field: 'lessons' as const, label: 'Lessons' },
+          { field: 'hours' as const, label: 'Hours' },
+          { field: 'gross' as const, label: 'Gross Owed' },
+        ]).map(({ field, label }) => (
+          <button
+            key={field}
+            onClick={() => toggle(field)}
+            className={`cursor-pointer hover:text-foreground transition-colors ${sort.field === field ? 'text-foreground font-medium' : ''}`}
+          >
+            {label} {sort.field === field ? (sort.dir === 'asc' ? '↑' : '↓') : ''}
+          </button>
+        ))}
+      </div>
+      {sorted.map((teacher) => (
+        <Collapsible
+          key={teacher.teacherId}
+          open={expandedTeachers.has(teacher.teacherId)}
+          onOpenChange={() => toggleTeacher(teacher.teacherId)}
+        >
+          <div className="rounded-lg border bg-card">
+            <CollapsibleTrigger className="flex w-full items-center justify-between p-4 hover:bg-muted/50">
+              <div className="flex items-center gap-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
+                  {teacher.teacherName[0]}
+                </div>
+                <div className="text-left">
+                  <p className="font-medium">{teacher.teacherName}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {getPayRateLabel(teacher.payRateType, teacher.payRateValue)}
+                  </p>
+                  {teacher.payRateType === 'percentage' && teacher.lessons.some(l => l.hasWarning) && (
+                    <p className="text-xs text-warning flex items-center gap-1 mt-0.5">
+                      <AlertTriangle className="h-3 w-3" />
+                      Revenue data needed — ensure lessons have been invoiced.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-6">
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Lessons</p>
+                  <p className="font-medium">{teacher.completedLessons}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Hours</p>
+                  <p className="font-medium">{teacher.totalHours}</p>
+                </div>
+                <div className="text-right min-w-[100px]">
+                  <p className="text-sm text-muted-foreground">Gross Owed</p>
+                  <p className="font-bold text-primary">{fmtCurrency(teacher.grossOwed)}</p>
+                </div>
+                {expandedTeachers.has(teacher.teacherId) ? (
+                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="border-t px-4 pb-4 pt-2">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Lesson</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Duration</TableHead>
+                      <TableHead className="text-right">Pay</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {teacher.lessons.map((lesson) => (
+                      <TableRow key={lesson.id}>
+                        <TableCell className="font-medium">{lesson.title}</TableCell>
+                        <TableCell>
+                          {format(new Date(lesson.startAt), 'd MMM yyyy, HH:mm')}
+                        </TableCell>
+                        <TableCell className="text-right">{lesson.durationMins} min</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {fmtCurrency(lesson.calculatedPay)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      ))}
+    </div>
   );
 }
