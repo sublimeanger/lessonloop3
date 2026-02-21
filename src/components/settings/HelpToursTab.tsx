@@ -123,8 +123,11 @@ export function HelpToursTab() {
                           invoices: '/invoices',
                           loopassist: '/dashboard', // LoopAssist is opened from drawer
                         };
-                        resetTours(); // Reset to allow re-running
-                        window.location.href = pathMap[tour.name];
+                        resetTours();
+                        // Allow localStorage write to flush before navigating
+                        requestAnimationFrame(() => {
+                          window.location.href = pathMap[tour.name];
+                        });
                       }}
                     >
                       {completed ? 'Replay tour' : 'Start tour'} →
