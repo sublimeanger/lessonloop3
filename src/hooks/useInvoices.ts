@@ -315,6 +315,13 @@ export function useRecordPayment() {
       method: Database['public']['Enums']['payment_method'];
       provider_reference?: string;
     }) => {
+      if (data.amount_minor <= 0) {
+        throw new Error('Payment amount must be greater than zero');
+      }
+      if (data.amount_minor > 10_000_000) {
+        throw new Error('Payment amount exceeds maximum allowed (£100,000)');
+      }
+
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
       const { error: paymentError } = await supabase.from('payments').insert({
