@@ -54,8 +54,11 @@ export function useCalendarConnections() {
   const generateICalUrl = useCallback(async () => {
     if (!currentOrg || !user) return null;
 
-    // Check if we already have an Apple connection with token
-    if (appleConnection?.ical_token) {
+    // Check if we already have an Apple connection with a valid (non-expired) token
+    const isTokenValid = appleConnection?.ical_token && 
+      appleConnection.ical_token_expires_at && 
+      new Date(appleConnection.ical_token_expires_at) > new Date();
+    if (isTokenValid) {
       const baseUrl = import.meta.env.VITE_SUPABASE_URL;
       return `${baseUrl}/functions/v1/calendar-ical-feed?token=${appleConnection.ical_token}`;
     }
@@ -93,7 +96,9 @@ export function useCalendarConnections() {
 
   // Get iCal URL (already generated)
   const getICalUrl = useCallback(() => {
-    if (!appleConnection?.ical_token) return null;
+    if (!appleConnection?.ical_token || 
+        !appleConnection.ical_token_expires_at || 
+        new Date(appleConnection.ical_token_expires_at) <= new Date()) return null;
     const baseUrl = import.meta.env.VITE_SUPABASE_URL;
     return `${baseUrl}/functions/v1/calendar-ical-feed?token=${appleConnection.ical_token}`;
   }, [appleConnection]);
