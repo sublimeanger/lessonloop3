@@ -17,8 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Download, MapPin, Clock, TrendingUp, Building2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
-// Configurable working hours per day (8am to 8pm = 12 hours)
-const WORKING_HOURS_PER_DAY = 12;
+// Default working hours
 
 interface RoomUtilisationData {
   roomId: string;
@@ -40,11 +39,11 @@ interface UtilisationSummary {
   leastUsedRoom: RoomUtilisationData | null;
 }
 
-function useUtilisationReport(startDate: string, endDate: string) {
+function useUtilisationReport(startDate: string, endDate: string, workingHoursPerDay: number) {
   const { currentOrg } = useOrg();
 
   return useQuery({
-    queryKey: ['utilisation-report', currentOrg?.id, startDate, endDate],
+    queryKey: ['utilisation-report', currentOrg?.id, startDate, endDate, workingHoursPerDay],
     queryFn: async (): Promise<UtilisationSummary> => {
       if (!currentOrg?.id) throw new Error('No organisation');
 
@@ -84,7 +83,7 @@ function useUtilisationReport(startDate: string, endDate: string) {
       const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       // Approximate working days (exclude weekends roughly)
       const workingDays = Math.ceil(daysDiff * 5 / 7);
-      const availableMinutesPerRoom = workingDays * WORKING_HOURS_PER_DAY * 60;
+      const availableMinutesPerRoom = workingDays * workingHoursPerDay * 60;
 
       // Group lessons by room
       const lessonsByRoom = new Map<string, { count: number; minutes: number }>();
@@ -168,8 +167,11 @@ export default function UtilisationReport() {
   // Default to last month
   const [startDate, setStartDate] = useState(format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'));
+  const [workingStart, setWorkingStart] = useState(8);
+  const [workingEnd, setWorkingEnd] = useState(20);
+  const workingHoursPerDay = Math.max(1, workingEnd - workingStart);
 
-  const { data, isLoading, error } = useUtilisationReport(startDate, endDate);
+  const { data, isLoading, error } = useUtilisationReport(startDate, endDate, workingHoursPerDay);
 
   const chartData = useMemo(() => {
     if (!data) return [];
@@ -191,6 +193,41 @@ export default function UtilisationReport() {
           { label: 'Room Utilisation' },
         ]}
       />
+
+      {/* Working Hours Settings */}
+      <Card className="mb-4">
+        <CardContent className="pt-6">
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="working-start">Working hours start</Label>
+              <Input
+                id="working-start"
+                type="number"
+                min={0}
+                max={23}
+                value={workingStart}
+                onChange={(e) => setWorkingStart(Math.min(23, Math.max(0, Number(e.target.value))))}
+                className="w-[100px]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="working-end">Working hours end</Label>
+              <Input
+                id="working-end"
+                type="number"
+                min={1}
+                max={24}
+                value={workingEnd}
+                onChange={(e) => setWorkingEnd(Math.min(24, Math.max(1, Number(e.target.value))))}
+                className="w-[100px]"
+              />
+            </div>
+            <p className="text-sm text-muted-foreground pb-2">
+              Set your typical teaching hours to get accurate utilisation percentages.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Date Range */}
       <Card className="mb-6">
@@ -334,7 +371,7 @@ export default function UtilisationReport() {
               <CardHeader>
                 <CardTitle>Utilisation by Room</CardTitle>
                 <CardDescription>
-                  Based on {WORKING_HOURS_PER_DAY} available hours per day (8am-8pm)
+                  Based on {workingHoursPerDay} available hours per day ({workingStart}:00–{workingEnd}:00)
                 </CardDescription>
               </CardHeader>
               <CardContent>
