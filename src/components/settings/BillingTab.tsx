@@ -25,7 +25,7 @@ import { format } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, formatLimit, TRIAL_DAYS, DB_PLAN_MAP } from '@/lib/pricing-config';
+import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, formatLimit, TRIAL_DAYS, DB_PLAN_MAP, PLAN_DISPLAY_NAMES } from '@/lib/pricing-config';
 
 // Database plan types
 type DbSubscriptionPlan = 'solo_teacher' | 'academy' | 'agency';
@@ -37,16 +37,6 @@ const DISPLAY_TO_DB_PLAN: Record<PlanKey, DbSubscriptionPlan> = {
   agency: 'agency',
 };
 
-// Human-readable plan names (for status display)
-const PLAN_NAMES: Record<string, string> = {
-  trial: 'Trial',
-  solo_teacher: 'Teacher',
-  teacher: 'Teacher',
-  academy: 'Studio',
-  studio: 'Studio',
-  agency: 'Agency',
-  custom: 'Custom',
-};
 
 interface PlanCardProps {
   plan: PlanKey;
@@ -295,7 +285,7 @@ export function BillingTab() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-lg">{PLAN_NAMES[plan] || plan}</h3>
+                  <h3 className="font-semibold text-lg">{PLAN_DISPLAY_NAMES[plan] || plan}</h3>
                   <Badge variant={
                     status === 'active' ? 'default' :
                     status === 'trialing' ? 'secondary' :
