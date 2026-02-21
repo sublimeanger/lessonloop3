@@ -11,8 +11,17 @@ import {
   UserPlus, Settings, FileText
 } from 'lucide-react';
 import { useOrg, OrgType } from '@/contexts/OrgContext';
-import { useOnboardingProgress } from '@/hooks/useOnboardingProgress';
+import { useOnboardingProgress, OnboardingStatus } from '@/hooks/useOnboardingProgress';
 import { cn } from '@/lib/utils';
+
+type ChecklistConfigItem = {
+  id: string;
+  title: string;
+  description: string;
+  href: string;
+  icon: React.ElementType;
+  checkKey: keyof OnboardingStatus;
+};
 
 interface ChecklistItem {
   id: string;
@@ -28,7 +37,7 @@ interface OnboardingChecklistProps {
   className?: string;
 }
 
-const CHECKLIST_CONFIG: Record<OrgType, { id: string; title: string; description: string; href: string; icon: React.ElementType; checkKey: string }[]> = {
+const CHECKLIST_CONFIG: Record<OrgType, ChecklistConfigItem[]> = {
   solo_teacher: [
     { id: 'add-student', title: 'Add your first student', description: 'Start managing your student roster', href: '/students', icon: Users, checkKey: 'hasStudents' },
     { id: 'schedule-lesson', title: 'Schedule a lesson', description: 'Create your first lesson in the calendar', href: '/calendar', icon: Calendar, checkKey: 'hasLessons' },
@@ -117,7 +126,7 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
       description: item.description,
       href: item.href,
       icon: item.icon,
-      completed: (status as any)[item.checkKey] || false,
+      completed: status[item.checkKey] || false,
     }));
   }, [currentOrg, status]);
 
