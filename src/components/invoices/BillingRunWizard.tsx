@@ -97,7 +97,8 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
         : null;
 
       if (payerName) {
-        const key = payerName;
+        const payerId = primaryGuardian ? primaryGuardian.id : student.id;
+        const key = primaryGuardian ? `guardian-${payerId}` : `student-${payerId}`;
         if (!payerGroups.has(key)) {
           payerGroups.set(key, { name: payerName, lessonCount: 0, totalMinor: 0 });
         }
