@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -42,6 +42,17 @@ export function RequestModal({
   const [studentId, setStudentId] = useState<string>('');
 
   const { data: children } = useChildrenWithDetails();
+
+  useEffect(() => {
+    if (open) {
+      setRequestType(defaultType);
+      setSubject(lessonTitle ? `Regarding: ${lessonTitle}` : '');
+      setMessage('');
+      setStudentId('');
+    }
+  }, [open, defaultType, lessonTitle]);
+
+
   const createRequest = useCreateMessageRequest();
 
   const handleSubmit = async () => {
