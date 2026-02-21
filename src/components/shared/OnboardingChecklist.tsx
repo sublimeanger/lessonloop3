@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { safeGetItem, safeSetItem } from '@/lib/storage';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -97,8 +98,14 @@ function ProgressRing({ progress, size = 48 }: { progress: number; size?: number
 export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklistProps) {
   const { currentOrg } = useOrg();
   const { data: status, isLoading } = useOnboardingProgress();
-  const [isDismissed, setIsDismissed] = useState(false);
+  const storageKey = `ll-checklist-dismissed-${currentOrg?.id}`;
+  const [isDismissed, setIsDismissed] = useState(() => safeGetItem(storageKey) === 'true');
   const [showCelebration, setShowCelebration] = useState(false);
+
+  // Re-check storage when org changes
+  useEffect(() => {
+    setIsDismissed(safeGetItem(storageKey) === 'true');
+  }, [storageKey]);
 
   const items = useMemo<ChecklistItem[]>(() => {
     if (!currentOrg || !status) return [];
@@ -119,16 +126,21 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
   const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
   const allCompleted = completedCount === totalCount && totalCount > 0;
 
+  const dismiss = useCallback(() => {
+    setIsDismissed(true);
+    safeSetItem(storageKey, 'true');
+  }, [storageKey]);
+
   useEffect(() => {
     if (allCompleted) {
       setShowCelebration(true);
-      const timer = setTimeout(() => setIsDismissed(true), 3000);
+      const timer = setTimeout(() => dismiss(), 5000);
       return () => clearTimeout(timer);
     }
-  }, [allCompleted]);
+  }, [allCompleted, dismiss]);
 
   const handleDismiss = () => {
-    setIsDismissed(true);
+    dismiss();
     onDismiss?.();
   };
 
