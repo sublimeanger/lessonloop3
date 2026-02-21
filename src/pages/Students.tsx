@@ -188,6 +188,7 @@ export default function Students() {
         .select('*')
         .eq('org_id', currentOrg.id)
         .in('id', assignedIds)
+        .is('deleted_at', null)
         .order('last_name', { ascending: true });
 
       if (error) {
@@ -200,6 +201,7 @@ export default function Students() {
         .from('students')
         .select('*')
         .eq('org_id', currentOrg.id)
+        .is('deleted_at', null)
         .order('last_name', { ascending: true });
 
       if (error) {
