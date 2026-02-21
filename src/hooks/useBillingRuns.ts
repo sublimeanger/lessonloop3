@@ -82,6 +82,7 @@ export function useCreateBillingRun() {
         throw runError;
       }
 
+      let invoiceIds: string[] = [];
       try {
         // 2. Fetch rate cards for per-lesson pricing
         const { data: rateCards } = await supabase
@@ -208,7 +209,7 @@ export function useCreateBillingRun() {
         const skippedLessons = unbilledLessons.filter(l => !billedLessonIds2.has(l.id));
         const skippedCount = skippedLessons.length;
 
-        let invoiceIds: string[] = [];
+        invoiceIds = [];
         let totalAmount = 0;
         const failedPayers: Array<{ payerName: string; payerEmail: string | null; error: string }> = [];
 
@@ -312,6 +313,22 @@ export function useCreateBillingRun() {
 
         return { ...billingRun, status: finalStatus, summary };
       } catch (innerError) {
+        // Clean up any invoices created during this failed run
+        if (invoiceIds.length > 0) {
+          try {
+            await supabase
+              .from('invoice_items')
+              .delete()
+              .in('invoice_id', invoiceIds);
+            await supabase
+              .from('invoices')
+              .delete()
+              .in('id', invoiceIds);
+          } catch (cleanupError) {
+            console.error('[BillingRun] Failed to clean up orphan invoices:', cleanupError);
+          }
+        }
+
         // Mark billing run as failed so the date range can be retried
         await supabase
           .from('billing_runs')
