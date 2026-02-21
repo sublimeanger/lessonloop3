@@ -9,6 +9,21 @@ const PLAN_LIMITS: Record<string, { max_students: number; max_teachers: number }
   agency: { max_students: 9999, max_teachers: 9999 },
 };
 
+// Reverse lookup: Stripe price ID → LessonLoop plan key
+const PRICE_TO_PLAN: Record<string, string> = {};
+const priceEnvPairs = [
+  ["STRIPE_PRICE_TEACHER_MONTHLY", "solo_teacher"],
+  ["STRIPE_PRICE_TEACHER_YEARLY", "solo_teacher"],
+  ["STRIPE_PRICE_STUDIO_MONTHLY", "academy"],
+  ["STRIPE_PRICE_STUDIO_YEARLY", "academy"],
+  ["STRIPE_PRICE_AGENCY_MONTHLY", "agency"],
+  ["STRIPE_PRICE_AGENCY_YEARLY", "agency"],
+];
+for (const [envKey, planKey] of priceEnvPairs) {
+  const priceId = Deno.env.get(envKey);
+  if (priceId) PRICE_TO_PLAN[priceId] = planKey;
+}
+
 serve(async (req) => {
   try {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
@@ -318,57 +333,20 @@ async function handleSubscriptionCreated(supabase: any, subscription: Stripe.Sub
 }
 
 async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Subscription) {
-  const orgId = subscription.metadata?.lessonloop_org_id;
-  
-  if (!orgId) {
-    // Try to find org by subscription ID
-    const { data: org } = await supabase
-      .from("organisations")
-      .select("id")
-      .eq("stripe_subscription_id", subscription.id)
-      .single();
-    
-    if (!org) {
-      console.log("Cannot find org for subscription update");
-      return;
-    }
-    
-    // Map Stripe status to our status
-    let status: string;
-    switch (subscription.status) {
-      case "active":
-        status = "active";
-        break;
-      case "past_due":
-        status = "past_due";
-        break;
-      case "canceled":
-        status = "cancelled";
-        break;
-      case "paused":
-        status = "paused";
-        break;
-      default:
-        status = "active";
-    }
-
-    const { error } = await supabase
-      .from("organisations")
-      .update({ subscription_status: status })
-      .eq("id", org.id);
-
-    if (error) {
-      console.error("Failed to update org subscription status:", error);
-    } else {
-      console.log(`Org ${org.id} subscription status updated to ${status}`);
-    }
-    return;
+  // Detect plan from current price (handles portal plan changes)
+  let detectedPlan: string | undefined;
+  const currentPriceId = subscription.items?.data?.[0]?.price?.id;
+  if (currentPriceId && PRICE_TO_PLAN[currentPriceId]) {
+    detectedPlan = PRICE_TO_PLAN[currentPriceId];
   }
 
-  // If we have orgId in metadata
-  const plan = subscription.metadata?.lessonloop_plan;
-  const limits = PLAN_LIMITS[plan || "solo_teacher"] || PLAN_LIMITS.solo_teacher;
+  if (detectedPlan && detectedPlan !== subscription.metadata?.lessonloop_plan) {
+    console.log(`Plan change detected via price: ${subscription.metadata?.lessonloop_plan} → ${detectedPlan}`);
+  }
 
+  const orgId = subscription.metadata?.lessonloop_org_id;
+  
+  // Map Stripe status to our status
   let status: string;
   switch (subscription.status) {
     case "active":
@@ -387,6 +365,48 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
       status = "active";
   }
 
+  if (!orgId) {
+    // Try to find org by subscription ID
+    const { data: org } = await supabase
+      .from("organisations")
+      .select("id")
+      .eq("stripe_subscription_id", subscription.id)
+      .single();
+    
+    if (!org) {
+      console.log("Cannot find org for subscription update");
+      return;
+    }
+    
+    const plan = detectedPlan || subscription.metadata?.lessonloop_plan;
+    const limits = plan ? (PLAN_LIMITS[plan] || PLAN_LIMITS.solo_teacher) : undefined;
+
+    const updateData: Record<string, unknown> = { subscription_status: status };
+    if (plan) {
+      updateData.subscription_plan = plan;
+    }
+    if (limits) {
+      updateData.max_students = limits.max_students;
+      updateData.max_teachers = limits.max_teachers;
+    }
+
+    const { error } = await supabase
+      .from("organisations")
+      .update(updateData)
+      .eq("id", org.id);
+
+    if (error) {
+      console.error("Failed to update org subscription status:", error);
+    } else {
+      console.log(`Org ${org.id} subscription updated to ${status}${plan ? `, plan: ${plan}` : ''}`);
+    }
+    return;
+  }
+
+  // If we have orgId in metadata
+  const plan = detectedPlan || subscription.metadata?.lessonloop_plan;
+  const limits = PLAN_LIMITS[plan || "solo_teacher"] || PLAN_LIMITS.solo_teacher;
+
   const { error } = await supabase
     .from("organisations")
     .update({
@@ -400,7 +420,7 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
   if (error) {
     console.error("Failed to update org on subscription update:", error);
   } else {
-    console.log(`Org ${orgId} subscription updated: ${status}`);
+    console.log(`Org ${orgId} subscription updated: ${status}${plan ? `, plan: ${plan}` : ''}`);
   }
 }
 
