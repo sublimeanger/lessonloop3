@@ -21,7 +21,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 // ─── Tab bar with horizontal scroll + gradient fade on mobile ───
-function MobileTabBar({ initialTab, isOrgAdmin, isOrgOwner }: { initialTab: string; isOrgAdmin: boolean; isOrgOwner: boolean }) {
+function MobileTabBar({ initialTab, isOrgAdmin }: { initialTab: string; isOrgAdmin: boolean }) {
   const isMobile = useIsMobile();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showFade, setShowFade] = useState(true);
@@ -52,11 +52,11 @@ function MobileTabBar({ initialTab, isOrgAdmin, isOrgOwner }: { initialTab: stri
       <TabsTrigger value="profile">Profile</TabsTrigger>
       <TabsTrigger value="organisation">Organisation</TabsTrigger>
       <TabsTrigger value="branding">Branding</TabsTrigger>
-      {(isOrgAdmin || isOrgOwner) && <TabsTrigger value="members">Members</TabsTrigger>}
-      {(isOrgAdmin || isOrgOwner) && <TabsTrigger value="scheduling">Scheduling</TabsTrigger>}
-      {(isOrgAdmin || isOrgOwner) && <TabsTrigger value="audit">Audit Log</TabsTrigger>}
-      {(isOrgAdmin || isOrgOwner) && <TabsTrigger value="privacy">Privacy &amp; GDPR</TabsTrigger>}
-      {(isOrgAdmin || isOrgOwner) && <TabsTrigger value="rate-cards">Rate Cards</TabsTrigger>}
+      {isOrgAdmin && <TabsTrigger value="members">Members</TabsTrigger>}
+      {isOrgAdmin && <TabsTrigger value="scheduling">Scheduling</TabsTrigger>}
+      {isOrgAdmin && <TabsTrigger value="audit">Audit Log</TabsTrigger>}
+      {isOrgAdmin && <TabsTrigger value="privacy">Privacy &amp; GDPR</TabsTrigger>}
+      {isOrgAdmin && <TabsTrigger value="rate-cards">Rate Cards</TabsTrigger>}
       <TabsTrigger value="availability">Availability</TabsTrigger>
       <TabsTrigger value="calendar">Calendar Sync</TabsTrigger>
       <TabsTrigger value="billing">Billing</TabsTrigger>
@@ -91,7 +91,7 @@ function MobileTabBar({ initialTab, isOrgAdmin, isOrgOwner }: { initialTab: stri
 export default function Settings() {
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'profile';
-  const { isOrgAdmin, isOrgOwner } = useOrg();
+  const { isOrgAdmin } = useOrg();
 
   return (
     <AppLayout>
@@ -105,17 +105,17 @@ export default function Settings() {
       />
 
       <Tabs defaultValue={initialTab} className="space-y-6">
-        <MobileTabBar initialTab={initialTab} isOrgAdmin={isOrgAdmin} isOrgOwner={isOrgOwner} />
+        <MobileTabBar initialTab={initialTab} isOrgAdmin={isOrgAdmin} />
 
         <TabsContent value="profile"><ProfileTab /></TabsContent>
         <TabsContent value="organisation"><OrganisationTab /></TabsContent>
         <TabsContent value="branding"><BrandingTab /></TabsContent>
 
-        {(isOrgAdmin || isOrgOwner) && <TabsContent value="members"><OrgMembersTab /></TabsContent>}
-        {(isOrgAdmin || isOrgOwner) && <TabsContent value="scheduling"><SchedulingSettingsTab /></TabsContent>}
-        {(isOrgAdmin || isOrgOwner) && <TabsContent value="audit"><AuditLogTab /></TabsContent>}
-        {(isOrgAdmin || isOrgOwner) && <TabsContent value="privacy"><PrivacyTab /></TabsContent>}
-        {(isOrgAdmin || isOrgOwner) && <TabsContent value="rate-cards"><RateCardsTab /></TabsContent>}
+        {isOrgAdmin && <TabsContent value="members"><OrgMembersTab /></TabsContent>}
+        {isOrgAdmin && <TabsContent value="scheduling"><SchedulingSettingsTab /></TabsContent>}
+        {isOrgAdmin && <TabsContent value="audit"><AuditLogTab /></TabsContent>}
+        {isOrgAdmin && <TabsContent value="privacy"><PrivacyTab /></TabsContent>}
+        {isOrgAdmin && <TabsContent value="rate-cards"><RateCardsTab /></TabsContent>}
 
         <TabsContent value="availability"><TeacherAvailabilityTab /></TabsContent>
         <TabsContent value="calendar"><CalendarIntegrationsTab /></TabsContent>
