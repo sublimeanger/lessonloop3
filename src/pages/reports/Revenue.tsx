@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { format, subMonths, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -67,7 +68,11 @@ export default function RevenueReport() {
           icon={PoundSterling}
           title="Not enough data for reports yet"
           description="Reports will populate as you complete lessons and generate invoices."
-        />
+        >
+          <Button asChild>
+            <Link to="/invoices">Create your first invoice →</Link>
+          </Button>
+        </EmptyState>
       ) : (
         <>
           {/* Summary Cards */}
