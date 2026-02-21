@@ -19,54 +19,77 @@ export const DAYS_OF_WEEK: { value: DayOfWeek; label: string }[] = [
   { value: 'sunday', label: 'Sunday' },
 ];
 
-// Hook for current user's availability blocks
-export function useAvailabilityBlocks(teacherUserId?: string) {
+// Hook for availability blocks — accepts teacherId (teachers.id) or falls back to current user's teacher record
+export function useAvailabilityBlocks(teacherId?: string) {
   const { currentOrg } = useOrg();
   const { user } = useAuth();
-  const targetUserId = teacherUserId || user?.id;
 
   return useQuery({
-    queryKey: ['availability-blocks', currentOrg?.id, targetUserId],
+    queryKey: ['availability-blocks', currentOrg?.id, teacherId, user?.id],
     queryFn: async () => {
-      if (!currentOrg?.id || !targetUserId) return [];
+      if (!currentOrg?.id) return [];
 
+      // If teacherId provided, query by teacher_id directly
+      if (teacherId) {
+        const { data, error } = await supabase
+          .from('availability_blocks')
+          .select('*')
+          .eq('org_id', currentOrg.id)
+          .eq('teacher_id', teacherId)
+          .order('day_of_week')
+          .order('start_time_local');
+        if (error) throw error;
+        return data as AvailabilityBlock[];
+      }
+
+      // Otherwise fall back to current user's teacher_user_id
+      if (!user?.id) return [];
       const { data, error } = await supabase
         .from('availability_blocks')
         .select('*')
         .eq('org_id', currentOrg.id)
-        .eq('teacher_user_id', targetUserId)
+        .eq('teacher_user_id', user.id)
         .order('day_of_week')
         .order('start_time_local');
-
       if (error) throw error;
       return data as AvailabilityBlock[];
     },
-    enabled: !!currentOrg?.id && !!targetUserId,
+    enabled: !!currentOrg?.id && !!(teacherId || user?.id),
   });
 }
 
-// Hook for current user's time-off blocks
-export function useTimeOffBlocks(teacherUserId?: string) {
+// Hook for time-off blocks — accepts teacherId (teachers.id) or falls back to current user's teacher record
+export function useTimeOffBlocks(teacherId?: string) {
   const { currentOrg } = useOrg();
   const { user } = useAuth();
-  const targetUserId = teacherUserId || user?.id;
 
   return useQuery({
-    queryKey: ['time-off-blocks', currentOrg?.id, targetUserId],
+    queryKey: ['time-off-blocks', currentOrg?.id, teacherId, user?.id],
     queryFn: async () => {
-      if (!currentOrg?.id || !targetUserId) return [];
+      if (!currentOrg?.id) return [];
 
+      if (teacherId) {
+        const { data, error } = await supabase
+          .from('time_off_blocks')
+          .select('*')
+          .eq('org_id', currentOrg.id)
+          .eq('teacher_id', teacherId)
+          .order('start_at', { ascending: true });
+        if (error) throw error;
+        return data as TimeOffBlock[];
+      }
+
+      if (!user?.id) return [];
       const { data, error } = await supabase
         .from('time_off_blocks')
         .select('*')
         .eq('org_id', currentOrg.id)
-        .eq('teacher_user_id', targetUserId)
+        .eq('teacher_user_id', user.id)
         .order('start_at', { ascending: true });
-
       if (error) throw error;
       return data as TimeOffBlock[];
     },
-    enabled: !!currentOrg?.id && !!targetUserId,
+    enabled: !!currentOrg?.id && !!(teacherId || user?.id),
   });
 }
 

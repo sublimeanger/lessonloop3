@@ -406,7 +406,7 @@ export function useUnbilledLessons(
           start_at,
           end_at,
           status,
-          teacher_user_id,
+          teacher_id,
           lesson_participants(
             student:students(
               id,
@@ -429,7 +429,7 @@ export function useUnbilledLessons(
       }
 
       if (teacherId) {
-        lessonsQuery = lessonsQuery.eq('teacher_user_id', teacherId);
+        lessonsQuery = lessonsQuery.eq('teacher_id', teacherId);
       }
 
       const { data: lessons, error: lessonsError } = await lessonsQuery;

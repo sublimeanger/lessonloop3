@@ -42,23 +42,20 @@ export function useBulkMessageFilters() {
     enabled: !!currentOrg,
   });
 
-  const { data: teachers } = useQuery({
+      const { data: teachers } = useQuery({
     queryKey: ['bulk-message-teachers', currentOrg?.id],
     queryFn: async () => {
       if (!currentOrg) return [];
       const { data, error } = await supabase
-        .from('org_memberships')
-        .select(`
-          user_id,
-          profiles!inner(full_name)
-        `)
+        .from('teachers')
+        .select('id, display_name')
         .eq('org_id', currentOrg.id)
-        .in('role', ['owner', 'admin', 'teacher'])
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .order('display_name');
       if (error) throw error;
-      return (data || []).map((m: any) => ({
-        id: m.user_id,
-        name: m.profiles?.full_name || 'Unknown',
+      return (data || []).map((t: any) => ({
+        id: t.id,
+        name: t.display_name || 'Unknown',
       }));
     },
     enabled: !!currentOrg,
@@ -98,7 +95,7 @@ export function useRecipientPreview(filters: FilterCriteria) {
           .from('student_teacher_assignments')
           .select('student_id')
           .eq('org_id', currentOrg.id)
-          .in('teacher_user_id', filters.teacher_ids);
+          .in('teacher_id', filters.teacher_ids);
 
         if (!assignments || assignments.length === 0) {
           return { count: 0, guardians: [] };

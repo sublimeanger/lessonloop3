@@ -148,40 +148,16 @@ export function useDeleteValidation() {
     const blocks: DeletionBlock[] = [];
     const warnings: string[] = [];
 
-    // Get teacher record to check for user_id (for legacy lessons)
-    const { data: teacher } = await supabase
-      .from('teachers')
-      .select('id, user_id')
-      .eq('id', teacherId)
-      .single();
-
-    // Check for future lessons using teacher_id (new) OR teacher_user_id (legacy)
+    // Check for future lessons using teacher_id
     const now = new Date().toISOString();
     
-    // Check lessons with new teacher_id column
-    const { count: lessonCountById } = await supabase
+    const { count: totalLessonCount } = await supabase
       .from('lessons')
       .select('id', { count: 'exact', head: true })
       .eq('teacher_id', teacherId)
       .eq('org_id', currentOrg.id)
       .gte('start_at', now)
       .neq('status', 'cancelled');
-
-    // Also check legacy lessons if teacher has a linked user_id
-    let legacyLessonCount = 0;
-    if (teacher?.user_id) {
-      const { count } = await supabase
-        .from('lessons')
-        .select('id', { count: 'exact', head: true })
-        .eq('teacher_user_id', teacher.user_id)
-        .is('teacher_id', null) // Only legacy lessons without teacher_id
-        .eq('org_id', currentOrg.id)
-        .gte('start_at', now)
-        .neq('status', 'cancelled');
-      legacyLessonCount = count || 0;
-    }
-
-    const totalLessonCount = (lessonCountById || 0) + legacyLessonCount;
     if (totalLessonCount > 0) {
       blocks.push({
         reason: `Teacher has ${totalLessonCount} upcoming lesson${totalLessonCount > 1 ? 's' : ''} scheduled`,
