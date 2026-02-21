@@ -105,7 +105,7 @@ export function useFeatureGate(feature: Feature): FeatureGateResult {
   }, [feature, plan, status, isTrialing, isTrialExpired]);
 }
 
-// Hook to check multiple features at once
+// Used in tests — not currently used in production UI
 export function useFeatureGates(features: Feature[]): Record<Feature, FeatureGateResult> {
   const { plan, status, isTrialing, isTrialExpired } = useSubscription();
 
@@ -131,7 +131,7 @@ export function useFeatureGates(features: Feature[]): Record<Feature, FeatureGat
   }, [features, plan, status, isTrialing, isTrialExpired]);
 }
 
-// Utility to get the next upgrade tier
+// Used in tests — not currently used in production UI
 export function getUpgradePath(currentPlan: SubscriptionPlan): SubscriptionPlan | null {
   const upgradePath: Record<SubscriptionPlan, SubscriptionPlan | null> = {
     trial: 'solo_teacher',

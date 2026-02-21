@@ -1,16 +1,10 @@
 import { useMemo } from 'react';
 import { useOrg } from '@/contexts/OrgContext';
 import { differenceInDays, isPast, parseISO } from 'date-fns';
-import { PLAN_DISPLAY_NAMES } from '@/lib/pricing-config';
 
 export type SubscriptionPlan = 'trial' | 'solo_teacher' | 'academy' | 'agency' | 'custom';
 export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'cancelled' | 'paused';
 
-/**
- * @deprecated Use PLAN_DISPLAY_NAMES from '@/lib/pricing-config' instead.
- * Kept for backward compatibility — maps DB enum → user-facing name.
- */
-export const PLAN_DISPLAY_NAMES_COMPAT = PLAN_DISPLAY_NAMES;
 
 export interface PlanLimits {
   maxStudents: number;
@@ -136,23 +130,3 @@ export function useSubscription(): SubscriptionState {
   }, [currentOrg]);
 }
 
-// Utility to check if a specific limit is reached
-export function useLimitCheck() {
-  const { limits } = useSubscription();
-  const { currentOrg } = useOrg();
-
-  return useMemo(() => ({
-    checkStudentLimit: async (currentCount: number): Promise<{ allowed: boolean; limit: number }> => {
-      return {
-        allowed: currentCount < limits.maxStudents,
-        limit: limits.maxStudents,
-      };
-    },
-    checkTeacherLimit: async (currentCount: number): Promise<{ allowed: boolean; limit: number }> => {
-      return {
-        allowed: currentCount < limits.maxTeachers,
-        limit: limits.maxTeachers,
-      };
-    },
-  }), [limits]);
-}
