@@ -182,6 +182,10 @@ export function useParentLessons(options?: { studentId?: string; status?: string
         studentIds = studentIds.filter(id => id === options.studentId);
       }
 
+      // Limit past lessons to 3 months to avoid loading entire history
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
       // Get lessons via participants, join teacher for display name
       const { data: participants } = await supabase
         .from('lesson_participants')
@@ -201,6 +205,7 @@ export function useParentLessons(options?: { studentId?: string; status?: string
           )
         `)
         .in('student_id', studentIds)
+        .gte('lesson.start_at', threeMonthsAgo.toISOString())
         .order('lesson(start_at)', { ascending: true });
 
       if (!participants) return [];
