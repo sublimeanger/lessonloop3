@@ -390,7 +390,7 @@ export function useParentSummary() {
   const dashboardQuery = useParentDashboardData();
 
   return useQuery({
-    queryKey: ['parent-summary', user?.id, currentOrg?.id, dashboardQuery.data],
+    queryKey: ['parent-summary', user?.id, currentOrg?.id, dashboardQuery.dataUpdatedAt],
     queryFn: async () => {
       const dashData = dashboardQuery.data;
       if (!user || !currentOrg || !dashData) {
