@@ -1,138 +1,69 @@
 
 
-# Calendar Enhancements — Implementation Plan
+# World-Class Page Transitions
 
-This plan covers 8 improvements from the third-party review (excluding heatmap overlay and smart scheduling suggestions).
+## Problem
+When clicking between pages, the entire screen flashes a skeleton (sidebar, header, and all) because the `Suspense` boundary wraps all routes at the top level of `App.tsx`. Every lazy-loaded page triggers a full-screen skeleton replacement. Inside `AppLayout`, there's a `motion.div` with a fade-in, but no `AnimatePresence` for smooth exit animations -- so old content just vanishes instantly.
+
+## Solution
+
+A two-part fix that keeps the sidebar/header stable and crossfades only the page content area.
+
+### 1. Move Suspense inside layouts (not around Routes)
+
+Instead of one giant `<Suspense fallback={<AppShellSkeleton />}>` wrapping all routes, each layout will handle its own Suspense with a minimal, content-area-only fallback. This means the sidebar and header never flash or disappear during navigation.
+
+**`AppLayout.tsx`**: Wrap `{children}` in a `<Suspense>` with a subtle inline spinner/shimmer (not the full AppShellSkeleton). The sidebar and header stay painted at all times.
+
+**`PortalLayout.tsx`**: Same treatment -- Suspense wraps only the content area.
+
+**`App.tsx`**: Replace the single Suspense with a lighter fallback (or remove it for routes already wrapped by layouts). Keep a minimal Suspense for routes that don't use a layout (marketing pages, auth pages).
+
+### 2. Add AnimatePresence crossfade in layouts
+
+**`AppLayout.tsx`**: Wrap the existing `motion.div` with `<AnimatePresence mode="wait">`. Add an `exit` prop so old content fades out before new content fades in. This creates a smooth crossfade between pages.
+
+**`PortalLayout.tsx`**: Add the same `AnimatePresence` + `motion.div` pattern for portal pages.
+
+### 3. Create a minimal content-area loading component
+
+A new `PageTransitionFallback` component -- just a subtle centered spinner with a fade-in delay (so fast navigations show nothing). This replaces the jarring full-skeleton for Suspense boundaries inside layouts.
 
 ---
 
-## 1. 500-Lesson Cap Warning + Server-Side Filtering
+## Technical Details
 
-**Problem:** `useCalendarData` silently caps at 500 lessons with no user feedback. Large academies could lose data.
+### Files changed
 
-**Changes:**
-- `src/hooks/useCalendarData.ts` — After fetching, check if `lessonsData.length === LESSONS_PAGE_SIZE`. If so, surface a flag `isCapReached: true` from the hook.
-- When teacher/location/room filters are active, apply them in the query (already done) so the cap is less likely to be hit.
-- `src/pages/CalendarPage.tsx` — When `isCapReached` is true, render an amber alert banner: *"Showing first 500 lessons. Apply filters (teacher, location) to narrow results."*
+**`src/components/shared/PageTransitionFallback.tsx`** (new)
+- Minimal loading indicator: a small spinner that only appears after 150ms delay
+- Matches the content area dimensions, no sidebar/header duplication
 
----
+**`src/components/layout/AppLayout.tsx`**
+- Import `AnimatePresence` from framer-motion and `Suspense` from React
+- Wrap `motion.div` with `<AnimatePresence mode="wait">`
+- Add `exit={{ opacity: 0, y: -4 }}` to the motion.div
+- Wrap `{children}` inside a `<Suspense fallback={<PageTransitionFallback />}>`
 
-## 2. Recurring Lesson "Edited" Badge
+**`src/components/layout/PortalLayout.tsx`**
+- Import `AnimatePresence`, `motion`, `Suspense`, `useLocation`
+- Add the same crossfade pattern around `{children}` in both mobile and desktop branches
+- Use `<Suspense fallback={<PageTransitionFallback />}>` inside the content area
 
-**Problem:** No visual indicator when a single instance of a recurring series has been individually modified (e.g., different time or date from the pattern).
+**`src/App.tsx`**
+- Keep the outer `<Suspense>` but change fallback to `<AppShellSkeleton />` only for the initial cold load
+- This is still needed for the very first page load, but in-app navigation will be handled by the layout-level Suspense instead
 
-**Changes:**
-- `src/hooks/useCalendarData.ts` — In the enrichment step, for lessons with a `recurrence_id`, fetch the recurrence pattern or compare siblings to detect anomalies. A simpler approach: add an `is_exception` or check if the lesson's `updated_at` differs meaningfully from `created_at` (indicating manual edit). The most reliable approach is to add a boolean `is_series_exception` column to the `lessons` table via migration, defaulted to `false`, and set to `true` whenever a "this only" edit is made.
-- `src/pages/CalendarPage.tsx` — When saving a "this_only" edit on a recurring lesson, set `is_series_exception = true`.
-- `src/components/calendar/LessonCard.tsx` — When `lesson.recurrence_id` exists AND `lesson.is_series_exception` is true, render a small "Edited" badge (amber, next to the recurring icon).
+### Animation spec
 
-**Database migration:**
-```sql
-ALTER TABLE public.lessons 
-  ADD COLUMN is_series_exception boolean NOT NULL DEFAULT false;
+```text
+Enter:  opacity 0 -> 1, y 6px -> 0, duration 200ms, ease [0.22, 1, 0.36, 1]
+Exit:   opacity 1 -> 0, y 0 -> -4px, duration 120ms, ease "easeIn"
+Mode:   "wait" (old exits before new enters)
 ```
 
----
+This gives a fast, premium feel -- old content subtly lifts and fades, new content drops in from below.
 
-## 3. Batch Attendance Mode
+### No changes to routing or lazy loading
 
-**Problem:** Taking attendance for 8+ lessons requires opening each lesson individually.
-
-**Changes:**
-- Create `src/pages/BatchAttendance.tsx` — A dedicated end-of-day view that:
-  - Lists all today's completed/scheduled lessons in chronological order
-  - Each lesson row shows student names with Present/Absent/Late toggle buttons inline
-  - Has a "Mark All Present" button at the top that defaults every student to present
-  - Saves attendance in batch via a single "Save All" action
-- `src/App.tsx` — Add route `/batch-attendance`
-- `src/components/layout/AppSidebar.tsx` — Add nav link under Calendar section
-- `src/components/calendar/LessonDetailPanel.tsx` — No changes needed (existing per-lesson attendance stays)
-
----
-
-## 4. Mobile Drag-to-Reschedule
-
-**Problem:** The `MobileWeekView` has no drag interaction for rescheduling lessons.
-
-**Changes:**
-- `src/components/calendar/MobileWeekView.tsx` — Add long-press (300ms) detection on lesson cards using touch events. On activation:
-  - Haptic feedback (`navigator.vibrate(50)`)
-  - Visual lift effect (scale + shadow on the card)
-  - Track touch position and highlight the destination day column
-  - On drop (touchend), calculate the target day and show a confirmation dialog with the proposed new date/time
-  - Call existing `onLessonDrop` callback from parent
-- Update props to accept `onLessonDrop` (same signature as desktop)
-- `src/components/calendar/WeekTimeGrid.tsx` — Pass `onLessonDrop` and `onLessonResize` through to `MobileWeekView`
-- `src/pages/CalendarPage.tsx` — No changes needed (already passes handlers)
-
-**UX flow:** Long-press card (300ms) -> card lifts with haptic -> drag horizontally across day columns -> release -> confirmation toast with "Moved to [Day] at [Time]" or conflict error.
-
----
-
-## 5. Mobile Stacked View — 3-Day Rolling Default
-
-**Problem:** 7 columns at 33.33vw each means each column is ~130px on a 390px screen. A 3-day centred view would be more scannable.
-
-**Changes:**
-- `src/components/calendar/MobileWeekView.tsx` — Change `min-w-[33.33vw]` to `min-w-[80vw]` so each day card takes most of the screen width, making it a true swipeable day-by-day view rather than a cramped multi-column layout. The snap behaviour already works (`snap-x snap-mandatory`). This gives each day ~312px of width on a 390px screen.
-- Auto-scroll to today remains unchanged.
-- Dot indicators remain for all 7 days.
-
----
-
-## 6. Parent Portal — Add to Calendar Export
-
-**Problem:** Parents frequently ask "what time is the lesson?" — exporting to their phone calendar solves this.
-
-**Changes:**
-- Create `src/lib/calendarExport.ts` — Utility functions:
-  - `generateICSEvent(lesson)` — Returns an .ics file string for a single lesson
-  - `generateGoogleCalendarUrl(lesson)` — Returns a Google Calendar "add event" URL
-- `src/pages/portal/PortalSchedule.tsx` — Add "Add to Calendar" dropdown button on each upcoming lesson card with options:
-  - "Google Calendar" — Opens link in new tab
-  - "Apple / Outlook (.ics)" — Downloads .ics file
-
----
-
-## 7. Offline Resilience — Service Worker Caching
-
-**Problem:** Teachers in studios with patchy signal see blank screens.
-
-**Changes:**
-- Install `vite-plugin-pwa` dependency
-- `vite.config.ts` — Add PWA plugin with workbox config:
-  - Cache app shell (HTML, JS, CSS) with StaleWhileRevalidate
-  - Cache API responses for `/rest/v1/lessons` with NetworkFirst strategy (30-second timeout, fallback to cache)
-  - `navigateFallbackDenylist: [/^\/~oauth/]` to protect auth flow
-- `index.html` — Add PWA meta tags and manifest link
-- Create `public/manifest.json` with LessonLoop branding
-- The calendar will render from cache when offline, with a subtle "Offline — showing cached data" banner when `navigator.onLine` is false
-- `src/components/shared/OfflineBanner.tsx` — Small amber banner component that listens to online/offline events
-
----
-
-## 8. Lesson Page Size — Server-Side Filter Optimisation
-
-**Problem:** Filters are applied in the query but could be more aggressive to stay under the 500 cap.
-
-**Changes:**
-- `src/hooks/useCalendarData.ts` — When filters are active, also filter the related data fetches (participants, attendance) to only the filtered lesson IDs, reducing payload size. Add `teacher_user_id` filter directly in the lessons query (already done for `teacher_id` but needs alignment with the actual column name used in the DB).
-- Return `totalCount` alongside `lessons` by adding a separate `.count()` query (or checking if `lessonsData.length === LESSONS_PAGE_SIZE`) so the UI knows when data is truncated.
-
----
-
-## Technical Summary
-
-| Item | Files Modified | New Files | DB Migration |
-|------|---------------|-----------|-------------|
-| 500-lesson cap warning | useCalendarData.ts, CalendarPage.tsx | -- | -- |
-| Edited badge | LessonCard.tsx, useCalendarData.ts, CalendarPage.tsx | -- | Add `is_series_exception` column |
-| Batch attendance | App.tsx, AppSidebar.tsx | BatchAttendance.tsx | -- |
-| Mobile drag | MobileWeekView.tsx, WeekTimeGrid.tsx | -- | -- |
-| 3-day mobile | MobileWeekView.tsx | -- | -- |
-| Calendar export | PortalSchedule.tsx | calendarExport.ts | -- |
-| Offline/PWA | vite.config.ts, index.html | manifest.json, OfflineBanner.tsx | -- |
-| Filter optimisation | useCalendarData.ts | -- | -- |
-
-**Estimated scope:** ~8 files modified, ~4 new files, 1 database migration.
-
+All existing `lazy()` imports and route definitions stay exactly as they are. This is purely a presentation-layer change.
