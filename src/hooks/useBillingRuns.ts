@@ -112,6 +112,7 @@ export function useCreateBillingRun() {
                 id,
                 first_name,
                 last_name,
+                status,
                 student_guardians(
                   guardian:guardians(id, full_name, email),
                   is_primary_payer
@@ -158,7 +159,7 @@ export function useCreateBillingRun() {
         unbilledLessons.forEach((lesson) => {
           lesson.lesson_participants?.forEach((lp: any) => {
             const student = lp.student;
-            if (!student) return;
+            if (!student || student.status !== 'active') return;
 
             const primaryGuardian = student.student_guardians?.find(
               (sg: any) => sg.is_primary_payer
