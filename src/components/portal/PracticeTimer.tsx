@@ -287,7 +287,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
 
         {/* Timer display */}
         <div className="text-center py-8">
-          <div className={`text-6xl font-mono font-bold transition-colors ${
+          <div className={`text-6xl font-bold tabular-nums transition-colors ${
             isRunning ? 'text-primary' : 'text-muted-foreground'
           }`}>
             {formatTime(elapsedSeconds)}

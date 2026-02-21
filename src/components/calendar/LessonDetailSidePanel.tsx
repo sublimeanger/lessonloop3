@@ -99,7 +99,7 @@ export function LessonDetailSidePanel({
             <div className="flex items-center gap-3">
               <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="flex items-center gap-2 text-sm">
-                <span className="font-mono text-foreground">
+                <span className="tabular-nums text-foreground">
                   {format(startTime, 'HH:mm')} – {format(endTime, 'HH:mm')}
                 </span>
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0">

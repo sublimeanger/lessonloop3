@@ -153,7 +153,7 @@ export function BulkComposeModal({ open, onOpenChange }: BulkComposeModalProps) 
                 <ScrollArea className="max-h-40 rounded-md border p-2">
                   <div className="space-y-1">
                     {sendSummary.errors.map((err, i) => (
-                      <p key={i} className="text-xs text-muted-foreground font-mono">
+                      <p key={i} className="text-xs text-muted-foreground">
                         {err}
                       </p>
                     ))}

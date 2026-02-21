@@ -28,7 +28,7 @@ function LessonRow({ lesson }: { lesson: TodayLesson }) {
     >
       {/* Time */}
       <div className="w-12 sm:w-14 shrink-0 text-right pr-2 sm:pr-3 pt-0.5">
-        <span className="text-xs sm:text-sm font-mono font-semibold text-foreground tabular-nums">
+        <span className="text-xs sm:text-sm font-semibold text-foreground tabular-nums">
           {format(lesson.startAt, 'H:mm')}
         </span>
       </div>
