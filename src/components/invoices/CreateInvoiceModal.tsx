@@ -137,13 +137,15 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
         .from('guardians')
         .select('id, full_name')
         .eq('org_id', currentOrg.id)
+        .is('deleted_at', null)
         .order('full_name');
 
       const { data: studentsData } = await supabase
         .from('students')
         .select('id, first_name, last_name, email')
         .eq('org_id', currentOrg.id)
-        .not('email', 'is', null)
+        .eq('status', 'active')
+        .is('deleted_at', null)
         .order('first_name');
 
       setGuardians(guardiansData || []);
