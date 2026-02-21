@@ -3,9 +3,8 @@ import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { DateRangeFilter } from '@/components/reports/DateRangeFilter';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { LoadingState } from '@/components/shared/LoadingState';
@@ -77,56 +76,12 @@ export default function PayrollReport() {
         }
       />
 
-      {/* Date Range Selector */}
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="start-date">Start Date</Label>
-              <Input
-                id="start-date"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-[180px]"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="end-date">End Date</Label>
-              <Input
-                id="end-date"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-[180px]"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const thisMonth = new Date();
-                  setStartDate(format(startOfMonth(thisMonth), 'yyyy-MM-dd'));
-                  setEndDate(format(endOfMonth(thisMonth), 'yyyy-MM-dd'));
-                }}
-              >
-                This Month
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setStartDate(format(startOfMonth(lastMonth), 'yyyy-MM-dd'));
-                  setEndDate(format(endOfMonth(lastMonth), 'yyyy-MM-dd'));
-                }}
-              >
-                Last Month
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <DateRangeFilter
+        startDate={startDate}
+        endDate={endDate}
+        onStartDateChange={setStartDate}
+        onEndDateChange={setEndDate}
+      />
 
       {isLoading ? (
         <LoadingState />
