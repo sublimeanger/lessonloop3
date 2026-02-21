@@ -75,9 +75,6 @@ export function useCalendarData(
       if (filters.teacher_id) {
         query = query.eq('teacher_id', filters.teacher_id);
       }
-      if (filters.teacher_user_id) {
-        query = query.eq('teacher_user_id', filters.teacher_user_id);
-      }
       if (filters.location_id) {
         query = query.eq('location_id', filters.location_id);
       }

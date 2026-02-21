@@ -32,11 +32,8 @@ export function CalendarFiltersBar({
     return lessons.filter((l) => {
       const lessonDay = format(parseISO(l.start_at), 'yyyy-MM-dd');
       if (lessonDay !== dayKey) return false;
-      if (teacherId && l.teacher_user_id !== (teachersWithColours?.find(t => t.id === teacherId)?.userId ?? teacherId)) {
-        // Match by teacher_id field if available
-        return false;
-      }
-      return teacherId ? true : true;
+      if (teacherId && l.teacher_id !== teacherId) return false;
+      return true;
     }).length;
   };
 

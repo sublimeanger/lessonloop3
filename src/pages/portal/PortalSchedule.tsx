@@ -43,7 +43,7 @@ export default function PortalSchedule() {
     title: string;
     start_at: string;
     end_at: string;
-    teacher_user_id: string;
+    teacher_id: string | null;
   } | null>(null);
 
   const { currentOrg } = useOrg();
@@ -79,7 +79,7 @@ export default function PortalSchedule() {
     title: string;
     start_at: string;
     end_at: string;
-    teacher_user_id: string;
+    teacher_id: string | null;
   }) => {
     setRescheduleLesson(lesson);
     setRescheduleModalOpen(true);
@@ -273,7 +273,7 @@ export default function PortalSchedule() {
                         title: lesson.title,
                         start_at: lesson.start_at,
                         end_at: lesson.end_at,
-                        teacher_user_id: lesson.teacher_user_id,
+                        teacher_id: lesson.teacher_id,
                       })
                     : handleRequestChange({ id: lesson.id, title: lesson.title })
                   }
@@ -401,7 +401,7 @@ export default function PortalSchedule() {
               lessonTitle={rescheduleLesson.title}
               originalStart={rescheduleLesson.start_at}
               originalEnd={rescheduleLesson.end_at}
-              teacherUserId={rescheduleLesson.teacher_user_id}
+              teacherId={rescheduleLesson.teacher_id}
               orgId={currentOrg.id}
               onSlotSelect={handleSlotSelect}
               onCancel={() => {

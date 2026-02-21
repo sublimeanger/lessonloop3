@@ -78,8 +78,7 @@ export interface ConflictResult {
 export type CalendarView = 'day' | 'stacked' | 'week' | 'agenda';
 
 export interface CalendarFilters {
-  teacher_id: string | null;   // Now teachers.id
-  teacher_user_id?: string | null;
+  teacher_id: string | null;   // teachers.id
   location_id: string | null;
   room_id: string | null;
 }

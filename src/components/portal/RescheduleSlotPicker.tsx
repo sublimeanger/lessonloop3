@@ -21,7 +21,7 @@ interface RescheduleSlotPickerProps {
   lessonTitle: string;
   originalStart: string;
   originalEnd: string;
-  teacherUserId: string;
+  teacherId: string | null;
   orgId: string;
   onSlotSelect: (slot: { proposedStart: Date; proposedEnd: Date }) => void;
   onCancel: () => void;
@@ -34,7 +34,7 @@ export function RescheduleSlotPicker({
   lessonTitle,
   originalStart,
   originalEnd,
-  teacherUserId,
+  teacherId,
   orgId,
   onSlotSelect,
   onCancel,
@@ -46,24 +46,44 @@ export function RescheduleSlotPicker({
 
   const originalDuration = differenceInMinutes(parseISO(originalEnd), parseISO(originalStart));
 
-  // Fetch teacher's availability blocks
+  // Resolve teacher_user_id from teacher_id for availability/time-off queries
+  const { data: teacherRecord } = useQuery({
+    queryKey: ['teacher-record', teacherId],
+    queryFn: async () => {
+      if (!teacherId) return null;
+      const { data, error } = await supabase
+        .from('teachers')
+        .select('id, user_id')
+        .eq('id', teacherId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!teacherId,
+  });
+
+  const teacherUserId = teacherRecord?.user_id ?? null;
+
+  // Fetch teacher's availability blocks (keyed by auth user_id)
   const { data: availabilityBlocks } = useQuery({
     queryKey: ['teacher-availability', teacherUserId],
     queryFn: async () => {
+      if (!teacherUserId) return [];
       const { data, error } = await supabase
         .from('availability_blocks')
         .select('*')
         .eq('teacher_user_id', teacherUserId);
-      
       if (error) throw error;
       return data;
     },
+    enabled: !!teacherUserId,
   });
 
-  // Fetch teacher's time-off blocks
+  // Fetch teacher's time-off blocks (keyed by auth user_id)
   const { data: timeOffBlocks } = useQuery({
     queryKey: ['teacher-time-off', teacherUserId],
     queryFn: async () => {
+      if (!teacherUserId) return [];
       const { data, error } = await supabase
         .from('time_off_blocks')
         .select('*')
@@ -71,19 +91,21 @@ export function RescheduleSlotPicker({
       if (error) throw error;
       return data;
     },
+    enabled: !!teacherUserId,
   });
 
-  // Fetch teacher's existing lessons for conflict checking
+  // Fetch teacher's existing lessons for conflict checking (use teacher_id)
   const { data: teacherLessons, isLoading: lessonsLoading } = useQuery({
-    queryKey: ['teacher-lessons-for-reschedule', teacherUserId, format(selectedDate, 'yyyy-MM-dd')],
+    queryKey: ['teacher-lessons-for-reschedule', teacherId, format(selectedDate, 'yyyy-MM-dd')],
     queryFn: async () => {
+      if (!teacherId) return [];
       const startOfWeek = addDays(selectedDate, -7);
       const endOfWeek = addDays(selectedDate, 14);
       
       const { data, error } = await supabase
         .from('lessons')
         .select('id, start_at, end_at, status')
-        .eq('teacher_user_id', teacherUserId)
+        .eq('teacher_id', teacherId)
         .eq('status', 'scheduled')
         .gte('start_at', startOfWeek.toISOString())
         .lte('start_at', endOfWeek.toISOString())
@@ -92,6 +114,7 @@ export function RescheduleSlotPicker({
       if (error) throw error;
       return data;
     },
+    enabled: !!teacherId,
   });
 
   // Fetch closure dates
