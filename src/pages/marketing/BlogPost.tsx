@@ -66,12 +66,12 @@ export default function BlogPost() {
   const handleShareTwitter = () => {
     const tweetText = encodeURIComponent(`${post.title} - Great read for music teachers!`);
     const tweetUrl = encodeURIComponent(currentUrl);
-    window.open(`https://twitter.com/intent/tweet?text=${tweetText}&url=${tweetUrl}`, "_blank");
+    window.open(`https://twitter.com/intent/tweet?text=${tweetText}&url=${tweetUrl}`, "_blank", "noopener,noreferrer");
   };
 
   const handleShareLinkedIn = () => {
     const linkedInUrl = encodeURIComponent(currentUrl);
-    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${linkedInUrl}`, "_blank");
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${linkedInUrl}`, "_blank", "noopener,noreferrer");
   };
 
   // Extract headings from content for table of contents

@@ -251,7 +251,7 @@ export default function PortalSchedule() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
-                    onClick={() => window.open(generateGoogleCalendarUrl(lesson), '_blank')}
+                    onClick={() => window.open(generateGoogleCalendarUrl(lesson), '_blank', 'noopener,noreferrer')}
                   >
                     Google Calendar
                   </DropdownMenuItem>
