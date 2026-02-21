@@ -3,7 +3,7 @@ import { format, subMonths, startOfMonth, endOfMonth, differenceInMinutes, parse
 import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Button } from '@/components/ui/button';
+import { DateRangeFilter } from '@/components/reports/DateRangeFilter';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -230,65 +230,12 @@ export default function UtilisationReport() {
         </CardContent>
       </Card>
 
-      {/* Date Range */}
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="start-date">Start Date</Label>
-              <Input
-                id="start-date"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-[180px]"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="end-date">End Date</Label>
-              <Input
-                id="end-date"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-[180px]"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setStartDate(format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'));
-                  setEndDate(format(endOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'));
-                }}
-              >
-                Last Month
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setStartDate(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
-                  setEndDate(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
-                }}
-              >
-                This Month
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setStartDate(format(subMonths(new Date(), 3), 'yyyy-MM-dd'));
-                  setEndDate(format(new Date(), 'yyyy-MM-dd'));
-                }}
-              >
-                Last 3 Months
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <DateRangeFilter
+        startDate={startDate}
+        endDate={endDate}
+        onStartDateChange={setStartDate}
+        onEndDateChange={setEndDate}
+      />
 
       {isLoading ? (
         <ReportSkeleton variant="summary-chart" />
