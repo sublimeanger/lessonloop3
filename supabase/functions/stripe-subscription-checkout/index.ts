@@ -2,9 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
-
-// Trial period in days
-const TRIAL_DAYS = 30;
+import { PLAN_LIMITS as DB_PLAN_LIMITS, TRIAL_DAYS } from "../_shared/plan-config.ts";
 
 // ─── CANONICAL PLAN CONFIG ───────────────────────────────────────
 // DB enum values: solo_teacher, academy, agency
@@ -37,11 +35,11 @@ const PLAN_PRICES: Record<string, { monthly: string; yearly: string }> = {
   },
 };
 
-/** Plan limits per canonical plan */
+/** Plan limits per canonical plan (derived from shared DB_PLAN_LIMITS) */
 const PLAN_LIMITS: Record<string, { max_students: number; max_teachers: number }> = {
-  teacher: { max_students: 9999, max_teachers: 1 },
-  studio: { max_students: 9999, max_teachers: 5 },
-  agency: { max_students: 9999, max_teachers: 9999 },
+  teacher: DB_PLAN_LIMITS.solo_teacher,
+  studio: DB_PLAN_LIMITS.academy,
+  agency: DB_PLAN_LIMITS.agency,
 };
 
 /** Canonical key → DB enum value (for writing to organisations table) */

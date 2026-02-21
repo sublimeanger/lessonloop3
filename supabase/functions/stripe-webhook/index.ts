@@ -1,13 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-// Unlimited students for all plans - matches pricing-config.ts
-const PLAN_LIMITS: Record<string, { max_students: number; max_teachers: number }> = {
-  solo_teacher: { max_students: 9999, max_teachers: 1 },
-  academy: { max_students: 9999, max_teachers: 5 },
-  agency: { max_students: 9999, max_teachers: 9999 },
-};
+import { PLAN_LIMITS } from "../_shared/plan-config.ts";
 
 // Reverse lookup: Stripe price ID → LessonLoop plan key
 const PRICE_TO_PLAN: Record<string, string> = {};

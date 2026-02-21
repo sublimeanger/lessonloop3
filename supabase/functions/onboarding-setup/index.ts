@@ -1,8 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { PLAN_LIMITS, TRIAL_DAYS } from '../_shared/plan-config.ts';
 
-const TRIAL_DAYS = 30;
+
 
 interface OnboardingRequest {
   org_name: string;
@@ -63,12 +64,7 @@ Deno.serve(async (req) => {
 
     // Determine plan limits - unlimited students for all plans
     const plan = subscription_plan || 'solo_teacher';
-    const planLimits = {
-      solo_teacher: { max_students: 9999, max_teachers: 1 },
-      academy: { max_students: 9999, max_teachers: 5 },
-      agency: { max_students: 9999, max_teachers: 9999 },
-    };
-    const limits = planLimits[plan] || planLimits.solo_teacher;
+    const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.solo_teacher;
 
     // Use service role client to bypass RLS
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
