@@ -143,7 +143,8 @@ const App = () => (
                 </RouteGuard>
               } />
               
-              {/* Portal routes (parent only) – portal chunk */}
+               <Route path="/portal" element={<Navigate to="/portal/home" replace />} />
+               {/* Portal routes (parent only) – portal chunk */}
               <Route path="/portal/home" element={
                 <RouteGuard allowedRoles={['parent']}>
                   <PortalHome />
