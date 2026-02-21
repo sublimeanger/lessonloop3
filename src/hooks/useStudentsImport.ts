@@ -72,12 +72,21 @@ export function useStudentsImport() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
-  const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([]);
+  const [teachers, setTeachers] = useState<{ id: string; userId: string | null; name: string }[]>([]);
   const [selectedTeacher, setSelectedTeacher] = useState<string>("");
   const [importLessons, setImportLessons] = useState(false);
   const [dryRunResult, setDryRunResult] = useState<DryRunResult | null>(null);
   const [previewTab, setPreviewTab] = useState<"all" | "issues" | "ready">("all");
   const [skipDuplicates, setSkipDuplicates] = useState(true);
+
+  const readFileAsText = useCallback(async (f: File): Promise<string> => {
+    // Try UTF-8 first; if replacement chars appear, fall back to Windows-1252
+    const utf8 = await f.text();
+    if (!utf8.includes('\uFFFD')) return utf8;
+    const buffer = await f.arrayBuffer();
+    const decoder = new TextDecoder('windows-1252');
+    return decoder.decode(buffer);
+  }, []);
 
   const parseCSV = useCallback((content: string): { headers: string[]; rows: string[][] } => {
     const lines = content.split(/\r?\n/).filter(line => line.trim());
@@ -121,7 +130,7 @@ export function useStudentsImport() {
     setIsLoading(true);
 
     try {
-      const content = await uploadedFile.text();
+      const content = await readFileAsText(uploadedFile);
       const { headers: csvHeaders, rows: csvRows } = parseCSV(content);
 
       if (csvHeaders.length === 0 || csvRows.length === 0) {
@@ -132,17 +141,17 @@ export function useStudentsImport() {
       setRows(csvRows);
 
       if (currentOrg) {
+        // Fetch teachers table (supports unlinked teachers without auth accounts)
         const { data: teacherData } = await supabase
-          .from("org_memberships")
-          .select("user_id, profiles:user_id(full_name)")
+          .from("teachers")
+          .select("id, display_name, user_id")
           .eq("org_id", currentOrg.id)
-          .eq("status", "active")
-          .in("role", ["owner", "admin", "teacher"]);
+          .eq("status", "active");
 
         if (teacherData) {
           const teacherList = teacherData
-            .filter((t: any) => t.profiles?.full_name)
-            .map((t: any) => ({ id: t.user_id, name: t.profiles.full_name }));
+            .filter((t: any) => t.display_name)
+            .map((t: any) => ({ id: t.id, userId: t.user_id, name: t.display_name }));
           setTeachers(teacherList);
           if (teacherList.length > 0) setSelectedTeacher(teacherList[0].id);
         }
@@ -184,7 +193,7 @@ export function useStudentsImport() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentOrg, parseCSV, toast]);
+  }, [currentOrg, parseCSV, readFileAsText, toast]);
 
   const updateMapping = useCallback((csvHeader: string, targetField: string | null) => {
     setMappings(prev => prev.map(m =>
@@ -219,8 +228,11 @@ export function useStudentsImport() {
     return required.every(r => mapped.includes(r));
   }, [mappings, targetFields]);
 
+  // Capacity check uses dry-run actual count when available, otherwise raw row count as estimate
+  const validCountAfterDryRun = dryRunResult?.preview.studentsToCreate ?? null;
+  const estimatedNewStudents = validCountAfterDryRun ?? rows.length;
   const remainingCapacity = limits.maxStudents - counts.students;
-  const willExceedLimit = rows.length > remainingCapacity;
+  const willExceedLimit = estimatedNewStudents > remainingCapacity;
   const canProceedWithImport = requiredFieldsMapped && !willExceedLimit;
 
   const executeDryRun = useCallback(async () => {
@@ -247,7 +259,7 @@ export function useStudentsImport() {
               mappings.filter(m => m.target_field).map(m => [m.csv_header, m.target_field])
             ),
             orgId: currentOrg.id,
-            teacherUserId: importLessons ? selectedTeacher : undefined,
+            teacherId: importLessons ? selectedTeacher : undefined,
             dryRun: true,
           }),
         }
@@ -296,7 +308,7 @@ export function useStudentsImport() {
               mappings.filter(m => m.target_field).map(m => [m.csv_header, m.target_field])
             ),
             orgId: currentOrg.id,
-            teacherUserId: importLessons ? selectedTeacher : undefined,
+            teacherId: importLessons ? selectedTeacher : undefined,
             dryRun: false,
             skipDuplicates,
             rowsToImport,
