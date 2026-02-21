@@ -112,6 +112,7 @@ export default function Teachers() {
       toast({ title: 'Name required', variant: 'destructive' });
       return;
     }
+    // Client-side guard only — server-side enforcement pending
     if (!canAddTeacher) {
       toast({ title: 'Teacher limit reached', variant: 'destructive' });
       return;
