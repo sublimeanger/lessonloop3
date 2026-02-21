@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { logger } from '@/lib/logger';
 import { PortalLayout } from '@/components/layout/PortalLayout';
@@ -105,12 +106,7 @@ export default function PortalResources() {
   return (
     <PortalLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Resources</h1>
-          <p className="text-muted-foreground">
-            Teaching materials shared by your teacher
-          </p>
-        </div>
+        <PageHeader title="Resources" description="Teaching materials shared by your teacher" />
 
         {/* Search */}
         <div className="relative max-w-md">
