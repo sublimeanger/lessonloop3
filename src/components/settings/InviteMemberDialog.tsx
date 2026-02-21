@@ -50,6 +50,29 @@ export function InviteMemberDialog({ open, onOpenChange, onInviteSent }: InviteM
 
     setIsSending(true);
 
+    // Check if email is already an active member
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email.trim().toLowerCase())
+      .maybeSingle();
+
+    if (existingProfile) {
+      const { data: existingMembership } = await supabase
+        .from('org_memberships')
+        .select('id, status')
+        .eq('org_id', currentOrg.id)
+        .eq('user_id', existingProfile.id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (existingMembership) {
+        toast({ title: 'Already a member', description: 'This person is already an active member of your organisation.', variant: 'destructive' });
+        setIsSending(false);
+        return;
+      }
+    }
+
     const { data: invite, error } = await supabase
       .from('invites')
       .insert({
