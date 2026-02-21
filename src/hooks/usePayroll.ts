@@ -20,6 +20,7 @@ export interface TeacherPayrollSummary {
     endAt: string;
     durationMins: number;
     calculatedPay: number;
+    hasWarning?: boolean;
   }[];
 }
 
@@ -52,7 +53,6 @@ export function usePayroll(startDate: string, endDate: string) {
 
       // If teacher, filter by their teacher_id (lookup via user_id)
       if (!isAdmin && user) {
-        // First, find the teacher record for this user
         const { data: teacherRecord } = await supabase
           .from('teachers')
           .select('id')
@@ -66,6 +66,27 @@ export function usePayroll(startDate: string, endDate: string) {
       }
 
       const { data: lessons, error: lessonsError } = await lessonsQuery.limit(10000);
+      if (lessonsError) throw lessonsError;
+
+      // Fetch invoice line items for percentage-rate revenue lookups
+      const lessonIds = (lessons || []).map(l => l.id);
+      let invoiceItemsMap = new Map<string, number>();
+      if (lessonIds.length > 0) {
+        const { data: invoiceItems } = await supabase
+          .from('invoice_items')
+          .select('linked_lesson_id, amount_minor')
+          .eq('org_id', currentOrg.id)
+          .in('linked_lesson_id', lessonIds);
+        
+        for (const item of invoiceItems || []) {
+          if (item.linked_lesson_id) {
+            invoiceItemsMap.set(
+              item.linked_lesson_id,
+              (invoiceItemsMap.get(item.linked_lesson_id) || 0) + item.amount_minor
+            );
+          }
+        }
+      }
       if (lessonsError) throw lessonsError;
 
       // Get unique teacher IDs (prefer teacher_id, fallback to teacher_user_id)
@@ -111,7 +132,7 @@ export function usePayroll(startDate: string, endDate: string) {
           });
         }
         
-        return calculatePayroll(lessons || [], teacherMap, startDate, endDate);
+        return calculatePayroll(lessons || [], teacherMap, startDate, endDate, invoiceItemsMap);
       }
 
       // Build teacher map
@@ -131,7 +152,7 @@ export function usePayroll(startDate: string, endDate: string) {
         });
       }
 
-      return calculatePayroll(lessons || [], teacherMap, startDate, endDate);
+      return calculatePayroll(lessons || [], teacherMap, startDate, endDate, invoiceItemsMap);
     },
     enabled: !!currentOrg && !!startDate && !!endDate,
   });
@@ -141,7 +162,8 @@ function calculatePayroll(
   lessons: any[],
   teacherMap: Map<string, { name: string; payRateType: 'per_lesson' | 'hourly' | 'percentage' | null; payRateValue: number }>,
   startDate: string,
-  endDate: string
+  endDate: string,
+  invoiceItemsMap: Map<string, number> = new Map()
 ): PayrollData {
   const teacherIds = [...teacherMap.keys()];
   const teacherSummaries: TeacherPayrollSummary[] = [];
@@ -159,8 +181,8 @@ function calculatePayroll(
       const durationMins = Math.round((end.getTime() - start.getTime()) / 60000);
       totalMinutes += durationMins;
 
-      // Calculate pay for this lesson
       let calculatedPay = 0;
+      let hasWarning = false;
       switch (teacherInfo.payRateType) {
         case 'per_lesson':
           calculatedPay = teacherInfo.payRateValue;
@@ -168,10 +190,16 @@ function calculatePayroll(
         case 'hourly':
           calculatedPay = (durationMins / 60) * teacherInfo.payRateValue;
           break;
-        case 'percentage':
-          // For percentage, we'd need lesson revenue - for now use 0
-          calculatedPay = 0;
+        case 'percentage': {
+          const lessonRevenue = invoiceItemsMap.get(lesson.id);
+          if (lessonRevenue !== undefined) {
+            calculatedPay = (teacherInfo.payRateValue / 100) * (lessonRevenue / 100);
+          } else {
+            calculatedPay = 0;
+            hasWarning = true;
+          }
           break;
+        }
         default:
           calculatedPay = 0;
       }
@@ -183,6 +211,7 @@ function calculatePayroll(
         endAt: lesson.end_at,
         durationMins,
         calculatedPay,
+        hasWarning,
       });
     }
 
@@ -237,7 +266,7 @@ export function exportPayrollToCSV(data: PayrollData, orgName: string, currencyC
   rows.push(`Total,,,,,${data.totalGrossOwed.toFixed(2)}`);
   
   const csvContent = rows.join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);
   link.setAttribute('href', url);

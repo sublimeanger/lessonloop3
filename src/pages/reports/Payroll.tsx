@@ -13,7 +13,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { usePayroll, exportPayrollToCSV } from '@/hooks/usePayroll';
 import { useOrg } from '@/contexts/OrgContext';
 import { formatCurrency, formatDateUK } from '@/lib/utils';
-import { Download, ChevronDown, ChevronRight, Banknote, Clock, Users, FileSpreadsheet } from 'lucide-react';
+import { Download, ChevronDown, ChevronRight, Banknote, Clock, Users, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function PayrollReport() {
@@ -180,6 +180,12 @@ export default function PayrollReport() {
                             <p className="text-sm text-muted-foreground">
                               {getPayRateLabel(teacher.payRateType, teacher.payRateValue)}
                             </p>
+                            {teacher.payRateType === 'percentage' && teacher.lessons.some(l => l.hasWarning) && (
+                              <p className="text-xs text-warning flex items-center gap-1 mt-0.5">
+                                <AlertTriangle className="h-3 w-3" />
+                                Revenue data needed — ensure lessons have been invoiced.
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-6">
