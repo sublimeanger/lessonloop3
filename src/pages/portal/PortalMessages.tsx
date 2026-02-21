@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -23,13 +23,16 @@ export default function PortalMessages() {
   const markAsRead = useMarkMessagesAsRead();
 
   // Mark messages as read when inbox tab is viewed
+  const hasMarkedRead = useRef(false);
+
   useEffect(() => {
-    if (activeTab === 'inbox' && messages?.length) {
+    if (activeTab === 'inbox' && messages?.length && !hasMarkedRead.current) {
       const unreadIds = messages
         .filter(m => !m.read_at && m.status === 'sent')
         .map(m => m.id);
 
       if (unreadIds.length > 0) {
+        hasMarkedRead.current = true;
         markAsRead.mutate(unreadIds);
       }
     }
@@ -98,7 +101,7 @@ export default function PortalMessages() {
         }
       />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); hasMarkedRead.current = false; }} className="space-y-6">
         <TabsList>
           <TabsTrigger value="inbox" className="gap-2">
             Inbox
