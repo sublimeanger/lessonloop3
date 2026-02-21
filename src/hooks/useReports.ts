@@ -2,8 +2,20 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { activeStudentsQuery } from '@/lib/studentQuery';
 import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { format, subMonths, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
 import { sanitiseCSVCell, currencySymbol } from '@/lib/utils';
+
+// Helper: resolve teacher_id for the current user (returns null if not a teacher)
+async function resolveTeacherId(orgId: string, userId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('teachers')
+    .select('id')
+    .eq('org_id', orgId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  return data?.id ?? null;
+}
 
 // ==================== REVENUE REPORT ====================
 export interface RevenueByMonth {
@@ -209,24 +221,36 @@ export interface LessonsDeliveredData {
 }
 
 export function useLessonsDeliveredReport(startDate: string, endDate: string) {
-  const { currentOrg } = useOrg();
+  const { currentOrg, currentRole } = useOrg();
+  const { user } = useAuth();
+  const isAdmin = currentRole === 'owner' || currentRole === 'admin' || currentRole === 'finance';
 
   return useQuery({
-    queryKey: ['lessons-delivered-report', currentOrg?.id, startDate, endDate],
+    queryKey: ['lessons-delivered-report', currentOrg?.id, startDate, endDate, user?.id, isAdmin],
     queryFn: async (): Promise<LessonsDeliveredData> => {
       if (!currentOrg) {
         return { byTeacher: [], byLocation: [], totalCompleted: 0, totalCancelled: 0, totalMinutes: 0 };
       }
 
+      // If teacher role, resolve their teacher_id first
+      let teacherFilter: string | null = null;
+      if (!isAdmin && user) {
+        teacherFilter = await resolveTeacherId(currentOrg.id, user.id);
+      }
+
       // Fetch lessons in date range with teacher_id
-      const { data: lessons, error } = await supabase
+      let lessonsQuery = supabase
         .from('lessons')
         .select('id, teacher_id, location_id, start_at, end_at, status')
         .eq('org_id', currentOrg.id)
         .gte('start_at', `${startDate}T00:00:00`)
         .lte('start_at', `${endDate}T23:59:59`);
 
-      if (error) throw error;
+      if (teacherFilter) {
+        lessonsQuery = lessonsQuery.eq('teacher_id', teacherFilter);
+      }
+
+      const { data: lessons, error } = await lessonsQuery;
 
       // Get unique teacher IDs
       const teacherIds = [...new Set((lessons || []).map(l => l.teacher_id).filter(Boolean) as string[])];
@@ -338,24 +362,36 @@ export interface CancellationData {
 }
 
 export function useCancellationReport(startDate: string, endDate: string) {
-  const { currentOrg } = useOrg();
+  const { currentOrg, currentRole } = useOrg();
+  const { user } = useAuth();
+  const isAdmin = currentRole === 'owner' || currentRole === 'admin';
 
   return useQuery({
-    queryKey: ['cancellation-report', currentOrg?.id, startDate, endDate],
+    queryKey: ['cancellation-report', currentOrg?.id, startDate, endDate, user?.id, isAdmin],
     queryFn: async (): Promise<CancellationData> => {
       if (!currentOrg) {
         return { totalScheduled: 0, totalCompleted: 0, totalCancelled: 0, cancellationRate: 0, byReason: [], byTeacher: [] };
       }
 
+      // If teacher role, resolve their teacher_id first
+      let teacherFilter: string | null = null;
+      if (!isAdmin && user) {
+        teacherFilter = await resolveTeacherId(currentOrg.id, user.id);
+      }
+
       // Fetch all lessons in date range with teacher_id
-      const { data: lessons, error } = await supabase
+      let lessonsQuery = supabase
         .from('lessons')
         .select('id, teacher_id, status')
         .eq('org_id', currentOrg.id)
         .gte('start_at', `${startDate}T00:00:00`)
         .lte('start_at', `${endDate}T23:59:59`);
 
-      if (error) throw error;
+      if (teacherFilter) {
+        lessonsQuery = lessonsQuery.eq('teacher_id', teacherFilter);
+      }
+
+      const { data: lessons, error } = await lessonsQuery;
 
       // Fetch attendance records for cancellation reasons
       const lessonIds = (lessons || []).filter(l => l.status === 'cancelled').map(l => l.id);
