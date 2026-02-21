@@ -207,7 +207,10 @@ export default function UtilisationReport() {
                 min={0}
                 max={23}
                 value={workingStart}
-                onChange={(e) => setWorkingStart(Math.min(23, Math.max(0, Number(e.target.value))))}
+                onChange={(e) => {
+                  const val = Math.min(23, Math.max(0, Number(e.target.value)));
+                  setWorkingStart(val >= workingEnd ? workingEnd - 1 : val);
+                }}
                 className="w-[100px]"
               />
             </div>
@@ -219,13 +222,23 @@ export default function UtilisationReport() {
                 min={1}
                 max={24}
                 value={workingEnd}
-                onChange={(e) => setWorkingEnd(Math.min(24, Math.max(1, Number(e.target.value))))}
+                onChange={(e) => {
+                  const val = Math.min(24, Math.max(1, Number(e.target.value)));
+                  setWorkingEnd(val <= workingStart ? workingStart + 1 : val);
+                }}
                 className="w-[100px]"
               />
             </div>
-            <p className="text-sm text-muted-foreground pb-2">
-              Set your typical teaching hours to get accurate utilisation percentages.
-            </p>
+            <div className="pb-2 space-y-1">
+              <p className="text-sm text-muted-foreground">
+                Set your typical teaching hours to get accurate utilisation percentages.
+              </p>
+              {(workingHoursPerDay < 4 || workingHoursPerDay > 16) && (
+                <p className="text-xs text-warning">
+                  Unusually {workingHoursPerDay < 4 ? 'short' : 'long'} teaching day — double check these values.
+                </p>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

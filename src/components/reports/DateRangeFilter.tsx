@@ -65,6 +65,22 @@ export function DateRangeFilter({
   onEndDateChange,
   presets = DEFAULT_PRESETS,
 }: DateRangeFilterProps) {
+  const today = format(new Date(), 'yyyy-MM-dd');
+
+  const handleStartDateChange = (newStart: string) => {
+    onStartDateChange(newStart);
+    if (newStart > endDate) {
+      onEndDateChange(newStart);
+    }
+  };
+
+  const handleEndDateChange = (newEnd: string) => {
+    onEndDateChange(newEnd);
+    if (newEnd < startDate) {
+      onStartDateChange(newEnd);
+    }
+  };
+
   const applyPreset = (preset: DatePreset) => {
     const { start, end } = preset.getRange();
     onStartDateChange(start);
@@ -81,7 +97,8 @@ export function DateRangeFilter({
               id="start-date"
               type="date"
               value={startDate}
-              onChange={(e) => onStartDateChange(e.target.value)}
+              max={endDate}
+              onChange={(e) => handleStartDateChange(e.target.value)}
               className="w-[180px]"
             />
           </div>
@@ -91,7 +108,9 @@ export function DateRangeFilter({
               id="end-date"
               type="date"
               value={endDate}
-              onChange={(e) => onEndDateChange(e.target.value)}
+              min={startDate}
+              max={today}
+              onChange={(e) => handleEndDateChange(e.target.value)}
               className="w-[180px]"
             />
           </div>
