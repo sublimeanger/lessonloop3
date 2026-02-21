@@ -3525,7 +3525,12 @@ export type Database = {
         | "cancelled_by_teacher"
         | "cancelled_by_student"
       billing_approach: "monthly" | "termly" | "custom"
-      billing_run_status: "pending" | "completed" | "failed"
+      billing_run_status:
+        | "pending"
+        | "completed"
+        | "failed"
+        | "processing"
+        | "partial"
       billing_run_type: "monthly" | "term" | "custom"
       day_of_week:
         | "monday"
@@ -3696,7 +3701,13 @@ export const Constants = {
         "cancelled_by_student",
       ],
       billing_approach: ["monthly", "termly", "custom"],
-      billing_run_status: ["pending", "completed", "failed"],
+      billing_run_status: [
+        "pending",
+        "completed",
+        "failed",
+        "processing",
+        "partial",
+      ],
       billing_run_type: ["monthly", "term", "custom"],
       day_of_week: [
         "monday",
