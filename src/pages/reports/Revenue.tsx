@@ -14,9 +14,11 @@ import { useOrg } from '@/contexts/OrgContext';
 import { formatCurrency, currencySymbol } from '@/lib/utils';
 import { Download, TrendingUp, PoundSterling, FileSpreadsheet, Receipt } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useToast } from '@/hooks/use-toast';
 
 export default function RevenueReport() {
   const { currentOrg } = useOrg();
+  const { toast } = useToast();
   
   // Default to last 12 months
   const [startDate, setStartDate] = useState(format(subMonths(new Date(), 11), 'yyyy-MM-01'));
@@ -26,7 +28,12 @@ export default function RevenueReport() {
 
   const handleExport = () => {
     if (data && currentOrg) {
-      exportRevenueToCSV(data, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'), currentOrg.currency_code);
+      try {
+        exportRevenueToCSV(data, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'), currentOrg.currency_code);
+        toast({ title: 'Report exported', description: 'CSV file has been downloaded.' });
+      } catch {
+        toast({ title: 'Export failed', description: 'Something went wrong. Please try again.', variant: 'destructive' });
+      }
     }
   };
 
