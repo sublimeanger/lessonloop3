@@ -3,7 +3,7 @@ import { differenceInMinutes } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import { findRateForDuration } from '@/hooks/useRateCards';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -43,6 +43,7 @@ export function useCreateBillingRun() {
   const queryClient = useQueryClient();
   const { currentOrg } = useOrg();
   const { user } = useAuth();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (data: {
@@ -345,21 +346,25 @@ export function useCreateBillingRun() {
       const failed = summary.failedPayers?.length || 0;
 
       if (data.status === 'completed') {
-        toast.success(`Billing run completed: ${summary.invoiceCount} invoices created`);
+        toast({ title: `Billing run completed: ${summary.invoiceCount} invoices created` });
       } else if (data.status === 'partial') {
-        toast.warning(
-          `${summary.invoiceCount} of ${summary.invoiceCount + failed} invoices created. ${failed} failed — check billing run details`
-        );
+        toast({
+          title: 'Warning',
+          description: `${summary.invoiceCount} of ${summary.invoiceCount + failed} invoices created. ${failed} failed — check billing run details`,
+        });
       } else {
-        toast.error(`Billing run failed: all ${failed} invoices could not be created`);
+        toast({ title: 'Error', description: `Billing run failed: all ${failed} invoices could not be created`, variant: 'destructive' });
       }
 
       if (summary.skippedLessons > 0) {
-        toast.warning(`${summary.skippedLessons} lesson${summary.skippedLessons === 1 ? '' : 's'} skipped — students have no primary payer configured`);
+        toast({
+          title: 'Warning',
+          description: `${summary.skippedLessons} lesson${summary.skippedLessons === 1 ? '' : 's'} skipped — students have no primary payer configured`,
+        });
       }
     },
     onError: (error) => {
-      toast.error('Billing run failed: ' + error.message);
+      toast({ title: 'Error', description: 'Billing run failed: ' + error.message, variant: 'destructive' });
     },
   });
 }
