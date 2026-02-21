@@ -140,6 +140,21 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
                       </Link>
                     </div>
                   ))}
+                  {hook.lessonsHasMore && (
+                    <div className="flex justify-center pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => hook.lessonsLoadMore()}
+                        disabled={hook.lessonsIsFetchingMore}
+                      >
+                        {hook.lessonsIsFetchingMore ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : null}
+                        Load more
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
