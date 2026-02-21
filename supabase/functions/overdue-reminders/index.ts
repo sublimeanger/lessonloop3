@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { escapeHtml } from "../_shared/escape-html.ts";
+import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 
 // This function runs on a schedule (e.g., daily) to send automated overdue invoice reminders
 // based on each organisation's configured reminder days (e.g., [7, 14, 30])
@@ -58,7 +59,7 @@ serve(async (req) => {
           name,
           overdue_reminder_days
         ),
-        payer_guardian:guardians(id, full_name, email),
+        payer_guardian:guardians(id, full_name, email, user_id),
         payer_student:students(id, first_name, last_name)
       `)
       .eq("status", "overdue");
@@ -115,6 +116,17 @@ serve(async (req) => {
         if (!guardian?.email) {
           console.log(`No email for invoice ${invoice.invoice_number}, skipping`);
           continue;
+        }
+
+        // Check if guardian's linked user has invoice reminders enabled
+        if (guardian.user_id) {
+          const prefEnabled = await isNotificationEnabled(
+            supabase, invoice.org_id, guardian.user_id, "email_invoice_reminders"
+          );
+          if (!prefEnabled) {
+            console.log(`Guardian ${guardian.email} has invoice reminders disabled, skipping`);
+            continue;
+          }
         }
 
         const recipientEmail = guardian.email;
