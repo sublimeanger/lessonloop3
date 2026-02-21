@@ -71,7 +71,7 @@ export function useCreateBillingRun() {
           billing_mode: data.billing_mode || 'delivered',
           term_id: data.term_id || null,
           summary: { invoiceCount: 0, totalAmount: 0, invoiceIds: [] },
-        } as any)
+        })
         .select()
         .single();
 
@@ -246,7 +246,7 @@ export function useCreateBillingRun() {
                   currency_code: currentOrg.currency_code,
                   status: 'draft',
                   term_id: data.term_id || null,
-                } as any)
+                })
                 .select()
                 .single();
 
@@ -284,7 +284,7 @@ export function useCreateBillingRun() {
         // Determine final status
         const totalPayers = payerGroups.size;
         const failedCount = failedPayers.length;
-        let finalStatus: string;
+        let finalStatus: Database['public']['Enums']['billing_run_status'];
         if (failedCount === 0) {
           finalStatus = 'completed';
         } else if (failedCount < totalPayers) {
@@ -307,7 +307,7 @@ export function useCreateBillingRun() {
           .update({
             status: finalStatus,
             summary,
-          } as any)
+          })
           .eq('id', billingRun.id);
 
         if (updateError) throw updateError;
@@ -333,7 +333,7 @@ export function useCreateBillingRun() {
         // Mark billing run as failed so the date range can be retried
         await supabase
           .from('billing_runs')
-          .update({ status: 'failed' } as any)
+          .update({ status: 'failed' })
           .eq('id', billingRun.id);
         throw innerError;
       }
