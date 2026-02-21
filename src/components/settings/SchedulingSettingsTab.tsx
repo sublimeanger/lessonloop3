@@ -78,8 +78,8 @@ function ScheduleHoursSetting() {
 
   const handleSave = async () => {
     if (!currentOrg) return;
-    if (endHour <= startHour) {
-      toast({ title: 'End hour must be after start hour', variant: 'destructive' });
+    if (endHour <= startHour + 1) {
+      toast({ title: 'End hour must be at least 2 hours after start hour', variant: 'destructive' });
       return;
     }
     setIsSaving(true);
