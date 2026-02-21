@@ -1,4 +1,4 @@
-import { useState, ChangeEvent } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,14 +37,14 @@ export function BrandingTab() {
   const [invoiceFooterNote, setInvoiceFooterNote] = useState('');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
 
-  if (brandingData && !hydrated) {
-    setInvoiceFromName(brandingData.invoice_from_name || '');
-    setInvoiceFooterNote(brandingData.invoice_footer_note || '');
-    setLogoUrl(brandingData.logo_url || null);
-    setHydrated(true);
-  }
+  useEffect(() => {
+    if (brandingData) {
+      setInvoiceFromName(brandingData.invoice_from_name || '');
+      setInvoiceFooterNote(brandingData.invoice_footer_note || '');
+      setLogoUrl(brandingData.logo_url || null);
+    }
+  }, [brandingData]);
 
   const orgName = brandingData?.name || currentOrg?.name || '';
 

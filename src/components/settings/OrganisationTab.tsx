@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,14 +32,13 @@ export function OrganisationTab() {
 
   const [orgName, setOrgName] = useState('');
   const [orgAddress, setOrgAddress] = useState('');
-  const [hydrated, setHydrated] = useState(false);
 
-  // Sync from query data
-  if (orgData && !hydrated) {
-    setOrgName(orgData.name || '');
-    setOrgAddress(orgData.address || '');
-    setHydrated(true);
-  }
+  useEffect(() => {
+    if (orgData) {
+      setOrgName(orgData.name || '');
+      setOrgAddress(orgData.address || '');
+    }
+  }, [orgData]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {

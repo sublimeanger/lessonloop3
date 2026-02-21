@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -54,12 +54,12 @@ export function NotificationsTab() {
   });
 
   const [prefs, setPrefs] = useState<NotificationPreferences>(defaults);
-  const [hydrated, setHydrated] = useState(false);
 
-  if (serverPrefs && !hydrated) {
-    setPrefs(serverPrefs);
-    setHydrated(true);
-  }
+  useEffect(() => {
+    if (serverPrefs) {
+      setPrefs(serverPrefs);
+    }
+  }, [serverPrefs]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
