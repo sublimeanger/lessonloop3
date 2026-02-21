@@ -14,11 +14,13 @@ import { useCancellationReport, exportCancellationToCSV } from '@/hooks/useRepor
 import { useOrg } from '@/contexts/OrgContext';
 import { Download, XCircle, CheckCircle, Calendar, Percent } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { useToast } from '@/hooks/use-toast';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--destructive))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
 
 export default function CancellationReport() {
   const { currentOrg } = useOrg();
+  const { toast } = useToast();
   
   const lastMonth = subMonths(new Date(), 1);
   const [startDate, setStartDate] = useState(format(startOfMonth(lastMonth), 'yyyy-MM-dd'));
@@ -28,7 +30,12 @@ export default function CancellationReport() {
 
   const handleExport = () => {
     if (data && currentOrg) {
-      exportCancellationToCSV(data, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'));
+      try {
+        exportCancellationToCSV(data, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'));
+        toast({ title: 'Report exported', description: 'CSV file has been downloaded.' });
+      } catch {
+        toast({ title: 'Export failed', description: 'Something went wrong. Please try again.', variant: 'destructive' });
+      }
     }
   };
 

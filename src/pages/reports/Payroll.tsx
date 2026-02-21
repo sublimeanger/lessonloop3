@@ -14,8 +14,11 @@ import { usePayroll, exportPayrollToCSV } from '@/hooks/usePayroll';
 import { useOrg } from '@/contexts/OrgContext';
 import { formatCurrency, formatDateUK } from '@/lib/utils';
 import { Download, ChevronDown, ChevronRight, Banknote, Clock, Users, FileSpreadsheet } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
 export default function PayrollReport() {
   const { currentOrg, currentRole } = useOrg();
+  const { toast } = useToast();
   const isAdmin = currentRole === 'owner' || currentRole === 'admin';
   
   // Default to last month
@@ -38,7 +41,12 @@ export default function PayrollReport() {
 
   const handleExport = () => {
     if (data && currentOrg) {
-      exportPayrollToCSV(data, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'), currentOrg.currency_code);
+      try {
+        exportPayrollToCSV(data, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'), currentOrg.currency_code);
+        toast({ title: 'Report exported', description: 'CSV file has been downloaded.' });
+      } catch {
+        toast({ title: 'Export failed', description: 'Something went wrong. Please try again.', variant: 'destructive' });
+      }
     }
   };
 

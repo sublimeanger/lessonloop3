@@ -13,9 +13,11 @@ import { formatCurrency, formatDateUK } from '@/lib/utils';
 import { Download, Clock, AlertTriangle, CheckCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 export default function OutstandingReport() {
   const { currentOrg } = useOrg();
+  const { toast } = useToast();
   const { data, isLoading, error } = useAgeingReport();
   const [expandedBuckets, setExpandedBuckets] = useState<Set<string>>(new Set(['Current (0-7 days)']));
 
@@ -31,7 +33,12 @@ export default function OutstandingReport() {
 
   const handleExport = () => {
     if (data && currentOrg) {
-      exportAgeingToCSV(data, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'), currentOrg.currency_code);
+      try {
+        exportAgeingToCSV(data, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'), currentOrg.currency_code);
+        toast({ title: 'Report exported', description: 'CSV file has been downloaded.' });
+      } catch {
+        toast({ title: 'Export failed', description: 'Something went wrong. Please try again.', variant: 'destructive' });
+      }
     }
   };
 

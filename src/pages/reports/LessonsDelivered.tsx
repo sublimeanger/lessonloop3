@@ -14,9 +14,11 @@ import { useLessonsDeliveredReport, exportLessonsDeliveredToCSV } from '@/hooks/
 import { useOrg } from '@/contexts/OrgContext';
 import { Download, Calendar, Clock, MapPin, Users, XCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useToast } from '@/hooks/use-toast';
 
 export default function LessonsDeliveredReport() {
   const { currentOrg } = useOrg();
+  const { toast } = useToast();
   
   const lastMonth = subMonths(new Date(), 1);
   const [startDate, setStartDate] = useState(format(startOfMonth(lastMonth), 'yyyy-MM-dd'));
@@ -26,7 +28,12 @@ export default function LessonsDeliveredReport() {
 
   const handleExport = () => {
     if (data && currentOrg) {
-      exportLessonsDeliveredToCSV(data, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'));
+      try {
+        exportLessonsDeliveredToCSV(data, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'));
+        toast({ title: 'Report exported', description: 'CSV file has been downloaded.' });
+      } catch {
+        toast({ title: 'Export failed', description: 'Something went wrong. Please try again.', variant: 'destructive' });
+      }
     }
   };
 
