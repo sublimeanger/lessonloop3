@@ -156,7 +156,8 @@ export function useStudentDetailPage() {
     const { data: allG } = await supabase
       .from('guardians')
       .select('*')
-      .eq('org_id', currentOrg.id);
+      .eq('org_id', currentOrg.id)
+      .is('deleted_at', null);
 
     setAllGuardians((allG || []) as Guardian[]);
   };
@@ -389,11 +390,27 @@ export function useStudentDetailPage() {
 
   const confirmGuardianRemoval = async () => {
     setGuardianDeleteDialog(prev => ({ ...prev, isDeleting: true }));
+    const guardianId = guardianDeleteDialog.guardianId;
     const { error } = await supabase.from('student_guardians').delete().eq('id', guardianDeleteDialog.sgId);
     if (error) {
       toast({ title: 'Error removing guardian', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Guardian removed' });
+      // Check if guardian is now orphaned (no remaining student links)
+      const { count } = await supabase
+        .from('student_guardians')
+        .select('id', { count: 'exact', head: true })
+        .eq('guardian_id', guardianId);
+
+      if (count === 0) {
+        // Soft-delete orphaned guardian
+        await supabase
+          .from('guardians')
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', guardianId);
+        toast({ title: 'Guardian removed', description: 'Guardian record archived (no remaining student links).' });
+      } else {
+        toast({ title: 'Guardian unlinked' });
+      }
       fetchGuardians();
     }
     setGuardianDeleteDialog(prev => ({ ...prev, open: false, isDeleting: false }));
