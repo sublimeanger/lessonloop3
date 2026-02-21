@@ -257,18 +257,18 @@ export default function Onboarding() {
     const planName = selectedPlan === 'solo_teacher' ? 'Teacher' : selectedPlan === 'academy' ? 'Studio' : 'Agency';
     
     // Org-type specific first action
-    const getFirstAction = () => {
+    const getFirstAction = (): { action: string; description: string; href: string } => {
       switch (orgType) {
         case 'solo_teacher':
-          return { action: 'Add your first student', description: 'Start by adding a student to your roster' };
+          return { action: 'Add your first student', description: 'Start by adding a student to your roster', href: '/students' };
         case 'studio':
-          return { action: 'Set up your studio', description: 'Add your teaching location and rooms' };
+          return { action: 'Set up your studio', description: 'Add your teaching location and rooms', href: '/locations' };
         case 'academy':
-          return { action: 'Add your locations', description: 'Set up your teaching venues first' };
+          return { action: 'Add your locations', description: 'Set up your teaching venues first', href: '/locations' };
         case 'agency':
-          return { action: 'Add client schools', description: 'Set up the schools where your teachers work' };
+          return { action: 'Add client schools', description: 'Set up the schools where your teachers work', href: '/locations' };
         default:
-          return { action: 'Explore your dashboard', description: 'We\'ll guide you through the next steps' };
+          return { action: 'Explore your dashboard', description: 'We\'ll guide you through the next steps', href: '/dashboard' };
       }
     };
     
@@ -326,8 +326,11 @@ export default function Onboarding() {
           transition={{ delay: 0.5 }}
           className="flex flex-col gap-3 w-full max-w-xs"
         >
-          <Button size="lg" onClick={handleGoToDashboard} className="w-full">
+          <Button size="lg" onClick={() => navigate(firstAction.href)} className="w-full">
             {firstAction.action} →
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="w-full">
+            Skip to Dashboard →
           </Button>
           <p className="text-xs text-center text-muted-foreground">
             Don't worry, we'll guide you every step of the way
