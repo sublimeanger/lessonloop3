@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -65,7 +66,11 @@ export default function LessonsDeliveredReport() {
           icon={Calendar}
           title="No lessons found"
           description="There are no lessons in the selected date range."
-        />
+        >
+          <Button asChild>
+            <Link to="/calendar">Schedule a lesson →</Link>
+          </Button>
+        </EmptyState>
       ) : (
         <>
           {/* Summary Cards */}

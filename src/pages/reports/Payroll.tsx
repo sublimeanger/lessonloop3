@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -96,7 +97,11 @@ export default function PayrollReport() {
           icon={Banknote}
           title="No completed lessons"
           description="There are no completed lessons in the selected date range."
-        />
+        >
+          <Button asChild>
+            <Link to="/calendar">Schedule lessons →</Link>
+          </Button>
+        </EmptyState>
       ) : (
         <>
           {/* Summary Cards */}
