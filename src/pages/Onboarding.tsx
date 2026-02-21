@@ -403,60 +403,63 @@ export default function Onboarding() {
                 </p>
               </div>
 
-              <Card>
-                <CardContent className="space-y-6 pt-6">
-                  {/* Name input */}
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Your Name</Label>
-                    <Input
-                      id="fullName"
-                      placeholder="Enter your full name"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      autoFocus
-                    />
-                  </div>
-
-                  {/* Org type selection */}
-                  <div className="space-y-2">
-                    <Label>How do you teach?</Label>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {ORG_TYPES.map((type) => {
-                        const Icon = type.icon;
-                        const isSelected = orgType === type.value;
-                        return (
-                          <button
-                            key={type.value}
-                            type="button"
-                            onClick={() => setOrgType(type.value)}
-                            className={`flex items-center gap-4 rounded-lg border p-4 text-left transition-colors ${
-                              isSelected
-                                ? 'border-primary bg-primary/5'
-                                : 'border-border hover:border-primary/50'
-                            }`}
-                          >
-                            <div className={`rounded-full p-2 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                              <Icon className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <div className="font-medium">{type.label}</div>
-                              <div className="text-sm text-muted-foreground">{type.description}</div>
-                            </div>
-                          </button>
-                        );
-                      })}
+              <form onSubmit={(e) => { e.preventDefault(); handleNext(); }}>
+                <Card>
+                  <CardContent className="space-y-6 pt-6">
+                    {/* Name input */}
+                    <div className="space-y-2">
+                      <Label htmlFor="fullName">Your Name</Label>
+                      <Input
+                        id="fullName"
+                        placeholder="Enter your full name"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        autoFocus
+                        autoComplete="name"
+                      />
                     </div>
-                  </div>
 
-                  {/* Navigation */}
-                  <div className="flex justify-end pt-4">
-                    <Button onClick={handleNext}>
-                      Continue
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                    {/* Org type selection */}
+                    <div className="space-y-2">
+                      <Label>How do you teach?</Label>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {ORG_TYPES.map((type) => {
+                          const Icon = type.icon;
+                          const isSelected = orgType === type.value;
+                          return (
+                            <button
+                              key={type.value}
+                              type="button"
+                              onClick={() => setOrgType(type.value)}
+                              className={`flex items-center gap-4 rounded-lg border p-4 text-left transition-colors ${
+                                isSelected
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-border hover:border-primary/50'
+                              }`}
+                            >
+                              <div className={`rounded-full p-2 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                                <Icon className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <div className="font-medium">{type.label}</div>
+                                <div className="text-sm text-muted-foreground">{type.description}</div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Navigation */}
+                    <div className="flex justify-end pt-4">
+                      <Button type="submit">
+                        Continue
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </form>
             </motion.div>
           )}
 
@@ -467,6 +470,7 @@ export default function Onboarding() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleNext(); }}
             >
               <div className="mb-8 text-center">
                 <h1 className="text-3xl font-bold">Choose Your Plan</h1>
