@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 
 export interface FilterCriteria {
   location_ids?: string[];
@@ -76,26 +76,22 @@ export function useRecipientPreview(filters: FilterCriteria) {
     queryFn: async () => {
       if (!currentOrg) return { count: 0, guardians: [] };
 
-      // Build query for students
       let studentQuery = supabase
         .from('students')
         .select('id')
         .eq('org_id', currentOrg.id)
         .is('deleted_at', null);
 
-      // Filter by status
       if (filters.status && filters.status !== 'all') {
         studentQuery = studentQuery.eq('status', filters.status);
       } else if (!filters.status) {
         studentQuery = studentQuery.eq('status', 'active');
       }
 
-      // Filter by location
       if (filters.location_ids && filters.location_ids.length > 0) {
         studentQuery = studentQuery.in('default_location_id', filters.location_ids);
       }
 
-      // Filter by teacher
       let studentIds: string[] = [];
       if (filters.teacher_ids && filters.teacher_ids.length > 0) {
         const { data: assignments } = await supabase
@@ -118,7 +114,6 @@ export function useRecipientPreview(filters: FilterCriteria) {
 
       const allStudentIds = students.map(s => s.id);
 
-      // Get guardians linked to these students
       const { data: studentGuardians } = await supabase
         .from('student_guardians')
         .select('guardian_id')
@@ -130,7 +125,6 @@ export function useRecipientPreview(filters: FilterCriteria) {
 
       const guardianIds = [...new Set(studentGuardians.map(sg => sg.guardian_id))];
 
-      // Fetch guardian details
       let guardianQuery = supabase
         .from('guardians')
         .select('id, full_name, email')
@@ -142,7 +136,6 @@ export function useRecipientPreview(filters: FilterCriteria) {
 
       let filteredGuardians = guardians || [];
 
-      // Filter for overdue invoices if requested
       if (filters.has_overdue_invoice) {
         const { data: overdueInvoices } = await supabase
           .from('invoices')
@@ -165,7 +158,7 @@ export function useRecipientPreview(filters: FilterCriteria) {
       };
     },
     enabled: !!currentOrg,
-    staleTime: 10000, // Cache for 10 seconds
+    staleTime: 10000,
   });
 }
 
@@ -173,6 +166,7 @@ export function useRecipientPreview(filters: FilterCriteria) {
 export function useSendBulkMessage() {
   const { currentOrg } = useOrg();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (payload: BulkMessagePayload) => {
@@ -193,18 +187,18 @@ export function useSendBulkMessage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['message-log'] });
       queryClient.invalidateQueries({ queryKey: ['message-batches'] });
-      toast.success(
-        `Sent ${data.sent_count} of ${data.recipient_count} messages`,
-        {
-          description: data.failed_count > 0
-            ? `${data.failed_count} failed to send`
-            : undefined,
-        }
-      );
+      toast({
+        title: `Sent ${data.sent_count} of ${data.recipient_count} messages`,
+        description: data.failed_count > 0
+          ? `${data.failed_count} failed to send`
+          : undefined,
+      });
     },
     onError: (error: Error) => {
-      toast.error('Failed to send bulk message', {
-        description: error.message,
+      toast({
+        title: 'Error',
+        description: 'Failed to send bulk message: ' + error.message,
+        variant: 'destructive',
       });
     },
   });

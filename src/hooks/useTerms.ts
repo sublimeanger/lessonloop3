@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 
 export interface Term {
   id: string;
@@ -45,6 +45,7 @@ export function useCreateTerm() {
   const queryClient = useQueryClient();
   const { currentOrg } = useOrg();
   const { user } = useAuth();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (data: { name: string; start_date: string; end_date: string }) => {
@@ -67,16 +68,17 @@ export function useCreateTerm() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['terms'] });
-      toast.success('Term created');
+      toast({ title: 'Term created' });
     },
     onError: (error) => {
-      toast.error('Failed to create term: ' + error.message);
+      toast({ title: 'Error', description: 'Failed to create term: ' + error.message, variant: 'destructive' });
     },
   });
 }
 
 export function useUpdateTerm() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (data: { id: string; name: string; start_date: string; end_date: string }) => {
@@ -93,16 +95,17 @@ export function useUpdateTerm() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['terms'] });
-      toast.success('Term updated');
+      toast({ title: 'Term updated' });
     },
     onError: (error) => {
-      toast.error('Failed to update term: ' + error.message);
+      toast({ title: 'Error', description: 'Failed to update term: ' + error.message, variant: 'destructive' });
     },
   });
 }
 
 export function useDeleteTerm() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -111,10 +114,10 @@ export function useDeleteTerm() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['terms'] });
-      toast.success('Term deleted');
+      toast({ title: 'Term deleted' });
     },
     onError: (error) => {
-      toast.error('Failed to delete term: ' + error.message);
+      toast({ title: 'Error', description: 'Failed to delete term: ' + error.message, variant: 'destructive' });
     },
   });
 }

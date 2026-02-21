@@ -4,8 +4,28 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import { parseActionFromResponse, ActionProposalData } from '@/components/loopassist/ActionCard';
+
+export type ActionType =
+  | 'create_invoice'
+  | 'send_message'
+  | 'create_lesson'
+  | 'update_lesson'
+  | 'create_student'
+  | 'update_student'
+  | 'send_email'
+  | 'unknown';
+
+export interface ActionField {
+  field: string;
+  value: string | number | boolean | null | undefined;
+}
+
+export interface ActionData {
+  type: ActionType;
+  fields: ActionField[];
+}
 
 export interface AIMessage {
   id: string;
@@ -44,8 +64,7 @@ const QUESTION_WORDS = /^(who|what|when|where|how|why|show|list|send|mark|genera
 function generateSmartTitle(content: string): string {
   const trimmed = content.trim();
   if (QUESTION_WORDS.test(trimmed)) {
-    // Take first sentence up to 40 chars
-    const sentenceEnd = trimmed.search(/[.?!\n]/);
+    const sentenceEnd = trimmed.search(/[.?!\\n]/);
     if (sentenceEnd > 0 && sentenceEnd <= 40) {
       return trimmed.slice(0, sentenceEnd + 1);
     }
@@ -58,6 +77,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
   const { user, session } = useAuth();
   const { currentOrg } = useOrg();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -112,7 +132,6 @@ export function useLoopAssist(externalPageContext?: PageContext) {
         .eq('status', 'proposed')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      // Type the proposals correctly
       return (data || []).map(item => ({
         ...item,
         proposal: item.proposal as unknown as ActionProposalData,
@@ -147,20 +166,18 @@ export function useLoopAssist(externalPageContext?: PageContext) {
   // Send message with streaming
   const sendMessage = useCallback(async (content: string) => {
     if (!currentOrg?.id || !user?.id || !session?.access_token) {
-      toast.error('Please log in to use LoopAssist');
+      toast({ title: 'Error', description: 'Please log in to use LoopAssist', variant: 'destructive' });
       throw new Error('Not authenticated');
     }
 
     let conversationId = currentConversationId;
 
-    // Create conversation if needed — use smart title
     if (!conversationId) {
       const title = generateSmartTitle(content);
       const newConv = await createConversation.mutateAsync(title);
       conversationId = newConv.id;
     }
 
-    // Save user message
     const { error: msgError } = await supabase.from('ai_messages').insert({
       conversation_id: conversationId,
       org_id: currentOrg.id,
@@ -172,11 +189,9 @@ export function useLoopAssist(externalPageContext?: PageContext) {
       throw new Error('Failed to send message');
     }
 
-    // Refresh messages to show user message
     queryClient.invalidateQueries({ queryKey: ['ai-messages', conversationId] });
 
-    // Build message history with truncation to manage token limits
-    const MAX_HISTORY_MESSAGES = 20; // Keep last 20 messages (10 turns)
+    const MAX_HISTORY_MESSAGES = 20;
     const allMessages = messages.map((m) => ({ role: m.role, content: m.content }));
     allMessages.push({ role: 'user', content });
 
@@ -197,7 +212,6 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
-    // 45-second timeout
     timeoutRef.current = setTimeout(() => {
       abortController.abort();
     }, 45000);
@@ -225,7 +239,6 @@ export function useLoopAssist(externalPageContext?: PageContext) {
         throw new Error(errorData.error || 'Failed to get response');
       }
 
-      // Store the context hash from response for subsequent messages
       const newContextHash = response.headers.get('X-Context-Hash');
       if (newContextHash) {
         setContextHash(newContextHash);
@@ -257,12 +270,10 @@ export function useLoopAssist(externalPageContext?: PageContext) {
 
           try {
             const parsed = JSON.parse(jsonStr);
-            // Simplified format from server-side transform: { text: "..." }
             if (parsed.text) {
               assistantContent += parsed.text;
               setStreamingContent(assistantContent);
             }
-            // Handle streaming errors
             if (parsed.error) {
               throw new Error(parsed.error);
             }
@@ -276,7 +287,6 @@ export function useLoopAssist(externalPageContext?: PageContext) {
         }
       }
 
-      // Save assistant message
       if (assistantContent) {
         await supabase.from('ai_messages').insert({
           conversation_id: conversationId,
@@ -286,7 +296,6 @@ export function useLoopAssist(externalPageContext?: PageContext) {
           content: assistantContent,
         });
 
-        // Check for structured action proposals in the response
         const actionData = parseActionFromResponse(assistantContent);
         if (actionData) {
           await supabase.from('ai_action_proposals').insert([{
@@ -299,7 +308,6 @@ export function useLoopAssist(externalPageContext?: PageContext) {
           queryClient.invalidateQueries({ queryKey: ['ai-proposals'] });
         }
 
-        // Update conversation title if first message
         if (messages.length === 0) {
           const title = generateSmartTitle(content);
           await supabase
@@ -312,7 +320,6 @@ export function useLoopAssist(externalPageContext?: PageContext) {
       queryClient.invalidateQueries({ queryKey: ['ai-messages', conversationId] });
       queryClient.invalidateQueries({ queryKey: ['ai-conversations'] });
     } catch (error) {
-      // Save partial response if we got streaming content before the error
       if (assistantContent && conversationId && currentOrg?.id && user?.id) {
         try {
           await supabase.from('ai_messages').insert({
@@ -343,7 +350,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
       setIsStreaming(false);
       setStreamingContent('');
     }
-  }, [currentOrg?.id, user?.id, session?.access_token, currentConversationId, messages, pageContext, queryClient, createConversation, contextHash]);
+  }, [currentOrg?.id, user?.id, session?.access_token, currentConversationId, messages, pageContext, queryClient, createConversation, contextHash, toast]);
 
   // Execute or cancel proposal
   const handleProposal = useMutation({
@@ -368,9 +375,8 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     },
     onSuccess: (data, variables) => {
       if (variables.action === 'confirm') {
-        toast.success(data.result?.message || 'Action executed successfully');
+        toast({ title: data.result?.message || 'Action executed successfully' });
         
-        // Add result message to conversation and scroll to bottom
         if (currentConversationId && currentOrg?.id && user?.id) {
           const resultMessage = typeof data.result?.message === 'string' 
             ? data.result.message 
@@ -384,7 +390,6 @@ export function useLoopAssist(externalPageContext?: PageContext) {
             content: `✅ Action Executed\n\n${resultMessage}`,
           }).then(() => {
             queryClient.invalidateQueries({ queryKey: ['ai-messages', currentConversationId] });
-            // P2 Fix: Scroll to bottom after action completion
             setTimeout(() => {
               const messagesContainer = document.querySelector('[data-loop-assist-messages]');
               if (messagesContainer) {
@@ -394,12 +399,12 @@ export function useLoopAssist(externalPageContext?: PageContext) {
           });
         }
       } else {
-        toast.info('Action cancelled');
+        toast({ title: 'Action cancelled' });
       }
       queryClient.invalidateQueries({ queryKey: ['ai-proposals'] });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Failed to process action');
+      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to process action', variant: 'destructive' });
     },
   });
 
@@ -421,7 +426,6 @@ export function useLoopAssist(externalPageContext?: PageContext) {
   });
 
   return {
-    // State
     conversations,
     conversationsLoading,
     currentConversationId,
@@ -433,7 +437,6 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     pendingProposals,
     pageContext,
 
-    // Actions
     createConversation: createConversation.mutate,
     sendMessage,
     cancelStreaming: useCallback(() => {

@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 
 interface ConnectStatus {
   connected: boolean;
@@ -23,6 +23,7 @@ export function useStripeConnect() {
   const { currentOrg: org } = useOrg();
   const [isOnboarding, setIsOnboarding] = useState(false);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: connectStatus, isLoading, refetch } = useQuery<ConnectStatus>({
     queryKey: ['stripe-connect-status', org?.id],
@@ -64,11 +65,11 @@ export function useStripeConnect() {
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to start onboarding';
-      toast.error(message);
+      toast({ title: 'Error', description: message, variant: 'destructive' });
     } finally {
       setIsOnboarding(false);
     }
-  }, [org?.id]);
+  }, [org?.id, toast]);
 
   const refreshStatus = useCallback(() => {
     refetch();
