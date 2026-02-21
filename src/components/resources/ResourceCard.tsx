@@ -77,7 +77,7 @@ export function ResourceCard({ resource, onShare }: ResourceCardProps) {
     try {
       const { data } = await fetchDownloadUrl();
       if (data) {
-        window.open(data, '_blank');
+        window.open(data, '_blank', 'noopener,noreferrer');
       }
     } finally {
       setIsDownloading(false);

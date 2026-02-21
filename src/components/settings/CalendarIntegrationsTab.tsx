@@ -291,7 +291,7 @@ export function CalendarIntegrationsTab() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => window.open(`webcal://${(existingIcalUrl || icalUrl || '').replace('https://', '')}`, '_blank')}
+                      onClick={() => window.open(`webcal://${(existingIcalUrl || icalUrl || '').replace('https://', '')}`, '_blank', 'noopener,noreferrer')}
                     >
                       <ExternalLink className="h-4 w-4 mr-2" />
                       Open in Calendar App
