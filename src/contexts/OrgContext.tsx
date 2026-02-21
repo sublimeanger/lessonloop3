@@ -192,7 +192,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     return () => {
       mountedRef.current = false;
     };
-  }, [user?.id, authInitialised, profile?.current_org_id]);
+  }, [user?.id, authInitialised]);
 
   const setCurrentOrg = async (orgId: string) => {
     const membership = memberships.find((m) => m.org_id === orgId);
