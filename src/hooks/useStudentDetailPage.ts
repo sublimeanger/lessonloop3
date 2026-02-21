@@ -110,7 +110,12 @@ export function useStudentDetailPage() {
 
   // Data hooks
   const { data: messages, isLoading: messagesLoading, hasMore: messagesHasMore, loadMore: messagesLoadMore, isFetchingMore: messagesIsFetchingMore } = useStudentMessages(id);
-  const { data: studentLessons, isLoading: lessonsLoading } = useStudentLessons(id);
+  const lessonsQuery = useStudentLessons(id);
+  const studentLessons = lessonsQuery.data?.pages.flatMap(p => p.items) ?? [];
+  const lessonsLoading = lessonsQuery.isLoading;
+  const lessonsHasMore = lessonsQuery.hasNextPage ?? false;
+  const lessonsLoadMore = () => lessonsQuery.fetchNextPage();
+  const lessonsIsFetchingMore = lessonsQuery.isFetchingNextPage;
   const { data: studentInvoices, isLoading: invoicesLoading } = useStudentInvoices(id);
 
   const fetchStudent = async () => {
@@ -516,7 +521,7 @@ export function useStudentDetailPage() {
 
     // Data
     messages, messagesLoading, messagesHasMore, messagesLoadMore, messagesIsFetchingMore,
-    studentLessons, lessonsLoading,
+    studentLessons, lessonsLoading, lessonsHasMore, lessonsLoadMore, lessonsIsFetchingMore,
     studentInvoices, invoicesLoading,
 
     fetchStudent,

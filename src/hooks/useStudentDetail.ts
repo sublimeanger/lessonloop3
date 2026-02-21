@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
@@ -31,15 +31,19 @@ export interface StudentInvoice {
 /**
  * Fetch lessons for a specific student via lesson_participants
  */
+const LESSONS_PAGE_SIZE = 50;
+
 export function useStudentLessons(studentId: string | undefined) {
   const { currentOrg } = useOrg();
 
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['student-lessons', studentId, currentOrg?.id],
-    queryFn: async () => {
-      if (!studentId || !currentOrg) return [];
+    queryFn: async ({ pageParam = 0 }) => {
+      if (!studentId || !currentOrg) return { items: [], nextPage: null };
 
-      // Fetch lesson participants with lesson details
+      const from = pageParam * LESSONS_PAGE_SIZE;
+      const to = from + LESSONS_PAGE_SIZE - 1;
+
       const { data, error } = await supabase
         .from('lesson_participants')
         .select(`
@@ -56,7 +60,8 @@ export function useStudentLessons(studentId: string | undefined) {
           )
         `)
         .eq('student_id', studentId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (error) {
         logger.error('Error fetching student lessons:', error);
@@ -66,7 +71,6 @@ export function useStudentLessons(studentId: string | undefined) {
       const lessonParticipants = data || [];
       const lessonIds = lessonParticipants.map((lp: any) => lp.lesson_id);
 
-      // Fetch attendance records for this student's lessons
       let attendanceMap: Record<string, string> = {};
       if (lessonIds.length > 0) {
         const { data: attendanceData, error: attError } = await supabase
@@ -82,7 +86,7 @@ export function useStudentLessons(studentId: string | undefined) {
         }
       }
 
-      return lessonParticipants.map((lp: any) => ({
+      const items: StudentLesson[] = lessonParticipants.map((lp: any) => ({
         id: lp.id,
         lesson_id: lp.lesson_id,
         attendance_status: attendanceMap[lp.lesson_id] || null,
@@ -95,9 +99,17 @@ export function useStudentLessons(studentId: string | undefined) {
           location_name: lp.lessons.locations?.name || null,
           teacher_name: lp.lessons.teacher?.display_name || null,
         },
-      })) as StudentLesson[];
+      }));
+
+      return {
+        items,
+        nextPage: items.length === LESSONS_PAGE_SIZE ? pageParam + 1 : null,
+      };
     },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextPage,
     enabled: !!studentId && !!currentOrg,
+    staleTime: 30_000,
   });
 }
 
@@ -167,6 +179,7 @@ export function useStudentInvoices(studentId: string | undefined) {
       return mapInvoices(data || []);
     },
     enabled: !!studentId && !!currentOrg,
+    staleTime: 30_000,
   });
 }
 
