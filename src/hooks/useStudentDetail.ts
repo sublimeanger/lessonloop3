@@ -114,7 +114,10 @@ export function useStudentLessons(studentId: string | undefined) {
 }
 
 /**
- * Fetch invoices related to a specific student via invoice_items
+ * Fetch invoices related to a specific student via all three paths:
+ * 1. invoice_items.student_id (line-item linked)
+ * 2. invoices.payer_student_id (student is direct payer)
+ * 3. invoices.payer_guardian_id (guardian linked to this student is payer)
  */
 export function useStudentInvoices(studentId: string | undefined) {
   const { currentOrg } = useOrg();
@@ -124,20 +127,6 @@ export function useStudentInvoices(studentId: string | undefined) {
     queryFn: async () => {
       if (!studentId || !currentOrg) return [];
 
-      // First get invoice IDs from invoice_items for this student
-      const { data: itemData, error: itemError } = await supabase
-        .from('invoice_items')
-        .select('invoice_id')
-        .eq('student_id', studentId);
-
-      if (itemError) {
-        logger.error('Error fetching invoice items:', itemError);
-        throw itemError;
-      }
-
-      const invoiceIds = [...new Set((itemData || []).map(item => item.invoice_id))];
-
-      // Build the common select string
       const invoiceSelect = `
         id,
         invoice_number,
@@ -149,34 +138,74 @@ export function useStudentInvoices(studentId: string | undefined) {
         payer_student:students(first_name, last_name)
       `;
 
-      if (invoiceIds.length === 0) {
-        // Also check if student is the payer directly
-        const { data: directInvoices, error: directError } = await supabase
+      // Run all three lookups in parallel
+      const [itemsResult, directResult, guardiansResult] = await Promise.all([
+        // Path 1: invoice_items with student_id
+        supabase
+          .from('invoice_items')
+          .select('invoice_id')
+          .eq('student_id', studentId),
+        // Path 2: student is the direct payer
+        supabase
           .from('invoices')
           .select(invoiceSelect)
           .eq('org_id', currentOrg.id)
           .eq('payer_student_id', studentId)
+          .order('issue_date', { ascending: false }),
+        // Path 3: get guardian IDs for this student
+        supabase
+          .from('student_guardians')
+          .select('guardian_id')
+          .eq('student_id', studentId),
+      ]);
+
+      if (itemsResult.error) throw itemsResult.error;
+      if (directResult.error) throw directResult.error;
+      if (guardiansResult.error) throw guardiansResult.error;
+
+      const invoiceIdsFromItems = [...new Set((itemsResult.data || []).map(i => i.invoice_id))];
+      const guardianIds = (guardiansResult.data || []).map(sg => sg.guardian_id);
+
+      // Collect direct-payer invoices
+      const allInvoicesMap = new Map<string, any>();
+      for (const inv of directResult.data || []) {
+        allInvoicesMap.set(inv.id, inv);
+      }
+
+      // Fetch invoices from invoice_items path
+      if (invoiceIdsFromItems.length > 0) {
+        const { data, error } = await supabase
+          .from('invoices')
+          .select(invoiceSelect)
+          .eq('org_id', currentOrg.id)
+          .in('id', invoiceIdsFromItems)
           .order('issue_date', { ascending: false });
-
-        if (directError) throw directError;
-
-        return mapInvoices(directInvoices || []);
+        if (error) throw error;
+        for (const inv of data || []) {
+          allInvoicesMap.set(inv.id, inv);
+        }
       }
 
-      // Fetch invoices by IDs
-      const { data, error } = await supabase
-        .from('invoices')
-        .select(invoiceSelect)
-        .eq('org_id', currentOrg.id)
-        .in('id', invoiceIds)
-        .order('issue_date', { ascending: false });
-
-      if (error) {
-        logger.error('Error fetching invoices:', error);
-        throw error;
+      // Fetch invoices where a linked guardian is the payer
+      if (guardianIds.length > 0) {
+        const { data, error } = await supabase
+          .from('invoices')
+          .select(invoiceSelect)
+          .eq('org_id', currentOrg.id)
+          .in('payer_guardian_id', guardianIds)
+          .order('issue_date', { ascending: false });
+        if (error) throw error;
+        for (const inv of data || []) {
+          allInvoicesMap.set(inv.id, inv);
+        }
       }
 
-      return mapInvoices(data || []);
+      // Sort combined results by issue_date descending
+      const combined = Array.from(allInvoicesMap.values()).sort(
+        (a, b) => (b.issue_date || '').localeCompare(a.issue_date || '')
+      );
+
+      return mapInvoices(combined);
     },
     enabled: !!studentId && !!currentOrg,
     staleTime: 30_000,
