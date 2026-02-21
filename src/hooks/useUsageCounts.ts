@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { activeStudentsQuery } from '@/lib/studentQuery';
 import { useOrg } from '@/contexts/OrgContext';
 import { useSubscription } from './useSubscription';
 
@@ -39,11 +40,8 @@ export function useUsageCounts(): UsageStatus {
 
       // Use SELECT with count instead of HEAD to avoid aborted request noise
       const [studentsResult, teachersResult, locationsResult] = await Promise.all([
-        supabase
-          .from('students')
-          .select('id', { count: 'exact', head: true })
-          .eq('org_id', currentOrg.id)
-          .eq('status', 'active'),
+        activeStudentsQuery(currentOrg.id)
+          .then(r => ({ ...r, count: r.data?.length ?? 0 })),
         supabase
           .from('org_memberships')
           .select('id', { count: 'exact', head: true })
