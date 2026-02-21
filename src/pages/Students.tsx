@@ -165,10 +165,24 @@ export default function Students() {
     setIsLoading(true);
 
     if (currentRole === 'teacher' && user) {
+      // Look up teacher record first, then filter by teacher_id
+      const { data: teacher } = await supabase
+        .from('teachers')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('org_id', currentOrg.id)
+        .maybeSingle();
+
+      if (!teacher) {
+        setStudents([]);
+        setIsLoading(false);
+        return;
+      }
+
       const { data: assignments, error: assignError } = await supabase
         .from('student_teacher_assignments')
         .select('student_id')
-        .eq('teacher_user_id', user.id);
+        .eq('teacher_id', teacher.id);
 
       if (assignError) {
         toast({ title: 'Error loading assignments', description: assignError.message, variant: 'destructive' });
