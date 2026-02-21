@@ -30,8 +30,8 @@ export interface ParentLesson {
   status: 'scheduled' | 'completed' | 'cancelled';
   location_id: string | null;
   location?: { name: string } | null;
-  teacher_user_id: string;
-  teacher_profile?: { display_name: string | null } | null;
+  teacher_id: string | null;
+  teacher_name?: string | null;
   notes_shared: string | null;
   students: Array<{ 
     id: string; 
@@ -173,7 +173,7 @@ export function useParentLessons(options?: { studentId?: string; status?: string
         studentIds = studentIds.filter(id => id === options.studentId);
       }
 
-      // Get lessons via participants
+      // Get lessons via participants, join teacher for display name
       const { data: participants } = await supabase
         .from('lesson_participants')
         .select(`
@@ -184,10 +184,11 @@ export function useParentLessons(options?: { studentId?: string; status?: string
             start_at,
             end_at,
             status,
-            teacher_user_id,
+            teacher_id,
             location_id,
             notes_shared,
-            location:locations(name)
+            location:locations(name),
+            teacher:teachers!lessons_teacher_id_fkey(display_name)
           )
         `)
         .in('student_id', studentIds)
@@ -231,7 +232,8 @@ export function useParentLessons(options?: { studentId?: string; status?: string
             status: lesson.status,
             location_id: lesson.location_id,
             location: lesson.location,
-            teacher_user_id: lesson.teacher_user_id,
+            teacher_id: lesson.teacher_id,
+            teacher_name: lesson.teacher?.display_name || null,
             notes_shared: lesson.notes_shared || null,
             students: [],
           });

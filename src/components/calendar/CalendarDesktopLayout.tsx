@@ -215,9 +215,7 @@ export function CalendarDesktopLayout({
           <LessonDetailSidePanel
             lesson={actions.sidePanelLesson} open={actions.sidePanelOpen} onClose={() => actions.setSidePanelOpen(false)}
             onEdit={actions.handleEditFromSidePanel} onMarkAttendance={actions.handleSidePanelAttendance}
-            teacherColour={getTeacherColour(teacherColourMap, actions.sidePanelLesson?.teacher_user_id
-              ? teachers.find(t => t.userId === actions.sidePanelLesson!.teacher_user_id)?.id ?? null
-              : null)}
+            teacherColour={getTeacherColour(teacherColourMap, actions.sidePanelLesson?.teacher_id ?? null)}
           />
         )}
       </div>

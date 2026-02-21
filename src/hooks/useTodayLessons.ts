@@ -50,7 +50,8 @@ export function useTodayLessons() {
             end_at,
             status,
             lesson_type,
-            teacher_user_id,
+            teacher_id,
+            teacher:teachers!lessons_teacher_id_fkey (display_name),
             lesson_participants (
               student:students (
                 id,
@@ -73,26 +74,23 @@ export function useTodayLessons() {
           .order('start_at', { ascending: true });
         
         // If user is a teacher in an academy, only show their lessons
-        if (currentRole === 'teacher') {
-          query = query.eq('teacher_user_id', user?.id);
+        if (currentRole === 'teacher' && user?.id) {
+          const { data: teacherRecord } = await supabase
+            .from('teachers')
+            .select('id')
+            .eq('org_id', currentOrg.id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+          if (teacherRecord) {
+            query = query.eq('teacher_id', teacherRecord.id);
+          }
         }
         
         const { data, error } = await query;
         
         if (error) throw error;
         
-        // Fetch teacher profiles separately
-        const teacherIds = [...new Set((data || []).map(l => l.teacher_user_id).filter(Boolean))] as string[];
-        let teacherMap = new Map<string, string>();
-        
-        if (teacherIds.length > 0) {
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('id, full_name')
-            .in('id', teacherIds);
-          
-          teacherMap = new Map(profiles?.map(p => [p.id, p.full_name || '']) || []);
-        }
+        // Teacher names are now joined inline via teacher:teachers
         
         const now = new Date();
         
@@ -132,7 +130,7 @@ export function useTodayLessons() {
             students,
             location: lesson.location ? { id: lesson.location.id, name: lesson.location.name } : undefined,
             room: lesson.room ? { id: lesson.room.id, name: lesson.room.name } : undefined,
-            teacherName: lesson.teacher_user_id ? teacherMap.get(lesson.teacher_user_id) : undefined,
+            teacherName: (lesson as any).teacher?.display_name || undefined,
           };
         });
       } catch (error) {
