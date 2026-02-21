@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,7 @@ export function InternalComposeModal({
 }: InternalComposeModalProps) {
   const { data: staffMembers, isLoading: staffLoading } = useStaffMembers();
   const sendMessage = useSendInternalMessage();
+  const { isOnline, guardOffline } = useOnlineStatus();
 
   const [recipientId, setRecipientId] = useState(preselectedRecipient?.user_id || '');
   const [subject, setSubject] = useState('');
@@ -42,6 +44,7 @@ export function InternalComposeModal({
   const selectedStaff = staffMembers?.find(s => s.user_id === recipientId);
 
   const handleSend = async () => {
+    if (guardOffline()) return;
     if (!recipientId || !subject.trim() || !body.trim() || !selectedStaff) return;
 
     await sendMessage.mutateAsync({
@@ -138,7 +141,7 @@ export function InternalComposeModal({
           </Button>
           <Button
             onClick={handleSend}
-            disabled={!recipientId || !subject.trim() || !body.trim() || sendMessage.isPending}
+            disabled={!recipientId || !subject.trim() || !body.trim() || sendMessage.isPending || !isOnline}
             className="gap-2"
           >
             {sendMessage.isPending ? (

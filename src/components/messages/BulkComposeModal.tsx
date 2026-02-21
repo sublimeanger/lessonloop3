@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,7 @@ export function BulkComposeModal({ open, onOpenChange }: BulkComposeModalProps) 
   const [filters, setFilters] = useState<FilterCriteria>({});
   const [sendSummary, setSendSummary] = useState<SendSummary | null>(null);
 
+  const { isOnline, guardOffline } = useOnlineStatus();
   const { locations, teachers } = useBulkMessageFilters();
   const { data: preview, isLoading: previewLoading } = useRecipientPreview(filters);
   const { data: templates } = useMessageTemplates();
@@ -80,6 +82,7 @@ export function BulkComposeModal({ open, onOpenChange }: BulkComposeModalProps) 
   }, [open]);
 
   const handleSend = async () => {
+    if (guardOffline()) return;
     if (!subject.trim() || !body.trim() || !preview?.count) return;
 
     const batchName = name.trim() || `Bulk message - ${new Date().toLocaleDateString('en-GB')}`;
@@ -266,7 +269,7 @@ export function BulkComposeModal({ open, onOpenChange }: BulkComposeModalProps) 
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSend} disabled={!canSend} className="gap-2">
+          <Button onClick={handleSend} disabled={!canSend || !isOnline} className="gap-2">
             {sendBulkMessage.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
