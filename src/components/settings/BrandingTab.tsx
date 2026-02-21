@@ -83,6 +83,18 @@ export function BrandingTab() {
     const fileExt = file.name.split('.').pop();
     const filePath = `${currentOrg.id}/logo-${Date.now()}.${fileExt}`;
 
+    // Delete old logo if exists
+    if (logoUrl) {
+      try {
+        const oldPath = logoUrl.split('/org-logos/')[1];
+        if (oldPath) {
+          await supabase.storage.from('org-logos').remove([decodeURIComponent(oldPath)]);
+        }
+      } catch {
+        // Non-blocking — old file cleanup is best-effort
+      }
+    }
+
     try {
       const { error: uploadError } = await supabase.storage
         .from('org-logos')
