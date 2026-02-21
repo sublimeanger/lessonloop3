@@ -57,8 +57,6 @@ export function useUrgentActions() {
               .maybeSingle();
             if (teacherRecord) {
               query = query.eq('teacher_id', teacherRecord.id);
-            } else {
-              query = query.eq('teacher_user_id', user.id);
             }
           }
 

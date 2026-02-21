@@ -9,6 +9,7 @@ export interface PracticeAssignment {
   org_id: string;
   student_id: string;
   teacher_user_id: string;
+  teacher_id?: string | null;
   title: string;
   description: string | null;
   target_minutes_per_day: number;

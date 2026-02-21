@@ -46,52 +46,34 @@ export function RescheduleSlotPicker({
 
   const originalDuration = differenceInMinutes(parseISO(originalEnd), parseISO(originalStart));
 
-  // Resolve teacher_user_id from teacher_id for availability/time-off queries
-  const { data: teacherRecord } = useQuery({
-    queryKey: ['teacher-record', teacherId],
+  // Fetch teacher's availability blocks by teacher_id
+  const { data: availabilityBlocks } = useQuery({
+    queryKey: ['teacher-availability', teacherId],
     queryFn: async () => {
-      if (!teacherId) return null;
+      if (!teacherId) return [];
       const { data, error } = await supabase
-        .from('teachers')
-        .select('id, user_id')
-        .eq('id', teacherId)
-        .maybeSingle();
+        .from('availability_blocks')
+        .select('*')
+        .eq('teacher_id', teacherId);
       if (error) throw error;
       return data;
     },
     enabled: !!teacherId,
   });
 
-  const teacherUserId = teacherRecord?.user_id ?? null;
-
-  // Fetch teacher's availability blocks (keyed by auth user_id)
-  const { data: availabilityBlocks } = useQuery({
-    queryKey: ['teacher-availability', teacherUserId],
-    queryFn: async () => {
-      if (!teacherUserId) return [];
-      const { data, error } = await supabase
-        .from('availability_blocks')
-        .select('*')
-        .eq('teacher_user_id', teacherUserId);
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!teacherUserId,
-  });
-
-  // Fetch teacher's time-off blocks (keyed by auth user_id)
+  // Fetch teacher's time-off blocks by teacher_id
   const { data: timeOffBlocks } = useQuery({
-    queryKey: ['teacher-time-off', teacherUserId],
+    queryKey: ['teacher-time-off', teacherId],
     queryFn: async () => {
-      if (!teacherUserId) return [];
+      if (!teacherId) return [];
       const { data, error } = await supabase
         .from('time_off_blocks')
         .select('*')
-        .eq('teacher_user_id', teacherUserId);
+        .eq('teacher_id', teacherId);
       if (error) throw error;
       return data;
     },
-    enabled: !!teacherUserId,
+    enabled: !!teacherId,
   });
 
   // Fetch teacher's existing lessons for conflict checking (use teacher_id)

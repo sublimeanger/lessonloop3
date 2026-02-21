@@ -44,7 +44,7 @@ export function usePayroll(startDate: string, endDate: string) {
       // Fetch completed lessons in date range - now with teacher_id
       let lessonsQuery = supabase
         .from('lessons')
-        .select('id, title, start_at, end_at, teacher_id, teacher_user_id, status')
+        .select('id, title, start_at, end_at, teacher_id, status')
         .eq('org_id', currentOrg.id)
         .eq('status', 'completed')
         .gte('start_at', `${startDate}T00:00:00`)
@@ -62,9 +62,6 @@ export function usePayroll(startDate: string, endDate: string) {
         
         if (teacherRecord) {
           lessonsQuery = lessonsQuery.eq('teacher_id', teacherRecord.id);
-        } else {
-          // Fallback to teacher_user_id for backward compat
-          lessonsQuery = lessonsQuery.eq('teacher_user_id', user.id);
         }
       }
 
