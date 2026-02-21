@@ -162,7 +162,7 @@ const handler = async (req: Request): Promise<Response> => {
         org_id: orgId,
         channel: "email",
         subject,
-        body: htmlContent,
+        body: `Lesson: ${lessonTitle}\nDate: ${lessonDate}\nTeacher: ${teacherName}\n\nNotes:\n${notesShared}`,
         sender_user_id: user.id,
         recipient_email: guardian.email,
         recipient_name: guardian.full_name,
