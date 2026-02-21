@@ -261,17 +261,24 @@ export function useCreateInvoice() {
 
         if (redeemError) {
           logger.error('Failed to mark credits as redeemed:', redeemError);
+          // Invoice is created but credits weren't marked as redeemed
+          // Return the invoice but flag the issue for the caller
+          return { ...invoice, _creditRedemptionFailed: true };
         }
       }
 
       return invoice;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
       queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
       queryClient.invalidateQueries({ queryKey: ['available-credits-for-payer'] });
-      toast({ title: 'Invoice created' });
+      if (data._creditRedemptionFailed) {
+        toast({ title: 'Warning', description: 'Invoice created, but credits could not be marked as redeemed. Please check the credits manually.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Invoice created' });
+      }
     },
     onError: (error) => {
       toast({ title: 'Error', description: 'Failed to create invoice: ' + error.message, variant: 'destructive' });
