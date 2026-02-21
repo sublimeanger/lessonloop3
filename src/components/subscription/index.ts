@@ -5,5 +5,5 @@ export {
   LimitReached, 
   FeatureBadge 
 } from './FeatureGate';
-export { UsageIndicator } from './UsageIndicator';
+
 export { TrialExpiredModal, TrialExpiredBanner } from './TrialExpiredModal';
