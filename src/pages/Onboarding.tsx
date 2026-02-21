@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,6 +38,8 @@ export default function Onboarding() {
   const [step, setStep] = useState<Step>('profile');
   const [orgType, setOrgType] = useState<OrgType>('solo_teacher');
   const [fullName, setFullName] = useState('');
+  const [orgName, setOrgName] = useState('');
+  const hasEditedOrgName = useRef(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>('academy');
   const [error, setError] = useState<string | null>(null);
   const [profileReady, setProfileReady] = useState(false);
@@ -121,6 +123,31 @@ export default function Onboarding() {
     setSelectedPlan(getRecommendedPlan(orgType));
   }, [orgType]);
 
+  // Auto-generate org name when name or type changes (unless manually edited)
+  useEffect(() => {
+    if (hasEditedOrgName.current) return;
+    const name = fullName.trim();
+    if (!name) {
+      setOrgName('');
+      return;
+    }
+    const firstName = name.split(' ')[0];
+    switch (orgType) {
+      case 'solo_teacher':
+        setOrgName(`${firstName}'s Teaching`);
+        break;
+      case 'studio':
+        setOrgName(`${firstName}'s Music Studio`);
+        break;
+      case 'academy':
+        setOrgName(`${firstName}'s Music Academy`);
+        break;
+      case 'agency':
+        setOrgName(`${firstName}'s Teaching Agency`);
+        break;
+    }
+  }, [fullName, orgType]);
+
   const handleLogout = async () => {
     await signOut();
     navigate('/login');
@@ -130,6 +157,10 @@ export default function Onboarding() {
     if (step === 'profile') {
       if (!fullName.trim()) {
         toast({ title: 'Please enter your name', variant: 'destructive' });
+        return;
+      }
+      if (!orgName.trim()) {
+        toast({ title: 'Please enter an organisation name', variant: 'destructive' });
         return;
       }
       setStep('plan');
@@ -154,9 +185,7 @@ export default function Onboarding() {
         throw new Error('Not logged in. Please refresh and try again.');
       }
 
-      const orgName = orgType === 'solo_teacher' 
-        ? `${fullName.trim()}'s Teaching` 
-        : `${fullName.trim()}'s ${ORG_TYPES.find(t => t.value === orgType)?.label || 'Organisation'}`;
+      const finalOrgName = orgName.trim();
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       
@@ -173,7 +202,7 @@ export default function Onboarding() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            org_name: orgName,
+            org_name: finalOrgName,
             org_type: orgType,
             full_name: fullName.trim(),
             subscription_plan: selectedPlan,
@@ -453,7 +482,22 @@ export default function Onboarding() {
                       </div>
                     </div>
 
-                    {/* Navigation */}
+                    {/* Organisation name */}
+                    <div className="space-y-2">
+                      <Label htmlFor="orgName">Organisation Name</Label>
+                      <Input
+                        id="orgName"
+                        placeholder="e.g. Jamie's Music Studio"
+                        value={orgName}
+                        onChange={(e) => {
+                          hasEditedOrgName.current = true;
+                          setOrgName(e.target.value);
+                        }}
+                        autoComplete="organization"
+                      />
+                      <p className="text-xs text-muted-foreground">You can change this later in Settings.</p>
+                    </div>
+
                     <div className="flex justify-end pt-4">
                       <Button type="submit">
                         Continue
