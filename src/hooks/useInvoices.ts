@@ -75,6 +75,7 @@ export function useInvoices(filters: InvoiceFilters = {}) {
       return data as InvoiceWithDetails[];
     },
     enabled: !!currentOrg?.id,
+    staleTime: 30_000, // 30 seconds — avoid refetch on navigation
   });
 }
 
@@ -165,6 +166,7 @@ export function useInvoiceStats() {
       };
     },
     enabled: !!currentOrg?.id,
+    staleTime: 60_000, // 1 minute — stats don't change frequently
   });
 }
 
