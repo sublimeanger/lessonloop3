@@ -12,6 +12,7 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useCancellationReport, exportCancellationToCSV } from '@/hooks/useReports';
 import { useOrg } from '@/contexts/OrgContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Download, XCircle, CheckCircle, Calendar, Percent } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +22,7 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--destructive))', 'hsl(var(--cha
 export default function CancellationReport() {
   const { currentOrg } = useOrg();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   const lastMonth = subMonths(new Date(), 1);
   const [startDate, setStartDate] = useState(format(startOfMonth(lastMonth), 'yyyy-MM-dd'));
@@ -151,11 +153,11 @@ export default function CancellationReport() {
                         data={pieData}
                         cx="50%"
                         cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
+                        innerRadius={isMobile ? 40 : 60}
+                        outerRadius={isMobile ? 70 : 90}
                         paddingAngle={2}
                         dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={isMobile ? false : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                       >
                         {pieData.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
