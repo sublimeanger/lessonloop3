@@ -12,6 +12,7 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useLessonsDeliveredReport, exportLessonsDeliveredToCSV } from '@/hooks/useReports';
 import { useOrg } from '@/contexts/OrgContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Download, Calendar, Clock, MapPin, Users, XCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 export default function LessonsDeliveredReport() {
   const { currentOrg } = useOrg();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   const lastMonth = subMonths(new Date(), 1);
   const [startDate, setStartDate] = useState(format(startOfMonth(lastMonth), 'yyyy-MM-dd'));
@@ -154,7 +156,7 @@ export default function LessonsDeliveredReport() {
                         <BarChart data={data.byTeacher} layout="vertical">
                           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                           <XAxis type="number" />
-                          <YAxis dataKey="teacherName" type="category" width={120} className="text-xs" />
+                          <YAxis dataKey="teacherName" type="category" width={isMobile ? 80 : 120} className="text-xs" tick={{ fontSize: isMobile ? 11 : 12 }} tickFormatter={(v: string) => isMobile && v.length > 15 ? v.slice(0, 15) + '…' : v} />
                           <Tooltip />
                           <Bar dataKey="completedLessons" fill="hsl(var(--primary))" name="Completed" radius={[0, 4, 4, 0]} />
                         </BarChart>
@@ -207,7 +209,7 @@ export default function LessonsDeliveredReport() {
                         <BarChart data={data.byLocation} layout="vertical">
                           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                           <XAxis type="number" />
-                          <YAxis dataKey="locationName" type="category" width={150} className="text-xs" />
+                          <YAxis dataKey="locationName" type="category" width={isMobile ? 80 : 150} className="text-xs" tick={{ fontSize: isMobile ? 11 : 12 }} tickFormatter={(v: string) => isMobile && v.length > 15 ? v.slice(0, 15) + '…' : v} />
                           <Tooltip />
                           <Bar dataKey="completedLessons" fill="hsl(var(--chart-2))" name="Completed" radius={[0, 4, 4, 0]} />
                         </BarChart>
