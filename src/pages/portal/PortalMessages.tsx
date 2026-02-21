@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ListSkeleton } from '@/components/shared/LoadingState';
-import { logger } from '@/lib/logger';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,8 +11,7 @@ import { format, parseISO } from 'date-fns';
 import { useMessageRequests } from '@/hooks/useParentPortal';
 import { useParentMessages } from '@/hooks/useMessages';
 import { RequestModal } from '@/components/portal/RequestModal';
-import { supabase } from '@/integrations/supabase/client';
-import { useEffect } from 'react';
+import { useMarkMessagesAsRead } from '@/hooks/useUnreadMessages';
 import { sanitizeHtml } from '@/lib/sanitize';
 
 export default function PortalMessages() {
@@ -22,6 +20,7 @@ export default function PortalMessages() {
 
   const { data: requests, isLoading: requestsLoading } = useMessageRequests();
   const { data: messages, isLoading: messagesLoading, hasMore, loadMore, isFetchingMore } = useParentMessages();
+  const markAsRead = useMarkMessagesAsRead();
 
   // Mark messages as read when inbox tab is viewed
   useEffect(() => {
@@ -31,9 +30,7 @@ export default function PortalMessages() {
         .map(m => m.id);
 
       if (unreadIds.length > 0) {
-        supabase.functions.invoke('mark-messages-read', {
-          body: { message_ids: unreadIds },
-        }).catch((err: unknown) => logger.error('Failed to mark messages read:', err));
+        markAsRead.mutate(unreadIds);
       }
     }
   }, [activeTab, messages]);
