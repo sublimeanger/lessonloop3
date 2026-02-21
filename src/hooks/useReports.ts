@@ -45,7 +45,8 @@ export function useRevenueReport(startDate: string, endDate: string) {
         .eq('org_id', currentOrg.id)
         .eq('status', 'paid')
         .gte('issue_date', startDate)
-        .lte('issue_date', endDate);
+        .lte('issue_date', endDate)
+        .limit(10000);
 
       if (error) throw error;
 
@@ -128,7 +129,8 @@ export function useAgeingReport() {
           payer_student:students!invoices_payer_student_id_fkey(first_name, last_name)
         `)
         .eq('org_id', currentOrg.id)
-        .in('status', ['sent', 'overdue']);
+        .in('status', ['sent', 'overdue'])
+        .limit(5000);
 
       if (error) throw error;
 
@@ -250,7 +252,7 @@ export function useLessonsDeliveredReport(startDate: string, endDate: string) {
         lessonsQuery = lessonsQuery.eq('teacher_id', teacherFilter);
       }
 
-      const { data: lessons, error } = await lessonsQuery;
+      const { data: lessons, error } = await lessonsQuery.limit(10000);
 
       // Get unique teacher IDs
       const teacherIds = [...new Set((lessons || []).map(l => l.teacher_id).filter(Boolean) as string[])];
@@ -391,7 +393,7 @@ export function useCancellationReport(startDate: string, endDate: string) {
         lessonsQuery = lessonsQuery.eq('teacher_id', teacherFilter);
       }
 
-      const { data: lessons, error } = await lessonsQuery;
+      const { data: lessons, error } = await lessonsQuery.limit(10000);
 
       // Fetch attendance records for cancellation reasons
       const lessonIds = (lessons || []).filter(l => l.status === 'cancelled').map(l => l.id);
@@ -400,6 +402,7 @@ export function useCancellationReport(startDate: string, endDate: string) {
             .from('attendance_records')
             .select('lesson_id, attendance_status, cancellation_reason')
             .in('lesson_id', lessonIds)
+            .limit(10000)
         : { data: [] };
 
       // Get teacher IDs
@@ -523,7 +526,8 @@ export function useDashboardStats() {
         .select('start_at, end_at, status')
         .eq('org_id', currentOrg.id)
         .gte('start_at', `${weekStartStr}T00:00:00`)
-        .lte('start_at', `${weekEndStr}T23:59:59`);
+        .lte('start_at', `${weekEndStr}T23:59:59`)
+        .limit(5000);
 
       // Revenue MTD
       const { data: mtdInvoices } = await supabase
@@ -532,7 +536,8 @@ export function useDashboardStats() {
         .eq('org_id', currentOrg.id)
         .eq('status', 'paid')
         .gte('issue_date', monthStart)
-        .lte('issue_date', monthEnd);
+        .lte('issue_date', monthEnd)
+        .limit(5000);
 
       // Total lessons ever (for new user detection)
       const { count: totalLessonsCount } = await supabase

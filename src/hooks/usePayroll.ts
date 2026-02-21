@@ -65,7 +65,7 @@ export function usePayroll(startDate: string, endDate: string) {
         }
       }
 
-      const { data: lessons, error: lessonsError } = await lessonsQuery;
+      const { data: lessons, error: lessonsError } = await lessonsQuery.limit(10000);
       if (lessonsError) throw lessonsError;
 
       // Get unique teacher IDs (prefer teacher_id, fallback to teacher_user_id)

@@ -73,7 +73,8 @@ function useUtilisationReport(startDate: string, endDate: string, workingHoursPe
         .not('room_id', 'is', null)
         .neq('status', 'cancelled')
         .gte('start_at', `${startDate}T00:00:00`)
-        .lte('start_at', `${endDate}T23:59:59`);
+        .lte('start_at', `${endDate}T23:59:59`)
+        .limit(10000);
 
       if (lessonsError) throw lessonsError;
 
