@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -7,30 +7,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { StudentWizard } from '@/components/students/StudentWizard';
+import { useStudents, useToggleStudentStatus } from '@/hooks/useStudents';
+import type { StudentListItem, StudentStatus } from '@/hooks/useStudents';
 import { Plus, Search, Users, Upload, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
 import { useInvoices } from '@/hooks/useInvoices';
 
-type StudentStatus = 'active' | 'inactive';
-
-interface Student {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  phone: string | null;
-  dob: string | null;
-  notes: string | null;
-  status: StudentStatus;
-  created_at: string;
-}
+const STATUS_FILTERS = ['all', 'active', 'inactive'] as const;
+type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 // Generate a consistent color from a name string
 function nameToColor(name: string): string {
@@ -41,9 +30,6 @@ function nameToColor(name: string): string {
   const hue = Math.abs(hash) % 360;
   return `hsl(${hue}, 55%, 55%)`;
 }
-
-const STATUS_FILTERS = ['all', 'active', 'inactive'] as const;
-type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 function StatusPills({
   value,
@@ -79,9 +65,9 @@ function StudentCard({
   isAdmin,
   onToggleStatus,
 }: {
-  student: Student;
+  student: StudentListItem;
   isAdmin: boolean;
-  onToggleStatus: (s: Student) => void;
+  onToggleStatus: (s: StudentListItem) => void;
 }) {
   const navigate = useNavigate();
   const fullName = `${student.first_name} ${student.last_name}`;
@@ -94,7 +80,6 @@ function StudentCard({
       className="flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md cursor-pointer group"
       role="listitem"
     >
-      {/* Avatar */}
       <div
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
         style={{ backgroundColor: avatarColor }}
@@ -103,13 +88,11 @@ function StudentCard({
         {initials}
       </div>
 
-      {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
             {fullName}
           </span>
-          {/* Status indicator */}
           <span className="inline-flex items-center gap-1 shrink-0">
             <span
               className={cn(
@@ -128,7 +111,6 @@ function StudentCard({
         </div>
       </div>
 
-      {/* Admin action */}
       {isAdmin && (
         <Button
           variant="ghost"
@@ -148,88 +130,16 @@ function StudentCard({
 }
 
 export default function Students() {
-  const { currentOrg, currentRole } = useOrg();
+  const { currentRole } = useOrg();
   const isAdmin = currentRole === 'owner' || currentRole === 'admin';
-  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { limits, canAddStudent } = useUsageCounts();
-  const [students, setStudents] = useState<Student[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: students = [], isLoading } = useStudents();
+  const toggleMutation = useToggleStudentStatus();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [isWizardOpen, setIsWizardOpen] = useState(false);
-
-  const fetchStudents = async () => {
-    if (!currentOrg) return;
-    setIsLoading(true);
-
-    if (currentRole === 'teacher' && user) {
-      // Look up teacher record first, then filter by teacher_id
-      const { data: teacher } = await supabase
-        .from('teachers')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('org_id', currentOrg.id)
-        .maybeSingle();
-
-      if (!teacher) {
-        setStudents([]);
-        setIsLoading(false);
-        return;
-      }
-
-      const { data: assignments, error: assignError } = await supabase
-        .from('student_teacher_assignments')
-        .select('student_id')
-        .eq('teacher_id', teacher.id);
-
-      if (assignError) {
-        toast({ title: 'Error loading assignments', description: assignError.message, variant: 'destructive' });
-        setIsLoading(false);
-        return;
-      }
-
-      const assignedIds = assignments?.map((a) => a.student_id) || [];
-      if (assignedIds.length === 0) {
-        setStudents([]);
-        setIsLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('students')
-        .select('*')
-        .eq('org_id', currentOrg.id)
-        .in('id', assignedIds)
-        .is('deleted_at', null)
-        .order('last_name', { ascending: true });
-
-      if (error) {
-        toast({ title: 'Error loading students', description: error.message, variant: 'destructive' });
-      } else {
-        setStudents((data || []) as Student[]);
-      }
-    } else {
-      const { data, error } = await supabase
-        .from('students')
-        .select('*')
-        .eq('org_id', currentOrg.id)
-        .is('deleted_at', null)
-        .order('last_name', { ascending: true });
-
-      if (error) {
-        toast({ title: 'Error loading students', description: error.message, variant: 'destructive' });
-      } else {
-        setStudents((data || []) as Student[]);
-      }
-    }
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    fetchStudents();
-  }, [currentOrg?.id, currentRole, user?.id]);
 
   const statusCounts = useMemo(() => ({
     all: students.length,
@@ -259,19 +169,9 @@ export default function Students() {
     setIsWizardOpen(true);
   };
 
-  const toggleStatus = async (student: Student) => {
+  const toggleStatus = (student: StudentListItem) => {
     const newStatus: StudentStatus = student.status === 'active' ? 'inactive' : 'active';
-    const { error } = await supabase
-      .from('students')
-      .update({ status: newStatus })
-      .eq('id', student.id);
-
-    if (error) {
-      toast({ title: 'Error updating status', description: error.message, variant: 'destructive' });
-    } else {
-      setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, status: newStatus } : s)));
-      queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
-    }
+    toggleMutation.mutate({ studentId: student.id, newStatus });
   };
 
   return (
@@ -297,10 +197,8 @@ export default function Students() {
         }
       />
 
-      {/* LoopAssist overdue banner */}
       <StudentsOverdueBanner />
 
-      {/* Search + Filter bar */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" data-tour="student-filters">
         <div className="relative w-full sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
@@ -315,7 +213,6 @@ export default function Students() {
         <StatusPills value={statusFilter} onChange={setStatusFilter} counts={statusCounts} />
       </div>
 
-      {/* Student List */}
       {isLoading ? (
         <ListSkeleton count={5} />
       ) : filteredStudents.length === 0 ? (
@@ -344,7 +241,7 @@ export default function Students() {
       <StudentWizard
         open={isWizardOpen}
         onOpenChange={setIsWizardOpen}
-        onSuccess={fetchStudents}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['students'] })}
       />
     </AppLayout>
   );
@@ -352,7 +249,6 @@ export default function Students() {
 
 function StudentsOverdueBanner() {
   const { data: overdueInvoices = [] } = useInvoices({ status: 'overdue' });
-  // Count unique students with overdue invoices
   const studentIds = new Set(overdueInvoices.map(inv => inv.payer_student_id).filter(Boolean));
   const count = studentIds.size;
 
