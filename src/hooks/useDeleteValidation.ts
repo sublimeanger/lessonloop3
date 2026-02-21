@@ -32,13 +32,6 @@ export function useDeleteValidation() {
 
     // Check for future lessons (warn, don't block — soft-delete will remove participations)
     const now = new Date().toISOString();
-    const { count: lessonCount } = await supabase
-      .from('lesson_participants')
-      .select('id', { count: 'exact', head: true })
-      .eq('student_id', studentId)
-      .eq('org_id', currentOrg.id)
-      .filter('lesson_id', 'in', `(select id from lessons where start_at > '${now}' and status = 'scheduled' and org_id = '${currentOrg.id}')`);
-
     // Fallback: query via inner join
     const { count: futureLessonCount } = await supabase
       .from('lesson_participants')
