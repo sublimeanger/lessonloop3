@@ -202,6 +202,12 @@ export default function PortalSchedule() {
                   <span>{lesson.location.name}</span>
                 </div>
               )}
+              {lesson.teacher_name && (
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 flex-shrink-0" />
+                  <span>{lesson.teacher_name}</span>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 flex-shrink-0" />
                 <span>
