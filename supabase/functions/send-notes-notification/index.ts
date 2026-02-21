@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
+import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://id-preview--c541d756-90e7-442a-ba85-0c723aeabc14.lovable.app";
 
@@ -144,6 +145,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     for (const guardian of guardians) {
       if (!guardian.email) continue;
+
+      // Check if guardian's linked user has lesson reminders enabled
+      if (guardian.user_id) {
+        const prefEnabled = await isNotificationEnabled(
+          supabaseService, orgId, guardian.user_id, "email_lesson_reminders"
+        );
+        if (!prefEnabled) {
+          console.log(`Guardian ${guardian.email} has lesson reminders disabled, skipping`);
+          continue;
+        }
+      }
 
       // Log message
       await supabaseService.from("message_log").insert({
