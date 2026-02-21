@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -10,7 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Progress } from '@/components/ui/progress';
 import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { SortableTableHead } from '@/components/reports/SortableTableHead';
 import { useCancellationReport, exportCancellationToCSV } from '@/hooks/useReports';
+import { useSortableTable } from '@/hooks/useSortableTable';
 import { useOrg } from '@/contexts/OrgContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Download, XCircle, CheckCircle, Calendar, Percent } from 'lucide-react';
@@ -209,34 +211,54 @@ export default function CancellationReport() {
               <CardDescription>Compare cancellation rates across your team</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Teacher</TableHead>
-                    <TableHead className="text-right">Total Lessons</TableHead>
-                    <TableHead className="text-right">Cancelled</TableHead>
-                    <TableHead className="text-right">Rate</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.byTeacher.map((teacher) => (
-                    <TableRow key={teacher.teacherName}>
-                      <TableCell className="font-medium">{teacher.teacherName}</TableCell>
-                      <TableCell className="text-right">{teacher.total}</TableCell>
-                      <TableCell className="text-right text-destructive">{teacher.cancelled}</TableCell>
-                      <TableCell className="text-right">
-                        <span className={teacher.rate > 10 ? 'text-destructive font-medium' : teacher.rate > 5 ? 'text-warning' : 'text-success'}>
-                          {teacher.rate.toFixed(1)}%
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <CancellationByTeacherTable teachers={data.byTeacher} />
             </CardContent>
           </Card>
         </>
       )}
     </AppLayout>
+  );
+}
+
+type TeacherCancellation = { teacherName: string; total: number; cancelled: number; rate: number };
+type CancellationSortField = 'teacherName' | 'total' | 'cancelled' | 'rate';
+
+const cancellationComparators: Record<CancellationSortField, (a: TeacherCancellation, b: TeacherCancellation) => number> = {
+  teacherName: (a, b) => a.teacherName.localeCompare(b.teacherName),
+  total: (a, b) => a.total - b.total,
+  cancelled: (a, b) => a.cancelled - b.cancelled,
+  rate: (a, b) => a.rate - b.rate,
+};
+
+function CancellationByTeacherTable({ teachers }: { teachers: TeacherCancellation[] }) {
+  const { sorted, sort, toggle } = useSortableTable<TeacherCancellation, CancellationSortField>(
+    teachers, 'teacherName', 'asc', cancellationComparators
+  );
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <SortableTableHead label="Teacher" field="teacherName" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} />
+          <SortableTableHead label="Total Lessons" field="total" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} className="text-right" />
+          <SortableTableHead label="Cancelled" field="cancelled" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} className="text-right" />
+          <SortableTableHead label="Rate" field="rate" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} className="text-right" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {sorted.map((teacher) => (
+          <TableRow key={teacher.teacherName}>
+            <TableCell className="font-medium">{teacher.teacherName}</TableCell>
+            <TableCell className="text-right">{teacher.total}</TableCell>
+            <TableCell className="text-right text-destructive">{teacher.cancelled}</TableCell>
+            <TableCell className="text-right">
+              <span className={teacher.rate > 10 ? 'text-destructive font-medium' : teacher.rate > 5 ? 'text-warning' : 'text-success'}>
+                {teacher.rate.toFixed(1)}%
+              </span>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
