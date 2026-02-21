@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { escapeHtml } from "../_shared/escape-html.ts";
 
 interface NotifyInternalRequest {
   org_id: string;
@@ -97,16 +98,16 @@ const handler = async (req: Request): Promise<Response> => {
               <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
                   <p style="margin: 0; color: #666; font-size: 14px;">
-                    Internal message from <strong>${data.sender_name}</strong> (${data.sender_role})
+                    Internal message from <strong>${escapeHtml(data.sender_name)}</strong> (${escapeHtml(data.sender_role)})
                   </p>
                 </div>
-                <h2 style="color: #333; margin-bottom: 16px;">${data.subject}</h2>
+                <h2 style="color: #333; margin-bottom: 16px;">${escapeHtml(data.subject)}</h2>
                 <div style="white-space: pre-wrap; color: #555; line-height: 1.6;">
-                  ${data.body.replace(/\n/g, "<br>")}
+                  ${escapeHtml(data.body).replace(/\n/g, "<br>")}
                 </div>
                 <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;" />
                 <p style="color: #999; font-size: 12px;">
-                  This is an internal message from ${orgName}. 
+                  This is an internal message from ${escapeHtml(orgName)}. 
                   <a href="https://lessonloop.lovable.app/messages" style="color: #666;">View in LessonLoop</a>
                 </p>
               </div>
