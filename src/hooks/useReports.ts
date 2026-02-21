@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { activeStudentsQuery } from '@/lib/studentQuery';
 import { useOrg } from '@/contexts/OrgContext';
 import { format, subMonths, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
 import { sanitiseCSVCell, currencySymbol } from '@/lib/utils';
@@ -494,11 +495,7 @@ export function useDashboardStats() {
         .eq('status', 'scheduled');
 
       // Active students
-      const { data: studentsData } = await supabase
-        .from('students')
-        .select('id')
-        .eq('org_id', currentOrg.id)
-        .eq('status', 'active');
+      const { data: studentsData } = await activeStudentsQuery(currentOrg.id);
 
       // Outstanding invoices — use RPC for accurate totals (no row-limit issues)
       const { data: invoiceStatsRaw } = await supabase.rpc('get_invoice_stats', {

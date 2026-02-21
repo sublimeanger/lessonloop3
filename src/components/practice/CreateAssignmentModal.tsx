@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { useCreateAssignment } from '@/hooks/usePractice';
 import { supabase } from '@/integrations/supabase/client';
+import { activeStudentsQuery } from '@/lib/studentQuery';
 import { useOrg } from '@/contexts/OrgContext';
 import { toast } from 'sonner';
 
@@ -64,14 +65,10 @@ export function CreateAssignmentModal({
   }, [preselectedStudentId]);
 
   const fetchStudents = async () => {
-    const { data } = await supabase
-      .from('students')
-      .select('id, first_name, last_name')
-      .eq('org_id', currentOrg!.id)
-      .eq('status', 'active')
+    const { data } = await activeStudentsQuery(currentOrg!.id)
       .order('first_name');
     
-    setStudents(data || []);
+    setStudents((data || []) as any);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
