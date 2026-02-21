@@ -145,9 +145,9 @@ export function PendingInvitesList({ refreshKey = 0, roleFilter }: PendingInvite
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  title="Resend invite"
+                  title={expired ? "Invite expired — cancel and re-invite" : "Resend invite"}
                   onClick={() => handleResend(invite)}
-                  disabled={resendingId === invite.id}
+                  disabled={resendingId === invite.id || expired}
                 >
                   {resendingId === invite.id ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
