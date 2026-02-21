@@ -188,6 +188,11 @@ export default function AuditLogTab() {
                 ))}
               </TableBody>
             </Table>
+            {logs && logs.length >= 200 && (
+              <p className="text-sm text-muted-foreground text-center mt-4">
+                Showing the first 200 results. Narrow your date range or filters to see more.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
