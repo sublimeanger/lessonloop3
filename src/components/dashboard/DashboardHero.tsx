@@ -215,7 +215,7 @@ function StatPill({
         whileTap={{ scale: 0.98 }}
       >
         <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-60 shrink-0" />
-        <span className="font-mono font-semibold">{value}</span>
+        <span className="font-semibold">{value}</span>
         <span className="text-muted-foreground text-[10px] sm:text-xs hidden xs:inline">{label}</span>
       </motion.div>
     </Link>
