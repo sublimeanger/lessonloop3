@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,6 +43,8 @@ export default function Onboarding() {
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>('academy');
   const [error, setError] = useState<string | null>(null);
   const [profileReady, setProfileReady] = useState(false);
+  const [loadingStage, setLoadingStage] = useState(0);
+  const [loadingProgress, setLoadingProgress] = useState(0);
 
   // Self-healing: ensure profile exists on mount
   // Note: We allow users who have completed onboarding to access this page
@@ -260,6 +262,31 @@ export default function Onboarding() {
 
   const currentStepIndex = step === 'profile' ? 0 : step === 'plan' ? 1 : 0;
 
+  // Loading screen staged progress
+  const LOADING_STAGES = ['Creating your organisation...', 'Configuring your plan...', 'Almost there...'];
+
+  useEffect(() => {
+    if (step !== 'loading') {
+      setLoadingStage(0);
+      setLoadingProgress(0);
+      return;
+    }
+    const t1 = setTimeout(() => setLoadingStage(1), 500);
+    const t2 = setTimeout(() => setLoadingStage(2), 1500);
+    const start = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - start;
+      setLoadingProgress(Math.min(90, (elapsed / 5000) * 90));
+    }, 50);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearInterval(interval); };
+  }, [step]);
+
+  useEffect(() => {
+    if (step === 'success' || step === 'error') {
+      setLoadingProgress(100);
+    }
+  }, [step]);
+
   // Initial loading while ensuring profile exists
   if (!profileReady) {
     return (
@@ -270,13 +297,33 @@ export default function Onboarding() {
     );
   }
 
-  // Loading screen
   if (step === 'loading') {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-lg font-medium">Setting up your account...</p>
-        <p className="text-sm text-muted-foreground">This should only take a moment</p>
+        <div className="w-full max-w-xs space-y-4">
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={loadingStage}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25 }}
+              className="text-center text-lg font-medium"
+            >
+              {LOADING_STAGES[loadingStage]}
+            </motion.p>
+          </AnimatePresence>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <motion.div
+              className="h-full rounded-full bg-primary"
+              initial={{ width: '0%' }}
+              animate={{ width: `${loadingProgress}%` }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+            />
+          </div>
+          <p className="text-center text-sm text-muted-foreground">This should only take a moment</p>
+        </div>
       </div>
     );
   }
@@ -454,7 +501,7 @@ export default function Onboarding() {
                     {/* Org type selection */}
                     <div className="space-y-2">
                       <Label>How do you teach?</Label>
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Teaching type">
                         {ORG_TYPES.map((type) => {
                           const Icon = type.icon;
                           const isSelected = orgType === type.value;
@@ -462,6 +509,9 @@ export default function Onboarding() {
                             <button
                               key={type.value}
                               type="button"
+                              role="radio"
+                              aria-checked={isSelected}
+                              aria-label={`Select ${type.label}: ${type.description}`}
                               onClick={() => setOrgType(type.value)}
                               className={`flex items-center gap-4 rounded-lg border p-4 text-left transition-colors ${
                                 isSelected
