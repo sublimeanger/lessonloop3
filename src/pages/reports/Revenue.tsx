@@ -11,7 +11,7 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useRevenueReport, exportRevenueToCSV } from '@/hooks/useReports';
 import { useOrg } from '@/contexts/OrgContext';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, currencySymbol } from '@/lib/utils';
 import { Download, TrendingUp, PoundSterling, FileSpreadsheet, Receipt } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -166,7 +166,7 @@ export default function RevenueReport() {
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="monthLabel" className="text-xs" />
                     <YAxis 
-                      tickFormatter={(value) => `£${value}`}
+                      tickFormatter={(value) => `${currencySymbol(currentOrg?.currency_code || 'GBP')}${value}`}
                       className="text-xs"
                     />
                     <Tooltip 
