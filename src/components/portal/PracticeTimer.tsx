@@ -8,15 +8,19 @@ import { useLogPractice, useParentPracticeAssignments } from '@/hooks/usePractic
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { safeGetItem, safeSetItem, safeRemoveItem } from '@/lib/storage';
+import { useAuth } from '@/contexts/AuthContext';
 
-// ─── localStorage keys ────────
-const STORAGE_KEYS = {
-  isRunning: 'practiceTimer_isRunning',
-  startedAt: 'practiceTimer_startedAt',
-  pausedElapsed: 'practiceTimer_pausedElapsed',
-  studentId: 'practiceTimer_studentId',
-  assignmentId: 'practiceTimer_assignmentId',
-} as const;
+// ─── localStorage keys (user-scoped) ────────
+function getStorageKeys(userId: string | undefined) {
+  const prefix = userId ? `practiceTimer_${userId}` : 'practiceTimer';
+  return {
+    isRunning: `${prefix}_isRunning`,
+    startedAt: `${prefix}_startedAt`,
+    pausedElapsed: `${prefix}_pausedElapsed`,
+    studentId: `${prefix}_studentId`,
+    assignmentId: `${prefix}_assignmentId`,
+  };
+}
 
 function storageSet(key: string, value: string) {
   safeSetItem(key, value);
@@ -24,8 +28,8 @@ function storageSet(key: string, value: string) {
 function storageGet(key: string): string | null {
   return safeGetItem(key);
 }
-function storageClear() {
-  Object.values(STORAGE_KEYS).forEach(k => safeRemoveItem(k));
+function storageClear(keys: ReturnType<typeof getStorageKeys>) {
+  Object.values(keys).forEach(k => safeRemoveItem(k));
 }
 
 interface PracticeTimerProps {
@@ -33,6 +37,9 @@ interface PracticeTimerProps {
 }
 
 export function PracticeTimer({ onComplete }: PracticeTimerProps) {
+  const { user } = useAuth();
+  const STORAGE_KEYS = getStorageKeys(user?.id);
+
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
@@ -75,11 +82,11 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
     const savedStudent = storageGet(STORAGE_KEYS.studentId) || '';
     const savedAssignment = storageGet(STORAGE_KEYS.assignmentId) || '';
 
-    if (!savedStartedAt) { storageClear(); return; }
+    if (!savedStartedAt) { storageClear(STORAGE_KEYS); return; }
 
     const elapsed = savedPausedElapsed + Math.floor((Date.now() - savedStartedAt) / 1000);
     // Cap at 4 hours to discard stale sessions
-    if (elapsed > 14400) { storageClear(); return; }
+    if (elapsed > 14400) { storageClear(STORAGE_KEYS); return; }
 
     setSelectedStudentId(savedStudent);
     setSelectedAssignmentId(savedAssignment);
@@ -157,7 +164,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
 
   const handleStop = async () => {
     setIsRunning(false);
-    storageClear();
+    storageClear(STORAGE_KEYS);
 
     const durationMinutes = Math.max(1, Math.round(elapsedSeconds / 60));
 
@@ -198,7 +205,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
     setElapsedSeconds(0);
     startedAtRef.current = null;
     setNotes('');
-    storageClear();
+    storageClear(STORAGE_KEYS);
   };
 
   if (isLoading) {
