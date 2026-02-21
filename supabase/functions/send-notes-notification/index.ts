@@ -158,7 +158,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       // Log message
-      await supabaseService.from("message_log").insert({
+      const { data: logEntry } = await supabaseService.from("message_log").insert({
         org_id: orgId,
         channel: "email",
         subject,
@@ -171,7 +171,7 @@ const handler = async (req: Request): Promise<Response> => {
         related_id: lessonId,
         message_type: "lesson_notes",
         status: resendApiKey ? "pending" : "logged",
-      });
+      }).select('id').single();
 
       if (!resendApiKey) {
         emailsLogged++;
@@ -195,26 +195,21 @@ const handler = async (req: Request): Promise<Response> => {
 
       if (response.ok) {
         emailsSent++;
-        // Update message log
-        await supabaseService
-          .from("message_log")
-          .update({ status: "sent", sent_at: new Date().toISOString() })
-          .eq("related_id", lessonId)
-          .eq("message_type", "lesson_notes")
-          .eq("recipient_id", guardian.id)
-          .order("created_at", { ascending: false })
-          .limit(1);
+        if (logEntry) {
+          await supabaseService
+            .from("message_log")
+            .update({ status: "sent", sent_at: new Date().toISOString() })
+            .eq("id", logEntry.id);
+        }
       } else {
         const result = await response.json();
         console.error("Failed to send email:", result);
-        await supabaseService
-          .from("message_log")
-          .update({ status: "failed", error_message: JSON.stringify(result) })
-          .eq("related_id", lessonId)
-          .eq("message_type", "lesson_notes")
-          .eq("recipient_id", guardian.id)
-          .order("created_at", { ascending: false })
-          .limit(1);
+        if (logEntry) {
+          await supabaseService
+            .from("message_log")
+            .update({ status: "failed", error_message: JSON.stringify(result) })
+            .eq("id", logEntry.id);
+        }
       }
     }
 
