@@ -76,6 +76,11 @@ export function ThreadedMessageList({ searchQuery }: ThreadedMessageListProps) {
           setReplyingTo={setReplyingTo}
         />
       ))}
+      {threads && threads.length >= 100 && (
+        <p className="text-sm text-muted-foreground text-center py-4">
+          Showing most recent message threads. Use the list view for older messages.
+        </p>
+      )}
     </div>
   );
 }
