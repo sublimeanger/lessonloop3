@@ -83,7 +83,17 @@ export function useGuardianInfo() {
       return data;
     },
     enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
+}
+
+export function useGuardianId() {
+  const guardianInfo = useGuardianInfo();
+  return {
+    guardianId: guardianInfo.data?.id || null,
+    isLoading: guardianInfo.isLoading,
+    orgId: guardianInfo.data?.org_id || null,
+  };
 }
 
 export function useParentDashboardData() {
