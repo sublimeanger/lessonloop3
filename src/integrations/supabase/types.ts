@@ -3178,6 +3178,7 @@ export type Database = {
           org_id: string
           reason: string | null
           start_at: string
+          teacher_id: string | null
           teacher_user_id: string
         }
         Insert: {
@@ -3187,6 +3188,7 @@ export type Database = {
           org_id: string
           reason?: string | null
           start_at: string
+          teacher_id?: string | null
           teacher_user_id: string
         }
         Update: {
@@ -3196,6 +3198,7 @@ export type Database = {
           org_id?: string
           reason?: string | null
           start_at?: string
+          teacher_id?: string | null
           teacher_user_id?: string
         }
         Relationships: [
@@ -3211,6 +3214,27 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_off_blocks_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_off_blocks_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_off_blocks_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers_with_pay"
             referencedColumns: ["id"]
           },
         ]
