@@ -270,7 +270,7 @@ export function DashboardHero({
 
   if (outstandingAmount > 0) {
     pills.push({
-      value: formatCurrency(outstandingAmount / 100),
+      value: formatCurrency(outstandingAmount),
       label: 'outstanding',
       href: '/reports/outstanding',
       icon: Receipt,

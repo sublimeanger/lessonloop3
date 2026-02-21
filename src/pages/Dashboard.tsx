@@ -195,8 +195,8 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
               <StatCard title="Today's Lessons" value={stats?.todayLessons ?? 0} subtitle="Scheduled for today" icon={Calendar} href="/calendar" variant="teal" />
               <StatCard title="Active Students" value={stats?.activeStudents ?? 0} subtitle="Currently enrolled" icon={Users} href="/students" variant="coral" />
               <StatCard title="This Week" value={`${stats?.lessonsThisWeek ?? 0} lessons`} subtitle={`${stats?.hoursThisWeek ?? 0} teaching hours`} icon={Clock} href="/calendar" variant="emerald" />
-              <StatCard title="Revenue (MTD)" value={formatCurrency((stats?.revenueMTD ?? 0) / 100)} subtitle="Month to date" icon={PoundSterling} href="/reports/revenue" variant="violet" />
-              <StatCard title="Outstanding" value={formatCurrency((stats?.outstandingAmount ?? 0) / 100)} subtitle={(stats?.outstandingAmount ?? 0) > 0 ? 'View ageing report' : 'All invoices paid'} icon={Receipt} href="/reports/outstanding" variant="coral" />
+              <StatCard title="Revenue (MTD)" value={formatCurrency(stats?.revenueMTD ?? 0)} subtitle="Month to date" icon={PoundSterling} href="/reports/revenue" variant="violet" />
+              <StatCard title="Outstanding" value={formatCurrency(stats?.outstandingAmount ?? 0)} subtitle={(stats?.outstandingAmount ?? 0) > 0 ? 'View ageing report' : 'All invoices paid'} icon={Receipt} href="/reports/outstanding" variant="coral" />
               <StatCard title="Total Lessons" value={stats?.totalLessons ?? 0} subtitle="All time" icon={BookOpen} href="/reports/lessons-delivered" variant="teal" />
             </div>
           )}
@@ -288,8 +288,8 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
               <StatCard title="Today's Lessons" value={stats?.todayLessons ?? 0} subtitle="Across all teachers" icon={Calendar} href="/calendar" variant="teal" />
               <StatCard title="Active Students" value={stats?.activeStudents ?? 0} subtitle="Currently enrolled" icon={Users} href="/students" variant="coral" />
               <StatCard title="This Week" value={`${stats?.lessonsThisWeek ?? 0} lessons`} subtitle={`${stats?.hoursThisWeek ?? 0} teaching hours`} icon={Clock} href="/calendar" variant="emerald" />
-              <StatCard title="Revenue (MTD)" value={formatCurrency((stats?.revenueMTD ?? 0) / 100)} subtitle="Month to date" icon={PoundSterling} href="/reports/revenue" variant="emerald" />
-              <StatCard title="Outstanding" value={formatCurrency((stats?.outstandingAmount ?? 0) / 100)} subtitle="Awaiting payment" icon={Receipt} href="/reports/outstanding" variant="violet" />
+              <StatCard title="Revenue (MTD)" value={formatCurrency(stats?.revenueMTD ?? 0)} subtitle="Month to date" icon={PoundSterling} href="/reports/revenue" variant="emerald" />
+              <StatCard title="Outstanding" value={formatCurrency(stats?.outstandingAmount ?? 0)} subtitle="Awaiting payment" icon={Receipt} href="/reports/outstanding" variant="violet" />
               <StatCard title="Total Lessons" value={stats?.totalLessons ?? 0} subtitle="All time" icon={BookOpen} href="/reports/lessons-delivered" variant="teal" />
             </div>
           )}
