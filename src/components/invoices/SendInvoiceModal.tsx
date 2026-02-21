@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useUpdateInvoiceStatus } from '@/hooks/useInvoices';
 import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import type { InvoiceWithDetails } from '@/hooks/useInvoices';
 import { formatCurrencyMinor } from '@/lib/utils';
 
@@ -34,6 +34,7 @@ export function SendInvoiceModal({
   isReminder = false,
 }: SendInvoiceModalProps) {
   const { currentOrg } = useOrg();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const updateStatus = useUpdateInvoiceStatus();
   const [isSending, setIsSending] = useState(false);
@@ -79,10 +80,10 @@ export function SendInvoiceModal({
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice'] });
 
-      toast.success(isReminder ? 'Reminder sent' : 'Invoice sent');
+      toast({ title: isReminder ? 'Reminder sent' : 'Invoice sent' });
       onOpenChange(false);
     } catch (error: any) {
-      toast.error(`Failed to send: ${error.message}`);
+      toast({ title: 'Error', description: `Failed to send: ${error.message}`, variant: 'destructive' });
     } finally {
       setIsSending(false);
     }
