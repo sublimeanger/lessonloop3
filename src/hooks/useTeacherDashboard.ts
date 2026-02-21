@@ -65,7 +65,9 @@ export function useTeacherDashboardStats() {
       const { data: todayLessonsData } = await supabase
         .from('lessons')
         .select('id')
-        .match({ org_id: currentOrg.id, teacher_id: myTeacherId, status: 'scheduled' })
+        .eq('org_id', currentOrg.id)
+        .eq('teacher_id', myTeacherId)
+        .eq('status', 'scheduled')
         .gte('start_at', `${todayStr}T00:00:00`)
         .lte('start_at', `${todayStr}T23:59:59`);
 
@@ -73,13 +75,15 @@ export function useTeacherDashboardStats() {
       const { data: assignments } = await supabase
         .from('student_teacher_assignments')
         .select('student_id')
-        .match({ org_id: currentOrg.id, teacher_id: myTeacherId });
+        .eq('org_id', currentOrg.id)
+        .eq('teacher_id', myTeacherId);
 
       // Get this week's lessons for hours calculation
       const { data: weekLessons } = await supabase
         .from('lessons')
         .select('start_at, end_at')
-        .match({ org_id: currentOrg.id, teacher_id: myTeacherId })
+        .eq('org_id', currentOrg.id)
+        .eq('teacher_id', myTeacherId)
         .gte('start_at', `${weekStart}T00:00:00`)
         .lte('start_at', `${weekEnd}T23:59:59`);
 
@@ -87,7 +91,9 @@ export function useTeacherDashboardStats() {
       const { data: monthLessons } = await supabase
         .from('lessons')
         .select('id')
-        .match({ org_id: currentOrg.id, teacher_id: myTeacherId, status: 'completed' })
+        .eq('org_id', currentOrg.id)
+        .eq('teacher_id', myTeacherId)
+        .eq('status', 'completed')
         .gte('start_at', `${monthStart}T00:00:00`)
         .lte('start_at', `${monthEnd}T23:59:59`);
 
@@ -95,7 +101,9 @@ export function useTeacherDashboardStats() {
       const { data: upcomingData } = await supabase
         .from('lessons')
         .select('id, title, start_at, end_at, location_id')
-        .match({ org_id: currentOrg.id, teacher_id: myTeacherId, status: 'scheduled' })
+        .eq('org_id', currentOrg.id)
+        .eq('teacher_id', myTeacherId)
+        .eq('status', 'scheduled')
         .gte('start_at', `${todayStr}T00:00:00`)
         .order('start_at', { ascending: true })
         .limit(5);
