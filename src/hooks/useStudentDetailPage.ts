@@ -342,6 +342,15 @@ export function useStudentDetailPage() {
       return;
     }
 
+    // If marking as primary payer, clear any existing primary payer first
+    if (isPrimaryPayer) {
+      await supabase
+        .from('student_guardians')
+        .update({ is_primary_payer: false })
+        .eq('student_id', student.id)
+        .eq('org_id', currentOrg.id);
+    }
+
     const { error } = await supabase
       .from('student_guardians')
       .insert({
