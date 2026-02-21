@@ -193,26 +193,32 @@ export function useParentMessages() {
   const { currentOrg } = useOrg();
   const { user } = useAuth();
 
-  const infiniteQuery = useInfiniteQuery({
-    queryKey: ['parent-messages', currentOrg?.id, user?.id],
-    queryFn: async ({ pageParam }: { pageParam: string | null }) => {
-      if (!currentOrg || !user) return { data: [], nextCursor: null };
-
-      // Get guardian ID for current user
-      const { data: guardian } = await supabase
+  const { data: guardianId } = useQuery({
+    queryKey: ['parent-guardian-id', currentOrg?.id, user?.id],
+    queryFn: async () => {
+      if (!currentOrg || !user) return null;
+      const { data } = await supabase
         .from('guardians')
         .select('id')
         .eq('user_id', user.id)
         .eq('org_id', currentOrg.id)
         .maybeSingle();
+      return data?.id || null;
+    },
+    enabled: !!currentOrg && !!user,
+    staleTime: 5 * 60 * 1000,
+  });
 
-      if (!guardian) return { data: [], nextCursor: null };
+  const infiniteQuery = useInfiniteQuery({
+    queryKey: ['parent-messages', currentOrg?.id, user?.id, guardianId],
+    queryFn: async ({ pageParam }: { pageParam: string | null }) => {
+      if (!currentOrg || !user || !guardianId) return { data: [], nextCursor: null };
 
       let query = supabase
         .from('message_log')
         .select('*')
         .eq('org_id', currentOrg.id)
-        .eq('recipient_id', guardian.id)
+        .eq('recipient_id', guardianId)
         .eq('recipient_type', 'guardian')
         .order('created_at', { ascending: false })
         .limit(PAGE_SIZE);
@@ -232,7 +238,7 @@ export function useParentMessages() {
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    enabled: !!currentOrg && !!user,
+    enabled: !!currentOrg && !!user && !!guardianId,
   });
 
   const allMessages = infiniteQuery.data?.pages.flatMap((p) => p.data) ?? [];
