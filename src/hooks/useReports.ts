@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { activeStudentsQuery } from '@/lib/studentQuery';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, subMonths, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
+import { format, subMonths, startOfMonth, endOfMonth, differenceInDays, addMonths, parseISO } from 'date-fns';
 import { sanitiseCSVCell, currencySymbol } from '@/lib/utils';
 
 // Helper: resolve teacher_id for the current user (returns null if not a teacher)
@@ -61,19 +61,21 @@ export function useRevenueReport(startDate: string, endDate: string) {
         monthMap.set(monthKey, existing);
       }
 
-      // Build sorted array
+      // Build continuous array of all months in range
       const months: RevenueByMonth[] = [];
-      const sortedKeys = Array.from(monthMap.keys()).sort();
-      
-      for (const key of sortedKeys) {
-        const data = monthMap.get(key)!;
-        const date = new Date(key + '-01');
+      let cursor = startOfMonth(parseISO(startDate));
+      const rangeEnd = startOfMonth(parseISO(endDate));
+
+      while (cursor <= rangeEnd) {
+        const key = format(cursor, 'yyyy-MM');
+        const data = monthMap.get(key) || { paidAmount: 0, invoiceCount: 0 };
         months.push({
           month: key,
-          monthLabel: format(date, 'MMM yyyy'),
+          monthLabel: format(cursor, 'MMM yyyy'),
           paidAmount: data.paidAmount,
           invoiceCount: data.invoiceCount,
         });
+        cursor = addMonths(cursor, 1);
       }
 
       const totalRevenue = months.reduce((sum, m) => sum + m.paidAmount, 0);
