@@ -200,6 +200,14 @@ export function useCreateBillingRun() {
           });
         });
 
+        // Count orphaned lessons (no payer resolved)
+        const billedLessonIds2 = new Set<string>();
+        for (const [, group] of payerGroups) {
+          group.addedLessonIds.forEach(id => billedLessonIds2.add(id));
+        }
+        const skippedLessons = unbilledLessons.filter(l => !billedLessonIds2.has(l.id));
+        const skippedCount = skippedLessons.length;
+
         let invoiceIds: string[] = [];
         let totalAmount = 0;
         const failedPayers: Array<{ payerName: string; payerEmail: string | null; error: string }> = [];
@@ -287,6 +295,7 @@ export function useCreateBillingRun() {
           invoiceCount: invoiceIds.length,
           totalAmount,
           invoiceIds,
+          skippedLessons: skippedCount,
           ...(failedPayers.length > 0 ? { failedPayers } : {}),
         };
 
@@ -326,6 +335,10 @@ export function useCreateBillingRun() {
         );
       } else {
         toast.error(`Billing run failed: all ${failed} invoices could not be created`);
+      }
+
+      if (summary.skippedLessons > 0) {
+        toast.warning(`${summary.skippedLessons} lesson${summary.skippedLessons === 1 ? '' : 's'} skipped — students have no primary payer configured`);
       }
     },
     onError: (error) => {
