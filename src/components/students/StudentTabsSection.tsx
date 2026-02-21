@@ -86,6 +86,11 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
           handleInviteGuardian={hook.handleInviteGuardian}
           handleCopyInviteLink={hook.handleCopyInviteLink}
           initiateGuardianRemoval={hook.initiateGuardianRemoval}
+          editGuardianDialog={hook.editGuardianDialog}
+          setEditGuardianDialog={hook.setEditGuardianDialog}
+          isEditGuardianSaving={hook.isEditGuardianSaving}
+          handleEditGuardian={hook.handleEditGuardian}
+          handleSaveGuardianEdit={hook.handleSaveGuardianEdit}
         />
       </TabsContent>
 

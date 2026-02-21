@@ -1,12 +1,13 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
-import { Loader2, Plus, UserPlus, Send, Copy } from 'lucide-react';
+import { Loader2, Plus, UserPlus, Send, Copy, Pencil } from 'lucide-react';
 import type { Guardian, StudentGuardian, RelationshipType, GuardianInviteStatus } from '@/hooks/useStudentDetailPage';
 
 interface GuardiansCardProps {
@@ -43,6 +44,25 @@ interface GuardiansCardProps {
 
   // Removal
   initiateGuardianRemoval: (sg: StudentGuardian) => void;
+
+  // Edit guardian
+  editGuardianDialog: {
+    open: boolean;
+    guardianId: string;
+    fullName: string;
+    email: string;
+    phone: string;
+  };
+  setEditGuardianDialog: React.Dispatch<React.SetStateAction<{
+    open: boolean;
+    guardianId: string;
+    fullName: string;
+    email: string;
+    phone: string;
+  }>>;
+  isEditGuardianSaving: boolean;
+  handleEditGuardian: (guardian: Guardian) => void;
+  handleSaveGuardianEdit: () => void;
 }
 
 export function GuardiansCard({
@@ -65,6 +85,10 @@ export function GuardiansCard({
   handleInviteGuardian,
   handleCopyInviteLink,
   initiateGuardianRemoval,
+  editGuardianDialog, setEditGuardianDialog,
+  isEditGuardianSaving,
+  handleEditGuardian,
+  handleSaveGuardianEdit,
 }: GuardiansCardProps) {
   return (
     <SectionErrorBoundary name="Guardians">
@@ -137,6 +161,11 @@ export function GuardiansCard({
                       }
                       return null;
                     })()}
+                    {isOrgAdmin && sg.guardian && (
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditGuardian(sg.guardian!)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                     {isOrgAdmin && (
                       <Button variant="ghost" size="sm" onClick={() => initiateGuardianRemoval(sg)}>Remove</Button>
                     )}
@@ -223,6 +252,47 @@ export function GuardiansCard({
             <Button variant="outline" onClick={() => { setIsGuardianDialogOpen(false); resetGuardianForm(); }}>Cancel</Button>
             <Button onClick={handleAddGuardian} disabled={isSaving}>
               {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Adding...</> : 'Add Guardian'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Guardian Dialog */}
+      <Dialog open={editGuardianDialog.open} onOpenChange={(open) => setEditGuardianDialog(prev => ({ ...prev, open }))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Guardian</DialogTitle>
+            <DialogDescription>Update contact details for this guardian.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Full name *</Label>
+              <Input
+                value={editGuardianDialog.fullName}
+                onChange={(e) => setEditGuardianDialog(prev => ({ ...prev, fullName: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={editGuardianDialog.email}
+                onChange={(e) => setEditGuardianDialog(prev => ({ ...prev, email: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone</Label>
+              <Input
+                type="tel"
+                value={editGuardianDialog.phone}
+                onChange={(e) => setEditGuardianDialog(prev => ({ ...prev, phone: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditGuardianDialog(prev => ({ ...prev, open: false }))}>Cancel</Button>
+            <Button onClick={handleSaveGuardianEdit} disabled={isEditGuardianSaving || !editGuardianDialog.fullName.trim()}>
+              {isEditGuardianSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>

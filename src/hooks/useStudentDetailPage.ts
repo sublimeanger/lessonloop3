@@ -100,6 +100,16 @@ export function useStudentDetailPage() {
   const [isPrimaryPayer, setIsPrimaryPayer] = useState(false);
   const [isNewGuardian, setIsNewGuardian] = useState(false);
 
+  // Edit guardian state
+  const [editGuardianDialog, setEditGuardianDialog] = useState<{
+    open: boolean;
+    guardianId: string;
+    fullName: string;
+    email: string;
+    phone: string;
+  }>({ open: false, guardianId: '', fullName: '', email: '', phone: '' });
+  const [isEditGuardianSaving, setIsEditGuardianSaving] = useState(false);
+
   // Message state
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedGuardianForMessage, setSelectedGuardianForMessage] = useState<Guardian | null>(null);
@@ -464,6 +474,42 @@ export function useStudentDetailPage() {
     }
   };
 
+  const handleEditGuardian = (guardian: Guardian) => {
+    setEditGuardianDialog({
+      open: true,
+      guardianId: guardian.id,
+      fullName: guardian.full_name,
+      email: guardian.email || '',
+      phone: guardian.phone || '',
+    });
+  };
+
+  const handleSaveGuardianEdit = async () => {
+    if (!currentOrg || !editGuardianDialog.guardianId) return;
+    setIsEditGuardianSaving(true);
+    try {
+      const { error } = await supabase
+        .from('guardians')
+        .update({
+          full_name: editGuardianDialog.fullName.trim(),
+          email: editGuardianDialog.email.trim() || null,
+          phone: editGuardianDialog.phone.trim() || null,
+        })
+        .eq('id', editGuardianDialog.guardianId)
+        .eq('org_id', currentOrg.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Guardian updated', description: 'Contact details have been saved.' });
+      setEditGuardianDialog(prev => ({ ...prev, open: false }));
+      fetchStudent();
+    } catch (error: any) {
+      toast({ title: 'Error updating guardian', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsEditGuardianSaving(false);
+    }
+  };
+
   const fullName = student ? `${student.first_name} ${student.last_name}` : '';
 
   return {
@@ -508,6 +554,12 @@ export function useStudentDetailPage() {
     initiateGuardianRemoval,
     confirmGuardianRemoval,
     guardianDeleteDialog, setGuardianDeleteDialog,
+
+    // Edit guardian
+    editGuardianDialog, setEditGuardianDialog,
+    isEditGuardianSaving,
+    handleEditGuardian,
+    handleSaveGuardianEdit,
 
     // Invite state
     invitingGuardianId,
