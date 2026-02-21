@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { format, parseISO, isSameDay, setHours, setMinutes, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LessonWithDetails } from './types';
-import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS } from './teacherColours';
+import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS, getTeacherColour } from './teacherColours';
 import { computeOverlapLayout } from './overlapLayout';
 import { useDragLesson } from './useDragLesson';
 import { useResizeLesson } from './useResizeLesson';
@@ -12,15 +12,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 const DAY_HOUR_HEIGHT = 72;
 
-function resolveColourByUserId(
+function resolveColour(
   colourMap: Map<string, TeacherWithColour>,
-  teacherUserId: string | null | undefined
+  teacherId: string | null | undefined
 ): TeacherColourEntry {
-  if (!teacherUserId) return TEACHER_COLOURS[0];
-  for (const entry of colourMap.values()) {
-    if (entry.userId === teacherUserId) return entry.colour;
-  }
-  return TEACHER_COLOURS[0];
+  return getTeacherColour(colourMap, teacherId);
 }
 
 interface DayTimelineViewProps {
@@ -265,7 +261,7 @@ export function DayTimelineView({
             const pos = positions.get(lesson.id);
             if (!pos) return null;
 
-            const teacherColour = resolveColourByUserId(teacherColourMap, lesson.teacher_user_id);
+            const teacherColour = resolveColour(teacherColourMap, lesson.teacher_id);
             const colorHex = teacherColour.hex;
             const isCancelled = lesson.status === 'cancelled';
             const isSaving = savingLessonIds.has(lesson.id);

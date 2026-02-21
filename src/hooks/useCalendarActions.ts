@@ -17,7 +17,8 @@ interface UseCalendarActionsParams {
   checkConflicts: (params: {
     start_at: Date;
     end_at: Date;
-    teacher_user_id: string | null;
+    teacher_id: string | null;
+    teacher_user_id?: string | null;
     room_id: string | null;
     location_id: string | null;
     student_ids: string[];
@@ -251,7 +252,8 @@ export function useCalendarActions({
       const conflicts = await checkConflicts({
         start_at: newStart,
         end_at: newEnd,
-        teacher_user_id: lesson.teacher_user_id,
+        teacher_id: lesson.teacher_id || null,
+        teacher_user_id: lesson.teacher_user_id || null,
         room_id: lesson.room_id,
         location_id: lesson.location_id,
         student_ids: studentIds,
@@ -295,7 +297,8 @@ export function useCalendarActions({
       const conflicts = await checkConflicts({
         start_at: newStart,
         end_at: newEnd,
-        teacher_user_id: lesson.teacher_user_id,
+        teacher_id: lesson.teacher_id || null,
+        teacher_user_id: lesson.teacher_user_id || null,
         room_id: lesson.room_id,
         location_id: lesson.location_id,
         student_ids: studentIds,

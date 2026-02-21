@@ -23,8 +23,8 @@ const CONFLICT_CHECK_TIMEOUT = 10000; // 10 second timeout
 interface ConflictCheckParams {
   start_at: Date;
   end_at: Date;
-  teacher_user_id: string | null;
-  teacher_id?: string | null; // teachers.id for unlinked teacher fallback
+  teacher_id: string | null;
+  teacher_user_id?: string | null; // derived from teachers.user_id for user-account-specific checks
   room_id: string | null;
   location_id: string | null;
   student_ids: string[];
@@ -50,7 +50,7 @@ export function useConflictDetection() {
     if (!currentOrg) return [];
 
     const conflicts: ConflictResult[] = [];
-    const { start_at, end_at, teacher_user_id, teacher_id, room_id, location_id, student_ids, exclude_lesson_id } = params;
+    const { start_at, end_at, teacher_id, teacher_user_id, room_id, location_id, student_ids, exclude_lesson_id } = params;
 
     try {
       // Run conflict checks in parallel with individual error handling
@@ -82,47 +82,43 @@ export function useConflictDetection() {
             () => checkClosureDates(currentOrg.id, start_at, location_id, currentOrg.block_scheduling_on_closures),
             'closure dates'
           ),
-          // Check teacher availability blocks (skip if no user_id)
+          // Check teacher availability blocks (requires user account)
           teacher_user_id
             ? safeCheck(
                 () => checkTeacherAvailability(currentOrg.id, teacher_user_id, start_at, end_at),
                 'teacher availability'
               )
             : Promise.resolve([]),
-          // Check teacher time-off (skip if no user_id)
+          // Check teacher time-off (requires user account)
           teacher_user_id
             ? safeCheck(
                 () => checkTeacherTimeOff(currentOrg.id, teacher_user_id, start_at, end_at),
                 'teacher time-off'
               )
             : Promise.resolve([]),
-          // Check teacher lesson overlap with travel buffer (skip if no user_id)
-          teacher_user_id
+          // Check teacher lesson overlap — always use teacher_id (works for linked and unlinked)
+          teacher_id
             ? safeCheck(
-                () => checkTeacherLessons(
-                  currentOrg.id, 
-                  teacher_user_id, 
-                  start_at, 
-                  end_at, 
-                  location_id,
-                  (currentOrg as any).buffer_minutes_between_locations || 0,
-                  exclude_lesson_id
-                ),
+                () => teacher_user_id
+                  ? checkTeacherLessons(
+                      currentOrg.id, 
+                      teacher_user_id, 
+                      start_at, 
+                      end_at, 
+                      location_id,
+                      (currentOrg as any).buffer_minutes_between_locations || 0,
+                      exclude_lesson_id
+                    )
+                  : checkTeacherLessonsByTeacherId(
+                      currentOrg.id,
+                      teacher_id,
+                      start_at,
+                      end_at,
+                      exclude_lesson_id
+                    ),
                 'teacher lessons'
               )
-            // Fallback: check by teacher_id for unlinked teachers
-            : teacher_id
-              ? safeCheck(
-                  () => checkTeacherLessonsByTeacherId(
-                    currentOrg.id,
-                    teacher_id,
-                    start_at,
-                    end_at,
-                    exclude_lesson_id
-                  ),
-                  'teacher lessons (by teacher_id)'
-                )
-              : Promise.resolve([]),
+            : Promise.resolve([]),
           // Check room overlap and capacity
           room_id 
             ? safeCheck(
@@ -130,7 +126,7 @@ export function useConflictDetection() {
                 'room conflicts'
               ) 
             : Promise.resolve([]),
-          // Check external calendar busy blocks (skip if no user_id)
+          // Check external calendar busy blocks (requires user account)
           teacher_user_id
             ? safeCheck(
                 () => checkExternalBusyBlocks(currentOrg.id, teacher_user_id, start_at, end_at),

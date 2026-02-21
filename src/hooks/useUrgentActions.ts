@@ -49,7 +49,17 @@ export function useUrgentActions() {
             .lt('end_at', new Date().toISOString());
 
           if (isTeacher && !isAdmin) {
-            query = query.eq('teacher_user_id', user.id);
+            const { data: teacherRecord } = await supabase
+              .from('teachers')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('org_id', currentOrg.id)
+              .maybeSingle();
+            if (teacherRecord) {
+              query = query.eq('teacher_id', teacherRecord.id);
+            } else {
+              query = query.eq('teacher_user_id', user.id);
+            }
           }
 
           const { count: unmarkedCount } = await query;
@@ -120,10 +130,17 @@ export function useUrgentActions() {
           // P1 Fix: Only show active students' practice logs
           if (isTeacher && !isAdmin) {
             // Get teacher's assigned students - filter for active students only
+            const { data: teacherRecord } = await supabase
+              .from('teachers')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('org_id', currentOrg.id)
+              .maybeSingle();
+            
             const { data: assignments } = await supabase
               .from('student_teacher_assignments')
               .select('student_id, students!inner(id, status)')
-              .eq('teacher_user_id', user.id)
+              .eq('teacher_id', teacherRecord?.id || '')
               .eq('org_id', currentOrg.id)
               .eq('students.status', 'active');
 

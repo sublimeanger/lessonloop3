@@ -86,7 +86,7 @@ export default function DailyRegister() {
     status: l.status,
     org_id: '',
     lesson_type: 'private' as const,
-    teacher_user_id: '',
+    teacher_id: l.teacher_id || null,
     location_id: null,
     room_id: null,
     online_meeting_url: null,

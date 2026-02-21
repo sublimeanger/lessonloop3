@@ -61,7 +61,7 @@ export function useCalendarData(
         .from('lessons')
         .select(`
           id, title, start_at, end_at, status, lesson_type, notes_shared, notes_private, 
-          teacher_user_id, location_id, room_id, org_id, recurrence_id, online_meeting_url,
+          teacher_id, teacher_user_id, location_id, room_id, org_id, recurrence_id, online_meeting_url,
           created_by, created_at, updated_at, is_series_exception,
           location:locations(id, name),
           room:rooms(id, name)
@@ -106,14 +106,16 @@ export function useCalendarData(
 
       // Batch fetch all related data in parallel for performance
       const lessonIds = lessonsData.map(l => l.id);
-      const teacherIds = [...new Set(lessonsData.map(l => l.teacher_user_id))];
+      const teacherIds = [...new Set(lessonsData.map(l => l.teacher_id).filter(Boolean))];
 
-      const [teacherProfiles, participantsData, attendanceData] = await Promise.all([
-        // Batch fetch all teacher profiles
-        supabase
-          .from('profiles')
-          .select('id, full_name, email')
-          .in('id', teacherIds),
+      const [teacherRecords, participantsData, attendanceData] = await Promise.all([
+        // Batch fetch teacher display names from teachers table
+        teacherIds.length > 0
+          ? supabase
+              .from('teachers')
+              .select('id, display_name, email')
+              .in('id', teacherIds)
+          : Promise.resolve({ data: [] }),
         // Batch fetch all participants
         supabase
           .from('lesson_participants')
@@ -130,8 +132,8 @@ export function useCalendarData(
       ]);
 
       // Build lookup maps for efficient access
-      const teacherMap = new Map(
-        (teacherProfiles.data || []).map(t => [t.id, { full_name: t.full_name, email: t.email }])
+      const teacherMap = new Map<string, { full_name: string | null; email: string | null }>(
+        ((teacherRecords as any).data || []).map((t: any) => [t.id, { full_name: t.display_name, email: t.email }])
       );
       const participantsMap = new Map<string, typeof participantsData.data>();
       (participantsData.data || []).forEach(p => {
@@ -152,7 +154,7 @@ export function useCalendarData(
         // parseISO().getHours() returns org-local wall-clock hours
         start_at: toOrgLocalIso(lesson.start_at, orgTimezone),
         end_at: toOrgLocalIso(lesson.end_at, orgTimezone),
-        teacher: teacherMap.get(lesson.teacher_user_id),
+        teacher: teacherMap.get(lesson.teacher_id),
         participants: participantsMap.get(lesson.id) as any || [],
         attendance: attendanceMap.get(lesson.id) || [],
       }));

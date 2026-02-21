@@ -208,8 +208,8 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
         const results = await checkConflictsRef.current({
           start_at: startAtUtc,
           end_at: endAtUtc,
-          teacher_user_id: teacherUserId,
           teacher_id: teacherId,
+          teacher_user_id: teacherUserId,
           room_id: roomId,
           location_id: locationId,
           student_ids: selectedStudents,
