@@ -21,14 +21,7 @@ import { useParentInvoices } from '@/hooks/useParentPortal';
 import { useStripePayment } from '@/hooks/useStripePayment';
 import { useInvoicePdf } from '@/hooks/useInvoicePdf';
 import { useToast } from '@/hooks/use-toast';
-
-
-function formatCurrency(amountMinor: number, currencyCode: string = 'GBP'): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: currencyCode,
-  }).format(amountMinor / 100);
-}
+import { formatCurrencyMinor } from '@/lib/utils';
 
 export default function PortalInvoices() {
   const { currentOrg } = useOrg();
@@ -134,7 +127,7 @@ export default function PortalInvoices() {
                 <div>
                   <p className="font-medium">Outstanding Balance</p>
                   <p className="text-2xl font-bold text-warning">
-                    {formatCurrency(totalOutstanding, currentOrg?.currency_code || 'GBP')}
+                    {formatCurrencyMinor(totalOutstanding, currentOrg?.currency_code || 'GBP')}
                   </p>
                 </div>
               </div>
@@ -296,7 +289,7 @@ function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, i
 
           <div className="text-right">
             <p className="text-lg font-bold">
-              {formatCurrency(invoice.total_minor, currencyCode)}
+              {formatCurrencyMinor(invoice.total_minor, currencyCode)}
             </p>
             <div className="flex items-center gap-2 mt-2">
               <Button 
