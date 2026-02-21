@@ -132,6 +132,7 @@ export function useGDPRDelete() {
       } else if (variables.entityType === 'guardian') {
         queryClient.invalidateQueries({ queryKey: ['guardians'] });
       }
+      queryClient.invalidateQueries({ queryKey: ['deletion-candidates'] });
     },
     onError: (error: Error) => {
       toast({
