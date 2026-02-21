@@ -8,7 +8,7 @@ import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 
-const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop3.lovable.app";
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop.net";
 
 interface OverdueInvoice {
   id: string;
