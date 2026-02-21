@@ -38,14 +38,6 @@ export function useCreateRateCard() {
     mutationFn: async (rateCard: RateCardInsert) => {
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
-      // If setting as default, unset other defaults first
-      if (rateCard.is_default) {
-        await supabase
-          .from('rate_cards')
-          .update({ is_default: false })
-          .eq('org_id', currentOrg.id);
-      }
-
       const { data, error } = await supabase
         .from('rate_cards')
         .insert({ ...rateCard, org_id: currentOrg.id })
@@ -53,6 +45,16 @@ export function useCreateRateCard() {
         .single();
 
       if (error) throw error;
+
+      // After successful insert, unset other defaults
+      if (rateCard.is_default && data) {
+        await supabase
+          .from('rate_cards')
+          .update({ is_default: false })
+          .eq('org_id', currentOrg.id)
+          .neq('id', data.id);
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -74,15 +76,6 @@ export function useUpdateRateCard() {
     mutationFn: async ({ id, ...updates }: RateCardUpdate & { id: string }) => {
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
-      // If setting as default, unset other defaults first
-      if (updates.is_default) {
-        await supabase
-          .from('rate_cards')
-          .update({ is_default: false })
-          .eq('org_id', currentOrg.id)
-          .neq('id', id);
-      }
-
       const { data, error } = await supabase
         .from('rate_cards')
         .update(updates)
@@ -92,6 +85,16 @@ export function useUpdateRateCard() {
         .single();
 
       if (error) throw error;
+
+      // After successful update, unset other defaults
+      if (updates.is_default) {
+        await supabase
+          .from('rate_cards')
+          .update({ is_default: false })
+          .eq('org_id', currentOrg.id)
+          .neq('id', id);
+      }
+
       return data;
     },
     onSuccess: () => {
