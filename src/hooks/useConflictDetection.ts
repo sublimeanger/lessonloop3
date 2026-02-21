@@ -82,40 +82,32 @@ export function useConflictDetection() {
             () => checkClosureDates(currentOrg.id, start_at, location_id, currentOrg.block_scheduling_on_closures),
             'closure dates'
           ),
-          // Check teacher availability blocks (requires user account)
-          teacher_user_id
+          // Check teacher availability blocks (uses teacher_id)
+          teacher_id
             ? safeCheck(
-                () => checkTeacherAvailability(currentOrg.id, teacher_user_id, start_at, end_at),
+                () => checkTeacherAvailability(currentOrg.id, teacher_id, start_at, end_at),
                 'teacher availability'
               )
             : Promise.resolve([]),
-          // Check teacher time-off (requires user account)
-          teacher_user_id
+          // Check teacher time-off (uses teacher_id)
+          teacher_id
             ? safeCheck(
-                () => checkTeacherTimeOff(currentOrg.id, teacher_user_id, start_at, end_at),
+                () => checkTeacherTimeOff(currentOrg.id, teacher_id, start_at, end_at),
                 'teacher time-off'
               )
             : Promise.resolve([]),
-          // Check teacher lesson overlap — always use teacher_id (works for linked and unlinked)
+          // Check teacher lesson overlap (uses teacher_id with travel buffer)
           teacher_id
             ? safeCheck(
-                () => teacher_user_id
-                  ? checkTeacherLessons(
-                      currentOrg.id, 
-                      teacher_user_id, 
-                      start_at, 
-                      end_at, 
-                      location_id,
-                      (currentOrg as any).buffer_minutes_between_locations || 0,
-                      exclude_lesson_id
-                    )
-                  : checkTeacherLessonsByTeacherId(
-                      currentOrg.id,
-                      teacher_id,
-                      start_at,
-                      end_at,
-                      exclude_lesson_id
-                    ),
+                () => checkTeacherLessons(
+                    currentOrg.id, 
+                    teacher_id, 
+                    start_at, 
+                    end_at, 
+                    location_id,
+                    (currentOrg as any).buffer_minutes_between_locations || 0,
+                    exclude_lesson_id
+                  ),
                 'teacher lessons'
               )
             : Promise.resolve([]),
@@ -217,7 +209,7 @@ async function checkClosureDates(
  */
 async function checkTeacherAvailability(
   orgId: string,
-  teacherUserId: string,
+  teacherId: string,
   startAt: Date,
   endAt: Date
 ): Promise<ConflictResult[]> {
@@ -230,7 +222,7 @@ async function checkTeacherAvailability(
     .from('availability_blocks')
     .select('start_time_local, end_time_local')
     .eq('org_id', orgId)
-    .eq('teacher_user_id', teacherUserId)
+    .eq('teacher_id', teacherId)
     .eq('day_of_week', dayOfWeek);
 
   if (availabilityBlocks && availabilityBlocks.length > 0) {
@@ -255,7 +247,7 @@ async function checkTeacherAvailability(
  */
 async function checkTeacherTimeOff(
   orgId: string,
-  teacherUserId: string,
+  teacherId: string,
   startAt: Date,
   endAt: Date
 ): Promise<ConflictResult[]> {
@@ -265,7 +257,7 @@ async function checkTeacherTimeOff(
     .from('time_off_blocks')
     .select('id, reason')
     .eq('org_id', orgId)
-    .eq('teacher_user_id', teacherUserId)
+    .eq('teacher_id', teacherId)
     .lt('start_at', endAt.toISOString())
     .gt('end_at', startAt.toISOString());
 
@@ -285,7 +277,7 @@ async function checkTeacherTimeOff(
  */
 async function checkTeacherLessons(
   orgId: string,
-  teacherUserId: string,
+  teacherId: string,
   startAt: Date,
   endAt: Date,
   locationId: string | null,
@@ -301,7 +293,7 @@ async function checkTeacherLessons(
     .from('lessons')
     .select('id, title, start_at, end_at, location_id')
     .eq('org_id', orgId)
-    .eq('teacher_user_id', teacherUserId)
+    .eq('teacher_id', teacherId)
     .neq('status', 'cancelled')
     .lt('start_at', bufferedEnd.toISOString())
     .gt('end_at', bufferedStart.toISOString());
@@ -493,48 +485,3 @@ async function checkExternalBusyBlocks(
   return conflicts;
 }
 
-/**
- * Check teacher lesson overlaps by teacher_id (for unlinked teachers without user accounts)
- */
-async function checkTeacherLessonsByTeacherId(
-  orgId: string,
-  teacherId: string,
-  startAt: Date,
-  endAt: Date,
-  excludeLessonId?: string
-): Promise<ConflictResult[]> {
-  const conflicts: ConflictResult[] = [];
-
-  let query = supabase
-    .from('lessons')
-    .select('id, title, start_at, end_at')
-    .eq('org_id', orgId)
-    .eq('teacher_id', teacherId)
-    .neq('status', 'cancelled')
-    .lt('start_at', endAt.toISOString())
-    .gt('end_at', startAt.toISOString());
-
-  if (excludeLessonId) {
-    query = query.neq('id', excludeLessonId);
-  }
-
-  const { data: teacherLessons } = await query;
-
-  if (teacherLessons && teacherLessons.length > 0) {
-    const directOverlap = teacherLessons.find(l => {
-      const lStart = new Date(l.start_at);
-      const lEnd = new Date(l.end_at);
-      return lStart < endAt && lEnd > startAt;
-    });
-
-    if (directOverlap) {
-      conflicts.push({
-        type: 'teacher',
-        severity: 'error',
-        message: `Teacher already has a lesson at this time: ${directOverlap.title}`,
-      });
-    }
-  }
-
-  return conflicts;
-}
