@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 import { useTerms, useCreateTerm, useUpdateTerm, useDeleteTerm, type Term } from '@/hooks/useTerms';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,6 +38,7 @@ export function TermManagementCard() {
   const createTerm = useCreateTerm();
   const updateTerm = useUpdateTerm();
   const deleteTerm = useDeleteTerm();
+  const { toast } = useToast();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTerm, setEditingTerm] = useState<Term | null>(null);
@@ -60,6 +62,21 @@ export function TermManagementCard() {
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.start_date || !form.end_date) return;
+
+    // Check for overlapping terms
+    const overlapping = terms.find(t => {
+      if (editingTerm && t.id === editingTerm.id) return false;
+      return form.start_date <= t.end_date && form.end_date >= t.start_date;
+    });
+
+    if (overlapping) {
+      toast({ 
+        title: 'Date overlap', 
+        description: `Overlaps with "${overlapping.name}" (${format(parseISO(overlapping.start_date), 'd MMM')} – ${format(parseISO(overlapping.end_date), 'd MMM')})`,
+        variant: 'destructive' 
+      });
+      return;
+    }
 
     if (editingTerm) {
       await updateTerm.mutateAsync({ id: editingTerm.id, ...form });
