@@ -79,6 +79,9 @@ export function useMessageThreads() {
           const thread = threadMap.get(threadId)!;
           thread.message_ids.push(msg.id);
           thread.message_count++;
+          if (!msg.read_at && msg.status === 'sent') {
+            thread.has_unread = true;
+          }
           if (new Date(msg.created_at) > new Date(thread.latest_message_at)) {
             thread.latest_message_at = msg.created_at;
             thread.latest_status = msg.status;
@@ -96,7 +99,7 @@ export function useMessageThreads() {
             recipient_id: msg.recipient_id,
             message_count: 1,
             latest_message_at: msg.created_at,
-            has_unread: false,
+            has_unread: !msg.read_at && msg.status === 'sent',
             message_ids: [msg.id],
             latest_status: msg.status,
             related_id: msg.related_id,
