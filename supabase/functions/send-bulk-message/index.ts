@@ -338,7 +338,7 @@ async function fetchFilteredGuardians(
       .from("student_teacher_assignments")
       .select("student_id")
       .eq("org_id", orgId)
-      .in("teacher_user_id", filters.teacher_ids);
+      .in("teacher_id", filters.teacher_ids);
 
     if (assignments && assignments.length > 0) {
       const studentIds = assignments.map((a: any) => a.student_id);
