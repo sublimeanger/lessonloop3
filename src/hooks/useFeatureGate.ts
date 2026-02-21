@@ -87,11 +87,12 @@ export interface FeatureGateResult {
 }
 
 export function useFeatureGate(feature: Feature): FeatureGateResult {
-  const { plan, isTrialing, isTrialExpired } = useSubscription();
+  const { plan, status, isTrialing, isTrialExpired } = useSubscription();
 
   return useMemo(() => {
     const allowedPlans = FEATURE_MATRIX[feature];
-    const hasAccess = allowedPlans.includes(plan) && (!isTrialing || !isTrialExpired);
+    const isSubscriptionActive = status === 'active' || status === 'past_due' || (status === 'trialing' && !isTrialExpired);
+    const hasAccess = allowedPlans.includes(plan) && isSubscriptionActive;
     const requiredPlan = FEATURE_MIN_PLAN[feature];
     
     return {
@@ -101,19 +102,20 @@ export function useFeatureGate(feature: Feature): FeatureGateResult {
       featureName: FEATURE_NAMES[feature],
       isTrialBlocked: isTrialing && isTrialExpired,
     };
-  }, [feature, plan, isTrialing, isTrialExpired]);
+  }, [feature, plan, status, isTrialing, isTrialExpired]);
 }
 
 // Hook to check multiple features at once
 export function useFeatureGates(features: Feature[]): Record<Feature, FeatureGateResult> {
-  const { plan, isTrialing, isTrialExpired } = useSubscription();
+  const { plan, status, isTrialing, isTrialExpired } = useSubscription();
 
   return useMemo(() => {
     const results: Record<string, FeatureGateResult> = {};
     
     for (const feature of features) {
       const allowedPlans = FEATURE_MATRIX[feature];
-      const hasAccess = allowedPlans.includes(plan) && (!isTrialing || !isTrialExpired);
+      const isSubscriptionActive = status === 'active' || status === 'past_due' || (status === 'trialing' && !isTrialExpired);
+      const hasAccess = allowedPlans.includes(plan) && isSubscriptionActive;
       const requiredPlan = FEATURE_MIN_PLAN[feature];
       
       results[feature] = {
@@ -126,7 +128,7 @@ export function useFeatureGates(features: Feature[]): Record<Feature, FeatureGat
     }
     
     return results as Record<Feature, FeatureGateResult>;
-  }, [features, plan, isTrialing, isTrialExpired]);
+  }, [features, plan, status, isTrialing, isTrialExpired]);
 }
 
 // Utility to get the next upgrade tier
