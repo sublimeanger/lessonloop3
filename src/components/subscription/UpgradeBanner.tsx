@@ -25,7 +25,13 @@ export function UpgradeBanner({
   const { plan, isTrialing, trialDaysRemaining, trialEndsAt, isTrialExpired, isPastDue, canUpgrade } = useSubscription();
   const [isDismissed, setIsDismissed] = useState(() => {
     if (!dismissible) return false;
-    return safeGetItem(storageKey) === 'true';
+    const dismissedAt = safeGetItem(storageKey);
+    if (!dismissedAt) return false;
+    // Auto-reset after 48 hours
+    const dismissedDate = new Date(dismissedAt);
+    if (isNaN(dismissedDate.getTime())) return false;
+    const hoursSinceDismiss = (Date.now() - dismissedDate.getTime()) / (1000 * 60 * 60);
+    return hoursSinceDismiss < 48;
   });
   const [hoursRemaining, setHoursRemaining] = useState(0);
 
@@ -43,12 +49,12 @@ export function UpgradeBanner({
   }, [trialEndsAt, trialDaysRemaining]);
 
   // Don't show if dismissed, not upgradable, or on paid plan with good standing
-  if (isDismissed || !canUpgrade) return null;
+  if ((isDismissed && trialDaysRemaining > 3) || !canUpgrade) return null;
   if (!isTrialing && !isPastDue && !isTrialExpired) return null;
 
   const handleDismiss = () => {
     setIsDismissed(true);
-    safeSetItem(storageKey, 'true');
+    safeSetItem(storageKey, new Date().toISOString());
   };
 
   // Format countdown for final days
