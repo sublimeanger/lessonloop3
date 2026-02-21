@@ -42,11 +42,30 @@ export function useTeacherDashboardStats() {
       const monthStart = format(startOfMonth(today), 'yyyy-MM-dd');
       const monthEnd = format(endOfMonth(today), 'yyyy-MM-dd');
 
+      // Look up this user's teacher record to get teacher_id
+      const { data: teacherRecord } = await supabase
+        .from('teachers')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('org_id', currentOrg.id)
+        .maybeSingle();
+
+      const myTeacherId = teacherRecord?.id;
+      if (!myTeacherId) {
+        return {
+          todayLessons: 0,
+          myStudentsCount: 0,
+          hoursThisWeek: 0,
+          lessonsThisMonth: 0,
+          upcomingLessons: [],
+        };
+      }
+
       // Today's lessons for this teacher
       const { data: todayLessonsData } = await supabase
         .from('lessons')
         .select('id')
-        .match({ org_id: currentOrg.id, teacher_user_id: user.id, status: 'scheduled' })
+        .match({ org_id: currentOrg.id, teacher_id: myTeacherId, status: 'scheduled' })
         .gte('start_at', `${todayStr}T00:00:00`)
         .lte('start_at', `${todayStr}T23:59:59`);
 
@@ -54,13 +73,13 @@ export function useTeacherDashboardStats() {
       const { data: assignments } = await supabase
         .from('student_teacher_assignments')
         .select('student_id')
-        .match({ org_id: currentOrg.id, teacher_user_id: user.id });
+        .match({ org_id: currentOrg.id, teacher_id: myTeacherId });
 
       // Get this week's lessons for hours calculation
       const { data: weekLessons } = await supabase
         .from('lessons')
         .select('start_at, end_at')
-        .match({ org_id: currentOrg.id, teacher_user_id: user.id })
+        .match({ org_id: currentOrg.id, teacher_id: myTeacherId })
         .gte('start_at', `${weekStart}T00:00:00`)
         .lte('start_at', `${weekEnd}T23:59:59`);
 
@@ -68,7 +87,7 @@ export function useTeacherDashboardStats() {
       const { data: monthLessons } = await supabase
         .from('lessons')
         .select('id')
-        .match({ org_id: currentOrg.id, teacher_user_id: user.id, status: 'completed' })
+        .match({ org_id: currentOrg.id, teacher_id: myTeacherId, status: 'completed' })
         .gte('start_at', `${monthStart}T00:00:00`)
         .lte('start_at', `${monthEnd}T23:59:59`);
 
@@ -76,7 +95,7 @@ export function useTeacherDashboardStats() {
       const { data: upcomingData } = await supabase
         .from('lessons')
         .select('id, title, start_at, end_at, location_id')
-        .match({ org_id: currentOrg.id, teacher_user_id: user.id, status: 'scheduled' })
+        .match({ org_id: currentOrg.id, teacher_id: myTeacherId, status: 'scheduled' })
         .gte('start_at', `${todayStr}T00:00:00`)
         .order('start_at', { ascending: true })
         .limit(5);
