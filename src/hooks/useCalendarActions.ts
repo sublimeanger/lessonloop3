@@ -151,11 +151,13 @@ export function useCalendarActions({
       const originalStartAt = lesson.start_at;
       const originalEndAt = lesson.end_at;
 
+      const originalPositions = new Map<string, { start_at: string; end_at: string }>();
       const affectedIds = new Set<string>();
       if (mode === 'this_and_future' && lesson.recurrence_id) {
         lessons.forEach(l => {
           if (l.recurrence_id === lesson.recurrence_id && l.start_at >= lesson.start_at) {
             affectedIds.add(l.id);
+            originalPositions.set(l.id, { start_at: l.start_at, end_at: l.end_at });
           }
         });
         const offset = newStart.getTime() - new Date(originalStartAt).getTime();
@@ -170,6 +172,7 @@ export function useCalendarActions({
         }));
       } else {
         affectedIds.add(lesson.id);
+        originalPositions.set(lesson.id, { start_at: lesson.start_at, end_at: lesson.end_at });
         setLessons(prev => prev.map(l =>
           l.id === lesson.id
             ? { ...l, start_at: newStart.toISOString(), end_at: newEnd.toISOString() }
@@ -222,10 +225,8 @@ export function useCalendarActions({
       } catch (err) {
         logger.error('Failed to reschedule lesson:', err);
         setLessons(prev => prev.map(l => {
-          if (l.id === lesson.id) {
-            return { ...l, start_at: originalStartAt, end_at: originalEndAt };
-          }
-          return l;
+          const original = originalPositions.get(l.id);
+          return original ? { ...l, ...original } : l;
         }));
         refetch();
         toast({
