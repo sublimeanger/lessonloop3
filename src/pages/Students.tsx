@@ -158,6 +158,7 @@ export default function Students() {
   }, [students, searchQuery, statusFilter]);
 
   const openAddWizard = () => {
+    // Client-side guard only — server-side enforcement pending
     if (!canAddStudent) {
       toast({
         title: 'Student limit reached',

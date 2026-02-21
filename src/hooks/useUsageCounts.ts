@@ -1,3 +1,6 @@
+// ⚠️ IMPORTANT: These limits are currently client-side only.
+// Server-side enforcement via RLS/triggers is required before production.
+// See: https://github.com/sublimeanger/lessonloop3/issues/XXX
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { activeStudentsQuery } from '@/lib/studentQuery';
