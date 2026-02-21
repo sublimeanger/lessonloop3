@@ -3,9 +3,11 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { LoadingState } from '@/components/shared/LoadingState';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { useOrg } from '@/contexts/OrgContext';
 import { useFeatureGate, Feature, PLAN_NAMES } from '@/hooks/useFeatureGate';
-import { Banknote, Clock, TrendingUp, ChevronRight, Calendar, XCircle, MapPin, Lock, Sparkles } from 'lucide-react';
+import { Banknote, Clock, TrendingUp, ChevronRight, Calendar, XCircle, MapPin, Lock, Sparkles, FileBarChart } from 'lucide-react';
 
 interface Report {
   id: string;
@@ -45,7 +47,7 @@ const reports: Report[] = [
     icon: Calendar,
     href: '/reports/lessons',
     status: 'available',
-    roles: ['owner', 'admin', 'teacher'],
+    roles: ['owner', 'admin', 'teacher', 'finance'],
   },
   {
     id: 'cancellations',
@@ -151,9 +153,25 @@ function ReportCard({ report }: { report: Report }) {
 export default function Reports() {
   const { currentRole } = useOrg();
 
+  if (!currentRole) {
+    return (
+      <AppLayout>
+        <PageHeader
+          title="Reports"
+          description="Analytics and insights for your teaching business"
+          breadcrumbs={[
+            { label: 'Dashboard', href: '/dashboard' },
+            { label: 'Reports' },
+          ]}
+        />
+        <LoadingState />
+      </AppLayout>
+    );
+  }
+
   // Filter reports by role
   const availableReports = reports.filter((report) =>
-    report.roles.includes(currentRole || '')
+    report.roles.includes(currentRole)
   );
 
   return (
@@ -167,11 +185,19 @@ export default function Reports() {
         ]}
       />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {availableReports.map((report) => (
-          <ReportCard key={report.id} report={report} />
-        ))}
-      </div>
+      {availableReports.length === 0 ? (
+        <EmptyState
+          icon={FileBarChart}
+          title="No reports available"
+          description="No reports are available for your role. Contact your organisation admin for access."
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {availableReports.map((report) => (
+            <ReportCard key={report.id} report={report} />
+          ))}
+        </div>
+      )}
     </AppLayout>
   );
 }
