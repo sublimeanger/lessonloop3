@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -53,7 +54,6 @@ export default function Messages() {
   const [internalComposeOpen, setInternalComposeOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [channelFilter, setChannelFilter] = useState<string>('all');
-  const [guardians, setGuardians] = useState<Guardian[]>([]);
   const [activeTab, setActiveTab] = useState('sent');
   const [internalView, setInternalView] = useState<'inbox' | 'sent'>('inbox');
   const [viewMode, setViewMode] = useState<'list' | 'threaded'>('threaded');
@@ -66,25 +66,21 @@ export default function Messages() {
   const { data: pendingCount } = usePendingRequestsCount();
   const { data: unreadInternalCount } = useUnreadInternalCount();
 
-  // Fetch guardians for compose modal
-  useEffect(() => {
-    if (currentOrg && !isParent) {
-      fetchGuardians();
-    }
-  }, [currentOrg?.id]);
-
-  const fetchGuardians = async () => {
-    if (!currentOrg) return;
-
-    const { data } = await supabase
-      .from('guardians')
-      .select('id, full_name, email')
-      .eq('org_id', currentOrg.id)
-      .not('email', 'is', null)
-      .order('full_name');
-
-    setGuardians((data || []) as Guardian[]);
-  };
+  const { data: guardians = [] } = useQuery({
+    queryKey: ['compose-guardians', currentOrg?.id],
+    queryFn: async () => {
+      if (!currentOrg) return [];
+      const { data } = await supabase
+        .from('guardians')
+        .select('id, full_name, email')
+        .eq('org_id', currentOrg.id)
+        .is('deleted_at', null)
+        .not('email', 'is', null)
+        .order('full_name');
+      return (data || []) as Guardian[];
+    },
+    enabled: !!currentOrg && !isParent,
+  });
 
   // Filter messages by search query
   const filteredMessages = messages?.filter((msg) => {
