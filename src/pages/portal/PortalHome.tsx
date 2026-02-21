@@ -10,6 +10,7 @@ import {
   ChevronRight,
   MessageSquare,
   MapPin,
+  FolderOpen,
 } from 'lucide-react';
 import { PortalHomeSkeleton } from '@/components/shared/LoadingState';
 import { useState } from 'react';
@@ -246,6 +247,20 @@ export default function PortalHome() {
                 Send a Message
               </Button>
             </div>
+            <Link to="/portal/resources" className="block">
+              <Card className="transition-all hover:shadow-md">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                    <FolderOpen className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">Resources</p>
+                    <p className="text-xs text-muted-foreground">Teaching materials from your teacher</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                </CardContent>
+              </Card>
+            </Link>
           </>
         )}
       </div>
