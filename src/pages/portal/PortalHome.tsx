@@ -18,7 +18,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { RequestModal } from '@/components/portal/RequestModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { parseISO, formatDistanceToNowStrict, isBefore, isToday, isTomorrow } from 'date-fns';
+import { parseISO, formatDistanceToNowStrict, isBefore, isToday, isTomorrow, isAfter, addMinutes } from 'date-fns';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
 
 function relativeDayLabel(dateStr: string): string {
@@ -98,7 +98,7 @@ export default function PortalHome() {
                         )}
                       </div>
                       {/* Countdown */}
-                      {!isBefore(parseISO(nextLesson.start_at), new Date()) && (
+                      {isAfter(parseISO(nextLesson.start_at), addMinutes(new Date(), 1)) && (
                         <p className="text-xs font-medium text-primary mt-1 flex items-center gap-1.5">
                           <Clock className="h-3 w-3" />
                           in {formatDistanceToNowStrict(parseISO(nextLesson.start_at))}
