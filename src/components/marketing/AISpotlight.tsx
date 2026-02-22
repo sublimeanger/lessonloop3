@@ -49,7 +49,7 @@ export function AISpotlight() {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <span className="inline-flex items-center gap-2 bg-white/10 rounded-full px-4 py-1.5 text-white/80 text-sm font-medium mb-6">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 text-white/80 text-sm font-semibold mb-6">
             <Sparkles className="w-4 h-4" />
             AI-Powered
           </span>
