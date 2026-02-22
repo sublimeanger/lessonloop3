@@ -100,28 +100,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Insert message_log entries for each admin
+    // Insert internal_messages for each admin (the channel admins actually read)
     const messages = admins.map((admin: any) => ({
       org_id: entry.org_id,
-      message_type: "makeup_match",
-      channel: "in_app",
+      sender_user_id: admin.user_id,
+      sender_role: "system",
+      recipient_user_id: admin.user_id,
+      recipient_role: admin.role || "admin",
       subject,
       body,
-      recipient_email: admin.profiles?.email || "",
-      recipient_name: admin.profiles?.full_name || "",
-      recipient_id: admin.user_id,
-      recipient_type: "admin",
-      related_id: entry.id,
-      status: "sent",
-      sent_at: new Date().toISOString(),
     }));
 
     const { error: insertError } = await supabase
-      .from("message_log")
+      .from("internal_messages")
       .insert(messages);
 
     if (insertError) {
-      console.error("Failed to insert message_log:", insertError);
+      console.error("Failed to insert internal_messages:", insertError);
       return new Response(JSON.stringify({ error: insertError.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
