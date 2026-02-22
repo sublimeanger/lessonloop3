@@ -131,6 +131,7 @@ function StudentCard({
 
 export default function Students() {
   const { currentRole } = useOrg();
+  const navigate = useNavigate();
   const isAdmin = currentRole === 'owner' || currentRole === 'admin';
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -225,7 +226,7 @@ export default function Students() {
           actionLabel={searchQuery ? undefined : 'Add Student'}
           onAction={searchQuery ? undefined : openAddWizard}
           secondaryActionLabel={searchQuery ? undefined : 'Import from CSV'}
-          onSecondaryAction={searchQuery ? undefined : () => (window.location.href = '/students/import')}
+          onSecondaryAction={searchQuery ? undefined : () => navigate('/students/import')}
         />
       ) : (
         <div className="space-y-2" role="list" aria-label="Students list" data-tour="student-list">
