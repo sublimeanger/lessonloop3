@@ -60,7 +60,21 @@ export function ComposeMessageModal({
   const { isOnline, guardOffline } = useOnlineStatus();
   const subjectInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus the subject field when modal opens (or To field if guardian not preselected)
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!open) {
+      setSubject('');
+      setBody('');
+      setSelectedTemplateId('');
+      setSelectedStudentId('');
+      if (!preselectedGuardian) {
+        setSelectedGuardianId('');
+      }
+      setLinkedStudents([]);
+    }
+  }, [open, preselectedGuardian]);
+
+  // Auto-focus the subject field when modal opens
   useEffect(() => {
     if (open) {
       requestAnimationFrame(() => {
