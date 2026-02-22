@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.installment-overdue-check]
 verify_jwt = false
+
+[functions.installment-upcoming-reminder]
+verify_jwt = false
