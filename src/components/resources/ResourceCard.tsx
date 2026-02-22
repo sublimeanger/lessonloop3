@@ -18,6 +18,7 @@ import {
   Trash2,
   Loader2,
   Users,
+  Check,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ResourceWithShares, useDeleteResource } from '@/hooks/useResources';
@@ -37,9 +38,12 @@ import { getFileIcon, getFileTypeBadge, formatFileSize } from '@/lib/fileUtils';
 interface ResourceCardProps {
   resource: ResourceWithShares;
   onShare: (resource: ResourceWithShares) => void;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
-export function ResourceCard({ resource, onShare }: ResourceCardProps) {
+export function ResourceCard({ resource, onShare, selectionMode, selected, onToggleSelect }: ResourceCardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -81,9 +85,17 @@ export function ResourceCard({ resource, onShare }: ResourceCardProps) {
 
   return (
     <>
-      <Card className="group hover:shadow-md transition-shadow">
+      <Card
+        className={`group hover:shadow-md transition-shadow ${selectionMode ? 'cursor-pointer' : ''} ${selected ? 'ring-2 ring-primary' : ''}`}
+        onClick={selectionMode ? () => onToggleSelect?.(resource.id) : undefined}
+      >
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
+            {selectionMode && (
+              <div className={`mt-1 h-5 w-5 rounded border flex items-center justify-center shrink-0 transition-colors ${selected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40'}`}>
+                {selected && <Check className="h-3.5 w-3.5" />}
+              </div>
+            )}
             <div className="p-2 rounded-lg bg-muted shrink-0">
               <FileIcon className="h-6 w-6 text-muted-foreground" />
             </div>

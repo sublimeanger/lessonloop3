@@ -17,6 +17,12 @@ import { MAX_FILE_SIZE, ALLOWED_TYPES } from '@/lib/resource-validation';
 import { formatFileSize } from '@/lib/fileUtils';
 import { formatStorageSize } from '@/lib/pricing-config';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+interface FileEntry {
+  file: File;
+  title: string;
+}
 
 interface UploadResourceModalProps {
   open: boolean;
@@ -24,41 +30,63 @@ interface UploadResourceModalProps {
 }
 
 export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalProps) {
-  const [title, setTitle] = useState('');
+  const [files, setFiles] = useState<FileEntry[]>([]);
   const [description, setDescription] = useState('');
-  const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadIndex, setUploadIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadMutation = useUploadResource();
   const { totalBytes, limitBytes, percentUsed, isLoading: quotaLoading } = useStorageUsage();
-  const quotaExceeded = file ? totalBytes + file.size > limitBytes : totalBytes >= limitBytes;
 
-  const handleFileSelect = (selectedFile: File) => {
+  const totalSelectedSize = files.reduce((sum, f) => sum + f.file.size, 0);
+  const quotaExceeded = totalBytes + totalSelectedSize > limitBytes;
+  const isUploading = uploadIndex !== null;
+
+  const addFiles = (newFiles: FileList | File[]) => {
     setError(null);
+    const entries: FileEntry[] = [];
+    const errors: string[] = [];
 
-    if (!(ALLOWED_TYPES as readonly string[]).includes(selectedFile.type)) {
-      setError('File type not supported. Please upload PDF, images, audio, video, or Word documents.');
-      return;
-    }
+    Array.from(newFiles).forEach((f) => {
+      if (!(ALLOWED_TYPES as readonly string[]).includes(f.type)) {
+        errors.push(`${f.name}: unsupported type`);
+        return;
+      }
+      if (f.size > MAX_FILE_SIZE) {
+        errors.push(`${f.name}: exceeds 50MB`);
+        return;
+      }
+      entries.push({
+        file: f,
+        title: f.name.replace(/\.[^/.]+$/, ''),
+      });
+    });
 
-    if (selectedFile.size > MAX_FILE_SIZE) {
-      setError('File is too large. Maximum size is 50MB.');
-      return;
+    if (errors.length) {
+      setError(errors.join('. '));
     }
+    if (entries.length) {
+      setFiles((prev) => [...prev, ...entries]);
+    }
+  };
 
-    setFile(selectedFile);
-    if (!title) {
-      setTitle(selectedFile.name.replace(/\.[^/.]+$/, ''));
-    }
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateTitle = (index: number, title: string) => {
+    setFiles((prev) =>
+      prev.map((entry, i) => (i === index ? { ...entry, title } : entry))
+    );
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(false);
-    if (e.dataTransfer.files?.[0]) {
-      handleFileSelect(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files?.length) {
+      addFiles(e.dataTransfer.files);
     }
   };
 
@@ -73,42 +101,55 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !title.trim()) return;
+    if (files.length === 0) return;
 
-    try {
-      await uploadMutation.mutateAsync({
-        file,
-        title: title.trim(),
-        description: description.trim() || undefined,
-      });
-      onOpenChange(false);
-      resetForm();
-    } catch {
-      // Error handled by mutation's onError
+    const desc = description.trim() || undefined;
+
+    for (let i = 0; i < files.length; i++) {
+      setUploadIndex(i);
+      try {
+        await uploadMutation.mutateAsync({
+          file: files[i].file,
+          title: files[i].title.trim() || files[i].file.name,
+          description: desc,
+        });
+      } catch {
+        // Hook's onError shows a toast — stop batch on failure
+        setUploadIndex(null);
+        return;
+      }
     }
+
+    setUploadIndex(null);
+    onOpenChange(false);
+    resetForm();
   };
 
   const resetForm = () => {
-    setTitle('');
+    setFiles([]);
     setDescription('');
-    setFile(null);
     setError(null);
+    setUploadIndex(null);
   };
 
   const handleClose = (isOpen: boolean) => {
-    if (!isOpen) {
+    if (!isOpen && !isUploading) {
       resetForm();
     }
-    onOpenChange(isOpen);
+    if (!isUploading) {
+      onOpenChange(isOpen);
+    }
   };
+
+  const allTitlesValid = files.every((f) => f.title.trim().length > 0);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[540px]">
         <DialogHeader>
-          <DialogTitle>Upload Resource</DialogTitle>
+          <DialogTitle>Upload Resources</DialogTitle>
           <DialogDescription>
-            Upload teaching materials to share with students.
+            Upload teaching materials to share with students. You can select multiple files.
           </DialogDescription>
         </DialogHeader>
 
@@ -143,54 +184,33 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
           >
-            {file ? (
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <File className="h-8 w-8 text-muted-foreground shrink-0" />
-                  <div className="text-left min-w-0">
-                    <p className="font-medium truncate">{file.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatFileSize(file.size)}
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setFile(null)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <>
-                <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground mb-1">
-                  Drag and drop a file here, or
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  aria-describedby="file-format-hint"
-                >
-                  Browse files
-                </Button>
-                <p id="file-format-hint" className="text-xs text-muted-foreground mt-2">
-                  PDF, images, audio, video, Word docs up to 50MB
-                </p>
-              </>
-            )}
+            <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground mb-1">
+              Drag and drop files here, or
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              aria-describedby="file-format-hint"
+            >
+              Browse files
+            </Button>
+            <p id="file-format-hint" className="text-xs text-muted-foreground mt-2">
+              PDF, images, audio, video, Word docs up to 50MB each
+            </p>
             <input
               ref={fileInputRef}
               type="file"
+              multiple
               className="hidden"
               accept={ALLOWED_TYPES.join(',')}
               onChange={(e) => {
-                if (e.target.files?.[0]) {
-                  handleFileSelect(e.target.files[0]);
+                if (e.target.files?.length) {
+                  addFiles(e.target.files);
+                  e.target.value = '';
                 }
               }}
             />
@@ -200,35 +220,73 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
             <p className="text-sm text-destructive">{error}</p>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Resource title"
-              required
-            />
-          </div>
+          {/* File list */}
+          {files.length > 0 && (
+            <div className="space-y-2">
+              <Label>Files ({files.length})</Label>
+              <ScrollArea className={files.length > 4 ? 'h-[200px]' : ''}>
+                <div className="space-y-2 pr-2">
+                  {files.map((entry, index) => (
+                    <div
+                      key={`${entry.file.name}-${index}`}
+                      className={`flex items-center gap-2 rounded-md border p-2 ${
+                        isUploading && uploadIndex === index ? 'border-primary bg-primary/5' : ''
+                      } ${isUploading && uploadIndex !== null && index < uploadIndex ? 'opacity-50' : ''}`}
+                    >
+                      <File className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <Input
+                          value={entry.title}
+                          onChange={(e) => updateTitle(index, e.target.value)}
+                          className="h-7 text-sm"
+                          disabled={isUploading}
+                          placeholder="Title"
+                          required
+                        />
+                        <p className="text-xs text-muted-foreground truncate">
+                          {entry.file.name} · {formatFileSize(entry.file.size)}
+                        </p>
+                      </div>
+                      {!isUploading && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0"
+                          onClick={() => removeFile(index)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description (optional)</Label>
+            <Label htmlFor="description">Description (optional, applies to all)</Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description of the resource..."
-              rows={3}
+              placeholder="Brief description of the resource(s)..."
+              rows={2}
+              disabled={isUploading}
             />
           </div>
 
-          {uploadMutation.isPending && (
+          {isUploading && (
             <div className="space-y-1.5">
               <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                <div className="bg-primary h-2 rounded-full w-2/3 animate-pulse" />
+                <div
+                  className="bg-primary h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${((uploadIndex! + 1) / files.length) * 100}%` }}
+                />
               </div>
               <p className="text-xs text-muted-foreground text-center">
-                Uploading{file ? ` ${formatFileSize(file.size)}` : ''}…
+                Uploading {uploadIndex! + 1} of {files.length}…
               </p>
             </div>
           )}
@@ -238,18 +296,18 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
               type="button"
               variant="outline"
               onClick={() => handleClose(false)}
-              disabled={uploadMutation.isPending}
+              disabled={isUploading}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={!file || !title.trim() || uploadMutation.isPending || quotaExceeded}
+              disabled={files.length === 0 || !allTitlesValid || isUploading || quotaExceeded}
             >
-              {uploadMutation.isPending && (
+              {isUploading && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Upload
+              Upload {files.length > 1 ? `${files.length} files` : files.length === 1 ? '1 file' : ''}
             </Button>
           </DialogFooter>
         </form>
