@@ -86,7 +86,7 @@ export function RequestModal({
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label>Request Type</Label>
-            <Select value={requestType} onValueChange={(v) => setRequestType(v as any)}>
+            <Select value={requestType} onValueChange={(v) => setRequestType(v as 'cancellation' | 'reschedule' | 'general')}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

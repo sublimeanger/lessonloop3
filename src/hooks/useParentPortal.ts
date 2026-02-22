@@ -157,6 +157,25 @@ export function useChildrenWithDetails() {
   };
 }
 
+interface ParticipantLesson {
+  id: string;
+  title: string;
+  start_at: string;
+  end_at: string;
+  status: 'scheduled' | 'completed' | 'cancelled';
+  teacher_id: string | null;
+  location_id: string | null;
+  notes_shared: string | null;
+  location: { name: string } | null;
+  teacher: { display_name: string } | null;
+}
+
+interface ParticipantStudent {
+  id: string;
+  first_name: string;
+  last_name: string;
+}
+
 export function useParentLessons(options?: { studentId?: string; status?: string }) {
   const { user } = useAuth();
   const { currentOrg } = useOrg();
@@ -226,7 +245,10 @@ export function useParentLessons(options?: { studentId?: string; status?: string
       if (!participants) return [];
 
       // Get lesson IDs for fetching attendance
-      const lessonIds = [...new Set(participants.map(p => (p.lesson as any)?.id).filter(Boolean))];
+      const lessonIds = [...new Set(participants.map(p => {
+        const lesson = p.lesson as ParticipantLesson | null;
+        return lesson?.id;
+      }).filter(Boolean))] as string[];
 
       // Fetch attendance records for these lessons and students
       let attendanceMap = new Map<string, string>(); // key: lessonId-studentId, value: status
@@ -247,7 +269,7 @@ export function useParentLessons(options?: { studentId?: string; status?: string
       // Group by lesson
       const lessonMap = new Map<string, ParentLesson>();
       for (const p of participants) {
-        const lesson = p.lesson as any;
+        const lesson = p.lesson as ParticipantLesson | null;
         if (!lesson) continue;
         
         if (options?.status && lesson.status !== options.status) continue;
@@ -267,7 +289,7 @@ export function useParentLessons(options?: { studentId?: string; status?: string
             students: [],
           });
         }
-        const student = p.student as any;
+        const student = p.student as ParticipantStudent | null;
         if (student) {
           const attendanceStatus = attendanceMap.get(`${lesson.id}-${student.id}`) || null;
           lessonMap.get(lesson.id)!.students.push({
