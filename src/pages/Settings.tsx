@@ -19,6 +19,9 @@ import { HelpToursTab } from '@/components/settings/HelpToursTab';
 import { CalendarIntegrationsTab } from '@/components/settings/CalendarIntegrationsTab';
 import { useOrg } from '@/contexts/OrgContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTeachers } from '@/hooks/useTeachers';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 // ─── Tab bar with horizontal scroll + gradient fade on mobile ───
 function MobileTabBar({ initialTab, isOrgAdmin }: { initialTab: string; isOrgAdmin: boolean }) {
@@ -88,6 +91,42 @@ function MobileTabBar({ initialTab, isOrgAdmin }: { initialTab: string; isOrgAdm
   );
 }
 
+// Wrapper for availability tab with admin teacher selector
+function AvailabilityTabWithSelector({ isOrgAdmin }: { isOrgAdmin: boolean }) {
+  const { data: teachers = [] } = useTeachers();
+  const activeTeachers = teachers.filter(t => t.status === 'active');
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
+
+  const selectedTeacher = activeTeachers.find(t => t.id === selectedTeacherId);
+
+  if (!isOrgAdmin || activeTeachers.length === 0) {
+    return <TeacherAvailabilityTab />;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5 w-full max-w-xs">
+        <Label className="text-sm text-muted-foreground">Viewing availability for</Label>
+        <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+          <SelectTrigger>
+            <SelectValue placeholder="My availability" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">My availability</SelectItem>
+            {activeTeachers.map(t => (
+              <SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <TeacherAvailabilityTab
+        teacherId={selectedTeacher?.id}
+        teacherUserId={selectedTeacher?.user_id ?? undefined}
+      />
+    </div>
+  );
+}
+
 export default function Settings() {
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'profile';
@@ -117,7 +156,9 @@ export default function Settings() {
         {isOrgAdmin && <TabsContent value="privacy"><PrivacyTab /></TabsContent>}
         {isOrgAdmin && <TabsContent value="rate-cards"><RateCardsTab /></TabsContent>}
 
-        <TabsContent value="availability"><TeacherAvailabilityTab /></TabsContent>
+        <TabsContent value="availability">
+          <AvailabilityTabWithSelector isOrgAdmin={isOrgAdmin} />
+        </TabsContent>
         <TabsContent value="calendar"><CalendarIntegrationsTab /></TabsContent>
 
         <TabsContent value="billing">

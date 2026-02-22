@@ -82,9 +82,14 @@ const defaultTimeOffForm: TimeOffFormData = {
   reason: '',
 };
 
-export function TeacherAvailabilityTab() {
-  const { data: availabilityBlocks = [], isLoading: loadingAvailability } = useAvailabilityBlocks();
-  const { data: timeOffBlocks = [], isLoading: loadingTimeOff } = useTimeOffBlocks();
+interface TeacherAvailabilityTabProps {
+  teacherId?: string;
+  teacherUserId?: string;
+}
+
+export function TeacherAvailabilityTab({ teacherId, teacherUserId }: TeacherAvailabilityTabProps = {}) {
+  const { data: availabilityBlocks = [], isLoading: loadingAvailability } = useAvailabilityBlocks(teacherId);
+  const { data: timeOffBlocks = [], isLoading: loadingTimeOff } = useTimeOffBlocks(teacherId);
   
   const createAvailability = useCreateAvailabilityBlock();
   const deleteAvailability = useDeleteAvailabilityBlock();
@@ -135,6 +140,8 @@ export function TeacherAvailabilityTab() {
       day_of_week: availabilityForm.day_of_week,
       start_time_local: availabilityForm.start_time_local,
       end_time_local: availabilityForm.end_time_local,
+      ...(teacherUserId ? { teacher_user_id: teacherUserId } : {}),
+      ...(teacherId ? { teacher_id: teacherId } : {}),
     });
     setAvailabilityDialogOpen(false);
     setAvailabilityForm(defaultAvailabilityForm);
@@ -145,6 +152,8 @@ export function TeacherAvailabilityTab() {
       start_at: `${timeOffForm.start_date}T00:00:00`,
       end_at: `${timeOffForm.end_date}T23:59:59`,
       reason: timeOffForm.reason || undefined,
+      ...(teacherUserId ? { teacher_user_id: teacherUserId } : {}),
+      ...(teacherId ? { teacher_id: teacherId } : {}),
     });
     setTimeOffDialogOpen(false);
     setTimeOffForm(defaultTimeOffForm);
