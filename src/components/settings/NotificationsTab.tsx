@@ -54,6 +54,7 @@ export function NotificationsTab() {
   });
 
   const [prefs, setPrefs] = useState<NotificationPreferences>(defaults);
+  const isDirty = !!serverPrefs && JSON.stringify(prefs) !== JSON.stringify(serverPrefs);
 
   useEffect(() => {
     if (serverPrefs) {
@@ -101,10 +102,13 @@ export function NotificationsTab() {
             />
           </div>
         ))}
-        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-          {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Save Preferences
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !isDirty}>
+            {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Save Preferences
+          </Button>
+          {isDirty && <span className="text-sm text-muted-foreground">(unsaved changes)</span>}
+        </div>
       </CardContent>
     </Card>
   );
