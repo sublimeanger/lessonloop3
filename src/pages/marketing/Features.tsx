@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { FeaturesHero } from "@/components/marketing/features/FeaturesHero";
 import { SchedulingDeepDive } from "@/components/marketing/features/SchedulingDeepDive";
@@ -15,6 +16,7 @@ import { SecuritySection } from "@/components/marketing/features/SecuritySection
 import { FeatureCTA } from "@/components/marketing/features/FeatureCTA";
 
 export default function Features() {
+  usePageMeta("Features — LessonLoop Music School Software", "Smart scheduling, automated invoicing, parent portal, AI copilot & more. See every feature.");
   const [activeCategory, setActiveCategory] = useState("scheduling");
 
   // Update active category based on scroll position
