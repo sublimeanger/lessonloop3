@@ -526,7 +526,7 @@ function TeacherCard({ teacher, studentCount, isAdmin, onRemove, colour }: {
   
   return (
     <div 
-      className="flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md cursor-pointer"
+      className="group flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md cursor-pointer"
       onClick={() => navigate(`/calendar?teacher=${teacher.id}`)}
       role="button"
       tabIndex={0}
