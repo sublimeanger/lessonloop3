@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { activeStudentsQuery } from '@/lib/studentQuery';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, subMonths, startOfMonth, endOfMonth, differenceInDays, differenceInMonths, addMonths, parseISO } from 'date-fns';
+import { format, subMonths, startOfMonth, endOfMonth, differenceInDays, differenceInMonths, addMonths, parseISO, startOfWeek as getStartOfWeek } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { sanitiseCSVCell, currencySymbol } from '@/lib/utils';
 
@@ -550,18 +550,17 @@ export function useDashboardStats() {
       const today = new Date();
       const orgTimezone = currentOrg.timezone || 'Europe/London';
       const todayStr = format(today, 'yyyy-MM-dd');
-      const startOfWeek = new Date(today);
-      startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Monday
-      const weekStartStr = format(startOfWeek, 'yyyy-MM-dd');
-      const weekEndStr = format(new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
+      const mondayStart = getStartOfWeek(today, { weekStartsOn: 1 });
+      const weekStartStr = format(mondayStart, 'yyyy-MM-dd');
+      const weekEndStr = format(new Date(mondayStart.getTime() + 6 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
       const monthStart = format(startOfMonth(today), 'yyyy-MM-dd');
       const monthEnd = format(endOfMonth(today), 'yyyy-MM-dd');
 
       // Timezone-aware date ranges
       const todayStart = fromZonedTime(new Date(`${todayStr}T00:00:00`), orgTimezone).toISOString();
       const todayEnd = fromZonedTime(new Date(`${todayStr}T23:59:59`), orgTimezone).toISOString();
-      const weekStart = fromZonedTime(new Date(`${weekStartStr}T00:00:00`), orgTimezone).toISOString();
-      const weekEnd = fromZonedTime(new Date(`${weekEndStr}T23:59:59`), orgTimezone).toISOString();
+      const weekStartISO = fromZonedTime(new Date(`${weekStartStr}T00:00:00`), orgTimezone).toISOString();
+      const weekEndISO = fromZonedTime(new Date(`${weekEndStr}T23:59:59`), orgTimezone).toISOString();
 
       // Run all independent queries in parallel
       const [
@@ -585,8 +584,8 @@ export function useDashboardStats() {
           .from('lessons')
           .select('start_at, end_at, status')
           .eq('org_id', currentOrg.id)
-          .gte('start_at', weekStart)
-          .lte('start_at', weekEnd)
+          .gte('start_at', weekStartISO)
+          .lte('start_at', weekEndISO)
           .limit(5000),
         supabase
           .from('invoices')
