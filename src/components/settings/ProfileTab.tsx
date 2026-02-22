@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
-import { Loader2, LogOut, ShieldAlert, Mail, Eye, EyeOff, Lock } from 'lucide-react';
+import { Loader2, LogOut, ShieldAlert, Mail, Eye, EyeOff, Lock, Upload, X, Camera } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,13 +30,16 @@ import {
 } from '@/components/ui/dialog';
 
 export function ProfileTab() {
-  const { profile, updateProfile } = useAuth();
+  const { profile, updateProfile, user } = useAuth();
   const { toast } = useToast();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [isEmailProvider, setIsEmailProvider] = useState(false);
@@ -52,6 +56,7 @@ export function ProfileTab() {
       setFirstName(nameParts[0] || '');
       setLastName(nameParts.slice(1).join(' ') || '');
       setPhone(profile.phone || '');
+      setAvatarUrl((profile as unknown as Record<string, unknown>).avatar_url as string | null);
     }
   }, [profile]);
 
@@ -73,6 +78,73 @@ export function ProfileTab() {
     onSuccess: () => toast({ title: 'Profile updated', description: 'Your profile has been saved.' }),
     onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
+
+  const handleAvatarSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (!file || !user) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid file', description: 'Please upload an image file', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Avatar must be under 1MB', variant: 'destructive' });
+      return;
+    }
+
+    setAvatarUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const filePath = `${user.id}/avatar-${Date.now()}.${ext}`;
+
+      // Remove old avatar (best-effort)
+      if (avatarUrl) {
+        try {
+          const oldPath = avatarUrl.split('/avatars/')[1];
+          if (oldPath) await supabase.storage.from('avatars').remove([decodeURIComponent(oldPath)]);
+        } catch { /* non-blocking */ }
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true, contentType: file.type });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const publicUrl = urlData.publicUrl;
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl } as Record<string, unknown>)
+        .eq('id', user.id);
+      if (updateError) throw updateError;
+
+      setAvatarUrl(publicUrl);
+      toast({ title: 'Avatar uploaded' });
+    } catch (error: unknown) {
+      toast({ title: 'Upload failed', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!user) return;
+    try {
+      if (avatarUrl) {
+        const oldPath = avatarUrl.split('/avatars/')[1];
+        if (oldPath) await supabase.storage.from('avatars').remove([decodeURIComponent(oldPath)]);
+      }
+      await supabase.from('profiles').update({ avatar_url: null } as Record<string, unknown>).eq('id', user.id);
+      setAvatarUrl(null);
+      toast({ title: 'Avatar removed' });
+    } catch (error: unknown) {
+      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
+    }
+  };
+
+  const initials = `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || '?';
 
   const changeEmailMutation = useMutation({
     mutationFn: async (emailAddress: string) => {
@@ -177,6 +249,52 @@ export function ProfileTab() {
           <CardDescription>Update your personal details</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Avatar Section */}
+          <div className="flex items-center gap-4">
+            <div className="relative group">
+              <Avatar className="h-20 w-20">
+                {avatarUrl ? (
+                  <AvatarImage src={avatarUrl} alt="Profile photo" className="object-cover" />
+                ) : (
+                  <AvatarFallback className="text-lg bg-primary/10 text-primary">{initials}</AvatarFallback>
+                )}
+              </Avatar>
+              {avatarUrl && (
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -top-1 -right-1 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={handleRemoveAvatar}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+            <div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={avatarUploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {avatarUploading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Camera className="h-4 w-4 mr-2" />
+                )}
+                {avatarUrl ? 'Change Photo' : 'Upload Photo'}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png"
+                className="hidden"
+                onChange={handleAvatarSelect}
+              />
+              <p className="text-xs text-muted-foreground mt-1">JPG or PNG, max 1MB</p>
+            </div>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="firstName">First name</Label>
