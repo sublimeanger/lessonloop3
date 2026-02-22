@@ -86,12 +86,15 @@ export function ShareResourceModal({ open, onOpenChange, resource }: ShareResour
   const handleSubmit = async () => {
     if (!resource) return;
 
-    await shareMutation.mutateAsync({
-      resourceId: resource.id,
-      studentIds: selectedStudents,
-    });
-
-    onOpenChange(false);
+    try {
+      await shareMutation.mutateAsync({
+        resourceId: resource.id,
+        studentIds: selectedStudents,
+      });
+      onOpenChange(false);
+    } catch {
+      // Hook's onError already shows a toast
+    }
   };
 
   return (
