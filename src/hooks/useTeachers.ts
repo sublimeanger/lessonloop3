@@ -47,7 +47,6 @@ export function useTeachers() {
         .from('teachers')
         .select('*')
         .eq('org_id', currentOrg.id)
-        .eq('status', 'active')
         .order('display_name');
 
       if (error) throw error;
@@ -151,7 +150,30 @@ export function useTeacherMutations() {
     },
   });
 
-  return { createTeacher, updateTeacher, deleteTeacher };
+  const reactivateTeacher = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('teachers')
+        .update({ status: 'active' })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
+      toast({ title: 'Teacher reactivated' });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Failed to reactivate teacher', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+
+  return { createTeacher, updateTeacher, deleteTeacher, reactivateTeacher };
 }
 
 // Hook to get teacher assignment counts (for display)

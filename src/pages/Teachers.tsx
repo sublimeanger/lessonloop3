@@ -21,7 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { useTeachers, useTeacherMutations, useTeacherStudentCounts, Teacher } from '@/hooks/useTeachers';
 import { Progress } from '@/components/ui/progress';
-import { Plus, GraduationCap, Loader2, UserPlus, Lock, Link2, Link2Off, Phone, Trash2, Search, Pencil } from 'lucide-react';
+import { Plus, GraduationCap, Loader2, UserPlus, Lock, Link2, Link2Off, Phone, Trash2, Search, Pencil, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { InviteMemberDialog } from '@/components/settings/InviteMemberDialog';
 import { PendingInvitesList } from '@/components/settings/PendingInvitesList';
@@ -37,7 +37,7 @@ interface RemovalDialogState {
   isProcessing: boolean;
 }
 
-type FilterTab = 'all' | 'linked' | 'unlinked';
+type FilterTab = 'all' | 'linked' | 'unlinked' | 'inactive';
 
 function getTeacherColourIndex(teachers: Teacher[], teacherId: string): number {
   const sorted = [...teachers].sort((a, b) => a.display_name.localeCompare(b.display_name));
@@ -108,7 +108,7 @@ export default function Teachers() {
   const { limits, canAddTeacher, usage } = useUsageCounts();
   
   const { data: teachers = [], isLoading, refetch } = useTeachers();
-  const { createTeacher, updateTeacher, deleteTeacher } = useTeacherMutations();
+  const { createTeacher, updateTeacher, deleteTeacher, reactivateTeacher } = useTeacherMutations();
   const { data: studentCounts = {} } = useTeacherStudentCounts();
   const { checkTeacherRemoval } = useDeleteValidation();
 
@@ -154,8 +154,11 @@ export default function Teachers() {
   });
 
   // Filtered teachers
+  const activeTeachers = useMemo(() => teachers.filter(t => t.status === 'active'), [teachers]);
+  const inactiveTeachers = useMemo(() => teachers.filter(t => t.status === 'inactive'), [teachers]);
+
   const filteredTeachers = useMemo(() => {
-    let list = teachers;
+    let list = filterTab === 'inactive' ? inactiveTeachers : activeTeachers;
     if (filterTab === 'linked') list = list.filter(t => t.isLinked);
     else if (filterTab === 'unlinked') list = list.filter(t => !t.isLinked);
     if (search.trim()) {
@@ -167,15 +170,16 @@ export default function Teachers() {
       );
     }
     return list;
-  }, [teachers, filterTab, search]);
+  }, [activeTeachers, inactiveTeachers, filterTab, search]);
 
-  const linkedCount = teachers.filter(t => t.isLinked).length;
-  const unlinkedCount = teachers.filter(t => !t.isLinked).length;
+  const linkedCount = activeTeachers.filter(t => t.isLinked).length;
+  const unlinkedCount = activeTeachers.filter(t => !t.isLinked).length;
 
   const FILTER_PILLS: { value: FilterTab; label: string; count: number }[] = [
-    { value: 'all', label: 'All', count: teachers.length },
+    { value: 'all', label: 'All', count: activeTeachers.length },
     { value: 'linked', label: 'Linked', count: linkedCount },
     { value: 'unlinked', label: 'Unlinked', count: unlinkedCount },
+    ...(inactiveTeachers.length > 0 ? [{ value: 'inactive' as FilterTab, label: 'Inactive', count: inactiveTeachers.length }] : []),
   ];
 
   const resetCreateForm = () => {
@@ -340,7 +344,7 @@ export default function Teachers() {
   return (
     <AppLayout>
       <PageHeader
-        title={`Teachers${teachers.length > 0 ? ` (${teachers.length})` : ''}`}
+        title={`Teachers${activeTeachers.length > 0 ? ` (${activeTeachers.length})` : ''}`}
         breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Teachers' }]}
         actions={
           isOrgAdmin && (
@@ -380,11 +384,11 @@ export default function Teachers() {
               usage.isTeacherNearLimit && 'text-warning font-medium',
               usage.isTeacherAtLimit && 'text-destructive font-medium'
             )}>
-              {teachers.length} / {limits.maxTeachers}
+              {activeTeachers.length} / {limits.maxTeachers}
             </span>
           </div>
           <Progress 
-            value={(teachers.length / limits.maxTeachers) * 100} 
+            value={(activeTeachers.length / limits.maxTeachers) * 100} 
             className={cn(
               'h-1.5',
               usage.isTeacherNearLimit && '[&>div]:bg-warning',
@@ -447,7 +451,7 @@ export default function Teachers() {
             </div>
           ) : (
             filteredTeachers.map((teacher) => {
-              const colourIdx = getTeacherColourIndex(teachers, teacher.id);
+              const colourIdx = getTeacherColourIndex(activeTeachers, teacher.id);
               const colour = TEACHER_COLOURS[colourIdx];
               return (
                 <TeacherCard
@@ -457,7 +461,9 @@ export default function Teachers() {
                   isAdmin={isOrgAdmin}
                   onRemove={initiateRemoval}
                   onEdit={openEditDialog}
+                  onReactivate={(t) => reactivateTeacher.mutate(t.id)}
                   colour={colour}
+                  isInactiveView={filterTab === 'inactive'}
                 />
               );
             })
@@ -650,23 +656,28 @@ export default function Teachers() {
 }
 
 // Teacher card component
-function TeacherCard({ teacher, studentCount, isAdmin, onRemove, onEdit, colour }: { 
+function TeacherCard({ teacher, studentCount, isAdmin, onRemove, onEdit, onReactivate, colour, isInactiveView }: { 
   teacher: Teacher; 
   studentCount: number; 
   isAdmin: boolean;
   onRemove: (teacher: Teacher) => void;
   onEdit: (teacher: Teacher) => void;
+  onReactivate: (teacher: Teacher) => void;
   colour: (typeof TEACHER_COLOURS)[number];
+  isInactiveView?: boolean;
 }) {
   const navigate = useNavigate();
   
   return (
     <div 
-      className="group flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md cursor-pointer"
-      onClick={() => navigate(`/calendar?teacher=${teacher.id}`)}
+      className={cn(
+        "group flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md cursor-pointer",
+        isInactiveView && "opacity-60"
+      )}
+      onClick={() => !isInactiveView && navigate(`/calendar?teacher=${teacher.id}`)}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/calendar?teacher=${teacher.id}`); }}
+      onKeyDown={(e) => { if (!isInactiveView && (e.key === 'Enter' || e.key === ' ')) navigate(`/calendar?teacher=${teacher.id}`); }}
     >
       <div
         className="flex h-10 w-10 items-center justify-center rounded-full text-white font-semibold text-sm shrink-0"
@@ -677,7 +688,9 @@ function TeacherCard({ teacher, studentCount, isAdmin, onRemove, onEdit, colour 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-semibold truncate">{teacher.display_name}</span>
-          {teacher.isLinked ? (
+          {isInactiveView ? (
+            <Badge variant="destructive" className="text-[10px] shrink-0">Inactive</Badge>
+          ) : teacher.isLinked ? (
             <Badge variant="outline" className="text-[10px] gap-1 shrink-0">
               <Link2 className="h-3 w-3" />
               Linked
@@ -705,26 +718,43 @@ function TeacherCard({ teacher, studentCount, isAdmin, onRemove, onEdit, colour 
       </div>
       {isAdmin && (
         <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(teacher);
-            }}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove(teacher);
-            }}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {isInactiveView ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={(e) => {
+                e.stopPropagation();
+                onReactivate(teacher);
+              }}
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reactivate
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(teacher);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove(teacher);
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </>
+          )}
         </div>
       )}
     </div>
