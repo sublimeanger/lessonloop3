@@ -457,8 +457,8 @@ export default function Onboarding() {
           <Button size="lg" onClick={() => navigate(firstAction.href)} className="w-full">
             {firstAction.action} →
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="w-full">
-            Skip to Dashboard →
+          <Button variant="outline" size="sm" onClick={() => navigate('/dashboard')} className="w-full">
+            Go to Dashboard
           </Button>
           <p className="text-xs text-center text-muted-foreground">
             Don't worry, we'll guide you every step of the way
