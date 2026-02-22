@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
-import { Mail } from 'lucide-react';
+import { Mail, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMessageThreads } from '@/hooks/useMessageThreads';
 import { ThreadCard } from './ThreadCard';
@@ -10,9 +11,7 @@ interface ThreadedMessageListProps {
 }
 
 export function ThreadedMessageList({ searchQuery }: ThreadedMessageListProps) {
-  const { data, isLoading } = useMessageThreads();
-  const threads = data?.threads;
-  const hasMore = data?.hasMore ?? false;
+  const { threads, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useMessageThreads();
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
@@ -78,10 +77,24 @@ export function ThreadedMessageList({ searchQuery }: ThreadedMessageListProps) {
           setReplyingTo={setReplyingTo}
         />
       ))}
-      {hasMore && (
-        <p className="text-sm text-muted-foreground text-center py-4">
-          Showing most recent 500 messages. Older threads may not appear.
-        </p>
+      {hasNextPage && (
+        <div className="flex justify-center py-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+          >
+            {isFetchingNextPage ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Loading…
+              </>
+            ) : (
+              'Load more threads'
+            )}
+          </Button>
+        </div>
       )}
     </div>
   );
