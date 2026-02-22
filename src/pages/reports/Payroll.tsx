@@ -290,7 +290,14 @@ function PayrollTeacherList({
                         </TableCell>
                         <TableCell className="text-right">{lesson.durationMins} min</TableCell>
                         <TableCell className="text-right font-medium">
-                          {fmtCurrency(lesson.calculatedPay)}
+                          {lesson.hasWarning ? (
+                            <span className="text-warning text-xs flex items-center justify-end gap-1">
+                              <AlertTriangle className="h-3 w-3" />
+                              £0 — no invoice linked yet
+                            </span>
+                          ) : (
+                            fmtCurrency(lesson.calculatedPay)
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
