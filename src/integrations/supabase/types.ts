@@ -2914,6 +2914,95 @@ export type Database = {
           },
         ]
       }
+      resource_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          org_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          org_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_categories_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resource_categories_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resource_category_assignments: {
+        Row: {
+          category_id: string
+          id: string
+          org_id: string
+          resource_id: string
+        }
+        Insert: {
+          category_id: string
+          id?: string
+          org_id: string
+          resource_id: string
+        }
+        Update: {
+          category_id?: string
+          id?: string
+          org_id?: string
+          resource_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_category_assignments_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "resource_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resource_category_assignments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resource_category_assignments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resource_category_assignments_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resource_shares: {
         Row: {
           id: string

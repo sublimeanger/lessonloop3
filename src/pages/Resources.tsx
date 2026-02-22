@@ -3,9 +3,12 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, FolderOpen, Loader2, CheckSquare, Trash2, X, ArrowUpDown, LayoutGrid, List } from 'lucide-react';
+import { Plus, Search, FolderOpen, Loader2, CheckSquare, Trash2, X, ArrowUpDown, LayoutGrid, List, Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { safeGetItem, safeSetItem } from '@/lib/storage';
+import { useResourceCategories } from '@/hooks/useResourceCategories';
+import { ManageCategoriesModal } from '@/components/resources/ManageCategoriesModal';
+import { Badge } from '@/components/ui/badge';
 import { useResources, useDeleteResource, ResourceWithShares } from '@/hooks/useResources';
 import { ResourceCard } from '@/components/resources/ResourceCard';
 import { UploadResourceModal } from '@/components/resources/UploadResourceModal';
@@ -40,6 +43,8 @@ export default function Resources() {
   const [fileTypeFilter, setFileTypeFilter] = useState('all');
   const [sharedOnly, setSharedOnly] = useState(false);
   const [sortNewest, setSortNewest] = useState(true);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
   const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
     const saved = safeGetItem('resources-view-mode');
@@ -70,6 +75,7 @@ export default function Resources() {
 
   const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useResources();
   const deleteMutation = useDeleteResource();
+  const { data: categories = [] } = useResourceCategories();
 
   const resources = useMemo(
     () => data?.pages.flat() ?? [],
@@ -86,7 +92,11 @@ export default function Resources() {
         fileTypeFilter === 'all' || getFileTypeBadge(resource.file_type) === fileTypeFilter;
       const matchesShared =
         !sharedOnly || (resource.resource_shares?.length ?? 0) > 0;
-      return matchesSearch && matchesType && matchesShared;
+      const matchesCategory =
+        !categoryFilter || (resource.resource_category_assignments ?? []).some(
+          (a) => a.category_id === categoryFilter
+        );
+      return matchesSearch && matchesType && matchesShared && matchesCategory;
     })
     .sort((a, b) => {
       const da = new Date(a.created_at).getTime();
@@ -158,11 +168,21 @@ export default function Resources() {
                       </>
                     )}
                   </Button>
-                  <Button onClick={() => setUploadModalOpen(true)}>
+                   <Button onClick={() => setUploadModalOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Upload Resource
                   </Button>
                 </>
+              )}
+              {canUpload && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setManageCategoriesOpen(true)}
+                  title="Manage categories"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
               )}
             </div>
           }
@@ -177,6 +197,7 @@ export default function Resources() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
+              aria-label="Search resources"
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -233,6 +254,29 @@ export default function Resources() {
               </Button>
             </div>
           </div>
+          {/* Category filter chips */}
+          {categories.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                variant={categoryFilter === null ? 'default' : 'outline'}
+                className="cursor-pointer text-xs"
+                onClick={() => setCategoryFilter(null)}
+              >
+                All categories
+              </Badge>
+              {categories.map((cat) => (
+                <Badge
+                  key={cat.id}
+                  variant={categoryFilter === cat.id ? 'default' : 'outline'}
+                  className="cursor-pointer text-xs"
+                  style={categoryFilter === cat.id && cat.color ? { backgroundColor: cat.color, color: '#fff', borderColor: cat.color } : cat.color ? { borderColor: cat.color, color: cat.color } : undefined}
+                  onClick={() => setCategoryFilter(categoryFilter === cat.id ? null : cat.id)}
+                >
+                  {cat.name}
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -256,7 +300,7 @@ export default function Resources() {
           )
         ) : (
           <>
-            <div className={viewMode === 'grid' ? 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-3'}>
+            <div role="feed" aria-label="Resource library" className={viewMode === 'grid' ? 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-3'}>
               {filteredResources.map(resource => (
                 <ResourceCard
                   key={resource.id}
@@ -307,6 +351,11 @@ export default function Resources() {
       <UploadResourceModal
         open={uploadModalOpen}
         onOpenChange={setUploadModalOpen}
+      />
+
+      <ManageCategoriesModal
+        open={manageCategoriesOpen}
+        onOpenChange={setManageCategoriesOpen}
       />
 
       <ShareResourceModal
