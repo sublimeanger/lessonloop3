@@ -283,7 +283,7 @@ export default function BatchAttendance() {
                                   value="present"
                                   aria-label="Present"
                                   className={cn(
-                                    'h-7 px-2 text-xs',
+                                    'h-11 px-3 text-sm sm:h-7 sm:px-2 sm:text-xs',
                                     currentStatus === 'present' && 'bg-primary/15 text-primary border-primary/30'
                                   )}
                                 >
@@ -293,7 +293,7 @@ export default function BatchAttendance() {
                                   value="absent"
                                   aria-label="Absent"
                                   className={cn(
-                                    'h-7 px-2 text-xs',
+                                    'h-11 px-3 text-sm sm:h-7 sm:px-2 sm:text-xs',
                                     currentStatus === 'absent' && 'bg-destructive/15 text-destructive border-destructive/30'
                                   )}
                                 >
@@ -303,7 +303,7 @@ export default function BatchAttendance() {
                                   value="late"
                                   aria-label="Late"
                                   className={cn(
-                                    'h-7 px-2 text-xs',
+                                    'h-11 px-3 text-sm sm:h-7 sm:px-2 sm:text-xs',
                                     currentStatus === 'late' && 'bg-warning/15 text-warning border-warning/30'
                                   )}
                                 >
@@ -313,7 +313,7 @@ export default function BatchAttendance() {
                                   value="cancelled_by_teacher"
                                   aria-label="Cancelled by Teacher"
                                   className={cn(
-                                    'h-7 px-2 text-xs',
+                                    'h-11 px-3 text-sm sm:h-7 sm:px-2 sm:text-xs',
                                     currentStatus === 'cancelled_by_teacher' && 'bg-muted text-muted-foreground border-muted-foreground/30'
                                   )}
                                 >
@@ -323,7 +323,7 @@ export default function BatchAttendance() {
                                   value="cancelled_by_student"
                                   aria-label="Cancelled by Student"
                                   className={cn(
-                                    'h-7 px-2 text-xs',
+                                    'h-11 px-3 text-sm sm:h-7 sm:px-2 sm:text-xs',
                                     currentStatus === 'cancelled_by_student' && 'bg-muted text-muted-foreground border-muted-foreground/30'
                                   )}
                                 >

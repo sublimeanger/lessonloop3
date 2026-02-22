@@ -232,7 +232,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
                               disabled={isCancelled || isSaving}
                               onClick={() => handleAttendanceClick(participant.student_id, status)}
                               className={cn(
-                                "gap-1.5 transition-colors",
+                                "gap-1.5 transition-colors h-11 px-3 sm:h-8 sm:px-2",
                                 isActive && config.className
                               )}
                             >
@@ -258,7 +258,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
                               disabled={isCancelled || isSaving}
                               onClick={() => handleAttendanceClick(participant.student_id, status)}
                               className={cn(
-                                "gap-1.5 transition-colors text-xs",
+                                "gap-1.5 transition-colors text-xs h-11 px-3 sm:h-8 sm:px-2",
                                 isActive && config.className
                               )}
                             >
