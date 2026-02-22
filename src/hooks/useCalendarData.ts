@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
@@ -11,10 +11,6 @@ import { toZonedTime } from 'date-fns-tz';
  * Converts a UTC ISO string to a "fake-local" ISO string whose wall-clock
  * values match the org timezone. Downstream code that calls parseISO().getHours()
  * will then get the correct org-local hour regardless of the browser's timezone.
- *
- * Example: "2025-06-15T14:00:00Z" with tz "Europe/London" (BST = UTC+1)
- *  → toZonedTime gives a Date whose getHours() = 15
- *  → we format it as "2025-06-15T15:00:00.000Z" (fake UTC)
  */
 function toOrgLocalIso(utcIso: string, timezone: string): string {
   const zoned = toZonedTime(utcIso, timezone);
@@ -23,160 +19,143 @@ function toOrgLocalIso(utcIso: string, timezone: string): string {
 
 const LESSONS_PAGE_SIZE = 500;
 
+async function fetchCalendarLessons(
+  orgId: string,
+  orgTimezone: string,
+  startIso: string,
+  endIso: string,
+  filters: CalendarFilters
+): Promise<{ lessons: LessonWithDetails[]; isCapReached: boolean }> {
+  let query = supabase
+    .from('lessons')
+    .select(`
+      id, title, start_at, end_at, status, lesson_type, notes_shared, notes_private, 
+      teacher_id, teacher_user_id, location_id, room_id, org_id, recurrence_id, online_meeting_url,
+      created_by, created_at, updated_at, is_series_exception,
+      location:locations(id, name),
+      room:rooms(id, name)
+    `)
+    .eq('org_id', orgId)
+    .gte('start_at', startIso)
+    .lte('start_at', endIso)
+    .order('start_at', { ascending: true })
+    .limit(LESSONS_PAGE_SIZE);
+
+  if (filters.teacher_id) query = query.eq('teacher_id', filters.teacher_id);
+  if (filters.location_id) query = query.eq('location_id', filters.location_id);
+  if (filters.room_id) query = query.eq('room_id', filters.room_id);
+
+  const { data: lessonsData, error } = await query;
+
+  if (error || !lessonsData) {
+    logger.error('Error fetching lessons:', error);
+    return { lessons: [], isCapReached: false };
+  }
+
+  const isCapReached = lessonsData.length >= LESSONS_PAGE_SIZE;
+
+  if (lessonsData.length === 0) {
+    return { lessons: [], isCapReached: false };
+  }
+
+  const lessonIds = lessonsData.map(l => l.id);
+  const teacherIds = [...new Set(lessonsData.map(l => l.teacher_id).filter(Boolean))];
+
+  const [teacherRecords, participantsData, attendanceData] = await Promise.all([
+    teacherIds.length > 0
+      ? supabase.from('teachers').select('id, display_name, email').in('id', teacherIds)
+      : Promise.resolve({ data: [] }),
+    supabase
+      .from('lesson_participants')
+      .select(`id, lesson_id, student:students(id, first_name, last_name)`)
+      .in('lesson_id', lessonIds),
+    supabase
+      .from('attendance_records')
+      .select('lesson_id, student_id, attendance_status')
+      .in('lesson_id', lessonIds),
+  ]);
+
+  const teacherMap = new Map<string, { full_name: string | null; email: string | null }>(
+    ((teacherRecords as any).data || []).map((t: any) => [t.id, { full_name: t.display_name, email: t.email }])
+  );
+  const participantsMap = new Map<string, any[]>();
+  (participantsData.data || []).forEach(p => {
+    const existing = participantsMap.get(p.lesson_id) || [];
+    participantsMap.set(p.lesson_id, [...existing, p]);
+  });
+  const attendanceMap = new Map<string, any[]>();
+  (attendanceData.data || []).forEach(a => {
+    const existing = attendanceMap.get(a.lesson_id) || [];
+    attendanceMap.set(a.lesson_id, [...existing, a]);
+  });
+
+  const enrichedLessons: LessonWithDetails[] = lessonsData.map((lesson) => ({
+    ...lesson,
+    start_at: toOrgLocalIso(lesson.start_at, orgTimezone),
+    end_at: toOrgLocalIso(lesson.end_at, orgTimezone),
+    teacher: teacherMap.get(lesson.teacher_id),
+    participants: participantsMap.get(lesson.id) as any || [],
+    attendance: attendanceMap.get(lesson.id) || [],
+  }));
+
+  return { lessons: enrichedLessons, isCapReached };
+}
+
 export function useCalendarData(
   currentDate: Date,
   view: 'day' | 'stacked' | 'week' | 'agenda',
   filters: CalendarFilters
 ) {
   const { currentOrg } = useOrg();
-  const [lessons, setLessons] = useState<LessonWithDetails[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isCapReached, setIsCapReached] = useState(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const queryClient = useQueryClient();
 
-  const getDateRange = useCallback(() => {
+  const { startIso, endIso } = useMemo(() => {
+    let start: Date, end: Date;
     if (view === 'day' || view === 'week' || view === 'stacked') {
-      return { start: startOfWeek(currentDate, { weekStartsOn: 1 }), end: endOfWeek(currentDate, { weekStartsOn: 1 }) };
+      start = startOfWeek(currentDate, { weekStartsOn: 1 });
+      end = endOfWeek(currentDate, { weekStartsOn: 1 });
     } else {
-      // Agenda: next 14 days
-      return { start: startOfDay(currentDate), end: endOfDay(addDays(currentDate, 14)) };
+      start = startOfDay(currentDate);
+      end = endOfDay(addDays(currentDate, 14));
     }
+    return { startIso: start.toISOString(), endIso: end.toISOString() };
   }, [currentDate, view]);
 
-  const fetchLessons = useCallback(async () => {
-    if (!currentOrg) return;
-    
-    // Cancel previous request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    abortControllerRef.current = new AbortController();
-    
-    setIsLoading(true);
-    const { start, end } = getDateRange();
+  const queryKey = useMemo(
+    () => ['calendar-lessons', currentOrg?.id, startIso, endIso, filters.teacher_id, filters.location_id, filters.room_id],
+    [currentOrg?.id, startIso, endIso, filters.teacher_id, filters.location_id, filters.room_id]
+  );
 
-    try {
-      // Build query with optimized date window using indexed columns
-      let query = supabase
-        .from('lessons')
-        .select(`
-          id, title, start_at, end_at, status, lesson_type, notes_shared, notes_private, 
-          teacher_id, teacher_user_id, location_id, room_id, org_id, recurrence_id, online_meeting_url,
-          created_by, created_at, updated_at, is_series_exception,
-          location:locations(id, name),
-          room:rooms(id, name)
-        `)
-        .eq('org_id', currentOrg.id)
-        .gte('start_at', start.toISOString())
-        .lte('start_at', end.toISOString())
-        .order('start_at', { ascending: true })
-        .limit(LESSONS_PAGE_SIZE);
+  const { data, isLoading, refetch } = useQuery({
+    queryKey,
+    queryFn: () => fetchCalendarLessons(
+      currentOrg!.id,
+      currentOrg!.timezone || 'Europe/London',
+      startIso,
+      endIso,
+      filters
+    ),
+    enabled: !!currentOrg,
+    staleTime: 60_000,
+    gcTime: 5 * 60 * 1000,
+  });
 
-      if (filters.teacher_id) {
-        query = query.eq('teacher_id', filters.teacher_id);
-      }
-      if (filters.location_id) {
-        query = query.eq('location_id', filters.location_id);
-      }
-      if (filters.room_id) {
-        query = query.eq('room_id', filters.room_id);
-      }
+  const lessons = data?.lessons ?? [];
+  const isCapReached = data?.isCapReached ?? false;
 
-      const { data: lessonsData, error } = await query;
-
-      if (error || !lessonsData) {
-        logger.error('Error fetching lessons:', error);
-        setLessons([]);
-        setIsCapReached(false);
-        setIsLoading(false);
-        return;
-      }
-
-      // Check if we hit the page size cap
-      setIsCapReached(lessonsData.length >= LESSONS_PAGE_SIZE);
-
-      if (lessonsData.length === 0) {
-        setLessons([]);
-        setIsLoading(false);
-        return;
-      }
-
-      // Batch fetch all related data in parallel for performance
-      const lessonIds = lessonsData.map(l => l.id);
-      const teacherIds = [...new Set(lessonsData.map(l => l.teacher_id).filter(Boolean))];
-
-      const [teacherRecords, participantsData, attendanceData] = await Promise.all([
-        // Batch fetch teacher display names from teachers table
-        teacherIds.length > 0
-          ? supabase
-              .from('teachers')
-              .select('id, display_name, email')
-              .in('id', teacherIds)
-          : Promise.resolve({ data: [] }),
-        // Batch fetch all participants
-        supabase
-          .from('lesson_participants')
-          .select(`
-            id, lesson_id,
-            student:students(id, first_name, last_name)
-          `)
-          .in('lesson_id', lessonIds),
-        // Batch fetch all attendance records
-        supabase
-          .from('attendance_records')
-          .select('lesson_id, student_id, attendance_status')
-          .in('lesson_id', lessonIds)
-      ]);
-
-      // Build lookup maps for efficient access
-      const teacherMap = new Map<string, { full_name: string | null; email: string | null }>(
-        ((teacherRecords as any).data || []).map((t: any) => [t.id, { full_name: t.display_name, email: t.email }])
-      );
-      const participantsMap = new Map<string, typeof participantsData.data>();
-      (participantsData.data || []).forEach(p => {
-        const existing = participantsMap.get(p.lesson_id) || [];
-        participantsMap.set(p.lesson_id, [...existing, p]);
+  // setLessons for optimistic updates — writes directly into the query cache
+  const setLessons: React.Dispatch<React.SetStateAction<LessonWithDetails[]>> = useCallback(
+    (updater) => {
+      queryClient.setQueryData(queryKey, (old: { lessons: LessonWithDetails[]; isCapReached: boolean } | undefined) => {
+        if (!old) return old;
+        const newLessons = typeof updater === 'function' ? updater(old.lessons) : updater;
+        return { ...old, lessons: newLessons };
       });
-      const attendanceMap = new Map<string, typeof attendanceData.data>();
-      (attendanceData.data || []).forEach(a => {
-        const existing = attendanceMap.get(a.lesson_id) || [];
-        attendanceMap.set(a.lesson_id, [...existing, a]);
-      });
+    },
+    [queryClient, queryKey]
+  );
 
-      // Enrich lessons with related data from maps and convert to org timezone
-      const orgTimezone = currentOrg.timezone || 'Europe/London';
-      const enrichedLessons: LessonWithDetails[] = lessonsData.map((lesson) => ({
-        ...lesson,
-        // Convert UTC times to org-local "fake UTC" strings so downstream
-        // parseISO().getHours() returns org-local wall-clock hours
-        start_at: toOrgLocalIso(lesson.start_at, orgTimezone),
-        end_at: toOrgLocalIso(lesson.end_at, orgTimezone),
-        teacher: teacherMap.get(lesson.teacher_id),
-        participants: participantsMap.get(lesson.id) as any || [],
-        attendance: attendanceMap.get(lesson.id) || [],
-      }));
-
-      setLessons(enrichedLessons);
-    } catch (error) {
-      if ((error as Error).name !== 'AbortError') {
-        logger.error('Error fetching lessons:', error);
-        setLessons([]);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentOrg, getDateRange, filters]);
-
-  useEffect(() => {
-    fetchLessons();
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [fetchLessons]);
-
-  return { lessons, setLessons, isLoading, isCapReached, refetch: fetchLessons };
+  return { lessons, setLessons, isLoading, isCapReached, refetch };
 }
 
 export function useTeachersAndLocations() {
