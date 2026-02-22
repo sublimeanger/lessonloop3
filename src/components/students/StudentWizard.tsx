@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Check, ChevronLeft, ChevronRight, Loader2, User, Users, GraduationCap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isValidEmail, isValidPhone } from '@/lib/validation';
+import { stripHtml } from '@/lib/sanitize';
 import { StudentInfoStep, StudentInfoData } from './wizard/StudentInfoStep';
 import { GuardianStep, GuardianData } from './wizard/GuardianStep';
 import { TeachingDefaultsStep, TeachingDefaultsData } from './wizard/TeachingDefaultsStep';
@@ -175,7 +176,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
         email: studentData.email.trim() || null,
         phone: studentData.phone.trim() || null,
         dob: studentData.dob || null,
-        notes: studentData.notes.trim() || null,
+        notes: studentData.notes.trim() ? stripHtml(studentData.notes.trim()) : null,
         default_location_id: teachingData.locationId || null,
         default_teacher_id: teachingData.teacherId || null,
         default_rate_card_id: teachingData.rateCardId || null,

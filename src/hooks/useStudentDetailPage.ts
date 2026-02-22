@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { logger } from '@/lib/logger';
 import { isValidEmail, isValidPhone } from '@/lib/validation';
+import { stripHtml } from '@/lib/sanitize';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -283,7 +284,7 @@ export function useStudentDetailPage() {
         email: email.trim() || null,
         phone: phone.trim() || null,
         dob: dob || null,
-        notes: notes.trim() || null,
+        notes: notes.trim() ? stripHtml(notes.trim()) : null,
       })
       .eq('id', student.id)
       .eq('org_id', currentOrg!.id);
