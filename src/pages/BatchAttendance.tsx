@@ -11,9 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useBatchAttendanceLessons, useSaveBatchAttendance } from '@/hooks/useRegisterData';
 import { Loader2, CheckCircle2, Save, UserCheck, ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Database } from '@/integrations/supabase/types';
-
-type AttendanceStatus = Database['public']['Enums']['attendance_status'];
+import type { AttendanceStatus } from '@/hooks/useRegisterData';
 
 export default function BatchAttendance() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -195,7 +193,7 @@ export default function BatchAttendance() {
                               onValueChange={(v) => {
                                 if (v) setStudentAttendance(lesson.id, p.student_id, v as AttendanceStatus);
                               }}
-                              className="gap-1"
+                              className="gap-1 flex-wrap justify-end"
                             >
                               <ToggleGroupItem
                                 value="present"
@@ -226,6 +224,26 @@ export default function BatchAttendance() {
                                 )}
                               >
                                 Late
+                              </ToggleGroupItem>
+                              <ToggleGroupItem
+                                value="cancelled_by_teacher"
+                                aria-label="Cancelled by Teacher"
+                                className={cn(
+                                  'h-7 px-2 text-xs',
+                                  currentStatus === 'cancelled_by_teacher' && 'bg-muted text-muted-foreground border-muted-foreground/30'
+                                )}
+                              >
+                                Cxl (T)
+                              </ToggleGroupItem>
+                              <ToggleGroupItem
+                                value="cancelled_by_student"
+                                aria-label="Cancelled by Student"
+                                className={cn(
+                                  'h-7 px-2 text-xs',
+                                  currentStatus === 'cancelled_by_student' && 'bg-muted text-muted-foreground border-muted-foreground/30'
+                                )}
+                              >
+                                Cxl (S)
                               </ToggleGroupItem>
                             </ToggleGroup>
                           </div>
