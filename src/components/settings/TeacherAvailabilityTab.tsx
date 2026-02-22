@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { format, parseISO, isBefore, isAfter, startOfDay } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -111,7 +112,25 @@ export function TeacherAvailabilityTab() {
     t => isAfter(parseISO(t.end_at), startOfDay(new Date()))
   );
 
+  const { toast } = useToast();
+
   const handleCreateAvailability = async () => {
+    // Check for overlapping blocks on the same day
+    const existingOnDay = availabilityBlocks.filter(
+      b => b.day_of_week === availabilityForm.day_of_week
+    );
+    const hasOverlap = existingOnDay.some(
+      b => availabilityForm.start_time_local < b.end_time_local && availabilityForm.end_time_local > b.start_time_local
+    );
+    if (hasOverlap) {
+      toast({
+        title: 'Overlapping time slot',
+        description: 'This overlaps with an existing time slot. Consider editing the existing one.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     await createAvailability.mutateAsync({
       day_of_week: availabilityForm.day_of_week,
       start_time_local: availabilityForm.start_time_local,
