@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
@@ -174,9 +174,36 @@ export function useCalendarData(
       filters
     ),
     enabled: !!currentOrg,
-    staleTime: 60_000,
+    staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
+
+  // Realtime subscription: invalidate calendar cache on any lessons change for this org
+  useEffect(() => {
+    if (!currentOrg?.id) return;
+
+    const channel = supabase
+      .channel('calendar-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'lessons',
+          filter: `org_id=eq.${currentOrg.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['calendar-lessons'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentOrg?.id, queryClient]);
 
   const lessons = data?.lessons ?? [];
   const isCapReached = data?.isCapReached ?? false;
