@@ -120,7 +120,7 @@ export function DashboardStats({ stats, isLoading, currencyCode }: DashboardStat
       icon: Clock,
       label: 'Hours',
       value: stats.hoursThisWeek.toFixed(1),
-      href: '/reports/lessons-delivered',
+      href: '/reports/lessons',
       trend: 'this week',
     },
   ];
