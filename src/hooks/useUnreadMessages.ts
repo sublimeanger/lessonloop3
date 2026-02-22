@@ -1,38 +1,27 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
+import { useGuardianId } from '@/hooks/useParentPortal';
 
 /**
  * Hook to get the count of unread messages for the current guardian
  */
 export function useUnreadMessagesCount() {
-  const { user } = useAuth();
   const { currentOrg } = useOrg();
+  const { guardianId } = useGuardianId();
 
   return useQuery({
-    queryKey: ['unread-messages-count', user?.id, currentOrg?.id],
+    queryKey: ['unread-messages-count', guardianId, currentOrg?.id],
     queryFn: async () => {
-      if (!user || !currentOrg) return 0;
+      if (!guardianId || !currentOrg) return 0;
 
-      // Get guardian ID for current user
-      const { data: guardian } = await supabase
-        .from('guardians')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('org_id', currentOrg.id)
-        .maybeSingle();
-
-      if (!guardian) return 0;
-
-      // Count unread messages where recipient_id matches guardian and read_at is null
       const { count, error } = await supabase
         .from('message_log')
         .select('id', { count: 'exact', head: true })
         .eq('org_id', currentOrg.id)
         .eq('recipient_type', 'guardian')
-        .eq('recipient_id', guardian.id)
+        .eq('recipient_id', guardianId)
         .is('read_at', null)
         .eq('status', 'sent');
 
@@ -43,8 +32,8 @@ export function useUnreadMessagesCount() {
 
       return count || 0;
     },
-    enabled: !!user && !!currentOrg,
-    refetchInterval: 60000, // Refresh every minute
+    enabled: !!guardianId && !!currentOrg,
+    refetchInterval: 60000,
   });
 }
 
@@ -52,29 +41,17 @@ export function useUnreadMessagesCount() {
  * Hook to mark messages as read when viewing the messages page
  */
 export function useMarkMessagesAsRead() {
-  const { user } = useAuth();
   const { currentOrg } = useOrg();
+  const { guardianId } = useGuardianId();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (messageIds?: string[]) => {
-      if (!user || !currentOrg) return;
+      if (!guardianId || !currentOrg) return;
 
-      // Get guardian ID
-      const { data: guardian } = await supabase
-        .from('guardians')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('org_id', currentOrg.id)
-        .maybeSingle();
-
-      if (!guardian) return;
-
-      // We can't update message_log directly due to RLS, so we'll use an edge function
-      // For now, we'll make the update through a function that has elevated permissions
       const { error } = await supabase.functions.invoke('mark-messages-read', {
         body: {
-          guardian_id: guardian.id,
+          guardian_id: guardianId,
           org_id: currentOrg.id,
           message_ids: messageIds,
         },
