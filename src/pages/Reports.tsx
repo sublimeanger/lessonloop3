@@ -56,7 +56,7 @@ const reports: Report[] = [
     icon: XCircle,
     href: '/reports/cancellations',
     status: 'available',
-    roles: ['owner', 'admin'],
+    roles: ['owner', 'admin', 'finance'],
   },
   {
     id: 'payroll',
