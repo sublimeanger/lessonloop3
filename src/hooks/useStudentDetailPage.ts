@@ -436,7 +436,7 @@ export function useStudentDetailPage() {
   const confirmGuardianRemoval = async () => {
     setGuardianDeleteDialog(prev => ({ ...prev, isDeleting: true }));
     const guardianId = guardianDeleteDialog.guardianId;
-    const { error } = await supabase.from('student_guardians').delete().eq('id', guardianDeleteDialog.sgId);
+    const { error } = await supabase.from('student_guardians').delete().eq('id', guardianDeleteDialog.sgId).eq('org_id', currentOrg!.id);
     if (error) {
       toast({ title: 'Error removing guardian', description: error.message, variant: 'destructive' });
     } else {
@@ -451,7 +451,8 @@ export function useStudentDetailPage() {
         await supabase
           .from('guardians')
           .update({ deleted_at: new Date().toISOString() })
-          .eq('id', guardianId);
+          .eq('id', guardianId)
+          .eq('org_id', currentOrg!.id);
         toast({ title: 'Guardian removed', description: 'Guardian record archived (no remaining student links).' });
       } else {
         toast({ title: 'Guardian unlinked' });
