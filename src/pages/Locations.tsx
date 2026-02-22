@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -62,8 +63,26 @@ export default function Locations() {
   const { toast } = useToast();
   const { hasAccess: hasMultiLocation, requiredPlanName } = useFeatureGate('multi_location');
   const { checkLocationDeletion, checkRoomDeletion } = useDeleteValidation();
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  const { data: locations = [], isLoading } = useQuery({
+    queryKey: ['locations', currentOrg?.id],
+    queryFn: async () => {
+      if (!currentOrg) return [];
+      const { data, error } = await supabase
+        .from('locations')
+        .select('*, rooms(*)')
+        .eq('org_id', currentOrg.id)
+        .order('name');
+      if (error) throw error;
+      return (data || []).map(loc => ({
+        ...loc,
+        rooms: ((loc as any).rooms || []) as Room[],
+      })) as Location[];
+    },
+    enabled: !!currentOrg,
+    staleTime: 30_000,
+  });
   const [expandedLocations, setExpandedLocations] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
@@ -130,34 +149,7 @@ export default function Locations() {
     return counts;
   }, [locations]);
 
-  const fetchLocations = async () => {
-    if (!currentOrg) return;
-    setIsLoading(true);
-    
-    const { data: locData, error } = await supabase
-      .from('locations')
-      .select('*, rooms(*)')
-      .eq('org_id', currentOrg.id)
-      .order('name');
-    
-    if (error) {
-      toast({ title: 'Error loading locations', description: error.message, variant: 'destructive' });
-      setIsLoading(false);
-      return;
-    }
-    
-    const locationsWithRooms: Location[] = (locData || []).map(loc => ({
-      ...loc,
-      rooms: ((loc as any).rooms || []) as Room[],
-    }));
-    
-    setLocations(locationsWithRooms);
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    fetchLocations();
-  }, [currentOrg?.id]);
+  const invalidateLocations = () => queryClient.invalidateQueries({ queryKey: ['locations'] });
 
   const toggleExpanded = (id: string) => {
     setExpandedLocations(prev => {
@@ -224,7 +216,7 @@ export default function Locations() {
       } else {
         toast({ title: 'Location updated' });
         setIsLocationDialogOpen(false);
-        fetchLocations();
+        invalidateLocations();
       }
     } else {
       const { error } = await supabase.from('locations').insert({ ...data, org_id: currentOrg.id });
@@ -233,7 +225,7 @@ export default function Locations() {
       } else {
         toast({ title: 'Location added' });
         setIsLocationDialogOpen(false);
-        fetchLocations();
+        invalidateLocations();
       }
     }
     setIsSaving(false);
@@ -271,7 +263,7 @@ export default function Locations() {
       toast({ title: 'Error deleting location', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Location deleted' });
-      fetchLocations();
+      invalidateLocations();
     }
     setDeleteLocDialog(prev => ({ ...prev, open: false, isDeleting: false }));
   };
@@ -310,7 +302,7 @@ export default function Locations() {
       } else {
         toast({ title: 'Room updated' });
         setIsRoomDialogOpen(false);
-        fetchLocations();
+        invalidateLocations();
       }
     } else {
       const { error } = await supabase.from('rooms').insert({ ...data, location_id: roomLocationId, org_id: currentOrg.id });
@@ -319,7 +311,7 @@ export default function Locations() {
       } else {
         toast({ title: 'Room added' });
         setIsRoomDialogOpen(false);
-        fetchLocations();
+        invalidateLocations();
       }
     }
     setIsSaving(false);
@@ -345,7 +337,7 @@ export default function Locations() {
       toast({ title: 'Error deleting room', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Room deleted' });
-      fetchLocations();
+      invalidateLocations();
     }
     setDeleteRoomDialog(prev => ({ ...prev, open: false, isDeleting: false }));
   };
