@@ -291,11 +291,17 @@ export default function Locations() {
       return;
     }
     
+    const parsedCapacity = roomCapacity ? parseInt(roomCapacity) : null;
+    if (parsedCapacity !== null && (parsedCapacity < 1 || isNaN(parsedCapacity))) {
+      toast({ title: 'Capacity must be 1 or more', variant: 'destructive' });
+      return;
+    }
+
     setIsSaving(true);
     const data = {
       name: roomName.trim(),
-      capacity: roomCapacity ? parseInt(roomCapacity) : null,
-      max_capacity: roomCapacity ? parseInt(roomCapacity) : null,
+      capacity: parsedCapacity,
+      max_capacity: parsedCapacity,
     };
     
     if (editingRoom) {
@@ -607,7 +613,7 @@ export default function Locations() {
             </div>
             <div className="space-y-2">
               <Label>Capacity (optional)</Label>
-              <Input type="number" value={roomCapacity} onChange={(e) => setRoomCapacity(e.target.value)} placeholder="4" />
+              <Input type="number" min="1" step="1" value={roomCapacity} onChange={(e) => setRoomCapacity(e.target.value)} placeholder="4" />
             </div>
           </div>
           <DialogFooter>
