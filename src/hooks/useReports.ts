@@ -43,12 +43,19 @@ export function useRevenueReport(startDate: string, endDate: string) {
     queryFn: async (): Promise<RevenueData> => {
       if (!currentOrg) return { months: [], totalRevenue: 0, averageMonthly: 0, previousPeriodRevenue: 0, growthPercent: null };
 
-      // Calculate previous period dates (same duration, shifted back)
-      const startParsed = parseISO(startDate);
-      const endParsed = parseISO(endDate);
-      const durationMonths = differenceInMonths(endOfMonth(endParsed), startOfMonth(startParsed)) + 1;
-      const prevStartDate = format(subMonths(startParsed, durationMonths), 'yyyy-MM-dd');
-      const prevEndDate = format(subMonths(endParsed, durationMonths), 'yyyy-MM-dd');
+      // issue_date is a DATE column (no time component), so the query
+      // parameters don't need fromZonedTime conversion. However, we perform
+      // all month arithmetic in the academy's timezone so that month
+      // boundaries (e.g. start-of-month) align with the academy's local
+      // calendar, avoiding BST edge-case drift.
+      const orgTz = (currentOrg as any).timezone ?? 'Europe/London';
+
+      // Parse dates into the academy's timezone for correct month arithmetic
+      const startZoned = toZonedTime(parseISO(startDate), orgTz);
+      const endZoned = toZonedTime(parseISO(endDate), orgTz);
+      const durationMonths = differenceInMonths(endOfMonth(endZoned), startOfMonth(startZoned)) + 1;
+      const prevStartDate = format(subMonths(startZoned, durationMonths), 'yyyy-MM-dd');
+      const prevEndDate = format(subMonths(endZoned, durationMonths), 'yyyy-MM-dd');
 
       // Call server-side RPC for aggregated data
       const { data: rpcRows, error } = await supabase.rpc('get_revenue_report', {
@@ -76,11 +83,11 @@ export function useRevenueReport(startDate: string, endDate: string) {
         }
       }
 
-      // Build continuous array of all months in range
+      // Build continuous array of all months in range (in academy timezone)
       const months: RevenueByMonth[] = [];
-      let cursor = startOfMonth(parseISO(startDate));
-      const rangeEnd = startOfMonth(parseISO(endDate));
-      let prevCursor = startOfMonth(parseISO(prevStartDate));
+      let cursor = startOfMonth(toZonedTime(parseISO(startDate), orgTz));
+      const rangeEnd = startOfMonth(toZonedTime(parseISO(endDate), orgTz));
+      let prevCursor = startOfMonth(toZonedTime(parseISO(prevStartDate), orgTz));
 
       while (cursor <= rangeEnd) {
         const key = format(cursor, 'yyyy-MM');
