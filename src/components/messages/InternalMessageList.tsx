@@ -158,8 +158,10 @@ export function InternalMessageList({ view }: InternalMessageListProps) {
                         placeholder="Write your reply..."
                         value={replyBody}
                         onChange={(e) => setReplyBody(e.target.value)}
+                        onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleReply(msg); } }}
                         rows={3}
                       />
+                      <p className="text-xs text-muted-foreground mt-1">Press Ctrl+Enter to send</p>
                       <div className="flex items-center gap-2 justify-end">
                         <Button
                           variant="outline"
