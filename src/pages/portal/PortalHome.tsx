@@ -29,11 +29,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { parseISO, formatDistanceToNowStrict, isBefore, isToday, isTomorrow, isAfter, addMinutes } from 'date-fns';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
 
-function relativeDayLabel(dateStr: string): string {
+function relativeDayLabel(dateStr: string, timezone?: string): string {
   const d = parseISO(dateStr);
   if (isToday(d)) return 'Today';
   if (isTomorrow(d)) return 'Tomorrow';
-  return formatDateUK(d, 'EEEE, d MMM');
+  return formatDateUK(d, 'EEEE, d MMM', timezone);
 }
 
 export default function PortalHome() {
@@ -146,6 +146,7 @@ export default function PortalHome() {
 
   const firstName = profile?.full_name?.split(' ')[0] || 'there';
   const currencyCode = currentOrg?.currency_code || 'GBP';
+  const tz = (currentOrg as any)?.timezone || 'Europe/London';
 
   const isLoading = summaryLoading || childrenLoading || guardianLoading;
 
@@ -245,8 +246,8 @@ export default function PortalHome() {
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1.5">
                           <Calendar className="h-3.5 w-3.5" />
-                          {relativeDayLabel(nextLesson.start_at)} at{' '}
-                          {formatTimeUK(parseISO(nextLesson.start_at))}
+                          {relativeDayLabel(nextLesson.start_at, tz)} at{' '}
+                          {formatTimeUK(parseISO(nextLesson.start_at), tz)}
                         </span>
                         {nextLesson.location_name && (
                           <span className="flex items-center gap-1.5">
@@ -319,8 +320,8 @@ export default function PortalHome() {
                             {child.next_lesson && (
                               <p className="text-xs text-muted-foreground">
                                 Next:{' '}
-                                {relativeDayLabel(child.next_lesson.start_at)} at{' '}
-                                {formatTimeUK(parseISO(child.next_lesson.start_at))}
+                                {relativeDayLabel(child.next_lesson.start_at, tz)} at{' '}
+                                {formatTimeUK(parseISO(child.next_lesson.start_at), tz)}
                               </p>
                             )}
                           </div>
