@@ -1585,6 +1585,7 @@ export type Database = {
           eligibility: string
           id: string
           org_id: string
+          releases_slot: boolean
         }
         Insert: {
           absence_reason: Database["public"]["Enums"]["absence_reason"]
@@ -1592,6 +1593,7 @@ export type Database = {
           eligibility?: string
           id?: string
           org_id: string
+          releases_slot?: boolean
         }
         Update: {
           absence_reason?: Database["public"]["Enums"]["absence_reason"]
@@ -1599,6 +1601,7 @@ export type Database = {
           eligibility?: string
           id?: string
           org_id?: string
+          releases_slot?: boolean
         }
         Relationships: [
           {
