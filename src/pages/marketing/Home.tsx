@@ -9,7 +9,7 @@ import { HowItWorks } from "@/components/marketing/HowItWorks";
 import { UKDifferentiator } from "@/components/marketing/UKDifferentiator";
 import { StatsCounter } from "@/components/marketing/StatsCounter";
 import { AudiencePaths } from "@/components/marketing/AudiencePaths";
-import { TestimonialsSection } from "@/components/marketing/TestimonialsSection";
+import { FounderStory } from "@/components/marketing/FounderStory";
 import { CTASection } from "@/components/marketing/CTASection";
 
 export default function MarketingHome() {
@@ -25,7 +25,7 @@ export default function MarketingHome() {
       <UKDifferentiator />
       <StatsCounter />
       <AudiencePaths />
-      <TestimonialsSection />
+      <FounderStory />
       <CTASection />
     </MarketingLayout>
   );
