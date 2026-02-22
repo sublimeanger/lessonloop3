@@ -9,6 +9,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { 
   Sparkles, CreditCard, Clock, Check, ArrowRight, 
   Users, GraduationCap, Loader2, ExternalLink, AlertTriangle,
@@ -179,6 +189,7 @@ const PLANS = Object.fromEntries(
 export function BillingTab() {
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('monthly');
   const [searchParams, setSearchParams] = useSearchParams();
+  const [downgradeTarget, setDowngradeTarget] = useState<PlanKey | null>(null);
   const { 
     plan, 
     status, 
@@ -235,8 +246,74 @@ export function BillingTab() {
 
   const currentDisplayPlan = getCurrentDisplayPlan();
 
+  const isDowngrade = (targetPlan: PlanKey): boolean => {
+    if (!currentDisplayPlan || isTrialing) return false;
+    const currentIdx = PLAN_ORDER.indexOf(currentDisplayPlan);
+    const targetIdx = PLAN_ORDER.indexOf(targetPlan);
+    return targetIdx < currentIdx;
+  };
+
+  const getLostFeatures = (targetPlan: PlanKey): string[] => {
+    if (!currentDisplayPlan) return [];
+    const currentFeatures = PRICING_CONFIG[currentDisplayPlan].features;
+    const targetFeatures = new Set(PRICING_CONFIG[targetPlan].features);
+    return currentFeatures.filter(f => !targetFeatures.has(f) && !f.startsWith('Everything in'));
+  };
+
+  const handlePlanSelect = (targetPlan: PlanKey) => {
+    if (isDowngrade(targetPlan)) {
+      setDowngradeTarget(targetPlan);
+    } else {
+      initiateSubscription(DISPLAY_TO_DB_PLAN[targetPlan], billingInterval);
+    }
+  };
+
+  const confirmDowngrade = () => {
+    if (downgradeTarget) {
+      initiateSubscription(DISPLAY_TO_DB_PLAN[downgradeTarget], billingInterval);
+      setDowngradeTarget(null);
+    }
+  };
+
+  const lostFeatures = downgradeTarget ? getLostFeatures(downgradeTarget) : [];
+
   return (
     <div className="space-y-8">
+      {/* Downgrade Confirmation Dialog */}
+      <AlertDialog open={!!downgradeTarget} onOpenChange={(open) => !open && setDowngradeTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm plan change</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  You're about to change from <strong>{currentDisplayPlan ? PRICING_CONFIG[currentDisplayPlan].name : ''}</strong> to <strong>{downgradeTarget ? PRICING_CONFIG[downgradeTarget].name : ''}</strong>.
+                </p>
+                {lostFeatures.length > 0 && (
+                  <div>
+                    <p className="font-medium text-foreground mb-2">You'll lose access to:</p>
+                    <ul className="space-y-1">
+                      {lostFeatures.map((feature, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm">
+                          <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <p className="text-sm">This change will take effect at the end of your current billing period.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDowngrade} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Confirm Downgrade
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {/* Current Status Card */}
       <Card>
         <CardHeader>
@@ -463,7 +540,7 @@ export function BillingTab() {
                 isCurrentPlan={currentDisplayPlan === key && !isTrialing}
                 isPopular={'isPopular' in planData && planData.isPopular}
                 billingInterval={billingInterval}
-                onSelect={() => initiateSubscription(DISPLAY_TO_DB_PLAN[key], billingInterval)}
+                onSelect={() => handlePlanSelect(key)}
                 isLoading={isLoading}
               />
             ))}
