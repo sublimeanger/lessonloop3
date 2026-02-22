@@ -13,7 +13,8 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { useLessonsDeliveredReport, exportLessonsDeliveredToCSV } from '@/hooks/useReports';
 import { useOrg } from '@/contexts/OrgContext';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Download, Calendar, Clock, MapPin, Users, XCircle } from 'lucide-react';
+import { Download, Calendar, Clock, MapPin, Users, XCircle, AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
 
@@ -82,6 +83,13 @@ export default function LessonsDeliveredReport() {
         </EmptyState>
       ) : (
         <>
+          {data.warnings?.map((w, i) => (
+            <Alert key={i} variant="destructive" className="mb-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{w}</AlertDescription>
+            </Alert>
+          ))}
+
           {/* Summary Cards */}
           <div className="mb-6 grid gap-4 md:grid-cols-4">
             <Card>
