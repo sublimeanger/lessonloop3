@@ -3921,6 +3921,16 @@ export type Database = {
       }
       reset_stale_streaks: { Args: never; Returns: undefined }
       seed_make_up_policies: { Args: { _org_id: string }; Returns: undefined }
+      shift_recurring_lesson_times: {
+        Args: {
+          p_after_start_at: string
+          p_exclude_lesson_id: string
+          p_new_duration_ms: number
+          p_offset_ms: number
+          p_recurrence_id: string
+        }
+        Returns: number
+      }
     }
     Enums: {
       absence_reason:
