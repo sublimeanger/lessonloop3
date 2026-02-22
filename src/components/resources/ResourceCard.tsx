@@ -22,7 +22,8 @@ import {
   Users,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { ResourceWithShares, useDeleteResource, useResourceDownloadUrl } from '@/hooks/useResources';
+import { ResourceWithShares, useDeleteResource } from '@/hooks/useResources';
+import { supabase } from '@/integrations/supabase/client';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,7 +68,6 @@ export function ResourceCard({ resource, onShare }: ResourceCardProps) {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const deleteMutation = useDeleteResource();
-  const { data: downloadUrl, refetch: fetchDownloadUrl } = useResourceDownloadUrl(resource.file_path);
 
   const FileIcon = getFileIcon(resource.file_type);
   const shareCount = resource.resource_shares?.length || 0;
@@ -75,9 +75,12 @@ export function ResourceCard({ resource, onShare }: ResourceCardProps) {
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const { data } = await fetchDownloadUrl();
-      if (data) {
-        window.open(data, '_blank', 'noopener,noreferrer');
+      const { data, error } = await supabase.storage
+        .from('teaching-resources')
+        .createSignedUrl(resource.file_path, 3600);
+      if (error) throw error;
+      if (data?.signedUrl) {
+        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
       }
     } finally {
       setIsDownloading(false);
