@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
+import { startOfDay, endOfDay, format } from 'date-fns';
+import { fromZonedTime } from 'date-fns-tz';
 
 export interface ProactiveAlert {
   type: 'overdue' | 'cancellation' | 'upcoming' | 'unmarked' | 'makeup_match' | 'unmarked_reason';
@@ -18,9 +20,12 @@ export function useProactiveAlerts() {
     queryFn: async (): Promise<ProactiveAlert[]> => {
       if (!currentOrg?.id) return [];
 
-      const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
-      const weekAgoStr = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const tz = (currentOrg as any).timezone || 'Europe/London';
+      const now = new Date();
+      const todayStr = format(now, 'yyyy-MM-dd'); // for DATE column comparisons (due_date)
+      const todayStartUtc = fromZonedTime(startOfDay(now), tz).toISOString();
+      const todayEndUtc = fromZonedTime(endOfDay(now), tz).toISOString();
+      const weekAgoUtc = fromZonedTime(startOfDay(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)), tz).toISOString();
       const alerts: ProactiveAlert[] = [];
 
       // Check overdue invoices
@@ -33,7 +38,7 @@ export function useProactiveAlerts() {
 
       if (overdueCount && overdueCount > 0) {
         // Check for critical (30+ days overdue)
-        const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         const { count: criticalCount } = await supabase
           .from('invoices')
           .select('id', { count: 'exact' })
@@ -56,8 +61,8 @@ export function useProactiveAlerts() {
         .select('id', { count: 'exact' })
         .eq('org_id', currentOrg.id)
         .eq('status', 'scheduled')
-        .lt('start_at', `${todayStr}T00:00:00`)
-        .gte('start_at', `${weekAgoStr}T00:00:00`);
+        .lt('start_at', todayStartUtc)
+        .gte('start_at', weekAgoUtc);
 
       if (unmarkedCount && unmarkedCount > 0) {
         alerts.push({
@@ -75,7 +80,7 @@ export function useProactiveAlerts() {
         .select('id', { count: 'exact' })
         .eq('org_id', currentOrg.id)
         .eq('status', 'cancelled')
-        .gte('start_at', `${weekAgoStr}T00:00:00`);
+        .gte('start_at', weekAgoUtc);
 
       if (cancellationCount && cancellationCount > 0) {
         alerts.push({
@@ -93,8 +98,8 @@ export function useProactiveAlerts() {
         .select('id', { count: 'exact' })
         .eq('org_id', currentOrg.id)
         .eq('status', 'scheduled')
-        .gte('start_at', `${todayStr}T00:00:00`)
-        .lte('start_at', `${todayStr}T23:59:59`);
+        .gte('start_at', todayStartUtc)
+        .lte('start_at', todayEndUtc);
 
       if (upcomingCount && upcomingCount > 0) {
         alerts.push({
@@ -129,7 +134,7 @@ export function useProactiveAlerts() {
         .eq('org_id', currentOrg.id)
         .in('attendance_status', ['absent', 'cancelled_by_student'])
         .is('absence_reason_category', null)
-        .gte('recorded_at', `${weekAgoStr}T00:00:00`);
+        .gte('recorded_at', weekAgoUtc);
 
       if (missingReasonCount && missingReasonCount > 0) {
         alerts.push({
