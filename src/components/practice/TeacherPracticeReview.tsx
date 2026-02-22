@@ -13,7 +13,8 @@ import {
   CheckCircle2, 
   User,
   Send,
-  Music
+  Music,
+  Loader2
 } from 'lucide-react';
 import { usePracticeLogs, useAddPracticeFeedback, PracticeLog } from '@/hooks/usePractice';
 import { toast } from 'sonner';
@@ -22,7 +23,8 @@ export function TeacherPracticeReview() {
   const [activeTab, setActiveTab] = useState('pending');
   const [feedbackText, setFeedbackText] = useState<Record<string, string>>({});
   
-  const { data: allLogs = [], isLoading } = usePracticeLogs({ limit: 100 });
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = usePracticeLogs({ limit: 50 });
+  const allLogs = useMemo(() => data?.pages.flatMap(p => p.data) ?? [], [data]);
   const pendingLogs = useMemo(() => allLogs.filter(l => !l.reviewed_at), [allLogs]);
   
   const addFeedback = useAddPracticeFeedback();
@@ -122,7 +124,22 @@ export function TeacherPracticeReview() {
     </div>
   );
 
-  
+  const loadMoreButton = hasNextPage && (
+    <div className="text-center py-2">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => fetchNextPage()}
+        disabled={isFetchingNextPage}
+      >
+        {isFetchingNextPage ? (
+          <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading...</>
+        ) : (
+          'Load More'
+        )}
+      </Button>
+    </div>
+  );
 
   return (
     <Card>
@@ -178,7 +195,10 @@ export function TeacherPracticeReview() {
                     No practice logs yet
                   </p>
                 ) : (
-                  allLogs.map(log => renderLogCard(log, !log.reviewed_at))
+                  <>
+                    {allLogs.map(log => renderLogCard(log, !log.reviewed_at))}
+                    {loadMoreButton}
+                  </>
                 )}
               </div>
             </ScrollArea>

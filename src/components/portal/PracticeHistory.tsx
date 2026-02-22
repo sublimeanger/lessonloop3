@@ -1,12 +1,16 @@
+import { useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Clock, Calendar, MessageSquare, CheckCircle2 } from 'lucide-react';
+import { Clock, Calendar, MessageSquare, CheckCircle2, Loader2 } from 'lucide-react';
 import { useParentPracticeLogs, PracticeLog } from '@/hooks/usePractice';
 
 export function PracticeHistory() {
-  const { data: logs = [], isLoading } = useParentPracticeLogs();
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useParentPracticeLogs();
+
+  const logs = useMemo(() => data?.pages.flatMap(p => p.data) ?? [], [data]);
 
   if (isLoading) {
     return (
@@ -109,6 +113,22 @@ export function PracticeHistory() {
                 </div>
               </div>
             ))}
+            {hasNextPage && (
+              <div className="text-center py-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
+                  {isFetchingNextPage ? (
+                    <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading...</>
+                  ) : (
+                    'Load More'
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         </ScrollArea>
       </CardContent>

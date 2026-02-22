@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -117,6 +117,8 @@ export function usePracticeAssignments(studentId?: string) {
 }
 
 // Hook for fetching practice logs (for teachers/admins)
+const PRACTICE_LOG_PAGE_SIZE = 50;
+
 export function usePracticeLogs(options?: { 
   studentId?: string; 
   unreviewed?: boolean;
@@ -125,10 +127,11 @@ export function usePracticeLogs(options?: {
   const { currentOrg, currentRole } = useOrg();
   const { user } = useAuth();
   const isAdmin = currentRole === 'owner' || currentRole === 'admin';
+  const pageSize = options?.limit || PRACTICE_LOG_PAGE_SIZE;
 
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['practice-logs', currentOrg?.id, options, user?.id, isAdmin],
-    queryFn: async () => {
+    queryFn: async ({ pageParam }) => {
       let query = supabase
         .from('practice_logs')
         .select(`
@@ -137,14 +140,14 @@ export function usePracticeLogs(options?: {
           assignment:practice_assignments(id, title)
         `)
         .eq('org_id', currentOrg!.id)
-        .order('practice_date', { ascending: false });
+        .order('practice_date', { ascending: false })
+        .order('created_at', { ascending: false });
 
       if (options?.studentId) {
         query = query.eq('student_id', options.studentId);
       } else if (!isAdmin && user) {
-        // Teacher: scope to assigned students only
         const studentIds = await getTeacherStudentIds(currentOrg!.id, user.id);
-        if (!studentIds || studentIds.length === 0) return [];
+        if (!studentIds || studentIds.length === 0) return { data: [] as PracticeLog[], hasMore: false };
         query = query.in('student_id', studentIds);
       }
 
@@ -152,13 +155,21 @@ export function usePracticeLogs(options?: {
         query = query.is('reviewed_at', null);
       }
 
-      if (options?.limit) {
-        query = query.limit(options.limit);
+      if (pageParam) {
+        query = query.lt('practice_date', pageParam);
       }
+
+      query = query.limit(pageSize);
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as PracticeLog[];
+      const logs = data as PracticeLog[];
+      return { data: logs, hasMore: logs.length >= pageSize };
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.hasMore || lastPage.data.length === 0) return undefined;
+      return lastPage.data[lastPage.data.length - 1].practice_date;
     },
     enabled: !!currentOrg?.id,
   });
@@ -213,9 +224,9 @@ export function useParentPracticeLogs(studentId?: string) {
   const { user } = useAuth();
   const { currentOrg } = useOrg();
 
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['parent-practice-logs', user?.id, studentId, currentOrg?.id],
-    queryFn: async () => {
+    queryFn: async ({ pageParam }) => {
       const { data: guardian } = await supabase
         .from('guardians')
         .select('id')
@@ -223,7 +234,7 @@ export function useParentPracticeLogs(studentId?: string) {
         .eq('org_id', currentOrg!.id)
         .maybeSingle();
 
-      if (!guardian) return [];
+      if (!guardian) return { data: [] as PracticeLog[], hasMore: false };
 
       const { data: studentGuardians } = await supabase
         .from('student_guardians')
@@ -231,7 +242,7 @@ export function useParentPracticeLogs(studentId?: string) {
         .eq('guardian_id', guardian.id);
 
       const studentIds = studentGuardians?.map(sg => sg.student_id) || [];
-      if (studentIds.length === 0) return [];
+      if (studentIds.length === 0) return { data: [] as PracticeLog[], hasMore: false };
 
       let query = supabase
         .from('practice_logs')
@@ -242,11 +253,23 @@ export function useParentPracticeLogs(studentId?: string) {
         `)
         .in('student_id', studentId ? [studentId] : studentIds)
         .order('practice_date', { ascending: false })
-        .limit(50);
+        .order('created_at', { ascending: false });
+
+      if (pageParam) {
+        query = query.lt('practice_date', pageParam);
+      }
+
+      query = query.limit(PRACTICE_LOG_PAGE_SIZE);
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as PracticeLog[];
+      const logs = data as PracticeLog[];
+      return { data: logs, hasMore: logs.length >= PRACTICE_LOG_PAGE_SIZE };
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.hasMore || lastPage.data.length === 0) return undefined;
+      return lastPage.data[lastPage.data.length - 1].practice_date;
     },
     enabled: !!user?.id && !!currentOrg?.id,
   });
