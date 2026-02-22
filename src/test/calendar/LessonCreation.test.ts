@@ -58,10 +58,10 @@ function localToUtc(dateStr: string, time: string, timezone: string): Date {
   return fromZonedTime(localDate, timezone);
 }
 
-/** Converts UTC ISO to org-local fake ISO (from useCalendarData) */
+/** Converts UTC ISO to org-local ISO without timezone indicator (from useCalendarData) */
 function toOrgLocalIso(utcIso: string, timezone: string): string {
   const zoned = toZonedTime(utcIso, timezone);
-  return format(zoned, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+  return format(zoned, "yyyy-MM-dd'T'HH:mm:ss.SSS");
 }
 
 describe('LL-SCH-P0-02: Lesson Creation', () => {
