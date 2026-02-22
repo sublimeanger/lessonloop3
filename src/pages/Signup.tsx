@@ -6,13 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle2 } from 'lucide-react';
 import { LogoHorizontal } from '@/components/brand/Logo';
 import { Separator } from '@/components/ui/separator';
 import { GoogleIcon } from '@/components/icons/GoogleIcon';
 import { AppleIcon } from '@/components/icons/AppleIcon';
 import { lovable } from '@/integrations/lovable';
 import { PasswordStrengthIndicator, PASSWORD_MIN_LENGTH } from '@/components/auth/PasswordStrengthIndicator';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Signup() {
   const { signUp } = useAuth();
@@ -25,6 +26,8 @@ export default function Signup() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [signupComplete, setSignupComplete] = useState(false);
+  const [isResending, setIsResending] = useState(false);
 
   const handleGoogleSignup = async () => {
     setIsGoogleLoading(true);
@@ -103,13 +106,58 @@ export default function Signup() {
         variant: 'destructive',
       });
     } else {
-      toast({
-        title: 'Account created!',
-        description: 'Welcome to LessonLoop. Let\'s get you set up.',
-      });
+      setSignupComplete(true);
     }
   };
 
+  const handleResendVerification = async () => {
+    setIsResending(true);
+    const { error } = await supabase.auth.resend({ type: 'signup', email });
+    setIsResending(false);
+    if (error) {
+      toast({ title: 'Failed to resend', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Verification email resent', description: 'Please check your inbox.' });
+    }
+  };
+
+  if (signupComplete) {
+    return (
+      <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
+        <Card className="w-full max-w-md shadow-elevated">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4">
+              <LogoHorizontal size="lg" />
+            </div>
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent">
+              <CheckCircle2 className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl">Check your email</CardTitle>
+            <CardDescription>
+              We've sent a verification link to <span className="font-medium text-foreground">{email}</span>. Click the link to activate your account.
+            </CardDescription>
+          </CardHeader>
+          <CardFooter className="flex flex-col gap-4">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleResendVerification}
+              disabled={isResending}
+            >
+              {isResending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Resending…</>
+              ) : (
+                'Resend verification email'
+              )}
+            </Button>
+            <Link to="/login" className="text-sm font-medium text-primary hover:underline">
+              Back to sign in
+            </Link>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
   return (
     <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
       <Card className="w-full max-w-md shadow-elevated">
