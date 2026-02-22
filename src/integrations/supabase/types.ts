@@ -2269,6 +2269,7 @@ export type Database = {
           org_type: Database["public"]["Enums"]["org_type"]
           overdue_reminder_days: number[] | null
           parent_reschedule_policy: string | null
+          past_due_since: string | null
           payment_methods_enabled: string[] | null
           platform_fee_percent: number | null
           schedule_end_hour: number
@@ -2320,6 +2321,7 @@ export type Database = {
           org_type?: Database["public"]["Enums"]["org_type"]
           overdue_reminder_days?: number[] | null
           parent_reschedule_policy?: string | null
+          past_due_since?: string | null
           payment_methods_enabled?: string[] | null
           platform_fee_percent?: number | null
           schedule_end_hour?: number
@@ -2371,6 +2373,7 @@ export type Database = {
           org_type?: Database["public"]["Enums"]["org_type"]
           overdue_reminder_days?: number[] | null
           parent_reschedule_policy?: string | null
+          past_due_since?: string | null
           payment_methods_enabled?: string[] | null
           platform_fee_percent?: number | null
           schedule_end_hour?: number
