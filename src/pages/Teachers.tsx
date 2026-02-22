@@ -199,6 +199,11 @@ export default function Teachers() {
       toast({ title: 'Name required', variant: 'destructive' });
       return;
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (newTeacherEmail.trim() && !emailRegex.test(newTeacherEmail.trim())) {
+      toast({ title: 'Invalid email', description: 'Please enter a valid email address.', variant: 'destructive' });
+      return;
+    }
     if (!canAddTeacher) {
       toast({ title: 'Teacher limit reached', variant: 'destructive' });
       return;
@@ -231,6 +236,11 @@ export default function Teachers() {
   const handleEditTeacher = async () => {
     if (!editTeacher || !editName.trim()) {
       toast({ title: 'Name required', variant: 'destructive' });
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (editEmail.trim() && !emailRegex.test(editEmail.trim())) {
+      toast({ title: 'Invalid email', description: 'Please enter a valid email address.', variant: 'destructive' });
       return;
     }
     setIsEditing(true);
