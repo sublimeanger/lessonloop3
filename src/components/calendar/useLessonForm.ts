@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { logger } from '@/lib/logger';
-import { format, addMinutes, setHours, setMinutes, startOfDay, parseISO, addWeeks } from 'date-fns';
+import { format, addMinutes, setHours, setMinutes, startOfDay, parseISO, addWeeks, isSameDay } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -538,6 +538,37 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
           }
         }
 
+        // Filter out closure dates before inserting
+        let skippedCount = 0;
+        if (isRecurring && lessonsToCreate.length > 1) {
+          const seriesStart = format(selectedDate, 'yyyy-MM-dd');
+          const seriesEnd = format(
+            recurrenceEndDate || addWeeks(selectedDate, 90),
+            'yyyy-MM-dd'
+          );
+          const { data: closureDates } = await supabase
+            .from('closure_dates')
+            .select('date, location_id, applies_to_all_locations')
+            .eq('org_id', currentOrg.id)
+            .gte('date', seriesStart)
+            .lte('date', seriesEnd);
+
+          if (closureDates && closureDates.length > 0) {
+            const beforeCount = lessonsToCreate.length;
+            const filtered = lessonsToCreate.filter(lessonDate => {
+              const zonedDate = toZonedTime(lessonDate, orgTimezone);
+              return !closureDates.some(cd => {
+                const closureDate = parseISO(cd.date);
+                if (!isSameDay(zonedDate, closureDate)) return false;
+                return cd.applies_to_all_locations || !locationId || cd.location_id === locationId;
+              });
+            });
+            skippedCount = beforeCount - filtered.length;
+            lessonsToCreate.length = 0;
+            lessonsToCreate.push(...filtered);
+          }
+        }
+
         const MAX_RECURRING = 200;
         if (lessonsToCreate.length > MAX_RECURRING) {
           toast({
@@ -620,7 +651,8 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
         }
 
         toast({
-          title: isRecurring ? `${lessonsToCreate.length} lessons created` : 'Lesson created'
+          title: isRecurring ? `${lessonsToCreate.length} lessons created` : 'Lesson created',
+          description: skippedCount > 0 ? `${skippedCount} skipped due to closure dates` : undefined,
         });
       }
 
