@@ -150,6 +150,8 @@ serve(async (req) => {
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
+    // Returning 500 causes Stripe to retry the webhook (up to ~16 times over 3 days).
+    // Critical DB failures in handlers re-throw here to trigger retries.
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Webhook error:", message);
     return new Response(
@@ -197,9 +199,10 @@ async function handleSubscriptionCheckoutCompleted(
 
   if (error) {
     console.error("Failed to update org subscription:", error);
-  } else {
-    log(`Org ${truncate(orgId)} upgraded to ${plan}`);
+    // Re-throw so Stripe receives 500 and retries the webhook
+    throw new Error(`DB update failed for subscription checkout: ${error.message}`);
   }
+  log(`Org ${truncate(orgId)} upgraded to ${plan}`);
 }
 
 // Handle invoice payment checkout completion
@@ -374,6 +377,7 @@ async function handleSubscriptionCreated(supabase: any, subscription: Stripe.Sub
 
   if (error) {
     console.error("Failed to update org on subscription created:", error);
+    throw new Error(`DB update failed for subscription created: ${error.message}`);
   }
 }
 
@@ -451,9 +455,9 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
 
     if (error) {
       console.error("Failed to update org subscription status:", error);
-    } else {
-      log(`Org ${truncate(org.id)} subscription updated to ${status}${plan ? `, plan: ${plan}` : ''}`);
+      throw new Error(`DB update failed for subscription update (lookup): ${error.message}`);
     }
+    log(`Org ${truncate(org.id)} subscription updated to ${status}${plan ? `, plan: ${plan}` : ''}`);
     return;
   }
 
@@ -475,9 +479,9 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
 
   if (error) {
     console.error("Failed to update org on subscription update:", error);
-  } else {
-    log(`Org ${truncate(orgId)} subscription updated: ${status}${plan ? `, plan: ${plan}` : ''}`);
+    throw new Error(`DB update failed for subscription update: ${error.message}`);
   }
+  log(`Org ${truncate(orgId)} subscription updated: ${status}${plan ? `, plan: ${plan}` : ''}`);
 }
 
 async function handleSubscriptionDeleted(supabase: any, subscription: Stripe.Subscription) {
@@ -507,9 +511,9 @@ async function handleSubscriptionDeleted(supabase: any, subscription: Stripe.Sub
 
   if (error) {
     console.error("Failed to update org on subscription deletion:", error);
-  } else {
-    log(`Org ${truncate(org.id)} subscription cancelled`);
+    throw new Error(`DB update failed for subscription deletion: ${error.message}`);
   }
+  log(`Org ${truncate(org.id)} subscription cancelled`);
 }
 
 async function handleAccountUpdated(supabase: any, account: Stripe.Account) {
@@ -578,7 +582,7 @@ async function handleSubscriptionPaymentFailed(supabase: any, invoice: Stripe.In
 
   if (error) {
     console.error("Failed to update org on payment failure:", error);
-  } else {
-    log(`Org ${truncate(org.id)} marked past_due`);
+    throw new Error(`DB update failed for payment failure: ${error.message}`);
   }
+  log(`Org ${truncate(org.id)} marked past_due`);
 }
