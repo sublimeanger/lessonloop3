@@ -13,8 +13,10 @@ import {
   FolderOpen,
 } from 'lucide-react';
 import { PortalHomeSkeleton } from '@/components/shared/LoadingState';
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { RequestModal } from '@/components/portal/RequestModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -32,7 +34,59 @@ export default function PortalHome() {
   const { profile } = useAuth();
   const { currentOrg } = useOrg();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const { toast } = useToast();
+  const makeupHandled = useRef(false);
+
+  // Handle make-up accept/decline from email links
+  useEffect(() => {
+    const action = searchParams.get('makeup_action');
+    const id = searchParams.get('id');
+    if (!action || !id || makeupHandled.current) return;
+    makeupHandled.current = true;
+
+    const handleMakeupAction = async () => {
+      try {
+        if (action === 'accept') {
+          const { error } = await supabase
+            .from('make_up_waitlist')
+            .update({ status: 'accepted', responded_at: new Date().toISOString() })
+            .eq('id', id);
+          if (error) throw error;
+          toast({ title: 'Make-up accepted! The academy will confirm the booking shortly.' });
+        } else if (action === 'decline') {
+          // Mark as declined first
+          const { error: declineErr } = await supabase
+            .from('make_up_waitlist')
+            .update({ status: 'declined', responded_at: new Date().toISOString() })
+            .eq('id', id);
+          if (declineErr) throw declineErr;
+
+          // Reset to waiting so the system can re-match
+          const { error: resetErr } = await supabase
+            .from('make_up_waitlist')
+            .update({
+              status: 'waiting',
+              matched_lesson_id: null,
+              matched_at: null,
+              offered_at: null,
+            })
+            .eq('id', id);
+          if (resetErr) throw resetErr;
+          toast({ title: "Slot declined. We'll keep looking for another available time." });
+        }
+      } catch (err: any) {
+        console.error('Make-up action error:', err);
+        toast({ title: 'Something went wrong', description: err.message, variant: 'destructive' });
+      } finally {
+        // Clean URL params
+        setSearchParams({}, { replace: true });
+      }
+    };
+
+    handleMakeupAction();
+  }, [searchParams, setSearchParams, toast]);
 
   const { data: summary, isLoading: summaryLoading } = useParentSummary();
   const { data: children, isLoading: childrenLoading } = useChildrenWithDetails();
