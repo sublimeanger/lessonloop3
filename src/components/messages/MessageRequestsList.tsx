@@ -33,6 +33,8 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { format, parseISO, addMinutes, differenceInMinutes } from 'date-fns';
+import { fromZonedTime } from 'date-fns-tz';
+import { useOrg } from '@/contexts/OrgContext';
 import { useNavigate } from 'react-router-dom';
 import { useAdminMessageRequests, useUpdateMessageRequest, AdminMessageRequest } from '@/hooks/useAdminMessageRequests';
 
@@ -41,6 +43,7 @@ interface MessageRequestsListProps {
 }
 
 export function MessageRequestsList({ className }: MessageRequestsListProps) {
+  const { currentOrg } = useOrg();
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<string>('pending');
   const [respondModalOpen, setRespondModalOpen] = useState(false);
@@ -95,7 +98,7 @@ export function MessageRequestsList({ className }: MessageRequestsListProps) {
       newDate &&
       newTime
     ) {
-      const newStart = new Date(`${newDate}T${newTime}:00`);
+      const newStart = fromZonedTime(`${newDate}T${newTime}:00`, currentOrg?.timezone || 'Europe/London');
       const newEnd = addMinutes(newStart, lessonDurationMinutes);
       newStartAt = newStart.toISOString();
       newEndAt = newEnd.toISOString();
