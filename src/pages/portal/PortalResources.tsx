@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ListSkeleton } from '@/components/shared/LoadingState';
-import { logger } from '@/lib/logger';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,11 +12,14 @@ import {
   Search,
   FolderOpen,
   Loader2,
+  Eye,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useSharedResources, type ShareWithStudent } from '@/hooks/useResources';
 import { supabase } from '@/integrations/supabase/client';
 import { getFileIcon, getFileTypeBadge, formatFileSize } from '@/lib/fileUtils';
+import { ResourcePreviewModal, isPreviewable } from '@/components/resources/ResourcePreviewModal';
+import { AudioPlayer } from '@/components/resources/AudioPlayer';
 
 interface ResourceDownloadButtonProps {
   filePath: string;
@@ -37,7 +39,6 @@ function ResourceDownloadButton({ filePath, fileName }: ResourceDownloadButtonPr
 
       if (error) throw error;
       if (data?.signedUrl) {
-        // Create a download link
         const a = document.createElement('a');
         a.href = data.signedUrl;
         a.download = fileName;
@@ -46,7 +47,7 @@ function ResourceDownloadButton({ filePath, fileName }: ResourceDownloadButtonPr
         a.click();
         document.body.removeChild(a);
       }
-    } catch (error) {
+    } catch {
       toast({
         title: 'Download failed',
         description: 'Please try again. If this persists, contact your teacher.',
@@ -63,6 +64,7 @@ function ResourceDownloadButton({ filePath, fileName }: ResourceDownloadButtonPr
       size="icon"
       onClick={handleDownload}
       disabled={isDownloading}
+      title="Download"
     >
       {isDownloading ? (
         <Loader2 className="h-4 w-4 animate-spin" />
@@ -75,6 +77,13 @@ function ResourceDownloadButton({ filePath, fileName }: ResourceDownloadButtonPr
 
 export default function PortalResources() {
   const [search, setSearch] = useState('');
+  const [previewResource, setPreviewResource] = useState<{
+    filePath: string;
+    fileName: string;
+    fileType: string;
+    title: string;
+  } | null>(null);
+
   const { data: resources = [], isLoading } = useSharedResources();
 
   const filteredResources = resources.filter(resource =>
@@ -113,6 +122,8 @@ export default function PortalResources() {
           <div className="space-y-3">
             {filteredResources.map(resource => {
               const FileIcon = getFileIcon(resource.file_type);
+              const canPreview = isPreviewable(resource.file_type) !== 'none';
+              const isAudio = resource.file_type.startsWith('audio/');
               const sharedStudents = resource.resource_shares?.map(
                 (s: ShareWithStudent) => s.students ? `${s.students.first_name} ${s.students.last_name}` : ''
               ).filter(Boolean);
@@ -121,12 +132,35 @@ export default function PortalResources() {
                 <Card key={resource.id}>
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-muted shrink-0">
+                      <button
+                        type="button"
+                        className={`p-2 rounded-lg bg-muted shrink-0 ${canPreview ? 'hover:bg-primary/10 cursor-pointer transition-colors' : ''}`}
+                        onClick={canPreview ? () => setPreviewResource({
+                          filePath: resource.file_path,
+                          fileName: resource.file_name,
+                          fileType: resource.file_type,
+                          title: resource.title,
+                        }) : undefined}
+                        disabled={!canPreview}
+                        title={canPreview ? 'Preview' : undefined}
+                      >
                         <FileIcon className="h-5 w-5 text-muted-foreground" />
-                      </div>
+                      </button>
 
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium truncate">{resource.title}</h3>
+                        <h3
+                          className={`font-medium truncate ${canPreview ? 'hover:text-primary cursor-pointer' : ''}`}
+                          onClick={canPreview ? () => setPreviewResource({
+                            filePath: resource.file_path,
+                            fileName: resource.file_name,
+                            fileType: resource.file_type,
+                            title: resource.title,
+                          }) : undefined}
+                          role={canPreview ? 'button' : undefined}
+                          tabIndex={canPreview ? 0 : undefined}
+                        >
+                          {resource.title}
+                        </h3>
                         {resource.description && (
                           <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">
                             {resource.description}
@@ -148,12 +182,32 @@ export default function PortalResources() {
                             For: {sharedStudents.join(', ')}
                           </p>
                         )}
+                        {isAudio && (
+                          <AudioPlayer filePath={resource.file_path} title={resource.title} />
+                        )}
                       </div>
 
-                      <ResourceDownloadButton
-                        filePath={resource.file_path}
-                        fileName={resource.file_name}
-                      />
+                      <div className="flex items-center gap-1 shrink-0">
+                        {canPreview && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setPreviewResource({
+                              filePath: resource.file_path,
+                              fileName: resource.file_name,
+                              fileType: resource.file_type,
+                              title: resource.title,
+                            })}
+                            title="Preview"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <ResourceDownloadButton
+                          filePath={resource.file_path}
+                          fileName={resource.file_name}
+                        />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -162,6 +216,17 @@ export default function PortalResources() {
           </div>
         )}
       </div>
+
+      {previewResource && (
+        <ResourcePreviewModal
+          open={!!previewResource}
+          onOpenChange={(open) => { if (!open) setPreviewResource(null); }}
+          filePath={previewResource.filePath}
+          fileName={previewResource.fileName}
+          fileType={previewResource.fileType}
+          title={previewResource.title}
+        />
+      )}
     </PortalLayout>
   );
 }
