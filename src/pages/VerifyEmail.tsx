@@ -45,7 +45,7 @@ export default function VerifyEmail() {
     const { data } = await supabase.auth.getUser();
     if (data.user?.email_confirmed_at) {
       toast({ title: 'Email verified!', description: 'Redirecting…' });
-      window.location.href = '/onboarding';
+      navigate('/onboarding');
     } else {
       toast({ title: 'Not yet verified', description: 'Please check your inbox.' });
     }
