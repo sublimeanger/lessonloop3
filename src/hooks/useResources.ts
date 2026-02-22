@@ -275,12 +275,14 @@ export function useSharedResources() {
         .maybeSingle();
       if (!guardian) return [];
 
-      // 2. Get student IDs linked to this guardian
+      // 2. Get active student IDs linked to this guardian
       const { data: studentGuardians } = await supabase
         .from('student_guardians')
-        .select('student_id')
+        .select('student_id, students:student_id (status, deleted_at)')
         .eq('guardian_id', guardian.id);
-      const studentIds = (studentGuardians || []).map(sg => sg.student_id);
+      const studentIds = (studentGuardians || [])
+        .filter((sg: any) => sg.students?.status === 'active' && !sg.students?.deleted_at)
+        .map(sg => sg.student_id);
       if (studentIds.length === 0) return [];
 
       // 3. Get resource IDs shared with these students only
