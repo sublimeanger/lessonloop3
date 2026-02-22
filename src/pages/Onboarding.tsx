@@ -225,58 +225,64 @@ export default function Onboarding() {
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Not logged in. Please refresh and try again.');
-      }
-
-      const finalOrgName = orgName.trim();
-
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      
-      // Longer timeout for slow mobile networks
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-      
-      let response: Response;
-      try {
-        response = await fetch(`${supabaseUrl}/functions/v1/onboarding-setup`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            org_name: finalOrgName,
-            org_type: orgType,
-            full_name: fullName.trim(),
-            subscription_plan: selectedPlan,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/London',
-          }),
-          signal: controller.signal,
-        });
-      } catch (fetchErr) {
-        // Handle network errors with clearer messages
-        if (fetchErr instanceof Error) {
-          if (fetchErr.name === 'AbortError' || fetchErr.message === 'Load failed') {
-            throw new Error('Network timeout. Please check your connection and try again.');
+      const [, result] = await Promise.all([
+        // Minimum display time so loading screen doesn't flash
+        new Promise(resolve => setTimeout(resolve, 1500)),
+        (async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            throw new Error('Not logged in. Please refresh and try again.');
           }
-          if (fetchErr.message.includes('Failed to fetch') || fetchErr.message.includes('NetworkError')) {
-            throw new Error('Unable to connect. Please check your internet connection.');
+
+          const finalOrgName = orgName.trim();
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
+          
+          let response: Response;
+          try {
+            response = await fetch(`${supabaseUrl}/functions/v1/onboarding-setup`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                org_name: finalOrgName,
+                org_type: orgType,
+                full_name: fullName.trim(),
+                subscription_plan: selectedPlan,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/London',
+              }),
+              signal: controller.signal,
+            });
+          } catch (fetchErr) {
+            if (fetchErr instanceof Error) {
+              if (fetchErr.name === 'AbortError' || fetchErr.message === 'Load failed') {
+                throw new Error('Network timeout. Please check your connection and try again.');
+              }
+              if (fetchErr.message.includes('Failed to fetch') || fetchErr.message.includes('NetworkError')) {
+                throw new Error('Unable to connect. Please check your internet connection.');
+              }
+            }
+            throw fetchErr;
+          } finally {
+            clearTimeout(timeoutId);
           }
-        }
-        throw fetchErr;
-      } finally {
-        clearTimeout(timeoutId);
-      }
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || `Server error (${response.status}). Please try again.`);
-      }
+          if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.error || `Server error (${response.status}). Please try again.`);
+          }
 
-      const result = await response.json();
-      logger.debug('[Onboarding] Setup complete:', result);
+          const res = await response.json();
+          logger.debug('[Onboarding] Setup complete:', res);
+          // Signal completion immediately
+          setLoadingProgress(100);
+          return res;
+        })(),
+      ]);
 
       await refreshProfile();
       clearOnboardingState();
