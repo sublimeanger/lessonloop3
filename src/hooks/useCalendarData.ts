@@ -39,7 +39,7 @@ async function fetchCalendarLessons(
       id, title, start_at, end_at, status, lesson_type, notes_shared, notes_private, 
       teacher_id, teacher_user_id, location_id, room_id, org_id, recurrence_id, online_meeting_url,
       created_by, created_at, updated_at, is_series_exception,
-      location:locations(id, name),
+      location:locations(id, name, is_archived),
       room:rooms(id, name)
     `)
     .eq('org_id', orgId)
@@ -240,6 +240,7 @@ export function useTeachersAndLocations() {
           .from('locations')
           .select('id, name')
           .eq('org_id', currentOrg!.id)
+          .eq('is_archived', false)
           .order('name'),
         supabase
           .from('rooms')
