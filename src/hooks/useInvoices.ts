@@ -253,10 +253,21 @@ export function useUpdateInvoiceStatus() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, status, currentStatus }: { id: string; status: InvoiceStatus; currentStatus?: InvoiceStatus }) => {
+    mutationFn: async ({ id, status, currentStatus, orgId }: { id: string; status: InvoiceStatus; currentStatus?: InvoiceStatus; orgId?: string }) => {
       // Client-side guard — server trigger also enforces this
       if (currentStatus && !isValidStatusTransition(currentStatus, status)) {
         throw new Error(`Cannot change invoice status from "${currentStatus}" to "${status}"`);
+      }
+
+      // Use atomic server-side void that also restores credits
+      if (status === 'void') {
+        if (!orgId) throw new Error('No organisation selected');
+        const { error } = await supabase.rpc('void_invoice', {
+          _invoice_id: id,
+          _org_id: orgId,
+        });
+        if (error) throw error;
+        return;
       }
 
       const { error } = await supabase
@@ -265,27 +276,6 @@ export function useUpdateInvoiceStatus() {
         .eq('id', id);
 
       if (error) throw error;
-
-      // Restore make-up credits when voiding an invoice
-      if (status === 'void') {
-        const { data: invoice } = await supabase
-          .from('invoices')
-          .select('credit_applied_minor')
-          .eq('id', id)
-          .single();
-
-        if (invoice && invoice.credit_applied_minor > 0) {
-          const { error: restoreError } = await supabase
-            .from('make_up_credits')
-            .update({ redeemed_at: null, notes: `Credit restored — invoice ${id} voided` })
-            .like('notes', `%${id}%`)
-            .not('redeemed_at', 'is', null);
-
-          if (restoreError) {
-            logger.error('Failed to restore credits on void:', restoreError);
-          }
-        }
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });

@@ -1532,6 +1532,7 @@ export type Database = {
       }
       make_up_credits: {
         Row: {
+          applied_to_invoice_id: string | null
           created_at: string
           created_by: string | null
           credit_value_minor: number
@@ -1547,6 +1548,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          applied_to_invoice_id?: string | null
           created_at?: string
           created_by?: string | null
           credit_value_minor?: number
@@ -1562,6 +1564,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          applied_to_invoice_id?: string | null
           created_at?: string
           created_by?: string | null
           credit_value_minor?: number
@@ -1577,6 +1580,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "make_up_credits_applied_to_invoice_id_fkey"
+            columns: ["applied_to_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "make_up_credits_issued_for_lesson_id_fkey"
             columns: ["issued_for_lesson_id"]
@@ -3978,6 +3988,10 @@ export type Database = {
           p_recurrence_id: string
         }
         Returns: number
+      }
+      void_invoice: {
+        Args: { _invoice_id: string; _org_id: string }
+        Returns: undefined
       }
     }
     Enums: {
