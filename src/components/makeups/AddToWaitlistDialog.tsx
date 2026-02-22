@@ -11,7 +11,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ABSENCE_REASON_LABELS } from '@/hooks/useMakeUpPolicies';
+import { ABSENCE_REASON_LABELS, type AbsenceReason } from '@/hooks/useMakeUpPolicies';
 import { format } from 'date-fns';
 
 const schema = z.object({
@@ -77,12 +77,16 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
         .order('lesson(start_at)', { ascending: false })
         .limit(20);
       if (error) throw error;
-      return (data || []).map((row: any) => row.lesson).filter(Boolean);
+      return (data || []).map((row: Record<string, unknown>) => row.lesson).filter(Boolean) as Array<{
+        id: string; title: string; start_at: string; end_at: string;
+        teacher: { id: string; display_name: string } | null;
+        location: { name: string } | null;
+      }>;
     },
     enabled: !!currentOrg?.id && !!selectedStudentId && open,
   });
 
-  const selectedLesson = studentLessons?.find((l: any) => l.id === watch('missed_lesson_id'));
+  const selectedLesson = studentLessons?.find((l) => l.id === watch('missed_lesson_id'));
 
   const onSubmit = async (formData: FormData) => {
     if (!currentOrg?.id || !selectedLesson) return;
@@ -102,7 +106,7 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
           lesson_duration_minutes: durationMins,
           teacher_id: selectedLesson.teacher?.id || null,
           location_id: null,
-          absence_reason: formData.absence_reason as any,
+          absence_reason: formData.absence_reason as AbsenceReason,
           notes: formData.notes || null,
           status: 'waiting',
         });
@@ -113,8 +117,8 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
       queryClient.invalidateQueries({ queryKey: ['make_up_waitlist'] });
       reset();
       onOpenChange(false);
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
@@ -160,7 +164,7 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
                     <SelectValue placeholder="Select missed lesson" />
                   </SelectTrigger>
                   <SelectContent>
-                    {studentLessons.map((l: any) => (
+                    {studentLessons.map((l) => (
                       <SelectItem key={l.id} value={l.id}>
                         {l.title} — {format(new Date(l.start_at), 'dd/MM/yyyy HH:mm')}
                         {l.teacher?.display_name ? ` (${l.teacher.display_name})` : ''}
