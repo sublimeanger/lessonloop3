@@ -21,6 +21,31 @@ serve(async (req) => {
 
     let remindersSent = 0;
     const errors: string[] = [];
+    const todayStr = today.toISOString().split("T")[0];
+
+    // ── TRANSITION PENDING INSTALLMENTS TO OVERDUE ─────────────
+    const { data: markedOverdue, error: markError } = await supabase
+      .from("invoice_installments")
+      .update({ status: "overdue", updated_at: new Date().toISOString() })
+      .eq("status", "pending")
+      .lt("due_date", todayStr)
+      .select("id, invoice_id");
+
+    if (markError) {
+      console.error("Failed to mark installments overdue:", markError.message);
+    } else {
+      console.log(`Marked ${markedOverdue?.length || 0} installments as overdue`);
+
+      // Also update parent invoice status for newly overdue installments
+      const invoiceIds = [...new Set((markedOverdue || []).map((i: any) => i.invoice_id))];
+      if (invoiceIds.length > 0) {
+        await supabase
+          .from("invoices")
+          .update({ status: "overdue" })
+          .in("id", invoiceIds)
+          .in("status", ["draft", "sent"]);
+      }
+    }
 
     // ── STANDARD INVOICE REMINDERS ─────────────────────────────
     console.log("Starting overdue invoice reminder check...");
