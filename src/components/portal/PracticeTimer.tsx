@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -38,7 +38,7 @@ interface PracticeTimerProps {
 
 export function PracticeTimer({ onComplete }: PracticeTimerProps) {
   const { user } = useAuth();
-  const STORAGE_KEYS = getStorageKeys(user?.id);
+  const STORAGE_KEYS = useMemo(() => getStorageKeys(user?.id), [user?.id]);
 
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -74,6 +74,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
 
   // ─── Restore session on mount ─────────────────────────────
   useEffect(() => {
+    if (!user?.id) return; // Wait for auth to resolve
     const wasRunning = storageGet(STORAGE_KEYS.isRunning) === 'true';
     if (!wasRunning) return;
 
@@ -95,7 +96,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
     setIsRunning(true);
     setResumed(true);
     setTimeout(() => setResumed(false), 4000);
-  }, []);
+  }, [user?.id, STORAGE_KEYS]);
 
   // ─── Timer tick (uses wall-clock for accuracy) ────────────
   useEffect(() => {
