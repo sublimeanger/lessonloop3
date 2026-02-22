@@ -1,9 +1,11 @@
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { DateRangeFilter } from '@/components/reports/DateRangeFilter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -14,12 +16,15 @@ import { Download, Clock, AlertTriangle, CheckCircle, ChevronDown, ChevronRight,
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { format, subMonths } from 'date-fns';
 
 export default function OutstandingReport() {
   const { currentOrg } = useOrg();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { data, isLoading, error } = useAgeingReport();
+  const [startDate, setStartDate] = useState(() => format(subMonths(new Date(), 12), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const { data, isLoading, error } = useAgeingReport(startDate, endDate);
   const [expandedBuckets, setExpandedBuckets] = useState<Set<string>>(new Set(['Current (0-7 days)']));
 
   const toggleBucket = (label: string) => {
@@ -78,6 +83,22 @@ export default function OutstandingReport() {
           )
         }
       />
+
+      <DateRangeFilter
+        startDate={startDate}
+        endDate={endDate}
+        onStartDateChange={setStartDate}
+        onEndDateChange={setEndDate}
+      />
+
+      {data?.truncated && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Results may be incomplete — you have a large number of outstanding invoices. Try narrowing the date range.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {isLoading ? (
         <ReportSkeleton variant="summary-table" />
