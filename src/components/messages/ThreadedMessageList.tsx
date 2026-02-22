@@ -10,7 +10,9 @@ interface ThreadedMessageListProps {
 }
 
 export function ThreadedMessageList({ searchQuery }: ThreadedMessageListProps) {
-  const { data: threads, isLoading } = useMessageThreads();
+  const { data, isLoading } = useMessageThreads();
+  const threads = data?.threads;
+  const hasMore = data?.hasMore ?? false;
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
@@ -76,9 +78,9 @@ export function ThreadedMessageList({ searchQuery }: ThreadedMessageListProps) {
           setReplyingTo={setReplyingTo}
         />
       ))}
-      {threads && threads.length >= 100 && (
+      {hasMore && (
         <p className="text-sm text-muted-foreground text-center py-4">
-          Showing most recent message threads. Use the list view for older messages.
+          Showing most recent 500 messages. Older threads may not appear.
         </p>
       )}
     </div>
