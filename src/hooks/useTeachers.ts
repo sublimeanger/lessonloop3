@@ -45,7 +45,7 @@ export function useTeachers() {
 
       const { data, error } = await supabase
         .from('teachers')
-        .select('*')
+        .select('id, org_id, user_id, display_name, email, phone, instruments, employment_type, bio, status, default_lesson_length_mins, created_at, updated_at')
         .eq('org_id', currentOrg.id)
         .order('display_name');
 
@@ -53,6 +53,9 @@ export function useTeachers() {
 
       return (data || []).map((t: any) => ({
         ...t,
+        pay_rate_type: null,
+        pay_rate_value: null,
+        payroll_notes: null,
         isLinked: !!t.user_id,
       }));
     },

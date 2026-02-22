@@ -20,7 +20,7 @@ interface TeacherQuickViewProps {
 
 export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, colour }: TeacherQuickViewProps) {
   const navigate = useNavigate();
-  const { currentOrg } = useOrg();
+  const { currentOrg, isOrgAdmin } = useOrg();
 
   const { data: assignedStudents = [] } = useQuery({
     queryKey: ['teacher-assigned-students', teacher?.id, currentOrg?.id],
@@ -125,7 +125,7 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, colour }
             </div>
           ))}
 
-          {teacher.pay_rate_type && teacher.pay_rate_value != null && (
+          {isOrgAdmin && teacher.pay_rate_type && teacher.pay_rate_value != null && (
             <div className="flex items-start gap-3">
               <div className="text-muted-foreground mt-0.5"><Briefcase className="h-4 w-4" /></div>
               <div>
