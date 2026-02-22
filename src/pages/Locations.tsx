@@ -18,7 +18,7 @@ import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { FeatureGate } from '@/components/subscription';
 import { useDeleteValidation, DeletionCheckResult } from '@/hooks/useDeleteValidation';
 import { DeleteValidationDialog } from '@/components/shared/DeleteValidationDialog';
-import { Plus, MapPin, ChevronDown, Loader2, Trash2, Edit, DoorOpen, Lock, Search } from 'lucide-react';
+import { Plus, MapPin, ChevronDown, Loader2, Trash2, Edit, DoorOpen, Lock, Search, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type LocationType = 'school' | 'studio' | 'home' | 'online';
@@ -345,6 +345,14 @@ export default function Locations() {
     setDeleteRoomDialog(prev => ({ ...prev, open: false, isDeleting: false }));
   };
 
+  const handleSetPrimary = async (locationId: string) => {
+    if (!currentOrg) return;
+    await supabase.from('locations').update({ is_primary: false }).eq('org_id', currentOrg.id);
+    await supabase.from('locations').update({ is_primary: true }).eq('id', locationId);
+    invalidateLocations();
+    toast({ title: 'Primary location updated' });
+  };
+
   const canAddLocation = hasMultiLocation || locations.length === 0;
 
   return (
@@ -455,6 +463,15 @@ export default function Locations() {
                   <div className="flex items-center gap-1 shrink-0">
                     {isOrgAdmin && (
                       <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title={location.is_primary ? 'Primary location' : 'Set as primary'}
+                          onClick={(e) => { e.stopPropagation(); handleSetPrimary(location.id); }}
+                        >
+                          <Star className={cn('h-4 w-4', location.is_primary && 'fill-primary text-primary')} />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openLocationDialog(location)}>
                           <Edit className="h-4 w-4" />
                         </Button>
