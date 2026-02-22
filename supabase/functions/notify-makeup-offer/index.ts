@@ -16,10 +16,32 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // --- Auth check ---
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userId = claimsData.claims.sub;
 
     const { waitlist_id } = await req.json();
     if (!waitlist_id) {
@@ -28,6 +50,40 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Fetch waitlist entry via user-scoped client (RLS enforces org access)
+    const { data: waitlistCheck, error: waitlistCheckError } = await userClient
+      .from("make_up_waitlist")
+      .select("id, org_id")
+      .eq("id", waitlist_id)
+      .single();
+
+    if (waitlistCheckError || !waitlistCheck) {
+      return new Response(JSON.stringify({ error: "Waitlist entry not found or no access" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Verify caller is admin/owner of this org
+    const { data: membership, error: membershipError } = await userClient
+      .from("org_memberships")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("org_id", waitlistCheck.org_id)
+      .in("role", ["owner", "admin"])
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (membershipError || !membership) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- Authorised: proceed with service-role client ---
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Fetch waitlist entry with joins
     const { data: entry, error: entryError } = await supabase
