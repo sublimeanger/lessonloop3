@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { format, subMonths, startOfMonth, endOfMonth, differenceInMinutes, parseISO } from 'date-fns';
+import { format, subMonths, startOfMonth, endOfMonth, differenceInMinutes, parseISO, eachDayOfInterval, isWeekend } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -80,12 +80,19 @@ function useUtilisationReport(startDate: string, endDate: string, workingHoursPe
 
       if (lessonsError) throw lessonsError;
 
-      // Calculate working days in period (simple: count all days)
-      const start = parseISO(startDate);
-      const end = parseISO(endDate);
-      const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      // Approximate working days (exclude weekends roughly)
-      const workingDays = Math.ceil(daysDiff * 5 / 7);
+      // Fetch closure dates for accurate working day calculation
+      const { data: closures } = await supabase
+        .from('closure_dates')
+        .select('date')
+        .eq('org_id', currentOrg.id)
+        .gte('date', startDate)
+        .lte('date', endDate);
+
+      const closureDateSet = new Set((closures || []).map(c => c.date));
+
+      // Count actual working days (weekdays minus closures)
+      const allDays = eachDayOfInterval({ start: parseISO(startDate), end: parseISO(endDate) });
+      const workingDays = allDays.filter(d => !isWeekend(d) && !closureDateSet.has(format(d, 'yyyy-MM-dd'))).length;
       const availableMinutesPerRoom = workingDays * workingHoursPerDay * 60;
 
       // Group lessons by room
