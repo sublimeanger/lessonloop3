@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import { cn } from '@/lib/utils';
 import { Calendar, Receipt, MessageSquare, ClipboardCheck } from 'lucide-react';
 
@@ -13,6 +14,7 @@ interface DashboardHeroProps {
   currencyCode?: string;
   hasStudents?: boolean;
   hasLessons?: boolean;
+  timezone?: string;
   className?: string;
 }
 
@@ -148,8 +150,8 @@ function EveningScene() {
   );
 }
 
-function SkyScene() {
-  const hour = new Date().getHours();
+function SkyScene({ tz }: { tz: string }) {
+  const hour = toZonedTime(new Date(), tz).getHours();
   if (hour < 12) return <SunScene />;
   if (hour < 18) return <AfternoonScene />;
   return <EveningScene />;
@@ -157,8 +159,8 @@ function SkyScene() {
 
 // ─── Background gradient based on time ───────────────────────────────
 
-function getTimeTheme() {
-  const hour = new Date().getHours();
+function getTimeTheme(tz: string) {
+  const hour = toZonedTime(new Date(), tz).getHours();
   if (hour < 12) {
     return {
       greeting: 'Good morning',
@@ -236,9 +238,12 @@ export function DashboardHero({
   currencyCode = 'GBP',
   hasStudents = false,
   hasLessons = false,
+  timezone = 'Europe/London',
   className,
 }: DashboardHeroProps) {
-  const theme = getTimeTheme();
+  const tz = timezone;
+  const zonedNow = toZonedTime(new Date(), tz);
+  const theme = getTimeTheme(tz);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GB', {
@@ -316,8 +321,8 @@ export function DashboardHero({
             transition={{ delay: 0.2 }}
           >
             <Calendar className="h-3 w-3" />
-            <span className="hidden sm:inline">{format(new Date(), 'EEEE, d MMMM yyyy')}</span>
-            <span className="sm:hidden">{format(new Date(), 'EEE, d MMM')}</span>
+            <span className="hidden sm:inline">{format(zonedNow, 'EEEE, d MMMM yyyy')}</span>
+            <span className="sm:hidden">{format(zonedNow, 'EEE, d MMM')}</span>
           </motion.div>
 
           {/* Greeting with animated wave */}
@@ -387,7 +392,7 @@ export function DashboardHero({
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2, type: 'spring', stiffness: 200, damping: 20 }}
         >
-          <SkyScene />
+          <SkyScene tz={tz} />
         </motion.div>
       </div>
 
