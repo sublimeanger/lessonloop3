@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 
 export interface ProactiveAlert {
-  type: 'overdue' | 'cancellation' | 'upcoming' | 'unmarked';
+  type: 'overdue' | 'cancellation' | 'upcoming' | 'unmarked' | 'makeup_match' | 'unmarked_reason';
   severity: 'info' | 'warning' | 'urgent';
   message: string;
   suggestedAction?: string;
@@ -102,6 +102,42 @@ export function useProactiveAlerts() {
           severity: 'info',
           message: `${upcomingCount} lesson${upcomingCount > 1 ? 's' : ''} scheduled for today`,
           count: upcomingCount,
+        });
+      }
+
+      // Check make-up matches needing action
+      const { count: matchedCount } = await supabase
+        .from('make_up_waitlist')
+        .select('id', { count: 'exact' })
+        .eq('org_id', currentOrg.id)
+        .eq('status', 'matched');
+
+      if (matchedCount && matchedCount > 0) {
+        alerts.push({
+          type: 'makeup_match',
+          severity: 'info',
+          message: `${matchedCount} make-up match${matchedCount > 1 ? 'es' : ''} found`,
+          suggestedAction: 'Review and offer to parents',
+          count: matchedCount,
+        });
+      }
+
+      // Check absences missing reasons (last 7 days)
+      const { count: missingReasonCount } = await supabase
+        .from('attendance_records')
+        .select('id', { count: 'exact' })
+        .eq('org_id', currentOrg.id)
+        .in('attendance_status', ['absent', 'cancelled_by_student'])
+        .is('absence_reason_category', null)
+        .gte('recorded_at', `${weekAgoStr}T00:00:00`);
+
+      if (missingReasonCount && missingReasonCount > 0) {
+        alerts.push({
+          type: 'unmarked_reason',
+          severity: 'warning',
+          message: `${missingReasonCount} absence${missingReasonCount > 1 ? 's' : ''} missing a reason`,
+          suggestedAction: 'Add absence reasons to enable make-up matching',
+          count: missingReasonCount,
         });
       }
 
