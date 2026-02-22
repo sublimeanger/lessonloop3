@@ -273,7 +273,7 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
         </motion.div>
 
         {/* Main Content Grid */}
-        <motion.div variants={itemVariants} className="grid gap-4 sm:gap-6 lg:grid-cols-12">
+        <motion.div variants={itemVariants} className="grid gap-4 sm:gap-6 lg:grid-cols-9">
           <SectionErrorBoundary name="Today's Timeline">
             <TodayTimeline className="lg:col-span-5" />
           </SectionErrorBoundary>
