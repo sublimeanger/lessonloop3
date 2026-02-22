@@ -68,15 +68,16 @@ Deno.serve(async (req) => {
           "en-GB",
           { hour: "2-digit", minute: "2-digit" }
         );
-        const teacher =
-          (matchedLesson as any).teachers?.display_name || "their teacher";
-        const location =
-          (matchedLesson as any).locations?.name || "the usual location";
+        const lessonTeachers = matchedLesson.teachers as { display_name: string } | null;
+        const lessonLocations = matchedLesson.locations as { name: string } | null;
+        const teacher = lessonTeachers?.display_name || "their teacher";
+        const location = lessonLocations?.name || "the usual location";
         matchedLessonInfo = `${date} at ${time} with ${teacher} at ${location}`;
       }
     }
 
-    const studentName = `${(entry as any).students?.first_name || ""} ${(entry as any).students?.last_name || ""}`.trim();
+    const entryStudents = entry.students as { first_name: string; last_name: string } | null;
+    const studentName = `${entryStudents?.first_name || ""} ${entryStudents?.last_name || ""}`.trim();
     const missedDate = new Date(entry.missed_lesson_date).toLocaleDateString(
       "en-GB",
       { day: "numeric", month: "long" }
@@ -101,7 +102,12 @@ Deno.serve(async (req) => {
     }
 
     // Insert internal_messages for each admin (the channel admins actually read)
-    const messages = admins.map((admin: any) => ({
+    interface AdminWithProfile {
+      user_id: string;
+      role?: string;
+      profiles: { email: string; full_name: string };
+    }
+    const messages = (admins as AdminWithProfile[]).map((admin) => ({
       org_id: entry.org_id,
       sender_user_id: admin.user_id,
       sender_role: "system",

@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const guardian = (entry as any).guardians;
+    const guardian = entry.guardians as { id: string; full_name: string; email: string; user_id: string | null } | null;
     if (!guardian?.email) {
       console.log("No guardian email for waitlist", waitlist_id);
       return new Response(JSON.stringify({ skipped: true, reason: "no_guardian_email" }), {
@@ -136,10 +136,14 @@ Deno.serve(async (req) => {
       .single();
 
     const orgName = org?.name || "LessonLoop";
-    const student = (entry as any).students;
+    const student = entry.students as { first_name: string; last_name: string } | null;
     const studentFirst = student?.first_name || "your child";
     const studentName = `${student?.first_name || ""} ${student?.last_name || ""}`.trim();
-    const matched = (entry as any).matched_lesson;
+    const matched = entry.matched_lesson as {
+      id: string; title: string; start_at: string; end_at: string;
+      locations: { name: string } | null;
+      teachers: { display_name: string } | null;
+    } | null;
 
     // Format lesson details
     const lessonTitle = matched?.title || entry.lesson_title;
@@ -162,8 +166,8 @@ Deno.serve(async (req) => {
           minute: "2-digit",
         })
       : "";
-    const teacher = (matched as any)?.teachers?.display_name || "their teacher";
-    const location = (matched as any)?.locations?.name || "the usual location";
+    const teacher = matched?.teachers?.display_name || "their teacher";
+    const location = matched?.locations?.name || "the usual location";
 
     const missedDate = new Date(entry.missed_lesson_date).toLocaleDateString("en-GB", {
       day: "numeric",

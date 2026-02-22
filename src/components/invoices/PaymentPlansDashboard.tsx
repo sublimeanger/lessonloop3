@@ -176,8 +176,76 @@ export function PaymentPlansDashboard() {
         </Select>
       </div>
 
-      {/* Plan table */}
-      <div className="rounded-lg border bg-card overflow-hidden">
+      {/* Mobile card layout */}
+      <div className="md:hidden space-y-3">
+        {sorted.map((row) => {
+          const pct = row.totalMinor > 0 ? Math.round((row.paidMinor / row.totalMinor) * 100) : 0;
+          const cfg = healthConfig[row.health];
+          const Icon = cfg.icon;
+
+          return (
+            <Card key={row.id} className="overflow-hidden">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{row.familyName}</p>
+                    <p className="text-xs text-muted-foreground">{row.invoiceNumber}</p>
+                  </div>
+                  <Badge variant="outline" className={`gap-1 shrink-0 ${cfg.color}`}>
+                    <Icon className="h-3 w-3" />
+                    {cfg.label}
+                  </Badge>
+                </div>
+
+                <div className="space-y-1">
+                  <Progress value={pct} className="h-2" />
+                  <p className="text-xs text-muted-foreground">
+                    {row.paidCount}/{row.totalCount} · {formatCurrencyMinor(row.paidMinor, row.currencyCode)}/{formatCurrencyMinor(row.totalMinor, row.currencyCode)}
+                  </p>
+                </div>
+
+                {row.nextDueDate && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Next due</span>
+                    <span className="font-medium">
+                      {formatCurrencyMinor(row.nextDueAmount, row.currencyCode)}{' '}
+                      <span className="text-xs text-muted-foreground">
+                        {formatDistanceToNowStrict(parseISO(row.nextDueDate), { addSuffix: true })}
+                      </span>
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1 text-xs flex-1"
+                    onClick={() => navigate(`/invoices/${row.id}`)}
+                  >
+                    <Eye className="h-3 w-3" />
+                    View
+                  </Button>
+                  {row.health === 'overdue' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1 text-xs border-destructive/30 text-destructive hover:bg-destructive/10 flex-1"
+                      onClick={() => navigate(`/messaging?prefill=installment-reminder&invoiceId=${row.id}`)}
+                    >
+                      <Send className="h-3 w-3" />
+                      Chase
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Desktop table layout */}
+      <div className="hidden md:block rounded-lg border bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
