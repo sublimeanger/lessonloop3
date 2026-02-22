@@ -131,17 +131,37 @@ export function useTeacherMutations() {
 
   const deleteTeacher = useMutation({
     mutationFn: async (id: string) => {
-      // Soft delete by setting status to inactive
+      if (!currentOrg) throw new Error('No organisation selected');
+
+      // Fetch teacher to get user_id before deactivating
+      const { data: teacher, error: fetchError } = await supabase
+        .from('teachers')
+        .select('user_id')
+        .eq('id', id)
+        .single();
+      if (fetchError) throw fetchError;
+
+      // Soft delete teacher record
       const { error } = await supabase
         .from('teachers')
         .update({ status: 'inactive' })
         .eq('id', id);
-
       if (error) throw error;
+
+      // Disable org membership to revoke access
+      if (teacher?.user_id) {
+        const { error: memberError } = await supabase
+          .from('org_memberships')
+          .update({ status: 'disabled' as any })
+          .eq('org_id', currentOrg.id)
+          .eq('user_id', teacher.user_id);
+        if (memberError) console.error('Failed to disable membership:', memberError);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['org-members'] });
       toast({ title: 'Teacher removed' });
     },
     onError: (error: any) => {
@@ -155,16 +175,36 @@ export function useTeacherMutations() {
 
   const reactivateTeacher = useMutation({
     mutationFn: async (id: string) => {
+      if (!currentOrg) throw new Error('No organisation selected');
+
+      // Fetch teacher to get user_id
+      const { data: teacher, error: fetchError } = await supabase
+        .from('teachers')
+        .select('user_id')
+        .eq('id', id)
+        .single();
+      if (fetchError) throw fetchError;
+
       const { error } = await supabase
         .from('teachers')
         .update({ status: 'active' })
         .eq('id', id);
-
       if (error) throw error;
+
+      // Re-enable org membership
+      if (teacher?.user_id) {
+        const { error: memberError } = await supabase
+          .from('org_memberships')
+          .update({ status: 'active' as any })
+          .eq('org_id', currentOrg.id)
+          .eq('user_id', teacher.user_id);
+        if (memberError) console.error('Failed to re-enable membership:', memberError);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['org-members'] });
       toast({ title: 'Teacher reactivated' });
     },
     onError: (error: any) => {
