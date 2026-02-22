@@ -1,12 +1,13 @@
 import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
+import { X, Check } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const beforeItems = [
   "Spreadsheets for scheduling, paper diaries for lessons",
   "Chasing parents for payments via text and email",
-  '"What time is the lesson?" messages every week',
+  "'What time is the lesson?' messages every week",
   "Manual invoices in Word or Excel",
-  "No idea who owes what without checking your notebook",
+  "No idea who owes what without checking a notebook",
   "Cancellations = lost revenue, no make-up system",
 ];
 
@@ -15,76 +16,101 @@ const afterItems = [
   "Automated invoicing with online Stripe payments",
   "Parent portal answers every question 24/7",
   "Bulk invoice generation in clicks, not hours",
-  '"Who has outstanding invoices?" — ask LoopAssist',
+  "'Who has outstanding invoices?' — just ask LoopAssist",
   "Automatic make-up matching fills cancelled slots",
 ];
 
 export function BeforeAfter() {
+  const isMobile = useIsMobile();
+
   return (
-    <section className="py-20 lg:py-28 bg-background">
-      <div className="container mx-auto px-6 lg:px-8">
+    <section className="py-24 lg:py-32 bg-background">
+      <div className="container mx-auto px-6 lg:px-8 max-w-5xl">
         {/* Header */}
-        <div className="text-center mb-14">
-          <Badge variant="outline" className="mb-4 border-destructive/30 text-destructive">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <span className="inline-block px-4 py-1.5 rounded-full bg-coral/10 text-coral text-sm font-semibold mb-4">
             The Problem
-          </Badge>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
+          </span>
+          <h2 className="text-4xl lg:text-5xl font-bold text-foreground">
             Sound familiar?
           </h2>
-        </div>
+        </motion.div>
 
         {/* Two columns */}
-        <div className="grid md:grid-cols-2 gap-8 lg:gap-12 max-w-5xl mx-auto">
+        <div className="grid lg:grid-cols-2 gap-0">
           {/* Before */}
-          <div className="space-y-1">
-            <h3 className="text-lg font-semibold text-destructive mb-6">
-              Before LessonLoop
-            </h3>
-            <ul className="space-y-4">
+          <div className="lg:border-r lg:border-dashed lg:border-border lg:pr-10">
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              className="flex items-center gap-2 mb-6"
+            >
+              <X className="w-5 h-5 text-destructive/80" />
+              <h3 className="text-lg font-semibold text-destructive/80">
+                Before LessonLoop
+              </h3>
+            </motion.div>
+
+            <div className="space-y-4">
               {beforeItems.map((item, i) => (
-                <motion.li
-                  key={i}
-                  initial={{ opacity: 0, y: 12 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-40px" }}
+                <motion.div
+                  key={item}
+                  initial={{ opacity: 0, x: isMobile ? 0 : -10, y: isMobile ? 10 : 0 }}
+                  whileInView={{ opacity: 1, x: 0, y: 0 }}
+                  viewport={{ once: true }}
                   transition={{ delay: i * 0.08, duration: 0.4 }}
-                  className="flex items-start gap-3 text-muted-foreground"
+                  className="flex items-start gap-3"
                 >
-                  <span className="mt-0.5 shrink-0 text-destructive">✕</span>
-                  <motion.span
-                    initial={{ textDecorationColor: "transparent" }}
-                    whileInView={{ textDecorationColor: "hsl(var(--destructive) / 0.4)" }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.08 + 0.6, duration: 0.5 }}
-                    className="line-through decoration-2"
-                  >
-                    {item}
-                  </motion.span>
-                </motion.li>
+                  <div className="w-6 h-6 rounded-full bg-destructive/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <X className="w-3.5 h-3.5 text-destructive/70" />
+                  </div>
+                  <span className="text-sm text-muted-foreground">{item}</span>
+                </motion.div>
               ))}
-            </ul>
+            </div>
           </div>
 
+          {/* Mobile divider */}
+          <div className="border-t border-dashed border-border my-8 lg:hidden" />
+
           {/* After */}
-          <div className="space-y-1">
-            <h3 className="text-lg font-semibold text-primary mb-6">
-              With LessonLoop
-            </h3>
-            <ul className="space-y-4">
+          <div className="lg:pl-10">
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: isMobile ? 0 : 0.3 }}
+              className="flex items-center gap-2 mb-6"
+            >
+              <Check className="w-5 h-5 text-teal" />
+              <h3 className="text-lg font-semibold text-teal">
+                With LessonLoop
+              </h3>
+            </motion.div>
+
+            <div className="space-y-4">
               {afterItems.map((item, i) => (
-                <motion.li
-                  key={i}
-                  initial={{ opacity: 0, x: 20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true, margin: "-40px" }}
-                  transition={{ delay: i * 0.08 + 0.3, duration: 0.4 }}
-                  className="flex items-start gap-3 text-foreground"
+                <motion.div
+                  key={item}
+                  initial={{ opacity: 0, x: isMobile ? 0 : 10, y: isMobile ? 10 : 0 }}
+                  whileInView={{ opacity: 1, x: 0, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: (isMobile ? 0 : 0.3) + i * 0.08, duration: 0.4 }}
+                  className="flex items-start gap-3"
                 >
-                  <span className="mt-0.5 shrink-0 text-primary">✓</span>
-                  <span>{item}</span>
-                </motion.li>
+                  <div className="w-6 h-6 rounded-full bg-teal/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Check className="w-3.5 h-3.5 text-teal" />
+                  </div>
+                  <span className="text-sm text-foreground">{item}</span>
+                </motion.div>
               ))}
-            </ul>
+            </div>
           </div>
         </div>
       </div>
