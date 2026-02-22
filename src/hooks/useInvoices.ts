@@ -224,12 +224,30 @@ export function useCreateInvoice() {
   });
 }
 
+const ALLOWED_TRANSITIONS: Record<string, InvoiceStatus[]> = {
+  draft: ['sent', 'void'],
+  sent: ['paid', 'overdue', 'void'],
+  overdue: ['paid', 'sent', 'void'],
+  paid: [],
+  void: [],
+};
+
+export function isValidStatusTransition(from: InvoiceStatus, to: InvoiceStatus): boolean {
+  if (from === to) return true;
+  return (ALLOWED_TRANSITIONS[from] ?? []).includes(to);
+}
+
 export function useUpdateInvoiceStatus() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: InvoiceStatus }) => {
+    mutationFn: async ({ id, status, currentStatus }: { id: string; status: InvoiceStatus; currentStatus?: InvoiceStatus }) => {
+      // Client-side guard — server trigger also enforces this
+      if (currentStatus && !isValidStatusTransition(currentStatus, status)) {
+        throw new Error(`Cannot change invoice status from "${currentStatus}" to "${status}"`);
+      }
+
       const { error } = await supabase
         .from('invoices')
         .update({ status })
