@@ -197,14 +197,21 @@ export default function AcceptInvite() {
           body: { token },
         });
 
-        if (response.error) {
-          throw new Error(response.error.message || 'Failed to accept invitation');
-        }
-
         const data = response.data;
-        
-        if (data.error) {
-          throw new Error(data.error);
+
+        // Check for email mismatch from edge function (403)
+        if (response.error || data?.error) {
+          const errMsg = data?.error || response.error?.message || 'Failed to accept invitation';
+          if (typeof errMsg === 'string' && errMsg.toLowerCase().includes('email')) {
+            toast({
+              title: 'Email mismatch',
+              description: `The invite was sent to ${invite.email}. Please sign up with that email address.`,
+              variant: 'destructive',
+            });
+            setIsAccepting(false);
+            return;
+          }
+          throw new Error(errMsg);
         }
 
         // Update profile with full name (edge function handles onboarding flag)
@@ -338,7 +345,7 @@ export default function AcceptInvite() {
                 autoComplete="email"
               />
               <p className="text-xs text-muted-foreground">
-                Enter the email address where you received this invitation.
+                This invite was sent to <strong>{invite.email}</strong>. Please use the matching email address.
               </p>
             </div>
             <div className="space-y-2">
