@@ -167,6 +167,10 @@ export default function Onboarding() {
         toast({ title: 'Please enter an organisation name', variant: 'destructive' });
         return;
       }
+      if (fullName.trim().length > 100 || orgName.trim().length > 100) {
+        toast({ title: 'Name must be 100 characters or fewer', variant: 'destructive' });
+        return;
+      }
       setStep('plan');
     } else if (step === 'plan') {
       handleSubmit();
@@ -497,6 +501,7 @@ export default function Onboarding() {
                         id="fullName"
                         placeholder="Enter your full name"
                         value={fullName}
+                        maxLength={100}
                         onChange={(e) => setFullName(e.target.value)}
                         autoFocus
                         autoComplete="name"
@@ -544,6 +549,7 @@ export default function Onboarding() {
                         id="orgName"
                         placeholder="e.g. Jamie's Music Studio"
                         value={orgName}
+                        maxLength={100}
                         onChange={(e) => {
                           hasEditedOrgName.current = true;
                           setOrgName(e.target.value);
