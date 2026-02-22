@@ -95,7 +95,7 @@ export function PricingCard({ plan, isAnnual, index }: PricingCardProps) {
         <h3 className="text-2xl font-bold text-foreground mb-2">
           {plan.name}
         </h3>
-        <p className="text-muted-foreground text-sm mb-6 min-h-[40px]">
+        <p className="text-muted-foreground text-sm mb-6 min-h-[44px] line-clamp-2">
           {plan.description}
         </p>
 

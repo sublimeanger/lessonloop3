@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Building2, Crown } from "lucide-react";
+import { User, Building2, Crown, Sparkles } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { PricingHero } from "@/components/marketing/pricing/PricingHero";
@@ -57,12 +57,11 @@ export default function Pricing() {
       {/* AI Inclusion Banner */}
       <section className="bg-background">
         <div className="container mx-auto px-6 lg:px-8">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center justify-center gap-3 py-4 px-6 rounded-xl bg-primary/5 border border-primary/15 text-center">
-              <span className="text-sm lg:text-base font-medium text-foreground">
-                🤖 <span className="text-primary font-semibold">LoopAssist AI</span> is included on every plan — no add-on fees.
-              </span>
-            </div>
+          <div className="max-w-6xl mx-auto text-center py-4">
+            <p className="inline-flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-4 py-2 rounded-full">
+              <Sparkles className="w-4 h-4 text-primary" />
+              LoopAssist AI is included on every plan — no add-on fees
+            </p>
           </div>
         </div>
       </section>

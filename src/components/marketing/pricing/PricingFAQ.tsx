@@ -56,7 +56,7 @@ const faqs = [
       },
       {
         question: "What support do I get?",
-        answer: "Solo plan includes email support with 24-hour response times. Academy plan adds priority support and live chat. Agency plan includes a dedicated account manager and phone support.",
+        answer: "Teacher plan includes email support with 24-hour response times. Studio plan adds priority support and live chat. Agency plan includes a dedicated account manager and phone support.",
       },
     ],
   },

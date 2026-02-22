@@ -165,6 +165,7 @@ export function ValueCalculator() {
                 £{monthlyValueSaved}
               </motion.div>
               <p className="text-sm text-muted-foreground">Value saved monthly</p>
+              <p className="text-xs text-muted-foreground mt-2">Based on ~9 min/student/week at UK avg. hourly rates</p>
             </motion.div>
             
             <motion.div
