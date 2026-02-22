@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LogoHorizontal } from '@/components/brand/Logo';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Lock, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Lock, CheckCircle, XCircle } from 'lucide-react';
 import { PasswordStrengthIndicator, PASSWORD_MIN_LENGTH } from '@/components/auth/PasswordStrengthIndicator';
 
 export default function ResetPassword() {
@@ -16,6 +16,7 @@ export default function ResetPassword() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [sessionError, setSessionError] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -24,12 +25,11 @@ export default function ResetPassword() {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        toast({ title: 'Invalid reset link', description: 'Please request a new one.', variant: 'destructive' });
-        navigate('/forgot-password');
+        setSessionError(true);
       }
     };
     checkSession();
-  }, [navigate]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +65,28 @@ export default function ResetPassword() {
       setIsLoading(false);
     }
   };
+
+  if (sessionError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
+        <Card className="w-full max-w-md shadow-elevated">
+          <CardContent className="pt-6 text-center">
+            <XCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-foreground mb-2">Reset link expired</h2>
+            <p className="text-muted-foreground mb-4">
+              This password reset link is no longer valid. Please request a new one.
+            </p>
+            <Button
+              className="w-full gradient-accent shadow-glow-teal hover:opacity-90 transition-opacity"
+              onClick={() => navigate('/forgot-password')}
+            >
+              Request new reset link
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isSuccess) {
     return (
