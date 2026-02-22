@@ -89,8 +89,11 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasInitialised, setHasInitialised] = useState(false);
   const mountedRef = useRef(true);
+  const fetchInProgressRef = useRef(false);
 
   const fetchOrganisations = async () => {
+    if (fetchInProgressRef.current) return;
+    fetchInProgressRef.current = true;
     if (!user) {
       setOrganisations([]);
       setMemberships([]);
@@ -174,6 +177,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       logger.error('Error in fetchOrganisations:', error);
     } finally {
+      fetchInProgressRef.current = false;
       if (mountedRef.current) {
         setIsLoading(false);
         setHasInitialised(true);
