@@ -155,7 +155,7 @@ export function useRecipientPreview(filters: FilterCriteria) {
       };
     },
     enabled: !!currentOrg,
-    staleTime: 10000,
+    staleTime: 30_000,
   });
 }
 
