@@ -29,8 +29,8 @@ export function useNotesNotification() {
       }
 
       return data;
-    } catch (error: any) {
-      logger.error('Failed to send notes notification:', error);
+    } catch (error: unknown) {
+      logger.error('Failed to send notes notification:', error instanceof Error ? error.message : String(error));
       // Don't show error toast - notification is optional
       return null;
     }

@@ -53,7 +53,7 @@ export function useBulkMessageFilters() {
         .eq('status', 'active')
         .order('display_name');
       if (error) throw error;
-      return (data || []).map((t: any) => ({
+      return (data || []).map((t: { id: string; display_name: string | null }) => ({
         id: t.id,
         name: t.display_name || 'Unknown',
       }));
