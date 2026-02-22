@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -59,13 +59,18 @@ export function useStorageUsage() {
   };
 }
 
+const RESOURCES_PAGE_SIZE = 24;
+
 export function useResources() {
   const { currentOrg } = useOrg();
 
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['resources', currentOrg?.id],
-    queryFn: async () => {
+    queryFn: async ({ pageParam = 0 }) => {
       if (!currentOrg?.id) return [];
+
+      const from = pageParam * RESOURCES_PAGE_SIZE;
+      const to = from + RESOURCES_PAGE_SIZE - 1;
 
       const { data, error } = await supabase
         .from('resources')
@@ -74,11 +79,15 @@ export function useResources() {
           resource_shares (*)
         `)
         .eq('org_id', currentOrg.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (error) throw error;
       return data as ResourceWithShares[];
     },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+      lastPage.length === RESOURCES_PAGE_SIZE ? lastPageParam + 1 : undefined,
     enabled: !!currentOrg?.id,
   });
 }
