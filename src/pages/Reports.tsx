@@ -47,7 +47,7 @@ const reports: Report[] = [
     icon: Calendar,
     href: '/reports/lessons',
     status: 'available',
-    roles: ['owner', 'admin', 'teacher', 'finance'],
+    roles: ['owner', 'admin', 'teacher'],
   },
   {
     id: 'cancellations',
@@ -56,7 +56,7 @@ const reports: Report[] = [
     icon: XCircle,
     href: '/reports/cancellations',
     status: 'available',
-    roles: ['owner', 'admin', 'finance'],
+    roles: ['owner', 'admin'],
   },
   {
     id: 'payroll',
@@ -65,7 +65,7 @@ const reports: Report[] = [
     icon: Banknote,
     href: '/reports/payroll',
     status: 'available',
-    roles: ['owner', 'admin', 'teacher'],
+    roles: ['owner', 'admin', 'teacher', 'finance'],
     requiredFeature: 'payroll_reports',
   },
   {
