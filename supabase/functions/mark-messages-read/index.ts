@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { checkRateLimit, rateLimitResponse } from '../_shared/rate-limit.ts';
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -33,6 +34,12 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Rate limiting
+    const rateLimitResult = await checkRateLimit(user.id, 'default');
+    if (!rateLimitResult.allowed) {
+      return rateLimitResponse(corsHeaders, rateLimitResult);
     }
 
     const { guardian_id, org_id, message_ids } = await req.json();
