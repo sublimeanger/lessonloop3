@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { logger } from '@/lib/logger';
@@ -25,6 +26,7 @@ interface ResourceDownloadButtonProps {
 
 function ResourceDownloadButton({ filePath, fileName }: ResourceDownloadButtonProps) {
   const [isDownloading, setIsDownloading] = useState(false);
+  const { toast } = useToast();
 
   const handleDownload = async () => {
     setIsDownloading(true);
@@ -45,7 +47,11 @@ function ResourceDownloadButton({ filePath, fileName }: ResourceDownloadButtonPr
         document.body.removeChild(a);
       }
     } catch (error) {
-      logger.error('Download failed:', error);
+      toast({
+        title: 'Download failed',
+        description: 'Please try again. If this persists, contact your teacher.',
+        variant: 'destructive',
+      });
     } finally {
       setIsDownloading(false);
     }
