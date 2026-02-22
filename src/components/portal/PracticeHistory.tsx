@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfWeek, endOfWeek } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,11 +8,66 @@ import { Clock, Calendar, MessageSquare, CheckCircle2, Loader2, Music } from 'lu
 import { useParentPracticeLogs, PracticeLog } from '@/hooks/usePractice';
 import { useChildFilter } from '@/contexts/ChildFilterContext';
 
+interface WeekGroup {
+  key: string;
+  label: string;
+  totalMinutes: number;
+  days: { date: string; logs: PracticeLog[] }[];
+}
+
+function getEncouragement(mins: number): string | null {
+  if (mins >= 30) return '🌟 Amazing session!';
+  if (mins >= 15) return '💪 Great session!';
+  if (mins > 0) return '✨ Every minute counts!';
+  return null;
+}
+
 export function PracticeHistory() {
   const { selectedChildId } = useChildFilter();
   const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useParentPracticeLogs(selectedChildId || undefined);
 
   const logs = useMemo(() => data?.pages.flatMap(p => p.data) ?? [], [data]);
+
+  const weekGroups = useMemo((): WeekGroup[] => {
+    if (logs.length === 0) return [];
+
+    const weekMap = new Map<string, WeekGroup>();
+
+    for (const log of logs) {
+      const d = parseISO(log.practice_date);
+      const ws = startOfWeek(d, { weekStartsOn: 1 });
+      const we = endOfWeek(d, { weekStartsOn: 1 });
+      const key = ws.toISOString();
+
+      if (!weekMap.has(key)) {
+        weekMap.set(key, {
+          key,
+          label: `${format(ws, 'd MMM')} – ${format(we, 'd MMM yyyy')}`,
+          totalMinutes: 0,
+          days: [],
+        });
+      }
+
+      const group = weekMap.get(key)!;
+      group.totalMinutes += log.duration_minutes;
+
+      let dayEntry = group.days.find(d => d.date === log.practice_date);
+      if (!dayEntry) {
+        dayEntry = { date: log.practice_date, logs: [] };
+        group.days.push(dayEntry);
+      }
+      dayEntry.logs.push(log);
+    }
+
+    // Sort weeks desc, days within each week desc
+    const sorted = Array.from(weekMap.values()).sort(
+      (a, b) => new Date(b.key).getTime() - new Date(a.key).getTime()
+    );
+    for (const wk of sorted) {
+      wk.days.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+    return sorted;
+  }, [logs]);
 
   if (isLoading) {
     return (
@@ -38,20 +93,6 @@ export function PracticeHistory() {
     );
   }
 
-  // Group logs by date
-  const groupedLogs = logs.reduce((acc, log) => {
-    const date = log.practice_date;
-    if (!acc[date]) {
-      acc[date] = [];
-    }
-    acc[date].push(log);
-    return acc;
-  }, {} as Record<string, PracticeLog[]>);
-
-  const sortedDates = Object.keys(groupedLogs).sort((a, b) => 
-    new Date(b).getTime() - new Date(a).getTime()
-  );
-
   return (
     <Card>
       <CardHeader>
@@ -63,57 +104,76 @@ export function PracticeHistory() {
       <CardContent className="p-0">
         <ScrollArea className="h-[400px]">
           <div className="p-4 space-y-6">
-            {sortedDates.map(date => (
-              <div key={date}>
-                <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                  {format(parseISO(date), 'EEEE, MMMM d, yyyy')}
-                </h4>
-                <div className="space-y-3">
-                  {groupedLogs[date].map(log => (
-                    <div 
-                      key={log.id} 
-                      className="border rounded-lg p-4 bg-card"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">
-                              {log.student?.first_name} {log.student?.last_name}
-                            </span>
-                            {log.reviewed_at && (
-                              <Badge variant="secondary" className="gap-1">
-                                <CheckCircle2 className="h-3 w-3" />
-                                Reviewed
-                              </Badge>
-                            )}
-                          </div>
-                          {log.assignment && (
-                            <p className="text-sm text-muted-foreground">
-                              {log.assignment.title}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 text-primary font-medium">
-                          <Clock className="h-4 w-4" />
-                          {log.duration_minutes} min
-                        </div>
+            {weekGroups.map(week => (
+              <div key={week.key}>
+                {/* Week header */}
+                <div className="flex items-center justify-between mb-3 pb-2 border-b">
+                  <h4 className="text-sm font-semibold text-foreground">{week.label}</h4>
+                  <Badge variant="secondary" className="text-xs">
+                    {week.totalMinutes} min total
+                  </Badge>
+                </div>
+
+                <div className="space-y-4">
+                  {week.days.map(day => (
+                    <div key={day.date}>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">
+                        {format(parseISO(day.date), 'EEEE, d MMMM')}
+                      </p>
+                      <div className="space-y-3">
+                        {day.logs.map(log => {
+                          const encouragement = getEncouragement(log.duration_minutes);
+                          return (
+                            <div key={log.id} className="border rounded-lg p-4 bg-card">
+                              <div className="flex items-start justify-between">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">
+                                      {log.student?.first_name} {log.student?.last_name}
+                                    </span>
+                                    {log.reviewed_at && (
+                                      <Badge variant="secondary" className="gap-1">
+                                        <CheckCircle2 className="h-3 w-3" />
+                                        Reviewed
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {log.assignment && (
+                                    <p className="text-sm text-muted-foreground">
+                                      {log.assignment.title}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex flex-col items-end gap-1">
+                                  <div className="flex items-center gap-1 text-primary font-medium">
+                                    <Clock className="h-4 w-4" />
+                                    {log.duration_minutes} min
+                                  </div>
+                                  {encouragement && (
+                                    <span className="text-xs text-muted-foreground">{encouragement}</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {log.notes && (
+                                <p className="mt-3 text-sm text-muted-foreground bg-muted/50 rounded p-2">
+                                  {log.notes}
+                                </p>
+                              )}
+
+                              {log.teacher_feedback && (
+                                <div className="mt-3 border-t pt-3">
+                                  <div className="flex items-center gap-1 text-sm font-medium text-primary mb-1">
+                                    <MessageSquare className="h-4 w-4" />
+                                    Teacher Feedback
+                                  </div>
+                                  <p className="text-sm">{log.teacher_feedback}</p>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                      
-                      {log.notes && (
-                        <p className="mt-3 text-sm text-muted-foreground bg-muted/50 rounded p-2">
-                          {log.notes}
-                        </p>
-                      )}
-                      
-                      {log.teacher_feedback && (
-                        <div className="mt-3 border-t pt-3">
-                          <div className="flex items-center gap-1 text-sm font-medium text-primary mb-1">
-                            <MessageSquare className="h-4 w-4" />
-                            Teacher Feedback
-                          </div>
-                          <p className="text-sm">{log.teacher_feedback}</p>
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
