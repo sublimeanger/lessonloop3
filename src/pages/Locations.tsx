@@ -194,6 +194,12 @@ export default function Locations() {
       return;
     }
     
+    // Require address for physical locations
+    if (locType !== 'online' && !locAddress1.trim() && !locCity.trim()) {
+      toast({ title: 'Address required', description: 'Physical locations need at least an address or city.', variant: 'destructive' });
+      return;
+    }
+    
     if (!editingLocation && !hasMultiLocation && locations.length >= 1) {
       toast({ 
         title: 'Multi-location requires upgrade', 
@@ -627,7 +633,7 @@ export default function Locations() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Address Line 1</Label>
+              <Label>Address Line 1{locType !== 'online' && <span className="text-destructive ml-0.5">*</span>}</Label>
               <Input value={locAddress1} onChange={(e) => setLocAddress1(e.target.value)} placeholder="123 High Street" />
             </div>
             <div className="space-y-2">
