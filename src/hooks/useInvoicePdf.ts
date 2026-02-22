@@ -19,6 +19,8 @@ interface InvoicePdfData {
   vat_rate: number;
   total_minor: number;
   credit_applied_minor: number;
+  paid_minor: number | null;
+  payment_plan_enabled: boolean | null;
   notes: string | null;
   payer_guardian?: { full_name: string; email?: string | null } | null;
   payer_student?: { first_name: string; last_name: string; email?: string | null } | null;
@@ -33,8 +35,14 @@ interface InvoicePdfData {
     paid_at: string;
     method: string;
   }>;
+  installments?: Array<{
+    installment_number: number;
+    amount_minor: number;
+    due_date: string;
+    status: string;
+    paid_at: string | null;
+  }>;
 }
-
 export function useInvoicePdf() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -69,6 +77,17 @@ export function useInvoicePdf() {
         .eq('invoice_id', invoiceId)
         .order('paid_at', { ascending: false });
 
+      // Fetch installments if payment plan
+      let installments: any[] = [];
+      if (invoice.payment_plan_enabled) {
+        const { data: instData } = await supabase
+          .from('invoice_installments')
+          .select('installment_number, amount_minor, due_date, status, paid_at')
+          .eq('invoice_id', invoiceId)
+          .order('installment_number', { ascending: true });
+        installments = instData || [];
+      }
+
       // Fetch org details for header
       let orgDetails: any = null;
       if (currentOrg?.id) {
@@ -85,6 +104,7 @@ export function useInvoicePdf() {
         ...invoice,
         items: items || [],
         payments: payments || [],
+        installments,
       };
 
       generatePdf(fullInvoice, orgDetails, currency, invoiceNumber);
@@ -299,6 +319,100 @@ function generatePdf(
     doc.setFont('helvetica', 'bold');
     doc.text('Amount Due', labelX, y, { align: 'right' });
     doc.text(fmtCur(amountDue, currency), totalsX, y, { align: 'right' });
+    y += 10;
+  }
+
+  // --- Payment Schedule (for payment plans) ---
+  if (inv.payment_plan_enabled && inv.installments && inv.installments.length > 0) {
+    if (y > 230) {
+      doc.addPage();
+      y = margin;
+    }
+
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 6;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PAYMENT SCHEDULE', margin, y);
+    y += 6;
+
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 6;
+
+    // Schedule table header
+    const schColInstallment = margin;
+    const schColAmount = margin + contentWidth * 0.4;
+    const schColDue = margin + contentWidth * 0.6;
+    const schColStatus = pageWidth - margin;
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(80, 80, 80);
+    doc.text('Installment', schColInstallment, y);
+    doc.text('Amount', schColAmount, y, { align: 'right' });
+    doc.text('Due Date', schColDue, y);
+    doc.text('Status', schColStatus, y, { align: 'right' });
+    y += 5;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(0, 0, 0);
+
+    for (const inst of inv.installments) {
+      if (y > 265) {
+        doc.addPage();
+        y = margin;
+      }
+      const statusLabel = inst.status === 'paid'
+        ? `Paid${inst.paid_at ? ' ' + formatDateUK(parseISO(inst.paid_at), 'dd/MM/yyyy') : ''}`
+        : inst.status === 'overdue'
+          ? 'Overdue'
+          : 'Pending';
+
+      doc.text(`Installment ${inst.installment_number}`, schColInstallment, y);
+      doc.text(fmtCur(inst.amount_minor, currency), schColAmount, y, { align: 'right' });
+      doc.text(formatDateUK(parseISO(inst.due_date), 'dd/MM/yyyy'), schColDue, y);
+
+      if (inst.status === 'paid') {
+        doc.setTextColor(34, 139, 34);
+      } else if (inst.status === 'overdue') {
+        doc.setTextColor(200, 50, 50);
+      } else {
+        doc.setTextColor(120, 120, 120);
+      }
+      doc.text(statusLabel, schColStatus, y, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
+      y += 5;
+    }
+
+    // Schedule summary
+    y += 2;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 5;
+
+    const paidTotal = inv.installments
+      .filter((i) => i.status === 'paid')
+      .reduce((s, i) => s + i.amount_minor, 0);
+    const remaining = inv.total_minor - paidTotal;
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Total:', schColAmount - 30, y, { align: 'right' });
+    doc.text(fmtCur(inv.total_minor, currency), schColAmount, y, { align: 'right' });
+    y += 5;
+    doc.setTextColor(34, 139, 34);
+    doc.text('Paid to date:', schColAmount - 30, y, { align: 'right' });
+    doc.text(fmtCur(paidTotal, currency), schColAmount, y, { align: 'right' });
+    doc.setTextColor(0, 0, 0);
+    y += 5;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Remaining:', schColAmount - 30, y, { align: 'right' });
+    doc.text(fmtCur(remaining, currency), schColAmount, y, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
     y += 10;
   }
 
