@@ -3,6 +3,11 @@ import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { PLAN_LIMITS } from "../_shared/plan-config.ts";
 
+// Structured logging: only emits in non-production environments
+const isProduction = Deno.env.get("ENVIRONMENT") === "production";
+const log = (msg: string) => { if (!isProduction) console.log(`[stripe-webhook] ${msg}`); };
+const truncate = (id: string | null | undefined) => id ? `...${id.slice(-8)}` : "none";
+
 // Reverse lookup: Stripe price ID → LessonLoop plan key
 const PRICE_TO_PLAN: Record<string, string> = {};
 const priceEnvPairs = [
@@ -53,7 +58,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log(`Processing Stripe event: ${event.type}`);
+    log(`Processing event: ${event.type}`);
 
     // Deduplication: Stripe can retry webhooks up to ~100 times over 3 days.
     // Record the event ID to ensure exactly-once processing.
@@ -62,9 +67,9 @@ serve(async (req) => {
       .insert({ event_id: event.id, event_type: event.type });
 
     if (dedupError?.code === "23505") {
-      console.log(`Duplicate event ${event.id}, skipping`);
+      log(`Duplicate event ${truncate(event.id)}, skipping`);
       return new Response(JSON.stringify({ received: true, duplicate: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         status: 200,
       });
     }
@@ -111,7 +116,7 @@ serve(async (req) => {
       case "invoice.payment_succeeded": {
         const invoice = event.data.object as Stripe.Invoice;
         if (invoice.subscription) {
-          console.log(`Subscription payment succeeded for: ${invoice.subscription}`);
+          log(`Subscription payment succeeded for: ${truncate(invoice.subscription as string)}`);
         }
         break;
       }
@@ -126,7 +131,7 @@ serve(async (req) => {
 
       case "payment_intent.payment_failed": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        console.log("Payment failed:", paymentIntent.id, paymentIntent.last_payment_error?.message);
+        console.error(`Payment failed: ${truncate(paymentIntent.id)}`, paymentIntent.last_payment_error?.message);
         break;
       }
 
@@ -137,7 +142,7 @@ serve(async (req) => {
       }
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        log(`Unhandled event type: ${event.type}`);
     }
 
     return new Response(
@@ -168,7 +173,7 @@ async function handleSubscriptionCheckoutCompleted(
     return;
   }
 
-  console.log(`Subscription checkout completed for org: ${orgId}, plan: ${plan}`);
+  log(`Subscription checkout completed for org ${truncate(orgId)}, plan: ${plan}`);
 
   // Get the subscription details
   const subscriptionId = session.subscription as string;
@@ -193,7 +198,7 @@ async function handleSubscriptionCheckoutCompleted(
   if (error) {
     console.error("Failed to update org subscription:", error);
   } else {
-    console.log(`Org ${orgId} upgraded to ${plan}`);
+    log(`Org ${truncate(orgId)} upgraded to ${plan}`);
   }
 }
 
@@ -208,7 +213,7 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
     return;
   }
 
-  console.log(`Processing completed checkout for invoice: ${invoiceId}, installmentId: ${installmentId || 'none'}, payRemaining: ${payRemaining}`);
+  log(`Checkout completed for invoice ${truncate(invoiceId)}, installment: ${truncate(installmentId)}, payRemaining: ${payRemaining}`);
 
   const paymentIntentId = session.payment_intent as string;
 
@@ -221,7 +226,7 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
       .maybeSingle();
 
     if (existingPayment) {
-      console.log(`Payment already recorded for payment_intent: ${paymentIntentId}, skipping duplicate`);
+      log(`Payment already recorded for PI ${truncate(paymentIntentId)}, skipping`);
       return;
     }
   }
@@ -262,7 +267,7 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
 
   if (paymentError) {
     if (paymentError.code === '23505') {
-      console.log(`Duplicate payment prevented by database constraint for: ${paymentIntentId}`);
+      log(`Duplicate payment prevented by DB constraint for PI ${truncate(paymentIntentId)}`);
       return;
     }
     console.error("Failed to record payment:", paymentError);
@@ -280,9 +285,7 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
       .in("status", ["pending", "overdue"]);
 
     if (bulkUpdateError) {
-      console.error("Failed to bulk-update installments for pay_remaining:", bulkUpdateError);
-    } else {
-      console.log(`All remaining installments marked paid for invoice ${invoiceId}`);
+      console.error("Failed to bulk-update installments:", bulkUpdateError);
     }
   }
 
@@ -299,8 +302,6 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
 
     if (instUpdateError) {
       console.error("Failed to update installment with payment intent:", instUpdateError);
-    } else {
-      console.log(`Installment ${installmentId} marked paid with PI ${paymentIntentId}`);
     }
   }
 
@@ -332,7 +333,7 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
   if (invoiceUpdateError) {
     console.error("Failed to update invoice:", invoiceUpdateError);
   } else {
-    console.log(`Invoice ${invoiceId} updated: paid_minor=${totalPaid}${totalPaid >= (invoice?.total_minor || 0) ? ', status=paid' : ''}`);
+    log(`Invoice ${truncate(invoiceId)} updated: paid_minor=${totalPaid}${totalPaid >= (invoice?.total_minor || 0) ? ', status=paid' : ''}`);
   }
 }
 
@@ -344,8 +345,6 @@ async function handleCheckoutExpired(supabase: any, session: Stripe.Checkout.Ses
 
   if (error) {
     console.error("Failed to update expired session:", error);
-  } else {
-    console.log(`Checkout session expired: ${session.id}`);
   }
 }
 
@@ -354,11 +353,11 @@ async function handleSubscriptionCreated(supabase: any, subscription: Stripe.Sub
   const plan = subscription.metadata?.lessonloop_plan;
   
   if (!orgId) {
-    console.log("Subscription created without org ID - likely handled in checkout");
+    log("Subscription created without org ID — likely handled in checkout");
     return;
   }
 
-  console.log(`Subscription created for org: ${orgId}`);
+  log(`Subscription created for org ${truncate(orgId)}`);
 
   const limits = PLAN_LIMITS[plan || "solo_teacher"] || PLAN_LIMITS.solo_teacher;
 
@@ -387,13 +386,12 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
   }
 
   if (detectedPlan && detectedPlan !== subscription.metadata?.lessonloop_plan) {
-    console.log(`Plan change detected via price: ${subscription.metadata?.lessonloop_plan} → ${detectedPlan}`);
+    log(`Plan change detected via price: ${subscription.metadata?.lessonloop_plan} → ${detectedPlan}`);
   }
 
   const orgId = subscription.metadata?.lessonloop_org_id;
   
   // Detect pending cancellation (cancel_at_period_end)
-  // Stripe keeps status "active" until period end, then fires "deleted"
   const isPendingCancellation = subscription.cancel_at_period_end === true && subscription.status === "active";
   const cancelsAtTs = isPendingCancellation && subscription.current_period_end
     ? new Date(subscription.current_period_end * 1000).toISOString()
@@ -427,7 +425,7 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
       .single();
     
     if (!org) {
-      console.log("Cannot find org for subscription update");
+      log("Cannot find org for subscription update");
       return;
     }
     
@@ -435,7 +433,6 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
     const limits = plan ? (PLAN_LIMITS[plan] || PLAN_LIMITS.solo_teacher) : undefined;
 
     const updateData: Record<string, unknown> = { subscription_status: status, cancels_at: cancelsAtTs };
-    // Clear past_due_since when returning to active
     if (status === "active") {
       updateData.past_due_since = null;
     }
@@ -455,7 +452,7 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
     if (error) {
       console.error("Failed to update org subscription status:", error);
     } else {
-      console.log(`Org ${org.id} subscription updated to ${status}${plan ? `, plan: ${plan}` : ''}`);
+      log(`Org ${truncate(org.id)} subscription updated to ${status}${plan ? `, plan: ${plan}` : ''}`);
     }
     return;
   }
@@ -471,7 +468,6 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
       subscription_status: status,
       max_students: limits.max_students,
       max_teachers: limits.max_teachers,
-      // Clear past_due_since when returning to active
       past_due_since: status === "active" ? null : undefined,
       cancels_at: cancelsAtTs,
     })
@@ -480,7 +476,7 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
   if (error) {
     console.error("Failed to update org on subscription update:", error);
   } else {
-    console.log(`Org ${orgId} subscription updated: ${status}${plan ? `, plan: ${plan}` : ''}`);
+    log(`Org ${truncate(orgId)} subscription updated: ${status}${plan ? `, plan: ${plan}` : ''}`);
   }
 }
 
@@ -493,7 +489,7 @@ async function handleSubscriptionDeleted(supabase: any, subscription: Stripe.Sub
     .single();
 
   if (!org) {
-    console.log("Cannot find org for deleted subscription");
+    log("Cannot find org for deleted subscription");
     return;
   }
 
@@ -504,61 +500,37 @@ async function handleSubscriptionDeleted(supabase: any, subscription: Stripe.Sub
     .update({
       subscription_status: "cancelled",
       stripe_subscription_id: null,
-      // Downgrade limits to prevent continued usage after cancellation
       max_students: CANCELLED_LIMITS.max_students,
       max_teachers: CANCELLED_LIMITS.max_teachers,
-      // Keep subscription_plan as-is for historical records
-      // Do NOT set trial_ends_at — that would grant free access
     })
     .eq("id", org.id);
 
   if (error) {
     console.error("Failed to update org on subscription deletion:", error);
   } else {
-    console.log(`Org ${org.id} subscription cancelled`);
+    log(`Org ${truncate(org.id)} subscription cancelled`);
   }
 }
 
 async function handleAccountUpdated(supabase: any, account: Stripe.Account) {
   const orgId = account.metadata?.lessonloop_org_id;
-  if (!orgId) {
-    // Try to find org by connect account ID
+  
+  const resolveOrgId = async (): Promise<string | null> => {
+    if (orgId) return orgId;
     const { data: org } = await supabase
       .from("organisations")
       .select("id")
       .eq("stripe_connect_account_id", account.id)
       .single();
+    return org?.id || null;
+  };
 
-    if (!org) {
-      console.log("Cannot find org for account.updated event");
-      return;
-    }
-
-    const newStatus = account.charges_enabled && account.payouts_enabled
-      ? "active"
-      : account.details_submitted
-      ? "restricted"
-      : "pending";
-
-    const updateData: Record<string, unknown> = { stripe_connect_status: newStatus };
-    if (newStatus === "active") {
-      updateData.stripe_connect_onboarded_at = new Date().toISOString();
-    }
-
-    const { error } = await supabase
-      .from("organisations")
-      .update(updateData)
-      .eq("id", org.id);
-
-    if (error) {
-      console.error("Failed to update org connect status:", error);
-    } else {
-      console.log(`Org ${org.id} Connect status updated to ${newStatus}`);
-    }
+  const resolvedOrgId = await resolveOrgId();
+  if (!resolvedOrgId) {
+    log("Cannot find org for account.updated event");
     return;
   }
 
-  // Has orgId in metadata
   const newStatus = account.charges_enabled && account.payouts_enabled
     ? "active"
     : account.details_submitted
@@ -573,19 +545,18 @@ async function handleAccountUpdated(supabase: any, account: Stripe.Account) {
   const { error } = await supabase
     .from("organisations")
     .update(updateData)
-    .eq("id", orgId);
+    .eq("id", resolvedOrgId);
 
   if (error) {
     console.error("Failed to update org connect status:", error);
   } else {
-    console.log(`Org ${orgId} Connect status updated to ${newStatus}`);
+    log(`Org ${truncate(resolvedOrgId)} Connect status → ${newStatus}`);
   }
 }
 
 async function handleSubscriptionPaymentFailed(supabase: any, invoice: Stripe.Invoice) {
   const subscriptionId = invoice.subscription as string;
   
-  // Find org by subscription ID
   const { data: org } = await supabase
     .from("organisations")
     .select("id")
@@ -593,11 +564,10 @@ async function handleSubscriptionPaymentFailed(supabase: any, invoice: Stripe.In
     .single();
 
   if (!org) {
-    console.log("Cannot find org for payment failure");
+    log("Cannot find org for payment failure");
     return;
   }
 
-  // Mark as past_due and record when it started (for 7-day grace period)
   const { error } = await supabase
     .from("organisations")
     .update({
@@ -609,6 +579,6 @@ async function handleSubscriptionPaymentFailed(supabase: any, invoice: Stripe.In
   if (error) {
     console.error("Failed to update org on payment failure:", error);
   } else {
-    console.log(`Org ${org.id} marked as past_due due to payment failure`);
+    log(`Org ${truncate(org.id)} marked past_due`);
   }
 }
