@@ -4,7 +4,7 @@ import { PracticeTimer } from '@/components/portal/PracticeTimer';
 import { PracticeHistory } from '@/components/portal/PracticeHistory';
 import { WeeklyProgressCard } from '@/components/portal/WeeklyProgressCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useChildrenStreaks } from '@/hooks/usePracticeStreaks';
+import { useChildrenStreaks, PracticeStreak } from '@/hooks/usePracticeStreaks';
 import { StreakDisplay } from '@/components/practice/StreakBadge';
 import { Flame } from 'lucide-react';
 
@@ -35,7 +35,7 @@ export default function PortalPractice() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {activeStreaks.map((streak: any) => (
+                {activeStreaks.map((streak: PracticeStreak & { students?: { id: string; first_name: string; last_name: string } }) => (
                   <div key={streak.id} className="border-b last:border-0 pb-4 last:pb-0">
                     {streak.students && (
                       <p className="text-sm font-medium text-muted-foreground mb-2">

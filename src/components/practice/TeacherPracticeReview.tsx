@@ -40,8 +40,8 @@ export function TeacherPracticeReview() {
       await addFeedback.mutateAsync({ logId, feedback });
       toast.success('Feedback sent!');
       setFeedbackText(prev => ({ ...prev, [logId]: '' }));
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to send feedback');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to send feedback');
     }
   };
 
