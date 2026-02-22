@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,15 @@ export default function Signup() {
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [signupComplete, setSignupComplete] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+    const timer = setInterval(() => {
+      setCooldownSeconds((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownSeconds]);
 
   const handleGoogleSignup = async () => {
     setIsGoogleLoading(true);
@@ -119,6 +128,7 @@ export default function Signup() {
       toast({ title: 'Failed to resend', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Verification email resent', description: 'Please check your inbox.' });
+      setCooldownSeconds(60);
     }
   };
 
@@ -143,10 +153,12 @@ export default function Signup() {
               variant="outline"
               className="w-full"
               onClick={handleResendVerification}
-              disabled={isResending}
+              disabled={isResending || cooldownSeconds > 0}
             >
               {isResending ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Resending…</>
+              ) : cooldownSeconds > 0 ? (
+                `Resend in ${cooldownSeconds}s`
               ) : (
                 'Resend verification email'
               )}
