@@ -531,6 +531,7 @@ export interface DashboardStats {
   todayLessons: number;
   activeStudents: number;
   outstandingAmount: number;
+  overdueCount: number;
   hoursThisWeek: number;
   revenueMTD: number;
   lessonsThisWeek: number;
@@ -544,7 +545,7 @@ export function useDashboardStats() {
     queryKey: ['dashboard-stats', currentOrg?.id],
     queryFn: async (): Promise<DashboardStats> => {
       if (!currentOrg) {
-        return { todayLessons: 0, activeStudents: 0, outstandingAmount: 0, hoursThisWeek: 0, revenueMTD: 0, lessonsThisWeek: 0, totalLessons: 0 };
+        return { todayLessons: 0, activeStudents: 0, outstandingAmount: 0, overdueCount: 0, hoursThisWeek: 0, revenueMTD: 0, lessonsThisWeek: 0, totalLessons: 0 };
       }
 
       const today = new Date();
@@ -615,6 +616,7 @@ export function useDashboardStats() {
       const todayLessons = todayLessonsData?.length || 0;
       const activeStudents = activeStudentsCount || 0;
       const outstandingAmount = (invoiceStats?.total_outstanding ?? 0) / 100;
+      const overdueCount = invoiceStats?.overdue ?? 0;
       
       let hoursThisWeek = 0;
       let lessonsThisWeek = 0;
@@ -632,6 +634,7 @@ export function useDashboardStats() {
         todayLessons, 
         activeStudents, 
         outstandingAmount, 
+        overdueCount,
         hoursThisWeek: Math.round(hoursThisWeek * 10) / 10,
         revenueMTD,
         lessonsThisWeek,
