@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { safeGetItem, safeSetItem, safeRemoveItem } from '@/lib/storage';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { StreakCelebration } from '@/components/practice/StreakCelebration';
 
 // ─── localStorage keys (user-scoped) ────────
 function getStorageKeys(userId: string | undefined) {
@@ -46,6 +48,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [resumed, setResumed] = useState(false);
+  const [celebrationStreak, setCelebrationStreak] = useState<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedAtRef = useRef<number | null>(null);
 
@@ -190,6 +193,18 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
         notes: notes || undefined,
       });
 
+      // Check for streak milestone
+      const MILESTONES = [3, 7, 14, 30, 60, 100];
+      const { data: updatedStreak } = await supabase
+        .from('practice_streaks')
+        .select('current_streak')
+        .eq('student_id', selectedStudentId)
+        .maybeSingle();
+
+      if (updatedStreak && MILESTONES.includes(updatedStreak.current_streak)) {
+        setCelebrationStreak(updatedStreak.current_streak);
+      }
+
       // Only clear state AFTER successful save
       storageClear(STORAGE_KEYS);
       toast.success(`Practice logged: ${durationMinutes} minutes`);
@@ -242,6 +257,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
     : [];
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -363,5 +379,13 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
         )}
       </CardContent>
     </Card>
+
+    {celebrationStreak !== null && (
+      <StreakCelebration
+        streak={celebrationStreak}
+        onDismiss={() => setCelebrationStreak(null)}
+      />
+    )}
+    </>
   );
 }
