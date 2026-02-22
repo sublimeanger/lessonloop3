@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -26,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { InviteMemberDialog } from '@/components/settings/InviteMemberDialog';
 import { PendingInvitesList } from '@/components/settings/PendingInvitesList';
 import { TEACHER_COLOURS } from '@/components/calendar/teacherColours';
+import { TeacherQuickView } from '@/components/teachers/TeacherQuickView';
 
 interface RemovalDialogState {
   open: boolean;
@@ -146,6 +146,9 @@ export default function Teachers() {
   const [editEmploymentType, setEditEmploymentType] = useState('contractor');
   const [editBio, setEditBio] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+
+  // Quick view state
+  const [quickViewTeacher, setQuickViewTeacher] = useState<Teacher | null>(null);
 
   // Removal dialog
   const [removal, setRemoval] = useState<RemovalDialogState>({
@@ -462,6 +465,7 @@ export default function Teachers() {
                   onRemove={initiateRemoval}
                   onEdit={openEditDialog}
                   onReactivate={(t) => reactivateTeacher.mutate(t.id)}
+                  onQuickView={setQuickViewTeacher}
                   colour={colour}
                   isInactiveView={filterTab === 'inactive'}
                 />
@@ -651,33 +655,41 @@ export default function Teachers() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Teacher Quick View */}
+      <TeacherQuickView
+        teacher={quickViewTeacher}
+        open={!!quickViewTeacher}
+        onOpenChange={(open) => { if (!open) setQuickViewTeacher(null); }}
+        onEdit={openEditDialog}
+        colour={quickViewTeacher ? TEACHER_COLOURS[getTeacherColourIndex(activeTeachers, quickViewTeacher.id)] : TEACHER_COLOURS[0]}
+      />
     </AppLayout>
   );
 }
 
 // Teacher card component
-function TeacherCard({ teacher, studentCount, isAdmin, onRemove, onEdit, onReactivate, colour, isInactiveView }: { 
+function TeacherCard({ teacher, studentCount, isAdmin, onRemove, onEdit, onReactivate, onQuickView, colour, isInactiveView }: { 
   teacher: Teacher; 
   studentCount: number; 
   isAdmin: boolean;
   onRemove: (teacher: Teacher) => void;
   onEdit: (teacher: Teacher) => void;
   onReactivate: (teacher: Teacher) => void;
+  onQuickView: (teacher: Teacher) => void;
   colour: (typeof TEACHER_COLOURS)[number];
   isInactiveView?: boolean;
 }) {
-  const navigate = useNavigate();
-  
   return (
     <div 
       className={cn(
         "group flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md cursor-pointer",
         isInactiveView && "opacity-60"
       )}
-      onClick={() => !isInactiveView && navigate(`/calendar?teacher=${teacher.id}`)}
+      onClick={() => onQuickView(teacher)}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (!isInactiveView && (e.key === 'Enter' || e.key === ' ')) navigate(`/calendar?teacher=${teacher.id}`); }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onQuickView(teacher); }}
     >
       <div
         className="flex h-10 w-10 items-center justify-center rounded-full text-white font-semibold text-sm shrink-0"
