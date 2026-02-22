@@ -614,12 +614,11 @@ export function useDashboardStats() {
       let hoursThisWeek = 0;
       let lessonsThisWeek = 0;
       for (const lesson of weekLessons || []) {
+        if (lesson.status === 'cancelled') continue;
         lessonsThisWeek += 1;
-        if (lesson.status === 'completed') {
-          const start = new Date(lesson.start_at);
-          const end = new Date(lesson.end_at);
-          hoursThisWeek += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-        }
+        const start = new Date(lesson.start_at);
+        const end = new Date(lesson.end_at);
+        hoursThisWeek += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
       }
 
       const revenueMTD = (mtdInvoices || []).reduce((sum, inv) => sum + inv.total_minor, 0) / 100;
