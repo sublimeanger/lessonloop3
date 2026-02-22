@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function Invoices() {
-  const { currentRole } = useOrg();
+  const { currentRole, currentOrg } = useOrg();
   const { toast } = useToast();
   const isParent = currentRole === 'parent';
   const [filters, setFilters] = useState<InvoiceFilters>({});
@@ -85,7 +85,7 @@ export default function Invoices() {
 
   const handleVoidConfirm = async () => {
     if (!voidConfirmInvoice) return;
-    await updateStatus.mutateAsync({ id: voidConfirmInvoice.id, status: 'void' });
+    await updateStatus.mutateAsync({ id: voidConfirmInvoice.id, status: 'void', orgId: currentOrg?.id });
     setVoidConfirmInvoice(null);
   };
 
@@ -122,7 +122,7 @@ export default function Invoices() {
 
     for (const invoice of voidableInvoices) {
       try {
-        await updateStatus.mutateAsync({ id: invoice.id, status: 'void' });
+        await updateStatus.mutateAsync({ id: invoice.id, status: 'void', orgId: currentOrg?.id });
         successCount++;
       } catch {
         failCount++;

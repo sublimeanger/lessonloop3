@@ -150,7 +150,7 @@ export default function InvoiceDetail() {
   const amountDue = invoice.total_minor - totalPaid;
 
   const handleVoidConfirm = async () => {
-    await updateStatus.mutateAsync({ id: invoice.id, status: 'void' });
+    await updateStatus.mutateAsync({ id: invoice.id, status: 'void', orgId: currentOrg?.id });
     setVoidConfirmOpen(false);
   };
 
