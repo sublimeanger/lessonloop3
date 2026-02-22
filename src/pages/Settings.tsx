@@ -128,11 +128,15 @@ function AvailabilityTabWithSelector({ isOrgAdmin }: { isOrgAdmin: boolean }) {
 }
 
 export default function Settings() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isOrgAdmin } = useOrg();
   const adminTabs = ['members', 'scheduling', 'audit', 'privacy', 'rate-cards', 'billing'];
   const rawTab = searchParams.get('tab') || 'profile';
-  const initialTab = (!isOrgAdmin && adminTabs.includes(rawTab)) ? 'profile' : rawTab;
+  const activeTab = (!isOrgAdmin && adminTabs.includes(rawTab)) ? 'profile' : rawTab;
+
+  const handleTabChange = (value: string) => {
+    setSearchParams({ tab: value }, { replace: true });
+  };
 
   return (
     <AppLayout>
@@ -145,8 +149,8 @@ export default function Settings() {
         ]}
       />
 
-      <Tabs defaultValue={initialTab} className="space-y-6">
-        <MobileTabBar initialTab={initialTab} isOrgAdmin={isOrgAdmin} />
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+        <MobileTabBar initialTab={activeTab} isOrgAdmin={isOrgAdmin} />
 
         <TabsContent value="profile"><ProfileTab /></TabsContent>
         <TabsContent value="organisation"><OrganisationTab /></TabsContent>
