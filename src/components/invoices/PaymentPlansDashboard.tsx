@@ -77,18 +77,20 @@ export function PaymentPlansDashboard() {
 
   const rows: PlanRow[] = useMemo(() => {
     if (!plans) return [];
-    return plans.map((plan: any) => {
-      const installments: Installment[] = (plan.invoice_installments || []).map((i: any) => ({
+    return plans.map((plan) => {
+      const installments: Installment[] = (plan.invoice_installments || []).map((i) => ({
         ...i,
-        payment_id: i.payment_id ?? null,
+        invoice_id: plan.id,
+        payment_id: (i as Record<string, unknown>).payment_id as string | null ?? null,
+        status: i.status as Installment['status'],
       }));
       const paidInstallments = installments.filter((i: Installment) => i.status === 'paid');
       const nextPending = installments.find((i: Installment) => i.status === 'pending' || i.status === 'overdue');
       const health = getPlanHealth(installments);
       const overdueDays = getMaxOverdueDays(installments);
 
-      const guardian = plan.payer_guardian as any;
-      const student = plan.payer_student as any;
+      const guardian = plan.payer_guardian;
+      const student = plan.payer_student;
       const familyName = guardian?.full_name
         || (student ? `${student.first_name} ${student.last_name}` : 'Unknown');
 
@@ -161,7 +163,7 @@ export function PaymentPlansDashboard() {
         <p className="text-sm text-muted-foreground">
           {sorted.length} plan{sorted.length !== 1 ? 's' : ''}
         </p>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as 'all' | PlanHealth)}>
           <SelectTrigger className="w-[160px] h-8 text-xs">
             <SelectValue />
           </SelectTrigger>
