@@ -261,7 +261,10 @@ Deno.serve(async (req) => {
 
     if (completeError) {
       console.error('[onboarding-setup] Complete update failed:', completeError);
-      // Non-fatal - org is created, just log it
+      return new Response(
+        JSON.stringify({ error: 'Organisation created but completion flag failed. Please refresh and try again.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log('[onboarding-setup] Setup complete, org_id:', orgId);
