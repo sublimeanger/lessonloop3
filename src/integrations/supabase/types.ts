@@ -3778,6 +3778,18 @@ export type Database = {
         Returns: boolean
       }
       cleanup_rate_limits: { Args: never; Returns: undefined }
+      create_invoice_with_items: {
+        Args: {
+          _credit_ids?: string[]
+          _due_date: string
+          _items?: Json
+          _notes?: string
+          _org_id: string
+          _payer_guardian_id?: string
+          _payer_student_id?: string
+        }
+        Returns: Json
+      }
       find_waitlist_matches: {
         Args: {
           _absent_student_id: string
