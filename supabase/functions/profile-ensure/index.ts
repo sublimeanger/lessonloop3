@@ -104,11 +104,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Also create the default owner role
-    await adminClient
-      .from('user_roles')
-      .insert({ user_id: user.id, role: 'owner' })
-      .select();
+    // Role assignment is handled by:
+    // - handle_new_user() trigger for normal signups (assigns 'owner')
+    // - invite-accept edge function for invited users (assigns via org_memberships)
 
     console.log('[profile-ensure] Profile created successfully');
 
