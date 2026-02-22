@@ -181,7 +181,6 @@ export function useCreateInvoice() {
       payer_guardian_id?: string | null;
       payer_student_id?: string | null;
       notes?: string;
-      vat_rate?: number;
       credit_ids?: string[];
       items: Array<{
         description: string;
@@ -193,94 +192,31 @@ export function useCreateInvoice() {
     }) => {
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
-      const subtotal = data.items.reduce(
-        (sum, item) => sum + item.quantity * item.unit_price_minor,
-        0
-      );
-      const vatRate = data.vat_rate ?? (currentOrg.vat_enabled ? currentOrg.vat_rate : 0);
-      const taxMinor = Math.round(subtotal * (vatRate / 100));
-      
-      let creditOffsetMinor = 0;
-      if (data.credit_ids && data.credit_ids.length > 0) {
-        const { data: credits, error: creditsError } = await supabase
-          .from('make_up_credits')
-          .select('id, credit_value_minor')
-          .in('id', data.credit_ids)
-          .is('redeemed_at', null);
+      const { data: result, error } = await supabase.rpc('create_invoice_with_items', {
+        _org_id: currentOrg.id,
+        _due_date: data.due_date,
+        _payer_guardian_id: data.payer_guardian_id || null,
+        _payer_student_id: data.payer_student_id || null,
+        _notes: data.notes || null,
+        _credit_ids: data.credit_ids || [],
+        _items: JSON.stringify(data.items.map(item => ({
+          description: item.description,
+          quantity: item.quantity,
+          unit_price_minor: item.unit_price_minor,
+          linked_lesson_id: item.linked_lesson_id || null,
+          student_id: item.student_id || null,
+        }))),
+      });
 
-        if (creditsError) throw creditsError;
-        creditOffsetMinor = credits?.reduce((sum, c) => sum + c.credit_value_minor, 0) || 0;
-      }
-
-      const totalMinor = Math.max(0, subtotal + taxMinor - creditOffsetMinor);
-
-      const { data: invoice, error: invoiceError } = await supabase
-        .from('invoices')
-        .insert({
-          org_id: currentOrg.id,
-          invoice_number: '',
-          due_date: data.due_date,
-          payer_guardian_id: data.payer_guardian_id || null,
-          payer_student_id: data.payer_student_id || null,
-          notes: data.notes || null,
-          vat_rate: vatRate,
-          subtotal_minor: subtotal,
-          tax_minor: taxMinor,
-          credit_applied_minor: creditOffsetMinor,
-          total_minor: totalMinor,
-          currency_code: currentOrg.currency_code,
-        })
-        .select()
-        .single();
-
-      if (invoiceError) throw invoiceError;
-
-      const itemsToInsert = data.items.map((item) => ({
-        invoice_id: invoice.id,
-        org_id: currentOrg.id,
-        description: item.description,
-        quantity: item.quantity,
-        unit_price_minor: item.unit_price_minor,
-        amount_minor: item.quantity * item.unit_price_minor,
-        linked_lesson_id: item.linked_lesson_id || null,
-        student_id: item.student_id || null,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('invoice_items')
-        .insert(itemsToInsert);
-
-      if (itemsError) throw itemsError;
-
-      if (data.credit_ids && data.credit_ids.length > 0) {
-        const { error: redeemError } = await supabase
-          .from('make_up_credits')
-          .update({
-            redeemed_at: new Date().toISOString(),
-            notes: `Applied to invoice_id:${invoice.id}`,
-          })
-          .in('id', data.credit_ids);
-
-        if (redeemError) {
-          logger.error('Failed to mark credits as redeemed:', redeemError);
-          // Invoice is created but credits weren't marked as redeemed
-          // Return the invoice but flag the issue for the caller
-          return { ...invoice, _creditRedemptionFailed: true };
-        }
-      }
-
-      return invoice;
+      if (error) throw error;
+      return result as { id: string; invoice_number: string; total_minor: number };
     },
-    onSuccess: (data: any) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
       queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
       queryClient.invalidateQueries({ queryKey: ['available-credits-for-payer'] });
-      if (data._creditRedemptionFailed) {
-        toast({ title: 'Warning', description: 'Invoice created, but credits could not be marked as redeemed. Please check the credits manually.', variant: 'destructive' });
-      } else {
-        toast({ title: 'Invoice created' });
-      }
+      toast({ title: 'Invoice created' });
     },
     onError: (error) => {
       toast({ title: 'Error', description: 'Failed to create invoice: ' + error.message, variant: 'destructive' });
