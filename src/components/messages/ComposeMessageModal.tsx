@@ -124,7 +124,7 @@ export function ComposeMessageModal({
         .eq('org_id', currentOrg.id);
 
       if (data) {
-        const students = data.map((sg: any) => ({
+        const students = data.map((sg: { students: { id: string; first_name: string; last_name: string } }) => ({
           id: sg.students.id,
           name: `${sg.students.first_name} ${sg.students.last_name}`,
         }));
