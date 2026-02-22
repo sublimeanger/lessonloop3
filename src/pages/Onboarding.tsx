@@ -251,6 +251,7 @@ export default function Onboarding() {
             org_type: orgType,
             full_name: fullName.trim(),
             subscription_plan: selectedPlan,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/London',
           }),
           signal: controller.signal,
         });

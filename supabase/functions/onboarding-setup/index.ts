@@ -12,6 +12,7 @@ interface OnboardingRequest {
   full_name: string;
   phone?: string;
   subscription_plan?: 'solo_teacher' | 'academy' | 'agency';
+  timezone?: string;
 }
 
 Deno.serve(async (req) => {
@@ -204,9 +205,10 @@ Deno.serve(async (req) => {
         id: orgId,
         name: org_name,
         org_type,
+        // TODO: detect country/currency from timezone or collect during onboarding
         country_code: 'GB',
         currency_code: 'GBP',
-        timezone: 'Europe/London',
+        timezone: body.timezone || 'Europe/London',
         created_by: user.id,
         subscription_plan: plan,
         subscription_status: 'trialing',
