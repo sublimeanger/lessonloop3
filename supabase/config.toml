@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.installment-upcoming-reminder]
 verify_jwt = false
+
+[functions.notify-makeup-offer]
+verify_jwt = false
