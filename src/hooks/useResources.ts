@@ -133,20 +133,17 @@ export function useDeleteResource() {
 
   return useMutation({
     mutationFn: async (resource: Resource) => {
-      // Delete file from storage
-      const { error: storageError } = await supabase.storage
-        .from('teaching-resources')
-        .remove([resource.file_path]);
-
-      if (storageError) throw storageError;
-
-      // Delete resource record (cascade deletes shares)
+      // Delete DB record first (cascade deletes shares)
       const { error } = await supabase
         .from('resources')
         .delete()
         .eq('id', resource.id);
-
       if (error) throw error;
+
+      // Then clean up storage (best-effort — orphaned files are harmless)
+      await supabase.storage
+        .from('teaching-resources')
+        .remove([resource.file_path]);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['resources'] });
