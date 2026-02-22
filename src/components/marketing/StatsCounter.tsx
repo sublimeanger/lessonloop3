@@ -1,29 +1,25 @@
 import { motion } from "framer-motion";
-import { Calendar, Receipt, Users, Shield } from "lucide-react";
+
 
 const stats = [
   { 
-    label: "Unlimited Students",
-    sublabel: "On every plan",
-    icon: Users,
+    value: "50+",
+    label: "Features built for music teaching",
     color: "from-teal to-teal-dark"
   },
   { 
-    label: "Automated Billing",
-    sublabel: "Invoice runs in clicks",
-    icon: Receipt,
+    value: "< 2 min",
+    label: "To generate a full invoice run",
     color: "from-coral to-coral-dark"
   },
   { 
-    label: "Purpose-Built",
-    sublabel: "For UK music teachers",
-    icon: Calendar,
+    value: "24/7",
+    label: "Parent portal access for families",
     color: "from-violet-500 to-violet-600"
   },
   { 
-    label: "GDPR Compliant",
-    sublabel: "Secure by design",
-    icon: Shield,
+    value: "Zero",
+    label: "Spreadsheets needed",
     color: "from-emerald-500 to-emerald-600"
   },
 ];
@@ -74,25 +70,20 @@ export function StatsCounter() {
               transition={{ delay: i * 0.1, duration: 0.5 }}
               className="text-center"
             >
-              {/* Icon */}
+              {/* Value */}
               <motion.div
                 initial={{ scale: 0 }}
                 whileInView={{ scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.2 + i * 0.1, type: "spring" }}
-                className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${stat.color} mx-auto mb-4 flex items-center justify-center shadow-lg`}
+                className={`text-4xl lg:text-5xl font-extrabold mb-3 bg-gradient-to-br ${stat.color} bg-clip-text text-transparent`}
               >
-                <stat.icon className="w-7 h-7 text-white" />
+                {stat.value}
               </motion.div>
 
               {/* Label */}
-              <div className="text-xl lg:text-2xl font-bold text-white mb-1">
+              <div className="text-white/70 text-sm lg:text-base">
                 {stat.label}
-              </div>
-
-              {/* Sublabel */}
-              <div className="text-white/60 text-sm lg:text-base">
-                {stat.sublabel}
               </div>
             </motion.div>
           ))}
