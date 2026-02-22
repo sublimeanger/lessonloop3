@@ -56,11 +56,11 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
         .eq('org_id', currentOrg.id)
         .eq('student_id', studentId);
       if (error) throw error;
-      return (data || []).map((a: any) => ({
+      return (data || []).map((a) => ({
         id: a.id,
         teacher_id: a.teacher_id,
         is_primary: a.is_primary,
-        teacher: a.teacher,
+        teacher: a.teacher as unknown as TeacherAssignment['teacher'],
       })) as TeacherAssignment[];
     },
     enabled: !!currentOrg && !!studentId,

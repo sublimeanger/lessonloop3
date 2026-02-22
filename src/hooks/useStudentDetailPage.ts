@@ -99,9 +99,9 @@ export function useStudentDetailPage() {
         .select(`*, guardian:guardians(id, full_name, email, phone, user_id)`)
         .eq('student_id', id!);
 
-      const mapped = (data || []).map((sg: any) => ({
+      const mapped = (data || []).map((sg) => ({
         ...sg,
-        guardian: sg.guardian as Guardian,
+        guardian: sg.guardian as unknown as Guardian,
       }));
 
       const { data: allG } = await supabase
@@ -343,8 +343,9 @@ export function useStudentDetailPage() {
         toast({ title: 'Student archived', description: `${student.first_name} ${student.last_name} has been soft-deleted. Historical records preserved.` });
         navigate('/students');
       }
-    } catch (err: any) {
-      toast({ title: 'Error deleting', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      toast({ title: 'Error deleting', description: message, variant: 'destructive' });
     } finally {
       setIsDeleting(false);
       setDeleteDialogOpen(false);
@@ -518,8 +519,9 @@ export function useStudentDetailPage() {
       });
 
       invalidateGuardians();
-    } catch (error: any) {
-      toast({ title: 'Error sending invite', description: error.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: 'Error sending invite', description: message, variant: 'destructive' });
     } finally {
       setInvitingGuardianId(null);
     }
@@ -564,8 +566,9 @@ export function useStudentDetailPage() {
       toast({ title: 'Guardian updated', description: 'Contact details have been saved.' });
       setEditGuardianDialog(prev => ({ ...prev, open: false }));
       invalidateGuardians();
-    } catch (error: any) {
-      toast({ title: 'Error updating guardian', description: error.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: 'Error updating guardian', description: message, variant: 'destructive' });
     } finally {
       setIsEditGuardianSaving(false);
     }

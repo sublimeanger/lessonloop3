@@ -169,7 +169,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
     
     try {
       // 1. Create the student
-      const studentPayload: any = {
+      const studentPayload = {
         org_id: currentOrg.id,
         first_name: studentData.firstName.trim(),
         last_name: studentData.lastName.trim(),
@@ -278,11 +278,11 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
       queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
       onSuccess?.();
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Student creation error:', error);
       toast({ 
         title: 'Error creating student', 
-        description: error.message, 
+        description: error instanceof Error ? error.message : 'Unknown error', 
         variant: 'destructive' 
       });
     } finally {

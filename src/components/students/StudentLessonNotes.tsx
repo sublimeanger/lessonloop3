@@ -16,6 +16,18 @@ interface LessonNote {
   teacher_name: string | null;
 }
 
+interface LessonParticipantRow {
+  lesson: {
+    id: string;
+    title: string;
+    start_at: string;
+    status: string;
+    notes_shared: string | null;
+    notes_private?: string | null;
+    teacher: { display_name: string } | null;
+  };
+}
+
 interface StudentLessonNotesProps {
   studentId: string;
 }
@@ -58,19 +70,19 @@ export function StudentLessonNotes({ studentId }: StudentLessonNotesProps) {
           .eq('org_id', currentOrg.id);
 
         const allLessons = (sharedData || [])
-          .map((lp: any) => lp.lesson)
-          .filter((l: any) => l && (l.notes_shared || (isOrgAdmin && l.notes_private)))
-          .sort((a: any, b: any) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime());
+          .map((lp) => (lp as unknown as LessonParticipantRow).lesson)
+          .filter((l) => l && (l.notes_shared || (isOrgAdmin && l.notes_private)))
+          .sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime());
 
         // Deduplicate by id
         const seen = new Set<string>();
-        const unique = allLessons.filter((l: any) => {
+        const unique = allLessons.filter((l) => {
           if (seen.has(l.id)) return false;
           seen.add(l.id);
           return true;
         });
 
-        setNotes(unique.map((l: any) => ({
+        setNotes(unique.map((l) => ({
           id: l.id,
           title: l.title,
           start_at: l.start_at,
@@ -87,8 +99,8 @@ export function StudentLessonNotes({ studentId }: StudentLessonNotesProps) {
       const seen = new Set<string>();
       const lessonNotes: LessonNote[] = [];
 
-      (data || []).forEach((lp: any) => {
-        const l = lp.lesson;
+      (data || []).forEach((lp) => {
+        const l = (lp as unknown as LessonParticipantRow).lesson;
         if (!l || seen.has(l.id)) return;
         if (!l.notes_shared && !(isOrgAdmin && l.notes_private)) return;
         seen.add(l.id);
