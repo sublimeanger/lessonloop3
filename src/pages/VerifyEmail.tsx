@@ -33,8 +33,9 @@ export default function VerifyEmail() {
       if (error) throw error;
       toast({ title: 'Verification email sent', description: 'Please check your inbox.' });
       setCooldownSeconds(60);
-    } catch (err: any) {
-      toast({ title: 'Resend failed', description: err.message || 'Failed to resend verification email', variant: 'destructive' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to resend verification email';
+      toast({ title: 'Resend failed', description: message, variant: 'destructive' });
     } finally {
       setResending(false);
     }

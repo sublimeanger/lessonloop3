@@ -74,8 +74,9 @@ export default function ResetPassword() {
       setTimeout(() => {
         navigate('/dashboard');
       }, 2000);
-    } catch (error: any) {
-      toast({ title: 'Update failed', description: error.message || 'Failed to update password', variant: 'destructive' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update password';
+      toast({ title: 'Update failed', description: message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }

@@ -91,7 +91,7 @@ export default function AcceptInvite() {
       setInvite(data.invite);
       setOrganisation(data.organisation);
       setIsLoading(false);
-    } catch (err: any) {
+    } catch (err) {
       logger.error('Error fetching invite:', err);
       setError('Failed to load invitation');
       setIsLoading(false);
@@ -129,8 +129,9 @@ export default function AcceptInvite() {
       } else {
         navigate('/dashboard');
       }
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
     } finally {
       setIsAccepting(false);
     }
@@ -220,8 +221,9 @@ export default function AcceptInvite() {
           navigate('/dashboard');
         }
       }
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
     } finally {
       setIsAccepting(false);
     }
