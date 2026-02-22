@@ -1,62 +1,20 @@
 /**
  * LL-REG-P0-01: Daily Register / Attendance Tests
- * Tests attendance upsert logic, lesson completion, and teacher scope filtering.
+ * Tests the actual production utility functions used by useRegisterData.
  */
 import { describe, it, expect } from 'vitest';
-
-// Pure logic extracted from useRegisterData for testing
-
-type AttendanceStatus = 'present' | 'absent' | 'late';
-
-interface AttendanceRecord {
-  lesson_id: string;
-  student_id: string;
-  attendance_status: AttendanceStatus;
-  recorded_by: string;
-}
-
-interface RegisterLesson {
-  id: string;
-  title: string;
-  status: 'scheduled' | 'completed' | 'cancelled';
-  teacher_user_id: string;
-  participants: Array<{
-    student_id: string;
-    student_name: string;
-    attendance_status: AttendanceStatus | null;
-  }>;
-}
-
-// Simulate the attendance upsert merge logic
-function mergeAttendance(
-  participants: RegisterLesson['participants'],
-  records: AttendanceRecord[]
-): RegisterLesson['participants'] {
-  const recordMap = new Map(records.map(r => [r.student_id, r.attendance_status]));
-  return participants.map(p => ({
-    ...p,
-    attendance_status: recordMap.get(p.student_id) ?? p.attendance_status,
-  }));
-}
-
-// Simulate teacher scope filtering
-function filterByTeacher(
-  lessons: RegisterLesson[],
-  isTeacher: boolean,
-  teacherUserId: string | null
-): RegisterLesson[] {
-  if (!isTeacher || !teacherUserId) return lessons;
-  return lessons.filter(l => l.teacher_user_id === teacherUserId);
-}
+import { mergeAttendance, filterByTeacher } from '@/lib/attendance-utils';
+import type { ParticipantRow, AttendanceRecord } from '@/lib/attendance-utils';
+import type { AttendanceStatus } from '@/hooks/useRegisterData';
 
 describe('LL-REG-P0-01: Daily Register', () => {
-  describe('Attendance status upsert', () => {
+  describe('Attendance status upsert (mergeAttendance)', () => {
     it('sets student attendance to present', () => {
-      const participants = [
-        { student_id: 's1', student_name: 'Alice Smith', attendance_status: null as AttendanceStatus | null },
+      const participants: ParticipantRow[] = [
+        { student_id: 's1', student_name: 'Alice Smith', attendance_status: null },
       ];
       const records: AttendanceRecord[] = [
-        { lesson_id: 'l1', student_id: 's1', attendance_status: 'present', recorded_by: 'u1' },
+        { student_id: 's1', attendance_status: 'present' },
       ];
 
       const result = mergeAttendance(participants, records);
@@ -64,11 +22,11 @@ describe('LL-REG-P0-01: Daily Register', () => {
     });
 
     it('sets student attendance to absent', () => {
-      const participants = [
-        { student_id: 's1', student_name: 'Alice', attendance_status: null as AttendanceStatus | null },
+      const participants: ParticipantRow[] = [
+        { student_id: 's1', student_name: 'Alice', attendance_status: null },
       ];
       const records: AttendanceRecord[] = [
-        { lesson_id: 'l1', student_id: 's1', attendance_status: 'absent', recorded_by: 'u1' },
+        { student_id: 's1', attendance_status: 'absent' },
       ];
 
       const result = mergeAttendance(participants, records);
@@ -76,27 +34,42 @@ describe('LL-REG-P0-01: Daily Register', () => {
     });
 
     it('sets student attendance to late', () => {
-      const participants = [
-        { student_id: 's1', student_name: 'Alice', attendance_status: null as AttendanceStatus | null },
+      const participants: ParticipantRow[] = [
+        { student_id: 's1', student_name: 'Alice', attendance_status: null },
       ];
       const records: AttendanceRecord[] = [
-        { lesson_id: 'l1', student_id: 's1', attendance_status: 'late', recorded_by: 'u1' },
+        { student_id: 's1', attendance_status: 'late' },
       ];
 
       const result = mergeAttendance(participants, records);
       expect(result[0].attendance_status).toBe('late');
     });
 
-    it('handles multiple students in one lesson', () => {
-      const participants = [
-        { student_id: 's1', student_name: 'Alice', attendance_status: null as AttendanceStatus | null },
-        { student_id: 's2', student_name: 'Bob', attendance_status: null as AttendanceStatus | null },
-        { student_id: 's3', student_name: 'Charlie', attendance_status: null as AttendanceStatus | null },
+    it('supports cancellation statuses', () => {
+      const participants: ParticipantRow[] = [
+        { student_id: 's1', student_name: 'Alice', attendance_status: null },
+        { student_id: 's2', student_name: 'Bob', attendance_status: null },
       ];
       const records: AttendanceRecord[] = [
-        { lesson_id: 'l1', student_id: 's1', attendance_status: 'present', recorded_by: 'u1' },
-        { lesson_id: 'l1', student_id: 's2', attendance_status: 'absent', recorded_by: 'u1' },
-        { lesson_id: 'l1', student_id: 's3', attendance_status: 'late', recorded_by: 'u1' },
+        { student_id: 's1', attendance_status: 'cancelled_by_teacher' },
+        { student_id: 's2', attendance_status: 'cancelled_by_student' },
+      ];
+
+      const result = mergeAttendance(participants, records);
+      expect(result[0].attendance_status).toBe('cancelled_by_teacher');
+      expect(result[1].attendance_status).toBe('cancelled_by_student');
+    });
+
+    it('handles multiple students in one lesson', () => {
+      const participants: ParticipantRow[] = [
+        { student_id: 's1', student_name: 'Alice', attendance_status: null },
+        { student_id: 's2', student_name: 'Bob', attendance_status: null },
+        { student_id: 's3', student_name: 'Charlie', attendance_status: null },
+      ];
+      const records: AttendanceRecord[] = [
+        { student_id: 's1', attendance_status: 'present' },
+        { student_id: 's2', attendance_status: 'absent' },
+        { student_id: 's3', attendance_status: 'late' },
       ];
 
       const result = mergeAttendance(participants, records);
@@ -106,12 +79,12 @@ describe('LL-REG-P0-01: Daily Register', () => {
     });
 
     it('preserves null for unrecorded students', () => {
-      const participants = [
-        { student_id: 's1', student_name: 'Alice', attendance_status: null as AttendanceStatus | null },
-        { student_id: 's2', student_name: 'Bob', attendance_status: null as AttendanceStatus | null },
+      const participants: ParticipantRow[] = [
+        { student_id: 's1', student_name: 'Alice', attendance_status: null },
+        { student_id: 's2', student_name: 'Bob', attendance_status: null },
       ];
       const records: AttendanceRecord[] = [
-        { lesson_id: 'l1', student_id: 's1', attendance_status: 'present', recorded_by: 'u1' },
+        { student_id: 's1', attendance_status: 'present' },
       ];
 
       const result = mergeAttendance(participants, records);
@@ -122,25 +95,25 @@ describe('LL-REG-P0-01: Daily Register', () => {
 
   describe('Lesson completion', () => {
     it('mark complete changes status from scheduled to completed', () => {
-      const lesson: RegisterLesson = {
+      const lesson = {
         id: 'l1',
         title: 'Piano Lesson',
-        status: 'scheduled',
+        status: 'scheduled' as const,
         teacher_user_id: 'u1',
+        teacher_id: null,
         participants: [],
       };
 
-      // Simulate the mutation effect
       const updated = { ...lesson, status: 'completed' as const };
       expect(updated.status).toBe('completed');
     });
   });
 
-  describe('Teacher scope filtering', () => {
-    const lessons: RegisterLesson[] = [
-      { id: 'l1', title: 'Piano - Alice', status: 'scheduled', teacher_user_id: 'teacher-1', participants: [] },
-      { id: 'l2', title: 'Guitar - Bob', status: 'scheduled', teacher_user_id: 'teacher-2', participants: [] },
-      { id: 'l3', title: 'Piano - Charlie', status: 'scheduled', teacher_user_id: 'teacher-1', participants: [] },
+  describe('Teacher scope filtering (filterByTeacher)', () => {
+    const lessons = [
+      { id: 'l1', title: 'Piano - Alice', status: 'scheduled', teacher_user_id: 'teacher-1', teacher_id: 't1', participants: [] },
+      { id: 'l2', title: 'Guitar - Bob', status: 'scheduled', teacher_user_id: 'teacher-2', teacher_id: 't2', participants: [] },
+      { id: 'l3', title: 'Piano - Charlie', status: 'scheduled', teacher_user_id: 'teacher-1', teacher_id: 't1', participants: [] },
     ];
 
     it('owner/admin sees all lessons (no filter)', () => {
