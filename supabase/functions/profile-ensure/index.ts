@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
 Deno.serve(async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
@@ -35,6 +36,12 @@ Deno.serve(async (req) => {
     }
 
     console.log('[profile-ensure] User verified:', user.id);
+
+    // Per-user rate limiting
+    const rlResult = await checkRateLimit(user.id, "profile-ensure");
+    if (!rlResult.allowed) {
+      return rateLimitResponse(corsHeaders, rlResult);
+    }
 
     // Use service role client to bypass RLS
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {

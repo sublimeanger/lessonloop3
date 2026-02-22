@@ -34,6 +34,10 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   "gdpr-export":           { maxRequests: 5,   windowMinutes: 60 },
   "gdpr-delete":           { maxRequests: 5,   windowMinutes: 60 },
 
+  // Auth flows
+  "invite-accept":         { maxRequests: 10,  windowMinutes: 1 },
+  "profile-ensure":        { maxRequests: 5,   windowMinutes: 1 },
+
   // Default for regular queries
   "default":               { maxRequests: 100, windowMinutes: 1 },
 };
