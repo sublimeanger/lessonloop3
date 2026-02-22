@@ -73,10 +73,13 @@ export function ShareResourceModal({ open, onOpenChange, resource }: ShareResour
   };
 
   const handleSelectAll = () => {
-    if (selectedStudents.length === filteredStudents.length) {
-      setSelectedStudents([]);
+    const filteredIds = new Set(filteredStudents.map(s => s.id));
+    const allFilteredSelected = filteredStudents.every(s => selectedStudents.includes(s.id));
+
+    if (allFilteredSelected) {
+      setSelectedStudents(prev => prev.filter(id => !filteredIds.has(id)));
     } else {
-      setSelectedStudents(filteredStudents.map(s => s.id));
+      setSelectedStudents(prev => [...new Set([...prev, ...filteredIds])]);
     }
   };
 
@@ -125,10 +128,10 @@ export function ShareResourceModal({ open, onOpenChange, resource }: ShareResour
             <>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">
-                  {selectedStudents.length} of {filteredStudents.length} selected
+                  {selectedStudents.length} selected ({filteredStudents.filter(s => selectedStudents.includes(s.id)).length} shown)
                 </span>
                 <Button variant="ghost" size="sm" onClick={handleSelectAll}>
-                  {selectedStudents.length === filteredStudents.length ? 'Deselect all' : 'Select all'}
+                  {filteredStudents.every(s => selectedStudents.includes(s.id)) ? 'Deselect all' : 'Select all'}
                 </Button>
               </div>
 
