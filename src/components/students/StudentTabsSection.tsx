@@ -27,7 +27,7 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
 
   return (
     <Tabs defaultValue="overview" className="space-y-6">
-      <TabsList className="flex overflow-x-auto scrollbar-hide gap-1 h-auto pb-1">
+      <TabsList className="flex w-full overflow-x-auto scrollbar-hide gap-1 h-auto pb-1 justify-start">
         <TabsTrigger value="overview" className="shrink-0">Overview</TabsTrigger>
         <TabsTrigger value="teachers" className="shrink-0">Teachers</TabsTrigger>
         <TabsTrigger value="guardians" className="shrink-0">Guardians</TabsTrigger>
