@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
+import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 
 const BATCH_SIZE = 50; // Resend recommends max 100/s; 50 parallel is safe
 
@@ -23,6 +24,7 @@ interface Guardian {
   id: string;
   full_name: string;
   email: string;
+  user_id: string | null;
 }
 
 interface SendResult {
@@ -200,9 +202,10 @@ const handler = async (req: Request): Promise<Response> => {
     `;
     const fromAddress = `${orgName} <notifications@lessonloop.net>`;
 
-    // ---- Parallel batched sending ----
+    // ---- Parallel batched sending with preference checks ----
     const allResults: SendResult[] = [];
     const errorDetails: string[] = [];
+    let skippedByPreference = 0;
 
     if (!resendApiKey) {
       // No API key – mark all as failed
@@ -215,9 +218,25 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
     } else {
+      // Filter out guardians who opted out of marketing emails
+      const eligibleGuardians: Guardian[] = [];
+      for (const g of guardians) {
+        if (g.user_id) {
+          const prefEnabled = await isNotificationEnabled(
+            supabase, data.org_id, g.user_id, "email_marketing"
+          );
+          if (!prefEnabled) {
+            skippedByPreference++;
+            continue;
+          }
+        }
+        // No user_id = not registered yet, default to allowing send
+        eligibleGuardians.push(g);
+      }
+
       // Process in batches of BATCH_SIZE
-      for (let i = 0; i < guardians.length; i += BATCH_SIZE) {
-        const chunk = guardians.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < eligibleGuardians.length; i += BATCH_SIZE) {
+        const chunk = eligibleGuardians.slice(i, i + BATCH_SIZE);
 
         const batchResults = await Promise.allSettled(
           chunk.map((g) =>
@@ -232,7 +251,6 @@ const handler = async (req: Request): Promise<Response> => {
               errorDetails.push(`${result.value.email}: ${result.value.error}`);
             }
           } else {
-            // Shouldn't happen since sendSingleEmail catches, but just in case
             allResults.push({
               guardianId: "unknown",
               email: "unknown",
@@ -244,7 +262,7 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         // Small delay between batches to stay under Resend rate limits
-        if (i + BATCH_SIZE < guardians.length) {
+        if (i + BATCH_SIZE < eligibleGuardians.length) {
           await new Promise((resolve) => setTimeout(resolve, 200));
         }
       }
@@ -296,7 +314,8 @@ const handler = async (req: Request): Promise<Response> => {
         recipient_count: guardians.length,
         sent_count: sentCount,
         failed_count: failedCount,
-        errors: errorDetails.slice(0, 20), // Cap at 20 to avoid huge payloads
+        skipped_by_preference: skippedByPreference,
+        errors: errorDetails.slice(0, 20),
       }),
       {
         status: 200,
@@ -364,7 +383,7 @@ async function fetchFilteredGuardians(
 
   const { data: guardians, error: guardianError } = await supabase
     .from("guardians")
-    .select("id, full_name, email")
+    .select("id, full_name, email, user_id")
     .in("id", guardianIds)
     .is("deleted_at", null)
     .not("email", "is", null);
