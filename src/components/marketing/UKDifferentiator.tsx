@@ -1,23 +1,19 @@
 import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
+import { PoundSterling, Receipt, Calendar, CalendarOff, Shield, Clock } from "lucide-react";
 
 const ukFeatures = [
-  { emoji: "🇬🇧", title: "GBP & Pence", desc: "No currency conversion headaches" },
-  { emoji: "📋", title: "UK VAT", desc: "Calculated and displayed automatically" },
-  { emoji: "🏫", title: "Term Dates", desc: "Configure your own term structure" },
-  { emoji: "🎄", title: "Bank Holidays", desc: "Auto-skip UK public holidays" },
-  { emoji: "🔒", title: "GDPR", desc: "Compliant by design, UK data residency" },
-  { emoji: "⏰", title: "UK Time Zones", desc: "No confusing UTC offsets" },
+  { icon: PoundSterling, title: "GBP & Pence", desc: "No currency conversion headaches. Everything in pounds and pence." },
+  { icon: Receipt, title: "UK VAT", desc: "Calculated and displayed automatically on every invoice." },
+  { icon: Calendar, title: "Term Dates", desc: "Configure your own term structure. Lessons auto-skip breaks." },
+  { icon: CalendarOff, title: "Bank Holidays", desc: "UK public holidays built in. No manual blocking." },
+  { icon: Shield, title: "GDPR Compliant", desc: "UK data protection by design. Your data stays in the UK." },
+  { icon: Clock, title: "UK Time Zone", desc: "No confusing UTC offsets. Everything runs on London time." },
 ];
 
 export function UKDifferentiator() {
   return (
-    <section className="py-24 lg:py-32 bg-muted/30 relative overflow-hidden">
-      {/* Subtle accent gradient */}
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-blue-600/3 via-transparent to-transparent rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-red-600/3 via-transparent to-transparent rounded-full blur-3xl pointer-events-none" />
-
-      <div className="container mx-auto px-6 lg:px-8 relative">
+    <section className="py-24 lg:py-32 bg-muted/30">
+      <div className="container mx-auto px-6 lg:px-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -25,18 +21,18 @@ export function UKDifferentiator() {
           viewport={{ once: true }}
           className="text-center max-w-3xl mx-auto mb-14"
         >
-          <Badge variant="outline" className="mb-5 border-primary/30 text-primary">
-            Built for the UK
-          </Badge>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
-            Finally, software that understands
-            <br className="hidden md:block" />
-            {" "}UK music teaching.
+          <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
+            🇬🇧 Built for the UK
+          </span>
+          <h2 className="text-4xl lg:text-5xl font-bold text-foreground">
+            Finally, software that
+            <br />
+            <span className="text-muted-foreground">understands UK music teaching.</span>
           </h2>
         </motion.div>
 
         {/* 2x3 Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-4xl mx-auto">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 max-w-4xl mx-auto">
           {ukFeatures.map((feat, i) => (
             <motion.div
               key={feat.title}
@@ -44,13 +40,13 @@ export function UKDifferentiator() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.07 }}
-              className="flex items-start gap-4 p-5 rounded-2xl border border-border bg-card"
+              className="rounded-2xl border border-border bg-card p-5 hover:border-primary/20 transition-colors"
             >
-              <span className="text-2xl shrink-0 mt-0.5">{feat.emoji}</span>
-              <div>
-                <p className="font-semibold text-foreground">{feat.title}</p>
-                <p className="text-sm text-muted-foreground mt-0.5">{feat.desc}</p>
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                <feat.icon className="w-5 h-5 text-primary" />
               </div>
+              <p className="font-semibold text-foreground">{feat.title}</p>
+              <p className="text-sm text-muted-foreground mt-1">{feat.desc}</p>
             </motion.div>
           ))}
         </div>
@@ -60,13 +56,13 @@ export function UKDifferentiator() {
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="max-w-2xl mx-auto mt-14 text-center"
+          className="max-w-2xl mx-auto mt-12 text-center"
         >
           <p className="text-lg italic text-muted-foreground leading-relaxed">
             "Most music school software is built in North America and retrofitted for the UK.
             LessonLoop was built here, for here."
           </p>
-          <footer className="mt-4 text-sm font-semibold text-foreground">
+          <footer className="mt-4 text-sm text-muted-foreground">
             — Lauren Twilley, Founder
           </footer>
         </motion.blockquote>
