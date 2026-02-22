@@ -8,6 +8,7 @@ import { AISpotlight } from "@/components/marketing/AISpotlight";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
 import { UKDifferentiator } from "@/components/marketing/UKDifferentiator";
 import { StatsCounter } from "@/components/marketing/StatsCounter";
+import { AudiencePaths } from "@/components/marketing/AudiencePaths";
 import { TestimonialsSection } from "@/components/marketing/TestimonialsSection";
 import { CTASection } from "@/components/marketing/CTASection";
 
@@ -23,6 +24,7 @@ export default function MarketingHome() {
       <HowItWorks />
       <UKDifferentiator />
       <StatsCounter />
+      <AudiencePaths />
       <TestimonialsSection />
       <CTASection />
     </MarketingLayout>
