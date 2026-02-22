@@ -775,7 +775,16 @@ export default function Locations() {
                       )}
                     </div>
                     {!location.rooms || location.rooms.length === 0 ? (
-                      <p className="text-xs text-muted-foreground py-3 text-center">No rooms yet. Add rooms to schedule lessons in specific spaces.</p>
+                      <div className="flex flex-col items-center gap-2 py-6">
+                        <DoorOpen className="h-6 w-6 text-muted-foreground" />
+                        <p className="text-xs text-muted-foreground">No rooms yet. Add rooms to schedule lessons in specific spaces.</p>
+                        {isOrgAdmin && (
+                          <Button variant="outline" size="sm" onClick={() => openRoomDialog(location.id)} className="gap-1 h-7 text-xs">
+                            <Plus className="h-3 w-3" />
+                            Add Room
+                          </Button>
+                        )}
+                      </div>
                     ) : (
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                         {location.rooms.map((room) => (
