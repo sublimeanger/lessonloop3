@@ -2,6 +2,19 @@ import { useState, useEffect } from 'react';
 import { logger } from '@/lib/logger';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+
+async function waitForProfile(userId: string): Promise<boolean> {
+  for (let i = 0; i < 10; i++) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+    if (data) return true;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return false;
+}
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -155,8 +168,17 @@ export default function AcceptInvite() {
       if (signUpError) throw signUpError;
       
       if (authData.user) {
-        // Wait for profile trigger and session to be established
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Poll for profile to exist (created by DB trigger)
+        const profileReady = await waitForProfile(authData.user.id);
+        
+        if (!profileReady) {
+          toast({
+            title: 'Account created',
+            description: 'Setup is still processing. Please try logging in shortly.',
+          });
+          navigate('/login');
+          return;
+        }
         
         // Now accept the invite using the edge function
         const response = await supabase.functions.invoke('invite-accept', {
