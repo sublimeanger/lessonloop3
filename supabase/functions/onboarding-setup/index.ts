@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     console.log('[onboarding-setup] User verified:', user.id);
 
     // Idempotency guard: check if user already onboarded
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    // Idempotency guard: check if user already onboarded
     const adminClientEarly = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false }
     });
@@ -72,11 +72,45 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body: OnboardingRequest = await req.json();
-    const { org_name, org_type, full_name, phone, subscription_plan } = body;
+    let { org_name, org_type, full_name, phone, subscription_plan } = body;
 
     if (!org_name || !org_type || !full_name) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: org_name, org_type, full_name' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Sanitise: strip control characters and trim
+    const stripControl = (s: string) => s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim();
+    full_name = stripControl(full_name);
+    org_name = stripControl(org_name);
+
+    if (full_name.length === 0 || full_name.length > 100) {
+      return new Response(
+        JSON.stringify({ error: 'Full name must be between 1 and 100 characters' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (org_name.length === 0 || org_name.length > 100) {
+      return new Response(
+        JSON.stringify({ error: 'Organisation name must be between 1 and 100 characters' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const VALID_ORG_TYPES = ['solo_teacher', 'studio', 'academy', 'agency'];
+    if (!VALID_ORG_TYPES.includes(org_type)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid organisation type' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const VALID_PLANS = ['solo_teacher', 'academy', 'agency'];
+    if (subscription_plan && !VALID_PLANS.includes(subscription_plan)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid subscription plan' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
