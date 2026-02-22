@@ -164,23 +164,14 @@ export function useConfirmMakeUp() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ waitlistId, lessonId, studentId }: { waitlistId: string; lessonId: string; studentId: string }) => {
+    mutationFn: async ({ waitlistId }: { waitlistId: string; lessonId?: string; studentId?: string }) => {
       if (!currentOrg?.id) throw new Error('No org');
 
-      // Add student to lesson participants
-      const { error: partError } = await supabase
-        .from('lesson_participants')
-        .insert({ lesson_id: lessonId, student_id: studentId, org_id: currentOrg.id });
-
-      if (partError) throw partError;
-
-      // Update waitlist entry
-      const { data, error } = await supabase
-        .from('make_up_waitlist')
-        .update({ status: 'booked', booked_lesson_id: lessonId })
-        .eq('id', waitlistId)
-        .select()
-        .single();
+      // Atomic server-side confirm: locks row, validates status, checks duplicates, inserts participant
+      const { data, error } = await supabase.rpc('confirm_makeup_booking', {
+        _waitlist_id: waitlistId,
+        _org_id: currentOrg.id,
+      });
 
       if (error) throw error;
       return data;
