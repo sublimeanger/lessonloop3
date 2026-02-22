@@ -3,7 +3,8 @@ import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, parseISO, isAfter, isBefore, differenceInMinutes } from 'date-fns';
+import { parseISO, isAfter, isBefore, differenceInMinutes, startOfDay, endOfDay } from 'date-fns';
+import { fromZonedTime } from 'date-fns-tz';
 
 export interface TodayLesson {
   id: string;
@@ -37,8 +38,10 @@ export function useTodayLessons() {
     queryFn: async (): Promise<TodayLesson[]> => {
       if (!currentOrg) return [];
       
-      const today = new Date();
-      const todayStr = format(today, 'yyyy-MM-dd');
+      const tz = (currentOrg as any).timezone || 'Europe/London';
+      const now = new Date();
+      const todayStart = fromZonedTime(startOfDay(now), tz).toISOString();
+      const todayEnd = fromZonedTime(endOfDay(now), tz).toISOString();
       
       try {
         let query = supabase
@@ -69,8 +72,8 @@ export function useTodayLessons() {
             )
           `)
           .eq('org_id', currentOrg.id)
-          .gte('start_at', `${todayStr}T00:00:00`)
-          .lte('start_at', `${todayStr}T23:59:59`)
+          .gte('start_at', todayStart)
+          .lte('start_at', todayEnd)
           .order('start_at', { ascending: true });
         
         // If user is a teacher in an academy, only show their lessons
