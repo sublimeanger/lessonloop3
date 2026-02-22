@@ -19,6 +19,7 @@ import {
   Loader2,
   Users,
   Check,
+  Eye,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ResourceWithShares, useDeleteResource } from '@/hooks/useResources';
@@ -34,6 +35,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { getFileIcon, getFileTypeBadge, formatFileSize } from '@/lib/fileUtils';
+import { ResourcePreviewModal, isPreviewable } from './ResourcePreviewModal';
+import { AudioPlayer } from './AudioPlayer';
 
 interface ResourceCardProps {
   resource: ResourceWithShares;
@@ -46,6 +49,7 @@ interface ResourceCardProps {
 export function ResourceCard({ resource, onShare, selectionMode, selected, onToggleSelect }: ResourceCardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -53,6 +57,8 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
   const deleteMutation = useDeleteResource();
 
   const canDelete = currentRole === 'owner' || currentRole === 'admin' || user?.id === resource.uploaded_by;
+  const canPreview = isPreviewable(resource.file_type) !== 'none';
+  const isAudio = resource.file_type.startsWith('audio/');
 
   const FileIcon = getFileIcon(resource.file_type);
   const shareCount = resource.resource_shares?.length || 0;
@@ -83,6 +89,13 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
     setShowDeleteConfirm(false);
   };
 
+  const handleTitleClick = () => {
+    if (selectionMode) return;
+    if (canPreview) {
+      setPreviewOpen(true);
+    }
+  };
+
   return (
     <>
       <Card
@@ -96,12 +109,24 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
                 {selected && <Check className="h-3.5 w-3.5" />}
               </div>
             )}
-            <div className="p-2 rounded-lg bg-muted shrink-0">
+            <button
+              type="button"
+              className={`p-2 rounded-lg bg-muted shrink-0 ${canPreview && !selectionMode ? 'hover:bg-primary/10 cursor-pointer transition-colors' : ''}`}
+              onClick={handleTitleClick}
+              disabled={selectionMode || !canPreview}
+              title={canPreview ? 'Preview' : undefined}
+            >
               <FileIcon className="h-6 w-6 text-muted-foreground" />
-            </div>
+            </button>
 
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium truncate" title={resource.title}>
+              <h3
+                className={`font-medium truncate ${canPreview && !selectionMode ? 'hover:text-primary cursor-pointer' : ''}`}
+                title={resource.title}
+                onClick={handleTitleClick}
+                role={canPreview ? 'button' : undefined}
+                tabIndex={canPreview && !selectionMode ? 0 : undefined}
+              >
                 {resource.title}
               </h3>
               {resource.description && (
@@ -126,41 +151,61 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
                   Shared with {shareCount} student{shareCount !== 1 ? 's' : ''}
                 </div>
               )}
+              {isAudio && !selectionMode && (
+                <AudioPlayer filePath={resource.file_path} title={resource.title} />
+              )}
             </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="shrink-0">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleDownload} disabled={isDownloading}>
-                  {isDownloading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="mr-2 h-4 w-4" />
+            {!selectionMode && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="shrink-0">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {canPreview && (
+                    <DropdownMenuItem onClick={() => setPreviewOpen(true)}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Preview
+                    </DropdownMenuItem>
                   )}
-                  Download
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onShare(resource)}>
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Share with students
-                </DropdownMenuItem>
-                {canDelete && (
-                  <DropdownMenuItem
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
+                  <DropdownMenuItem onClick={handleDownload} disabled={isDownloading}>
+                    {isDownloading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="mr-2 h-4 w-4" />
+                    )}
+                    Download
                   </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuItem onClick={() => onShare(resource)}>
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Share with students
+                  </DropdownMenuItem>
+                  {canDelete && (
+                    <DropdownMenuItem
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      <ResourcePreviewModal
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        filePath={resource.file_path}
+        fileName={resource.file_name}
+        fileType={resource.file_type}
+        title={resource.title}
+      />
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
