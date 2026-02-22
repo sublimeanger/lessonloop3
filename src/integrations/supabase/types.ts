@@ -1383,6 +1383,7 @@ export type Database = {
           is_series_exception: boolean
           lesson_type: Database["public"]["Enums"]["lesson_type"]
           location_id: string | null
+          max_participants: number | null
           notes_private: string | null
           notes_shared: string | null
           online_meeting_url: string | null
@@ -1407,6 +1408,7 @@ export type Database = {
           is_series_exception?: boolean
           lesson_type?: Database["public"]["Enums"]["lesson_type"]
           location_id?: string | null
+          max_participants?: number | null
           notes_private?: string | null
           notes_shared?: string | null
           online_meeting_url?: string | null
@@ -1431,6 +1433,7 @@ export type Database = {
           is_series_exception?: boolean
           lesson_type?: Database["public"]["Enums"]["lesson_type"]
           location_id?: string | null
+          max_participants?: number | null
           notes_private?: string | null
           notes_shared?: string | null
           online_meeting_url?: string | null
