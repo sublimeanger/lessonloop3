@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react';
 import { format, subMonths, startOfMonth, endOfMonth, startOfQuarter } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +51,11 @@ const DEFAULT_PRESETS: DatePreset[] = [
   },
 ];
 
+// Validates a date string is a complete yyyy-MM-dd format
+function isValidDate(d: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(Date.parse(d));
+}
+
 interface DateRangeFilterProps {
   startDate: string;
   endDate: string;
@@ -67,22 +73,39 @@ export function DateRangeFilter({
 }: DateRangeFilterProps) {
   const today = format(new Date(), 'yyyy-MM-dd');
 
-  const handleStartDateChange = (newStart: string) => {
-    onStartDateChange(newStart);
-    if (newStart > endDate) {
-      onEndDateChange(newStart);
-    }
-  };
+  // Internal working state — updates on every keystroke
+  const [localStart, setLocalStart] = useState(startDate);
+  const [localEnd, setLocalEnd] = useState(endDate);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleEndDateChange = (newEnd: string) => {
-    onEndDateChange(newEnd);
-    if (newEnd < startDate) {
-      onStartDateChange(newEnd);
-    }
-  };
+  // Sync internal state when parent changes (e.g. from preset)
+  useEffect(() => { setLocalStart(startDate); }, [startDate]);
+  useEffect(() => { setLocalEnd(endDate); }, [endDate]);
 
+  // Debounced flush to parent — only fires when both dates are valid
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(() => {
+      if (isValidDate(localStart) && isValidDate(localEnd)) {
+        const s = localStart <= localEnd ? localStart : localEnd;
+        const e = localStart <= localEnd ? localEnd : localStart;
+        if (s !== startDate) onStartDateChange(s);
+        if (e !== endDate) onEndDateChange(e);
+      }
+    }, 500);
+
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    // Only re-run when local values change — parent callbacks are stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localStart, localEnd]);
+
+  // Presets bypass debounce and apply immediately
   const applyPreset = (preset: DatePreset) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     const { start, end } = preset.getRange();
+    setLocalStart(start);
+    setLocalEnd(end);
     onStartDateChange(start);
     onEndDateChange(end);
   };
@@ -96,9 +119,9 @@ export function DateRangeFilter({
             <Input
               id="start-date"
               type="date"
-              value={startDate}
-              max={endDate}
-              onChange={(e) => handleStartDateChange(e.target.value)}
+              value={localStart}
+              max={localEnd}
+              onChange={(e) => setLocalStart(e.target.value)}
               className="w-[180px]"
             />
           </div>
@@ -107,10 +130,10 @@ export function DateRangeFilter({
             <Input
               id="end-date"
               type="date"
-              value={endDate}
-              min={startDate}
+              value={localEnd}
+              min={localStart}
               max={today}
-              onChange={(e) => handleEndDateChange(e.target.value)}
+              onChange={(e) => setLocalEnd(e.target.value)}
               className="w-[180px]"
             />
           </div>
