@@ -484,6 +484,13 @@ export function WeekTimeGrid({
                       </div>
                     )}
 
+                    {/* Empty day indicator */}
+                    {dayLessons.length === 0 && !closure && (
+                      <div className="absolute top-4 left-1/2 -translate-x-1/2 text-xs text-muted-foreground/40 whitespace-nowrap select-none pointer-events-none">
+                        No lessons
+                      </div>
+                    )}
+
                     {/* Positioned lesson cards */}
                     {dayLessons.map((lesson) => {
                       const pos = overlapPositions.get(lesson.id);
