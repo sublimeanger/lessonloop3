@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -20,8 +20,15 @@ export default function Resources() {
   const { currentRole } = useOrg();
   const canUpload = currentRole === 'owner' || currentRole === 'admin' || currentRole === 'teacher';
   
-  const { data: resources = [], isLoading } = useResources();
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useResources();
 
+  // Flatten paginated results
+  const resources = useMemo(
+    () => data?.pages.flat() ?? [],
+    [data]
+  );
+
+  // Client-side filter — TODO: add server-side search (.ilike) for large libraries
   const filteredResources = resources.filter(resource =>
     resource.title.toLowerCase().includes(search.toLowerCase()) ||
     resource.description?.toLowerCase().includes(search.toLowerCase())
@@ -79,15 +86,32 @@ export default function Resources() {
             />
           )
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredResources.map(resource => (
-              <ResourceCard
-                key={resource.id}
-                resource={resource}
-                onShare={handleShare}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredResources.map(resource => (
+                <ResourceCard
+                  key={resource.id}
+                  resource={resource}
+                  onShare={handleShare}
+                />
+              ))}
+            </div>
+
+            {hasNextPage && !search && (
+              <div className="flex justify-center pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
+                  {isFetchingNextPage ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                  Load more
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
