@@ -34,7 +34,7 @@ const paths = [
 
 export function AudiencePaths() {
   return (
-    <section className="py-24 lg:py-32 bg-muted/30">
+    <section className="py-24 lg:py-32 bg-background">
       <div className="container mx-auto px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
