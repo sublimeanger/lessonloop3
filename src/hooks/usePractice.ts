@@ -259,26 +259,23 @@ export function useWeeklyProgress(studentIds: string[]) {
     queryFn: async () => {
       if (studentIds.length === 0) return [];
 
-      // Get assignments for these students
-      const { data: assignments } = await supabase
-        .from('practice_assignments')
-        .select('student_id, target_minutes_per_day, target_days_per_week')
-        .in('student_id', studentIds)
-        .eq('status', 'active');
-
-      // Get this week's logs
-      const { data: logs } = await supabase
-        .from('practice_logs')
-        .select('student_id, duration_minutes, practice_date')
-        .in('student_id', studentIds)
-        .gte('practice_date', format(weekStart, 'yyyy-MM-dd'))
-        .lte('practice_date', format(weekEnd, 'yyyy-MM-dd'));
-
-      // Get student names
-      const { data: students } = await supabase
-        .from('students')
-        .select('id, first_name, last_name')
-        .in('id', studentIds);
+      const [{ data: assignments }, { data: logs }, { data: students }] = await Promise.all([
+        supabase
+          .from('practice_assignments')
+          .select('student_id, target_minutes_per_day, target_days_per_week')
+          .in('student_id', studentIds)
+          .eq('status', 'active'),
+        supabase
+          .from('practice_logs')
+          .select('student_id, duration_minutes, practice_date')
+          .in('student_id', studentIds)
+          .gte('practice_date', format(weekStart, 'yyyy-MM-dd'))
+          .lte('practice_date', format(weekEnd, 'yyyy-MM-dd')),
+        supabase
+          .from('students')
+          .select('id, first_name, last_name')
+          .in('id', studentIds),
+      ]);
 
       const studentMap = new Map(students?.map(s => [s.id, `${s.first_name} ${s.last_name}`]));
 
