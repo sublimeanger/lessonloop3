@@ -23,6 +23,7 @@ export default function Login() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [isOAuthCallback, setIsOAuthCallback] = useState(false);
+  const [loginFailed, setLoginFailed] = useState(false);
 
   useEffect(() => {
     if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
@@ -93,10 +94,12 @@ export default function Login() {
     }
 
     setIsLoading(true);
+    setLoginFailed(false);
     const { error } = await signIn(trimmedEmail, password);
     setIsLoading(false);
 
     if (error) {
+      setLoginFailed(true);
       toast({
         title: 'Sign in failed',
         description: error.message,
@@ -178,7 +181,8 @@ export default function Login() {
                 type="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); setLoginFailed(false); }}
+                aria-invalid={loginFailed}
                 disabled={isLoading}
                 autoComplete="email"
               />
@@ -198,8 +202,9 @@ export default function Login() {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                   value={password}
+                   onChange={(e) => { setPassword(e.target.value); setLoginFailed(false); }}
+                   aria-invalid={loginFailed}
                   disabled={isLoading}
                   autoComplete="current-password"
                   className="pr-10"

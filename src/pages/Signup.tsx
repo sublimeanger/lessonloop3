@@ -27,6 +27,7 @@ export default function Signup() {
   const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [passwordMismatch, setPasswordMismatch] = useState(false);
   const [signupComplete, setSignupComplete] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
@@ -89,6 +90,7 @@ export default function Signup() {
     }
 
     if (password !== confirmPassword) {
+      setPasswordMismatch(true);
       toast({
         title: 'Passwords don\'t match',
         description: 'Please make sure your passwords match.',
@@ -96,6 +98,7 @@ export default function Signup() {
       });
       return;
     }
+    setPasswordMismatch(false);
 
     if (password.length < PASSWORD_MIN_LENGTH) {
       toast({
@@ -284,7 +287,8 @@ export default function Signup() {
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) => { setConfirmPassword(e.target.value); setPasswordMismatch(false); }}
+                  aria-invalid={passwordMismatch}
                   disabled={isLoading}
                   autoComplete="new-password"
                   className="pr-10"
