@@ -232,7 +232,7 @@ export default function AcceptInvite() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center gradient-hero-light">
         <div className="w-full max-w-md px-4">
           <DetailSkeleton />
         </div>
@@ -242,7 +242,7 @@ export default function AcceptInvite() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center py-12">
             <XCircle className="h-12 w-12 text-destructive" />
@@ -265,7 +265,7 @@ export default function AcceptInvite() {
     const emailMatches = user.email?.toLowerCase() === invite.email.toLowerCase();
     
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
@@ -311,7 +311,7 @@ export default function AcceptInvite() {
 
   // New user signup form
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
