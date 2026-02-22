@@ -242,10 +242,10 @@ export function AppSidebar() {
         {/* Logo area */}
         <div className={cn('px-4 pb-2', collapsed && 'px-2 flex justify-center')}>
           {collapsed ? (
-            <Logo size="sm" className="brightness-0 invert opacity-90" />
+            <Logo size="sm" />
           ) : (
             <div className="flex items-center gap-2">
-                <Logo size="sm" className="brightness-0 invert opacity-90" />
+                <Logo size="sm" />
                 <LogoWordmark variant="white" className="text-base" />
               </div>
           )}
