@@ -4,7 +4,7 @@ import { activeStudentsQuery } from '@/lib/studentQuery';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, subMonths, startOfMonth, endOfMonth, differenceInDays, addMonths, parseISO } from 'date-fns';
-import { fromZonedTime } from 'date-fns-tz';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { sanitiseCSVCell, currencySymbol } from '@/lib/utils';
 
 // Helper: resolve teacher_id for the current user (returns null if not a teacher)
@@ -172,7 +172,8 @@ export function useAgeingReport() {
 
       if (error) throw error;
 
-      const today = new Date();
+      const orgTimezone = currentOrg.timezone || 'Europe/London';
+      const today = toZonedTime(new Date(), orgTimezone);
       today.setHours(0, 0, 0, 0);
 
       // Define buckets
