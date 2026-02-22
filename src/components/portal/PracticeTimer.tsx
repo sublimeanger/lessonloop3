@@ -183,7 +183,6 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
       setIsRunning(false);
 
       await logPractice.mutateAsync({
-        org_id: assignment?.org_id || selectedStudent.assignments[0]?.org_id,
         student_id: selectedStudentId,
         assignment_id: selectedAssignmentId || undefined,
         duration_minutes: durationMinutes,
