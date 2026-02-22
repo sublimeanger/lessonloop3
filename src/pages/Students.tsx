@@ -151,7 +151,8 @@ export default function Students() {
     return students.filter((student) => {
       const matchesSearch =
         `${student.first_name} ${student.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.email?.toLowerCase().includes(searchQuery.toLowerCase());
+        student.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        student.phone?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === 'all' || student.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
