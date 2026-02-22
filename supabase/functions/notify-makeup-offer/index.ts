@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { escapeHtml } from "../_shared/escape-html.ts";
+import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,7 +35,7 @@ Deno.serve(async (req) => {
       .select(`
         *,
         students!make_up_waitlist_student_id_fkey (first_name, last_name),
-        guardians!make_up_waitlist_guardian_id_fkey (id, full_name, email),
+        guardians!make_up_waitlist_guardian_id_fkey (id, full_name, email, user_id),
         matched_lesson:lessons!make_up_waitlist_matched_lesson_id_fkey (
           id, title, start_at, end_at,
           locations!lessons_location_id_fkey (name),
@@ -58,6 +59,17 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ skipped: true, reason: "no_guardian_email" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Check notification preference before sending
+    if (guardian.user_id) {
+      const enabled = await isNotificationEnabled(supabase, entry.org_id, guardian.user_id, "email_makeup_offers");
+      if (!enabled) {
+        console.log(`Guardian ${guardian.id} has makeup offer emails disabled`);
+        return new Response(JSON.stringify({ skipped: true, reason: "notification_disabled" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Get org name

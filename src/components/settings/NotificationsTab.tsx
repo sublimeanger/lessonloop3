@@ -13,6 +13,7 @@ interface NotificationPreferences {
   email_lesson_reminders: boolean;
   email_invoice_reminders: boolean;
   email_payment_receipts: boolean;
+  email_makeup_offers: boolean;
   email_marketing: boolean;
 }
 
@@ -20,6 +21,7 @@ const defaults: NotificationPreferences = {
   email_lesson_reminders: true,
   email_invoice_reminders: true,
   email_payment_receipts: true,
+  email_makeup_offers: true,
   email_marketing: false,
 };
 
@@ -46,6 +48,7 @@ export function NotificationsTab() {
             email_lesson_reminders: data.email_lesson_reminders,
             email_invoice_reminders: data.email_invoice_reminders,
             email_payment_receipts: data.email_payment_receipts,
+            email_makeup_offers: data.email_makeup_offers,
             email_marketing: data.email_marketing,
           }
         : defaults;
@@ -80,6 +83,7 @@ export function NotificationsTab() {
     { key: 'email_lesson_reminders', label: 'Lesson reminders', description: 'Get notified before upcoming lessons' },
     { key: 'email_invoice_reminders', label: 'Invoice reminders', description: 'Reminders for unpaid invoices' },
     { key: 'email_payment_receipts', label: 'Payment receipts', description: 'Confirmation when an invoice is paid' },
+    { key: 'email_makeup_offers', label: 'Make-up offers', description: 'Notifications when a make-up lesson slot is available' },
     { key: 'email_marketing', label: 'Marketing emails', description: 'Product updates and tips' },
   ];
 
