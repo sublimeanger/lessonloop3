@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useBatchAttendanceLessons, useSaveBatchAttendance } from '@/hooks/useRegisterData';
 import { Loader2, CheckCircle2, Save, UserCheck, ChevronLeft, ChevronRight, CalendarIcon, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { AttendanceStatus } from '@/hooks/useRegisterData';
+import type { AttendanceStatus, AbsenceReason } from '@/hooks/useRegisterData';
 import { AbsenceReasonPicker, needsAbsenceReason, type AbsenceReasonValue } from '@/components/register/AbsenceReasonPicker';
 
 export default function BatchAttendance() {
@@ -23,7 +23,7 @@ export default function BatchAttendance() {
   const saveMutation = useSaveBatchAttendance(dateKey);
 
   const [attendance, setAttendance] = useState<Map<string, Map<string, AttendanceStatus>>>(new Map());
-  const [absenceReasons, setAbsenceReasons] = useState<Map<string, Map<string, AbsenceReasonValue>>>(new Map());
+  const [absenceReasons, setAbsenceReasons] = useState<Map<string, Map<string, AbsenceReason>>>(new Map());
   const [notifiedDates, setNotifiedDates] = useState<Map<string, Map<string, Date>>>(new Map());
 
   // Sync attendance map when query data changes
@@ -53,7 +53,7 @@ export default function BatchAttendance() {
         setAbsenceReasons((prev) => {
           const next = new Map(prev);
           const lessonMap = new Map(next.get(lessonId) || []);
-          lessonMap.set(studentId, 'teacher_cancelled' as any);
+          lessonMap.set(studentId, 'teacher_cancelled');
           next.set(lessonId, lessonMap);
           return next;
         });
@@ -63,7 +63,7 @@ export default function BatchAttendance() {
   );
 
   const setStudentAbsenceReason = useCallback(
-    (lessonId: string, studentId: string, reason: AbsenceReasonValue) => {
+    (lessonId: string, studentId: string, reason: AbsenceReason) => {
       setAbsenceReasons((prev) => {
         const next = new Map(prev);
         const lessonMap = new Map(next.get(lessonId) || []);
@@ -325,7 +325,7 @@ export default function BatchAttendance() {
                             </div>
                             {needsAbsenceReason(currentStatus) && (
                               <AbsenceReasonPicker
-                                reason={currentReason}
+                                reason={(currentReason as AbsenceReasonValue) || null}
                                 notifiedAt={currentNotified}
                                 onReasonChange={(r) => setStudentAbsenceReason(lesson.id, p.student_id, r)}
                                 onNotifiedAtChange={(d) => setStudentNotifiedDate(lesson.id, p.student_id, d)}

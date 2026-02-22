@@ -8,6 +8,38 @@ import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
 export type AttendanceStatus = Database['public']['Enums']['attendance_status'];
+export type AbsenceReason = Database['public']['Enums']['absence_reason'];
+type AttendanceRecordInsert = Database['public']['Tables']['attendance_records']['Insert'];
+
+// Typed shapes for Supabase join query results
+interface LessonAttendanceRecord {
+  student_id: string;
+  attendance_status: AttendanceStatus;
+  cancellation_reason: string | null;
+  absence_reason_category: AbsenceReason | null;
+}
+
+interface LessonParticipantJoin {
+  student_id: string;
+  students: { id: string; first_name: string; last_name: string } | null;
+}
+
+interface LessonQueryRow {
+  id: string;
+  title: string;
+  start_at: string;
+  end_at: string;
+  status: string;
+  notes_shared: string | null;
+  notes_private: string | null;
+  recurrence_id: string | null;
+  location_id: string | null;
+  room_id: string | null;
+  teacher_id: string | null;
+  teacher_user_id: string | null;
+  lesson_participants: LessonParticipantJoin[];
+  attendance_records: LessonAttendanceRecord[];
+}
 
 export interface RegisterLesson {
   id: string;
@@ -104,8 +136,9 @@ export function useRegisterData(date: Date) {
       if (error) throw error;
 
       // Fetch location and room names
-      const locationIds = [...new Set((lessonsData || []).map((l: any) => l.location_id).filter(Boolean))];
-      const roomIds = [...new Set((lessonsData || []).map((l: any) => l.room_id).filter(Boolean))];
+      const typedLessons = (lessonsData || []) as unknown as LessonQueryRow[];
+      const locationIds = [...new Set(typedLessons.map(l => l.location_id).filter(Boolean))] as string[];
+      const roomIds = [...new Set(typedLessons.map(l => l.room_id).filter(Boolean))] as string[];
 
       let locationMap = new Map<string, string>();
       let roomMap = new Map<string, string>();
@@ -127,13 +160,13 @@ export function useRegisterData(date: Date) {
       }
 
       // Transform data
-      return (lessonsData || []).map((lesson: any) => {
+      return typedLessons.map((lesson) => {
         const attendanceMap = new Map(
-          (lesson.attendance_records || []).map((ar: any) => [ar.student_id, ar])
+          (lesson.attendance_records || []).map((ar) => [ar.student_id, ar])
         );
 
-        const participants = (lesson.lesson_participants || []).map((lp: any) => {
-          const attendance = attendanceMap.get(lp.student_id) as any;
+        const participants = (lesson.lesson_participants || []).map((lp) => {
+          const attendance = attendanceMap.get(lp.student_id);
           return {
             student_id: lp.student_id,
             student_name: lp.students 
@@ -226,9 +259,9 @@ export function useUpdateAttendance() {
             org_id: currentOrg.id,
             attendance_status: status,
             recorded_by: user.id,
-            absence_reason_category: absenceReason || null,
+            absence_reason_category: (absenceReason as AbsenceReason) || null,
             absence_notified_at: absenceNotifiedAt || null,
-          } as any,
+          } satisfies AttendanceRecordInsert,
           {
             onConflict: 'lesson_id,student_id',
           }
@@ -261,7 +294,7 @@ export function useUpdateAttendance() {
 
       return { previousQueries };
     },
-    onError: (error: any, _vars, context) => {
+    onError: (error: Error, _vars, context) => {
       // Roll back to previous state
       if (context?.previousQueries) {
         context.previousQueries.forEach(([key, data]) => {
@@ -336,7 +369,7 @@ export function useMarkLessonComplete() {
         title: 'Lesson marked complete',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Error marking lesson complete',
         description: error.message,
@@ -407,14 +440,20 @@ export function useBatchAttendanceLessons(date: Date) {
 
       if (error) throw error;
 
-      return (lessonsData || []).map((l: any) => ({
+      interface BatchQueryRow {
+        id: string; title: string; start_at: string; end_at: string; status: string;
+        lesson_participants: { student_id: string; student: { id: string; first_name: string; last_name: string } | null }[];
+        attendance_records: { student_id: string; attendance_status: AttendanceStatus }[];
+      }
+      const typed = (lessonsData || []) as unknown as BatchQueryRow[];
+      return typed.map((l) => ({
         id: l.id,
         title: l.title,
         start_at: l.start_at,
         end_at: l.end_at,
         status: l.status,
-        participants: (l.lesson_participants || []).map((p: any) => {
-          const existing = (l.attendance_records || []).find((a: any) => a.student_id === p.student_id);
+        participants: (l.lesson_participants || []).map((p) => {
+          const existing = (l.attendance_records || []).find((a) => a.student_id === p.student_id);
           return {
             student_id: p.student_id,
             student_name: p.student ? `${p.student.first_name} ${p.student.last_name}` : 'Unknown',
@@ -443,15 +482,7 @@ export function useSaveBatchAttendance(dateKey: string) {
     }) => {
       if (!currentOrg || !user) throw new Error('No organisation or user');
 
-      const upserts: {
-        lesson_id: string;
-        student_id: string;
-        attendance_status: string;
-        org_id: string;
-        recorded_by: string;
-        absence_reason_category?: string | null;
-        absence_notified_at?: string | null;
-      }[] = [];
+      const upserts: AttendanceRecordInsert[] = [];
 
       attendance.forEach((studentMap, lessonId) => {
         studentMap.forEach((status, studentId) => {
@@ -460,10 +491,10 @@ export function useSaveBatchAttendance(dateKey: string) {
           upserts.push({
             lesson_id: lessonId,
             student_id: studentId,
-            attendance_status: status as any,
+            attendance_status: status as AttendanceStatus,
             org_id: currentOrg.id,
             recorded_by: user.id,
-            absence_reason_category: reason,
+            absence_reason_category: (reason as AbsenceReason) || null,
             absence_notified_at: notified,
           });
         });
@@ -475,7 +506,7 @@ export function useSaveBatchAttendance(dateKey: string) {
 
       const { error } = await supabase
         .from('attendance_records')
-        .upsert(upserts as any, { onConflict: 'lesson_id,student_id' });
+        .upsert(upserts satisfies AttendanceRecordInsert[], { onConflict: 'lesson_id,student_id' });
 
       if (error) throw error;
 
@@ -509,7 +540,7 @@ export function useSaveBatchAttendance(dateKey: string) {
       queryClient.invalidateQueries({ queryKey: ['register-lessons'] });
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({ title: 'Failed to save', description: error.message || 'Please try again.', variant: 'destructive' });
     },
   });
