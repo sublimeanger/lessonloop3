@@ -25,7 +25,10 @@ export interface InvoiceFilters {
   dueDateFrom?: string;
   dueDateTo?: string;
   termId?: string;
+  page?: number;
 }
+
+const PAGE_SIZE = 25;
 
 export function useInvoices(filters: InvoiceFilters = {}) {
   const { currentOrg } = useOrg();
@@ -33,7 +36,11 @@ export function useInvoices(filters: InvoiceFilters = {}) {
   return useQuery({
     queryKey: ['invoices', currentOrg?.id, filters],
     queryFn: async () => {
-      if (!currentOrg?.id) return [];
+      if (!currentOrg?.id) return { data: [] as InvoiceWithDetails[], totalCount: 0 };
+
+      const page = filters.page ?? 1;
+      const from = (page - 1) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
 
       let query = supabase
         .from('invoices')
@@ -41,9 +48,10 @@ export function useInvoices(filters: InvoiceFilters = {}) {
           *,
           payer_guardian:guardians(id, full_name, email),
           payer_student:students(id, first_name, last_name, email)
-        `)
+        `, { count: 'exact' })
         .eq('org_id', currentOrg.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (filters.status && filters.status !== 'all') {
         query = query.eq('status', filters.status);
@@ -69,13 +77,13 @@ export function useInvoices(filters: InvoiceFilters = {}) {
         query = query.eq('term_id', filters.termId);
       }
 
-      const { data, error } = await query;
+      const { data, error, count } = await query;
 
       if (error) throw error;
-      return data as InvoiceWithDetails[];
+      return { data: (data || []) as InvoiceWithDetails[], totalCount: count ?? 0 };
     },
     enabled: !!currentOrg?.id,
-    staleTime: 30_000, // 30 seconds — avoid refetch on navigation
+    staleTime: 30_000,
   });
 }
 
@@ -149,24 +157,27 @@ export function useInvoiceStats() {
         overdue: number;
         overdue_count: number;
         draft_count: number;
+        sent_count: number;
         paid_total: number;
         paid_count: number;
+        void_count: number;
+        total_count: number;
       };
 
       return {
         totalOutstanding: result.total_outstanding ?? 0,
         overdue: result.overdue ?? 0,
         overdueCount: result.overdue_count ?? 0,
-        draft: 0,
         draftCount: result.draft_count ?? 0,
-        sent: 0,
-        sentCount: 0,
+        sentCount: result.sent_count ?? 0,
         paid: result.paid_total ?? 0,
         paidCount: result.paid_count ?? 0,
+        voidCount: result.void_count ?? 0,
+        totalCount: result.total_count ?? 0,
       };
     },
     enabled: !!currentOrg?.id,
-    staleTime: 60_000, // 1 minute — stats don't change frequently
+    staleTime: 60_000,
   });
 }
 

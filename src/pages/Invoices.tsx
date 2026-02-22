@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Receipt, Plus, PlayCircle, CreditCard } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
-import { useInvoices, useUpdateInvoiceStatus, type InvoiceFilters, type InvoiceWithDetails } from '@/hooks/useInvoices';
+import { useInvoices, useInvoiceStats, useUpdateInvoiceStatus, type InvoiceFilters, type InvoiceWithDetails } from '@/hooks/useInvoices';
 import { InvoiceFiltersBar } from '@/components/invoices/InvoiceFiltersBar';
 import { InvoiceStatsWidget } from '@/components/invoices/InvoiceStatsWidget';
 import { PaymentPlansDashboard } from '@/components/invoices/PaymentPlansDashboard';
@@ -18,7 +18,7 @@ import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
 import { SendInvoiceModal } from '@/components/invoices/SendInvoiceModal';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { useToast } from '@/hooks/use-toast';
-import { isBefore, parseISO } from 'date-fns';
+
 import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
 import {
   AlertDialog,
@@ -37,7 +37,9 @@ export default function Invoices() {
   const isParent = currentRole === 'parent';
   const [filters, setFilters] = useState<InvoiceFilters>({});
   const [currentPage, setCurrentPage] = useState(1);
-  const { data: invoices = [], isLoading } = useInvoices(filters);
+  const { data: invoiceResult, isLoading } = useInvoices({ ...filters, page: currentPage });
+  const invoices = invoiceResult?.data ?? [];
+  const totalCount = invoiceResult?.totalCount ?? 0;
 
   const handleFiltersChange = (newFilters: InvoiceFilters) => {
     setFilters(newFilters);
@@ -58,20 +60,19 @@ export default function Invoices() {
   const [voidConfirmInvoice, setVoidConfirmInvoice] = useState<InvoiceWithDetails | null>(null);
   const [bulkVoidConfirmOpen, setBulkVoidConfirmOpen] = useState(false);
 
-  // Status counts for filter pills (computed from all invoices, not filtered)
-  const { data: allInvoices = [] } = useInvoices({});
+  // Status counts from RPC stats (no second full fetch needed)
+  const { data: stats } = useInvoiceStats();
   const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: allInvoices.length, draft: 0, sent: 0, paid: 0, overdue: 0, void: 0 };
-    const today = new Date();
-    allInvoices.forEach((inv) => {
-      if (inv.status === 'sent' && isBefore(parseISO(inv.due_date), today)) {
-        counts.overdue++;
-      } else {
-        counts[inv.status] = (counts[inv.status] || 0) + 1;
-      }
-    });
-    return counts;
-  }, [allInvoices]);
+    if (!stats) return undefined;
+    return {
+      all: stats.totalCount,
+      draft: stats.draftCount,
+      sent: stats.sentCount,
+      paid: stats.paidCount,
+      overdue: stats.overdueCount,
+      void: stats.voidCount,
+    } as Record<string, number>;
+  }, [stats]);
 
   const { draftCount, voidableCount, voidableInvoices } = useMemo(() => {
     const selected = invoices.filter((inv) => selectedIds.has(inv.id));
@@ -149,7 +150,7 @@ export default function Invoices() {
   return (
     <AppLayout>
       <PageHeader
-        title={isParent ? 'Invoices & Payments' : `Invoices${allInvoices.length > 0 ? ` (${allInvoices.length})` : ''}`}
+        title={isParent ? 'Invoices & Payments' : `Invoices${totalCount > 0 ? ` (${totalCount})` : ''}`}
         actions={
           !isParent && (
             <div className="flex gap-2">
@@ -173,7 +174,7 @@ export default function Invoices() {
         </div>
       )}
 
-      {!isParent && statusCounts.overdue > 0 && (
+      {!isParent && statusCounts && statusCounts.overdue > 0 && (
         <LoopAssistPageBanner
           bannerKey="invoices_overdue"
           message={`${statusCounts.overdue} invoice${statusCounts.overdue !== 1 ? 's are' : ' is'} overdue — Chase them with LoopAssist`}
@@ -225,6 +226,7 @@ export default function Invoices() {
               <div className="rounded-lg border bg-card" data-tour="invoice-list">
                 <InvoiceList
                   invoices={invoices}
+                  totalCount={totalCount}
                   onSend={(inv) => setSendModalInvoice(inv)}
                   onMarkPaid={(inv) => setPaymentModalInvoice(inv)}
                   onVoid={(inv) => setVoidConfirmInvoice(inv)}
@@ -254,6 +256,7 @@ export default function Invoices() {
             <div className="rounded-lg border bg-card" data-tour="invoice-list">
               <InvoiceList
                 invoices={invoices}
+                totalCount={totalCount}
                 onSend={(inv) => setSendModalInvoice(inv)}
                 onMarkPaid={(inv) => setPaymentModalInvoice(inv)}
                 onVoid={(inv) => setVoidConfirmInvoice(inv)}
