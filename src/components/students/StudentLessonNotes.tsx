@@ -31,19 +31,13 @@ export function StudentLessonNotes({ studentId }: StudentLessonNotesProps) {
     const fetchNotes = async () => {
       setIsLoading(true);
 
+      const selectColumns = isOrgAdmin
+        ? `lesson:lessons!inner(id, title, start_at, status, notes_shared, notes_private, teacher:teachers(display_name))`
+        : `lesson:lessons!inner(id, title, start_at, status, notes_shared, teacher:teachers(display_name))`;
+
       const { data, error } = await supabase
         .from('lesson_participants')
-        .select(`
-          lesson:lessons!inner(
-            id,
-            title,
-            start_at,
-            status,
-            notes_shared,
-            notes_private,
-            teacher:teachers(display_name)
-          )
-        `)
+        .select(selectColumns)
         .eq('student_id', studentId)
         .eq('org_id', currentOrg.id)
         .not('lesson.notes_shared', 'is', null)
@@ -53,20 +47,19 @@ export function StudentLessonNotes({ studentId }: StudentLessonNotesProps) {
         // Fallback: fetch without the OR for notes_private
         // PostgREST doesn't support OR across columns easily in nested filters
         // So we fetch lessons with notes_shared, then separately with notes_private
+        const fallbackSelect = isOrgAdmin
+          ? `lesson:lessons!inner(id, title, start_at, status, notes_shared, notes_private, teacher:teachers(display_name))`
+          : `lesson:lessons!inner(id, title, start_at, status, notes_shared, teacher:teachers(display_name))`;
+
         const { data: sharedData } = await supabase
           .from('lesson_participants')
-          .select(`
-            lesson:lessons!inner(
-              id, title, start_at, status, notes_shared, notes_private,
-              teacher:teachers(display_name)
-            )
-          `)
+          .select(fallbackSelect)
           .eq('student_id', studentId)
           .eq('org_id', currentOrg.id);
 
         const allLessons = (sharedData || [])
           .map((lp: any) => lp.lesson)
-          .filter((l: any) => l && (l.notes_shared || l.notes_private))
+          .filter((l: any) => l && (l.notes_shared || (isOrgAdmin && l.notes_private)))
           .sort((a: any, b: any) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime());
 
         // Deduplicate by id
@@ -83,7 +76,7 @@ export function StudentLessonNotes({ studentId }: StudentLessonNotesProps) {
           start_at: l.start_at,
           status: l.status,
           notes_shared: l.notes_shared,
-          notes_private: l.notes_private,
+          notes_private: isOrgAdmin ? (l.notes_private || null) : null,
           teacher_name: l.teacher?.display_name || null,
         })));
         setIsLoading(false);
@@ -97,7 +90,7 @@ export function StudentLessonNotes({ studentId }: StudentLessonNotesProps) {
       (data || []).forEach((lp: any) => {
         const l = lp.lesson;
         if (!l || seen.has(l.id)) return;
-        if (!l.notes_shared && !l.notes_private) return;
+        if (!l.notes_shared && !(isOrgAdmin && l.notes_private)) return;
         seen.add(l.id);
         lessonNotes.push({
           id: l.id,
@@ -105,7 +98,7 @@ export function StudentLessonNotes({ studentId }: StudentLessonNotesProps) {
           start_at: l.start_at,
           status: l.status,
           notes_shared: l.notes_shared,
-          notes_private: l.notes_private,
+          notes_private: isOrgAdmin ? (l.notes_private || null) : null,
           teacher_name: l.teacher?.display_name || null,
         });
       });
@@ -115,7 +108,7 @@ export function StudentLessonNotes({ studentId }: StudentLessonNotesProps) {
     };
 
     fetchNotes();
-  }, [studentId, currentOrg?.id]);
+  }, [studentId, currentOrg?.id, isOrgAdmin]);
 
   return (
     <Card>
