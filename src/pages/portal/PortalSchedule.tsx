@@ -111,8 +111,8 @@ export default function PortalSchedule() {
   const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 });
   const thisWeekEnd = endOfWeek(today, { weekStartsOn: 1 });
 
-  const { thisWeekLessons, futureWeekGroups, pastLessons } = useMemo(() => {
-    if (!lessons) return { thisWeekLessons: [], futureWeekGroups: [], pastLessons: [] };
+  const { thisWeekLessons, futureWeekGroups, pastLessons, attendanceSummary } = useMemo(() => {
+    if (!lessons) return { thisWeekLessons: [], futureWeekGroups: [], pastLessons: [], attendanceSummary: [] };
 
     const thisWeek: Lesson[] = [];
     const future: Lesson[] = [];
@@ -145,10 +145,27 @@ export default function PortalSchedule() {
       weekMap.get(key)!.lessons.push(l);
     }
 
+    // Build attendance summary per child from past lessons
+    const childMap = new Map<string, { name: string; present: number; late: number; absent: number; total: number }>();
+    for (const l of past) {
+      for (const s of l.students) {
+        if (!s.attendance_status) continue;
+        if (!childMap.has(s.id)) {
+          childMap.set(s.id, { name: `${s.first_name} ${s.last_name}`, present: 0, late: 0, absent: 0, total: 0 });
+        }
+        const entry = childMap.get(s.id)!;
+        entry.total++;
+        if (s.attendance_status === 'present') entry.present++;
+        else if (s.attendance_status === 'late') entry.late++;
+        else if (s.attendance_status === 'absent') entry.absent++;
+      }
+    }
+
     return {
       thisWeekLessons: thisWeek,
       futureWeekGroups: Array.from(weekMap.values()),
       pastLessons: past.sort((a, b) => parseISO(b.start_at).getTime() - parseISO(a.start_at).getTime()),
+      attendanceSummary: Array.from(childMap.values()),
     };
   }, [lessons, thisWeekStart, thisWeekEnd, today, tz]);
 
@@ -350,22 +367,62 @@ export default function PortalSchedule() {
 
           {/* Past Lessons — collapsible */}
           {pastLessons.length > 0 && (
-            <Collapsible open={pastOpen} onOpenChange={setPastOpen}>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="w-full justify-between text-muted-foreground hover:text-foreground gap-2">
-                  <span className="flex items-center gap-2">
-                    <History className="h-4 w-4" />
-                    Past Lessons ({pastLessons.length})
-                  </span>
-                  <ChevronDown className={cn('h-4 w-4 transition-transform', pastOpen && 'rotate-180')} />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-3 mt-3">
-                {pastLessons.map((lesson) => (
-                  <LessonCard key={lesson.id} lesson={lesson} isPast={true} />
-                ))}
-              </CollapsibleContent>
-            </Collapsible>
+            <div className="space-y-4">
+              {/* Attendance Summary */}
+              {attendanceSummary.length > 0 && pastOpen && (
+                <Card>
+                  <CardContent className="p-4">
+                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-primary" />
+                      Attendance Summary
+                    </h3>
+                    <div className="space-y-2.5">
+                      {attendanceSummary.map((child) => {
+                        const pct = child.total > 0 ? Math.round(((child.present + child.late) / child.total) * 100) : 0;
+                        return (
+                          <div key={child.name} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                            <span className="font-medium">{child.name}</span>
+                            <span className="text-muted-foreground">—</span>
+                            <span className="font-semibold">{child.present + child.late}/{child.total} ({pct}%)</span>
+                            <div className="flex items-center gap-3 ml-auto">
+                              <span className="flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full bg-primary inline-block" />
+                                <Badge variant="outline" className="text-xs px-1.5 py-0">{child.present}</Badge>
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full bg-warning inline-block" />
+                                <Badge variant="outline" className="text-xs px-1.5 py-0">{child.late}</Badge>
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full bg-destructive inline-block" />
+                                <Badge variant="outline" className="text-xs px-1.5 py-0">{child.absent}</Badge>
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Collapsible open={pastOpen} onOpenChange={setPastOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between text-muted-foreground hover:text-foreground gap-2">
+                    <span className="flex items-center gap-2">
+                      <History className="h-4 w-4" />
+                      Past Lessons ({pastLessons.length})
+                    </span>
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', pastOpen && 'rotate-180')} />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-3 mt-3">
+                  {pastLessons.map((lesson) => (
+                    <LessonCard key={lesson.id} lesson={lesson} isPast={true} />
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
           )}
         </div>
       )}
