@@ -16,7 +16,10 @@ export interface RegisterLessonRow {
   id: string;
   teacher_user_id: string;
   teacher_id: string | null;
-  [key: string]: any;
+  title: string;
+  start_at: string;
+  end_at: string;
+  status: string;
 }
 
 /**

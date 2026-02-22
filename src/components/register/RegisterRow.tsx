@@ -57,7 +57,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
     const previousStatus = participant?.attendance_status;
 
     // Auto-set reason for teacher cancellations
-    const autoReason = status === 'cancelled_by_teacher' ? 'teacher_cancelled' as any : undefined;
+    const autoReason = status === 'cancelled_by_teacher' ? 'teacher_cancelled' : undefined;
     
     setSavingStudent(studentId);
     try {

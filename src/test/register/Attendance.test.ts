@@ -111,9 +111,9 @@ describe('LL-REG-P0-01: Daily Register', () => {
 
   describe('Teacher scope filtering (filterByTeacher)', () => {
     const lessons = [
-      { id: 'l1', title: 'Piano - Alice', status: 'scheduled', teacher_user_id: 'teacher-1', teacher_id: 't1', participants: [] },
-      { id: 'l2', title: 'Guitar - Bob', status: 'scheduled', teacher_user_id: 'teacher-2', teacher_id: 't2', participants: [] },
-      { id: 'l3', title: 'Piano - Charlie', status: 'scheduled', teacher_user_id: 'teacher-1', teacher_id: 't1', participants: [] },
+      { id: 'l1', title: 'Piano - Alice', status: 'scheduled', teacher_user_id: 'teacher-1', teacher_id: 't1', start_at: '2025-01-01T09:00:00Z', end_at: '2025-01-01T09:30:00Z', participants: [] },
+      { id: 'l2', title: 'Guitar - Bob', status: 'scheduled', teacher_user_id: 'teacher-2', teacher_id: 't2', start_at: '2025-01-01T10:00:00Z', end_at: '2025-01-01T10:30:00Z', participants: [] },
+      { id: 'l3', title: 'Piano - Charlie', status: 'scheduled', teacher_user_id: 'teacher-1', teacher_id: 't1', start_at: '2025-01-01T11:00:00Z', end_at: '2025-01-01T11:30:00Z', participants: [] },
     ];
 
     it('owner/admin sees all lessons (no filter)', () => {
