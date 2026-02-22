@@ -72,18 +72,20 @@ function InvoiceActions({
   onMarkPaid,
   onVoid,
   onSendReminder,
+  alwaysVisible = false,
 }: {
   invoice: InvoiceWithDetails;
   onSend: (inv: InvoiceWithDetails) => void;
   onMarkPaid: (inv: InvoiceWithDetails) => void;
   onVoid: (inv: InvoiceWithDetails) => void;
   onSendReminder: (inv: InvoiceWithDetails) => void;
+  alwaysVisible?: boolean;
 }) {
   const navigate = useNavigate();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-        <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button variant="ghost" size="icon" className={cn('h-7 w-7 transition-opacity', !alwaysVisible && 'opacity-0 group-hover:opacity-100')}>
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
@@ -121,6 +123,75 @@ function InvoiceActions({
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function MobileInvoiceCard({
+  invoice,
+  currency,
+  selected,
+  onSelect,
+  onNavigate,
+  onSend,
+  onMarkPaid,
+  onVoid,
+  onSendReminder,
+}: {
+  invoice: InvoiceWithDetails;
+  currency: string;
+  selected: boolean;
+  onSelect: (checked: boolean) => void;
+  onNavigate: () => void;
+  onSend: (inv: InvoiceWithDetails) => void;
+  onMarkPaid: (inv: InvoiceWithDetails) => void;
+  onVoid: (inv: InvoiceWithDetails) => void;
+  onSendReminder: (inv: InvoiceWithDetails) => void;
+}) {
+  return (
+    <div
+      onClick={onNavigate}
+      className={cn(
+        'rounded-lg border bg-card p-3 cursor-pointer transition-colors active:bg-muted/40',
+        selected && 'ring-1 ring-primary bg-primary/5',
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2.5 min-w-0 flex-1">
+          <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+            <Checkbox
+              checked={selected}
+              onCheckedChange={onSelect}
+              aria-label={`Select invoice ${invoice.invoice_number}`}
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-foreground truncate">{getPayerName(invoice)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{invoice.invoice_number}</p>
+          </div>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-base font-bold tabular-nums text-foreground">
+            {formatCurrencyMinor(invoice.total_minor, currency)}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center justify-between mt-2 pl-7">
+        <div className="flex items-center gap-2">
+          <StatusBadge status={invoice.status} dueDate={invoice.due_date} />
+          <span className="text-xs text-muted-foreground">
+            Due {formatDateUK(parseISO(invoice.due_date), 'dd MMM yyyy')}
+          </span>
+        </div>
+        <InvoiceActions
+          invoice={invoice}
+          onSend={onSend}
+          onMarkPaid={onMarkPaid}
+          onVoid={onVoid}
+          onSendReminder={onSendReminder}
+          alwaysVisible
+        />
+      </div>
+    </div>
   );
 }
 
@@ -197,94 +268,102 @@ export function InvoiceList({
 
   return (
     <div>
-      {/* Select all row */}
-      <div className="flex items-center gap-3 px-3 py-2 text-xs text-muted-foreground border-b">
-        <Checkbox
-          checked={allSelected}
-          onCheckedChange={handleSelectAll}
-          aria-label="Select all"
-          className={someSelected ? 'data-[state=checked]:bg-primary data-[state=unchecked]:bg-primary/50' : ''}
-          {...(someSelected ? { 'data-state': 'indeterminate' } : {})}
-        />
-        <span className="flex-1">Invoice</span>
-        <span className="hidden sm:block w-28">Due</span>
-        <span className="hidden sm:block w-20">Status</span>
-        <span className="w-24 text-right">Amount</span>
-        <span className="w-7" />
+      {/* Mobile card layout */}
+      <div className="md:hidden space-y-2 px-1">
+        <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground">
+          <Checkbox
+            checked={allSelected}
+            onCheckedChange={handleSelectAll}
+            aria-label="Select all"
+            className={someSelected ? 'data-[state=checked]:bg-primary data-[state=unchecked]:bg-primary/50' : ''}
+            {...(someSelected ? { 'data-state': 'indeterminate' } : {})}
+          />
+          <span>Select all</span>
+        </div>
+        {pageInvoices.map((invoice) => (
+          <MobileInvoiceCard
+            key={invoice.id}
+            invoice={invoice}
+            currency={currency}
+            selected={selectedIds.has(invoice.id)}
+            onSelect={(checked) => handleSelectOne(invoice.id, !!checked)}
+            onNavigate={() => navigate(`/invoices/${invoice.id}`)}
+            onSend={onSend}
+            onMarkPaid={onMarkPaid}
+            onVoid={onVoid}
+            onSendReminder={onSendReminder}
+          />
+        ))}
       </div>
 
-      {/* Invoice rows */}
-      <div className="divide-y divide-border" role="list" aria-label="Invoices list">
-        {pageInvoices.map((invoice) => (
-          <div
-            key={invoice.id}
-            onClick={() => navigate(`/invoices/${invoice.id}`)}
-            className={cn(
-              'flex items-center gap-3 px-3 py-3 cursor-pointer transition-colors hover:bg-muted/30 group',
-              selectedIds.has(invoice.id) && 'bg-primary/5',
-            )}
-            role="listitem"
-          >
-            {/* Checkbox */}
-            <div onClick={(e) => e.stopPropagation()}>
-              <Checkbox
-                checked={selectedIds.has(invoice.id)}
-                onCheckedChange={(checked) => handleSelectOne(invoice.id, !!checked)}
-                aria-label={`Select invoice ${invoice.invoice_number}`}
-              />
-            </div>
+      {/* Desktop list layout */}
+      <div className="hidden md:block">
+        {/* Select all row */}
+        <div className="flex items-center gap-3 px-3 py-2 text-xs text-muted-foreground border-b">
+          <Checkbox
+            checked={allSelected}
+            onCheckedChange={handleSelectAll}
+            aria-label="Select all"
+            className={someSelected ? 'data-[state=checked]:bg-primary data-[state=unchecked]:bg-primary/50' : ''}
+            {...(someSelected ? { 'data-state': 'indeterminate' } : {})}
+          />
+          <span className="flex-1">Invoice</span>
+          <span className="w-28">Due</span>
+          <span className="w-20">Status</span>
+          <span className="w-24 text-right">Amount</span>
+          <span className="w-7" />
+        </div>
 
-            {/* Invoice info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-foreground truncate">
+        {/* Invoice rows */}
+        <div className="divide-y divide-border" role="list" aria-label="Invoices list">
+          {pageInvoices.map((invoice) => (
+            <div
+              key={invoice.id}
+              onClick={() => navigate(`/invoices/${invoice.id}`)}
+              className={cn(
+                'flex items-center gap-3 px-3 py-3 cursor-pointer transition-colors hover:bg-muted/30 group',
+                selectedIds.has(invoice.id) && 'bg-primary/5',
+              )}
+              role="listitem"
+            >
+              <div onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={selectedIds.has(invoice.id)}
+                  onCheckedChange={(checked) => handleSelectOne(invoice.id, !!checked)}
+                  aria-label={`Select invoice ${invoice.invoice_number}`}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-semibold text-foreground truncate block">
                   {getPayerName(invoice)}
                 </span>
-                {/* Mobile-only status */}
-                <span className="sm:hidden">
-                  <StatusBadge status={invoice.status} dueDate={invoice.due_date} />
-                </span>
-              </div>
-              <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-xs tabular-nums text-muted-foreground">
                   {invoice.invoice_number}
                 </span>
-                {/* Mobile-only due date */}
-                <span className="text-xs text-muted-foreground sm:hidden">
-                  · Due {formatDateUK(parseISO(invoice.due_date), 'dd MMM')}
+              </div>
+              <div className="w-28 shrink-0">
+                <span className="text-xs text-muted-foreground">
+                  {formatDateUK(parseISO(invoice.due_date), 'dd MMM yyyy')}
                 </span>
               </div>
+              <div className="w-20 shrink-0">
+                <StatusBadge status={invoice.status} dueDate={invoice.due_date} />
+              </div>
+              <div className="w-24 text-right shrink-0">
+                <span className="text-sm font-semibold tabular-nums text-foreground">
+                  {formatCurrencyMinor(invoice.total_minor, currency)}
+                </span>
+              </div>
+              <InvoiceActions
+                invoice={invoice}
+                onSend={onSend}
+                onMarkPaid={onMarkPaid}
+                onVoid={onVoid}
+                onSendReminder={onSendReminder}
+              />
             </div>
-
-            {/* Due date — desktop */}
-            <div className="hidden sm:block w-28 shrink-0">
-              <span className="text-xs text-muted-foreground">
-                {formatDateUK(parseISO(invoice.due_date), 'dd MMM yyyy')}
-              </span>
-            </div>
-
-            {/* Status — desktop */}
-            <div className="hidden sm:block w-20 shrink-0">
-              <StatusBadge status={invoice.status} dueDate={invoice.due_date} />
-            </div>
-
-            {/* Amount */}
-            <div className="w-24 text-right shrink-0">
-              <span className="text-sm font-semibold tabular-nums text-foreground">
-                {formatCurrencyMinor(invoice.total_minor, currency)}
-              </span>
-            </div>
-
-            {/* Actions */}
-            <InvoiceActions
-              invoice={invoice}
-              onSend={onSend}
-              onMarkPaid={onMarkPaid}
-              onVoid={onVoid}
-              onSendReminder={onSendReminder}
-            />
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {paginationFooter}
