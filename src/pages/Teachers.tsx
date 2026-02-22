@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescript
 import { useDeleteValidation, DeletionCheckResult } from '@/hooks/useDeleteValidation';
 import { DeleteValidationDialog } from '@/components/shared/DeleteValidationDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { useToast } from '@/hooks/use-toast';
@@ -20,7 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { useTeachers, useTeacherMutations, useTeacherStudentCounts, Teacher } from '@/hooks/useTeachers';
 import { Progress } from '@/components/ui/progress';
-import { Plus, GraduationCap, Loader2, UserPlus, Lock, Link2, Link2Off, Phone, Trash2, Search } from 'lucide-react';
+import { Plus, GraduationCap, Loader2, UserPlus, Lock, Link2, Link2Off, Phone, Trash2, Search, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { InviteMemberDialog } from '@/components/settings/InviteMemberDialog';
 import { PendingInvitesList } from '@/components/settings/PendingInvitesList';
@@ -44,6 +45,62 @@ function getTeacherColourIndex(teachers: Teacher[], teacherId: string): number {
   return idx >= 0 ? idx % TEACHER_COLOURS.length : 0;
 }
 
+// Shared form fields for create/edit
+function TeacherFormFields({
+  name, setName,
+  email, setEmail,
+  phone, setPhone,
+  instruments, setInstruments,
+  employmentType, setEmploymentType,
+  bio, setBio,
+}: {
+  name: string; setName: (v: string) => void;
+  email: string; setEmail: (v: string) => void;
+  phone: string; setPhone: (v: string) => void;
+  instruments: string; setInstruments: (v: string) => void;
+  employmentType: string; setEmploymentType: (v: string) => void;
+  bio: string; setBio: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-4 py-4">
+      <div className="space-y-2">
+        <Label htmlFor="name">Display Name *</Label>
+        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Amy Brown" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="teacherEmail">Email (optional)</Label>
+        <Input id="teacherEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="amy@example.com" />
+        <p className="text-xs text-muted-foreground">If provided, the account will be linked when they accept an invitation with this email.</p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="phone">Phone (optional)</Label>
+        <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07123 456789" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="instruments">Instruments (optional)</Label>
+        <Input id="instruments" value={instruments} onChange={(e) => setInstruments(e.target.value)} placeholder="Piano, Guitar, Violin" />
+        <p className="text-xs text-muted-foreground">Comma-separated list of instruments.</p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="employmentType">Employment Type</Label>
+        <Select value={employmentType} onValueChange={setEmploymentType}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="contractor">Contractor</SelectItem>
+            <SelectItem value="employee">Employee</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="bio">Bio (optional)</Label>
+        <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="A short bio about the teacher..." rows={3} />
+      </div>
+    </div>
+  );
+}
+
 export default function Teachers() {
   const { currentOrg, isOrgAdmin } = useOrg();
   const { user } = useAuth();
@@ -51,7 +108,7 @@ export default function Teachers() {
   const { limits, canAddTeacher, usage } = useUsageCounts();
   
   const { data: teachers = [], isLoading, refetch } = useTeachers();
-  const { createTeacher, deleteTeacher } = useTeacherMutations();
+  const { createTeacher, updateTeacher, deleteTeacher } = useTeacherMutations();
   const { data: studentCounts = {} } = useTeacherStudentCounts();
   const { checkTeacherRemoval } = useDeleteValidation();
 
@@ -75,6 +132,20 @@ export default function Teachers() {
   const [newTeacherName, setNewTeacherName] = useState('');
   const [newTeacherEmail, setNewTeacherEmail] = useState('');
   const [newTeacherPhone, setNewTeacherPhone] = useState('');
+  const [newTeacherInstruments, setNewTeacherInstruments] = useState('');
+  const [newTeacherEmploymentType, setNewTeacherEmploymentType] = useState('contractor');
+  const [newTeacherBio, setNewTeacherBio] = useState('');
+
+  // Edit teacher state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editTeacher, setEditTeacher] = useState<Teacher | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editInstruments, setEditInstruments] = useState('');
+  const [editEmploymentType, setEditEmploymentType] = useState('contractor');
+  const [editBio, setEditBio] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
 
   // Removal dialog
   const [removal, setRemoval] = useState<RemovalDialogState>({
@@ -107,12 +178,20 @@ export default function Teachers() {
     { value: 'unlinked', label: 'Unlinked', count: unlinkedCount },
   ];
 
+  const resetCreateForm = () => {
+    setNewTeacherName('');
+    setNewTeacherEmail('');
+    setNewTeacherPhone('');
+    setNewTeacherInstruments('');
+    setNewTeacherEmploymentType('contractor');
+    setNewTeacherBio('');
+  };
+
   const handleCreateTeacher = async () => {
     if (!newTeacherName.trim()) {
       toast({ title: 'Name required', variant: 'destructive' });
       return;
     }
-    // Client-side guard only — server-side enforcement pending
     if (!canAddTeacher) {
       toast({ title: 'Teacher limit reached', variant: 'destructive' });
       return;
@@ -122,12 +201,47 @@ export default function Teachers() {
       display_name: newTeacherName.trim(),
       email: newTeacherEmail.trim() || undefined,
       phone: newTeacherPhone.trim() || undefined,
+      instruments: newTeacherInstruments.trim() ? newTeacherInstruments.split(',').map(s => s.trim()).filter(Boolean) : undefined,
+      employment_type: newTeacherEmploymentType as 'contractor' | 'employee',
+      bio: newTeacherBio.trim() || undefined,
     });
     setIsCreateDialogOpen(false);
-    setNewTeacherName('');
-    setNewTeacherEmail('');
-    setNewTeacherPhone('');
+    resetCreateForm();
     setIsSaving(false);
+  };
+
+  const openEditDialog = (teacher: Teacher) => {
+    setEditTeacher(teacher);
+    setEditName(teacher.display_name);
+    setEditEmail(teacher.email || '');
+    setEditPhone(teacher.phone || '');
+    setEditInstruments(teacher.instruments?.join(', ') || '');
+    setEditEmploymentType(teacher.employment_type || 'contractor');
+    setEditBio(teacher.bio || '');
+    setEditDialogOpen(true);
+  };
+
+  const handleEditTeacher = async () => {
+    if (!editTeacher || !editName.trim()) {
+      toast({ title: 'Name required', variant: 'destructive' });
+      return;
+    }
+    setIsEditing(true);
+    try {
+      await updateTeacher.mutateAsync({
+        id: editTeacher.id,
+        display_name: editName.trim(),
+        email: editEmail.trim() || null,
+        phone: editPhone.trim() || null,
+        instruments: editInstruments.trim() ? editInstruments.split(',').map(s => s.trim()).filter(Boolean) : [],
+        employment_type: editEmploymentType as 'contractor' | 'employee',
+        bio: editBio.trim() || null,
+      });
+      setEditDialogOpen(false);
+    } catch {
+      // Error handled by mutation's onError
+    }
+    setIsEditing(false);
   };
 
   const initiateRemoval = async (teacher: Teacher) => {
@@ -342,6 +456,7 @@ export default function Teachers() {
                   studentCount={studentCounts[teacher.id] || 0}
                   isAdmin={isOrgAdmin}
                   onRemove={initiateRemoval}
+                  onEdit={openEditDialog}
                   colour={colour}
                 />
               );
@@ -363,7 +478,7 @@ export default function Teachers() {
       />
 
       {/* Create Teacher Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+      <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) resetCreateForm(); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Teacher</DialogTitle>
@@ -371,25 +486,44 @@ export default function Teachers() {
               Create a teacher record without login access. They can be linked to an account later via invitation.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Display Name *</Label>
-              <Input id="name" value={newTeacherName} onChange={(e) => setNewTeacherName(e.target.value)} placeholder="Amy Brown" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="teacherEmail">Email (optional)</Label>
-              <Input id="teacherEmail" type="email" value={newTeacherEmail} onChange={(e) => setNewTeacherEmail(e.target.value)} placeholder="amy@example.com" />
-              <p className="text-xs text-muted-foreground">If provided, the account will be linked when they accept an invitation with this email.</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone (optional)</Label>
-              <Input id="phone" value={newTeacherPhone} onChange={(e) => setNewTeacherPhone(e.target.value)} placeholder="07123 456789" />
-            </div>
-          </div>
+          <TeacherFormFields
+            name={newTeacherName} setName={setNewTeacherName}
+            email={newTeacherEmail} setEmail={setNewTeacherEmail}
+            phone={newTeacherPhone} setPhone={setNewTeacherPhone}
+            instruments={newTeacherInstruments} setInstruments={setNewTeacherInstruments}
+            employmentType={newTeacherEmploymentType} setEmploymentType={setNewTeacherEmploymentType}
+            bio={newTeacherBio} setBio={setNewTeacherBio}
+          />
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleCreateTeacher} disabled={isSaving || !newTeacherName.trim()}>
               {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</> : 'Add Teacher'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Teacher Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Teacher</DialogTitle>
+            <DialogDescription>
+              Update {editTeacher?.display_name}'s details.
+            </DialogDescription>
+          </DialogHeader>
+          <TeacherFormFields
+            name={editName} setName={setEditName}
+            email={editEmail} setEmail={setEditEmail}
+            phone={editPhone} setPhone={setEditPhone}
+            instruments={editInstruments} setInstruments={setEditInstruments}
+            employmentType={editEmploymentType} setEmploymentType={setEditEmploymentType}
+            bio={editBio} setBio={setEditBio}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditTeacher} disabled={isEditing || !editName.trim()}>
+              {isEditing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -432,21 +566,22 @@ export default function Teachers() {
                         <input
                           type="radio"
                           name="removal-action"
+                          value="reassign"
                           checked={removal.action === 'reassign'}
                           onChange={() => setRemoval(prev => ({ ...prev, action: 'reassign' }))}
-                          className="mt-1"
+                          className="mt-0.5"
                         />
                         <div>
-                          <span className="font-medium text-sm">Reassign to another teacher</span>
-                          <p className="text-xs text-muted-foreground">All upcoming lessons will be transferred</p>
+                          <span className="font-medium text-sm text-foreground">Reassign lessons to another teacher</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">Students stay enrolled. Only the teacher changes.</p>
                         </div>
                       </label>
 
                       {removal.action === 'reassign' && (
-                        <div className="ml-8">
+                        <div className="pl-7">
                           <Select value={removal.reassignTeacherId} onValueChange={(v) => setRemoval(prev => ({ ...prev, reassignTeacherId: v }))}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select a teacher..." />
+                              <SelectValue placeholder="Select replacement teacher" />
                             </SelectTrigger>
                             <SelectContent>
                               {otherTeachers.map(t => (
@@ -454,9 +589,6 @@ export default function Teachers() {
                               ))}
                             </SelectContent>
                           </Select>
-                          {otherTeachers.length === 0 && (
-                            <p className="text-xs text-destructive mt-1">No other active teachers available.</p>
-                          )}
                         </div>
                       )}
 
@@ -464,38 +596,41 @@ export default function Teachers() {
                         <input
                           type="radio"
                           name="removal-action"
+                          value="cancel"
                           checked={removal.action === 'cancel'}
                           onChange={() => setRemoval(prev => ({ ...prev, action: 'cancel' }))}
-                          className="mt-1"
+                          className="mt-0.5"
                         />
                         <div>
-                          <span className="font-medium text-sm">Cancel all upcoming lessons</span>
-                          <p className="text-xs text-muted-foreground">Lessons will be marked as cancelled</p>
+                          <span className="font-medium text-sm text-foreground">Cancel all upcoming lessons</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">Students will need to be rescheduled manually.</p>
                         </div>
                       </label>
                     </div>
 
                     {removal.lessons.length > 0 && (
-                      <div className="text-xs text-muted-foreground border rounded p-2 max-h-24 overflow-y-auto space-y-1">
-                        {removal.lessons.map(l => (
-                          <div key={l.id}>
-                            {new Date(l.start_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} — {l.title}
-                          </div>
-                        ))}
-                        {removal.lessonCount > removal.lessons.length && (
-                          <div className="text-muted-foreground/60">... and {removal.lessonCount - removal.lessons.length} more</div>
-                        )}
-                      </div>
+                      <details className="text-xs">
+                        <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                          View affected lessons ({removal.lessonCount > 10 ? `showing first 10 of ${removal.lessonCount}` : removal.lessonCount})
+                        </summary>
+                        <ul className="mt-2 space-y-1 text-muted-foreground">
+                          {removal.lessons.map(l => (
+                            <li key={l.id}>{l.title} — {new Date(l.start_at).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</li>
+                          ))}
+                        </ul>
+                      </details>
                     )}
                   </>
                 ) : (
-                  <p>This teacher has no upcoming lessons. They will be deactivated and historical records preserved.</p>
+                  <p>
+                    This teacher has no upcoming lessons. They can be safely removed.
+                  </p>
                 )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={removal.isProcessing}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <Button
               variant="destructive"
               onClick={processRemoval}
@@ -515,11 +650,12 @@ export default function Teachers() {
 }
 
 // Teacher card component
-function TeacherCard({ teacher, studentCount, isAdmin, onRemove, colour }: { 
+function TeacherCard({ teacher, studentCount, isAdmin, onRemove, onEdit, colour }: { 
   teacher: Teacher; 
   studentCount: number; 
   isAdmin: boolean;
   onRemove: (teacher: Teacher) => void;
+  onEdit: (teacher: Teacher) => void;
   colour: (typeof TEACHER_COLOURS)[number];
 }) {
   const navigate = useNavigate();
@@ -568,17 +704,28 @@ function TeacherCard({ teacher, studentCount, isAdmin, onRemove, colour }: {
         </div>
       </div>
       {isAdmin && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="shrink-0 opacity-0 group-hover:opacity-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove(teacher);
-          }}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(teacher);
+            }}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(teacher);
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       )}
     </div>
   );
