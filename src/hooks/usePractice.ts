@@ -289,8 +289,9 @@ export function useWeeklyProgress(studentIds: string[]) {
         const uniqueDays = new Set(studentLogs.map(l => l.practice_date));
         const totalMinutes = studentLogs.reduce((sum, l) => sum + l.duration_minutes, 0);
         
-        const targetMinutes = (studentAssignment?.target_minutes_per_day || 30) * 
-                             (studentAssignment?.target_days_per_week || 5);
+        const targetMinutes = Math.max(1,
+          (studentAssignment?.target_minutes_per_day || 30) * 
+          (studentAssignment?.target_days_per_week || 5));
         
         progressMap.set(studentId, {
           studentId,
