@@ -565,7 +565,7 @@ export function useDashboardStats() {
       // Run all independent queries in parallel
       const [
         { data: todayLessonsData },
-        { data: studentsData },
+        { count: activeStudentsCount },
         { data: invoiceStatsRaw },
         { data: weekLessons },
         { data: mtdInvoices },
@@ -578,7 +578,12 @@ export function useDashboardStats() {
           .gte('start_at', todayStart)
           .lte('start_at', todayEnd)
           .eq('status', 'scheduled'),
-        activeStudentsQuery(currentOrg.id),
+        supabase
+          .from('students')
+          .select('id', { count: 'exact', head: true })
+          .eq('org_id', currentOrg.id)
+          .eq('status', 'active')
+          .is('deleted_at', null),
         supabase.rpc('get_invoice_stats', { _org_id: currentOrg.id }),
         supabase
           .from('lessons')
@@ -608,7 +613,7 @@ export function useDashboardStats() {
       } | null;
 
       const todayLessons = todayLessonsData?.length || 0;
-      const activeStudents = studentsData?.length || 0;
+      const activeStudents = activeStudentsCount || 0;
       const outstandingAmount = (invoiceStats?.total_outstanding ?? 0) / 100;
       
       let hoursThisWeek = 0;
