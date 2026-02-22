@@ -27,7 +27,7 @@ export default function RevenueReport() {
   const [startDate, setStartDate] = useState(format(subMonths(new Date(), 11), 'yyyy-MM-01'));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
 
-  const { data, isLoading, error } = useRevenueReport(startDate, endDate);
+  const { data, isLoading, isFetching, error } = useRevenueReport(startDate, endDate);
   const [page, setPage] = useState(1);
 
   // Reset page when date range changes
@@ -80,9 +80,9 @@ export default function RevenueReport() {
         terms={terms}
       />
 
-      {isLoading ? (
+      {isLoading && !data ? (
         <ReportSkeleton variant="summary-chart-table" />
-      ) : error ? (
+      ) : error && !data ? (
         <EmptyState icon={FileSpreadsheet} title="Error loading report" description={error.message} />
       ) : !data || data.months.length === 0 ? (
         <EmptyState
@@ -95,7 +95,7 @@ export default function RevenueReport() {
           </Button>
         </EmptyState>
       ) : (
-        <>
+        <div className={`transition-opacity duration-300 ${isFetching ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
           {/* Summary Cards */}
           <div className="mb-6 grid gap-4 md:grid-cols-3">
             <Card>
@@ -233,7 +233,7 @@ export default function RevenueReport() {
               <ReportPagination totalItems={data.months.length} currentPage={page} onPageChange={setPage} />
             </CardContent>
           </Card>
-        </>
+        </div>
       )}
     </AppLayout>
   );

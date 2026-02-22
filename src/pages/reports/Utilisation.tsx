@@ -194,7 +194,7 @@ export default function UtilisationReport() {
   const [workingEnd, setWorkingEnd] = useState(20);
   const workingHoursPerDay = Math.max(1, workingEnd - workingStart);
 
-  const { data, isLoading, error } = useUtilisationReport(startDate, endDate, workingHoursPerDay);
+  const { data, isLoading, isFetching, error } = useUtilisationReport(startDate, endDate, workingHoursPerDay);
 
   const handleExport = () => {
     if (data && currentOrg) {
@@ -298,9 +298,9 @@ export default function UtilisationReport() {
         terms={terms}
       />
 
-      {isLoading ? (
+      {isLoading && !data ? (
         <ReportSkeleton variant="summary-chart" />
-      ) : error ? (
+      ) : error && !data ? (
         <EmptyState icon={MapPin} title="Error loading report" description={error.message} />
       ) : !data || data.rooms.length === 0 ? (
         <EmptyState
@@ -311,7 +311,7 @@ export default function UtilisationReport() {
           onAction={() => window.location.href = '/locations'}
         />
       ) : (
-        <>
+        <div className={`transition-opacity duration-300 ${isFetching ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
           {/* Summary Cards */}
           <div className="mb-6 grid gap-4 md:grid-cols-4">
             <Card>
@@ -441,7 +441,7 @@ export default function UtilisationReport() {
               </p>
             </CardContent>
           </Card>
-        </>
+        </div>
       )}
     </AppLayout>
   );

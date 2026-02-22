@@ -34,7 +34,7 @@ export default function CancellationReport() {
   const [startDate, setStartDate] = useState(format(startOfMonth(lastMonth), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(lastMonth), 'yyyy-MM-dd'));
 
-  const { data, isLoading, error } = useCancellationReport(startDate, endDate);
+  const { data, isLoading, isFetching, error } = useCancellationReport(startDate, endDate);
 
   const handleExport = () => {
     if (data && currentOrg) {
@@ -86,9 +86,9 @@ export default function CancellationReport() {
         terms={terms}
       />
 
-      {isLoading ? (
+      {isLoading && !data ? (
         <ReportSkeleton variant="summary-chart-table" />
-      ) : error ? (
+      ) : error && !data ? (
         <EmptyState icon={XCircle} title="Error loading report" description={error.message} />
       ) : !data || data.totalScheduled === 0 ? (
         <EmptyState
@@ -101,7 +101,7 @@ export default function CancellationReport() {
           </Button>
         </EmptyState>
       ) : (
-        <>
+        <div className={`transition-opacity duration-300 ${isFetching ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
           {data.warnings?.map((w, i) => (
             <Alert key={i} variant="destructive" className="mb-4">
               <AlertTriangle className="h-4 w-4" />
@@ -247,7 +247,7 @@ export default function CancellationReport() {
               <CancellationByTeacherTable teachers={data.byTeacher} />
             </CardContent>
           </Card>
-        </>
+        </div>
       )}
     </AppLayout>
   );

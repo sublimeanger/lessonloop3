@@ -32,7 +32,7 @@ export default function PayrollReport() {
   const [endDate, setEndDate] = useState(format(endOfMonth(lastMonth), 'yyyy-MM-dd'));
   const [expandedTeachers, setExpandedTeachers] = useState<Set<string>>(new Set());
 
-  const { data, isLoading, error } = usePayroll(startDate, endDate);
+  const { data, isLoading, isFetching, error } = usePayroll(startDate, endDate);
 
   const toggleTeacher = (teacherId: string) => {
     const newExpanded = new Set(expandedTeachers);
@@ -104,9 +104,9 @@ export default function PayrollReport() {
         terms={terms}
       />
 
-      {isLoading ? (
+      {isLoading && !data ? (
         <ReportSkeleton variant="summary-table" />
-      ) : error ? (
+      ) : error && !data ? (
         <EmptyState
           icon={FileSpreadsheet}
           title="Error loading payroll"
@@ -123,7 +123,7 @@ export default function PayrollReport() {
           </Button>
         </EmptyState>
       ) : (
-        <>
+        <div className={`transition-opacity duration-300 ${isFetching ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
           {/* Summary Cards */}
           <div className="mb-6 grid gap-4 md:grid-cols-3">
             <Card>
@@ -183,7 +183,7 @@ export default function PayrollReport() {
               />
             </CardContent>
           </Card>
-        </>
+        </div>
       )}
     </AppLayout>
   );
