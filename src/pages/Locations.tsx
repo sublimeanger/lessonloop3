@@ -90,7 +90,8 @@ export default function Locations() {
   // Location dialog
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isLocationSaving, setIsLocationSaving] = useState(false);
+  const [isRoomSaving, setIsRoomSaving] = useState(false);
   const [locName, setLocName] = useState('');
   const [locType, setLocType] = useState<LocationType>('studio');
   const [locAddress1, setLocAddress1] = useState('');
@@ -197,7 +198,7 @@ export default function Locations() {
       return;
     }
     
-    setIsSaving(true);
+    setIsLocationSaving(true);
     const data = {
       name: locName.trim(),
       location_type: locType,
@@ -227,7 +228,7 @@ export default function Locations() {
         invalidateLocations();
       }
     }
-    setIsSaving(false);
+    setIsLocationSaving(false);
   };
 
   const initiateDeleteLocation = async (location: Location) => {
@@ -296,7 +297,7 @@ export default function Locations() {
       return;
     }
 
-    setIsSaving(true);
+    setIsRoomSaving(true);
     const data = {
       name: roomName.trim(),
       capacity: parsedCapacity,
@@ -322,7 +323,7 @@ export default function Locations() {
         invalidateLocations();
       }
     }
-    setIsSaving(false);
+    setIsRoomSaving(false);
   };
 
   const initiateDeleteRoom = async (room: Room) => {
@@ -591,8 +592,8 @@ export default function Locations() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsLocationDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveLocation} disabled={isSaving}>
-              {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : editingLocation ? 'Update' : 'Add Location'}
+            <Button onClick={handleSaveLocation} disabled={isLocationSaving}>
+              {isLocationSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : editingLocation ? 'Update' : 'Add Location'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -617,8 +618,8 @@ export default function Locations() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsRoomDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveRoom} disabled={isSaving}>
-              {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : editingRoom ? 'Update' : 'Add Room'}
+            <Button onClick={handleSaveRoom} disabled={isRoomSaving}>
+              {isRoomSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : editingRoom ? 'Update' : 'Add Room'}
             </Button>
           </DialogFooter>
         </DialogContent>
