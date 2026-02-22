@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { format, subMonths, startOfMonth, endOfMonth, differenceInMinutes, parseISO, eachDayOfInterval, isWeekend } from 'date-fns';
+import { fromZonedTime } from 'date-fns-tz';
 import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -49,6 +50,10 @@ function useUtilisationReport(startDate: string, endDate: string, workingHoursPe
     queryFn: async (): Promise<UtilisationSummary> => {
       if (!currentOrg?.id) throw new Error('No organisation');
 
+      const orgTimezone = (currentOrg as any).timezone ?? 'Europe/London';
+      const startUTC = fromZonedTime(new Date(`${startDate}T00:00:00`), orgTimezone).toISOString();
+      const endUTC = fromZonedTime(new Date(`${endDate}T23:59:59`), orgTimezone).toISOString();
+
       // Fetch all rooms with their locations
       const { data: rooms, error: roomsError } = await supabase
         .from('rooms')
@@ -74,8 +79,8 @@ function useUtilisationReport(startDate: string, endDate: string, workingHoursPe
         .eq('org_id', currentOrg.id)
         .not('room_id', 'is', null)
         .neq('status', 'cancelled')
-        .gte('start_at', `${startDate}T00:00:00`)
-        .lte('start_at', `${endDate}T23:59:59`)
+        .gte('start_at', startUTC)
+        .lte('start_at', endUTC)
         .limit(10000);
 
       if (lessonsError) throw lessonsError;
