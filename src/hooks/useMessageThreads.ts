@@ -57,17 +57,20 @@ export function useMessageThreads() {
 
   return useQuery({
     queryKey: ['message-threads', currentOrg?.id],
-    queryFn: async () => {
-      if (!currentOrg) return [];
+    queryFn: async (): Promise<{ threads: MessageThread[]; hasMore: boolean }> => {
+      if (!currentOrg) return { threads: [], hasMore: false };
 
+      const THREAD_LIMIT = 500;
       const { data: messages, error } = await supabase
         .from('message_log')
         .select('id, subject, recipient_email, recipient_name, recipient_type, recipient_id, related_id, sender_user_id, status, created_at, sent_at, read_at, thread_id, parent_message_id, channel, message_type')
         .eq('org_id', currentOrg.id)
         .order('created_at', { ascending: false })
-        .limit(500);
+        .limit(THREAD_LIMIT);
 
       if (error) throw error;
+
+      const hasMore = (messages?.length || 0) >= THREAD_LIMIT;
 
       // Group into threads
       const threadMap = new Map<string, MessageThread>();
@@ -107,11 +110,14 @@ export function useMessageThreads() {
         }
       }
 
-      return Array.from(threadMap.values()).sort(
+      const threads = Array.from(threadMap.values()).sort(
         (a, b) => new Date(b.latest_message_at).getTime() - new Date(a.latest_message_at).getTime()
       );
+
+      return { threads, hasMore };
     },
     enabled: !!currentOrg,
+    staleTime: 30_000,
   });
 }
 
