@@ -110,7 +110,8 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
       const { error } = await supabase
         .from('student_teacher_assignments')
         .delete()
-        .eq('id', assignmentId);
+        .eq('id', assignmentId)
+        .eq('org_id', currentOrg!.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -134,7 +135,8 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
       const { error } = await supabase
         .from('student_teacher_assignments')
         .update({ is_primary: primary })
-        .eq('id', assignmentId);
+        .eq('id', assignmentId)
+        .eq('org_id', currentOrg!.id);
       if (error) throw error;
     },
     onSuccess: () => {
