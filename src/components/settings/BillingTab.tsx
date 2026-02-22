@@ -188,7 +188,8 @@ export function BillingTab() {
     isTrialExpired,
     isPastDue,
     limits,
-    stripeSubscriptionId
+    stripeSubscriptionId,
+    cancelsAt,
   } = useSubscription();
   const { initiateSubscription, openCustomerPortal, isLoading } = useSubscriptionCheckout();
   const { counts, usage } = useUsageCounts();
@@ -376,6 +377,23 @@ export function BillingTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Pending Cancellation Banner */}
+      {cancelsAt && cancelsAt > new Date() && (
+        <Card className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20">
+          <CardContent className="flex items-center gap-4 p-6">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
+              <Info className="h-6 w-6 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-amber-700 dark:text-amber-400">Subscription cancelling</h3>
+              <p className="text-sm text-muted-foreground">
+                Your subscription will cancel on {format(cancelsAt, 'dd MMM yyyy')}. You'll retain full access until then.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Trial Expired Warning */}
       {isTrialExpired && (

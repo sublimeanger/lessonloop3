@@ -2246,6 +2246,7 @@ export type Database = {
           block_scheduling_on_closures: boolean
           buffer_minutes_between_locations: number | null
           cancellation_notice_hours: number
+          cancels_at: string | null
           country_code: string
           created_at: string
           created_by: string
@@ -2298,6 +2299,7 @@ export type Database = {
           block_scheduling_on_closures?: boolean
           buffer_minutes_between_locations?: number | null
           cancellation_notice_hours?: number
+          cancels_at?: string | null
           country_code?: string
           created_at?: string
           created_by: string
@@ -2350,6 +2352,7 @@ export type Database = {
           block_scheduling_on_closures?: boolean
           buffer_minutes_between_locations?: number | null
           cancellation_notice_hours?: number
+          cancels_at?: string | null
           country_code?: string
           created_at?: string
           created_by?: string
