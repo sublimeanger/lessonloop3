@@ -548,8 +548,24 @@ export default function Onboarding() {
                     {/* Org type selection */}
                     <div className="space-y-2">
                       <Label>How do you teach?</Label>
-                      <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Teaching type">
-                        {ORG_TYPES.map((type) => {
+                      <div 
+                        className="grid gap-3 sm:grid-cols-2" 
+                        role="radiogroup" 
+                        aria-label="Teaching type"
+                        onKeyDown={(e) => {
+                          if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+                          e.preventDefault();
+                          const radios = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]'));
+                          const idx = radios.findIndex(r => r === document.activeElement);
+                          if (idx === -1) return;
+                          const next = ['ArrowDown', 'ArrowRight'].includes(e.key)
+                            ? (idx + 1) % radios.length
+                            : (idx - 1 + radios.length) % radios.length;
+                          radios[next].focus();
+                          setOrgType(ORG_TYPES[next].value);
+                        }}
+                      >
+                        {ORG_TYPES.map((type, i) => {
                           const Icon = type.icon;
                           const isSelected = orgType === type.value;
                           return (
@@ -558,6 +574,7 @@ export default function Onboarding() {
                               type="button"
                               role="radio"
                               aria-checked={isSelected}
+                              tabIndex={isSelected ? 0 : -1}
                               aria-label={`Select ${type.label}: ${type.description}`}
                               onClick={() => setOrgType(type.value)}
                               className={`flex items-center gap-4 rounded-lg border p-4 text-left transition-colors ${
