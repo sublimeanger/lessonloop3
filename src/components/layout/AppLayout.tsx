@@ -1,4 +1,4 @@
-import { ReactNode, Suspense } from 'react';
+import { ReactNode, Suspense, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageTransitionFallback } from '@/components/shared/PageTransitionFallback';
@@ -21,6 +21,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
   const { isOpen, setIsOpen } = useLoopAssistUI();
   const { currentRole } = useOrg();
   const location = useLocation();
+  const prevPathRef = useRef(location.pathname);
   
   // Initialize keyboard shortcuts
   const { 
@@ -33,6 +34,10 @@ function AppLayoutInner({ children }: AppLayoutProps) {
   
   // Only show LoopAssist for staff roles (not parents)
   const showLoopAssist = currentRole && currentRole !== 'parent';
+
+  // Track if path actually changed for a subtle fade
+  const pathChanged = prevPathRef.current !== location.pathname;
+  if (pathChanged) prevPathRef.current = location.pathname;
   
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -41,19 +46,16 @@ function AppLayoutInner({ children }: AppLayoutProps) {
       <div className="flex flex-1">
         <AppSidebar />
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
-          <AnimatePresence mode="wait">
+          <Suspense fallback={<PageTransitionFallback />}>
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
             >
-              <Suspense fallback={<PageTransitionFallback />}>
-                {children}
-              </Suspense>
+              {children}
             </motion.div>
-          </AnimatePresence>
+          </Suspense>
         </main>
       </div>
       {showLoopAssist && (

@@ -295,3 +295,17 @@ html {
     transform: scaleX(0);
   }
 }
+
+/* Page transition loading bar */
+@keyframes slide-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.animate-slide-bar {
+  animation: slide-bar 1.2s ease-in-out infinite;
+}
