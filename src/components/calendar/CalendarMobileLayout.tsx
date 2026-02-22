@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -55,6 +56,11 @@ export function CalendarMobileLayout({
   teacherColourMap,
   actions,
 }: CalendarMobileLayoutProps) {
+  const visibleLessons = useMemo(
+    () => filters.hide_cancelled ? lessons.filter(l => l.status !== 'cancelled') : lessons,
+    [lessons, filters.hide_cancelled]
+  );
+
   return (
     <AppLayout>
       <div className="space-y-2 mb-2">
@@ -73,7 +79,7 @@ export function CalendarMobileLayout({
 
       <SectionErrorBoundary name="Calendar">
         {isLoading ? <CalendarSkeleton /> : (
-          <MobileDayView currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap} onLessonClick={actions.handleLessonClick} savingLessonIds={actions.savingLessonIds} />
+          <MobileDayView currentDate={currentDate} lessons={visibleLessons} teacherColourMap={teacherColourMap} onLessonClick={actions.handleLessonClick} savingLessonIds={actions.savingLessonIds} />
         )}
       </SectionErrorBoundary>
 
