@@ -64,6 +64,14 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Defense-in-depth: block owner-role invites from being accepted
+    if (invite.role === "owner") {
+      return new Response(
+        JSON.stringify({ error: "Cannot accept owner-level invites" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (invite.accepted_at) {
       return new Response(
         JSON.stringify({ error: "This invitation has already been accepted" }),
