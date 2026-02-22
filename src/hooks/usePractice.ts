@@ -88,6 +88,7 @@ export function usePracticeAssignments(studentId?: string) {
   return useQuery({
     queryKey: ['practice-assignments', currentOrg?.id, studentId, user?.id, isAdmin],
     queryFn: async () => {
+      const today = format(new Date(), 'yyyy-MM-dd');
       let query = supabase
         .from('practice_assignments')
         .select(`
@@ -95,6 +96,7 @@ export function usePracticeAssignments(studentId?: string) {
           student:students(id, first_name, last_name)
         `)
         .eq('org_id', currentOrg!.id)
+        .or(`end_date.is.null,end_date.gte.${today}`)
         .order('created_at', { ascending: false });
 
       if (studentId) {
@@ -187,6 +189,7 @@ export function useParentPracticeAssignments() {
       const studentIds = studentGuardians?.map(sg => sg.student_id) || [];
       if (studentIds.length === 0) return [];
 
+      const today = format(new Date(), 'yyyy-MM-dd');
       const { data, error } = await supabase
         .from('practice_assignments')
         .select(`
@@ -195,6 +198,7 @@ export function useParentPracticeAssignments() {
         `)
         .in('student_id', studentIds)
         .eq('status', 'active')
+        .or(`end_date.is.null,end_date.gte.${today}`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -387,13 +391,27 @@ export function useLogPractice() {
       if (data.duration_minutes > 720) {
         throw new Error('Practice cannot exceed 12 hours');
       }
+
+      const practiceDate = data.practice_date || format(new Date(), 'yyyy-MM-dd');
+
+      // Deduplication: check for same student, date, duration within last 60s
+      const { data: existing } = await supabase
+        .from('practice_logs')
+        .select('id')
+        .eq('student_id', data.student_id)
+        .eq('practice_date', practiceDate)
+        .eq('duration_minutes', data.duration_minutes)
+        .gte('created_at', new Date(Date.now() - 60000).toISOString())
+        .maybeSingle();
+      if (existing) throw new Error('This session was already logged');
+
       const { error } = await supabase.from('practice_logs').insert({
         org_id: currentOrg.id,
         student_id: data.student_id,
         assignment_id: data.assignment_id || null,
         logged_by_user_id: user!.id,
         duration_minutes: data.duration_minutes,
-        practice_date: data.practice_date || format(new Date(), 'yyyy-MM-dd'),
+        practice_date: practiceDate,
         notes: data.notes || null,
       });
       if (error) throw error;
