@@ -118,6 +118,7 @@ function StudentCard({
         <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
           {student.email && <span className="truncate">{student.email}</span>}
           {student.phone && <span className="hidden sm:inline">{student.phone}</span>}
+          {student.guardian_count === 0 && <span className="text-xs text-amber-600 font-medium">No guardian</span>}
         </div>
       </div>
 
