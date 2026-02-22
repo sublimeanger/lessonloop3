@@ -3,14 +3,20 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { PracticeTimer } from '@/components/portal/PracticeTimer';
 import { PracticeHistory } from '@/components/portal/PracticeHistory';
 import { WeeklyProgressCard } from '@/components/portal/WeeklyProgressCard';
+import { PracticeTrendsChart } from '@/components/practice/PracticeTrendsChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useChildrenStreaks, PracticeStreak } from '@/hooks/usePracticeStreaks';
+import { useParentPracticeAssignments } from '@/hooks/usePractice';
 import { StreakDisplay } from '@/components/practice/StreakBadge';
 import { Flame } from 'lucide-react';
 
 export default function PortalPractice() {
   const { data: streaks = [] } = useChildrenStreaks();
+  const { data: assignments = [] } = useParentPracticeAssignments();
   
+  // Get unique student IDs from assignments for trends
+  const studentIds = [...new Set(assignments.map(a => a.student_id))];
+
   // Filter to streaks with activity
   const activeStreaks = streaks.filter(s => s.current_streak > 0 || s.longest_streak > 0);
 
@@ -54,6 +60,11 @@ export default function PortalPractice() {
           )}
           
           <WeeklyProgressCard />
+          
+          {/* Practice Trends per child */}
+          {studentIds.map(sid => (
+            <PracticeTrendsChart key={sid} studentId={sid} />
+          ))}
         </div>
         <div>
           <PracticeHistory />
