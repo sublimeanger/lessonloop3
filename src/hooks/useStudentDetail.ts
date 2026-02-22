@@ -146,7 +146,8 @@ export function useStudentInvoices(studentId: string | undefined) {
         supabase
           .from('invoice_items')
           .select('invoice_id')
-          .eq('student_id', studentId),
+          .eq('student_id', studentId)
+          .eq('org_id', currentOrg.id),
         // Path 2: student is the direct payer
         supabase
           .from('invoices')
