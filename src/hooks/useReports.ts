@@ -711,6 +711,14 @@ export function exportCancellationToCSV(data: CancellationData, orgName: string)
   downloadCSV(rows.join('\n'), `cancellation_${orgName}_report.csv`);
 }
 
+export function exportUtilisationToCSV(rooms: { roomName: string; locationName: string; capacity: number | null; lessonCount: number; bookedMinutes: number; availableMinutes: number; utilisationPercent: number }[], orgName: string): void {
+  const rows = ['Room Name,Location,Capacity,Lesson Count,Booked Hours,Available Hours,Utilisation %'];
+  for (const r of rooms) {
+    rows.push(`"${sanitiseCSVCell(r.roomName)}","${sanitiseCSVCell(r.locationName)}",${r.capacity ?? ''},${r.lessonCount},${(r.bookedMinutes / 60).toFixed(1)},${(r.availableMinutes / 60).toFixed(1)},${r.utilisationPercent.toFixed(1)}`);
+  }
+  downloadCSV(rows.join('\n'), `utilisation_${orgName}_report.csv`);
+}
+
 function downloadCSV(content: string, filename: string): void {
   const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
