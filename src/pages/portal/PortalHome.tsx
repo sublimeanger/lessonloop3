@@ -237,7 +237,7 @@ export default function PortalHome() {
           <>
             {/* 2. Next Lesson Hero Card */}
             {nextLesson && (
-              <Card className="overflow-hidden rounded-2xl border-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-md">
+              <Card className="overflow-hidden rounded-2xl border-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-md" role="region" aria-label="Next lesson">
                 <CardContent className="p-5 md:p-6">
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1.5 min-w-0">
@@ -437,8 +437,8 @@ export default function PortalHome() {
 
             {/* 4. Outstanding Balance */}
             {hasOutstanding && (
-              <Link to="/portal/invoices" className="block">
-                <Card className="border-warning/30 bg-warning/5 transition-all hover:shadow-md hover:border-warning/50">
+              <Link to="/portal/invoices" className="block" aria-label="View invoices">
+                <Card className="border-warning/30 bg-warning/5 transition-all hover:shadow-md hover:border-warning/50" role="region" aria-label={`${formatCurrencyMinor(summary!.outstandingBalance, currencyCode)} outstanding`}>
                   <CardContent className="p-4 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-warning/10 shrink-0">
@@ -475,8 +475,8 @@ export default function PortalHome() {
                     View all <ChevronRight className="h-3 w-3" />
                   </Link>
                 </div>
-                <Link to="/portal/messages">
-                  <Card className="transition-all hover:shadow-md">
+                <Link to="/portal/messages" aria-label={`${unreadCount} unread message${unreadCount !== 1 ? 's' : ''}`}>
+                  <Card className="transition-all hover:shadow-md" role="region" aria-label="Unread messages">
                     <CardContent className="p-4 flex items-center gap-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
                         <MessageSquare className="h-4 w-4 text-primary" />

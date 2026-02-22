@@ -20,7 +20,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar, Clock, MapPin, User, CheckCircle, XCircle, AlertCircle, FileText, CalendarClock, CalendarPlus, ChevronDown, History } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, CheckCircle, XCircle, AlertCircle, FileText, CalendarClock, CalendarPlus, ChevronDown, History, MoreVertical } from 'lucide-react';
 import { parseISO, isAfter, isBefore, startOfToday, differenceInHours, startOfWeek, endOfWeek, addWeeks, isSameWeek } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { useParentLessons, useCreateMessageRequest } from '@/hooks/useParentPortal';
@@ -273,39 +273,72 @@ export default function PortalSchedule() {
             </div>
 
             {lesson.status === 'scheduled' && !isPast && (
-              <div className="flex flex-col gap-1">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-1">
-                      <CalendarPlus className="h-4 w-4" />
-                      <span className="hidden sm:inline">Add to Cal</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => window.open(generateGoogleCalendarUrl(lesson), '_blank', 'noopener,noreferrer')}>
-                      Google Calendar
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => downloadICSFile(lesson)}>
-                      Apple / Outlook (.ics)
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+              <>
+                {/* Mobile: single "more" menu */}
+                <div className="sm:hidden">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Lesson actions">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-popover">
+                      <DropdownMenuItem onClick={() => window.open(generateGoogleCalendarUrl(lesson), '_blank', 'noopener,noreferrer')}>
+                        Add to Google Calendar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => downloadICSFile(lesson)}>
+                        Download .ics
+                      </DropdownMenuItem>
+                      {canReschedule && (
+                        <DropdownMenuItem
+                          onClick={() => showSlotPicker
+                            ? handleRescheduleClick({ id: lesson.id, title: lesson.title, start_at: lesson.start_at, end_at: lesson.end_at, teacher_id: lesson.teacher_id })
+                            : handleRequestChange({ id: lesson.id, title: lesson.title })
+                          }
+                        >
+                          {showSlotPicker ? 'Reschedule' : 'Request Change'}
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
 
-                {canReschedule && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1"
-                    onClick={() => showSlotPicker
-                      ? handleRescheduleClick({ id: lesson.id, title: lesson.title, start_at: lesson.start_at, end_at: lesson.end_at, teacher_id: lesson.teacher_id })
-                      : handleRequestChange({ id: lesson.id, title: lesson.title })
-                    }
-                  >
-                    <CalendarClock className="h-4 w-4" />
-                    <span className="hidden sm:inline">{showSlotPicker ? 'Reschedule' : 'Request Change'}</span>
-                  </Button>
-                )}
-              </div>
+                {/* Desktop: separate buttons */}
+                <div className="hidden sm:flex flex-col gap-1">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-1" aria-label="Add to calendar">
+                        <CalendarPlus className="h-4 w-4" />
+                        Add to Cal
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-popover">
+                      <DropdownMenuItem onClick={() => window.open(generateGoogleCalendarUrl(lesson), '_blank', 'noopener,noreferrer')}>
+                        Google Calendar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => downloadICSFile(lesson)}>
+                        Apple / Outlook (.ics)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  {canReschedule && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      aria-label={showSlotPicker ? 'Reschedule lesson' : 'Request change'}
+                      onClick={() => showSlotPicker
+                        ? handleRescheduleClick({ id: lesson.id, title: lesson.title, start_at: lesson.start_at, end_at: lesson.end_at, teacher_id: lesson.teacher_id })
+                        : handleRequestChange({ id: lesson.id, title: lesson.title })
+                      }
+                    >
+                      <CalendarClock className="h-4 w-4" />
+                      {showSlotPicker ? 'Reschedule' : 'Request Change'}
+                    </Button>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </CardContent>

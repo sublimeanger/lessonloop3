@@ -27,7 +27,7 @@ export function PortalBottomNav() {
   }), [practiceEnabled, resourcesEnabled, invoicesEnabled]);
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-50 border-t bg-white dark:bg-card pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 inset-x-0 z-50 border-t bg-white dark:bg-card pb-[env(safe-area-inset-bottom)]" role="navigation" aria-label="Portal navigation">
       <div className="flex items-stretch justify-around h-14">
         {tabs.map((tab) => {
           const isMessages = tab.path === '/portal/messages';
@@ -37,6 +37,7 @@ export function PortalBottomNav() {
             <NavLink
               key={tab.path}
               to={tab.path}
+              aria-label={badge ? `${tab.label}, ${badge} unread` : tab.label}
               className={({ isActive }) =>
                 cn(
                   'flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors',
@@ -49,7 +50,10 @@ export function PortalBottomNav() {
                   <div className="relative">
                     <tab.icon className={cn('h-5 w-5', isActive && 'stroke-[2.5]')} />
                     {badge && (
-                      <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+                      <span
+                        className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground"
+                        aria-hidden="true"
+                      >
                         {badge > 99 ? '99+' : badge}
                       </span>
                     )}
