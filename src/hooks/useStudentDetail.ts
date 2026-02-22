@@ -60,6 +60,7 @@ export function useStudentLessons(studentId: string | undefined) {
           )
         `)
         .eq('student_id', studentId)
+        .eq('org_id', currentOrg!.id)
         .order('created_at', { ascending: false })
         .range(from, to);
 
@@ -77,6 +78,7 @@ export function useStudentLessons(studentId: string | undefined) {
           .from('attendance_records')
           .select('lesson_id, attendance_status')
           .eq('student_id', studentId)
+          .eq('org_id', currentOrg!.id)
           .in('lesson_id', lessonIds);
 
         if (!attError && attendanceData) {
