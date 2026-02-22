@@ -43,8 +43,7 @@ export function useTodayLessons() {
       const todayStart = fromZonedTime(startOfDay(now), tz).toISOString();
       const todayEnd = fromZonedTime(endOfDay(now), tz).toISOString();
       
-      try {
-        let query = supabase
+      let query = supabase
           .from('lessons')
           .select(`
             id,
@@ -93,23 +92,20 @@ export function useTodayLessons() {
         
         if (error) throw error;
         
-        // Teacher names are now joined inline via teacher:teachers
-        
-        const now = new Date();
+        const currentTime = new Date();
         
         return (data || []).map((lesson) => {
           const startAt = parseISO(lesson.start_at);
           const endAt = parseISO(lesson.end_at);
           
-          // Calculate status based on time
           let computedStatus: TodayLesson['status'];
           if (lesson.status === 'cancelled') {
             computedStatus = 'cancelled';
           } else if (lesson.status === 'completed') {
             computedStatus = 'completed';
-          } else if (isAfter(now, endAt)) {
+          } else if (isAfter(currentTime, endAt)) {
             computedStatus = 'completed';
-          } else if (isAfter(now, startAt) && isBefore(now, endAt)) {
+          } else if (isAfter(currentTime, startAt) && isBefore(currentTime, endAt)) {
             computedStatus = 'in-progress';
           } else {
             computedStatus = 'upcoming';
@@ -136,10 +132,6 @@ export function useTodayLessons() {
             teacherName: (lesson as any).teacher?.display_name || undefined,
           };
         });
-      } catch (error) {
-        logger.error('Error fetching today lessons:', error);
-        return [];
-      }
     },
     enabled: !!currentOrg,
     retry: 1,

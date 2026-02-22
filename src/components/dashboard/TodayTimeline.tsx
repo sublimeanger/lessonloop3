@@ -2,7 +2,8 @@ import { Link } from 'react-router-dom';
 import { useTodayLessons, TodayLesson } from '@/hooks/useTodayLessons';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
+import { Calendar, CheckCircle2, ArrowRight, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { cn } from '@/lib/utils';
@@ -106,7 +107,7 @@ function AllDone({ completedCount }: { completedCount: number }) {
 }
 
 export function TodayTimeline({ className }: TodayTimelineProps) {
-  const { data: lessons, isLoading } = useTodayLessons();
+  const { data: lessons, isLoading, isError, refetch } = useTodayLessons();
 
   const activeLessons = lessons?.filter(l => l.status !== 'cancelled') || [];
   const upcomingOrInProgress = activeLessons.filter(l => l.status === 'upcoming' || l.status === 'in-progress');
@@ -144,6 +145,17 @@ export function TodayTimeline({ className }: TodayTimelineProps) {
                 <Skeleton className="h-5 w-full" />
               </div>
             ))}
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="h-10 w-10 rounded-xl bg-destructive/10 flex items-center justify-center mb-3">
+              <AlertCircle className="h-5 w-5 text-destructive" />
+            </div>
+            <p className="text-sm font-medium text-foreground">Failed to load today's schedule</p>
+            <Button variant="ghost" size="sm" onClick={() => refetch()} className="mt-2 gap-1.5">
+              <RefreshCw className="h-3.5 w-3.5" />
+              Retry
+            </Button>
           </div>
         ) : activeLessons.length === 0 ? (
           <EmptyTimeline />
