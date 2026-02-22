@@ -5,30 +5,36 @@ import { Button } from '@/components/ui/button';
 import { useUrgentActions, UrgentAction } from '@/hooks/useUrgentActions';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { safeGetItem, safeSetItem } from '@/lib/storage';
+import { useOrg } from '@/contexts/OrgContext';
 
-const DISMISS_KEY = 'urgent_actions_dismissed';
+const DISMISS_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
 
-function getIsDismissed(): boolean {
-  try {
-    return sessionStorage.getItem(DISMISS_KEY) === 'true';
-  } catch {
-    return false;
-  }
+function getDismissKey(orgId?: string): string {
+  return orgId ? `urgent_actions_dismissed_${orgId}` : 'urgent_actions_dismissed';
 }
 
-function setDismissedStorage(): void {
-  try {
-    sessionStorage.setItem(DISMISS_KEY, 'true');
-  } catch {}
+function getIsDismissed(orgId?: string): boolean {
+  const raw = safeGetItem(getDismissKey(orgId));
+  if (!raw) return false;
+  const timestamp = Number(raw);
+  if (isNaN(timestamp)) return false;
+  return Date.now() - timestamp < DISMISS_TTL_MS;
+}
+
+function setDismissedStorage(orgId?: string): void {
+  safeSetItem(getDismissKey(orgId), String(Date.now()));
 }
 
 export function UrgentActionsBar() {
   const { actions, isLoading, hasActions, totalCount } = useUrgentActions();
-  const [isDismissed, setIsDismissed] = useState(() => getIsDismissed());
+  const { currentOrg } = useOrg();
+  const orgId = currentOrg?.id;
+  const [isDismissed, setIsDismissed] = useState(() => getIsDismissed(orgId));
 
   const handleDismiss = () => {
     setIsDismissed(true);
-    setDismissedStorage();
+    setDismissedStorage(orgId);
   };
 
   if (isLoading || !hasActions || isDismissed) return null;
