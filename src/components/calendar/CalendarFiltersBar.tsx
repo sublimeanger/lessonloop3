@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { CalendarFilters } from './types';
 import { TeacherWithColour } from './teacherColours';
 import { cn } from '@/lib/utils';
@@ -26,33 +27,30 @@ export function CalendarFiltersBar({
 }: CalendarFiltersBarProps) {
   const dayKey = currentDate ? format(currentDate, 'yyyy-MM-dd') : null;
 
-  const activeLessons = lessons.filter(l => l.status !== 'cancelled');
+  const counts = useMemo(() => {
+    const byTeacher = new Map<string, number>();
+    const byLocation = new Map<string, number>();
+    let total = 0;
 
-  // Count lessons for a given teacher on the current day (excludes cancelled)
-  const countForTeacher = (teacherId: string | null) => {
-    if (!dayKey) return 0;
-    return activeLessons.filter((l) => {
-      const lessonDay = format(parseISO(l.start_at), 'yyyy-MM-dd');
-      if (lessonDay !== dayKey) return false;
-      if (teacherId && l.teacher_id !== teacherId) return false;
-      return true;
-    }).length;
-  };
+    for (const l of lessons) {
+      if (l.status === 'cancelled') continue;
+      if (dayKey) {
+        const lessonDay = format(parseISO(l.start_at), 'yyyy-MM-dd');
+        if (lessonDay !== dayKey) continue;
+      }
+      total++;
+      if (l.teacher_id) {
+        byTeacher.set(l.teacher_id, (byTeacher.get(l.teacher_id) || 0) + 1);
+      }
+      if (l.location_id) {
+        byLocation.set(l.location_id, (byLocation.get(l.location_id) || 0) + 1);
+      }
+    }
 
-  // Count lessons for a given location on the current day (excludes cancelled)
-  const countForLocation = (locationId: string | null) => {
-    if (!dayKey) return 0;
-    return activeLessons.filter((l) => {
-      const lessonDay = format(parseISO(l.start_at), 'yyyy-MM-dd');
-      if (lessonDay !== dayKey) return false;
-      if (locationId && l.location_id !== locationId) return false;
-      return true;
-    }).length;
-  };
+    return { byTeacher, byLocation, total };
+  }, [lessons, dayKey]);
 
-  const totalCount = dayKey
-    ? activeLessons.filter((l) => format(parseISO(l.start_at), 'yyyy-MM-dd') === dayKey).length
-    : activeLessons.length;
+  const totalCount = counts.total;
 
   const teacherList = teachersWithColours || teachers.map(t => ({ ...t, userId: null, colour: undefined as any }));
 
@@ -85,7 +83,7 @@ export function CalendarFiltersBar({
       {/* Teacher pills */}
       {teacherList.map((teacher) => {
         const isSelected = filters.teacher_id === teacher.id;
-        const count = countForTeacher(teacher.id);
+        const count = counts.byTeacher.get(teacher.id) || 0;
         const colour = 'colour' in teacher && teacher.colour ? teacher.colour : null;
         const firstName = teacher.name.split(' ')[0];
 
@@ -134,7 +132,7 @@ export function CalendarFiltersBar({
       {/* Location pills */}
       {locations.map((location) => {
         const isSelected = filters.location_id === location.id;
-        const count = countForLocation(location.id);
+        const count = counts.byLocation.get(location.id) || 0;
 
         return (
           <button
