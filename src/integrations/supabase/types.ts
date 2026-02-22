@@ -3979,6 +3979,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_rate_limits: { Args: never; Returns: undefined }
+      complete_expired_assignments: { Args: never; Returns: undefined }
       create_invoice_with_items: {
         Args: {
           _credit_ids?: string[]
