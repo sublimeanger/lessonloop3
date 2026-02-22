@@ -37,7 +37,8 @@ async function fetchStudentsForRole(
     const { data: assignments, error: assignError } = await supabase
       .from('student_teacher_assignments')
       .select('student_id')
-      .eq('teacher_id', teacher.id);
+      .eq('teacher_id', teacher.id)
+      .eq('org_id', orgId);
 
     if (assignError) throw assignError;
 
