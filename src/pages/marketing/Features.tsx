@@ -50,9 +50,9 @@ export default function Features() {
       <AIDeepDive />
       <MakeUpDeepDive />
       <ExpandedFeaturesGrid />
-      <CompetitorComparison />
       <UseCasesSection />
       <FeatureComparison />
+      <CompetitorComparison />
       <SecuritySection />
       <FeatureCTA />
     </MarketingLayout>
