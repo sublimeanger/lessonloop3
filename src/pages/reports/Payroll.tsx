@@ -16,12 +16,14 @@ import { ReportPagination, paginateArray } from '@/components/reports/ReportPagi
 import { useSortableTable } from '@/hooks/useSortableTable';
 import { useOrg } from '@/contexts/OrgContext';
 import { formatCurrency, formatDateUK } from '@/lib/utils';
+import { useTerms } from '@/hooks/useTerms';
 import { Download, ChevronDown, ChevronRight, Banknote, Clock, Users, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function PayrollReport() {
   const { currentOrg, currentRole } = useOrg();
   const { toast } = useToast();
+  const { data: terms } = useTerms();
   const isAdmin = currentRole === 'owner' || currentRole === 'admin';
   
   // Default to last month
@@ -93,6 +95,7 @@ export default function PayrollReport() {
         endDate={endDate}
         onStartDateChange={setStartDate}
         onEndDateChange={setEndDate}
+        terms={terms}
       />
 
       {isLoading ? (

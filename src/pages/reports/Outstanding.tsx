@@ -14,6 +14,7 @@ import { ReportPagination, paginateArray } from '@/components/reports/ReportPagi
 import { useOrg } from '@/contexts/OrgContext';
 import { formatCurrency, formatDateUK } from '@/lib/utils';
 import { Download, Clock, AlertTriangle, CheckCircle, ChevronDown, ChevronRight, Send, Megaphone } from 'lucide-react';
+import { useTerms } from '@/hooks/useTerms';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +24,7 @@ export default function OutstandingReport() {
   const { currentOrg } = useOrg();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { data: terms } = useTerms();
   const [startDate, setStartDate] = useState(() => format(subMonths(new Date(), 12), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const { data, isLoading, error } = useAgeingReport(startDate, endDate);
@@ -91,6 +93,7 @@ export default function OutstandingReport() {
         endDate={endDate}
         onStartDateChange={setStartDate}
         onEndDateChange={setEndDate}
+        terms={terms}
       />
 
       {data?.truncated && (

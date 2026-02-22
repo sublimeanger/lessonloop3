@@ -16,6 +16,7 @@ import { ReportPagination, paginateArray } from '@/components/reports/ReportPagi
 import { useSortableTable } from '@/hooks/useSortableTable';
 import { useOrg } from '@/contexts/OrgContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTerms } from '@/hooks/useTerms';
 import { Download, XCircle, CheckCircle, Calendar, Percent, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
@@ -27,6 +28,7 @@ export default function CancellationReport() {
   const { currentOrg } = useOrg();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { data: terms } = useTerms();
   
   const lastMonth = subMonths(new Date(), 1);
   const [startDate, setStartDate] = useState(format(startOfMonth(lastMonth), 'yyyy-MM-dd'));
@@ -75,6 +77,7 @@ export default function CancellationReport() {
         endDate={endDate}
         onStartDateChange={setStartDate}
         onEndDateChange={setEndDate}
+        terms={terms}
       />
 
       {isLoading ? (

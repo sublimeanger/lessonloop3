@@ -13,6 +13,7 @@ import { useRevenueReport, exportRevenueToCSV } from '@/hooks/useReports';
 import { ReportPagination, paginateArray } from '@/components/reports/ReportPagination';
 import { useOrg } from '@/contexts/OrgContext';
 import { formatCurrency, currencySymbol } from '@/lib/utils';
+import { useTerms } from '@/hooks/useTerms';
 import { Download, TrendingUp, TrendingDown, FileSpreadsheet, Receipt } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 export default function RevenueReport() {
   const { currentOrg } = useOrg();
   const { toast } = useToast();
+  const { data: terms } = useTerms();
   
   // Default to last 12 months
   const [startDate, setStartDate] = useState(format(subMonths(new Date(), 11), 'yyyy-MM-01'));
@@ -69,6 +71,7 @@ export default function RevenueReport() {
         endDate={endDate}
         onStartDateChange={setStartDate}
         onEndDateChange={setEndDate}
+        terms={terms}
       />
 
       {isLoading ? (
