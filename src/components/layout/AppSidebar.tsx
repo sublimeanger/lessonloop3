@@ -14,6 +14,7 @@ import {
   Music,
   FolderOpen,
   ClipboardList,
+  UserCheck,
   HelpCircle,
   Sparkles,
   type LucideIcon,
@@ -68,6 +69,7 @@ const ownerAdminGroups: NavGroup[] = [
       { title: 'Students', url: '/students', icon: Users },
       { title: 'Teachers', url: '/teachers', icon: GraduationCap },
       { title: 'Register', url: '/register', icon: ClipboardList },
+      { title: 'Batch Attendance', url: '/batch-attendance', icon: UserCheck },
       { title: 'Practice', url: '/practice', icon: Music },
       { title: 'Resources', url: '/resources', icon: FolderOpen },
     ],
@@ -121,6 +123,7 @@ const teacherGroups: NavGroup[] = [
     items: [
       { title: 'My Students', url: '/students', icon: Users },
       { title: 'Register', url: '/register', icon: ClipboardList },
+      { title: 'Batch Attendance', url: '/batch-attendance', icon: UserCheck },
       { title: 'Practice', url: '/practice', icon: Music },
       { title: 'Resources', url: '/resources', icon: FolderOpen },
     ],
