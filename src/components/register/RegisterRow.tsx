@@ -4,6 +4,8 @@ import { RegisterLesson, useUpdateAttendance, useMarkLessonComplete, AttendanceS
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { 
   Check, 
   X, 
@@ -39,6 +41,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
   const [savingStudent, setSavingStudent] = useState<string | null>(null);
   const updateAttendance = useUpdateAttendance();
   const markComplete = useMarkLessonComplete();
+  const { toast } = useToast();
 
   const timeDisplay = `${format(new Date(lesson.start_at), 'HH:mm')} - ${format(new Date(lesson.end_at), 'HH:mm')}`;
   const isCompleted = lesson.status === 'completed';
@@ -50,6 +53,9 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
   const [notifiedDates, setNotifiedDates] = useState<Record<string, Date>>({});
 
   const handleAttendanceClick = async (studentId: string, status: AttendanceStatus) => {
+    const participant = lesson.participants.find(p => p.student_id === studentId);
+    const previousStatus = participant?.attendance_status;
+
     // Auto-set reason for teacher cancellations
     const autoReason = status === 'cancelled_by_teacher' ? 'teacher_cancelled' as any : undefined;
     
@@ -64,6 +70,22 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
           ? (notifiedDates[studentId] || new Date()).toISOString()
           : undefined,
       });
+
+      // Show undo toast when overwriting an existing status
+      if (previousStatus && previousStatus !== status) {
+        const prevLabel = statusConfig[previousStatus]?.label || previousStatus;
+        const newLabel = statusConfig[status]?.label || status;
+        toast({
+          title: 'Attendance updated',
+          description: `Changed from ${prevLabel} to ${newLabel}`,
+          action: (
+            <ToastAction altText="Undo" onClick={() => handleAttendanceClick(studentId, previousStatus)}>
+              Undo
+            </ToastAction>
+          ),
+          duration: 5000,
+        });
+      }
     } finally {
       setSavingStudent(null);
     }
