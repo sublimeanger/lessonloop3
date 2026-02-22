@@ -12,9 +12,9 @@ import {
   RefreshCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MouseEvent } from "react";
+import { MouseEvent, useState } from "react";
 
-// Bento card with 3D tilt and gradient border
+// Bento card with hover-only gradient follow
 function BentoCard({ 
   children, 
   className,
@@ -26,6 +26,15 @@ function BentoCard({
 }) {
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const background = useMotionTemplate`
+    radial-gradient(
+      350px circle at ${mouseX}px ${mouseY}px,
+      hsl(var(--teal) / 0.15),
+      transparent 80%
+    )
+  `;
 
   function handleMouseMove({ currentTarget, clientX, clientY }: MouseEvent) {
     const { left, top } = currentTarget.getBoundingClientRect();
@@ -46,6 +55,8 @@ function BentoCard({
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.5 }}
       onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className={cn(
         "group relative rounded-3xl border border-border bg-card overflow-hidden",
         sizeClasses[size],
@@ -53,18 +64,10 @@ function BentoCard({
       )}
       whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
     >
-      {/* Gradient follow effect */}
+      {/* Gradient follow effect — only visible when hovered */}
       <motion.div
-        className="pointer-events-none absolute -inset-px rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-        style={{
-          background: useMotionTemplate`
-            radial-gradient(
-              350px circle at ${mouseX}px ${mouseY}px,
-              hsl(var(--teal) / 0.15),
-              transparent 80%
-            )
-          `,
-        }}
+        className="pointer-events-none absolute -inset-px rounded-3xl transition-opacity duration-300"
+        style={{ background, opacity: isHovered ? 1 : 0 }}
       />
       
       {/* Content */}

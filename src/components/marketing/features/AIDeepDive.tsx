@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import { 
   Sparkles, 
   MessageSquare, 
@@ -9,7 +9,7 @@ import {
   Check,
   Send
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const features = [
   {
@@ -54,30 +54,41 @@ export function AIDeepDive() {
   const [visibleMessages, setVisibleMessages] = useState(0);
   const [showAction, setShowAction] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(sectionRef, { once: true, margin: "-100px" });
+
+  // Only start animation sequence when section comes into view
+  useEffect(() => {
+    if (isInView && !hasStarted) {
+      setHasStarted(true);
+    }
+  }, [isInView, hasStarted]);
 
   useEffect(() => {
-    // Animate messages appearing
-    if (visibleMessages < chatMessages.length) {
-      const timer = setTimeout(() => {
-        if (chatMessages[visibleMessages].role === "assistant") {
-          setIsTyping(true);
-          setTimeout(() => {
-            setIsTyping(false);
-            setVisibleMessages(v => v + 1);
-            if (chatMessages[visibleMessages].action) {
-              setTimeout(() => setShowAction(true), 500);
-            }
-          }, 1000);
-        } else {
+    if (!hasStarted) return;
+    if (visibleMessages >= chatMessages.length) return;
+
+    const timer = setTimeout(() => {
+      if (chatMessages[visibleMessages].role === "assistant") {
+        setIsTyping(true);
+        const typingTimer = setTimeout(() => {
+          setIsTyping(false);
           setVisibleMessages(v => v + 1);
-        }
-      }, visibleMessages === 0 ? 1000 : 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [visibleMessages]);
+          if (chatMessages[visibleMessages].action) {
+            setTimeout(() => setShowAction(true), 500);
+          }
+        }, 1000);
+        return () => clearTimeout(typingTimer);
+      } else {
+        setVisibleMessages(v => v + 1);
+      }
+    }, visibleMessages === 0 ? 1000 : 2000);
+    return () => clearTimeout(timer);
+  }, [visibleMessages, hasStarted]);
 
   return (
-    <section id="ai" className="py-24 lg:py-32 bg-background">
+    <section id="ai" className="py-24 lg:py-32 bg-background" ref={sectionRef}>
       <div className="container mx-auto px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           {/* Left: Chat Demo */}
