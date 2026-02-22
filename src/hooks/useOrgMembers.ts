@@ -85,7 +85,7 @@ export function useOrgMembers() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: 'Role updated' });
+      toast({ title: 'Role updated', description: 'The change will take effect the next time this user refreshes or logs in.' });
       queryClient.invalidateQueries({ queryKey: ['org-members', currentOrg?.id] });
     },
     onError: (error: Error) => {
