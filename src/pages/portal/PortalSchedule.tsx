@@ -22,7 +22,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Calendar, Clock, MapPin, User, Loader2, MessageSquare, CheckCircle, XCircle, AlertCircle, FileText, CalendarClock, CalendarPlus } from 'lucide-react';
-import { format, parseISO, isAfter, isBefore, startOfToday, differenceInHours } from 'date-fns';
+import { parseISO, isAfter, isBefore, startOfToday, differenceInHours } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { useParentLessons, useCreateMessageRequest } from '@/hooks/useParentPortal';
 import { useOrg } from '@/contexts/OrgContext';
 import { RequestModal } from '@/components/portal/RequestModal';
@@ -48,6 +49,7 @@ export default function PortalSchedule() {
   } | null>(null);
 
   const { currentOrg } = useOrg();
+  const tz = (currentOrg as any)?.timezone || 'Europe/London';
   const { toast } = useToast();
   
   const { data: lessons, isLoading, refetch: refetchLessons } = useParentLessons({
@@ -98,7 +100,7 @@ export default function PortalSchedule() {
       await createRequest.mutateAsync({
         request_type: 'reschedule',
         subject: `Reschedule Request: ${rescheduleLesson.title}`,
-        message: `I would like to reschedule my lesson from ${format(parseISO(rescheduleLesson.start_at), 'EEEE, d MMMM \'at\' HH:mm')} to:\n\n**Proposed new time:** ${format(slot.proposedStart, 'EEEE, d MMMM \'at\' HH:mm')} - ${format(slot.proposedEnd, 'HH:mm')}\n\n${isLate ? '⚠️ Note: This is a late cancellation request.' : ''}`,
+        message: `I would like to reschedule my lesson from ${formatInTimeZone(parseISO(rescheduleLesson.start_at), tz, 'EEEE, d MMMM \'at\' HH:mm')} to:\n\n**Proposed new time:** ${formatInTimeZone(slot.proposedStart, tz, 'EEEE, d MMMM \'at\' HH:mm')} - ${formatInTimeZone(slot.proposedEnd, tz, 'HH:mm')}\n\n${isLate ? '⚠️ Note: This is a late cancellation request.' : ''}`,
         lesson_id: rescheduleLesson.id,
       });
 
@@ -122,11 +124,11 @@ export default function PortalSchedule() {
   const today = startOfToday();
   const upcomingLessons = lessons?.filter(l => 
     isAfter(parseISO(l.start_at), today) || 
-    format(parseISO(l.start_at), 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')
+    formatInTimeZone(parseISO(l.start_at), tz, 'yyyy-MM-dd') === formatInTimeZone(today, tz, 'yyyy-MM-dd')
   ) || [];
   const pastLessons = lessons?.filter(l => 
     isBefore(parseISO(l.start_at), today) && 
-    format(parseISO(l.start_at), 'yyyy-MM-dd') !== format(today, 'yyyy-MM-dd')
+    formatInTimeZone(parseISO(l.start_at), tz, 'yyyy-MM-dd') !== formatInTimeZone(today, tz, 'yyyy-MM-dd')
   ) || [];
 
   const getStatusBadge = (status: string) => {
@@ -183,12 +185,12 @@ export default function PortalSchedule() {
             <div className="space-y-1 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 flex-shrink-0" />
-                <span>{format(parseISO(lesson.start_at), 'EEEE, d MMMM yyyy')}</span>
+                <span>{formatInTimeZone(parseISO(lesson.start_at), tz, 'EEEE, d MMMM yyyy')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 flex-shrink-0" />
                 <span>
-                  {format(parseISO(lesson.start_at), 'HH:mm')} - {format(parseISO(lesson.end_at), 'HH:mm')}
+                  {formatInTimeZone(parseISO(lesson.start_at), tz, 'HH:mm')} - {formatInTimeZone(parseISO(lesson.end_at), tz, 'HH:mm')}
                 </span>
               </div>
               {lesson.location && (

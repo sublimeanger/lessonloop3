@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { format as fnsFormat, parseISO } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -8,17 +9,25 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Format a date using UK conventions (DD/MM/YYYY)
+ * If timezone is provided, formats in that timezone instead of browser local.
  */
-export function formatDateUK(date: Date | string, formatStr = 'dd/MM/yyyy'): string {
+export function formatDateUK(date: Date | string, formatStr = 'dd/MM/yyyy', timezone?: string): string {
   const d = typeof date === 'string' ? parseISO(date) : date;
+  if (timezone) {
+    return formatInTimeZone(d, timezone, formatStr);
+  }
   return fnsFormat(d, formatStr);
 }
 
 /**
  * Format a time using 24-hour format (HH:mm)
+ * If timezone is provided, formats in that timezone instead of browser local.
  */
-export function formatTimeUK(date: Date | string): string {
+export function formatTimeUK(date: Date | string, timezone?: string): string {
   const d = typeof date === 'string' ? parseISO(date) : date;
+  if (timezone) {
+    return formatInTimeZone(d, timezone, 'HH:mm');
+  }
   return fnsFormat(d, 'HH:mm');
 }
 
