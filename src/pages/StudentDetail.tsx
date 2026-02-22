@@ -28,19 +28,17 @@ export default function StudentDetail() {
           { label: 'Students', href: '/students' },
           { label: hook.fullName },
         ]}
-        actions={
+        actions={hook.isOrgAdmin ? (
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => hook.setIsEditing(!hook.isEditing)}>
               <Edit className="mr-2 h-4 w-4" />
               {hook.isEditing ? 'Cancel' : 'Edit'}
             </Button>
-            {hook.isOrgAdmin && (
-              <Button variant="destructive" size="icon" onClick={hook.handleDeleteClick}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
+            <Button variant="destructive" size="icon" onClick={hook.handleDeleteClick}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
-        }
+        ) : undefined}
       />
 
       <StudentTabsSection hook={hook} />
