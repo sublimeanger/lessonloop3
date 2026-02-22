@@ -4156,6 +4156,10 @@ export type Database = {
         }
         Returns: Json
       }
+      redeem_make_up_credit: {
+        Args: { _credit_id: string; _lesson_id: string; _org_id: string }
+        Returns: Json
+      }
       reset_stale_streaks: { Args: never; Returns: undefined }
       seed_make_up_policies: { Args: { _org_id: string }; Returns: undefined }
       shift_recurring_lesson_times: {
