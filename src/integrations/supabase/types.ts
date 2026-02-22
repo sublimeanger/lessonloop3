@@ -2920,7 +2920,7 @@ export type Database = {
           org_id: string
           resource_id: string
           shared_at: string
-          shared_by: string
+          shared_by: string | null
           student_id: string
         }
         Insert: {
@@ -2928,7 +2928,7 @@ export type Database = {
           org_id: string
           resource_id: string
           shared_at?: string
-          shared_by: string
+          shared_by?: string | null
           student_id: string
         }
         Update: {
@@ -2936,7 +2936,7 @@ export type Database = {
           org_id?: string
           resource_id?: string
           shared_at?: string
-          shared_by?: string
+          shared_by?: string | null
           student_id?: string
         }
         Relationships: [
