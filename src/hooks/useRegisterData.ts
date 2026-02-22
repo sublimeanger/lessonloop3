@@ -160,6 +160,7 @@ export function useRegisterData(date: Date) {
       });
     },
     enabled: !!currentOrg,
+    staleTime: 30_000,
   });
 }
 
@@ -371,6 +372,7 @@ export function useBatchAttendanceLessons(date: Date) {
       }));
     },
     enabled: !!currentOrg?.id,
+    staleTime: 30_000,
   });
 }
 
