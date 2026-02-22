@@ -12,12 +12,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { NotificationBell } from './NotificationBell';
 
 export function Header() {
-  const { currentOrg, organisations, setCurrentOrg } = useOrg();
+  const { currentOrg, organisations, setCurrentOrg, currentRole } = useOrg();
   const { setIsOpen } = useLoopAssistUI();
   const { totalActionable, hasCritical } = useProactiveAlerts();
   const hasMultipleOrgs = organisations.length > 1;
+  const isStaff = currentRole && ['owner', 'admin', 'teacher', 'finance'].includes(currentRole);
 
   return (
     <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-background px-4">
@@ -60,7 +62,11 @@ export function Header() {
         )}
       </div>
 
-      {/* Right side — LoopAssist */}
+      <div className="flex items-center gap-1">
+        {/* Notification bell — staff only */}
+        {isStaff && <NotificationBell />}
+
+        {/* LoopAssist */}
       <Button
         variant="ghost"
         size="sm"
@@ -86,6 +92,7 @@ export function Header() {
           </span>
         )}
       </Button>
+      </div>
     </header>
   );
 }
