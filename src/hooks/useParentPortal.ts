@@ -310,10 +310,11 @@ export function useParentInvoices(options?: { status?: string }) {
           payer_student:students(first_name, last_name)
         `)
         .eq('org_id', currentOrg.id)
+        .in('status', ['sent', 'paid', 'overdue', 'void'])
         .order('due_date', { ascending: false });
 
       if (options?.status && options.status !== 'all') {
-        query = query.eq('status', options.status as 'draft' | 'sent' | 'paid' | 'overdue' | 'void');
+        query = query.eq('status', options.status as 'sent' | 'paid' | 'overdue' | 'void');
       }
 
       const { data, error } = await query;
