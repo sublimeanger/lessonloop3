@@ -118,18 +118,16 @@ export function useMakeUpCredits(studentId?: string) {
     },
   });
 
-  // Redeem a credit
+  // Redeem a credit (atomic server-side with expiry + idempotency checks)
   const redeemCredit = useMutation({
     mutationFn: async (input: RedeemCreditInput) => {
-      const { data, error } = await supabase
-        .from('make_up_credits')
-        .update({
-          redeemed_at: new Date().toISOString(),
-          redeemed_lesson_id: input.lesson_id,
-        })
-        .eq('id', input.credit_id)
-        .select()
-        .single();
+      if (!currentOrg?.id) throw new Error('No org');
+
+      const { data, error } = await supabase.rpc('redeem_make_up_credit', {
+        _credit_id: input.credit_id,
+        _lesson_id: input.lesson_id,
+        _org_id: currentOrg.id,
+      });
 
       if (error) throw error;
       return data;
