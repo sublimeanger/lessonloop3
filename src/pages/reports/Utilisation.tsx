@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { DateRangeFilter } from '@/components/reports/DateRangeFilter';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +17,9 @@ import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
+import { exportUtilisationToCSV } from '@/hooks/useReports';
 import { Download, MapPin, Clock, TrendingUp, Building2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { useSortableTable } from '@/hooks/useSortableTable';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -179,6 +182,8 @@ function formatHoursMinutes(minutes: number): string {
 }
 
 export default function UtilisationReport() {
+  const { currentOrg } = useOrg();
+  const { toast } = useToast();
   // Default to last month
   const [startDate, setStartDate] = useState(format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'));
@@ -187,6 +192,17 @@ export default function UtilisationReport() {
   const workingHoursPerDay = Math.max(1, workingEnd - workingStart);
 
   const { data, isLoading, error } = useUtilisationReport(startDate, endDate, workingHoursPerDay);
+
+  const handleExport = () => {
+    if (data && currentOrg) {
+      try {
+        exportUtilisationToCSV(data.rooms, currentOrg.name.replace(/[^a-zA-Z0-9]/g, '_'));
+        toast({ title: 'Report exported', description: 'CSV file has been downloaded.' });
+      } catch {
+        toast({ title: 'Export failed', description: 'Something went wrong. Please try again.', variant: 'destructive' });
+      }
+    }
+  };
 
   const chartData = useMemo(() => {
     if (!data) return [];
@@ -207,6 +223,14 @@ export default function UtilisationReport() {
           { label: 'Reports', href: '/reports' },
           { label: 'Room Utilisation' },
         ]}
+        actions={
+          data && data.rooms.length > 0 && (
+            <Button onClick={handleExport} variant="outline" className="gap-2">
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+          )
+        }
       />
 
       {/* Working Hours Settings */}
