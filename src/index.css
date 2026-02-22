@@ -183,6 +183,19 @@
     @apply bg-clip-text text-transparent;
     background-image: linear-gradient(135deg, hsl(14, 100%, 64%) 0%, hsl(14, 100%, 72%) 100%);
   }
+
+  /* Dashboard Hero — Time-of-Day Gradients */
+  .bg-gradient-morning {
+    background: linear-gradient(135deg, hsl(220, 55%, 16%) 0%, hsl(35, 60%, 28%) 60%, hsl(30, 70%, 35%) 100%);
+  }
+
+  .bg-gradient-afternoon {
+    background: linear-gradient(135deg, hsl(220, 55%, 16%) 0%, hsl(200, 50%, 25%) 60%, hsl(174, 60%, 28%) 100%);
+  }
+
+  .bg-gradient-evening {
+    background: linear-gradient(135deg, hsl(230, 50%, 12%) 0%, hsl(250, 40%, 18%) 60%, hsl(220, 55%, 16%) 100%);
+  }
 }
 
 /* Brand Shadows */
