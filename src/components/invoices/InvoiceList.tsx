@@ -23,6 +23,7 @@ export const INVOICES_PAGE_SIZE = 25;
 
 interface InvoiceListProps {
   invoices: InvoiceWithDetails[];
+  totalCount?: number;
   onSend: (invoice: InvoiceWithDetails) => void;
   onMarkPaid: (invoice: InvoiceWithDetails) => void;
   onVoid: (invoice: InvoiceWithDetails) => void;
@@ -125,6 +126,7 @@ function InvoiceActions({
 
 export function InvoiceList({
   invoices,
+  totalCount,
   onSend,
   onMarkPaid,
   onVoid,
@@ -138,12 +140,13 @@ export function InvoiceList({
   const { currentOrg } = useOrg();
   const currency = currentOrg?.currency_code || 'GBP';
 
-  // Pagination
-  const totalCount = invoices.length;
-  const totalPages = Math.max(1, Math.ceil(totalCount / INVOICES_PAGE_SIZE));
+  // Pagination — when totalCount is provided, pagination is server-side (data is already one page)
+  const serverPaginated = totalCount !== undefined;
+  const effectiveTotal = serverPaginated ? totalCount : invoices.length;
+  const totalPages = Math.max(1, Math.ceil(effectiveTotal / INVOICES_PAGE_SIZE));
   const startIndex = (currentPage - 1) * INVOICES_PAGE_SIZE;
-  const endIndex = Math.min(startIndex + INVOICES_PAGE_SIZE, totalCount);
-  const pageInvoices = invoices.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + INVOICES_PAGE_SIZE, effectiveTotal);
+  const pageInvoices = serverPaginated ? invoices : invoices.slice(startIndex, endIndex);
 
   const allSelected = pageInvoices.length > 0 && pageInvoices.every((inv) => selectedIds.has(inv.id));
   const someSelected = pageInvoices.some((inv) => selectedIds.has(inv.id)) && !allSelected;
@@ -173,10 +176,10 @@ export function InvoiceList({
     );
   }
 
-  const paginationFooter = totalCount > INVOICES_PAGE_SIZE ? (
+  const paginationFooter = effectiveTotal > INVOICES_PAGE_SIZE ? (
     <div className="flex items-center justify-between px-2 py-3">
       <p className="text-xs text-muted-foreground">
-        {startIndex + 1}–{endIndex} of {totalCount}
+        {startIndex + 1}–{endIndex} of {effectiveTotal}
       </p>
       <div className="flex items-center gap-1">
         <Button variant="ghost" size="sm" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage <= 1}>
