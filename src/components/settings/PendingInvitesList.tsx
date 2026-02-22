@@ -24,9 +24,11 @@ interface PendingInvitesListProps {
   refreshKey?: number;
   /** Filter to specific roles, e.g. ['admin','teacher','finance']. If empty, shows all staff roles. */
   roleFilter?: AppRole[];
+  /** Called when admin wants to re-invite an expired invite with pre-filled email and role */
+  onReinvite?: (email: string, role: AppRole) => void;
 }
 
-export function PendingInvitesList({ roleFilter }: PendingInvitesListProps) {
+export function PendingInvitesList({ roleFilter, onReinvite }: PendingInvitesListProps) {
   const { currentOrg, isOrgAdmin } = useOrg();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -74,14 +76,35 @@ export function PendingInvitesList({ roleFilter }: PendingInvitesListProps) {
   const handleResend = async (invite: Invite) => {
     setResendingId(invite.id);
     try {
+      // Extend expiry by 7 days on resend
+      const { error: updateError } = await supabase
+        .from('invites')
+        .update({ expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() })
+        .eq('id', invite.id);
+      if (updateError) throw updateError;
+
       await supabase.functions.invoke('send-invite-email', {
         body: { inviteId: invite.id },
       });
-      toast({ title: 'Invite resent', description: `Resent to ${invite.email}` });
+      toast({ title: 'Invite resent', description: `Resent to ${invite.email} with a fresh 7-day expiry.` });
+      queryClient.invalidateQueries({ queryKey: ['pending-invites'] });
     } catch (err: any) {
       toast({ title: 'Error resending', description: err.message, variant: 'destructive' });
     }
     setResendingId(null);
+  };
+
+  const handleReinvite = async (invite: Invite) => {
+    setCancellingId(invite.id);
+    const { error } = await supabase.from('invites').delete().eq('id', invite.id);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      setCancellingId(null);
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ['pending-invites'] });
+    setCancellingId(null);
+    onReinvite?.(invite.email, invite.role);
   };
 
   const handleCopyLink = (invite: Invite) => {
@@ -147,11 +170,11 @@ export function PendingInvitesList({ roleFilter }: PendingInvitesListProps) {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  title={expired ? "Invite expired — cancel and re-invite" : "Resend invite"}
-                  onClick={() => handleResend(invite)}
-                  disabled={resendingId === invite.id || expired}
+                  title={expired ? "Re-invite" : "Resend invite"}
+                  onClick={() => expired ? handleReinvite(invite) : handleResend(invite)}
+                  disabled={resendingId === invite.id || cancellingId === invite.id}
                 >
-                  {resendingId === invite.id ? (
+                  {resendingId === invite.id || (expired && cancellingId === invite.id) ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
                     <RefreshCw className="h-3.5 w-3.5" />
