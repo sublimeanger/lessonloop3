@@ -27,7 +27,7 @@ export default function OutstandingReport() {
   const { data: terms } = useTerms();
   const [startDate, setStartDate] = useState(() => format(subMonths(new Date(), 12), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
-  const { data, isLoading, error } = useAgeingReport(startDate, endDate);
+  const { data, isLoading, isFetching, error } = useAgeingReport(startDate, endDate);
   const [expandedBuckets, setExpandedBuckets] = useState<Set<string>>(new Set(['Current (0-7 days)']));
   const [bucketPages, setBucketPages] = useState<Record<string, number>>({});
 
@@ -111,9 +111,9 @@ export default function OutstandingReport() {
         </Alert>
       )}
 
-      {isLoading ? (
+      {isLoading && !data ? (
         <ReportSkeleton variant="summary-table" />
-      ) : error ? (
+      ) : error && !data ? (
         <EmptyState icon={Clock} title="Error loading report" description={error.message} />
       ) : !data || data.totalOutstanding === 0 ? (
         <EmptyState
@@ -122,7 +122,7 @@ export default function OutstandingReport() {
           description="There are no outstanding invoices."
         />
       ) : (
-        <>
+        <div className={`transition-opacity duration-300 ${isFetching ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
           {/* Summary Cards */}
           <div className="mb-6 grid gap-4 md:grid-cols-2">
             <Card>
@@ -265,7 +265,7 @@ export default function OutstandingReport() {
               </Card>
             ))}
           </div>
-        </>
+        </div>
       )}
     </AppLayout>
   );

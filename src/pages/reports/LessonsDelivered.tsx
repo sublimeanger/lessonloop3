@@ -30,7 +30,7 @@ export default function LessonsDeliveredReport() {
   const [startDate, setStartDate] = useState(format(startOfMonth(lastMonth), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(lastMonth), 'yyyy-MM-dd'));
 
-  const { data, isLoading, error } = useLessonsDeliveredReport(startDate, endDate);
+  const { data, isLoading, isFetching, error } = useLessonsDeliveredReport(startDate, endDate);
   const [teacherPage, setTeacherPage] = useState(1);
   const [locationPage, setLocationPage] = useState(1);
 
@@ -81,9 +81,9 @@ export default function LessonsDeliveredReport() {
         terms={terms}
       />
 
-      {isLoading ? (
+      {isLoading && !data ? (
         <ReportSkeleton variant="summary-chart-table" />
-      ) : error ? (
+      ) : error && !data ? (
         <EmptyState icon={Calendar} title="Error loading report" description={error.message} />
       ) : !data || (data.byTeacher.length === 0 && data.byLocation.length === 0) ? (
         <EmptyState
@@ -96,7 +96,7 @@ export default function LessonsDeliveredReport() {
           </Button>
         </EmptyState>
       ) : (
-        <>
+        <div className={`transition-opacity duration-300 ${isFetching ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
           {data.warnings?.map((w, i) => (
             <Alert key={i} variant="destructive" className="mb-4">
               <AlertTriangle className="h-4 w-4" />
@@ -305,7 +305,7 @@ export default function LessonsDeliveredReport() {
               </Card>
             </TabsContent>
           </Tabs>
-        </>
+        </div>
       )}
     </AppLayout>
   );
