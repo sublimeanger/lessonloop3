@@ -304,6 +304,10 @@ export function SchedulingSettingsTab() {
       date,
       reason: reason.trim(),
     }));
+    if (dates.length > 365) {
+      toast({ title: 'Range too large', description: 'Closure date ranges cannot exceed 365 days.', variant: 'destructive' });
+      return;
+    }
     addClosureDatesHook(dates, selectedLocationId);
     resetModal();
   };
