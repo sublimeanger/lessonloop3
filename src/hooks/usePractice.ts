@@ -165,16 +165,17 @@ export function usePracticeLogs(options?: {
 // Hook for parent portal - get assignments for their children
 export function useParentPracticeAssignments() {
   const { user } = useAuth();
+  const { currentOrg } = useOrg();
 
   return useQuery({
-    queryKey: ['parent-practice-assignments', user?.id],
+    queryKey: ['parent-practice-assignments', user?.id, currentOrg?.id],
     queryFn: async () => {
-      // First get guardian's children
       const { data: guardian } = await supabase
         .from('guardians')
         .select('id')
         .eq('user_id', user!.id)
-        .single();
+        .eq('org_id', currentOrg!.id)
+        .maybeSingle();
 
       if (!guardian) return [];
 
@@ -199,23 +200,24 @@ export function useParentPracticeAssignments() {
       if (error) throw error;
       return data as PracticeAssignment[];
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !!currentOrg?.id,
   });
 }
 
 // Hook for parent portal - get practice logs for their children
 export function useParentPracticeLogs(studentId?: string) {
   const { user } = useAuth();
+  const { currentOrg } = useOrg();
 
   return useQuery({
-    queryKey: ['parent-practice-logs', user?.id, studentId],
+    queryKey: ['parent-practice-logs', user?.id, studentId, currentOrg?.id],
     queryFn: async () => {
-      // First get guardian's children
       const { data: guardian } = await supabase
         .from('guardians')
         .select('id')
         .eq('user_id', user!.id)
-        .single();
+        .eq('org_id', currentOrg!.id)
+        .maybeSingle();
 
       if (!guardian) return [];
 
@@ -242,7 +244,7 @@ export function useParentPracticeLogs(studentId?: string) {
       if (error) throw error;
       return data as PracticeLog[];
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !!currentOrg?.id,
   });
 }
 
