@@ -2,23 +2,23 @@ import { TableHead } from '@/components/ui/table';
 import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import type { SortDir } from '@/hooks/useSortableTable';
 
-interface SortableTableHeadProps {
+interface SortableTableHeadProps<F extends string> {
   label: string;
-  field: string;
-  currentField: string;
+  field: F;
+  currentField: F;
   currentDir: SortDir;
-  onToggle: (field: string) => void;
+  onToggle: (field: F) => void;
   className?: string;
 }
 
-export function SortableTableHead({
+export function SortableTableHead<F extends string>({
   label,
   field,
   currentField,
   currentDir,
   onToggle,
   className = '',
-}: SortableTableHeadProps) {
+}: SortableTableHeadProps<F>) {
   const isActive = currentField === field;
 
   return (
