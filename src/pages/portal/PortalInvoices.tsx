@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ListSkeleton } from '@/components/shared/LoadingState';
+import { PortalErrorState } from '@/components/portal/PortalErrorState';
 import { useSearchParams } from 'react-router-dom';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { usePortalFeatures } from '@/hooks/usePortalFeatures';
@@ -33,7 +34,7 @@ export default function PortalInvoices() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
 
-  const { data: invoices, isLoading, refetch } = useParentInvoices({ status: statusFilter });
+  const { data: invoices, isLoading, isError, refetch } = useParentInvoices({ status: statusFilter });
   const { initiatePayment, isLoading: isPaymentLoading } = useStripePayment();
   const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
   const { data: orgPaymentPrefs } = useOrgPaymentPreferences();
@@ -216,6 +217,8 @@ export default function PortalInvoices() {
 
       {isLoading ? (
         <ListSkeleton count={3} />
+      ) : isError ? (
+        <PortalErrorState onRetry={() => refetch()} />
       ) : !invoices || invoices.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">

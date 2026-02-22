@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { ListSkeleton } from '@/components/shared/LoadingState';
+import { PortalErrorState } from '@/components/portal/PortalErrorState';
 import { useSearchParams } from 'react-router-dom';
 import { useChildFilter } from '@/contexts/ChildFilterContext';
 import { PortalLayout } from '@/components/layout/PortalLayout';
@@ -60,7 +61,7 @@ export default function PortalSchedule() {
   const { toast } = useToast();
 
   // Fetch ALL lessons (no status filter — cancelled shown inline)
-  const { data: lessons, isLoading } = useParentLessons({
+  const { data: lessons, isLoading, isError, refetch } = useParentLessons({
     studentId: selectedChildId || undefined,
   });
   const createRequest = useCreateMessageRequest();
@@ -302,6 +303,8 @@ export default function PortalSchedule() {
 
       {isLoading ? (
         <ListSkeleton count={4} />
+      ) : isError ? (
+        <PortalErrorState onRetry={() => refetch()} />
       ) : !lessons || lessons.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">

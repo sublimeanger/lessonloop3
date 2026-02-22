@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { PortalErrorState } from '@/components/portal/PortalErrorState';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -97,9 +98,9 @@ export default function PortalHome() {
     handleMakeupAction();
   }, [searchParams, setSearchParams, toast]);
 
-  const { data: summary, isLoading: summaryLoading } = useParentSummary();
-  const { data: children, isLoading: childrenLoading } = useChildrenWithDetails();
-  const { data: guardianInfo, isLoading: guardianLoading } = useGuardianInfo();
+  const { data: summary, isLoading: summaryLoading, isError: summaryError, refetch: refetchSummary } = useParentSummary();
+  const { data: children, isLoading: childrenLoading, isError: childrenError, refetch: refetchChildren } = useChildrenWithDetails();
+  const { data: guardianInfo, isLoading: guardianLoading, isError: guardianError } = useGuardianInfo();
   const { data: unreadCount } = useUnreadMessagesCount();
   const { data: waitlistEntries } = useParentWaitlistEntries();
 
@@ -149,6 +150,7 @@ export default function PortalHome() {
   const tz = (currentOrg as any)?.timezone || 'Europe/London';
 
   const isLoading = summaryLoading || childrenLoading || guardianLoading;
+  const isError = summaryError || childrenError || guardianError;
 
   const allChildrenInactive = children && children.length > 0 && children.every(c => c.status === 'inactive');
   const noLinkedChildren = !childrenLoading && (!children || children.length === 0);
@@ -181,6 +183,8 @@ export default function PortalHome() {
 
         {isLoading ? (
           <PortalHomeSkeleton />
+        ) : isError ? (
+          <PortalErrorState onRetry={() => { refetchSummary(); refetchChildren(); }} />
         ) : hasAccessIssue ? (
           <Card className="border-muted">
             <CardContent className="p-8 flex flex-col items-center text-center space-y-4">

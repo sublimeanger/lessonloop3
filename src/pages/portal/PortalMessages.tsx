@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { ListSkeleton } from '@/components/shared/LoadingState';
+import { PortalErrorState } from '@/components/portal/PortalErrorState';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,8 +19,8 @@ export default function PortalMessages() {
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('inbox');
 
-  const { data: requests, isLoading: requestsLoading } = useMessageRequests();
-  const { data: messages, isLoading: messagesLoading, hasMore, loadMore, isFetchingMore } = useParentMessages();
+  const { data: requests, isLoading: requestsLoading, isError: requestsError, refetch: refetchRequests } = useMessageRequests();
+  const { data: messages, isLoading: messagesLoading, isError: messagesError, hasMore, loadMore, isFetchingMore } = useParentMessages();
   const markAsRead = useMarkMessagesAsRead();
 
   // Mark messages as read when inbox tab is viewed
@@ -125,6 +126,8 @@ export default function PortalMessages() {
         <TabsContent value="inbox">
           {messagesLoading ? (
             <ListSkeleton count={3} />
+          ) : messagesError ? (
+            <PortalErrorState />
           ) : !messages || messages.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
@@ -187,6 +190,8 @@ export default function PortalMessages() {
         <TabsContent value="requests">
           {requestsLoading ? (
             <ListSkeleton count={2} />
+          ) : requestsError ? (
+            <PortalErrorState onRetry={() => refetchRequests()} />
           ) : !requests || requests.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
