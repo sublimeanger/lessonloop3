@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { fromZonedTime } from 'date-fns-tz';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,14 +43,18 @@ export function usePayroll(startDate: string, endDate: string) {
         return { teachers: [], totalGrossOwed: 0, dateRange: { start: '', end: '' } };
       }
 
+      const orgTimezone = currentOrg.timezone || 'Europe/London';
+      const rangeStart = fromZonedTime(new Date(`${startDate}T00:00:00`), orgTimezone).toISOString();
+      const rangeEnd = fromZonedTime(new Date(`${endDate}T23:59:59`), orgTimezone).toISOString();
+
       // Fetch completed lessons in date range - now with teacher_id
       let lessonsQuery = supabase
         .from('lessons')
         .select('id, title, start_at, end_at, teacher_id, status')
         .eq('org_id', currentOrg.id)
         .eq('status', 'completed')
-        .gte('start_at', `${startDate}T00:00:00`)
-        .lte('start_at', `${endDate}T23:59:59`);
+        .gte('start_at', rangeStart)
+        .lte('start_at', rangeEnd);
 
       // If teacher, filter by their teacher_id (lookup via user_id)
       if (!isAdmin && user) {
