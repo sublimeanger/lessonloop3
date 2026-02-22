@@ -113,8 +113,8 @@ export function PortalSidebar() {
                       </NavLink>
                     </SidebarMenuButton>
                     {showBadge && (
-                      <SidebarMenuBadge className="bg-destructive text-destructive-foreground">
-                        {unreadCount > 99 ? '99+' : unreadCount}
+                      <SidebarMenuBadge className="bg-destructive text-destructive-foreground" aria-label={`${unreadCount} unread messages`}>
+                        <span aria-hidden="true">{unreadCount > 99 ? '99+' : unreadCount}</span>
                       </SidebarMenuBadge>
                     )}
                   </SidebarMenuItem>
