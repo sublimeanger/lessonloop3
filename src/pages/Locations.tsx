@@ -147,7 +147,7 @@ export default function Locations() {
       const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString();
       const weekEnd = endOfWeek(now, { weekStartsOn: 1 }).toISOString();
 
-      const [lessonsResult, teachersResult] = await Promise.all([
+      const [lessonsResult, teachersResult, roomLessonsResult] = await Promise.all([
         supabase
           .from('lessons')
           .select('location_id')
@@ -164,16 +164,25 @@ export default function Locations() {
           .gte('start_at', weekStart)
           .lte('start_at', weekEnd)
           .neq('status', 'cancelled'),
+        supabase
+          .from('lessons')
+          .select('room_id')
+          .eq('org_id', currentOrg.id)
+          .in('location_id', locationIds)
+          .not('room_id', 'is', null)
+          .gte('start_at', new Date().toISOString())
+          .neq('status', 'cancelled')
+          .limit(500),
       ]);
 
       const stats: Record<string, { lessonCount: number; teacherCount: number }> = {};
+      const roomBookings: Record<string, number> = {};
       locationIds.forEach(id => { stats[id] = { lessonCount: 0, teacherCount: 0 }; });
 
       (lessonsResult.data || []).forEach(l => {
         if (l.location_id && stats[l.location_id]) stats[l.location_id].lessonCount++;
       });
 
-      // Count unique teachers per location
       const teachersByLoc: Record<string, Set<string>> = {};
       (teachersResult.data || []).forEach(l => {
         if (l.location_id && l.teacher_id) {
@@ -185,7 +194,11 @@ export default function Locations() {
         if (stats[locId]) stats[locId].teacherCount = set.size;
       });
 
-      return stats;
+      (roomLessonsResult.data || []).forEach(l => {
+        if (l.room_id) roomBookings[l.room_id] = (roomBookings[l.room_id] || 0) + 1;
+      });
+
+      return { locationStats: stats, roomBookings };
     },
     enabled: !!currentOrg && locationIds.length > 0,
     staleTime: 60_000,
@@ -694,12 +707,12 @@ export default function Locations() {
                       )}
                     </div>
                     {/* Usage stats */}
-                    {locationStats && locationStats[location.id] && (
+                    {locationStats?.locationStats && locationStats.locationStats[location.id] && (
                       <div className="flex items-center gap-2 text-[11px] mt-0.5">
-                        {locationStats[location.id].lessonCount > 0 ? (
+                        {locationStats.locationStats[location.id].lessonCount > 0 ? (
                           <span className="text-muted-foreground">
-                            {locationStats[location.id].lessonCount} lesson{locationStats[location.id].lessonCount !== 1 ? 's' : ''} this week
-                            {locationStats[location.id].teacherCount > 0 && ` · ${locationStats[location.id].teacherCount} teacher${locationStats[location.id].teacherCount !== 1 ? 's' : ''}`}
+                            {locationStats.locationStats[location.id].lessonCount} lesson{locationStats.locationStats[location.id].lessonCount !== 1 ? 's' : ''} this week
+                            {locationStats.locationStats[location.id].teacherCount > 0 && ` · ${locationStats.locationStats[location.id].teacherCount} teacher${locationStats.locationStats[location.id].teacherCount !== 1 ? 's' : ''}`}
                           </span>
                         ) : (
                           <span className="text-amber-600 dark:text-amber-400">No upcoming lessons</span>
@@ -770,6 +783,13 @@ export default function Locations() {
                             <div className="min-w-0">
                               <span className="text-sm font-medium">{room.name}</span>
                               {room.capacity && <span className="text-xs text-muted-foreground ml-1.5">(Cap: {room.capacity})</span>}
+                              <div className="text-[11px] mt-0.5">
+                                {(locationStats?.roomBookings?.[room.id] || 0) > 0 ? (
+                                  <span className="text-muted-foreground">{locationStats.roomBookings[room.id]} upcoming</span>
+                                ) : (
+                                  <span className="text-muted-foreground/60">No bookings</span>
+                                )}
+                              </div>
                             </div>
                             {isOrgAdmin && (
                               <div className="flex gap-0.5 shrink-0">
