@@ -1617,6 +1617,185 @@ export type Database = {
           },
         ]
       }
+      make_up_waitlist: {
+        Row: {
+          absence_reason: Database["public"]["Enums"]["absence_reason"]
+          attendance_record_id: string | null
+          booked_lesson_id: string | null
+          created_at: string | null
+          credit_id: string | null
+          expires_at: string | null
+          guardian_id: string | null
+          id: string
+          lesson_duration_minutes: number
+          lesson_title: string
+          location_id: string | null
+          matched_at: string | null
+          matched_lesson_id: string | null
+          missed_lesson_date: string
+          missed_lesson_id: string
+          notes: string | null
+          offered_at: string | null
+          org_id: string
+          preferred_days: string[] | null
+          preferred_time_earliest: string | null
+          preferred_time_latest: string | null
+          responded_at: string | null
+          status: string
+          student_id: string
+          teacher_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          absence_reason: Database["public"]["Enums"]["absence_reason"]
+          attendance_record_id?: string | null
+          booked_lesson_id?: string | null
+          created_at?: string | null
+          credit_id?: string | null
+          expires_at?: string | null
+          guardian_id?: string | null
+          id?: string
+          lesson_duration_minutes: number
+          lesson_title: string
+          location_id?: string | null
+          matched_at?: string | null
+          matched_lesson_id?: string | null
+          missed_lesson_date: string
+          missed_lesson_id: string
+          notes?: string | null
+          offered_at?: string | null
+          org_id: string
+          preferred_days?: string[] | null
+          preferred_time_earliest?: string | null
+          preferred_time_latest?: string | null
+          responded_at?: string | null
+          status?: string
+          student_id: string
+          teacher_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          absence_reason?: Database["public"]["Enums"]["absence_reason"]
+          attendance_record_id?: string | null
+          booked_lesson_id?: string | null
+          created_at?: string | null
+          credit_id?: string | null
+          expires_at?: string | null
+          guardian_id?: string | null
+          id?: string
+          lesson_duration_minutes?: number
+          lesson_title?: string
+          location_id?: string | null
+          matched_at?: string | null
+          matched_lesson_id?: string | null
+          missed_lesson_date?: string
+          missed_lesson_id?: string
+          notes?: string | null
+          offered_at?: string | null
+          org_id?: string
+          preferred_days?: string[] | null
+          preferred_time_earliest?: string | null
+          preferred_time_latest?: string | null
+          responded_at?: string | null
+          status?: string
+          student_id?: string
+          teacher_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "make_up_waitlist_attendance_record_id_fkey"
+            columns: ["attendance_record_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_waitlist_booked_lesson_id_fkey"
+            columns: ["booked_lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_waitlist_credit_id_fkey"
+            columns: ["credit_id"]
+            isOneToOne: false
+            referencedRelation: "make_up_credits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_waitlist_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_waitlist_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_waitlist_matched_lesson_id_fkey"
+            columns: ["matched_lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_waitlist_missed_lesson_id_fkey"
+            columns: ["missed_lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_waitlist_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_waitlist_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_waitlist_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_waitlist_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_waitlist_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_waitlist_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers_with_pay"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_batches: {
         Row: {
           body: string
@@ -2030,6 +2209,7 @@ export type Database = {
           invoice_from_name: string | null
           invoice_from_postcode: string | null
           logo_url: string | null
+          make_up_waitlist_expiry_weeks: number | null
           max_students: number
           max_teachers: number
           name: string
@@ -2080,6 +2260,7 @@ export type Database = {
           invoice_from_name?: string | null
           invoice_from_postcode?: string | null
           logo_url?: string | null
+          make_up_waitlist_expiry_weeks?: number | null
           max_students?: number
           max_teachers?: number
           name: string
@@ -2130,6 +2311,7 @@ export type Database = {
           invoice_from_name?: string | null
           invoice_from_postcode?: string | null
           logo_url?: string | null
+          make_up_waitlist_expiry_weeks?: number | null
           max_students?: number
           max_teachers?: number
           name?: string
