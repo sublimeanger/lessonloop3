@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format, parseISO, isBefore, isAfter, startOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,6 +48,8 @@ import {
 } from '@/hooks/useTeacherAvailability';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { cn } from '@/lib/utils';
+import { useOrg } from '@/contexts/OrgContext';
+import { supabase } from '@/integrations/supabase/client';
 
 // Time slot options (15-min increments)
 const TIME_OPTIONS = Array.from({ length: 24 * 4 }, (_, i) => {
@@ -88,6 +90,7 @@ interface TeacherAvailabilityTabProps {
 }
 
 export function TeacherAvailabilityTab({ teacherId, teacherUserId }: TeacherAvailabilityTabProps = {}) {
+  const { currentOrg } = useOrg();
   const { data: availabilityBlocks = [], isLoading: loadingAvailability } = useAvailabilityBlocks(teacherId);
   const { data: timeOffBlocks = [], isLoading: loadingTimeOff } = useTimeOffBlocks(teacherId);
   
@@ -100,11 +103,46 @@ export function TeacherAvailabilityTab({ teacherId, teacherUserId }: TeacherAvai
   const [timeOffDialogOpen, setTimeOffDialogOpen] = useState(false);
   const [deleteAvailabilityId, setDeleteAvailabilityId] = useState<string | null>(null);
   const [deleteTimeOffId, setDeleteTimeOffId] = useState<string | null>(null);
+  const [affectedLessonCount, setAffectedLessonCount] = useState<number | null>(null);
 
   const [availabilityForm, setAvailabilityForm] = useState<AvailabilityFormData>(defaultAvailabilityForm);
   const [timeOffForm, setTimeOffForm] = useState<TimeOffFormData>(defaultTimeOffForm);
 
   const isLoading = loadingAvailability || loadingTimeOff;
+
+  // When a delete is initiated, check for affected lessons
+  useEffect(() => {
+    if (!deleteAvailabilityId || !teacherId || !currentOrg) {
+      setAffectedLessonCount(null);
+      return;
+    }
+    const block = availabilityBlocks.find(b => b.id === deleteAvailabilityId);
+    if (!block) return;
+
+    const dayIndex = DAYS_OF_WEEK.findIndex(d => d.value === block.day_of_week);
+    // JS day: 0=Sun, DAYS_OF_WEEK starts at monday=0 → JS day = index + 1, wrap 7→0
+    const jsDayOfWeek = (dayIndex + 1) % 7;
+
+    (async () => {
+      const { data: lessons } = await supabase
+        .from('lessons')
+        .select('start_at')
+        .eq('org_id', currentOrg.id)
+        .eq('teacher_id', teacherId)
+        .eq('status', 'scheduled')
+        .gte('start_at', new Date().toISOString());
+
+      if (!lessons) { setAffectedLessonCount(0); return; }
+
+      const count = lessons.filter(l => {
+        const d = new Date(l.start_at);
+        if (d.getDay() !== jsDayOfWeek) return false;
+        const timeStr = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+        return timeStr >= block.start_time_local && timeStr < block.end_time_local;
+      }).length;
+      setAffectedLessonCount(count);
+    })();
+  }, [deleteAvailabilityId, teacherId, currentOrg?.id]);
 
   // Group availability by day
   const availabilityByDay = DAYS_OF_WEEK.map(day => ({
@@ -482,6 +520,11 @@ export function TeacherAvailabilityTab({ teacherId, teacherUserId }: TeacherAvai
             <AlertDialogTitle>Remove Availability?</AlertDialogTitle>
             <AlertDialogDescription>
               This will remove this time slot from your weekly availability.
+              {affectedLessonCount != null && affectedLessonCount > 0 && (
+                <span className="mt-2 block text-sm font-medium text-destructive">
+                  ⚠️ There {affectedLessonCount === 1 ? 'is' : 'are'} {affectedLessonCount} scheduled lesson{affectedLessonCount !== 1 ? 's' : ''} during this time slot. Removing this availability won't cancel them, but new lessons won't be flagged for conflicts.
+                </span>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
