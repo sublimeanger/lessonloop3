@@ -37,6 +37,8 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
   
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
   const [isSaving, setIsSaving] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<{ show: boolean; matches: { id: string; first_name: string; last_name: string; email: string | null }[] }>({ show: false, matches: [] });
+  const [skipDuplicateCheck, setSkipDuplicateCheck] = useState(false);
   
   // Form data for each step
   const [studentData, setStudentData] = useState<StudentInfoData>({
@@ -73,6 +75,8 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
     if (!open) {
       setTimeout(() => {
         setCurrentStep(1);
+        setDuplicateWarning({ show: false, matches: [] });
+        setSkipDuplicateCheck(false);
         setStudentData({ firstName: '', lastName: '', email: '', phone: '', dob: '', notes: '' });
         setGuardianData({
           addGuardian: false,
@@ -135,6 +139,31 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
   
   const handleCreate = async () => {
     if (!currentOrg) return;
+    
+    // Duplicate detection
+    if (!skipDuplicateCheck) {
+      const newFirst = studentData.firstName.trim().toLowerCase();
+      const newLast = studentData.lastName.trim().toLowerCase();
+      const newEmail = studentData.email.trim().toLowerCase();
+      
+      const { data: existing } = await supabase
+        .from('students')
+        .select('id, first_name, last_name, email')
+        .eq('org_id', currentOrg.id)
+        .is('deleted_at', null);
+      
+      const matches = (existing || []).filter((s) => {
+        const nameMatch = s.first_name.toLowerCase() === newFirst && s.last_name.toLowerCase() === newLast;
+        const emailMatch = newEmail && s.email && s.email.toLowerCase() === newEmail;
+        return nameMatch || emailMatch;
+      });
+      
+      if (matches.length > 0) {
+        setDuplicateWarning({ show: true, matches });
+        return;
+      }
+    }
+    setSkipDuplicateCheck(false);
     setIsSaving(true);
     
     try {
@@ -285,6 +314,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
   };
   
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-auto">
         <DialogHeader>
@@ -398,5 +428,29 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
         )}
       </DialogContent>
     </Dialog>
+    
+    <Dialog open={duplicateWarning.show} onOpenChange={(open) => { if (!open) setDuplicateWarning({ show: false, matches: [] }); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Possible duplicate student</DialogTitle>
+          <DialogDescription>
+            A student with a similar name or email already exists:
+          </DialogDescription>
+        </DialogHeader>
+        <ul className="my-2 space-y-1 text-sm">
+          {duplicateWarning.matches.map((m) => (
+            <li key={m.id} className="rounded border p-2">
+              <span className="font-medium">{m.first_name} {m.last_name}</span>
+              {m.email && <span className="ml-2 text-muted-foreground">({m.email})</span>}
+            </li>
+          ))}
+        </ul>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={() => setDuplicateWarning({ show: false, matches: [] })}>Cancel</Button>
+          <Button onClick={() => { setDuplicateWarning({ show: false, matches: [] }); setSkipDuplicateCheck(true); setTimeout(() => handleCreate(), 0); }}>Continue Anyway</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
