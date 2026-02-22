@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -149,7 +149,13 @@ export default function Students() {
   const { data: students = [], isLoading } = useStudents();
   const toggleMutation = useToggleStudentStatus();
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchQuery(searchInput), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [confirmToggle, setConfirmToggle] = useState<StudentListItem | null>(null);
   const [sortBy, setSortBy] = useState<'last_name' | 'first_name' | 'created_at'>('last_name');
@@ -231,8 +237,8 @@ export default function Students() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
             placeholder="Search students..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="pl-9"
             aria-label="Search students"
           />
