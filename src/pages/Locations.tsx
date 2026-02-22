@@ -258,6 +258,9 @@ export default function Locations() {
       }
     }
 
+    // Clean up location-specific closure dates
+    await supabase.from('closure_dates').delete().eq('location_id', locationId);
+
     const { error } = await supabase.from('locations').delete().eq('id', locationId);
     if (error) {
       toast({ title: 'Error deleting location', description: error.message, variant: 'destructive' });
