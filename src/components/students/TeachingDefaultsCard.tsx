@@ -27,7 +27,7 @@ export function TeachingDefaultsCard({
   onUpdate,
   readOnly = false
 }: TeachingDefaultsCardProps) {
-  const { isOrgAdmin } = useOrg();
+  const { isOrgAdmin, currentOrg } = useOrg();
   const { toast } = useToast();
   
   const [isEditing, setIsEditing] = useState(false);
@@ -72,7 +72,8 @@ export function TeachingDefaultsCard({
         default_teacher_id: editTeacherId || null,
         default_rate_card_id: editRateCardId || null,
       })
-      .eq('id', studentId);
+      .eq('id', studentId)
+      .eq('org_id', currentOrg!.id);
     
     if (error) {
       toast({ title: 'Error saving defaults', description: error.message, variant: 'destructive' });

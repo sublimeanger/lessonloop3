@@ -140,7 +140,7 @@ function StudentCard({
 }
 
 export default function Students() {
-  const { currentRole } = useOrg();
+  const { currentRole, currentOrg } = useOrg();
   const navigate = useNavigate();
   const isAdmin = currentRole === 'owner' || currentRole === 'admin';
   const { toast } = useToast();
@@ -197,7 +197,7 @@ export default function Students() {
   const confirmToggleStatus = () => {
     if (!confirmToggle) return;
     const newStatus: StudentStatus = confirmToggle.status === 'active' ? 'inactive' : 'active';
-    toggleMutation.mutate({ studentId: confirmToggle.id, newStatus });
+    toggleMutation.mutate({ studentId: confirmToggle.id, newStatus, orgId: currentOrg!.id });
     setConfirmToggle(null);
   };
 
