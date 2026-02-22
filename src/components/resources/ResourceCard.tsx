@@ -21,6 +21,7 @@ import {
   Users,
   Check,
   Eye,
+  Info,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ResourceWithShares, useDeleteResource } from '@/hooks/useResources';
@@ -37,6 +38,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getFileIcon, getFileTypeBadge, formatFileSize } from '@/lib/fileUtils';
 import { ResourcePreviewModal, isPreviewable } from './ResourcePreviewModal';
+import { ResourceDetailModal } from './ResourceDetailModal';
 import { AudioPlayer } from './AudioPlayer';
 
 interface ResourceCardProps {
@@ -51,6 +53,7 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -107,9 +110,7 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
 
   const handleTitleClick = () => {
     if (selectionMode) return;
-    if (canPreview) {
-      setPreviewOpen(true);
-    }
+    setDetailOpen(true);
   };
 
   return (
@@ -127,10 +128,10 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
             )}
             <button
               type="button"
-              className={`rounded-lg shrink-0 overflow-hidden ${isImage && thumbnailUrl ? 'h-12 w-12' : 'p-2 bg-muted'} ${canPreview && !selectionMode ? 'hover:bg-primary/10 cursor-pointer transition-colors' : ''}`}
+              className={`rounded-lg shrink-0 overflow-hidden ${isImage && thumbnailUrl ? 'h-12 w-12' : 'p-2 bg-muted'} ${!selectionMode ? 'hover:bg-primary/10 cursor-pointer transition-colors' : ''}`}
               onClick={handleTitleClick}
-              disabled={selectionMode || !canPreview}
-              title={canPreview ? 'Preview' : undefined}
+              disabled={selectionMode}
+              title="View details"
             >
               {isImage && thumbnailUrl ? (
                 <img
@@ -149,11 +150,11 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
 
             <div className="flex-1 min-w-0">
               <h3
-                className={`font-medium truncate ${canPreview && !selectionMode ? 'hover:text-primary cursor-pointer' : ''}`}
+                className={`font-medium truncate ${!selectionMode ? 'hover:text-primary cursor-pointer' : ''}`}
                 title={resource.title}
                 onClick={handleTitleClick}
-                role={canPreview ? 'button' : undefined}
-                tabIndex={canPreview && !selectionMode ? 0 : undefined}
+                role="button"
+                tabIndex={!selectionMode ? 0 : undefined}
               >
                 {resource.title}
               </h3>
@@ -192,6 +193,10 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setDetailOpen(true)}>
+                    <Info className="mr-2 h-4 w-4" />
+                    Details
+                  </DropdownMenuItem>
                   {canPreview && (
                     <DropdownMenuItem onClick={() => setPreviewOpen(true)}>
                       <Eye className="mr-2 h-4 w-4" />
@@ -225,6 +230,12 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
           </div>
         </CardContent>
       </Card>
+
+      <ResourceDetailModal
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        resource={resource}
+      />
 
       <ResourcePreviewModal
         open={previewOpen}
