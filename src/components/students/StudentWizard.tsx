@@ -6,7 +6,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { logAudit } from '@/lib/auditLog';
 import { Check, ChevronLeft, ChevronRight, Loader2, User, Users, GraduationCap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isValidEmail, isValidPhone } from '@/lib/validation';
@@ -34,6 +36,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { currentOrg } = useOrg();
+  const { user } = useAuth();
   const { toast } = useToast();
   
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
@@ -276,6 +279,11 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
       setCurrentStep('success');
       toast({ title: 'Student created successfully!' });
       queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
+      if (currentOrg && user) {
+        logAudit(currentOrg.id, user.id, 'student.created', 'student', createdStudent.id, {
+          after: { first_name: createdStudent.first_name, last_name: createdStudent.last_name, email: createdStudent.email },
+        });
+      }
       onSuccess?.();
       
     } catch (error: unknown) {

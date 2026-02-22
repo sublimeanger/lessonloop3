@@ -5,7 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { logAudit } from '@/lib/auditLog';
 import { MapPin, User, Receipt, Edit, Loader2, Check, X } from 'lucide-react';
 import { useTeachersAndLocations } from '@/hooks/useCalendarData';
 import { useRateCards } from '@/hooks/useRateCards';
@@ -28,6 +30,7 @@ export function TeachingDefaultsCard({
   readOnly = false
 }: TeachingDefaultsCardProps) {
   const { isOrgAdmin, currentOrg } = useOrg();
+  const { user } = useAuth();
   const { toast } = useToast();
   
   const [isEditing, setIsEditing] = useState(false);
@@ -79,6 +82,12 @@ export function TeachingDefaultsCard({
       toast({ title: 'Error saving defaults', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Teaching defaults updated' });
+      if (currentOrg && user) {
+        logAudit(currentOrg.id, user.id, 'student.defaults_updated', 'student', studentId, {
+          before: { default_location_id: defaultLocationId, default_teacher_id: defaultTeacherId, default_rate_card_id: defaultRateCardId },
+          after: { default_location_id: editLocationId || null, default_teacher_id: editTeacherId || null, default_rate_card_id: editRateCardId || null },
+        });
+      }
       setIsEditing(false);
       onUpdate?.();
     }
