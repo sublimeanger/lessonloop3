@@ -356,37 +356,17 @@ export function useRecordPayment() {
 
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
-      const { error: paymentError } = await supabase.from('payments').insert({
-        org_id: currentOrg.id,
-        invoice_id: data.invoice_id,
-        amount_minor: data.amount_minor,
-        currency_code: currentOrg.currency_code,
-        method: data.method,
-        provider: 'manual',
-        provider_reference: data.provider_reference || null,
+      const { data: result, error } = await supabase.rpc('record_payment_and_update_status', {
+        _org_id: currentOrg.id,
+        _invoice_id: data.invoice_id,
+        _amount_minor: data.amount_minor,
+        _currency_code: currentOrg.currency_code,
+        _method: data.method,
+        _provider_reference: data.provider_reference || null,
       });
 
-      if (paymentError) throw paymentError;
-
-      const { data: invoice } = await supabase
-        .from('invoices')
-        .select('total_minor')
-        .eq('id', data.invoice_id)
-        .single();
-
-      const { data: payments } = await supabase
-        .from('payments')
-        .select('amount_minor')
-        .eq('invoice_id', data.invoice_id);
-
-      const totalPaid = payments?.reduce((sum, p) => sum + p.amount_minor, 0) || 0;
-
-      if (invoice && totalPaid >= invoice.total_minor) {
-        await supabase
-          .from('invoices')
-          .update({ status: 'paid' })
-          .eq('id', data.invoice_id);
-      }
+      if (error) throw error;
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });

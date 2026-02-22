@@ -3538,6 +3538,17 @@ export type Database = {
         Args: { _student_id: string; _user_id: string }
         Returns: boolean
       }
+      record_payment_and_update_status: {
+        Args: {
+          _amount_minor: number
+          _currency_code: string
+          _invoice_id: string
+          _method: string
+          _org_id: string
+          _provider_reference?: string
+        }
+        Returns: Json
+      }
       reset_stale_streaks: { Args: never; Returns: undefined }
     }
     Enums: {
