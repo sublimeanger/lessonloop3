@@ -295,6 +295,9 @@ export function useCreateMessageTemplate() {
   return useMutation({
     mutationFn: async (data: { name: string; subject: string; body: string; channel?: 'email' | 'inapp' }) => {
       if (!currentOrg) throw new Error('No org selected');
+      if (!data.name.trim()) throw new Error('Template name is required');
+      if (!data.subject.trim()) throw new Error('Template subject is required');
+      if (!data.body.trim()) throw new Error('Template body is required');
 
       const { error } = await supabase.from('message_templates').insert({
         org_id: currentOrg.id,
