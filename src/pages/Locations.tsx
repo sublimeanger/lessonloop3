@@ -210,7 +210,7 @@ export default function Locations() {
     };
     
     if (editingLocation) {
-      const { error } = await supabase.from('locations').update(data).eq('id', editingLocation.id);
+      const { error } = await supabase.from('locations').update(data).eq('id', editingLocation.id).eq('org_id', currentOrg.id);
       if (error) {
         toast({ title: 'Error updating', description: error.message, variant: 'destructive' });
       } else {
@@ -268,7 +268,7 @@ export default function Locations() {
       return;
     }
 
-    const { error } = await supabase.from('locations').delete().eq('id', locationId);
+    const { error } = await supabase.from('locations').delete().eq('id', locationId).eq('org_id', currentOrg.id);
     if (error) {
       toast({ title: 'Error deleting location', description: error.message, variant: 'destructive' });
     } else {
@@ -312,7 +312,7 @@ export default function Locations() {
     };
     
     if (editingRoom) {
-      const { error } = await supabase.from('rooms').update(data).eq('id', editingRoom.id);
+      const { error } = await supabase.from('rooms').update(data).eq('id', editingRoom.id).eq('org_id', currentOrg.id);
       if (error) {
         toast({ title: 'Error updating', description: error.message, variant: 'destructive' });
       } else {
@@ -348,7 +348,7 @@ export default function Locations() {
 
   const confirmDeleteRoom = async () => {
     setDeleteRoomDialog(prev => ({ ...prev, isDeleting: true }));
-    const { error } = await supabase.from('rooms').delete().eq('id', deleteRoomDialog.roomId);
+    const { error } = await supabase.from('rooms').delete().eq('id', deleteRoomDialog.roomId).eq('org_id', currentOrg.id);
     if (error) {
       toast({ title: 'Error deleting room', description: error.message, variant: 'destructive' });
     } else {
