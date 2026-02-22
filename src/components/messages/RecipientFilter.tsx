@@ -82,7 +82,7 @@ export function RecipientFilter({
       {/* Student Status */}
       <div className="space-y-2">
         <Label className="text-xs text-muted-foreground">Student Status</Label>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-2 sm:gap-4">
           {(['active', 'inactive', 'all'] as const).map((status) => (
             <label key={status} className="flex items-center gap-2 cursor-pointer">
               <Checkbox
