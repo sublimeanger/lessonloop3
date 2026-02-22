@@ -162,7 +162,8 @@ export function PublicRoute({ children }: { children: ReactNode }) {
   }
 
   // Authenticated and onboarded - redirect to appropriate dashboard
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
+  const fromState = (location.state as { from?: { pathname: string; search?: string } })?.from;
+  const from = fromState ? fromState.pathname + (fromState.search || '') : null;
   
   if (currentRole === 'parent') {
     return <Navigate to="/portal/home" replace />;
