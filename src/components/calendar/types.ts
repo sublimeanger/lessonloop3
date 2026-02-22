@@ -81,6 +81,7 @@ export interface CalendarFilters {
   teacher_id: string | null;   // teachers.id
   location_id: string | null;
   room_id: string | null;
+  hide_cancelled: boolean;
 }
 
 export interface TimeSlot {

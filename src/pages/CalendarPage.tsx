@@ -45,6 +45,7 @@ export default function CalendarPage() {
     teacher_id: searchParams.get('teacher') || null,
     location_id: null,
     room_id: null,
+    hide_cancelled: false,
   }));
 
   useEffect(() => { safeSetItem('ll-calendar-compact', isCompact ? '1' : '0'); }, [isCompact]);

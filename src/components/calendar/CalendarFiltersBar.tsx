@@ -26,10 +26,12 @@ export function CalendarFiltersBar({
 }: CalendarFiltersBarProps) {
   const dayKey = currentDate ? format(currentDate, 'yyyy-MM-dd') : null;
 
-  // Count lessons for a given teacher on the current day
+  const activeLessons = lessons.filter(l => l.status !== 'cancelled');
+
+  // Count lessons for a given teacher on the current day (excludes cancelled)
   const countForTeacher = (teacherId: string | null) => {
     if (!dayKey) return 0;
-    return lessons.filter((l) => {
+    return activeLessons.filter((l) => {
       const lessonDay = format(parseISO(l.start_at), 'yyyy-MM-dd');
       if (lessonDay !== dayKey) return false;
       if (teacherId && l.teacher_id !== teacherId) return false;
@@ -37,10 +39,10 @@ export function CalendarFiltersBar({
     }).length;
   };
 
-  // Count lessons for a given location on the current day
+  // Count lessons for a given location on the current day (excludes cancelled)
   const countForLocation = (locationId: string | null) => {
     if (!dayKey) return 0;
-    return lessons.filter((l) => {
+    return activeLessons.filter((l) => {
       const lessonDay = format(parseISO(l.start_at), 'yyyy-MM-dd');
       if (lessonDay !== dayKey) return false;
       if (locationId && l.location_id !== locationId) return false;
@@ -49,8 +51,8 @@ export function CalendarFiltersBar({
   };
 
   const totalCount = dayKey
-    ? lessons.filter((l) => format(parseISO(l.start_at), 'yyyy-MM-dd') === dayKey).length
-    : lessons.length;
+    ? activeLessons.filter((l) => format(parseISO(l.start_at), 'yyyy-MM-dd') === dayKey).length
+    : activeLessons.length;
 
   const teacherList = teachersWithColours || teachers.map(t => ({ ...t, userId: null, colour: undefined as any }));
 
@@ -163,6 +165,22 @@ export function CalendarFiltersBar({
           </button>
         );
       })}
+
+      {/* Divider before toggle */}
+      <div className="h-5 w-px bg-border shrink-0 mx-0.5" />
+
+      {/* Hide cancelled toggle */}
+      <button
+        onClick={() => onChange({ ...filters, hide_cancelled: !filters.hide_cancelled })}
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all cursor-pointer shrink-0',
+          filters.hide_cancelled
+            ? 'bg-foreground text-background shadow-sm'
+            : 'bg-muted/50 text-foreground hover:bg-muted'
+        )}
+      >
+        Hide cancelled
+      </button>
     </div>
   );
 }
