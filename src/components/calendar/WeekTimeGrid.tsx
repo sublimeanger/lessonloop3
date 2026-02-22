@@ -80,8 +80,25 @@ export function WeekTimeGrid({
   savingLessonIds,
 }: WeekTimeGridProps) {
   const { currentOrg } = useOrg();
-  const START_HOUR = currentOrg?.schedule_start_hour ?? DEFAULT_START_HOUR;
-  const END_HOUR = currentOrg?.schedule_end_hour ?? DEFAULT_END_HOUR;
+  const ORG_START = currentOrg?.schedule_start_hour ?? DEFAULT_START_HOUR;
+  const ORG_END = currentOrg?.schedule_end_hour ?? DEFAULT_END_HOUR;
+
+  // Expand hour range to include any out-of-range lessons
+  const START_HOUR = useMemo(() => {
+    if (lessons.length === 0) return ORG_START;
+    const minHour = Math.min(...lessons.map(l => parseISO(l.start_at).getHours()));
+    return Math.min(ORG_START, minHour);
+  }, [ORG_START, lessons]);
+
+  const END_HOUR = useMemo(() => {
+    if (lessons.length === 0) return ORG_END;
+    const maxHour = Math.max(...lessons.map(l => {
+      const end = parseISO(l.end_at);
+      return end.getMinutes() > 0 ? end.getHours() + 1 : end.getHours();
+    }));
+    return Math.max(ORG_END, maxHour);
+  }, [ORG_END, lessons]);
+
   const HOURS = useMemo(() => Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i), [START_HOUR, END_HOUR]);
   const isMobile = useIsMobile();
   const weekStart = useMemo(() => startOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]);
