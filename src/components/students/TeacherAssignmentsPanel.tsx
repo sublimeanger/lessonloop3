@@ -66,7 +66,8 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
     enabled: !!currentOrg && !!studentId,
   });
 
-  const { data: availableTeachers = [] } = useTeachers();
+  const { data: allTeachers = [] } = useTeachers();
+  const availableTeachers = allTeachers.filter(t => t.status === 'active');
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
