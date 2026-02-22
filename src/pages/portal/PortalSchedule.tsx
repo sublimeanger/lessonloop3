@@ -283,10 +283,10 @@ export default function PortalSchedule() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="bg-popover">
-                      <DropdownMenuItem onClick={() => window.open(generateGoogleCalendarUrl(lesson), '_blank', 'noopener,noreferrer')}>
+                      <DropdownMenuItem onClick={() => window.open(generateGoogleCalendarUrl(lesson, tz), '_blank', 'noopener,noreferrer')}>
                         Add to Google Calendar
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => downloadICSFile(lesson)}>
+                      <DropdownMenuItem onClick={() => downloadICSFile(lesson, tz)}>
                         Download .ics
                       </DropdownMenuItem>
                       {canReschedule && (
@@ -313,10 +313,10 @@ export default function PortalSchedule() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="bg-popover">
-                      <DropdownMenuItem onClick={() => window.open(generateGoogleCalendarUrl(lesson), '_blank', 'noopener,noreferrer')}>
+                      <DropdownMenuItem onClick={() => window.open(generateGoogleCalendarUrl(lesson, tz), '_blank', 'noopener,noreferrer')}>
                         Google Calendar
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => downloadICSFile(lesson)}>
+                      <DropdownMenuItem onClick={() => downloadICSFile(lesson, tz)}>
                         Apple / Outlook (.ics)
                       </DropdownMenuItem>
                     </DropdownMenuContent>

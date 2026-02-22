@@ -282,16 +282,16 @@ export default function PortalHome() {
             )}
 
             {/* 3. Children Summary */}
-            {children && children.length > 0 && (
+            {children && children.length >= 2 && (
               <div className="space-y-3">
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                   Your Children
                 </h2>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0">
                   {children.map((child) => (
                     <Card
                       key={child.id}
-                      className="cursor-pointer transition-all hover:shadow-md hover:border-primary/20"
+                      className="cursor-pointer transition-all hover:shadow-md hover:border-primary/20 min-w-[220px] snap-start sm:min-w-0"
                       onClick={() => navigate(`/portal/schedule?student=${child.id}`)}
                     >
                       <CardContent className="p-4">
