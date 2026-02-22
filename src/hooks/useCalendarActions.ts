@@ -185,16 +185,39 @@ export function useCalendarActions({
 
       try {
         if (mode === 'this_and_future' && lesson.recurrence_id) {
-          const { error } = await supabase
+          // Fetch all future lessons in the series to apply per-lesson offset
+          const offset = newStart.getTime() - new Date(originalStartAt).getTime();
+          const newDuration = newEnd.getTime() - newStart.getTime();
+
+          const { data: futureLessons, error: fetchError } = await supabase
             .from('lessons')
-            .update({
-              start_at: newStart.toISOString(),
-              end_at: newEnd.toISOString(),
-            })
+            .select('id, start_at, end_at')
             .eq('recurrence_id', lesson.recurrence_id)
             .gte('start_at', originalStartAt);
 
-          if (error) throw error;
+          if (fetchError) throw fetchError;
+
+          if (futureLessons && futureLessons.length > 0) {
+            // Batch update in chunks of 50
+            const CHUNK_SIZE = 50;
+            for (let i = 0; i < futureLessons.length; i += CHUNK_SIZE) {
+              const chunk = futureLessons.slice(i, i + CHUNK_SIZE);
+              const updates = chunk.map(fl => {
+                const shiftedStart = new Date(new Date(fl.start_at).getTime() + offset);
+                const shiftedEnd = new Date(shiftedStart.getTime() + newDuration);
+                return supabase
+                  .from('lessons')
+                  .update({
+                    start_at: shiftedStart.toISOString(),
+                    end_at: shiftedEnd.toISOString(),
+                  })
+                  .eq('id', fl.id);
+              });
+              const results = await Promise.all(updates);
+              const failed = results.find(r => r.error);
+              if (failed?.error) throw failed.error;
+            }
+          }
         } else {
           const updatePayload: Record<string, unknown> = {
             start_at: newStart.toISOString(),
