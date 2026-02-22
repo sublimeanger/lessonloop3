@@ -186,6 +186,7 @@ async function handleSubscriptionCheckoutCompleted(
       max_students: limits.max_students,
       max_teachers: limits.max_teachers,
       trial_ends_at: null, // Clear trial since now on paid plan
+      past_due_since: null, // Clear any past_due grace period
     })
     .eq("id", orgId);
 
@@ -427,6 +428,10 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
     const limits = plan ? (PLAN_LIMITS[plan] || PLAN_LIMITS.solo_teacher) : undefined;
 
     const updateData: Record<string, unknown> = { subscription_status: status };
+    // Clear past_due_since when returning to active
+    if (status === "active") {
+      updateData.past_due_since = null;
+    }
     if (plan) {
       updateData.subscription_plan = plan;
     }
@@ -459,6 +464,8 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
       subscription_status: status,
       max_students: limits.max_students,
       max_teachers: limits.max_teachers,
+      // Clear past_due_since when returning to active
+      past_due_since: status === "active" ? null : undefined,
     })
     .eq("id", orgId);
 
@@ -582,10 +589,13 @@ async function handleSubscriptionPaymentFailed(supabase: any, invoice: Stripe.In
     return;
   }
 
-  // Mark as past due
+  // Mark as past_due and record when it started (for 7-day grace period)
   const { error } = await supabase
     .from("organisations")
-    .update({ subscription_status: "past_due" })
+    .update({
+      subscription_status: "past_due",
+      past_due_since: new Date().toISOString(),
+    })
     .eq("id", org.id);
 
   if (error) {

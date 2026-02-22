@@ -1,6 +1,9 @@
 import { useMemo } from 'react';
 import { useSubscription, SubscriptionPlan } from './useSubscription';
 import { PLAN_DISPLAY_NAMES } from '@/lib/pricing-config';
+import { differenceInDays } from 'date-fns';
+
+const PAST_DUE_GRACE_DAYS = 7;
 
 export type Feature = 
   | 'advanced_reports'
@@ -87,11 +90,14 @@ export interface FeatureGateResult {
 }
 
 export function useFeatureGate(feature: Feature): FeatureGateResult {
-  const { plan, status, isTrialing, isTrialExpired } = useSubscription();
+  const { plan, status, isTrialing, isTrialExpired, pastDueSince } = useSubscription();
 
   return useMemo(() => {
     const allowedPlans = FEATURE_MATRIX[feature];
-    const isSubscriptionActive = status === 'active' || status === 'past_due' || (status === 'trialing' && !isTrialExpired);
+    const isWithinGracePeriod = status === 'past_due' && pastDueSince
+      ? differenceInDays(new Date(), pastDueSince) <= PAST_DUE_GRACE_DAYS
+      : false;
+    const isSubscriptionActive = status === 'active' || isWithinGracePeriod || (status === 'trialing' && !isTrialExpired);
     const hasAccess = allowedPlans.includes(plan) && isSubscriptionActive;
     const requiredPlan = FEATURE_MIN_PLAN[feature];
     
@@ -102,19 +108,22 @@ export function useFeatureGate(feature: Feature): FeatureGateResult {
       featureName: FEATURE_NAMES[feature],
       isTrialBlocked: isTrialing && isTrialExpired,
     };
-  }, [feature, plan, status, isTrialing, isTrialExpired]);
+  }, [feature, plan, status, isTrialing, isTrialExpired, pastDueSince]);
 }
 
 // Used in tests — not currently used in production UI
 export function useFeatureGates(features: Feature[]): Record<Feature, FeatureGateResult> {
-  const { plan, status, isTrialing, isTrialExpired } = useSubscription();
+  const { plan, status, isTrialing, isTrialExpired, pastDueSince } = useSubscription();
 
   return useMemo(() => {
     const results: Record<string, FeatureGateResult> = {};
     
     for (const feature of features) {
       const allowedPlans = FEATURE_MATRIX[feature];
-      const isSubscriptionActive = status === 'active' || status === 'past_due' || (status === 'trialing' && !isTrialExpired);
+      const isWithinGracePeriod = status === 'past_due' && pastDueSince
+        ? differenceInDays(new Date(), pastDueSince) <= PAST_DUE_GRACE_DAYS
+        : false;
+      const isSubscriptionActive = status === 'active' || isWithinGracePeriod || (status === 'trialing' && !isTrialExpired);
       const hasAccess = allowedPlans.includes(plan) && isSubscriptionActive;
       const requiredPlan = FEATURE_MIN_PLAN[feature];
       
@@ -128,7 +137,7 @@ export function useFeatureGates(features: Feature[]): Record<Feature, FeatureGat
     }
     
     return results as Record<Feature, FeatureGateResult>;
-  }, [features, plan, status, isTrialing, isTrialExpired]);
+  }, [features, plan, status, isTrialing, isTrialExpired, pastDueSince]);
 }
 
 // Used in tests — not currently used in production UI
