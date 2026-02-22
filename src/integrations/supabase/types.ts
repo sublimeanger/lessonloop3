@@ -3769,6 +3769,24 @@ export type Database = {
         Returns: boolean
       }
       cleanup_rate_limits: { Args: never; Returns: undefined }
+      find_waitlist_matches: {
+        Args: {
+          _absent_student_id: string
+          _lesson_id: string
+          _org_id: string
+        }
+        Returns: {
+          guardian_email: string
+          guardian_name: string
+          match_quality: string
+          missed_lesson_date: string
+          missed_lesson_title: string
+          student_id: string
+          student_name: string
+          waiting_since: string
+          waitlist_id: string
+        }[]
+      }
       generate_ical_token: { Args: never; Returns: string }
       generate_installments: {
         Args: {
