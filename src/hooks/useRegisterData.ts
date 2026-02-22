@@ -4,6 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import type { Database } from '@/integrations/supabase/types';
+
+export type AttendanceStatus = Database['public']['Enums']['attendance_status'];
 
 export interface RegisterLesson {
   id: string;
@@ -21,7 +24,7 @@ export interface RegisterLesson {
   participants: Array<{
     student_id: string;
     student_name: string;
-    attendance_status: 'present' | 'absent' | 'late' | null;
+    attendance_status: AttendanceStatus | null;
     attendance_notes: string | null;
   }>;
 }
@@ -173,7 +176,7 @@ export function useUpdateAttendance() {
     }: {
       lessonId: string;
       studentId: string;
-      status: 'present' | 'absent' | 'late';
+      status: AttendanceStatus;
       notes?: string;
     }) => {
       if (!currentOrg || !user) throw new Error('No organisation or user');
@@ -249,7 +252,7 @@ export interface BatchLessonRow {
   participants: {
     student_id: string;
     student_name: string;
-    current_status: 'present' | 'absent' | 'late' | null;
+    current_status: AttendanceStatus | null;
   }[];
 }
 

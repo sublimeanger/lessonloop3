@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { RegisterLesson, useUpdateAttendance, useMarkLessonComplete } from '@/hooks/useRegisterData';
+import { RegisterLesson, useUpdateAttendance, useMarkLessonComplete, AttendanceStatus } from '@/hooks/useRegisterData';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Check, 
@@ -13,7 +12,8 @@ import {
   MapPin, 
   CheckCircle2,
   Loader2,
-  StickyNote
+  StickyNote,
+  Ban
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -21,13 +21,16 @@ interface RegisterRowProps {
   lesson: RegisterLesson;
 }
 
-type AttendanceStatus = 'present' | 'absent' | 'late';
-
-const statusConfig: Record<AttendanceStatus, { icon: typeof Check; label: string; className: string }> = {
-  present: { icon: Check, label: 'Present', className: 'bg-success/10 text-success border-success/20 hover:bg-success/20' },
-  absent: { icon: X, label: 'Absent', className: 'bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20' },
-  late: { icon: Clock, label: 'Late', className: 'bg-warning/10 text-warning border-warning/20 hover:bg-warning/20' },
+const statusConfig: Record<AttendanceStatus, { icon: typeof Check; label: string; shortLabel: string; className: string }> = {
+  present: { icon: Check, label: 'Present', shortLabel: 'Present', className: 'bg-success/10 text-success border-success/20 hover:bg-success/20' },
+  absent: { icon: X, label: 'Absent', shortLabel: 'Absent', className: 'bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20' },
+  late: { icon: Clock, label: 'Late', shortLabel: 'Late', className: 'bg-warning/10 text-warning border-warning/20 hover:bg-warning/20' },
+  cancelled_by_teacher: { icon: Ban, label: 'Cxl (Teacher)', shortLabel: 'Cxl (T)', className: 'bg-muted text-muted-foreground border-muted-foreground/20 hover:bg-muted/80' },
+  cancelled_by_student: { icon: Ban, label: 'Cxl (Student)', shortLabel: 'Cxl (S)', className: 'bg-muted text-muted-foreground border-muted-foreground/20 hover:bg-muted/80' },
 };
+
+const primaryStatuses: AttendanceStatus[] = ['present', 'absent', 'late'];
+const cancellationStatuses: AttendanceStatus[] = ['cancelled_by_teacher', 'cancelled_by_student'];
 
 export function RegisterRow({ lesson }: RegisterRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -129,31 +132,61 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
                 <div key={participant.student_id} className="flex items-center justify-between gap-4 py-2">
                   <div className="font-medium">{participant.student_name}</div>
                   
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col items-end gap-1">
                     {isSaving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                     
-                    {(['present', 'absent', 'late'] as AttendanceStatus[]).map((status) => {
-                      const config = statusConfig[status];
-                      const isActive = currentStatus === status;
-                      const Icon = config.icon;
-                      
-                      return (
-                        <Button
-                          key={status}
-                          variant="outline"
-                          size="sm"
-                          disabled={isCancelled || isSaving}
-                          onClick={() => handleAttendanceClick(participant.student_id, status)}
-                          className={cn(
-                            "gap-1.5 transition-colors",
-                            isActive && config.className
-                          )}
-                        >
-                          <Icon className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">{config.label}</span>
-                        </Button>
-                      );
-                    })}
+                    {/* Primary statuses row */}
+                    <div className="flex items-center gap-1">
+                      {primaryStatuses.map((status) => {
+                        const config = statusConfig[status];
+                        const isActive = currentStatus === status;
+                        const Icon = config.icon;
+                        
+                        return (
+                          <Button
+                            key={status}
+                            variant="outline"
+                            size="sm"
+                            disabled={isCancelled || isSaving}
+                            onClick={() => handleAttendanceClick(participant.student_id, status)}
+                            className={cn(
+                              "gap-1.5 transition-colors",
+                              isActive && config.className
+                            )}
+                          >
+                            <Icon className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">{config.label}</span>
+                          </Button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Cancellation statuses row */}
+                    <div className="flex items-center gap-1">
+                      {cancellationStatuses.map((status) => {
+                        const config = statusConfig[status];
+                        const isActive = currentStatus === status;
+                        const Icon = config.icon;
+                        
+                        return (
+                          <Button
+                            key={status}
+                            variant="outline"
+                            size="sm"
+                            disabled={isCancelled || isSaving}
+                            onClick={() => handleAttendanceClick(participant.student_id, status)}
+                            className={cn(
+                              "gap-1.5 transition-colors text-xs",
+                              isActive && config.className
+                            )}
+                          >
+                            <Icon className="h-3 w-3" />
+                            <span className="hidden sm:inline">{config.label}</span>
+                            <span className="sm:hidden">{config.shortLabel}</span>
+                          </Button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               );
