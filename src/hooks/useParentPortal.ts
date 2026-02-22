@@ -70,22 +70,24 @@ export interface MessageRequest {
 
 export function useGuardianInfo() {
   const { user } = useAuth();
+  const { currentOrg } = useOrg();
 
   return useQuery({
-    queryKey: ['guardian-info', user?.id],
+    queryKey: ['guardian-info', user?.id, currentOrg?.id],
     queryFn: async () => {
-      if (!user) return null;
+      if (!user || !currentOrg) return null;
 
       const { data, error } = await supabase
         .from('guardians')
         .select('id, full_name, email, phone, org_id')
         .eq('user_id', user.id)
+        .eq('org_id', currentOrg.id)
         .maybeSingle();
 
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: !!user && !!currentOrg,
     staleTime: 5 * 60 * 1000,
   });
 }
