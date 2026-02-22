@@ -65,7 +65,7 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
   const endTime = parseISO(lesson.end_at);
   const duration = differenceInMinutes(endTime, startTime);
   const isRecurring = !!lesson.recurrence_id;
-  const isEditedException = isRecurring && !!(lesson as any).is_series_exception;
+  const isEditedException = isRecurring && !!lesson.is_series_exception;
   const isCancelled = lesson.status === 'cancelled';
   const colour = teacherColour ?? TEACHER_COLOURS[0];
 

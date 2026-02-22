@@ -209,7 +209,7 @@ export function StackedWeekView({
                   {visibleLessons.map((lesson) => {
                     const colour = getTeacherColour(
                       teacherColourMap,
-                      (lesson as any).teacher_id || null
+                      lesson.teacher_id || null
                     );
                     return (
                       <StackedCard

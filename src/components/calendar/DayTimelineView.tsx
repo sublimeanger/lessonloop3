@@ -49,8 +49,8 @@ export function DayTimelineView({
   savingLessonIds = new Set(),
 }: DayTimelineViewProps) {
   const { currentOrg } = useOrg();
-  const orgStartHour = (currentOrg as any)?.schedule_start_hour ?? DEFAULT_START_HOUR;
-  const orgEndHour = (currentOrg as any)?.schedule_end_hour ?? DEFAULT_END_HOUR;
+  const orgStartHour = currentOrg?.schedule_start_hour ?? DEFAULT_START_HOUR;
+  const orgEndHour = currentOrg?.schedule_end_hour ?? DEFAULT_END_HOUR;
 
   // Filter lessons to current day
   const dayLessons = useMemo(

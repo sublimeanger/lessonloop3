@@ -90,7 +90,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
       const end = parseISO(lesson.end_at);
       const zonedStart = toZonedTime(start, orgTimezone);
       setLessonType(lesson.lesson_type);
-      const lessonTeacherId = (lesson as any).teacher_id || teachers.find(t => t.userId === lesson.teacher_user_id)?.id || '';
+      const lessonTeacherId = lesson.teacher_id || teachers.find(t => t.userId === lesson.teacher_user_id)?.id || '';
       setTeacherId(lessonTeacherId);
       setSelectedStudents(lesson.participants?.map(p => p.student.id) || []);
       setLocationId(lesson.location_id);
@@ -489,7 +489,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
         const updatedCount = lessonIdsToUpdate.length;
 
         logAudit(currentOrg.id, user.id, 'update', 'lesson', lesson.id, {
-          before: { title: lesson.title, start_at: lesson.start_at, teacher_id: (lesson as any).teacher_id, status: lesson.status },
+          before: { title: lesson.title, start_at: lesson.start_at, teacher_id: lesson.teacher_id, status: lesson.status },
           after: { title: generateTitle(), start_at: startAtUtc.toISOString(), teacher_id: teacherId, status },
         });
 

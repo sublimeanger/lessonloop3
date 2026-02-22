@@ -52,7 +52,7 @@ export function CalendarFiltersBar({
 
   const totalCount = counts.total;
 
-  const teacherList = teachersWithColours || teachers.map(t => ({ ...t, userId: null, colour: undefined as any }));
+  const teacherList = teachersWithColours || teachers.map(t => ({ ...t, userId: null, colour: undefined as string | undefined }));
 
   return (
     <div
