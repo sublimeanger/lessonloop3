@@ -234,7 +234,7 @@ serve(async (req) => {
     // Route funds to connected account if Stripe Connect is active
     if (hasConnectedAccount) {
       const feePercent = Number(orgConnect.platform_fee_percent) || 0;
-      const applicationFee = feePercent > 0 ? Math.round(amountDue * (feePercent / 100)) : 0;
+      const applicationFee = feePercent > 0 ? Math.round(paymentAmount * (feePercent / 100)) : 0;
       
       sessionParams.payment_intent_data = {
         transfer_data: {
