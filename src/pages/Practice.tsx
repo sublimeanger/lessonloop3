@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,8 @@ export default function Practice() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   
   const { data: assignments = [], isLoading: loadingAssignments } = usePracticeAssignments();
-  const { data: recentLogs = [] } = usePracticeLogs({ limit: 10 });
+  const { data: recentLogsData } = usePracticeLogs({ limit: 10 });
+  const recentLogs = useMemo(() => recentLogsData?.pages.flatMap(p => p.data) ?? [], [recentLogsData]);
   
   // Get unique student IDs from assignments
   const studentIds = [...new Set(assignments.map(a => a.student_id))];

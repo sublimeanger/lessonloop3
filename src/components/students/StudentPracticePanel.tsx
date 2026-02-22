@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +23,8 @@ export function StudentPracticePanel({ studentId, studentName }: StudentPractice
   const [feedbackText, setFeedbackText] = useState('');
 
   const { data: assignments = [], isLoading: loadingAssignments } = usePracticeAssignments(studentId);
-  const { data: logs = [], isLoading: loadingLogs } = usePracticeLogs({ studentId, limit: 20 });
+  const { data: logsData, isLoading: loadingLogs } = usePracticeLogs({ studentId, limit: 20 });
+  const logs = useMemo(() => logsData?.pages.flatMap(p => p.data) ?? [], [logsData]);
   const { data: weeklyProgress = [] } = useWeeklyProgress([studentId]);
   const { data: streak } = usePracticeStreak(studentId);
   const addFeedback = useAddPracticeFeedback();
