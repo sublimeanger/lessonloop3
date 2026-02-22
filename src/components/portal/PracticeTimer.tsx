@@ -163,9 +163,6 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
   };
 
   const handleStop = async () => {
-    setIsRunning(false);
-    storageClear(STORAGE_KEYS);
-
     const durationMinutes = Math.max(1, Math.round(elapsedSeconds / 60));
 
     if (elapsedSeconds < 60) {
@@ -182,6 +179,9 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
     const assignment = selectedStudent.assignments.find(a => a.id === selectedAssignmentId);
 
     try {
+      // Pause timer while saving (so it doesn't keep ticking)
+      setIsRunning(false);
+
       await logPractice.mutateAsync({
         org_id: assignment?.org_id || selectedStudent.assignments[0]?.org_id,
         student_id: selectedStudentId,
@@ -190,13 +190,18 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
         notes: notes || undefined,
       });
 
+      // Only clear state AFTER successful save
+      storageClear(STORAGE_KEYS);
       toast.success(`Practice logged: ${durationMinutes} minutes`);
       setElapsedSeconds(0);
       startedAtRef.current = null;
       setNotes('');
       onComplete?.();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to log practice');
+      // Resume timer so user can retry
+      setIsRunning(true);
+      persistRunning();
+      toast.error(error.message || 'Failed to log practice — your session is preserved.');
     }
   };
 
