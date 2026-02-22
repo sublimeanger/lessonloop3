@@ -52,11 +52,11 @@ export function useTeachers() {
 
       if (error) throw error;
 
-      return (data || []).map((t: any) => ({
+      return (data || []).map((t) => ({
         ...t,
-        pay_rate_type: null,
-        pay_rate_value: null,
-        payroll_notes: null,
+        pay_rate_type: null as Teacher['pay_rate_type'],
+        pay_rate_value: null as Teacher['pay_rate_value'],
+        payroll_notes: null as Teacher['payroll_notes'],
         isLinked: !!t.user_id,
       }));
     },
@@ -99,7 +99,7 @@ export function useTeacherMutations() {
       queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
       toast({ title: 'Teacher created successfully' });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({ 
         title: 'Failed to create teacher', 
         description: error.message,
@@ -123,7 +123,7 @@ export function useTeacherMutations() {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       toast({ title: 'Teacher updated' });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({ 
         title: 'Failed to update teacher', 
         description: error.message,
@@ -169,7 +169,7 @@ export function useTeacherMutations() {
       queryClient.invalidateQueries({ queryKey: ['org-members'] });
       toast({ title: 'Teacher removed' });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({ 
         title: 'Failed to remove teacher', 
         description: error.message,
@@ -214,7 +214,7 @@ export function useTeacherMutations() {
       queryClient.invalidateQueries({ queryKey: ['org-members'] });
       toast({ title: 'Teacher reactivated' });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({ 
         title: 'Failed to reactivate teacher', 
         description: error.message,
