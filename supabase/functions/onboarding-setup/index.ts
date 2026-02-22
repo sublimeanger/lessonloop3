@@ -51,6 +51,14 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Block unverified emails from creating organisations
+    if (!user.email_confirmed_at) {
+      return new Response(
+        JSON.stringify({ error: 'Please verify your email address before setting up your account.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log('[onboarding-setup] User verified:', user.id);
 
     // Rate limiting
@@ -227,8 +235,26 @@ Deno.serve(async (req) => {
     }
     console.log('[onboarding-setup] Organisation created with policy:', parentReschedulePolicy);
 
-    // Wait for trigger to complete
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // Wait for trigger-created membership (max 3 attempts, 200ms apart)
+    let membershipExists = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { count } = await adminClient
+        .from('org_memberships')
+        .select('id', { count: 'exact', head: true })
+        .eq('org_id', orgId)
+        .eq('user_id', user.id);
+      if ((count || 0) > 0) {
+        membershipExists = true;
+        break;
+      }
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    if (!membershipExists) {
+      console.warn('[onboarding-setup] Membership not created by trigger — creating manually');
+      await adminClient.from('org_memberships').insert({
+        org_id: orgId, user_id: user.id, role: 'owner', status: 'active'
+      });
+    }
 
     // Step 3.5: For solo_teacher orgs, create a teacher record for the owner
     if (org_type === 'solo_teacher') {
