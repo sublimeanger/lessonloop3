@@ -94,7 +94,7 @@ export default function CancellationReport() {
         <EmptyState
           icon={Calendar}
           title="No lessons found"
-          description="There are no lessons in the selected date range."
+          description="No lessons were scheduled in this date range. Try selecting a different period, or schedule lessons from the calendar."
         >
           <Button asChild>
             <Link to="/calendar">Schedule a lesson →</Link>
@@ -271,7 +271,8 @@ function CancellationByTeacherTable({ teachers }: { teachers: TeacherCancellatio
 
   return (
     <>
-      <Table>
+      <div className="overflow-x-auto">
+      <Table className="min-w-[600px]">
         <TableHeader>
           <TableRow>
             <SortableTableHead label="Teacher" field="teacherName" currentField={sort.field} currentDir={sort.dir} onToggle={toggle} />
@@ -295,6 +296,7 @@ function CancellationByTeacherTable({ teachers }: { teachers: TeacherCancellatio
           ))}
         </TableBody>
       </Table>
+      </div>
       <ReportPagination totalItems={sorted.length} currentPage={page} onPageChange={setPage} />
     </>
   );
