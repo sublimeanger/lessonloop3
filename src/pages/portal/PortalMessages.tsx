@@ -23,22 +23,26 @@ export default function PortalMessages() {
   const markAsRead = useMarkMessagesAsRead();
 
   // Mark messages as read when inbox tab is viewed
-  const hasMarkedRead = useRef(false);
+  // Track which batch of unread IDs we've already marked, so new arrivals trigger again
+  const lastMarkedKey = useRef('');
 
   useEffect(() => {
-    if (activeTab === 'inbox' && messages?.length && !hasMarkedRead.current) {
-      const unreadIds = messages
-        .filter(m => !m.read_at && m.status === 'sent')
-        .map(m => m.id);
+    if (activeTab !== 'inbox' || !messages?.length) return;
 
-      if (unreadIds.length > 0) {
-        const timer = setTimeout(() => {
-          hasMarkedRead.current = true;
-          markAsRead.mutate(unreadIds);
-        }, 3000);
-        return () => clearTimeout(timer);
-      }
-    }
+    const unreadIds = messages
+      .filter(m => !m.read_at && m.status === 'sent')
+      .map(m => m.id);
+
+    if (unreadIds.length === 0) return;
+
+    const key = unreadIds.join(',');
+    if (key === lastMarkedKey.current) return;
+
+    const timer = setTimeout(() => {
+      lastMarkedKey.current = key;
+      markAsRead.mutate(unreadIds);
+    }, 3000);
+    return () => clearTimeout(timer);
   }, [activeTab, messages]);
 
   const unreadCount = messages?.filter(m => !m.read_at && m.status === 'sent').length || 0;
@@ -104,7 +108,7 @@ export default function PortalMessages() {
         }
       />
 
-      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); hasMarkedRead.current = false; }} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); lastMarkedKey.current = ''; }} className="space-y-6">
         <TabsList>
           <TabsTrigger value="inbox" className="gap-2">
             Inbox
