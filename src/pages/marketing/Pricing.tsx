@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { User, Building2, Crown } from "lucide-react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { PricingHero } from "@/components/marketing/pricing/PricingHero";
 import { PricingCard } from "@/components/marketing/pricing/PricingCard";
@@ -45,6 +46,7 @@ const plans = PLAN_ORDER.map((key) => {
 });
 
 export default function Pricing() {
+  usePageMeta("Pricing — LessonLoop", "Simple pricing for solo teachers, studios & academies. Start free, no credit card required.");
   const [isAnnual, setIsAnnual] = useState(false);
 
   return (

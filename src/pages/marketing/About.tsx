@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { Heart, Target, Users, Lightbulb, MapPin, Mail, Music, Calendar, Receipt, MessageSquare, ArrowRight, Clock, ExternalLink, Quote, Repeat, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,8 @@ const painPoints = [
 ];
 
 export default function About() {
+  usePageMeta("About LessonLoop — Built by a Music Teacher", "Lauren Twilley built LessonLoop after 20 years of music teaching. Read our story.");
+
   return (
     <MarketingLayout>
       {/* Hero Section */}

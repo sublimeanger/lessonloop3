@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { logger } from "@/lib/logger";
 import { motion } from "framer-motion";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { MessageSquare, Clock, HelpCircle, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ const contactSchema = z.object({
 type ContactFormData = z.infer<typeof contactSchema>;
 
 export default function Contact() {
+  usePageMeta("Contact — LessonLoop", "Get in touch. We'd love to hear from you.");
   const [formData, setFormData] = useState<ContactFormData>({
     firstName: "",
     lastName: "",

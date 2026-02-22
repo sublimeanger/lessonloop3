@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { Clock, ArrowRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,6 +10,7 @@ import type { BlogPost } from "@/data/blogPosts";
 const CATEGORIES = ["All", "Teaching Tips", "Product Updates", "Music Business", "Guides"] as const;
 
 export default function Blog() {
+  usePageMeta("Blog — LessonLoop", "Tips, guides & updates for UK music educators.");
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string>("All");
