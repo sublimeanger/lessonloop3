@@ -52,6 +52,19 @@ export default function Pricing() {
       {/* Hero with billing toggle */}
       <PricingHero isAnnual={isAnnual} onToggle={setIsAnnual} />
 
+      {/* AI Inclusion Banner */}
+      <section className="bg-background">
+        <div className="container mx-auto px-6 lg:px-8">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-center gap-3 py-4 px-6 rounded-xl bg-primary/5 border border-primary/15 text-center">
+              <span className="text-sm lg:text-base font-medium text-foreground">
+                🤖 <span className="text-primary font-semibold">LoopAssist AI</span> is included on every plan — no add-on fees.
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing Cards */}
       <section className="py-8 lg:py-12 bg-background relative">
         <div className="container mx-auto px-6 lg:px-8">
