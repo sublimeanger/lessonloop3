@@ -1,10 +1,9 @@
 import { motion, useMotionValue, useTransform, useSpring } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Play, Calendar, Clock, CheckCircle2, Bell, Users, Music, FileText, Receipt } from "lucide-react";
-import { useState, useMemo } from "react";
+import { ChevronRight, Play, Calendar, Clock, CheckCircle2, Bell, X } from "lucide-react";
+import { useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { format, addDays, startOfWeek } from "date-fns";
 import { dashboardHeroHd, dashboardHero } from "@/assets/marketing";
 
 // Word-by-word animation variants
@@ -85,11 +84,8 @@ export function HeroSection() {
     mouseY.set((e.clientY - rect.top) / rect.height);
   };
 
-  const headlineWords = ["Music", "lessons,", "perfectly", "orchestrated."];
-
-  // Generate realistic "today" data for the mockup
-  const today = new Date();
-  const todayFormatted = format(today, "EEEE d MMMM");
+  const headlineWords = ["Teach", "more.", "Admin", "less."];
+  const [showVideoModal, setShowVideoModal] = useState(false);
 
   return (
     <section 
@@ -215,7 +211,7 @@ export function HeroSection() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-teal"></span>
             </span>
             <span className="text-white/80 text-sm font-medium">
-              Built by a music teacher, for music teachers
+              The UK's first AI-powered music school platform
             </span>
           </motion.div>
 
@@ -230,7 +226,7 @@ export function HeroSection() {
               <motion.span
                 key={i}
                 variants={wordVariants}
-                className={`inline-block mr-4 ${word === "perfectly" ? "text-transparent bg-clip-text bg-gradient-to-r from-teal-light via-teal to-teal-dark" : ""}`}
+                className={`inline-block mr-4 ${word === "less." ? "text-transparent bg-clip-text bg-gradient-to-r from-teal-light via-teal to-teal-dark" : ""}`}
                 style={{ transformStyle: "preserve-3d" }}
               >
                 {word}
@@ -245,8 +241,7 @@ export function HeroSection() {
             transition={{ duration: 0.6, delay: 0.8 }}
             className="mt-8 text-xl sm:text-2xl text-white/60 max-w-2xl mx-auto leading-relaxed"
           >
-            The all-in-one platform for scheduling, invoicing, and parent communication. 
-            Created by a piano teacher who lived the problem.
+            LessonLoop handles your scheduling, invoicing, and parent communication — with an AI assistant that actually understands your music school.
           </motion.p>
 
           {/* CTA Buttons */}
@@ -270,18 +265,17 @@ export function HeroSection() {
                 </Button>
               </motion.div>
             </Link>
-            <Link to="/contact?subject=demo">
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-3 px-6 py-3.5 text-white/80 hover:text-white font-medium transition-colors group"
-              >
-                <span className="flex items-center justify-center w-12 h-12 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 group-hover:bg-white/10 group-hover:border-white/20 transition-all">
-                  <Play className="w-5 h-5 ml-0.5" fill="currentColor" />
-                </span>
-                Book a Demo
-              </motion.button>
-            </Link>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowVideoModal(true)}
+              className="flex items-center gap-3 px-6 py-3.5 text-white/80 hover:text-white font-medium transition-colors group"
+            >
+              <span className="flex items-center justify-center w-12 h-12 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 group-hover:bg-white/10 group-hover:border-white/20 transition-all">
+                <Play className="w-5 h-5 ml-0.5" fill="currentColor" />
+              </span>
+              Watch Demo
+            </motion.button>
           </motion.div>
 
           {/* Trust Indicators */}
@@ -292,7 +286,7 @@ export function HeroSection() {
             className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-white/40"
           >
             <div className="flex items-center gap-2">
-              <span className="text-sm">🎹 Built by a music teacher</span>
+              <span className="text-sm">🇬🇧 Built for UK music educators</span>
             </div>
             <div className="w-px h-5 bg-white/20 hidden sm:block" />
             <span className="text-sm">30-day free trial</span>
@@ -407,6 +401,45 @@ export function HeroSection() {
 
       {/* Bottom Gradient Fade */}
       <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-background to-transparent" />
+
+      {/* Video Modal */}
+      {showVideoModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-6"
+          onClick={() => setShowVideoModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", damping: 25 }}
+            className="relative w-full max-w-2xl bg-card border border-border rounded-2xl p-8 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowVideoModal(false)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+              <Play className="w-8 h-8 text-primary ml-1" fill="currentColor" />
+            </div>
+            <h3 className="text-2xl font-bold text-foreground mb-3">Demo video coming soon</h3>
+            <p className="text-muted-foreground mb-6">
+              Sign up to get notified when our demo video is ready.
+            </p>
+            <Link to="/signup">
+              <Button size="lg" className="bg-gradient-to-r from-teal to-teal-dark text-white hover:from-teal-dark hover:to-teal font-bold">
+                Start Free Trial Instead
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </Link>
+          </motion.div>
+        </motion.div>
+      )}
     </section>
   );
 }
