@@ -9,9 +9,10 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useBatchAttendanceLessons, useSaveBatchAttendance } from '@/hooks/useRegisterData';
-import { Loader2, CheckCircle2, Save, UserCheck, ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
+import { Loader2, CheckCircle2, Save, UserCheck, ChevronLeft, ChevronRight, CalendarIcon, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AttendanceStatus } from '@/hooks/useRegisterData';
+import { AbsenceReasonPicker, needsAbsenceReason, type AbsenceReasonValue } from '@/components/register/AbsenceReasonPicker';
 
 export default function BatchAttendance() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -22,6 +23,8 @@ export default function BatchAttendance() {
   const saveMutation = useSaveBatchAttendance(dateKey);
 
   const [attendance, setAttendance] = useState<Map<string, Map<string, AttendanceStatus>>>(new Map());
+  const [absenceReasons, setAbsenceReasons] = useState<Map<string, Map<string, AbsenceReasonValue>>>(new Map());
+  const [notifiedDates, setNotifiedDates] = useState<Map<string, Map<string, Date>>>(new Map());
 
   // Sync attendance map when query data changes
   useEffect(() => {
@@ -42,6 +45,42 @@ export default function BatchAttendance() {
         const next = new Map(prev);
         const lessonMap = new Map(next.get(lessonId) || []);
         lessonMap.set(studentId, status);
+        next.set(lessonId, lessonMap);
+        return next;
+      });
+      // Auto-set teacher_cancelled reason
+      if (status === 'cancelled_by_teacher') {
+        setAbsenceReasons((prev) => {
+          const next = new Map(prev);
+          const lessonMap = new Map(next.get(lessonId) || []);
+          lessonMap.set(studentId, 'teacher_cancelled' as any);
+          next.set(lessonId, lessonMap);
+          return next;
+        });
+      }
+    },
+    []
+  );
+
+  const setStudentAbsenceReason = useCallback(
+    (lessonId: string, studentId: string, reason: AbsenceReasonValue) => {
+      setAbsenceReasons((prev) => {
+        const next = new Map(prev);
+        const lessonMap = new Map(next.get(lessonId) || []);
+        lessonMap.set(studentId, reason);
+        next.set(lessonId, lessonMap);
+        return next;
+      });
+    },
+    []
+  );
+
+  const setStudentNotifiedDate = useCallback(
+    (lessonId: string, studentId: string, date: Date) => {
+      setNotifiedDates((prev) => {
+        const next = new Map(prev);
+        const lessonMap = new Map(next.get(lessonId) || []);
+        lessonMap.set(studentId, date);
         next.set(lessonId, lessonMap);
         return next;
       });
@@ -181,81 +220,100 @@ export default function BatchAttendance() {
                     <div className="space-y-2">
                       {lesson.participants.map((p) => {
                         const currentStatus = lessonMap.get(p.student_id) || null;
+                        const reasonMap = absenceReasons.get(lesson.id);
+                        const currentReason = reasonMap?.get(p.student_id) || null;
+                        const dateMap = notifiedDates.get(lesson.id);
+                        const currentNotified = dateMap?.get(p.student_id) || new Date();
                         return (
-                          <div
-                            key={p.student_id}
-                            className="flex items-center justify-between gap-3 py-1.5 border-b last:border-b-0"
-                          >
-                            <span className="text-sm font-medium">{p.student_name}</span>
-                            <ToggleGroup
-                              type="single"
-                              value={currentStatus || ''}
-                              onValueChange={(v) => {
-                                if (v) {
-                                  setStudentAttendance(lesson.id, p.student_id, v as AttendanceStatus);
-                                } else {
-                                  setAttendance((prev) => {
-                                    const next = new Map(prev);
-                                    const lessonMap = new Map(next.get(lesson.id) || []);
-                                    lessonMap.delete(p.student_id);
-                                    next.set(lesson.id, lessonMap);
-                                    return next;
-                                  });
-                                }
-                              }}
-                              className="gap-1 flex-wrap justify-end"
-                            >
-                              <ToggleGroupItem
-                                value="present"
-                                aria-label="Present"
-                                className={cn(
-                                  'h-7 px-2 text-xs',
-                                  currentStatus === 'present' && 'bg-primary/15 text-primary border-primary/30'
+                          <div key={p.student_id} className="py-1.5 border-b last:border-b-0">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-sm font-medium flex items-center gap-1.5">
+                                {p.student_name}
+                                {needsAbsenceReason(currentStatus) && !currentReason && (
+                                  <span title="Absence reason missing" className="text-warning">
+                                    <AlertCircle className="h-3.5 w-3.5" />
+                                  </span>
                                 )}
+                              </span>
+                              <ToggleGroup
+                                type="single"
+                                value={currentStatus || ''}
+                                onValueChange={(v) => {
+                                  if (v) {
+                                    setStudentAttendance(lesson.id, p.student_id, v as AttendanceStatus);
+                                  } else {
+                                    setAttendance((prev) => {
+                                      const next = new Map(prev);
+                                      const lessonMap = new Map(next.get(lesson.id) || []);
+                                      lessonMap.delete(p.student_id);
+                                      next.set(lesson.id, lessonMap);
+                                      return next;
+                                    });
+                                  }
+                                }}
+                                className="gap-1 flex-wrap justify-end"
                               >
-                                Present
-                              </ToggleGroupItem>
-                              <ToggleGroupItem
-                                value="absent"
-                                aria-label="Absent"
-                                className={cn(
-                                  'h-7 px-2 text-xs',
-                                  currentStatus === 'absent' && 'bg-destructive/15 text-destructive border-destructive/30'
-                                )}
-                              >
-                                Absent
-                              </ToggleGroupItem>
-                              <ToggleGroupItem
-                                value="late"
-                                aria-label="Late"
-                                className={cn(
-                                  'h-7 px-2 text-xs',
-                                  currentStatus === 'late' && 'bg-warning/15 text-warning border-warning/30'
-                                )}
-                              >
-                                Late
-                              </ToggleGroupItem>
-                              <ToggleGroupItem
-                                value="cancelled_by_teacher"
-                                aria-label="Cancelled by Teacher"
-                                className={cn(
-                                  'h-7 px-2 text-xs',
-                                  currentStatus === 'cancelled_by_teacher' && 'bg-muted text-muted-foreground border-muted-foreground/30'
-                                )}
-                              >
-                                Cxl (T)
-                              </ToggleGroupItem>
-                              <ToggleGroupItem
-                                value="cancelled_by_student"
-                                aria-label="Cancelled by Student"
-                                className={cn(
-                                  'h-7 px-2 text-xs',
-                                  currentStatus === 'cancelled_by_student' && 'bg-muted text-muted-foreground border-muted-foreground/30'
-                                )}
-                              >
-                                Cxl (S)
-                              </ToggleGroupItem>
-                            </ToggleGroup>
+                                <ToggleGroupItem
+                                  value="present"
+                                  aria-label="Present"
+                                  className={cn(
+                                    'h-7 px-2 text-xs',
+                                    currentStatus === 'present' && 'bg-primary/15 text-primary border-primary/30'
+                                  )}
+                                >
+                                  Present
+                                </ToggleGroupItem>
+                                <ToggleGroupItem
+                                  value="absent"
+                                  aria-label="Absent"
+                                  className={cn(
+                                    'h-7 px-2 text-xs',
+                                    currentStatus === 'absent' && 'bg-destructive/15 text-destructive border-destructive/30'
+                                  )}
+                                >
+                                  Absent
+                                </ToggleGroupItem>
+                                <ToggleGroupItem
+                                  value="late"
+                                  aria-label="Late"
+                                  className={cn(
+                                    'h-7 px-2 text-xs',
+                                    currentStatus === 'late' && 'bg-warning/15 text-warning border-warning/30'
+                                  )}
+                                >
+                                  Late
+                                </ToggleGroupItem>
+                                <ToggleGroupItem
+                                  value="cancelled_by_teacher"
+                                  aria-label="Cancelled by Teacher"
+                                  className={cn(
+                                    'h-7 px-2 text-xs',
+                                    currentStatus === 'cancelled_by_teacher' && 'bg-muted text-muted-foreground border-muted-foreground/30'
+                                  )}
+                                >
+                                  Cxl (T)
+                                </ToggleGroupItem>
+                                <ToggleGroupItem
+                                  value="cancelled_by_student"
+                                  aria-label="Cancelled by Student"
+                                  className={cn(
+                                    'h-7 px-2 text-xs',
+                                    currentStatus === 'cancelled_by_student' && 'bg-muted text-muted-foreground border-muted-foreground/30'
+                                  )}
+                                >
+                                  Cxl (S)
+                                </ToggleGroupItem>
+                              </ToggleGroup>
+                            </div>
+                            {needsAbsenceReason(currentStatus) && (
+                              <AbsenceReasonPicker
+                                reason={currentReason}
+                                notifiedAt={currentNotified}
+                                onReasonChange={(r) => setStudentAbsenceReason(lesson.id, p.student_id, r)}
+                                onNotifiedAtChange={(d) => setStudentNotifiedDate(lesson.id, p.student_id, d)}
+                                compact
+                              />
+                            )}
                           </div>
                         );
                       })}
