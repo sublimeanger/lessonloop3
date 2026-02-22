@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { format } from 'date-fns';
+import { format, isToday, isYesterday } from 'date-fns';
 import { 
   MessageSquare, 
   ChevronDown, 
@@ -153,9 +153,26 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : (
-                messages?.map((msg) => (
-                  <ThreadMessageItem key={msg.id} message={msg} />
-                ))
+                messages?.map((msg, idx) => {
+                  const msgDate = format(new Date(msg.created_at), 'yyyy-MM-dd');
+                  const prevDate = idx > 0 ? format(new Date(messages[idx - 1].created_at), 'yyyy-MM-dd') : null;
+                  const showSeparator = idx === 0 || msgDate !== prevDate;
+                  const dateObj = new Date(msg.created_at);
+                  const dateLabel = isToday(dateObj) ? 'Today' : isYesterday(dateObj) ? 'Yesterday' : format(dateObj, 'd MMM yyyy');
+
+                  return (
+                    <div key={msg.id}>
+                      {showSeparator && (
+                        <div className="flex items-center gap-2 px-4 py-2">
+                          <div className="flex-1 h-px bg-border" />
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">{dateLabel}</span>
+                          <div className="flex-1 h-px bg-border" />
+                        </div>
+                      )}
+                      <ThreadMessageItem message={msg} />
+                    </div>
+                  );
+                })
               )}
             </div>
 
