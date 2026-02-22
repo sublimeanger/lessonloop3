@@ -36,7 +36,7 @@ serve(async (req) => {
     }
 
     // Parse request
-    const { invoiceId, successUrl, cancelUrl } = await req.json();
+    const { invoiceId, successUrl, cancelUrl, installmentId: requestedInstallmentId, payRemaining } = await req.json();
     if (!invoiceId) {
       throw new Error("invoiceId is required");
     }
@@ -52,8 +52,11 @@ serve(async (req) => {
         org_id,
         invoice_number,
         total_minor,
+        paid_minor,
         currency_code,
         status,
+        payment_plan_enabled,
+        installment_count,
         payer_guardian_id,
         payer_student_id,
         organisations (currency_code),
@@ -78,11 +81,68 @@ serve(async (req) => {
       .select("amount_minor")
       .eq("invoice_id", invoiceId);
 
-    const totalPaid = payments?.reduce((sum, p) => sum + p.amount_minor, 0) || 0;
+    const totalPaid = payments?.reduce((sum: number, p: any) => sum + p.amount_minor, 0) || 0;
     const amountDue = invoice.total_minor - totalPaid;
 
     if (amountDue <= 0) {
       throw new Error("Invoice is already fully paid");
+    }
+
+    // ─── Determine payment amount & description based on installment logic ───
+    let paymentAmount: number;
+    let description: string;
+    let resolvedInstallmentId: string | null = null;
+
+    if (requestedInstallmentId) {
+      // Specific installment requested
+      const { data: installment, error: instError } = await supabase
+        .from("invoice_installments")
+        .select("*")
+        .eq("id", requestedInstallmentId)
+        .eq("invoice_id", invoice.id)
+        .in("status", ["pending", "overdue"])
+        .single();
+
+      if (instError || !installment) {
+        throw new Error("Installment not found or already paid");
+      }
+
+      paymentAmount = installment.amount_minor;
+      description = `${invoice.invoice_number} — Installment ${installment.installment_number} of ${invoice.installment_count}`;
+      resolvedInstallmentId = installment.id;
+
+    } else if (payRemaining && invoice.payment_plan_enabled) {
+      // Pay remaining balance for payment plan invoice
+      paymentAmount = invoice.total_minor - (invoice.paid_minor || 0);
+      description = `${invoice.invoice_number} — Remaining balance`;
+
+    } else if (invoice.payment_plan_enabled) {
+      // Auto-select next unpaid installment
+      const { data: nextInstallment, error: nextError } = await supabase
+        .from("invoice_installments")
+        .select("*")
+        .eq("invoice_id", invoice.id)
+        .in("status", ["pending", "overdue"])
+        .order("installment_number", { ascending: true })
+        .limit(1)
+        .single();
+
+      if (nextError || !nextInstallment) {
+        throw new Error("All installments are already paid");
+      }
+
+      paymentAmount = nextInstallment.amount_minor;
+      description = `${invoice.invoice_number} — Installment ${nextInstallment.installment_number} of ${invoice.installment_count}`;
+      resolvedInstallmentId = nextInstallment.id;
+
+    } else {
+      // Standard full-amount payment (existing behaviour)
+      paymentAmount = amountDue;
+      description = `Invoice ${invoice.invoice_number}`;
+    }
+
+    if (paymentAmount <= 0) {
+      throw new Error("Nothing to pay");
     }
 
     // Get payer email
@@ -152,10 +212,10 @@ serve(async (req) => {
           price_data: {
             currency: currencyCode,
             product_data: {
-              name: `Invoice ${invoice.invoice_number}`,
-              description: `Payment for invoice ${invoice.invoice_number}`,
+              name: description,
+              description: `Payment for ${description}`,
             },
-            unit_amount: amountDue,
+            unit_amount: paymentAmount,
           },
           quantity: 1,
         },
@@ -165,6 +225,8 @@ serve(async (req) => {
       metadata: {
         lessonloop_invoice_id: invoiceId,
         lessonloop_org_id: invoice.org_id,
+        lessonloop_installment_id: resolvedInstallmentId || "",
+        lessonloop_pay_remaining: payRemaining ? "true" : "false",
       },
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
     };
@@ -193,7 +255,7 @@ serve(async (req) => {
         invoice_id: invoiceId,
         stripe_session_id: session.id,
         stripe_customer_id: customerId,
-        amount_minor: amountDue,
+        amount_minor: paymentAmount,
         currency_code: currencyCode,
         status: "pending",
         payer_email: payerEmail,
@@ -201,6 +263,8 @@ serve(async (req) => {
         expires_at: new Date(session.expires_at! * 1000).toISOString(),
         metadata: {
           invoice_number: invoice.invoice_number,
+          installment_id: resolvedInstallmentId || null,
+          pay_remaining: payRemaining ? true : false,
         },
       });
 
