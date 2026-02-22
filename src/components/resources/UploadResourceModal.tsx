@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { CategoryPicker } from './CategoryPicker';
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,7 @@ interface UploadResourceModalProps {
 export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalProps) {
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [description, setDescription] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadIndex, setUploadIndex] = useState<number | null>(null);
@@ -112,6 +114,7 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
           file: files[i].file,
           title: files[i].title.trim() || files[i].file.name,
           description: desc,
+          categoryIds: selectedCategories.length > 0 ? selectedCategories : undefined,
         });
       } catch {
         // Hook's onError shows a toast — stop batch on failure
@@ -128,6 +131,7 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
   const resetForm = () => {
     setFiles([]);
     setDescription('');
+    setSelectedCategories([]);
     setError(null);
     setUploadIndex(null);
   };
@@ -273,6 +277,16 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description of the resource(s)..."
               rows={2}
+              disabled={isUploading}
+            />
+          </div>
+
+          {/* Category picker */}
+          <div className="space-y-2">
+            <Label>Categories (optional)</Label>
+            <CategoryPicker
+              selected={selectedCategories}
+              onChange={setSelectedCategories}
               disabled={isUploading}
             />
           </div>

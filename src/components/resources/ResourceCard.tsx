@@ -116,6 +116,8 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
   return (
     <>
       <Card
+        role="article"
+        aria-label={resource.title}
         className={`group hover:shadow-md transition-shadow ${selectionMode ? 'cursor-pointer' : ''} ${selected ? 'ring-2 ring-primary' : ''}`}
         onClick={selectionMode ? () => onToggleSelect?.(resource.id) : undefined}
       >
@@ -188,7 +190,7 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
             {!selectionMode && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="shrink-0">
+                  <Button variant="ghost" size="icon" className="shrink-0" aria-label="Resource actions">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>

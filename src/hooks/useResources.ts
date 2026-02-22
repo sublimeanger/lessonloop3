@@ -35,8 +35,15 @@ export interface ShareWithStudent {
   students: { id: string; first_name: string; last_name: string } | null;
 }
 
+export interface CategoryAssignment {
+  id: string;
+  category_id: string;
+  resource_categories: { id: string; name: string; color: string | null } | null;
+}
+
 export interface ResourceWithShares extends Resource {
   resource_shares: ResourceShare[];
+  resource_category_assignments?: CategoryAssignment[];
 }
 
 export function useStorageUsage() {
@@ -82,7 +89,12 @@ export function useResources() {
         .from('resources')
         .select(`
           *,
-          resource_shares (*)
+          resource_shares (*),
+          resource_category_assignments (
+            id,
+            category_id,
+            resource_categories (id, name, color)
+          )
         `)
         .eq('org_id', currentOrg.id)
         .order('created_at', { ascending: false })
@@ -109,10 +121,12 @@ export function useUploadResource() {
       file,
       title,
       description,
+      categoryIds,
     }: {
       file: File;
       title: string;
       description?: string;
+      categoryIds?: string[];
     }) => {
       if (!currentOrg?.id || !user?.id) {
         throw new Error('No organisation or user context');
@@ -163,6 +177,19 @@ export function useUploadResource() {
         // Clean up uploaded file if record creation fails
         await supabase.storage.from('teaching-resources').remove([filePath]);
         throw error;
+      }
+
+      // Assign categories if provided
+      if (categoryIds && categoryIds.length > 0 && data) {
+        await supabase
+          .from('resource_category_assignments')
+          .insert(
+            categoryIds.map(categoryId => ({
+              resource_id: data.id,
+              category_id: categoryId,
+              org_id: currentOrg.id,
+            }))
+          );
       }
 
       return data;
