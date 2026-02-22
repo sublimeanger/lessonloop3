@@ -107,6 +107,7 @@ export default function Locations() {
   const [locCity, setLocCity] = useState('');
   const [locPostcode, setLocPostcode] = useState('');
   const [locNotes, setLocNotes] = useState('');
+  const [locCountry, setLocCountry] = useState(currentOrg?.country_code || 'GB');
   
   // Room dialog
   const [isRoomDialogOpen, setIsRoomDialogOpen] = useState(false);
@@ -182,6 +183,7 @@ export default function Locations() {
       setLocCity(location.city || '');
       setLocPostcode(location.postcode || '');
       setLocNotes(location.notes || '');
+      setLocCountry((location as any).country_code || currentOrg?.country_code || 'GB');
     } else {
       setEditingLocation(null);
       setLocName('');
@@ -191,6 +193,7 @@ export default function Locations() {
       setLocCity('');
       setLocPostcode('');
       setLocNotes('');
+      setLocCountry(currentOrg?.country_code || 'GB');
     }
     setIsLocationDialogOpen(true);
   };
@@ -240,6 +243,7 @@ export default function Locations() {
       city: locCity.trim() || null,
       postcode: locPostcode.trim() || null,
       notes: locNotes.trim() || null,
+      country_code: locCountry,
     };
     
     if (editingLocation) {
@@ -752,6 +756,24 @@ export default function Locations() {
                 <Label>Postcode</Label>
                 <Input value={locPostcode} onChange={(e) => setLocPostcode(e.target.value)} placeholder="SW1A 1AA" />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Country</Label>
+              <Select value={locCountry} onValueChange={setLocCountry}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GB">United Kingdom</SelectItem>
+                  <SelectItem value="IE">Ireland</SelectItem>
+                  <SelectItem value="US">United States</SelectItem>
+                  <SelectItem value="CA">Canada</SelectItem>
+                  <SelectItem value="AU">Australia</SelectItem>
+                  <SelectItem value="NZ">New Zealand</SelectItem>
+                  <SelectItem value="DE">Germany</SelectItem>
+                  <SelectItem value="FR">France</SelectItem>
+                  <SelectItem value="ES">Spain</SelectItem>
+                  <SelectItem value="IT">Italy</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Notes</Label>
