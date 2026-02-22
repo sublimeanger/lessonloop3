@@ -65,7 +65,7 @@ export function StreakBadge({
         className
       )}
     >
-      <Icon className={cn(s.icon, 'animate-pulse')} />
+      <Icon className={cn(s.icon, currentStreak >= 14 ? 'animate-pulse' : 'transition-transform hover:scale-110')} />
       <span>{currentStreak}</span>
       {showLabel && <span className="font-normal">{tier.label}</span>}
     </div>
@@ -120,7 +120,7 @@ export function StreakDisplay({
         <Icon className={cn(
           'h-8 w-8',
           tier ? tier.color : 'text-muted-foreground',
-          currentStreak > 0 && 'animate-pulse'
+          currentStreak >= 14 ? 'animate-pulse' : 'transition-transform hover:scale-110'
         )} />
       </div>
       <div>
