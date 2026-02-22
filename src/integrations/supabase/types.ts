@@ -1436,6 +1436,7 @@ export type Database = {
           country_code: string
           created_at: string
           id: string
+          is_archived: boolean
           is_primary: boolean
           location_type: Database["public"]["Enums"]["location_type"]
           name: string
@@ -1452,6 +1453,7 @@ export type Database = {
           country_code?: string
           created_at?: string
           id?: string
+          is_archived?: boolean
           is_primary?: boolean
           location_type?: Database["public"]["Enums"]["location_type"]
           name: string
@@ -1468,6 +1470,7 @@ export type Database = {
           country_code?: string
           created_at?: string
           id?: string
+          is_archived?: boolean
           is_primary?: boolean
           location_type?: Database["public"]["Enums"]["location_type"]
           name?: string

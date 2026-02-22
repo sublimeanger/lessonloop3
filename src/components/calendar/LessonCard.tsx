@@ -46,7 +46,7 @@ function formatStudentShort(participants?: LessonWithDetails['participants']): s
  */
 function buildSecondaryLine(lesson: LessonWithDetails): string {
   const teacherName = lesson.teacher?.full_name || lesson.teacher?.email || '';
-  const locationName = lesson.location?.name || '';
+  const locationName = lesson.location?.name ? `${lesson.location.name}${(lesson.location as any).is_archived ? ' (Archived)' : ''}` : '';
   
   if (locationName && teacherName) {
     return `${locationName} · w/ ${teacherName}`;

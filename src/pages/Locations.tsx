@@ -18,7 +18,7 @@ import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { FeatureGate } from '@/components/subscription';
 import { useDeleteValidation, DeletionCheckResult } from '@/hooks/useDeleteValidation';
 import { DeleteValidationDialog } from '@/components/shared/DeleteValidationDialog';
-import { Plus, MapPin, ChevronDown, Loader2, Trash2, Edit, DoorOpen, Lock, Search, Star } from 'lucide-react';
+import { Plus, MapPin, ChevronDown, Loader2, Trash2, Edit, DoorOpen, Lock, Search, Star, Archive, ArchiveRestore } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type LocationType = 'school' | 'studio' | 'home' | 'online';
@@ -45,6 +45,7 @@ interface Location {
   postcode: string | null;
   notes: string | null;
   is_primary: boolean;
+  is_archived: boolean;
   rooms?: Room[];
 }
 
@@ -91,6 +92,7 @@ export default function Locations() {
   const [expandedLocations, setExpandedLocations] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
+  const [showArchived, setShowArchived] = useState(false);
   
   // Location dialog
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
@@ -135,6 +137,7 @@ export default function Locations() {
   // Filtered locations
   const filteredLocations = useMemo(() => {
     let list = locations;
+    if (!showArchived) list = list.filter(l => !l.is_archived);
     if (filterTab !== 'all') list = list.filter(l => l.location_type === filterTab);
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -146,13 +149,16 @@ export default function Locations() {
       );
     }
     return list;
-  }, [locations, filterTab, search]);
+  }, [locations, filterTab, search, showArchived]);
 
   const typeCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: locations.length, studio: 0, school: 0, home: 0, online: 0 };
-    locations.forEach(l => { counts[l.location_type]++; });
+    const active = showArchived ? locations : locations.filter(l => !l.is_archived);
+    const counts: Record<string, number> = { all: active.length, studio: 0, school: 0, home: 0, online: 0 };
+    active.forEach(l => { counts[l.location_type]++; });
     return counts;
-  }, [locations]);
+  }, [locations, showArchived]);
+
+  const archivedCount = useMemo(() => locations.filter(l => l.is_archived).length, [locations]);
 
   const invalidateLocations = () => queryClient.invalidateQueries({ queryKey: ['locations'] });
 
@@ -255,6 +261,22 @@ export default function Locations() {
       }
     }
     setIsLocationSaving(false);
+  };
+
+  const handleArchiveLocation = async (location: Location) => {
+    if (!currentOrg) return;
+    const newArchived = !location.is_archived;
+    const { error } = await supabase
+      .from('locations')
+      .update({ is_archived: newArchived })
+      .eq('id', location.id)
+      .eq('org_id', currentOrg.id);
+    if (error) {
+      toast({ title: 'Error updating location', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: newArchived ? 'Location archived' : 'Location restored' });
+      invalidateLocations();
+    }
   };
 
   const initiateDeleteLocation = async (location: Location) => {
@@ -486,6 +508,18 @@ export default function Locations() {
               </button>
             ))}
           </div>
+          {archivedCount > 0 && (
+            <button
+              onClick={() => setShowArchived(v => !v)}
+              className={cn(
+                'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
+                showArchived ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Archive className="h-3.5 w-3.5" />
+              {showArchived ? 'Hide' : 'Show'} archived ({archivedCount})
+            </button>
+          )}
         </div>
       )}
 
@@ -519,8 +553,9 @@ export default function Locations() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold truncate">{location.name}</span>
-                      {location.is_primary && <Badge className="text-[10px] shrink-0">Primary</Badge>}
+                      <span className={cn('font-semibold truncate', location.is_archived && 'text-muted-foreground')}>{location.name}</span>
+                      {location.is_archived && <Badge variant="secondary" className="text-[10px] shrink-0">Archived</Badge>}
+                      {location.is_primary && !location.is_archived && <Badge className="text-[10px] shrink-0">Primary</Badge>}
                       <Badge variant="outline" className="capitalize text-[10px] shrink-0">{location.location_type}</Badge>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
@@ -543,12 +578,23 @@ export default function Locations() {
                         >
                           <Star className={cn('h-4 w-4', location.is_primary && 'fill-primary text-primary')} />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openLocationDialog(location)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openLocationDialog(location)} disabled={location.is_archived}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => initiateDeleteLocation(location)}>
-                          <Trash2 className="h-4 w-4" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title={location.is_archived ? 'Restore location' : 'Archive location'}
+                          onClick={() => handleArchiveLocation(location)}
+                        >
+                          {location.is_archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                         </Button>
+                        {location.is_archived && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => initiateDeleteLocation(location)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </>
                     )}
                     <CollapsibleTrigger asChild>
