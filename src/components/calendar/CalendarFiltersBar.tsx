@@ -22,6 +22,7 @@ export function CalendarFiltersBar({
   onChange,
   teachers,
   locations,
+  rooms,
   instruments = [],
   teachersWithColours,
   lessons = [],
@@ -194,6 +195,39 @@ export function CalendarFiltersBar({
           </button>
         );
       })}
+
+      {/* Room pills (when a location is selected) */}
+      {filters.location_id && (() => {
+        const locationRooms = rooms.filter(r => r.location_id === filters.location_id);
+        if (locationRooms.length === 0) return null;
+        return (
+          <>
+            <div className="h-5 w-px bg-border shrink-0 mx-0.5" />
+            {locationRooms.map((room) => {
+              const isSelected = filters.room_id === room.id;
+              return (
+                <button
+                  key={room.id}
+                  onClick={() =>
+                    onChange({
+                      ...filters,
+                      room_id: isSelected ? null : room.id,
+                    })
+                  }
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-all cursor-pointer shrink-0',
+                    isSelected
+                      ? 'bg-foreground text-background border-foreground shadow-sm'
+                      : 'border-border bg-background text-foreground hover:bg-muted'
+                  )}
+                >
+                  {room.name}
+                </button>
+              );
+            })}
+          </>
+        );
+      })()}
 
       {/* Divider before toggle */}
       <div className="h-5 w-px bg-border shrink-0 mx-0.5" />

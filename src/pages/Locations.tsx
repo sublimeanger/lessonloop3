@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -93,7 +94,20 @@ export default function Locations() {
   });
   const [expandedLocations, setExpandedLocations] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
-  const [filterTab, setFilterTab] = useState<FilterTab>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filterTab, setFilterTabState] = useState<FilterTab>(() => {
+    const urlType = searchParams.get('type') as FilterTab | null;
+    return urlType && ['all', 'school', 'studio', 'home', 'online'].includes(urlType) ? urlType : 'all';
+  });
+  const setFilterTab = (tab: FilterTab) => {
+    setFilterTabState(tab);
+    if (tab === 'all') {
+      searchParams.delete('type');
+    } else {
+      searchParams.set('type', tab);
+    }
+    setSearchParams(searchParams, { replace: true });
+  };
   const [showArchived, setShowArchived] = useState(false);
   
   // Location dialog
