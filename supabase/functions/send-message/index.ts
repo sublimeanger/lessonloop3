@@ -157,7 +157,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         if (resendResponse.ok) {
           const emailResult = await resendResponse.json();
-          console.log("Email sent successfully:", emailResult);
+          console.log("Email sent successfully, id:", emailResult?.id);
           emailSent = true;
         } else {
           const errorResult = await resendResponse.text();
