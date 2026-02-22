@@ -172,7 +172,7 @@ export function PlanSelector({ selectedPlan, onSelectPlan, recommendedPlan }: Pl
       {/* Plan comparison link */}
       <p className="text-center text-sm text-muted-foreground">
         All plans include LoopAssist AI, parent portal, and core features.{' '}
-        <a href="/pricing" target="_blank" className="text-primary hover:underline">
+        <a href="https://lessonloop.io/pricing" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
           Compare plans in detail →
         </a>
       </p>
