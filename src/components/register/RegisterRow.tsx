@@ -203,10 +203,29 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
               const isSaving = savingStudent === participant.student_id;
 
               return (
-                <div key={participant.student_id} className="py-2 border-b last:border-b-0">
+              <div
+                key={participant.student_id}
+                className="py-2 border-b last:border-b-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 group/row"
+                tabIndex={0}
+                role="row"
+                aria-label={`${participant.student_name} — ${currentStatus ? statusConfig[currentStatus]?.label ?? 'unmarked' : 'unmarked'}. Press P, A, L, T, or S to set status.`}
+                onKeyDown={(e) => {
+                  if (isCancelled || isSaving) return;
+                  const keyMap: Record<string, AttendanceStatus> = {
+                    p: 'present', a: 'absent', l: 'late',
+                    t: 'cancelled_by_teacher', s: 'cancelled_by_student',
+                  };
+                  const status = keyMap[e.key.toLowerCase()];
+                  if (status) {
+                    e.preventDefault();
+                    handleAttendanceClick(participant.student_id, status);
+                  }
+                }}
+              >
                   <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{participant.student_name}</span>
+                     <div className="flex items-center gap-2">
+                       <span className="font-medium">{participant.student_name}</span>
+                       <span className="hidden group-focus-visible/row:inline text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">P / A / L / T / S</span>
                       {needsAbsenceReason(currentStatus) && !participant.absence_reason_category && !absenceReasons[participant.student_id] && (
                         <span title="Absence reason missing" className="text-warning">
                           <AlertCircle className="h-3.5 w-3.5" />
