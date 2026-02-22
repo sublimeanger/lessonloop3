@@ -353,10 +353,42 @@ export default function Locations() {
 
   const handleSetPrimary = async (locationId: string) => {
     if (!currentOrg) return;
-    await supabase.from('locations').update({ is_primary: false }).eq('org_id', currentOrg.id);
-    await supabase.from('locations').update({ is_primary: true }).eq('id', locationId);
-    invalidateLocations();
-    toast({ title: 'Primary location updated' });
+
+    // Find current primary so we can rollback if needed
+    const currentPrimary = locations.find(l => l.is_primary);
+
+    try {
+      const { error: clearError } = await supabase
+        .from('locations')
+        .update({ is_primary: false })
+        .eq('org_id', currentOrg.id);
+
+      if (clearError) throw clearError;
+
+      const { error: setError } = await supabase
+        .from('locations')
+        .update({ is_primary: true })
+        .eq('id', locationId)
+        .eq('org_id', currentOrg.id);
+
+      if (setError) {
+        // Rollback: restore previous primary
+        if (currentPrimary) {
+          await supabase
+            .from('locations')
+            .update({ is_primary: true })
+            .eq('id', currentPrimary.id)
+            .eq('org_id', currentOrg.id);
+        }
+        throw setError;
+      }
+
+      invalidateLocations();
+      toast({ title: 'Primary location updated' });
+    } catch (error) {
+      invalidateLocations();
+      toast({ title: 'Failed to update primary location', description: (error as Error).message, variant: 'destructive' });
+    }
   };
 
   const canAddLocation = hasMultiLocation || locations.length === 0;
