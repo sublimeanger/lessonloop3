@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { format, addDays, differenceInMinutes } from 'date-fns';
@@ -51,17 +52,6 @@ interface InvoiceFormData {
   }>;
 }
 
-interface Guardian {
-  id: string;
-  full_name: string;
-}
-
-interface Student {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-}
 
 export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalProps) {
   const { currentOrg } = useOrg();
@@ -69,8 +59,6 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
   const { data: rateCards = [] } = useRateCards();
   const { isOnline, guardOffline } = useOnlineStatus();
   const [tab, setTab] = useState<'manual' | 'lessons'>('manual');
-  const [guardians, setGuardians] = useState<Guardian[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
   const [lessonDateRange, setLessonDateRange] = useState({
     from: format(addDays(new Date(), -30), 'yyyy-MM-dd'),
     to: format(new Date(), 'yyyy-MM-dd'),
@@ -129,31 +117,34 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
     }).format(minor / 100);
   };
 
-  useEffect(() => {
-    if (!currentOrg?.id) return;
-
-    const fetchPayers = async () => {
-      const { data: guardiansData } = await supabase
+  const { data: guardians = [] } = useQuery({
+    queryKey: ['guardians-for-invoice', currentOrg?.id],
+    queryFn: async () => {
+      const { data } = await supabase
         .from('guardians')
         .select('id, full_name')
-        .eq('org_id', currentOrg.id)
+        .eq('org_id', currentOrg!.id)
         .is('deleted_at', null)
         .order('full_name');
+      return data || [];
+    },
+    enabled: !!currentOrg?.id && open,
+  });
 
-      const { data: studentsData } = await supabase
+  const { data: students = [] } = useQuery({
+    queryKey: ['students-for-invoice', currentOrg?.id],
+    queryFn: async () => {
+      const { data } = await supabase
         .from('students')
         .select('id, first_name, last_name, email')
-        .eq('org_id', currentOrg.id)
-        .eq('status', 'active')
+        .eq('org_id', currentOrg!.id)
+        .eq('status', 'active' as any)
         .is('deleted_at', null)
         .order('first_name');
-
-      setGuardians(guardiansData || []);
-      setStudents(studentsData || []);
-    };
-
-    fetchPayers();
-  }, [currentOrg?.id]);
+      return data || [];
+    },
+    enabled: !!currentOrg?.id && open,
+  });
 
   const { toast } = useToast();
 
