@@ -184,6 +184,14 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
 
   const handleClose = () => {
     setStep('config');
+    setBillingResult(null);
+    setConfig({
+      runType: 'monthly' as BillingRunType,
+      startDate: format(startOfMonth(lastMonth), 'yyyy-MM-dd'),
+      endDate: format(endOfMonth(lastMonth), 'yyyy-MM-dd'),
+      termId: '',
+      billingMode: 'delivered' as BillingMode,
+    });
     onOpenChange(false);
   };
 
