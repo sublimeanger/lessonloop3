@@ -824,7 +824,7 @@ export default function Locations() {
 
       {/* Location Dialog */}
       <Dialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingLocation ? 'Edit Location' : 'Add Location'}</DialogTitle>
             <DialogDescription>Configure your teaching venue details.</DialogDescription>
@@ -833,7 +833,7 @@ export default function Locations() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Name *</Label>
-                <Input value={locName} onChange={(e) => setLocName(e.target.value)} placeholder="Main Studio" />
+                <Input autoFocus value={locName} onChange={(e) => setLocName(e.target.value)} placeholder="Main Studio" />
               </div>
               <div className="space-y-2">
                 <Label>Type</Label>
@@ -884,9 +884,10 @@ export default function Locations() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Label>Notes</Label>
-              <Textarea value={locNotes} onChange={(e) => setLocNotes(e.target.value)} placeholder="Parking available behind building..." rows={3} />
+              <Textarea value={locNotes} onChange={(e) => setLocNotes(e.target.value)} placeholder="Parking available behind building..." rows={3} maxLength={500} />
+              <p className={cn('text-[11px] text-right', locNotes.length > 500 ? 'text-destructive' : 'text-muted-foreground')}>{locNotes.length}/500</p>
             </div>
           </div>
           <DialogFooter>
