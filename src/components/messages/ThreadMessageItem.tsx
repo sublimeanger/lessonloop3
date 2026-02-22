@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { ThreadMessage } from '@/hooks/useMessageThreads';
 import { useRelatedStudent } from '@/hooks/useRelatedStudent';
+import { useOrg } from '@/contexts/OrgContext';
 import { EntityChip } from '@/components/loopassist/EntityChip';
 import { sanitizeHtml } from '@/lib/sanitize';
 
@@ -10,7 +11,8 @@ interface ThreadMessageItemProps {
 }
 
 export function ThreadMessageItem({ message }: ThreadMessageItemProps) {
-  const { data: relatedStudent } = useRelatedStudent(message.related_id);
+  const { currentOrg } = useOrg();
+  const { data: relatedStudent } = useRelatedStudent(message.related_id, currentOrg?.id);
 
   return (
     <div className="p-4 bg-muted/30">

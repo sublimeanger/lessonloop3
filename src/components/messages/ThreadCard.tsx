@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useReplyToMessage, useThreadMessages, MessageThread } from '@/hooks/useMessageThreads';
 import { useRelatedStudent } from '@/hooks/useRelatedStudent';
+import { useOrg } from '@/contexts/OrgContext';
 import { EntityChip } from '@/components/loopassist/EntityChip';
 import { ThreadMessageItem } from './ThreadMessageItem';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -38,7 +39,8 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
   );
 
   const latestMessage = messages?.[messages.length - 1];
-  const { data: relatedStudent } = useRelatedStudent(thread.related_id);
+  const { currentOrg } = useOrg();
+  const { data: relatedStudent } = useRelatedStudent(thread.related_id, currentOrg?.id);
 
   const handleSendReply = async () => {
     if (!replyBody.trim() || !latestMessage) return;
