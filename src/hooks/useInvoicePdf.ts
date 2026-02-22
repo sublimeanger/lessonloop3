@@ -274,16 +274,22 @@ function generatePdf(
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(9);
 
+  const descMaxWidth = contentWidth * 0.55 - 4; // leave small gap before qty column
+
   for (const item of inv.items || []) {
-    if (y > 260) {
+    const descLines = doc.splitTextToSize(item.description, descMaxWidth);
+    const lineHeight = 4;
+    const blockHeight = descLines.length * lineHeight;
+
+    if (y + blockHeight > 260) {
       doc.addPage();
       y = margin;
     }
-    doc.text(item.description.substring(0, 60), colX.desc, y);
+    doc.text(descLines, colX.desc, y);
     doc.text(String(item.quantity), colX.qty, y, { align: 'right' });
     doc.text(fmtCur(item.unit_price_minor, currency), colX.rate, y, { align: 'right' });
     doc.text(fmtCur(item.amount_minor, currency), colX.amount, y, { align: 'right' });
-    y += 6;
+    y += Math.max(blockHeight, 6) + 2;
   }
 
   // Line
