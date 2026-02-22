@@ -100,6 +100,8 @@ export function OrganisationTab() {
   });
 
   const [orgName, setOrgName] = useState('');
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [nameTouched, setNameTouched] = useState(false);
   const [orgAddress, setOrgAddress] = useState('');
   const [timezone, setTimezone] = useState('Europe/London');
   const [currencyCode, setCurrencyCode] = useState('GBP');
@@ -114,6 +116,26 @@ export function OrganisationTab() {
       setCurrencyCode(orgData.currency_code || 'GBP');
     }
   }, [orgData]);
+
+  const validateName = (value: string): string | null => {
+    const trimmed = value.trim();
+    if (!trimmed) return 'Organisation name is required';
+    if (trimmed.length < 2) return 'Name must be at least 2 characters';
+    if (trimmed.length > 100) return 'Name must be 100 characters or fewer';
+    return null;
+  };
+
+  const handleNameChange = (value: string) => {
+    setOrgName(value);
+    if (nameTouched) setNameError(validateName(value));
+  };
+
+  const handleNameBlur = () => {
+    setNameTouched(true);
+    setNameError(validateName(orgName));
+  };
+
+  const isNameValid = !validateName(orgName);
 
   const handleTimezoneChange = (value: string) => {
     if (value !== orgData?.timezone) {
@@ -139,11 +161,12 @@ export function OrganisationTab() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!orgName.trim()) throw new Error('Organisation name is required');
+      const nameErr = validateName(orgName);
+      if (nameErr) throw new Error(nameErr);
       const { error } = await supabase
         .from('organisations')
         .update({ 
-          name: orgName, 
+          name: orgName.trim(), 
           address: orgAddress,
           timezone,
           currency_code: currencyCode,
@@ -195,9 +218,24 @@ export function OrganisationTab() {
           <CardDescription>Manage your teaching business information</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-2">
+          <div className="space-y-1">
             <Label htmlFor="orgName">Organisation name</Label>
-            <Input id="orgName" value={orgName} onChange={(e) => setOrgName(e.target.value)} disabled={!canEdit} />
+            <Input
+              id="orgName"
+              value={orgName}
+              onChange={(e) => handleNameChange(e.target.value)}
+              onBlur={handleNameBlur}
+              maxLength={100}
+              disabled={!canEdit}
+            />
+            {nameTouched && nameError && (
+              <p className="text-xs text-destructive mt-1">{nameError}</p>
+            )}
+            {orgName.trim().length > 80 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {100 - orgName.trim().length} characters remaining
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="address">Address</Label>
@@ -254,7 +292,7 @@ export function OrganisationTab() {
             </div>
           </div>
           {canEdit && (
-            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !orgName.trim()}>
+            <Button onClick={() => { setNameTouched(true); setNameError(validateName(orgName)); if (isNameValid) saveMutation.mutate(); }} disabled={saveMutation.isPending || !isNameValid}>
               {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Save Changes
             </Button>
