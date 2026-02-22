@@ -49,6 +49,7 @@ export default function AcceptInvite() {
   const [organisation, setOrganisation] = useState<OrganisationDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expiredOrgName, setExpiredOrgName] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
@@ -86,6 +87,10 @@ export default function AcceptInvite() {
       
       if (data.error) {
         setError(data.error);
+        // Capture org name from expired invite responses
+        if (data.organisation?.name) {
+          setExpiredOrgName(data.organisation.name);
+        }
         setIsLoading(false);
         return;
       }
@@ -262,7 +267,7 @@ export default function AcceptInvite() {
             </h2>
             <p className="mt-2 text-center text-muted-foreground">
               {isExpired
-                ? 'This invitation link has expired. Please contact your academy administrator and ask them to send a new invitation from the Teachers page.'
+                ? `This invitation link has expired.${expiredOrgName ? ` Please contact ${expiredOrgName} and ask them to send a new invitation.` : ' Please contact your academy administrator and ask them to send a new invitation.'}`
                 : error}
             </p>
             <Button asChild className="mt-6">

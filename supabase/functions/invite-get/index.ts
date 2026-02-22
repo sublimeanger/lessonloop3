@@ -70,10 +70,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if expired
+    // Check if expired — still return org info so the UI can show it
     if (new Date(invite.expires_at) < new Date()) {
+      // Fetch organisation name for the expired message
+      const { data: expiredOrg } = await supabaseAdmin
+        .from("organisations")
+        .select("name, org_type")
+        .eq("id", invite.org_id)
+        .maybeSingle();
+
       return new Response(
-        JSON.stringify({ error: "This invitation has expired" }),
+        JSON.stringify({
+          error: "This invitation has expired",
+          organisation: expiredOrg ? { name: expiredOrg.name, org_type: expiredOrg.org_type } : null,
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
