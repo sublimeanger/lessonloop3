@@ -364,6 +364,28 @@ export default function Locations() {
       if (error) {
         toast({ title: 'Error updating', description: error.message, variant: 'destructive' });
       } else {
+        // Check for over-capacity lessons if capacity was reduced
+        if (parsedCapacity !== null && editingRoom.capacity !== null && parsedCapacity < editingRoom.capacity) {
+          const { data: futureLessons } = await supabase
+            .from('lessons')
+            .select('id, title, start_at, lesson_participants(id)')
+            .eq('room_id', editingRoom.id)
+            .eq('org_id', currentOrg.id)
+            .gte('start_at', new Date().toISOString())
+            .neq('status', 'cancelled');
+
+          const overCapacity = (futureLessons || []).filter(
+            (l: any) => (l.lesson_participants?.length || 0) > parsedCapacity!
+          );
+
+          if (overCapacity.length > 0) {
+            toast({
+              title: 'Warning: Over-capacity lessons',
+              description: `${overCapacity.length} upcoming lesson${overCapacity.length > 1 ? 's' : ''} now exceed${overCapacity.length === 1 ? 's' : ''} this room's capacity. Review these bookings.`,
+            });
+          }
+        }
+
         toast({ title: 'Room updated' });
         setIsRoomDialogOpen(false);
         invalidateLocations();
