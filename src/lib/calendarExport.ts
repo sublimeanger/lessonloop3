@@ -1,4 +1,5 @@
-import { format, parseISO } from 'date-fns';
+import { parseISO } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 
 interface ExportLesson {
   title: string;
@@ -8,19 +9,36 @@ interface ExportLesson {
 }
 
 /**
- * Format a Date as an iCalendar DATETIME string (UTC).
- * WARNING: This expects real UTC ISO strings (with Z suffix) from Supabase,
- * NOT the org-local strings produced by useCalendarData's toOrgLocalIso().
+ * Format a Date as an iCalendar DATETIME string localised to a timezone.
+ * Output: 19970714T133000  (no trailing Z – paired with TZID)
  */
-function toICSDate(dateStr: string): string {
-  const d = parseISO(dateStr);
-  return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+function toLocalICSDate(dateStr: string, tz: string): string {
+  return formatInTimeZone(parseISO(dateStr), tz, "yyyyMMdd'T'HHmmss");
+}
+
+/**
+ * Generate a minimal VTIMEZONE component.
+ * Full Olson rules aren't needed — most calendar clients resolve the TZID
+ * from their own database. We include a stub so the file is spec-valid.
+ */
+function vtimezone(tz: string): string {
+  return [
+    'BEGIN:VTIMEZONE',
+    `TZID:${tz}`,
+    'BEGIN:STANDARD',
+    `DTSTART:19700101T000000`,
+    `TZNAME:${tz}`,
+    'TZOFFSETFROM:+0000',
+    'TZOFFSETTO:+0000',
+    'END:STANDARD',
+    'END:VTIMEZONE',
+  ].join('\r\n');
 }
 
 /**
  * Generate an .ics file string for a single lesson.
  */
-export function generateICSEvent(lesson: ExportLesson): string {
+export function generateICSEvent(lesson: ExportLesson, timezone = 'Europe/London'): string {
   const uid = `${Date.now()}-${Math.random().toString(36).slice(2)}@lessonloop.app`;
   const location = lesson.location?.name || '';
 
@@ -30,13 +48,14 @@ export function generateICSEvent(lesson: ExportLesson): string {
     'PRODID:-//LessonLoop//Calendar Export//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
+    vtimezone(timezone),
     'BEGIN:VEVENT',
     `UID:${uid}`,
-    `DTSTART:${toICSDate(lesson.start_at)}`,
-    `DTEND:${toICSDate(lesson.end_at)}`,
+    `DTSTART;TZID=${timezone}:${toLocalICSDate(lesson.start_at, timezone)}`,
+    `DTEND;TZID=${timezone}:${toLocalICSDate(lesson.end_at, timezone)}`,
     `SUMMARY:${lesson.title}`,
     location ? `LOCATION:${location}` : '',
-    `DTSTAMP:${toICSDate(new Date().toISOString())}`,
+    `DTSTAMP:${toLocalICSDate(new Date().toISOString(), 'UTC')}Z`,
     'END:VEVENT',
     'END:VCALENDAR',
   ]
@@ -47,8 +66,8 @@ export function generateICSEvent(lesson: ExportLesson): string {
 /**
  * Trigger download of an .ics file.
  */
-export function downloadICSFile(lesson: ExportLesson): void {
-  const icsContent = generateICSEvent(lesson);
+export function downloadICSFile(lesson: ExportLesson, timezone = 'Europe/London'): void {
+  const icsContent = generateICSEvent(lesson, timezone);
   const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -63,9 +82,9 @@ export function downloadICSFile(lesson: ExportLesson): void {
 /**
  * Generate a Google Calendar "add event" URL.
  */
-export function generateGoogleCalendarUrl(lesson: ExportLesson): string {
-  const start = toICSDate(lesson.start_at);
-  const end = toICSDate(lesson.end_at);
+export function generateGoogleCalendarUrl(lesson: ExportLesson, timezone = 'Europe/London'): string {
+  const start = toLocalICSDate(lesson.start_at, timezone);
+  const end = toLocalICSDate(lesson.end_at, timezone);
   const location = lesson.location?.name || '';
 
   const params = new URLSearchParams({
@@ -74,6 +93,7 @@ export function generateGoogleCalendarUrl(lesson: ExportLesson): string {
     dates: `${start}/${end}`,
     details: `Lesson scheduled via LessonLoop`,
     location,
+    ctz: timezone,
   });
 
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
