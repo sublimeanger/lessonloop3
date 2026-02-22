@@ -27,19 +27,19 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
 
   return (
     <Tabs defaultValue="overview" className="space-y-6">
-      <TabsList className="flex-wrap h-auto gap-1">
-        <TabsTrigger value="overview">Overview</TabsTrigger>
-        <TabsTrigger value="teachers">Teachers</TabsTrigger>
-        <TabsTrigger value="guardians">Guardians</TabsTrigger>
-        <TabsTrigger value="lessons">Lessons</TabsTrigger>
-        <TabsTrigger value="practice" className="gap-1.5">
+      <TabsList className="flex overflow-x-auto scrollbar-hide gap-1 h-auto pb-1">
+        <TabsTrigger value="overview" className="shrink-0">Overview</TabsTrigger>
+        <TabsTrigger value="teachers" className="shrink-0">Teachers</TabsTrigger>
+        <TabsTrigger value="guardians" className="shrink-0">Guardians</TabsTrigger>
+        <TabsTrigger value="lessons" className="shrink-0">Lessons</TabsTrigger>
+        <TabsTrigger value="practice" className="gap-1.5 shrink-0">
           <Music className="h-3.5 w-3.5" />
           Practice
         </TabsTrigger>
-        <TabsTrigger value="invoices">Invoices</TabsTrigger>
-        <TabsTrigger value="credits">Credits</TabsTrigger>
-        <TabsTrigger value="notes">Notes</TabsTrigger>
-        <TabsTrigger value="messages">Messages</TabsTrigger>
+        <TabsTrigger value="invoices" className="shrink-0">Invoices</TabsTrigger>
+        <TabsTrigger value="credits" className="shrink-0">Credits</TabsTrigger>
+        <TabsTrigger value="notes" className="shrink-0">Notes</TabsTrigger>
+        <TabsTrigger value="messages" className="shrink-0">Messages</TabsTrigger>
       </TabsList>
 
       <TabsContent value="overview">

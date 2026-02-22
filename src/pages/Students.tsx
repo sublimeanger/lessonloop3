@@ -15,7 +15,7 @@ import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { StudentWizard } from '@/components/students/StudentWizard';
 import { useStudents, useToggleStudentStatus } from '@/hooks/useStudents';
 import type { StudentListItem, StudentStatus } from '@/hooks/useStudents';
-import { Plus, Search, Users, Upload, Lock, Loader2 } from 'lucide-react';
+import { Plus, Search, Users, Upload, Lock, Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
 import { supabase } from '@/integrations/supabase/client';
@@ -239,9 +239,18 @@ export default function Students() {
             placeholder="Search students..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="pl-9"
+            className={`pl-9 ${searchInput ? 'pr-9' : ''}`}
             aria-label="Search students"
           />
+          {searchInput && (
+            <button
+              onClick={() => { setSearchInput(''); setSearchQuery(''); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
