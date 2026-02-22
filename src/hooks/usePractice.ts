@@ -93,9 +93,10 @@ export function usePracticeAssignments(studentId?: string) {
         .from('practice_assignments')
         .select(`
           *,
-          student:students(id, first_name, last_name)
+          student:students!inner(id, first_name, last_name, status)
         `)
         .eq('org_id', currentOrg!.id)
+        .eq('student.status', 'active')
         .or(`end_date.is.null,end_date.gte.${today}`)
         .order('created_at', { ascending: false });
 
@@ -136,10 +137,11 @@ export function usePracticeLogs(options?: {
         .from('practice_logs')
         .select(`
           *,
-          student:students(id, first_name, last_name),
+          student:students!inner(id, first_name, last_name, status),
           assignment:practice_assignments(id, title)
         `)
         .eq('org_id', currentOrg!.id)
+        .eq('student.status', 'active')
         .order('practice_date', { ascending: false })
         .order('created_at', { ascending: false });
 
@@ -205,9 +207,10 @@ export function useParentPracticeAssignments() {
         .from('practice_assignments')
         .select(`
           *,
-          student:students(id, first_name, last_name)
+          student:students!inner(id, first_name, last_name, status)
         `)
         .in('student_id', studentIds)
+        .eq('student.status', 'active')
         .eq('status', 'active')
         .or(`end_date.is.null,end_date.gte.${today}`)
         .order('created_at', { ascending: false });
@@ -248,10 +251,11 @@ export function useParentPracticeLogs(studentId?: string) {
         .from('practice_logs')
         .select(`
           *,
-          student:students(id, first_name, last_name),
+          student:students!inner(id, first_name, last_name, status),
           assignment:practice_assignments(id, title)
         `)
         .in('student_id', studentId ? [studentId] : studentIds)
+        .eq('student.status', 'active')
         .order('practice_date', { ascending: false })
         .order('created_at', { ascending: false });
 
