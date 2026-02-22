@@ -258,6 +258,7 @@ export interface LessonsDeliveredData {
   totalCompleted: number;
   totalCancelled: number;
   totalMinutes: number;
+  warnings?: string[];
 }
 
 export function useLessonsDeliveredReport(startDate: string, endDate: string) {
@@ -296,6 +297,10 @@ export function useLessonsDeliveredReport(startDate: string, endDate: string) {
 
       const { data: lessons, error } = await lessonsQuery.limit(10000);
 
+      const warnings: string[] = [];
+      if ((lessons || []).length >= 10000) {
+        warnings.push('Results may be incomplete — your date range contains more than 10,000 lessons. Try a shorter period.');
+      }
       // Get unique teacher IDs
       const teacherIds = [...new Set((lessons || []).map(l => l.teacher_id).filter(Boolean) as string[])];
       const locationIds = [...new Set((lessons || []).filter(l => l.location_id).map(l => l.location_id!))];
@@ -387,7 +392,7 @@ export function useLessonsDeliveredReport(startDate: string, endDate: string) {
       }
       byLocation.sort((a, b) => b.completedLessons - a.completedLessons);
 
-      return { byTeacher, byLocation, totalCompleted, totalCancelled, totalMinutes };
+      return { byTeacher, byLocation, totalCompleted, totalCancelled, totalMinutes, warnings };
     },
     enabled: !!currentOrg && !!startDate && !!endDate,
     staleTime: 10 * 60 * 1000,
@@ -403,6 +408,7 @@ export interface CancellationData {
   cancellationRate: number;
   byReason: { reason: string; count: number }[];
   byTeacher: { teacherName: string; cancelled: number; total: number; rate: number }[];
+  warnings?: string[];
 }
 
 export function useCancellationReport(startDate: string, endDate: string) {
@@ -440,6 +446,11 @@ export function useCancellationReport(startDate: string, endDate: string) {
       }
 
       const { data: lessons, error } = await lessonsQuery.limit(10000);
+
+      const warnings: string[] = [];
+      if ((lessons || []).length >= 10000) {
+        warnings.push('Results may be incomplete — your date range contains more than 10,000 lessons. Try a shorter period.');
+      }
 
       // Fetch attendance records for cancellation reasons
       const lessonIds = (lessons || []).filter(l => l.status === 'cancelled').map(l => l.id);
@@ -506,7 +517,7 @@ export function useCancellationReport(startDate: string, endDate: string) {
         }))
         .sort((a, b) => b.rate - a.rate);
 
-      return { totalScheduled, totalCompleted, totalCancelled, cancellationRate, byReason, byTeacher };
+      return { totalScheduled, totalCompleted, totalCancelled, cancellationRate, byReason, byTeacher, warnings };
     },
     enabled: !!currentOrg && !!startDate && !!endDate,
     staleTime: 10 * 60 * 1000,

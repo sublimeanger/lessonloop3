@@ -15,7 +15,8 @@ import { useCancellationReport, exportCancellationToCSV } from '@/hooks/useRepor
 import { useSortableTable } from '@/hooks/useSortableTable';
 import { useOrg } from '@/contexts/OrgContext';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Download, XCircle, CheckCircle, Calendar, Percent } from 'lucide-react';
+import { Download, XCircle, CheckCircle, Calendar, Percent, AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
 
@@ -91,6 +92,13 @@ export default function CancellationReport() {
         </EmptyState>
       ) : (
         <>
+          {data.warnings?.map((w, i) => (
+            <Alert key={i} variant="destructive" className="mb-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{w}</AlertDescription>
+            </Alert>
+          ))}
+
           {/* Summary Cards */}
           <div className="mb-6 grid gap-4 md:grid-cols-4">
             <Card>
