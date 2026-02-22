@@ -274,13 +274,67 @@ export function useSendMessage() {
 
       if (error) throw error;
     },
+    onMutate: async (data) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['message-log'] });
+      await queryClient.cancelQueries({ queryKey: ['student-messages'] });
+
+      // Snapshot previous data for rollback
+      const previousLog = queryClient.getQueryData(['message-log', currentOrg?.id, undefined]);
+
+      // Optimistically add the message to the log
+      const optimisticMessage: MessageLogEntry = {
+        id: crypto.randomUUID(),
+        org_id: currentOrg?.id || '',
+        channel: 'email',
+        subject: data.subject,
+        body: data.body,
+        sender_user_id: user?.id || null,
+        recipient_type: data.recipient_type,
+        recipient_id: data.recipient_id,
+        recipient_email: data.recipient_email,
+        recipient_name: data.recipient_name,
+        related_id: data.related_id || null,
+        message_type: data.message_type || 'manual',
+        status: 'pending',
+        sent_at: null,
+        read_at: null,
+        error_message: null,
+        created_at: new Date().toISOString(),
+      };
+
+      queryClient.setQueriesData<{ pages: { data: MessageLogEntry[]; nextCursor: string | null }[]; pageParams: unknown[] }>(
+        { queryKey: ['message-log'] },
+        (old) => {
+          if (!old?.pages?.length) return old;
+          return {
+            ...old,
+            pages: [
+              { ...old.pages[0], data: [optimisticMessage, ...old.pages[0].data] },
+              ...old.pages.slice(1),
+            ],
+          };
+        }
+      );
+
+      return { previousLog };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['message-log'] });
       queryClient.invalidateQueries({ queryKey: ['student-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['message-threads'] });
       toast({ title: 'Message sent', description: 'Your message has been sent successfully.' });
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      // Rollback optimistic update
+      if (context?.previousLog) {
+        queryClient.setQueryData(['message-log', currentOrg?.id, undefined], context.previousLog);
+      }
       toast({ title: 'Error sending message', description: error.message, variant: 'destructive' });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['message-log'] });
+      queryClient.invalidateQueries({ queryKey: ['student-messages'] });
     },
   });
 }

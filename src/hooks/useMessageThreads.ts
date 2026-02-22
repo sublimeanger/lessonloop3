@@ -264,14 +264,57 @@ export function useReplyToMessage() {
       if (error) throw error;
       return result;
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['message-threads'] });
-      queryClient.invalidateQueries({ queryKey: ['thread-messages'] });
-      queryClient.invalidateQueries({ queryKey: ['message-log'] });
+    onMutate: async (variables) => {
+      const threadKey = ['thread-messages', currentOrg?.id, variables.threadId];
+
+      await queryClient.cancelQueries({ queryKey: threadKey });
+      await queryClient.cancelQueries({ queryKey: ['message-threads'] });
+
+      const previousThreadMessages = queryClient.getQueryData<ThreadMessage[]>(threadKey);
+
+      // Optimistically append the reply
+      const optimisticReply: ThreadMessage = {
+        id: crypto.randomUUID(),
+        org_id: currentOrg?.id || '',
+        subject: variables.subject.startsWith('Re:') ? variables.subject : `Re: ${variables.subject}`,
+        body: variables.body,
+        recipient_email: variables.recipientEmail,
+        recipient_name: variables.recipientName,
+        recipient_type: variables.recipientType,
+        recipient_id: variables.recipientId,
+        related_id: null,
+        sender_user_id: user?.id || null,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        sent_at: null,
+        read_at: null,
+        thread_id: variables.threadId,
+        parent_message_id: variables.parentMessageId,
+        channel: 'email',
+        message_type: 'reply',
+        sender_profile: null,
+      };
+
+      queryClient.setQueryData<ThreadMessage[]>(threadKey, (old) =>
+        old ? [...old, optimisticReply] : [optimisticReply]
+      );
+
+      return { previousThreadMessages, threadKey };
+    },
+    onSuccess: () => {
       toast({ title: 'Reply sent', description: 'Your reply has been sent.' });
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      // Rollback
+      if (context?.previousThreadMessages && context?.threadKey) {
+        queryClient.setQueryData(context.threadKey, context.previousThreadMessages);
+      }
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+    onSettled: (_data, _error, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['message-threads'] });
+      queryClient.invalidateQueries({ queryKey: ['thread-messages', currentOrg?.id, variables.threadId] });
+      queryClient.invalidateQueries({ queryKey: ['message-log'] });
     },
   });
 }
