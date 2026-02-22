@@ -333,59 +333,59 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
           </div>
         )}
         
-        {/* Step content */}
-        <div className="py-4">
-          {currentStep === 1 && (
-            <StudentInfoStep data={studentData} onChange={setStudentData} />
-          )}
-          {currentStep === 2 && (
-            <GuardianStep data={guardianData} onChange={setGuardianData} />
-          )}
-          {currentStep === 3 && (
-            <TeachingDefaultsStep data={teachingData} onChange={setTeachingData} />
-          )}
-          {currentStep === 'success' && createdData && (
+        {currentStep === 'success' && createdData ? (
+          <div className="py-4">
             <WizardSuccess 
               data={createdData} 
               onViewStudent={handleViewStudent}
               onAddAnother={handleAddAnother}
             />
-          )}
-        </div>
-        
-        {/* Navigation buttons */}
-        {currentStep !== 'success' && (
-          <div className="flex justify-between pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={currentStep === 1 ? () => onOpenChange(false) : handleBack}
-            >
-              {currentStep === 1 ? 'Cancel' : (
-                <>
-                  <ChevronLeft className="mr-1 h-4 w-4" />
-                  Back
-                </>
+          </div>
+        ) : (
+          <form onSubmit={(e) => { e.preventDefault(); if (typeof currentStep === 'number' && currentStep < 3) handleNext(); else handleCreate(); }}>
+            <div className="py-4">
+              {currentStep === 1 && (
+                <StudentInfoStep data={studentData} onChange={setStudentData} />
               )}
-            </Button>
-            
-            {currentStep < 3 ? (
-              <Button onClick={handleNext}>
-                Next
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            ) : (
-              <Button onClick={handleCreate} disabled={isSaving}>
-                {isSaving ? (
+              {currentStep === 2 && (
+                <GuardianStep data={guardianData} onChange={setGuardianData} />
+              )}
+              {currentStep === 3 && (
+                <TeachingDefaultsStep data={teachingData} onChange={setTeachingData} />
+              )}
+            </div>
+            <div className="flex justify-between pt-4 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={currentStep === 1 ? () => onOpenChange(false) : handleBack}
+              >
+                {currentStep === 1 ? 'Cancel' : (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
+                    <ChevronLeft className="mr-1 h-4 w-4" />
+                    Back
                   </>
-                ) : (
-                  'Create Student'
                 )}
               </Button>
-            )}
-          </div>
+              {typeof currentStep === 'number' && currentStep < 3 ? (
+                <Button type="submit">
+                  Next
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              ) : (
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Student'
+                  )}
+                </Button>
+              )}
+            </div>
+          </form>
         )}
       </DialogContent>
     </Dialog>
