@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { PLAN_LIMITS, TRIAL_DAYS } from '../_shared/plan-config.ts';
+import { checkRateLimit, rateLimitResponse } from '../_shared/rate-limit.ts';
 
 
 
@@ -51,7 +52,12 @@ Deno.serve(async (req) => {
 
     console.log('[onboarding-setup] User verified:', user.id);
 
-    // Idempotency guard: check if user already onboarded
+    // Rate limiting
+    const rlResult = await checkRateLimit(user.id, "onboarding-setup");
+    if (!rlResult.allowed) {
+      return rateLimitResponse(corsHeaders, rlResult);
+    }
+
     // Idempotency guard: check if user already onboarded
     const adminClientEarly = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false }
