@@ -6,6 +6,7 @@ import { Mail, MessageSquare, Clock, User, CheckCircle, AlertCircle, ChevronDown
 import { format, parseISO } from 'date-fns';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useRelatedStudent } from '@/hooks/useRelatedStudent';
+import { useOrg } from '@/contexts/OrgContext';
 import { EntityChip } from '@/components/loopassist/EntityChip';
 import type { MessageLogEntry } from '@/hooks/useMessages';
 import { sanitizeHtml, stripHtml } from '@/lib/sanitize';
@@ -28,7 +29,8 @@ interface MessageListProps {
 
 function MessageCard({ message, onReply }: { message: MessageLogEntry; onReply?: (msg: MessageLogEntry) => void }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { data: relatedStudent } = useRelatedStudent(message.related_id);
+  const { currentOrg } = useOrg();
+  const { data: relatedStudent } = useRelatedStudent(message.related_id, currentOrg?.id);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
