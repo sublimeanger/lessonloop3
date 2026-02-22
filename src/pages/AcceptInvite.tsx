@@ -57,6 +57,7 @@ export default function AcceptInvite() {
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMismatch, setPasswordMismatch] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -142,9 +143,11 @@ export default function AcceptInvite() {
     if (!invite || !token) return;
     
     if (password !== confirmPassword) {
+      setPasswordMismatch(true);
       toast({ title: 'Passwords do not match', variant: 'destructive' });
       return;
     }
+    setPasswordMismatch(false);
     
     const trimmedEmail = signupEmail.trim().toLowerCase();
     if (!trimmedEmail) {
@@ -378,7 +381,8 @@ export default function AcceptInvite() {
                   id="confirmPassword"
                   type={showPassword ? 'text' : 'password'}
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) => { setConfirmPassword(e.target.value); setPasswordMismatch(false); }}
+                  aria-invalid={passwordMismatch}
                   placeholder="Confirm your password"
                   autoComplete="new-password"
                   className="pr-10"

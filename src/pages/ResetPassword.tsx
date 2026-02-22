@@ -18,6 +18,7 @@ export default function ResetPassword() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [sessionError, setSessionError] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [passwordMismatch, setPasswordMismatch] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -50,9 +51,11 @@ export default function ResetPassword() {
     e.preventDefault();
     
     if (password !== confirmPassword) {
+      setPasswordMismatch(true);
       toast({ title: 'Passwords don\'t match', description: 'Please make sure your passwords match.', variant: 'destructive' });
       return;
     }
+    setPasswordMismatch(false);
 
     if (password.length < PASSWORD_MIN_LENGTH) {
       toast({ title: 'Password too short', description: `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`, variant: 'destructive' });
@@ -172,7 +175,8 @@ export default function ResetPassword() {
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Confirm new password"
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) => { setConfirmPassword(e.target.value); setPasswordMismatch(false); }}
+                  aria-invalid={passwordMismatch}
                   className="pl-10"
                   required
                   minLength={PASSWORD_MIN_LENGTH}

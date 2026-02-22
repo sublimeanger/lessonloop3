@@ -15,6 +15,7 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [emailInvalid, setEmailInvalid] = useState(false);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
 
   useEffect(() => {
@@ -30,6 +31,7 @@ export default function ForgotPassword() {
     
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
+      setEmailInvalid(true);
       toast({
         title: 'Email required',
         description: 'Please enter your email address.',
@@ -37,6 +39,7 @@ export default function ForgotPassword() {
       });
       return;
     }
+    setEmailInvalid(false);
 
     setIsLoading(true);
     const { error } = await resetPassword(trimmedEmail);
@@ -124,7 +127,8 @@ export default function ForgotPassword() {
                 type="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); setEmailInvalid(false); }}
+                aria-invalid={emailInvalid}
                 disabled={isLoading}
                 autoComplete="email"
               />
