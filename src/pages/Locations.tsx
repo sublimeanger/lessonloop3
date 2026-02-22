@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -735,7 +736,7 @@ export default function Locations() {
             </div>
             <div className="space-y-2">
               <Label>Notes</Label>
-              <Input value={locNotes} onChange={(e) => setLocNotes(e.target.value)} placeholder="Parking available behind building..." />
+              <Textarea value={locNotes} onChange={(e) => setLocNotes(e.target.value)} placeholder="Parking available behind building..." rows={3} />
             </div>
           </div>
           <DialogFooter>
