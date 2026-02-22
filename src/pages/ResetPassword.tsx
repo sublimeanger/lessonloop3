@@ -57,7 +57,7 @@ export default function ResetPassword() {
       toast({ title: 'Password updated', description: 'Your password has been successfully reset.' });
       
       setTimeout(() => {
-        navigate('/login');
+        navigate('/dashboard');
       }, 2000);
     } catch (error: any) {
       toast({ title: 'Update failed', description: error.message || 'Failed to update password', variant: 'destructive' });
@@ -96,7 +96,7 @@ export default function ResetPassword() {
             <CheckCircle className="w-16 h-16 text-success mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-foreground mb-2">Password Updated!</h2>
             <p className="text-muted-foreground mb-4">
-              Your password has been successfully reset. Redirecting to login...
+              Your password has been successfully reset. Redirecting to your dashboard...
             </p>
           </CardContent>
         </Card>
