@@ -11,7 +11,9 @@ import {
   UserPlus, Settings, FileText
 } from 'lucide-react';
 import { useOrg, OrgType } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useOnboardingProgress, OnboardingStatus } from '@/hooks/useOnboardingProgress';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
 type ChecklistConfigItem = {
@@ -106,15 +108,20 @@ function ProgressRing({ progress, size = 48 }: { progress: number; size?: number
 
 export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklistProps) {
   const { currentOrg } = useOrg();
+  const { profile, user } = useAuth();
   const { data: status, isLoading } = useOnboardingProgress();
   const storageKey = `ll-checklist-dismissed-${currentOrg?.id}`;
-  const [isDismissed, setIsDismissed] = useState(() => safeGetItem(storageKey) === 'true');
+  const [isDismissed, setIsDismissed] = useState(() => 
+    safeGetItem(storageKey) === 'true' || !!profile?.first_run_completed
+  );
   const [showCelebration, setShowCelebration] = useState(false);
 
-  // Re-check storage when org changes
+  // Re-check storage/profile when org or profile changes
   useEffect(() => {
-    setIsDismissed(safeGetItem(storageKey) === 'true');
-  }, [storageKey]);
+    if (profile?.first_run_completed || safeGetItem(storageKey) === 'true') {
+      setIsDismissed(true);
+    }
+  }, [storageKey, profile?.first_run_completed]);
 
   const items = useMemo<ChecklistItem[]>(() => {
     if (!currentOrg || !status) return [];
@@ -138,7 +145,15 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
   const dismiss = useCallback(() => {
     setIsDismissed(true);
     safeSetItem(storageKey, 'true');
-  }, [storageKey]);
+    // Persist to database so it syncs across devices
+    if (user?.id) {
+      supabase
+        .from('profiles')
+        .update({ first_run_completed: true })
+        .eq('id', user.id)
+        .then();
+    }
+  }, [storageKey, user?.id]);
 
   useEffect(() => {
     if (allCompleted) {
