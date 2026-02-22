@@ -60,7 +60,7 @@ export function HowItWorks() {
           className="text-center max-w-3xl mx-auto mb-20"
         >
           <span className="inline-block px-4 py-1.5 rounded-full bg-teal/10 text-teal text-sm font-semibold mb-6">
-            How It Works
+            How it works
           </span>
           <h2 className="text-4xl lg:text-5xl font-bold text-foreground leading-tight">
             Up and running
@@ -140,7 +140,7 @@ export function HowItWorks() {
             whileTap={{ scale: 0.98 }}
             className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-primary text-primary-foreground font-bold shadow-lg hover:shadow-xl transition-shadow"
           >
-            Get Started Free
+            Start free trial
             <motion.span
               animate={{ x: [0, 4, 0] }}
               transition={{ duration: 1.5, repeat: Infinity }}

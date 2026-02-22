@@ -98,7 +98,7 @@ export function MarketingNavbar() {
                   <Button
                     className="font-semibold px-6 shadow-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/25"
                   >
-                    Start Free
+                     Start free
                     <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                 </motion.div>
@@ -183,7 +183,7 @@ export function MarketingNavbar() {
                   </Link>
                   <Link to="/signup" className="block">
                     <Button className="w-full h-12 font-semibold shadow-lg shadow-primary/25">
-                      Start Free Trial
+                      Start free trial
                       <ChevronRight className="w-4 h-4 ml-1" />
                     </Button>
                   </Link>

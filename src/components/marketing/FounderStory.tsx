@@ -18,7 +18,7 @@ export function FounderStory() {
           className="text-center max-w-3xl mx-auto mb-16"
         >
           <span className="inline-block px-4 py-1.5 rounded-full bg-coral/10 text-coral text-sm font-semibold mb-6">
-            Our Story
+            Our story
           </span>
           <h2 className="text-4xl lg:text-5xl font-bold text-foreground leading-tight">
             Built by a teacher,

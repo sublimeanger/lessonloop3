@@ -260,7 +260,7 @@ export function HeroSection() {
                   size="xl" 
                   className="bg-gradient-to-r from-teal to-teal-dark text-white hover:from-teal-dark hover:to-teal font-bold shadow-2xl shadow-teal/20 px-10 h-14 text-lg"
                 >
-                  Start Free Trial
+                  Start free trial
                   <ChevronRight className="w-5 h-5 ml-1" />
                 </Button>
               </motion.div>
@@ -429,11 +429,11 @@ export function HeroSection() {
             </div>
             <h3 className="text-2xl font-bold text-foreground mb-3">Demo video coming soon</h3>
             <p className="text-muted-foreground mb-6">
-              Sign up to get notified when our demo video is ready.
+              We'll let you know when our demo video is ready.
             </p>
             <Link to="/signup">
               <Button size="lg" className="bg-gradient-to-r from-teal to-teal-dark text-white hover:from-teal-dark hover:to-teal font-bold">
-                Start Free Trial Instead
+                Start free trial instead
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>

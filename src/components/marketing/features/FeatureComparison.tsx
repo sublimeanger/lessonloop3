@@ -64,7 +64,7 @@ export function FeatureComparison({ hidePrices = false, hideBottomCTA = false }:
           className="text-center mb-10 lg:mb-16"
         >
           <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs lg:text-sm font-semibold mb-4">
-            Compare Plans
+            Compare plans
           </span>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-foreground mb-3 lg:mb-4">
             Choose your plan

@@ -401,7 +401,7 @@ export default function BlogPost() {
                     Try LessonLoop free for 30 days. No credit card required.
                   </p>
                   <Button asChild className="w-full">
-                    <Link to="/signup">Get Started Free</Link>
+                    <Link to="/signup">Start free trial</Link>
                   </Button>
                 </motion.div>
               </div>

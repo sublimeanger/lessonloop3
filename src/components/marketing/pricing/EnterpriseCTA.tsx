@@ -63,7 +63,7 @@ export function EnterpriseCTA() {
               </h2>
               
               <p className="text-lg text-white/70 mb-8">
-                For large academies, agencies, and multi-location organizations, 
+                For large academies, agencies, and multi-location organisations, 
                 we offer tailored solutions with dedicated support, custom integrations, 
                 and enterprise-grade security.
               </p>
