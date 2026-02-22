@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -91,10 +90,7 @@ export function CalendarDesktopLayout({
   actions,
   refetch,
 }: CalendarDesktopLayoutProps) {
-  const visibleLessons = useMemo(
-    () => filters.hide_cancelled ? lessons.filter(l => l.status !== 'cancelled') : lessons,
-    [lessons, filters.hide_cancelled]
-  );
+  // hide_cancelled is now applied server-side in useCalendarData
 
   return (
     <AppLayout>
@@ -177,7 +173,7 @@ export function CalendarDesktopLayout({
           <SectionErrorBoundary name="Calendar">
             {isLoading ? (
               <CalendarSkeleton />
-            ) : visibleLessons.length === 0 && !isLoading ? (
+            ) : lessons.length === 0 && !isLoading ? (
               <EmptyState
                 icon={Calendar}
                 title="Your day is free"
@@ -186,17 +182,17 @@ export function CalendarDesktopLayout({
                 onAction={() => actions.openNewLessonModal()}
               />
             ) : view === 'agenda' ? (
-              <AgendaView currentDate={currentDate} lessons={visibleLessons} onLessonClick={actions.handleLessonClick} teacherColourMap={teacherColourMap} groupByTeacher={groupByTeacher} />
+              <AgendaView currentDate={currentDate} lessons={lessons} onLessonClick={actions.handleLessonClick} teacherColourMap={teacherColourMap} groupByTeacher={groupByTeacher} />
             ) : view === 'day' ? (
               <DayTimelineView
-                currentDate={currentDate} lessons={visibleLessons} teacherColourMap={teacherColourMap}
+                currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap}
                 onLessonClick={actions.handleLessonClick} onSlotClick={actions.handleSlotClick} onSlotDrag={actions.handleSlotDrag}
                 onLessonDrop={!isParent ? actions.handleLessonDrop : undefined} onLessonResize={!isParent ? actions.handleLessonResize : undefined}
                 isParent={isParent} savingLessonIds={actions.savingLessonIds}
               />
             ) : view === 'stacked' ? (
               <StackedWeekView
-                currentDate={currentDate} lessons={visibleLessons} teacherColourMap={teacherColourMap}
+                currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap}
                 onLessonClick={actions.handleLessonClick}
                 onDayClick={(date) => { if (!isParent) { actions.handleSlotClick(date); } }}
                 isParent={isParent} compact={isCompact}
@@ -204,7 +200,7 @@ export function CalendarDesktopLayout({
             ) : (
               <div data-tour="calendar-grid" data-hint="calendar-grid">
                 <WeekTimeGrid
-                  currentDate={currentDate} lessons={visibleLessons} teacherColourMap={teacherColourMap}
+                  currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap}
                   onLessonClick={actions.handleLessonClick} onSlotClick={actions.handleSlotClick} onSlotDrag={actions.handleSlotDrag}
                   onLessonDrop={!isParent ? actions.handleLessonDrop : undefined} onLessonResize={!isParent ? actions.handleLessonResize : undefined}
                   isParent={isParent} savingLessonIds={actions.savingLessonIds}
