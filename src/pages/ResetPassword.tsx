@@ -22,13 +22,28 @@ export default function ResetPassword() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const checkSession = async () => {
+    let mounted = true;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        setSessionError(false);
+      }
+    });
+
+    // Fallback timeout — if no session after 5 seconds, show error
+    const timeout = setTimeout(async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!session && mounted) {
         setSessionError(true);
       }
+    }, 5000);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timeout);
+      subscription.unsubscribe();
     };
-    checkSession();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
