@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,10 +22,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { 
   Sparkles, CreditCard, Clock, Check, ArrowRight, 
   Users, GraduationCap, Loader2, ExternalLink, AlertTriangle,
-  Link2, CheckCircle2, RefreshCw, Building2, Info, Eye, EyeOff, Save
+  Link2, CheckCircle2, RefreshCw, Building2, Info, Eye, EyeOff, Save,
+  Receipt, FileText, XCircle
 } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useSubscriptionCheckout, BillingInterval } from '@/hooks/useSubscriptionCheckout';
@@ -695,6 +706,20 @@ export function BillingTab() {
       {/* Payment Preferences */}
       {canManageBilling && <PaymentPreferencesCard orgId={currentOrg?.id} isConnected={isConnected} />}
 
+      {/* Billing History */}
+      {canManageBilling && hasActiveSubscription && currentOrg?.id && (
+        <BillingHistoryCard orgId={currentOrg.id} />
+      )}
+
+      {/* Cancel Subscription */}
+      {canManageBilling && hasActiveSubscription && currentOrg?.id && (
+        <CancellationFlowCard
+          orgId={currentOrg.id}
+          onConfirmCancel={openCustomerPortal}
+          isLoading={isLoading}
+        />
+      )}
+
       {/* Non-admin message */}
       {!canManageBilling && (
         <Card>
@@ -893,5 +918,310 @@ function PaymentPreferencesCard({ orgId, isConnected }: { orgId?: string; isConn
         </Button>
       </CardContent>
     </Card>
+  );
+}
+
+// ─── Billing History Card ───────────────────────────────────────────────────
+
+interface StripeInvoice {
+  id: string;
+  date: number;
+  amount: number;
+  currency: string;
+  status: string | null;
+  pdf_url: string | null;
+  hosted_url: string | null;
+}
+
+function BillingHistoryCard({ orgId }: { orgId: string }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['billing-history', orgId],
+    queryFn: async () => {
+      const { data: result, error } = await supabase.functions.invoke('stripe-billing-history', {
+        body: { orgId },
+      });
+      if (error) throw error;
+      return (result as { invoices: StripeInvoice[] }).invoices;
+    },
+    staleTime: 60_000,
+  });
+
+  const formatAmount = (amount: number, currency: string) => {
+    return new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: currency.toUpperCase(),
+    }).format(amount / 100);
+  };
+
+  const getStatusBadge = (status: string | null) => {
+    switch (status) {
+      case 'paid':
+        return <Badge variant="default" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">Paid</Badge>;
+      case 'open':
+        return <Badge variant="secondary">Open</Badge>;
+      case 'void':
+        return <Badge variant="outline">Void</Badge>;
+      case 'uncollectible':
+        return <Badge variant="destructive">Uncollectible</Badge>;
+      default:
+        return <Badge variant="outline">{status || 'Unknown'}</Badge>;
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Receipt className="h-5 w-5 text-primary" />
+          Billing History
+        </CardTitle>
+        <CardDescription>Your recent subscription invoices</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : error ? (
+          <p className="text-sm text-muted-foreground py-4">Unable to load billing history.</p>
+        ) : !data || data.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">No invoices yet.</p>
+        ) : (
+          <div className="space-y-2">
+            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-3 py-2 text-xs font-medium text-muted-foreground">
+              <span>Date</span>
+              <span>Amount</span>
+              <span>Status</span>
+              <span></span>
+            </div>
+            {data.map((inv) => (
+              <div
+                key={inv.id}
+                className="grid grid-cols-[1fr_auto_auto_auto] gap-4 items-center px-3 py-2.5 rounded-lg border"
+              >
+                <span className="text-sm">
+                  {format(new Date(inv.date * 1000), 'dd MMM yyyy')}
+                </span>
+                <span className="text-sm font-medium">
+                  {formatAmount(inv.amount, inv.currency)}
+                </span>
+                {getStatusBadge(inv.status)}
+                <div className="flex gap-1">
+                  {inv.hosted_url && (
+                    <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                      <a href={inv.hosted_url} target="_blank" rel="noopener noreferrer" title="View invoice">
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    </Button>
+                  )}
+                  {inv.pdf_url && (
+                    <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                      <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer" title="Download PDF">
+                        <FileText className="h-3.5 w-3.5" />
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Cancellation Flow ──────────────────────────────────────────────────────
+
+const CANCEL_REASONS = [
+  { value: 'too_expensive', label: 'Too expensive' },
+  { value: 'missing_features', label: 'Missing features I need' },
+  { value: 'switching', label: 'Switching to another tool' },
+  { value: 'temporary', label: 'I only need it temporarily' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+function CancellationFlowCard({
+  orgId,
+  onConfirmCancel,
+  isLoading,
+}: {
+  orgId: string;
+  onConfirmCancel: () => void;
+  isLoading: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState(1);
+  const [reason, setReason] = useState('');
+  const [details, setDetails] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const reset = () => {
+    setStep(1);
+    setReason('');
+    setDetails('');
+    setOpen(false);
+  };
+
+  const handleNext = () => {
+    if (step === 1 && reason) setStep(2);
+    else if (step === 2) setStep(3);
+  };
+
+  const handleConfirm = async () => {
+    setSaving(true);
+    try {
+      await supabase.from('cancellation_feedback').insert({
+        org_id: orgId,
+        user_id: (await supabase.auth.getUser()).data.user!.id,
+        reason,
+        details: details || null,
+      });
+    } catch {
+      // Non-blocking — best effort
+    }
+    setSaving(false);
+    reset();
+    onConfirmCancel();
+  };
+
+  const retentionContent = () => {
+    switch (reason) {
+      case 'too_expensive':
+        return (
+          <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
+            <p className="font-medium text-sm">💰 We'd hate to lose you over price</p>
+            <p className="text-sm text-muted-foreground">
+              Contact us at <strong>support@lessonloop.co.uk</strong> — we may be able to offer a
+              discounted rate or suggest a plan that better fits your budget.
+            </p>
+          </div>
+        );
+      case 'temporary':
+        return (
+          <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
+            <p className="font-medium text-sm">⏸️ Consider pausing instead</p>
+            <p className="text-sm text-muted-foreground">
+              You can pause your subscription through the billing portal instead of cancelling.
+              Your data will be preserved and you can resume anytime.
+            </p>
+          </div>
+        );
+      case 'missing_features':
+        return (
+          <div className="space-y-3">
+            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
+              <p className="font-medium text-sm">🛠️ We're always building</p>
+              <p className="text-sm text-muted-foreground">
+                Tell us what you need — we ship features based on teacher feedback every week.
+              </p>
+            </div>
+            <Textarea
+              placeholder="What features are you missing?"
+              value={details}
+              onChange={(e) => setDetails(e.target.value)}
+              rows={3}
+            />
+          </div>
+        );
+      default:
+        return (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              We'd love to understand how we can improve. Any feedback helps.
+            </p>
+            <Textarea
+              placeholder="Tell us more (optional)"
+              value={details}
+              onChange={(e) => setDetails(e.target.value)}
+              rows={3}
+            />
+          </div>
+        );
+    }
+  };
+
+  return (
+    <>
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/5" onClick={() => setOpen(true)}>
+          <XCircle className="h-4 w-4 mr-2" />
+          Cancel Subscription
+        </Button>
+      </div>
+
+      <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); }}>
+        <DialogContent className="sm:max-w-md">
+          {step === 1 && (
+            <>
+              <DialogHeader>
+                <DialogTitle>We're sorry to see you go</DialogTitle>
+                <DialogDescription>
+                  Help us understand why you're leaving so we can improve.
+                </DialogDescription>
+              </DialogHeader>
+              <RadioGroup value={reason} onValueChange={setReason} className="space-y-3 py-4">
+                {CANCEL_REASONS.map((r) => (
+                  <label key={r.value} className="flex items-center gap-3 cursor-pointer">
+                    <RadioGroupItem value={r.value} />
+                    <span className="text-sm">{r.label}</span>
+                  </label>
+                ))}
+              </RadioGroup>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="outline" onClick={reset}>Never mind</Button>
+                <Button onClick={handleNext} disabled={!reason}>Continue</Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Before you go…</DialogTitle>
+                <DialogDescription>We want to help if we can.</DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                {retentionContent()}
+              </div>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
+                <Button variant="destructive" onClick={handleNext}>Continue to cancel</Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Confirm cancellation</DialogTitle>
+                <DialogDescription>
+                  Your subscription will cancel at the end of your current billing period.
+                  You'll retain full access until then.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <div className="p-4 rounded-lg bg-destructive/5 border border-destructive/20">
+                  <p className="text-sm text-muted-foreground">
+                    All your data will be preserved. You can resubscribe at any time to regain access.
+                  </p>
+                </div>
+              </div>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="outline" onClick={reset}>Keep My Plan</Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleConfirm}
+                  disabled={saving || isLoading}
+                >
+                  {(saving || isLoading) && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Cancel Subscription
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
