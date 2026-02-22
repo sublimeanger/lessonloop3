@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { parseISO, isBefore } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Send, Eye, CreditCard, XCircle, Bell, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MoreHorizontal, Send, Eye, CreditCard, XCircle, Bell, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import type { InvoiceWithDetails } from '@/hooks/useInvoices';
 import type { Database } from '@/integrations/supabase/types';
@@ -18,6 +19,53 @@ import { formatCurrencyMinor, formatDateUK } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 type InvoiceStatus = Database['public']['Enums']['invoice_status'];
+type SortColumn = 'invoice_number' | 'payer' | 'due_date' | 'status' | 'amount';
+type SortDirection = 'asc' | 'desc';
+
+const STATUS_ORDER: Record<string, number> = { overdue: 0, sent: 1, draft: 2, paid: 3, void: 4 };
+
+function getEffectiveStatus(status: InvoiceStatus, dueDate: string): string {
+  if (status === 'sent' && isBefore(parseISO(dueDate), new Date())) return 'overdue';
+  return status;
+}
+
+function sortInvoices(
+  invoices: InvoiceWithDetails[],
+  column: SortColumn,
+  direction: SortDirection,
+): InvoiceWithDetails[] {
+  return [...invoices].sort((a, b) => {
+    let cmp = 0;
+    switch (column) {
+      case 'invoice_number':
+        cmp = a.invoice_number.localeCompare(b.invoice_number, undefined, { numeric: true });
+        break;
+      case 'payer':
+        cmp = getPayerName(a).localeCompare(getPayerName(b));
+        break;
+      case 'due_date':
+        cmp = a.due_date.localeCompare(b.due_date);
+        break;
+      case 'status': {
+        const sa = STATUS_ORDER[getEffectiveStatus(a.status, a.due_date)] ?? 5;
+        const sb = STATUS_ORDER[getEffectiveStatus(b.status, b.due_date)] ?? 5;
+        cmp = sa - sb;
+        break;
+      }
+      case 'amount':
+        cmp = a.total_minor - b.total_minor;
+        break;
+    }
+    return direction === 'asc' ? cmp : -cmp;
+  });
+}
+
+function SortIcon({ column, active, direction }: { column: SortColumn; active: SortColumn | null; direction: SortDirection }) {
+  if (active !== column) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+  return direction === 'asc'
+    ? <ArrowUp className="h-3 w-3 ml-1" />
+    : <ArrowDown className="h-3 w-3 ml-1" />;
+}
 
 export const INVOICES_PAGE_SIZE = 25;
 
@@ -211,13 +259,31 @@ export function InvoiceList({
   const { currentOrg } = useOrg();
   const currency = currentOrg?.currency_code || 'GBP';
 
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const handleSort = (col: SortColumn) => {
+    if (sortColumn === col) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(col);
+      setSortDirection('asc');
+    }
+  };
+
   // Pagination — when totalCount is provided, pagination is server-side (data is already one page)
   const serverPaginated = totalCount !== undefined;
   const effectiveTotal = serverPaginated ? totalCount : invoices.length;
   const totalPages = Math.max(1, Math.ceil(effectiveTotal / INVOICES_PAGE_SIZE));
   const startIndex = (currentPage - 1) * INVOICES_PAGE_SIZE;
   const endIndex = Math.min(startIndex + INVOICES_PAGE_SIZE, effectiveTotal);
-  const pageInvoices = serverPaginated ? invoices : invoices.slice(startIndex, endIndex);
+
+  const sortedInvoices = useMemo(() => {
+    if (!sortColumn) return invoices;
+    return sortInvoices(invoices, sortColumn, sortDirection);
+  }, [invoices, sortColumn, sortDirection]);
+
+  const pageInvoices = serverPaginated ? sortedInvoices : sortedInvoices.slice(startIndex, endIndex);
 
   const allSelected = pageInvoices.length > 0 && pageInvoices.every((inv) => selectedIds.has(inv.id));
   const someSelected = pageInvoices.some((inv) => selectedIds.has(inv.id)) && !allSelected;
@@ -307,10 +373,18 @@ export function InvoiceList({
             className={someSelected ? 'data-[state=checked]:bg-primary data-[state=unchecked]:bg-primary/50' : ''}
             {...(someSelected ? { 'data-state': 'indeterminate' } : {})}
           />
-          <span className="flex-1">Invoice</span>
-          <span className="w-28">Due</span>
-          <span className="w-20">Status</span>
-          <span className="w-24 text-right">Amount</span>
+          <button onClick={() => handleSort('payer')} className={cn('flex-1 flex items-center text-left hover:text-foreground transition-colors', sortColumn === 'payer' && 'text-foreground font-semibold')}>
+            Invoice <SortIcon column="payer" active={sortColumn} direction={sortDirection} />
+          </button>
+          <button onClick={() => handleSort('due_date')} className={cn('w-28 flex items-center hover:text-foreground transition-colors', sortColumn === 'due_date' && 'text-foreground font-semibold')}>
+            Due <SortIcon column="due_date" active={sortColumn} direction={sortDirection} />
+          </button>
+          <button onClick={() => handleSort('status')} className={cn('w-20 flex items-center hover:text-foreground transition-colors', sortColumn === 'status' && 'text-foreground font-semibold')}>
+            Status <SortIcon column="status" active={sortColumn} direction={sortDirection} />
+          </button>
+          <button onClick={() => handleSort('amount')} className={cn('w-24 flex items-center justify-end hover:text-foreground transition-colors', sortColumn === 'amount' && 'text-foreground font-semibold')}>
+            Amount <SortIcon column="amount" active={sortColumn} direction={sortDirection} />
+          </button>
           <span className="w-7" />
         </div>
 
