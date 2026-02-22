@@ -45,6 +45,7 @@ export function PendingInvitesList({ refreshKey = 0, roleFilter }: PendingInvite
       .eq('org_id', currentOrg.id)
       .is('accepted_at', null)
       .in('role', roles)
+      .gte('expires_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -136,8 +137,9 @@ export function PendingInvitesList({ refreshKey = 0, roleFilter }: PendingInvite
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  title="Copy invite link"
+                  title={expired ? "Invite expired" : "Copy invite link"}
                   onClick={() => handleCopyLink(invite)}
+                  disabled={expired}
                 >
                   <Copy className="h-3.5 w-3.5" />
                 </Button>
