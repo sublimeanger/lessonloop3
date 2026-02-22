@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo } from 'react';
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -40,18 +40,60 @@ export interface MessageThread {
   message_count: number;
   latest_message_at: string;
   has_unread: boolean;
-  /** IDs of messages in this thread (for counting / ordering) */
   message_ids: string[];
-  /** Lightweight listing data from first message */
   latest_status: string;
   related_id: string | null;
   recipient_type: string | null;
   recipient_id: string | null;
 }
 
+const PAGE_SIZE = 100;
+
+function groupMessagesIntoThreads(messages: ThreadListingMessage[]): MessageThread[] {
+  const threadMap = new Map<string, MessageThread>();
+
+  for (const msg of messages) {
+    const threadId = msg.thread_id || msg.id;
+
+    if (threadMap.has(threadId)) {
+      const thread = threadMap.get(threadId)!;
+      thread.message_ids.push(msg.id);
+      thread.message_count++;
+      if (!msg.read_at && msg.status === 'sent') {
+        thread.has_unread = true;
+      }
+      if (new Date(msg.created_at) > new Date(thread.latest_message_at)) {
+        thread.latest_message_at = msg.created_at;
+        thread.latest_status = msg.status;
+      }
+      if (!thread.related_id && msg.related_id) {
+        thread.related_id = msg.related_id;
+      }
+    } else {
+      threadMap.set(threadId, {
+        thread_id: threadId,
+        subject: msg.subject,
+        recipient_name: msg.recipient_name,
+        recipient_email: msg.recipient_email,
+        recipient_type: msg.recipient_type,
+        recipient_id: msg.recipient_id,
+        message_count: 1,
+        latest_message_at: msg.created_at,
+        has_unread: !msg.read_at && msg.status === 'sent',
+        message_ids: [msg.id],
+        latest_status: msg.status,
+        related_id: msg.related_id,
+      });
+    }
+  }
+
+  return Array.from(threadMap.values()).sort(
+    (a, b) => new Date(b.latest_message_at).getTime() - new Date(a.latest_message_at).getTime()
+  );
+}
+
 /**
- * Fetches thread listing data — no message bodies, capped at 500 rows.
- * Client-side groups into threads for the list view.
+ * Fetches thread listing data with cursor-based pagination.
  */
 export function useMessageThreads() {
   const { currentOrg } = useOrg();
@@ -84,70 +126,51 @@ export function useMessageThreads() {
     };
   }, [currentOrg?.id, queryClient]);
 
-  return useQuery({
+  const infiniteQuery = useInfiniteQuery({
     queryKey: ['message-threads', currentOrg?.id],
-    queryFn: async (): Promise<{ threads: MessageThread[]; hasMore: boolean }> => {
-      if (!currentOrg) return { threads: [], hasMore: false };
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) => {
+      if (!currentOrg) return { messages: [] as ThreadListingMessage[], nextCursor: undefined };
 
-      const THREAD_LIMIT = 500;
-      const { data: messages, error } = await supabase
+      let query = supabase
         .from('message_log')
         .select('id, subject, recipient_email, recipient_name, recipient_type, recipient_id, related_id, sender_user_id, status, created_at, sent_at, read_at, thread_id, parent_message_id, channel, message_type')
         .eq('org_id', currentOrg.id)
         .order('created_at', { ascending: false })
-        .limit(THREAD_LIMIT);
+        .limit(PAGE_SIZE);
 
-      if (error) throw error;
-
-      const hasMore = (messages?.length || 0) >= THREAD_LIMIT;
-
-      // Group into threads
-      const threadMap = new Map<string, MessageThread>();
-
-      for (const msg of messages || []) {
-        const threadId = msg.thread_id || msg.id;
-
-        if (threadMap.has(threadId)) {
-          const thread = threadMap.get(threadId)!;
-          thread.message_ids.push(msg.id);
-          thread.message_count++;
-          if (!msg.read_at && msg.status === 'sent') {
-            thread.has_unread = true;
-          }
-          if (new Date(msg.created_at) > new Date(thread.latest_message_at)) {
-            thread.latest_message_at = msg.created_at;
-            thread.latest_status = msg.status;
-          }
-          if (!thread.related_id && msg.related_id) {
-            thread.related_id = msg.related_id;
-          }
-        } else {
-          threadMap.set(threadId, {
-            thread_id: threadId,
-            subject: msg.subject,
-            recipient_name: msg.recipient_name,
-            recipient_email: msg.recipient_email,
-            recipient_type: msg.recipient_type,
-            recipient_id: msg.recipient_id,
-            message_count: 1,
-            latest_message_at: msg.created_at,
-            has_unread: !msg.read_at && msg.status === 'sent',
-            message_ids: [msg.id],
-            latest_status: msg.status,
-            related_id: msg.related_id,
-          });
-        }
+      if (pageParam) {
+        query = query.lt('created_at', pageParam);
       }
 
-      const threads = Array.from(threadMap.values()).sort(
-        (a, b) => new Date(b.latest_message_at).getTime() - new Date(a.latest_message_at).getTime()
-      );
+      const { data: messages, error } = await query;
+      if (error) throw error;
 
-      return { threads, hasMore };
+      const nextCursor = messages && messages.length >= PAGE_SIZE
+        ? messages[messages.length - 1].created_at
+        : undefined;
+
+      return { messages: messages || [], nextCursor };
     },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: !!currentOrg,
     staleTime: 30_000,
   });
+
+  // Merge all pages into threads
+  const threads = useMemo(() => {
+    if (!infiniteQuery.data?.pages) return [];
+    const allMessages = infiniteQuery.data.pages.flatMap(page => page.messages);
+    return groupMessagesIntoThreads(allMessages);
+  }, [infiniteQuery.data?.pages]);
+
+  return {
+    threads,
+    isLoading: infiniteQuery.isLoading,
+    hasNextPage: infiniteQuery.hasNextPage,
+    isFetchingNextPage: infiniteQuery.isFetchingNextPage,
+    fetchNextPage: infiniteQuery.fetchNextPage,
+  };
 }
 
 /**
@@ -163,8 +186,6 @@ export function useThreadMessages(threadId: string | null, enabled: boolean) {
 
       // Validate threadId is a valid UUID before interpolation
       if (!/^[a-f0-9-]{36}$/i.test(threadId)) return [];
-      // A thread could be a single standalone message (thread_id == message id)
-      // or multiple messages sharing the same thread_id
       const { data: messages, error } = await supabase
         .from('message_log')
         .select('*')
