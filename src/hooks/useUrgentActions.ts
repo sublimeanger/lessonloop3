@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { startOfDay, subDays, format } from 'date-fns';
+import { subDays, format } from 'date-fns';
 
 export interface UrgentAction {
   id: string;
@@ -17,28 +17,19 @@ export interface UrgentAction {
 export function useUrgentActions() {
   const { currentOrg, currentRole } = useOrg();
   const { user } = useAuth();
-  const [actions, setActions] = useState<UrgentAction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   const isAdmin = currentRole === 'owner' || currentRole === 'admin';
   const isTeacher = currentRole === 'teacher';
   const isFinance = currentRole === 'finance';
 
-  useEffect(() => {
-    const fetchUrgentActions = async () => {
-      if (!currentOrg || !user) {
-        setActions([]);
-        setIsLoading(false);
-        return;
-      }
+  const { data: actions = [], isLoading } = useQuery({
+    queryKey: ['urgent-actions', currentOrg?.id, user?.id, currentRole],
+    queryFn: async (): Promise<UrgentAction[]> => {
+      if (!currentOrg || !user) return [];
 
-      setIsLoading(true);
       const urgentActions: UrgentAction[] = [];
 
       try {
-        const yesterday = subDays(startOfDay(new Date()), 1);
-        const yesterdayStr = format(yesterday, 'yyyy-MM-dd');
-
         // Fetch unmarked lessons (for admins and teachers)
         if (isAdmin || isTeacher) {
           let query = supabase
@@ -119,22 +110,20 @@ export function useUrgentActions() {
 
         // Fetch unreviewed practice logs (for teachers)
         if (isAdmin || isTeacher) {
-          let query = supabase
+          let query: any = supabase
             .from('practice_logs')
             .select('id', { count: 'exact', head: true })
             .eq('org_id', currentOrg.id)
             .is('reviewed_at', null);
 
-          // P1 Fix: Only show active students' practice logs
           if (isTeacher && !isAdmin) {
-            // Get teacher's assigned students - filter for active students only
             const { data: teacherRecord } = await supabase
               .from('teachers')
               .select('id')
               .eq('user_id', user.id)
               .eq('org_id', currentOrg.id)
               .maybeSingle();
-            
+
             const { data: assignments } = await supabase
               .from('student_teacher_assignments')
               .select('student_id, students!inner(id, status)')
@@ -146,7 +135,6 @@ export function useUrgentActions() {
             if (studentIds.length > 0) {
               query = query.in('student_id', studentIds);
             } else {
-              // No active students assigned, skip this query
               query = null;
             }
           }
@@ -167,17 +155,16 @@ export function useUrgentActions() {
           }
         }
 
-        setActions(urgentActions);
+        return urgentActions;
       } catch (error) {
         logger.error('Error fetching urgent actions:', error);
-        setActions([]);
-      } finally {
-        setIsLoading(false);
+        return [];
       }
-    };
-
-    fetchUrgentActions();
-  }, [currentOrg, user, currentRole, isAdmin, isTeacher, isFinance]);
+    },
+    enabled: !!currentOrg && !!user,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+  });
 
   return {
     actions,
