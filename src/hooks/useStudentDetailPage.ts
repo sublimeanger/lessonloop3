@@ -260,6 +260,10 @@ export function useStudentDetailPage() {
 
   const handleSave = async () => {
     if (!student) return;
+    if (!firstName.trim() || !lastName.trim()) {
+      toast({ title: 'Name required', description: 'First and last name cannot be empty.', variant: 'destructive' });
+      return;
+    }
     setIsSaving(true);
 
     const { error } = await supabase
