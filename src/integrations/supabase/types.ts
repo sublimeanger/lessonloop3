@@ -3896,6 +3896,21 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: Json
       }
+      get_revenue_report: {
+        Args: {
+          _end_date: string
+          _org_id: string
+          _prev_end_date: string
+          _prev_start_date: string
+          _start_date: string
+        }
+        Returns: {
+          invoice_count: number
+          month: string
+          paid_amount_minor: number
+          period: string
+        }[]
+      }
       get_student_ids_for_parent: {
         Args: { _user_id: string }
         Returns: string[]

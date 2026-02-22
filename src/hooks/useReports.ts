@@ -50,43 +50,30 @@ export function useRevenueReport(startDate: string, endDate: string) {
       const prevStartDate = format(subMonths(startParsed, durationMonths), 'yyyy-MM-dd');
       const prevEndDate = format(subMonths(endParsed, durationMonths), 'yyyy-MM-dd');
 
-      // Fetch current and previous period invoices in parallel
-      const [currentResult, prevResult] = await Promise.all([
-        supabase
-          .from('invoices')
-          .select('id, total_minor, issue_date, status')
-          .eq('org_id', currentOrg.id)
-          .eq('status', 'paid')
-          .gte('issue_date', startDate)
-          .lte('issue_date', endDate)
-          .limit(10000),
-        supabase
-          .from('invoices')
-          .select('id, total_minor, issue_date, status')
-          .eq('org_id', currentOrg.id)
-          .eq('status', 'paid')
-          .gte('issue_date', prevStartDate)
-          .lte('issue_date', prevEndDate)
-          .limit(10000),
-      ]);
+      // Call server-side RPC for aggregated data
+      const { data: rpcRows, error } = await supabase.rpc('get_revenue_report', {
+        _org_id: currentOrg.id,
+        _start_date: startDate,
+        _end_date: endDate,
+        _prev_start_date: prevStartDate,
+        _prev_end_date: prevEndDate,
+      });
 
-      if (currentResult.error) throw currentResult.error;
+      if (error) throw error;
 
-      // Group current period by month
+      // Parse RPC results into maps
       const monthMap = new Map<string, { paidAmount: number; invoiceCount: number }>();
-      for (const inv of currentResult.data || []) {
-        const monthKey = inv.issue_date.substring(0, 7);
-        const existing = monthMap.get(monthKey) || { paidAmount: 0, invoiceCount: 0 };
-        existing.paidAmount += inv.total_minor / 100;
-        existing.invoiceCount += 1;
-        monthMap.set(monthKey, existing);
-      }
-
-      // Group previous period by month (offset to align with current period months)
       const prevMonthMap = new Map<string, number>();
-      for (const inv of prevResult.data || []) {
-        const monthKey = inv.issue_date.substring(0, 7);
-        prevMonthMap.set(monthKey, (prevMonthMap.get(monthKey) || 0) + inv.total_minor / 100);
+
+      for (const row of rpcRows || []) {
+        if (row.period === 'current') {
+          monthMap.set(row.month, {
+            paidAmount: Number(row.paid_amount_minor) / 100,
+            invoiceCount: Number(row.invoice_count),
+          });
+        } else {
+          prevMonthMap.set(row.month, Number(row.paid_amount_minor) / 100);
+        }
       }
 
       // Build continuous array of all months in range
@@ -112,7 +99,7 @@ export function useRevenueReport(startDate: string, endDate: string) {
 
       const totalRevenue = months.reduce((sum, m) => sum + m.paidAmount, 0);
       const averageMonthly = months.length > 0 ? totalRevenue / months.length : 0;
-      const previousPeriodRevenue = (prevResult.data || []).reduce((sum, inv) => sum + inv.total_minor / 100, 0);
+      const previousPeriodRevenue = Array.from(prevMonthMap.values()).reduce((sum, v) => sum + v, 0);
       const growthPercent = previousPeriodRevenue > 0
         ? ((totalRevenue - previousPeriodRevenue) / previousPeriodRevenue) * 100
         : null;
