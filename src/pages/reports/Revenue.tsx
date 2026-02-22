@@ -14,7 +14,7 @@ import { ReportPagination, paginateArray } from '@/components/reports/ReportPagi
 import { useOrg } from '@/contexts/OrgContext';
 import { formatCurrency, currencySymbol } from '@/lib/utils';
 import { useTerms } from '@/hooks/useTerms';
-import { Download, TrendingUp, TrendingDown, FileSpreadsheet, Receipt } from 'lucide-react';
+import { Download, TrendingUp, TrendingDown, FileSpreadsheet, Receipt, Printer } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
 
@@ -58,10 +58,16 @@ export default function RevenueReport() {
         ]}
         actions={
           data && data.months.length > 0 && (
-            <Button onClick={handleExport} variant="outline" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => window.print()} variant="outline" className="gap-2 print:hidden">
+                <Printer className="h-4 w-4" />
+                Print
+              </Button>
+              <Button onClick={handleExport} variant="outline" className="gap-2 print:hidden">
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+            </div>
           )
         }
       />
@@ -148,34 +154,45 @@ export default function RevenueReport() {
               {data.months.every(m => m.paidAmount === 0 && (m.previousPaidAmount ?? 0) === 0) ? (
                 <p className="text-sm text-muted-foreground text-center py-12">All values are zero for this period.</p>
               ) : (
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data.months}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis dataKey="monthLabel" className="text-xs" />
-                      <YAxis 
-                        tickFormatter={(value) => {
-                          const sym = currencySymbol(currentOrg?.currency_code || 'GBP');
-                          if (value >= 1_000_000) return `${sym}${(value / 1_000_000).toFixed(1)}M`;
-                          if (value >= 1_000) return `${sym}${(value / 1_000).toFixed(1)}k`;
-                          return `${sym}${value}`;
-                        }}
-                        className="text-xs"
-                      />
-                      <Tooltip 
-                        formatter={(value: number, name: string) => [
-                          fmtCurrency(value),
-                          name === 'paidAmount' ? 'Current' : 'Previous Period',
-                        ]}
-                        labelClassName="font-medium"
-                      />
-                      {data.months.some(m => (m.previousPaidAmount ?? 0) > 0) && (
-                        <Bar dataKey="previousPaidAmount" name="Previous Period" fill="hsl(var(--muted-foreground) / 0.25)" radius={[4, 4, 0, 0]} maxBarSize={60} />
-                      )}
-                      <Bar dataKey="paidAmount" name="Current" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={60} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                <>
+                  <div className="h-[300px]" role="img" aria-label="Bar chart showing revenue by month">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={data.months}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="monthLabel" className="text-xs" />
+                        <YAxis 
+                          tickFormatter={(value) => {
+                            const sym = currencySymbol(currentOrg?.currency_code || 'GBP');
+                            if (value >= 1_000_000) return `${sym}${(value / 1_000_000).toFixed(1)}M`;
+                            if (value >= 1_000) return `${sym}${(value / 1_000).toFixed(1)}k`;
+                            return `${sym}${value}`;
+                          }}
+                          className="text-xs"
+                        />
+                        <Tooltip 
+                          formatter={(value: number, name: string) => [
+                            fmtCurrency(value),
+                            name === 'paidAmount' ? 'Current' : 'Previous Period',
+                          ]}
+                          labelClassName="font-medium"
+                        />
+                        {data.months.some(m => (m.previousPaidAmount ?? 0) > 0) && (
+                          <Bar dataKey="previousPaidAmount" name="Previous Period" fill="hsl(var(--muted-foreground) / 0.25)" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                        )}
+                        <Bar dataKey="paidAmount" name="Current" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <table className="sr-only">
+                    <caption>Revenue by month</caption>
+                    <thead><tr><th>Month</th><th>Revenue</th></tr></thead>
+                    <tbody>
+                      {data.months.map(m => (
+                        <tr key={m.month}><td>{m.monthLabel}</td><td>{fmtCurrency(m.paidAmount)}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
               )}
             </CardContent>
           </Card>

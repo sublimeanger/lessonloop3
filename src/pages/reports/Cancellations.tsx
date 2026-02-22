@@ -17,7 +17,7 @@ import { useSortableTable } from '@/hooks/useSortableTable';
 import { useOrg } from '@/contexts/OrgContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTerms } from '@/hooks/useTerms';
-import { Download, XCircle, CheckCircle, Calendar, Percent, AlertTriangle } from 'lucide-react';
+import { Download, XCircle, CheckCircle, Calendar, Percent, AlertTriangle, Printer } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
@@ -64,10 +64,16 @@ export default function CancellationReport() {
         ]}
         actions={
           data && data.totalScheduled > 0 && (
-            <Button onClick={handleExport} variant="outline" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => window.print()} variant="outline" className="gap-2 print:hidden">
+                <Printer className="h-4 w-4" />
+                Print
+              </Button>
+              <Button onClick={handleExport} variant="outline" className="gap-2 print:hidden">
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+            </div>
           )
         }
       />
@@ -163,28 +169,39 @@ export default function CancellationReport() {
                 {pieData.every(d => d.value === 0) ? (
                   <p className="text-sm text-muted-foreground text-center py-12">All values are zero for this period.</p>
                 ) : (
-                  <div className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={pieData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={isMobile ? 40 : 60}
-                          outerRadius={isMobile ? 70 : 90}
-                          paddingAngle={2}
-                          dataKey="value"
-                          label={isMobile ? false : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        >
-                          {pieData.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <>
+                    <div className="h-[250px]" role="img" aria-label="Pie chart showing completion versus cancellation ratio">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={pieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={isMobile ? 40 : 60}
+                            outerRadius={isMobile ? 70 : 90}
+                            paddingAngle={2}
+                            dataKey="value"
+                            label={isMobile ? false : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          >
+                            {pieData.map((_, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <table className="sr-only">
+                      <caption>Completion vs cancellation breakdown</caption>
+                      <thead><tr><th>Status</th><th>Count</th></tr></thead>
+                      <tbody>
+                        {pieData.map(d => (
+                          <tr key={d.name}><td>{d.name}</td><td>{d.value}</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
                 )}
               </CardContent>
             </Card>

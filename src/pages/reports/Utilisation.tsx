@@ -19,7 +19,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
 import { exportUtilisationToCSV } from '@/hooks/useReports';
 import { ReportPagination, paginateArray } from '@/components/reports/ReportPagination';
-import { Download, MapPin, Clock, TrendingUp, Building2 } from 'lucide-react';
+import { Download, MapPin, Clock, TrendingUp, Building2, Printer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSortableTable } from '@/hooks/useSortableTable';
 import { useTerms } from '@/hooks/useTerms';
@@ -228,10 +228,16 @@ export default function UtilisationReport() {
         ]}
         actions={
           data && data.rooms.length > 0 && (
-            <Button onClick={handleExport} variant="outline" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => window.print()} variant="outline" className="gap-2 print:hidden">
+                <Printer className="h-4 w-4" />
+                Print
+              </Button>
+              <Button onClick={handleExport} variant="outline" className="gap-2 print:hidden">
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+            </div>
           )
         }
       />
@@ -381,24 +387,35 @@ export default function UtilisationReport() {
                 {chartData.every(d => d.utilisation === 0) ? (
                   <p className="text-sm text-muted-foreground text-center py-12">All values are zero for this period.</p>
                 ) : (
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData} layout="vertical">
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
-                        <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-                        <YAxis type="category" dataKey="name" width={120} className="text-xs" />
-                        <Tooltip
-                          formatter={(value: number) => [`${value}%`, 'Utilisation']}
-                          labelClassName="font-medium"
-                        />
-                        <Bar dataKey="utilisation" radius={[0, 4, 4, 0]} maxBarSize={60}>
-                          {chartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <>
+                    <div className="h-[300px]" role="img" aria-label="Horizontal bar chart showing room utilisation percentages">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData} layout="vertical">
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
+                          <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                          <YAxis type="category" dataKey="name" width={120} className="text-xs" />
+                          <Tooltip
+                            formatter={(value: number) => [`${value}%`, 'Utilisation']}
+                            labelClassName="font-medium"
+                          />
+                          <Bar dataKey="utilisation" radius={[0, 4, 4, 0]} maxBarSize={60}>
+                            {chartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <table className="sr-only">
+                      <caption>Room utilisation percentages</caption>
+                      <thead><tr><th>Room</th><th>Utilisation</th></tr></thead>
+                      <tbody>
+                        {chartData.map(d => (
+                          <tr key={d.name}><td>{d.name}</td><td>{d.utilisation}%</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
                 )}
               </CardContent>
             </Card>
