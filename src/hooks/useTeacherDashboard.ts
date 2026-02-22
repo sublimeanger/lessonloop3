@@ -64,52 +64,57 @@ export function useTeacherDashboardStats() {
         };
       }
 
-      // Today's lessons for this teacher
-      const { data: todayLessonsData } = await supabase
-        .from('lessons')
-        .select('id')
-        .eq('org_id', currentOrg.id)
-        .eq('teacher_id', myTeacherId)
-        .eq('status', 'scheduled')
-        .gte('start_at', todayStartUtc)
-        .lte('start_at', todayEndUtc);
-
-      // Get students assigned to this teacher
-      const { data: assignments } = await supabase
-        .from('student_teacher_assignments')
-        .select('student_id')
-        .eq('org_id', currentOrg.id)
-        .eq('teacher_id', myTeacherId);
-
-      // Get this week's lessons for hours calculation
-      const { data: weekLessons } = await supabase
-        .from('lessons')
-        .select('start_at, end_at')
-        .eq('org_id', currentOrg.id)
-        .eq('teacher_id', myTeacherId)
-        .gte('start_at', weekStartUtc)
-        .lte('start_at', weekEndUtc);
-
-      // This month's completed lessons
-      const { data: monthLessons } = await supabase
-        .from('lessons')
-        .select('id')
-        .eq('org_id', currentOrg.id)
-        .eq('teacher_id', myTeacherId)
-        .eq('status', 'completed')
-        .gte('start_at', monthStartUtc)
-        .lte('start_at', monthEndUtc);
-
-      // Upcoming lessons (next 5)
-      const { data: upcomingData } = await supabase
-        .from('lessons')
-        .select('id, title, start_at, end_at, location_id')
-        .eq('org_id', currentOrg.id)
-        .eq('teacher_id', myTeacherId)
-        .eq('status', 'scheduled')
-        .gte('start_at', todayStartUtc)
-        .order('start_at', { ascending: true })
-        .limit(5);
+      // Run all 5 independent queries in parallel
+      const [
+        { data: todayLessonsData },
+        { data: assignments },
+        { data: weekLessons },
+        { data: monthLessons },
+        { data: upcomingData },
+      ] = await Promise.all([
+        // Today's lessons for this teacher
+        supabase
+          .from('lessons')
+          .select('id')
+          .eq('org_id', currentOrg.id)
+          .eq('teacher_id', myTeacherId)
+          .eq('status', 'scheduled')
+          .gte('start_at', todayStartUtc)
+          .lte('start_at', todayEndUtc),
+        // Get students assigned to this teacher
+        supabase
+          .from('student_teacher_assignments')
+          .select('student_id')
+          .eq('org_id', currentOrg.id)
+          .eq('teacher_id', myTeacherId),
+        // Get this week's lessons for hours calculation
+        supabase
+          .from('lessons')
+          .select('start_at, end_at')
+          .eq('org_id', currentOrg.id)
+          .eq('teacher_id', myTeacherId)
+          .gte('start_at', weekStartUtc)
+          .lte('start_at', weekEndUtc),
+        // This month's completed lessons
+        supabase
+          .from('lessons')
+          .select('id')
+          .eq('org_id', currentOrg.id)
+          .eq('teacher_id', myTeacherId)
+          .eq('status', 'completed')
+          .gte('start_at', monthStartUtc)
+          .lte('start_at', monthEndUtc),
+        // Upcoming lessons (next 5)
+        supabase
+          .from('lessons')
+          .select('id, title, start_at, end_at, location_id')
+          .eq('org_id', currentOrg.id)
+          .eq('teacher_id', myTeacherId)
+          .eq('status', 'scheduled')
+          .gte('start_at', todayStartUtc)
+          .order('start_at', { ascending: true })
+          .limit(5),
+      ]);
 
       // Get locations for upcoming lessons
       const locationIds = (upcomingData || [])
