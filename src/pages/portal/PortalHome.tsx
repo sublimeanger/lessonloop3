@@ -26,6 +26,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RequestModal } from '@/components/portal/RequestModal';
+import { MakeUpStepper } from '@/components/portal/MakeUpStepper';
 import { PortalWelcomeDialog } from '@/components/portal/PortalWelcomeDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -376,19 +377,21 @@ export default function PortalHome() {
                                 Missed {missedDate} · Waiting {formatDistanceToNowStrict(parseISO(entry.created_at || entry.missed_lesson_date))}
                               </p>
                             </div>
-                            {entry.status === 'waiting' && (
-                              <Badge variant="secondary" className="shrink-0 text-xs">⏳ Awaiting slot</Badge>
-                            )}
-                            {entry.status === 'matched' && (
-                              <Badge variant="secondary" className="shrink-0 text-xs text-blue-600 dark:text-blue-400">🔍 Being reviewed</Badge>
-                            )}
-                            {entry.status === 'accepted' && (
-                              <Badge variant="secondary" className="shrink-0 text-xs text-green-600 dark:text-green-400">✅ Accepted</Badge>
-                            )}
-                            {entry.status === 'booked' && (
-                              <Badge variant="secondary" className="shrink-0 text-xs text-green-700 dark:text-green-300">📅 Booked</Badge>
-                            )}
                           </div>
+
+                          {/* Visual stepper */}
+                          <MakeUpStepper status={entry.status} />
+
+                          {/* Expiry countdown */}
+                          {entry.expires_at && isBefore(new Date(), parseISO(entry.expires_at)) && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Expires in {formatDistanceToNowStrict(parseISO(entry.expires_at))}
+                            </p>
+                          )}
+                          {entry.expires_at && !isBefore(new Date(), parseISO(entry.expires_at)) && (
+                            <p className="text-xs text-destructive font-medium">⚠️ Expired</p>
+                          )}
 
                           {/* Offered: show lesson details + buttons */}
                           {entry.status === 'offered' && matched && (

@@ -1,9 +1,20 @@
+import { useState } from 'react';
 import { Bell, ArrowDown, Star, Clock } from 'lucide-react';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useOfferMakeUp, useDismissMatch, type WaitlistEntry } from '@/hooks/useMakeUpWaitlist';
 
 interface NeedsActionSectionProps {
@@ -48,6 +59,7 @@ function waitingSince(dateStr: string | null) {
 export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionProps) {
   const offerMutation = useOfferMakeUp();
   const dismissMutation = useDismissMatch();
+  const [confirmEntry, setConfirmEntry] = useState<WaitlistEntry | null>(null);
 
   if (isLoading) {
     return (
@@ -115,7 +127,7 @@ export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionPro
               <div className="flex items-center gap-2 pt-1">
                 <Button
                   size="sm"
-                  onClick={() => offerMutation.mutate(entry.id)}
+                  onClick={() => setConfirmEntry(entry)}
                   disabled={offerMutation.isPending}
                 >
                   Offer to Parent
@@ -133,6 +145,56 @@ export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionPro
           );
         })}
       </CardContent>
+
+      {/* Confirmation dialog */}
+      <AlertDialog open={!!confirmEntry} onOpenChange={(open) => !open && setConfirmEntry(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send Make-Up Offer?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                {confirmEntry && (
+                  <>
+                    <p>
+                      This will email the parent to offer a make-up slot for{' '}
+                      <span className="font-medium text-foreground">
+                        {confirmEntry.student
+                          ? `${confirmEntry.student.first_name} ${confirmEntry.student.last_name}`
+                          : 'Unknown Student'}
+                      </span>.
+                    </p>
+                    {confirmEntry.matched_lesson && (
+                      <p>
+                        Slot: <span className="font-medium text-foreground">{confirmEntry.matched_lesson.title}</span> on{' '}
+                        {formatDate(confirmEntry.matched_lesson.start_at)} at {formatTime(confirmEntry.matched_lesson.start_at)}
+                      </p>
+                    )}
+                    {confirmEntry.guardian && (
+                      <p>
+                        Guardian: <span className="font-medium text-foreground">{confirmEntry.guardian.full_name}</span>
+                        {confirmEntry.guardian.email && ` (${confirmEntry.guardian.email})`}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmEntry) {
+                  offerMutation.mutate(confirmEntry.id);
+                  setConfirmEntry(null);
+                }
+              }}
+            >
+              Send Offer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
