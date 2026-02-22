@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { format, subMonths, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useRevenueReport, exportRevenueToCSV } from '@/hooks/useReports';
+import { ReportPagination, paginateArray } from '@/components/reports/ReportPagination';
 import { useOrg } from '@/contexts/OrgContext';
 import { formatCurrency, currencySymbol } from '@/lib/utils';
 import { Download, TrendingUp, TrendingDown, FileSpreadsheet, Receipt } from 'lucide-react';
@@ -25,6 +26,10 @@ export default function RevenueReport() {
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
 
   const { data, isLoading, error } = useRevenueReport(startDate, endDate);
+  const [page, setPage] = useState(1);
+
+  // Reset page when date range changes
+  useEffect(() => { setPage(1); }, [startDate, endDate]);
 
   const handleExport = () => {
     if (data && currentOrg) {
@@ -176,7 +181,7 @@ export default function RevenueReport() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.months.map((month) => (
+                  {paginateArray(data.months, page).map((month) => (
                     <TableRow key={month.month}>
                       <TableCell className="font-medium">{month.monthLabel}</TableCell>
                       <TableCell className="text-right">{month.invoiceCount}</TableCell>
@@ -192,6 +197,7 @@ export default function RevenueReport() {
                   </TableRow>
                 </TableBody>
               </Table>
+              <ReportPagination totalItems={data.months.length} currentPage={page} onPageChange={setPage} />
             </CardContent>
           </Card>
         </>

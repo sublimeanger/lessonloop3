@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -12,6 +12,7 @@ import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { SortableTableHead } from '@/components/reports/SortableTableHead';
 import { useCancellationReport, exportCancellationToCSV } from '@/hooks/useReports';
+import { ReportPagination, paginateArray } from '@/components/reports/ReportPagination';
 import { useSortableTable } from '@/hooks/useSortableTable';
 import { useOrg } from '@/contexts/OrgContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -239,34 +240,38 @@ const cancellationComparators: Record<CancellationSortField, (a: TeacherCancella
 };
 
 function CancellationByTeacherTable({ teachers }: { teachers: TeacherCancellation[] }) {
+  const [page, setPage] = useState(1);
   const { sorted, sort, toggle } = useSortableTable<TeacherCancellation, CancellationSortField>(
     teachers, 'teacherName', 'asc', cancellationComparators
   );
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <SortableTableHead label="Teacher" field="teacherName" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} />
-          <SortableTableHead label="Total Lessons" field="total" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} className="text-right" />
-          <SortableTableHead label="Cancelled" field="cancelled" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} className="text-right" />
-          <SortableTableHead label="Rate" field="rate" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} className="text-right" />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {sorted.map((teacher) => (
-          <TableRow key={teacher.teacherName}>
-            <TableCell className="font-medium">{teacher.teacherName}</TableCell>
-            <TableCell className="text-right">{teacher.total}</TableCell>
-            <TableCell className="text-right text-destructive">{teacher.cancelled}</TableCell>
-            <TableCell className="text-right">
-              <span className={teacher.rate > 10 ? 'text-destructive font-medium' : teacher.rate > 5 ? 'text-warning' : 'text-success'}>
-                {teacher.rate.toFixed(1)}%
-              </span>
-            </TableCell>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <SortableTableHead label="Teacher" field="teacherName" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} />
+            <SortableTableHead label="Total Lessons" field="total" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} className="text-right" />
+            <SortableTableHead label="Cancelled" field="cancelled" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} className="text-right" />
+            <SortableTableHead label="Rate" field="rate" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} className="text-right" />
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {paginateArray(sorted, page).map((teacher) => (
+            <TableRow key={teacher.teacherName}>
+              <TableCell className="font-medium">{teacher.teacherName}</TableCell>
+              <TableCell className="text-right">{teacher.total}</TableCell>
+              <TableCell className="text-right text-destructive">{teacher.cancelled}</TableCell>
+              <TableCell className="text-right">
+                <span className={teacher.rate > 10 ? 'text-destructive font-medium' : teacher.rate > 5 ? 'text-warning' : 'text-success'}>
+                  {teacher.rate.toFixed(1)}%
+                </span>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <ReportPagination totalItems={sorted.length} currentPage={page} onPageChange={setPage} />
+    </>
   );
 }

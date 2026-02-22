@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
 import { exportUtilisationToCSV } from '@/hooks/useReports';
+import { ReportPagination, paginateArray } from '@/components/reports/ReportPagination';
 import { Download, MapPin, Clock, TrendingUp, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSortableTable } from '@/hooks/useSortableTable';
@@ -431,6 +432,7 @@ const utilComparators: Record<UtilSortField, (a: RoomUtilisationData, b: RoomUti
 };
 
 function UtilisationRoomTable({ rooms }: { rooms: RoomUtilisationData[] }) {
+  const [page, setPage] = useState(1);
   const { sorted, sort, toggle } = useSortableTable<RoomUtilisationData, UtilSortField>(
     rooms, 'utilisationPercent', 'desc', utilComparators
   );
@@ -454,7 +456,7 @@ function UtilisationRoomTable({ rooms }: { rooms: RoomUtilisationData[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sorted.map((room) => (
+            {paginateArray(sorted, page).map((room) => (
               <TableRow key={room.roomId}>
                 <TableCell className="font-medium">{room.roomName}</TableCell>
                 <TableCell className="text-muted-foreground">{room.locationName}</TableCell>
@@ -473,6 +475,7 @@ function UtilisationRoomTable({ rooms }: { rooms: RoomUtilisationData[] }) {
             ))}
           </TableBody>
         </Table>
+        <ReportPagination totalItems={sorted.length} currentPage={page} onPageChange={setPage} />
       </CardContent>
     </Card>
   );

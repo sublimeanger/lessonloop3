@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useLessonsDeliveredReport, exportLessonsDeliveredToCSV } from '@/hooks/useReports';
+import { ReportPagination, paginateArray } from '@/components/reports/ReportPagination';
 import { useOrg } from '@/contexts/OrgContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Download, Calendar, Clock, MapPin, Users, XCircle, AlertTriangle } from 'lucide-react';
@@ -28,6 +29,10 @@ export default function LessonsDeliveredReport() {
   const [endDate, setEndDate] = useState(format(endOfMonth(lastMonth), 'yyyy-MM-dd'));
 
   const { data, isLoading, error } = useLessonsDeliveredReport(startDate, endDate);
+  const [teacherPage, setTeacherPage] = useState(1);
+  const [locationPage, setLocationPage] = useState(1);
+
+  useEffect(() => { setTeacherPage(1); setLocationPage(1); }, [startDate, endDate]);
 
   const handleExport = () => {
     if (data && currentOrg) {
@@ -190,7 +195,7 @@ export default function LessonsDeliveredReport() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {data.byTeacher.map((teacher) => (
+                      {paginateArray(data.byTeacher, teacherPage).map((teacher) => (
                         <TableRow key={teacher.teacherId}>
                           <TableCell className="font-medium">{teacher.teacherName}</TableCell>
                           <TableCell className="text-right">{teacher.completedLessons}</TableCell>
@@ -200,6 +205,7 @@ export default function LessonsDeliveredReport() {
                       ))}
                     </TableBody>
                   </Table>
+                  <ReportPagination totalItems={data.byTeacher.length} currentPage={teacherPage} onPageChange={setTeacherPage} />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -242,7 +248,7 @@ export default function LessonsDeliveredReport() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {data.byLocation.map((loc) => (
+                      {paginateArray(data.byLocation, locationPage).map((loc) => (
                         <TableRow key={loc.locationId || 'online'}>
                           <TableCell className="font-medium">{loc.locationName}</TableCell>
                           <TableCell className="text-right">{loc.completedLessons}</TableCell>
@@ -251,6 +257,7 @@ export default function LessonsDeliveredReport() {
                       ))}
                     </TableBody>
                   </Table>
+                  <ReportPagination totalItems={data.byLocation.length} currentPage={locationPage} onPageChange={setLocationPage} />
                 </CardContent>
               </Card>
             </TabsContent>

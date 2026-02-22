@@ -10,6 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useAgeingReport, exportAgeingToCSV } from '@/hooks/useReports';
+import { ReportPagination, paginateArray } from '@/components/reports/ReportPagination';
 import { useOrg } from '@/contexts/OrgContext';
 import { formatCurrency, formatDateUK } from '@/lib/utils';
 import { Download, Clock, AlertTriangle, CheckCircle, ChevronDown, ChevronRight, Send, Megaphone } from 'lucide-react';
@@ -26,6 +27,7 @@ export default function OutstandingReport() {
   const [endDate, setEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const { data, isLoading, error } = useAgeingReport(startDate, endDate);
   const [expandedBuckets, setExpandedBuckets] = useState<Set<string>>(new Set(['Current (0-7 days)']));
+  const [bucketPages, setBucketPages] = useState<Record<string, number>>({});
 
   const toggleBucket = (label: string) => {
     const newExpanded = new Set(expandedBuckets);
@@ -201,7 +203,7 @@ export default function OutstandingReport() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {bucket.invoices.map((inv) => (
+                            {paginateArray(bucket.invoices, bucketPages[bucket.label] || 1).map((inv) => (
                               <TableRow key={inv.id}>
                                 <TableCell>
                                   <Link 
@@ -240,6 +242,11 @@ export default function OutstandingReport() {
                             ))}
                           </TableBody>
                         </Table>
+                        <ReportPagination
+                          totalItems={bucket.invoices.length}
+                          currentPage={bucketPages[bucket.label] || 1}
+                          onPageChange={(p) => setBucketPages(prev => ({ ...prev, [bucket.label]: p }))}
+                        />
                       </CardContent>
                     )}
                   </CollapsibleContent>
