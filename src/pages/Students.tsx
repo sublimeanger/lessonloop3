@@ -15,7 +15,7 @@ import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { StudentWizard } from '@/components/students/StudentWizard';
 import { useStudents, useToggleStudentStatus } from '@/hooks/useStudents';
 import type { StudentListItem, StudentStatus } from '@/hooks/useStudents';
-import { Plus, Search, Users, Upload, Lock } from 'lucide-react';
+import { Plus, Search, Users, Upload, Lock, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
 import { supabase } from '@/integrations/supabase/client';
@@ -297,8 +297,12 @@ export default function Students() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmToggleStatus}>
-              {confirmToggle?.status === 'active' ? 'Deactivate' : 'Reactivate'}
+            <AlertDialogAction onClick={confirmToggleStatus} disabled={toggleMutation.isPending}>
+              {toggleMutation.isPending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
+              ) : (
+                confirmToggle?.status === 'active' ? 'Deactivate' : 'Reactivate'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
