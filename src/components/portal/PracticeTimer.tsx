@@ -60,7 +60,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
     }
     acc[studentId].assignments.push(assignment);
     return acc;
-  }, {} as Record<string, { student: any; assignments: typeof assignments }>);
+  }, {} as Record<string, { student: { id: string; first_name: string; last_name: string } | undefined; assignments: typeof assignments }>);
 
   const students = Object.entries(studentAssignments);
 
@@ -197,11 +197,11 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
       startedAtRef.current = null;
       setNotes('');
       onComplete?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Resume timer so user can retry
       setIsRunning(true);
       persistRunning();
-      toast.error(error.message || 'Failed to log practice — your session is preserved.');
+      toast.error(error instanceof Error ? error.message : 'Failed to log practice — your session is preserved.');
     }
   };
 

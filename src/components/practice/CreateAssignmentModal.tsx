@@ -71,7 +71,7 @@ export function CreateAssignmentModal({
     if (isAdmin) {
       const { data } = await activeStudentsQuery(currentOrg!.id)
         .order('first_name');
-      setStudents((data || []) as any);
+      setStudents((data || []) as Student[]);
     } else if (user) {
       // Teacher: only show assigned students
       const { data: teacherRecord } = await supabase
@@ -92,7 +92,7 @@ export function CreateAssignmentModal({
           const { data } = await activeStudentsQuery(currentOrg!.id)
             .in('id', studentIds)
             .order('first_name');
-          setStudents((data || []) as any);
+          setStudents((data || []) as Student[]);
         } else {
           setStudents([]);
         }
@@ -124,8 +124,8 @@ export function CreateAssignmentModal({
       toast.success('Practice assignment created');
       onOpenChange(false);
       resetForm();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to create assignment');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create assignment');
     }
   };
 
