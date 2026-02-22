@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Music, Calendar, CreditCard } from "lucide-react";
 import { BillingToggle } from "./BillingToggle";
 import { TRIAL_DAYS } from "@/lib/pricing-config";
 
@@ -19,35 +19,26 @@ export function PricingHero({ isAnnual, onToggle }: PricingHeroProps) {
       {/* Floating decorative elements */}
       <motion.div
         className="absolute top-1/4 left-[15%] w-16 h-16 rounded-2xl bg-gradient-to-br from-teal/20 to-teal/5 backdrop-blur-sm border border-teal/20 hidden lg:flex items-center justify-center"
-        animate={{ 
-          y: [0, -15, 0],
-          rotate: [0, 5, 0]
-        }}
+        animate={{ y: [0, -15, 0] }}
         transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
       >
-        <span className="text-2xl">🎵</span>
+        <Music className="w-6 h-6 text-teal" />
       </motion.div>
       
       <motion.div
         className="absolute top-1/3 right-[12%] w-14 h-14 rounded-xl bg-gradient-to-br from-coral/20 to-coral/5 backdrop-blur-sm border border-coral/20 hidden lg:flex items-center justify-center"
-        animate={{ 
-          y: [0, 20, 0],
-          rotate: [0, -5, 0]
-        }}
+        animate={{ y: [0, 20, 0] }}
         transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
       >
-        <span className="text-xl">📅</span>
+        <Calendar className="w-5 h-5 text-coral" />
       </motion.div>
       
       <motion.div
         className="absolute bottom-1/4 right-[20%] w-12 h-12 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 backdrop-blur-sm border border-primary/20 hidden lg:flex items-center justify-center"
-        animate={{ 
-          y: [0, 10, 0],
-          rotate: [0, 3, 0]
-        }}
+        animate={{ y: [0, 10, 0] }}
         transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
       >
-        <span className="text-lg">💳</span>
+        <CreditCard className="w-5 h-5 text-primary" />
       </motion.div>
       
       {/* Subtle grid pattern */}

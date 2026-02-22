@@ -17,7 +17,7 @@ const enterpriseFeatures = [
   { icon: Users, label: "Unlimited teachers" },
   { icon: Headphones, label: "Dedicated account manager" },
   { icon: Zap, label: "Custom integrations" },
-  { icon: Building2, label: "White-label options" },
+  { icon: Building2, label: "Custom branding" },
 ];
 
 export function EnterpriseCTA() {
