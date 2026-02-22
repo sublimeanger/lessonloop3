@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
-import { Loader2, LogOut, ShieldAlert } from 'lucide-react';
+import { Loader2, LogOut, ShieldAlert, Mail } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +19,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 export function ProfileTab() {
   const { profile, updateProfile } = useAuth();
@@ -28,6 +36,8 @@ export function ProfileTab() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
 
   // Sync from profile context (already fetched via AuthContext)
   useEffect(() => {
@@ -57,6 +67,31 @@ export function ProfileTab() {
     onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
 
+  const changeEmailMutation = useMutation({
+    mutationFn: async (emailAddress: string) => {
+      const trimmed = emailAddress.trim().toLowerCase();
+      if (!trimmed) throw new Error('Please enter an email address');
+      if (trimmed === email) throw new Error('This is already your current email');
+      const { error } = await supabase.auth.updateUser({ email: trimmed });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Confirmation sent',
+        description: 'A confirmation link has been sent to your new email address. Click it to complete the change.',
+      });
+      setShowEmailDialog(false);
+      setNewEmail('');
+    },
+    onError: (err: any) => {
+      toast({
+        title: 'Email change failed',
+        description: err.message || 'Unable to change email. The address may already be in use.',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const globalSignOutMutation = useMutation({
     mutationFn: () => supabase.auth.signOut({ scope: 'global' }),
     onError: () => toast({ title: 'Error', description: 'Failed to sign out of all devices', variant: 'destructive' }),
@@ -64,6 +99,47 @@ export function ProfileTab() {
 
   return (
     <div className="space-y-6">
+      {/* Email Change Dialog */}
+      <Dialog open={showEmailDialog} onOpenChange={(open) => { setShowEmailDialog(open); if (!open) setNewEmail(''); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change email address</DialogTitle>
+            <DialogDescription>
+              A confirmation link will be sent to your new email. Your email won't change until you click it.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Current email</Label>
+              <Input value={email} disabled className="bg-muted" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newEmail">New email</Label>
+              <Input
+                id="newEmail"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="Enter your new email address"
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEmailDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => changeEmailMutation.mutate(newEmail)}
+              disabled={changeEmailMutation.isPending || !newEmail.trim()}
+            >
+              {changeEmailMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Send Confirmation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Card>
         <CardHeader>
           <CardTitle>Profile Information</CardTitle>
@@ -82,10 +158,13 @@ export function ProfileTab() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} disabled className="bg-muted" />
-            <p className="text-xs text-muted-foreground">
-              Email cannot be changed here. Contact support if you need to update it.
-            </p>
+            <div className="flex gap-2">
+              <Input id="email" type="email" value={email} disabled className="bg-muted flex-1" />
+              <Button variant="outline" size="sm" onClick={() => setShowEmailDialog(true)}>
+                <Mail className="h-4 w-4 mr-2" />
+                Change
+              </Button>
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone">Phone</Label>
