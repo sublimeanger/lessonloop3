@@ -18,7 +18,7 @@ export default function Resources() {
   const [search, setSearch] = useState('');
 
   const { currentRole } = useOrg();
-  const isAdmin = currentRole === 'owner' || currentRole === 'admin';
+  const canUpload = currentRole === 'owner' || currentRole === 'admin' || currentRole === 'teacher';
   
   const { data: resources = [], isLoading } = useResources();
 
@@ -39,7 +39,7 @@ export default function Resources() {
           title="Resource Library"
           description="Upload and share teaching materials with students"
           actions={
-            isAdmin && (
+            canUpload && (
               <Button onClick={() => setUploadModalOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Upload Resource
