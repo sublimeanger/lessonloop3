@@ -257,7 +257,7 @@ export function useCreateInvoice() {
           .from('make_up_credits')
           .update({
             redeemed_at: new Date().toISOString(),
-            notes: `Applied to invoice ${invoice.invoice_number}`,
+            notes: `Applied to invoice_id:${invoice.id}`,
           })
           .in('id', data.credit_ids);
 
@@ -300,11 +300,34 @@ export function useUpdateInvoiceStatus() {
         .eq('id', id);
 
       if (error) throw error;
+
+      // Restore make-up credits when voiding an invoice
+      if (status === 'void') {
+        const { data: invoice } = await supabase
+          .from('invoices')
+          .select('credit_applied_minor')
+          .eq('id', id)
+          .single();
+
+        if (invoice && invoice.credit_applied_minor > 0) {
+          const { error: restoreError } = await supabase
+            .from('make_up_credits')
+            .update({ redeemed_at: null, notes: `Credit restored — invoice ${id} voided` })
+            .like('notes', `%${id}%`)
+            .not('redeemed_at', 'is', null);
+
+          if (restoreError) {
+            logger.error('Failed to restore credits on void:', restoreError);
+          }
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice'] });
       queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['available-credits-for-payer'] });
     },
     onError: (error) => {
       toast({ title: 'Error', description: 'Failed to update invoice: ' + error.message, variant: 'destructive' });
