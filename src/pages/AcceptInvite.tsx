@@ -312,65 +312,70 @@ export default function AcceptInvite() {
             Create your account to join as a <strong>{invite.role}</strong>
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={invite.email} disabled />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="fullName">Full Name</Label>
-            <Input
-              id="fullName"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Enter your full name"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Create a password"
-            />
-            <PasswordStrengthIndicator password={password} visible={password.length > 0} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm your password"
-            />
-          </div>
-          <p className="text-xs text-muted-foreground text-center">
-            By creating an account, you agree to our{' '}
-            <Link to="/terms" className="font-medium text-primary hover:underline">Terms of Service</Link>{' '}
-            and{' '}
-            <Link to="/privacy" className="font-medium text-primary hover:underline">Privacy Policy</Link>.
-          </p>
-          <Button 
-            onClick={signUpAndAccept} 
-            disabled={isAccepting || !fullName || !password} 
-            className="w-full"
-          >
-            {isAccepting ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating account...</>
-            ) : (
-              'Create Account & Join'
-            )}
-          </Button>
-          <p className="text-center text-sm text-muted-foreground">
-            Already have an account?{' '}
-            <Link to="/login" state={{ from: { pathname: '/accept-invite', search: `?token=${token}` } }} className="text-primary hover:underline">
-              Log in
-            </Link>
-          </p>
-        </CardContent>
+        <form onSubmit={(e) => { e.preventDefault(); signUpAndAccept(); }}>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" value={invite.email} disabled autoComplete="email" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input
+                id="fullName"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Enter your full name"
+                autoComplete="name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Create a password"
+                autoComplete="new-password"
+              />
+              <PasswordStrengthIndicator password={password} visible={password.length > 0} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm your password"
+                autoComplete="new-password"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              By creating an account, you agree to our{' '}
+              <Link to="/terms" className="font-medium text-primary hover:underline">Terms of Service</Link>{' '}
+              and{' '}
+              <Link to="/privacy" className="font-medium text-primary hover:underline">Privacy Policy</Link>.
+            </p>
+            <Button 
+              type="submit"
+              disabled={isAccepting || !fullName || !password} 
+              className="w-full"
+            >
+              {isAccepting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating account...</>
+              ) : (
+                'Create Account & Join'
+              )}
+            </Button>
+            <p className="text-center text-sm text-muted-foreground">
+              Already have an account?{' '}
+              <Link to="/login" state={{ from: { pathname: '/accept-invite', search: `?token=${token}` } }} className="text-primary hover:underline">
+                Log in
+              </Link>
+            </p>
+          </CardContent>
+        </form>
       </Card>
     </div>
   );
