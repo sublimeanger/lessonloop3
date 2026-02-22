@@ -70,6 +70,7 @@ export function useInvoicePdf() {
 
   const downloadPdf = async (invoiceId: string, invoiceNumber: string) => {
     setIsLoading(true);
+    toast({ title: 'Generating PDF…', description: `Preparing ${invoiceNumber}` });
     try {
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
