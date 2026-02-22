@@ -1,16 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MailCheck, RefreshCw, LogOut, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 
 export default function VerifyEmail() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [resending, setResending] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+    const timer = setInterval(() => {
+      setCooldownSeconds((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownSeconds]);
 
   const handleResend = async () => {
     if (!user?.email) return;
@@ -21,29 +31,28 @@ export default function VerifyEmail() {
         email: user.email,
       });
       if (error) throw error;
-      toast.success('Verification email sent! Please check your inbox.');
+      toast({ title: 'Verification email sent', description: 'Please check your inbox.' });
+      setCooldownSeconds(60);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to resend verification email');
+      toast({ title: 'Resend failed', description: err.message || 'Failed to resend verification email', variant: 'destructive' });
     } finally {
       setResending(false);
     }
   };
 
   const handleRefresh = async () => {
-    // Re-fetch session to check if email has been confirmed
     const { data } = await supabase.auth.getUser();
     if (data.user?.email_confirmed_at) {
-      toast.success('Email verified! Redirecting…');
-      // Force a page reload to re-evaluate auth state
+      toast({ title: 'Email verified!', description: 'Redirecting…' });
       window.location.href = '/onboarding';
     } else {
-      toast.info('Email not yet verified. Please check your inbox.');
+      toast({ title: 'Not yet verified', description: 'Please check your inbox.' });
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
+      <Card className="w-full max-w-md shadow-elevated">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <MailCheck className="h-8 w-8 text-primary" />
@@ -56,13 +65,13 @@ export default function VerifyEmail() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button onClick={handleResend} disabled={resending} className="w-full" variant="default">
+          <Button onClick={handleResend} disabled={resending || cooldownSeconds > 0} className="w-full" variant="default">
             {resending ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4 mr-2" />
             )}
-            Resend verification email
+            {cooldownSeconds > 0 ? `Resend in ${cooldownSeconds}s` : 'Resend verification email'}
           </Button>
 
           <Button onClick={handleRefresh} variant="outline" className="w-full">
@@ -74,7 +83,7 @@ export default function VerifyEmail() {
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">or</span>
+              <span className="bg-card px-2 text-muted-foreground">or</span>
             </div>
           </div>
 
