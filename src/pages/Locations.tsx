@@ -21,6 +21,7 @@ import { useDeleteValidation, DeletionCheckResult } from '@/hooks/useDeleteValid
 import { DeleteValidationDialog } from '@/components/shared/DeleteValidationDialog';
 import { Plus, MapPin, ChevronDown, Loader2, Trash2, Edit, DoorOpen, Lock, Search, Star, Archive, ArchiveRestore } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { startOfWeek, endOfWeek } from 'date-fns';
 
 type LocationType = 'school' | 'studio' | 'home' | 'online';
 type FilterTab = 'all' | LocationType;
@@ -135,6 +136,60 @@ export default function Locations() {
     isChecking: boolean;
     isDeleting: boolean;
   }>({ open: false, roomId: '', roomName: '', checkResult: null, isChecking: false, isDeleting: false });
+
+  // Location usage stats
+  const locationIds = useMemo(() => locations.map(l => l.id), [locations]);
+  const { data: locationStats } = useQuery({
+    queryKey: ['location-usage-stats', currentOrg?.id, locationIds],
+    queryFn: async () => {
+      if (!currentOrg || locationIds.length === 0) return {};
+      const now = new Date();
+      const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString();
+      const weekEnd = endOfWeek(now, { weekStartsOn: 1 }).toISOString();
+
+      const [lessonsResult, teachersResult] = await Promise.all([
+        supabase
+          .from('lessons')
+          .select('location_id')
+          .eq('org_id', currentOrg.id)
+          .in('location_id', locationIds)
+          .gte('start_at', weekStart)
+          .lte('start_at', weekEnd)
+          .neq('status', 'cancelled'),
+        supabase
+          .from('lessons')
+          .select('location_id, teacher_id')
+          .eq('org_id', currentOrg.id)
+          .in('location_id', locationIds)
+          .gte('start_at', weekStart)
+          .lte('start_at', weekEnd)
+          .neq('status', 'cancelled'),
+      ]);
+
+      const stats: Record<string, { lessonCount: number; teacherCount: number }> = {};
+      locationIds.forEach(id => { stats[id] = { lessonCount: 0, teacherCount: 0 }; });
+
+      (lessonsResult.data || []).forEach(l => {
+        if (l.location_id && stats[l.location_id]) stats[l.location_id].lessonCount++;
+      });
+
+      // Count unique teachers per location
+      const teachersByLoc: Record<string, Set<string>> = {};
+      (teachersResult.data || []).forEach(l => {
+        if (l.location_id && l.teacher_id) {
+          if (!teachersByLoc[l.location_id]) teachersByLoc[l.location_id] = new Set();
+          teachersByLoc[l.location_id].add(l.teacher_id);
+        }
+      });
+      Object.entries(teachersByLoc).forEach(([locId, set]) => {
+        if (stats[locId]) stats[locId].teacherCount = set.size;
+      });
+
+      return stats;
+    },
+    enabled: !!currentOrg && locationIds.length > 0,
+    staleTime: 60_000,
+  });
 
   // Filtered locations
   const filteredLocations = useMemo(() => {
@@ -626,6 +681,19 @@ export default function Locations() {
                         </span>
                       )}
                     </div>
+                    {/* Usage stats */}
+                    {locationStats && locationStats[location.id] && (
+                      <div className="flex items-center gap-2 text-[11px] mt-0.5">
+                        {locationStats[location.id].lessonCount > 0 ? (
+                          <span className="text-muted-foreground">
+                            {locationStats[location.id].lessonCount} lesson{locationStats[location.id].lessonCount !== 1 ? 's' : ''} this week
+                            {locationStats[location.id].teacherCount > 0 && ` · ${locationStats[location.id].teacherCount} teacher${locationStats[location.id].teacherCount !== 1 ? 's' : ''}`}
+                          </span>
+                        ) : (
+                          <span className="text-amber-600 dark:text-amber-400">No upcoming lessons</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {isOrgAdmin && (
