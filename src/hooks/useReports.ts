@@ -140,20 +140,22 @@ export interface AgeingData {
   buckets: AgeingBucket[];
   totalOutstanding: number;
   totalOverdue: number;
+  truncated: boolean;
 }
 
-export function useAgeingReport() {
+export function useAgeingReport(issueDateFrom?: string, issueDateTo?: string) {
   const { currentOrg } = useOrg();
 
   return useQuery({
-    queryKey: ['ageing-report', currentOrg?.id],
+    queryKey: ['ageing-report', currentOrg?.id, issueDateFrom, issueDateTo],
     queryFn: async (): Promise<AgeingData> => {
       if (!currentOrg) {
-        return { buckets: [], totalOutstanding: 0, totalOverdue: 0 };
+        return { buckets: [], totalOutstanding: 0, totalOverdue: 0, truncated: false };
       }
 
       // Fetch outstanding invoices (sent or overdue)
-      const { data: invoices, error } = await supabase
+      // issue_date is a DATE column — no timezone conversion needed for the query itself
+      let query = supabase
         .from('invoices')
         .select(`
           id, invoice_number, due_date, total_minor, status,
@@ -161,8 +163,12 @@ export function useAgeingReport() {
           payer_student:students!invoices_payer_student_id_fkey(first_name, last_name)
         `)
         .eq('org_id', currentOrg.id)
-        .in('status', ['sent', 'overdue'])
-        .limit(5000);
+        .in('status', ['sent', 'overdue']);
+
+      if (issueDateFrom) query = query.gte('issue_date', issueDateFrom);
+      if (issueDateTo) query = query.lte('issue_date', issueDateTo);
+
+      const { data: invoices, error } = await query.limit(5000);
 
       if (error) throw error;
 
@@ -223,7 +229,8 @@ export function useAgeingReport() {
         }
       }
 
-      return { buckets, totalOutstanding, totalOverdue };
+      const truncated = (invoices || []).length >= 5000;
+      return { buckets, totalOutstanding, totalOverdue, truncated };
     },
     enabled: !!currentOrg,
     staleTime: 10 * 60 * 1000,
