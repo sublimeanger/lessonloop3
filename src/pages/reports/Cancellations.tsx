@@ -254,10 +254,10 @@ function CancellationByTeacherTable({ teachers }: { teachers: TeacherCancellatio
       <Table>
         <TableHeader>
           <TableRow>
-            <SortableTableHead label="Teacher" field="teacherName" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} />
-            <SortableTableHead label="Total Lessons" field="total" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} className="text-right" />
-            <SortableTableHead label="Cancelled" field="cancelled" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} className="text-right" />
-            <SortableTableHead label="Rate" field="rate" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} className="text-right" />
+            <SortableTableHead label="Teacher" field="teacherName" currentField={sort.field} currentDir={sort.dir} onToggle={toggle} />
+            <SortableTableHead label="Total Lessons" field="total" currentField={sort.field} currentDir={sort.dir} onToggle={toggle} className="text-right" />
+            <SortableTableHead label="Cancelled" field="cancelled" currentField={sort.field} currentDir={sort.dir} onToggle={toggle} className="text-right" />
+            <SortableTableHead label="Rate" field="rate" currentField={sort.field} currentDir={sort.dir} onToggle={toggle} className="text-right" />
           </TableRow>
         </TableHeader>
         <TableBody>

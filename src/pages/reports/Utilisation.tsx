@@ -54,7 +54,7 @@ function useUtilisationReport(startDate: string, endDate: string, workingHoursPe
     queryFn: async (): Promise<UtilisationSummary> => {
       if (!currentOrg?.id) throw new Error('No organisation');
 
-      const orgTimezone = (currentOrg as any).timezone ?? 'Europe/London';
+      const orgTimezone = (currentOrg as { timezone?: string }).timezone ?? 'Europe/London';
       const startUTC = fromZonedTime(new Date(`${startDate}T00:00:00`), orgTimezone).toISOString();
       const endUTC = fromZonedTime(new Date(`${endDate}T23:59:59`), orgTimezone).toISOString();
 
@@ -131,7 +131,7 @@ function useUtilisationReport(startDate: string, endDate: string, workingHoursPe
         return {
           roomId: room.id,
           roomName: room.name,
-          locationName: (room.location as any)?.name || 'Unknown',
+          locationName: (room.location as { name: string } | null)?.name || 'Unknown',
           capacity: room.capacity,
           bookedMinutes: usage.minutes,
           availableMinutes: availableMinutesPerRoom,
@@ -450,12 +450,12 @@ function UtilisationRoomTable({ rooms }: { rooms: RoomUtilisationData[] }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <SortableTableHead label="Room" field="roomName" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} />
+              <SortableTableHead label="Room" field="roomName" currentField={sort.field} currentDir={sort.dir} onToggle={toggle} />
               <TableHead>Location</TableHead>
               <TableHead className="text-center">Capacity</TableHead>
-              <SortableTableHead label="Lessons" field="lessonCount" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} className="text-right" />
+              <SortableTableHead label="Lessons" field="lessonCount" currentField={sort.field} currentDir={sort.dir} onToggle={toggle} className="text-right" />
               <TableHead className="text-right">Booked Time</TableHead>
-              <SortableTableHead label="Utilisation" field="utilisationPercent" currentField={sort.field} currentDir={sort.dir} onToggle={toggle as any} className="text-right" />
+              <SortableTableHead label="Utilisation" field="utilisationPercent" currentField={sort.field} currentDir={sort.dir} onToggle={toggle} className="text-right" />
               <TableHead className="text-center">Status</TableHead>
             </TableRow>
           </TableHeader>
