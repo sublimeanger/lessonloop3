@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { format, startOfDay, endOfDay } from 'date-fns';
+import { fromZonedTime } from 'date-fns-tz';
 import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -39,8 +40,9 @@ export function useRegisterData(date: Date) {
     queryFn: async (): Promise<RegisterLesson[]> => {
       if (!currentOrg) return [];
 
-      const dayStart = startOfDay(date).toISOString();
-      const dayEnd = endOfDay(date).toISOString();
+      const orgTimezone = currentOrg.timezone || 'Europe/London';
+      const dayStart = fromZonedTime(startOfDay(date), orgTimezone).toISOString();
+      const dayEnd = fromZonedTime(endOfDay(date), orgTimezone).toISOString();
 
       // Build the query
       let query = supabase
@@ -264,8 +266,9 @@ export function useBatchAttendanceLessons(date: Date) {
     queryFn: async (): Promise<BatchLessonRow[]> => {
       if (!currentOrg) return [];
 
-      const dayStart = startOfDay(date).toISOString();
-      const dayEnd = endOfDay(date).toISOString();
+      const orgTimezone = currentOrg.timezone || 'Europe/London';
+      const dayStart = fromZonedTime(startOfDay(date), orgTimezone).toISOString();
+      const dayEnd = fromZonedTime(endOfDay(date), orgTimezone).toISOString();
 
       const { data: lessonsData, error } = await supabase
         .from('lessons')
