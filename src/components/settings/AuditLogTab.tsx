@@ -242,7 +242,7 @@ export default function AuditLogTab() {
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">Before</p>
                   <ScrollArea className="h-[150px] rounded-md border bg-muted/50 p-3">
-                    <pre className="text-xs">{formatJson(selectedEntry.before)}</pre>
+                    <pre className="text-xs whitespace-pre-wrap break-all">{formatJson(selectedEntry.before)}</pre>
                   </ScrollArea>
                 </div>
               )}
@@ -251,7 +251,7 @@ export default function AuditLogTab() {
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">After</p>
                   <ScrollArea className="h-[150px] rounded-md border bg-muted/50 p-3">
-                    <pre className="text-xs">{formatJson(selectedEntry.after)}</pre>
+                    <pre className="text-xs whitespace-pre-wrap break-all">{formatJson(selectedEntry.after)}</pre>
                   </ScrollArea>
                 </div>
               )}
