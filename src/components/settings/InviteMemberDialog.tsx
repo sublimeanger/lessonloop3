@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import {
   Dialog,
@@ -32,6 +33,7 @@ interface InviteMemberDialogProps {
 export function InviteMemberDialog({ open, onOpenChange, onInviteSent }: InviteMemberDialogProps) {
   const { currentOrg } = useOrg();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'admin' | 'teacher' | 'finance'>('teacher');
   const [isSending, setIsSending] = useState(false);
@@ -108,6 +110,7 @@ export function InviteMemberDialog({ open, onOpenChange, onInviteSent }: InviteM
     setRole('teacher');
     setIsSending(false);
     onOpenChange(false);
+    queryClient.invalidateQueries({ queryKey: ['pending-invites'] });
     onInviteSent?.();
   };
 

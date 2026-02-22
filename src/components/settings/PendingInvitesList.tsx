@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,45 +20,44 @@ interface Invite {
 }
 
 interface PendingInvitesListProps {
-  /** External trigger to refetch (increment to force refetch) */
+  /** @deprecated Use queryClient.invalidateQueries instead */
   refreshKey?: number;
   /** Filter to specific roles, e.g. ['admin','teacher','finance']. If empty, shows all staff roles. */
   roleFilter?: AppRole[];
 }
 
-export function PendingInvitesList({ refreshKey = 0, roleFilter }: PendingInvitesListProps) {
+export function PendingInvitesList({ roleFilter }: PendingInvitesListProps) {
   const { currentOrg, isOrgAdmin } = useOrg();
   const { toast } = useToast();
-  const [invites, setInvites] = useState<Invite[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
 
   const roles = roleFilter || ['admin', 'teacher', 'finance'];
 
-  const fetchInvites = async () => {
-    if (!currentOrg) return;
-    setIsLoading(true);
+  const { data: invites = [], isLoading } = useQuery({
+    queryKey: ['pending-invites', currentOrg?.id, roles],
+    queryFn: async (): Promise<Invite[]> => {
+      if (!currentOrg) return [];
 
-    const { data, error } = await supabase
-      .from('invites')
-      .select('*')
-      .eq('org_id', currentOrg.id)
-      .is('accepted_at', null)
-      .in('role', roles)
-      .gte('expires_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-      .order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('invites')
+        .select('*')
+        .eq('org_id', currentOrg.id)
+        .is('accepted_at', null)
+        .in('role', roles)
+        .gte('expires_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      logger.error('Error fetching invites:', error);
-    }
-    setInvites((data || []) as Invite[]);
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    fetchInvites();
-  }, [currentOrg?.id, refreshKey]);
+      if (error) {
+        logger.error('Error fetching invites:', error);
+        return [];
+      }
+      return (data || []) as Invite[];
+    },
+    enabled: !!currentOrg,
+    staleTime: 30 * 1000,
+  });
 
   const handleCancel = async (inviteId: string) => {
     setCancellingId(inviteId);
@@ -66,7 +66,7 @@ export function PendingInvitesList({ refreshKey = 0, roleFilter }: PendingInvite
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Invite cancelled' });
-      fetchInvites();
+      queryClient.invalidateQueries({ queryKey: ['pending-invites'] });
     }
     setCancellingId(null);
   };
