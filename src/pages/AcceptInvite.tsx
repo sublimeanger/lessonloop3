@@ -52,6 +52,7 @@ export default function AcceptInvite() {
   const [isAccepting, setIsAccepting] = useState(false);
   
   // For new user signup
+  const [signupEmail, setSignupEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -143,6 +144,12 @@ export default function AcceptInvite() {
       return;
     }
     
+    const trimmedEmail = signupEmail.trim().toLowerCase();
+    if (!trimmedEmail) {
+      toast({ title: 'Please enter your email address', variant: 'destructive' });
+      return;
+    }
+
     if (password.length < PASSWORD_MIN_LENGTH) {
       toast({
         title: 'Password too short',
@@ -157,7 +164,7 @@ export default function AcceptInvite() {
     try {
       // Sign up the new user
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: invite.email,
+        email: trimmedEmail,
         password,
         options: {
           data: { full_name: fullName },
@@ -316,7 +323,17 @@ export default function AcceptInvite() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={invite.email} disabled autoComplete="email" />
+              <Input
+                id="email"
+                type="email"
+                value={signupEmail}
+                onChange={(e) => setSignupEmail(e.target.value)}
+                placeholder="Enter your email address"
+                autoComplete="email"
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter the email address where you received this invitation.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
@@ -359,7 +376,7 @@ export default function AcceptInvite() {
             </p>
             <Button 
               type="submit"
-              disabled={isAccepting || !fullName || !password} 
+              disabled={isAccepting || !signupEmail.trim() || !fullName || !password} 
               className="w-full"
             >
               {isAccepting ? (
