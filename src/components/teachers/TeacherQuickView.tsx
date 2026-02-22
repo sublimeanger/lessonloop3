@@ -3,22 +3,24 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Pencil, Mail, Phone, Music, Briefcase, GraduationCap, FileText, Link2, Link2Off } from 'lucide-react';
+import { Calendar, Pencil, Mail, Phone, Music, Briefcase, GraduationCap, FileText, Link2, Link2Off, Trash2, Clock } from 'lucide-react';
 import { Teacher } from '@/hooks/useTeachers';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { TEACHER_COLOURS } from '@/components/calendar/teacherColours';
+import { startOfWeek, endOfWeek } from 'date-fns';
 
 interface TeacherQuickViewProps {
   teacher: Teacher | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit: (teacher: Teacher) => void;
+  onRemove?: (teacher: Teacher) => void;
   colour: (typeof TEACHER_COLOURS)[number];
 }
 
-export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, colour }: TeacherQuickViewProps) {
+export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, onRemove, colour }: TeacherQuickViewProps) {
   const navigate = useNavigate();
   const { currentOrg, isOrgAdmin } = useOrg();
 
@@ -40,6 +42,31 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, colour }
       }));
     },
     enabled: !!teacher && !!currentOrg && open,
+  });
+
+  const { data: weekStats } = useQuery({
+    queryKey: ['teacher-week-stats', teacher?.id, currentOrg?.id],
+    queryFn: async () => {
+      if (!teacher || !currentOrg) return null;
+      const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+      const { data, error } = await supabase
+        .from('lessons')
+        .select('start_at, end_at')
+        .eq('org_id', currentOrg.id)
+        .eq('teacher_id', teacher.id)
+        .eq('status', 'scheduled')
+        .gte('start_at', weekStart.toISOString())
+        .lte('start_at', weekEnd.toISOString());
+
+      if (error || !data) return { count: 0, hours: 0 };
+      const totalMinutes = data.reduce((sum, l) => {
+        return sum + (new Date(l.end_at).getTime() - new Date(l.start_at).getTime()) / 60000;
+      }, 0);
+      return { count: data.length, hours: Math.round(totalMinutes / 60 * 10) / 10 };
+    },
+    enabled: !!teacher && !!currentOrg && open,
+    staleTime: 30_000,
   });
 
   if (!teacher) return null;
@@ -85,7 +112,7 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, colour }
         </SheetHeader>
 
         {/* Actions */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-4">
           <Button
             variant="outline"
             size="sm"
@@ -110,6 +137,32 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, colour }
             Edit
           </Button>
         </div>
+        {isOrgAdmin && onRemove && (
+          <div className="mb-6">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 w-full text-destructive hover:text-destructive"
+              onClick={() => {
+                onOpenChange(false);
+                onRemove(teacher);
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Remove Teacher
+            </Button>
+          </div>
+        )}
+
+        {/* Weekly Stats */}
+        {weekStats && (
+          <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 mb-4">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              This week: <span className="font-medium text-foreground">{weekStats.count} lesson{weekStats.count !== 1 ? 's' : ''}</span> · <span className="font-medium text-foreground">{weekStats.hours}h</span>
+            </span>
+          </div>
+        )}
 
         <Separator />
 
