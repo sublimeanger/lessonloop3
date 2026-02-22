@@ -51,6 +51,7 @@ async function fetchCalendarLessons(
   if (filters.teacher_id) query = query.eq('teacher_id', filters.teacher_id);
   if (filters.location_id) query = query.eq('location_id', filters.location_id);
   if (filters.room_id) query = query.eq('room_id', filters.room_id);
+  if (filters.hide_cancelled) query = query.neq('status', 'cancelled');
 
   const { data: lessonsData, error } = await query;
 
@@ -130,8 +131,8 @@ export function useCalendarData(
   }, [currentDate, view]);
 
   const queryKey = useMemo(
-    () => ['calendar-lessons', currentOrg?.id, startIso, endIso, filters.teacher_id, filters.location_id, filters.room_id],
-    [currentOrg?.id, startIso, endIso, filters.teacher_id, filters.location_id, filters.room_id]
+    () => ['calendar-lessons', currentOrg?.id, startIso, endIso, filters.teacher_id, filters.location_id, filters.room_id, filters.hide_cancelled],
+    [currentOrg?.id, startIso, endIso, filters.teacher_id, filters.location_id, filters.room_id, filters.hide_cancelled]
   );
 
   const { data, isLoading, refetch } = useQuery({

@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useCallback } from 'react';
 import { format, addWeeks, subWeeks } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -59,10 +59,7 @@ export function CalendarMobileLayout({
   teacherColourMap,
   actions,
 }: CalendarMobileLayoutProps) {
-  const visibleLessons = useMemo(
-    () => filters.hide_cancelled ? lessons.filter(l => l.status !== 'cancelled') : lessons,
-    [lessons, filters.hide_cancelled]
-  );
+  // hide_cancelled is now applied server-side in useCalendarData
 
   const navigatePrev = useCallback(() => setCurrentDate(subWeeks(currentDate, 1)), [currentDate, setCurrentDate]);
   const navigateNext = useCallback(() => setCurrentDate(addWeeks(currentDate, 1)), [currentDate, setCurrentDate]);
@@ -102,7 +99,7 @@ export function CalendarMobileLayout({
 
       <SectionErrorBoundary name="Calendar">
         {isLoading ? <CalendarSkeleton /> : (
-          <MobileDayView currentDate={currentDate} lessons={visibleLessons} teacherColourMap={teacherColourMap} onLessonClick={actions.handleLessonClick} savingLessonIds={actions.savingLessonIds} />
+          <MobileDayView currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap} onLessonClick={actions.handleLessonClick} savingLessonIds={actions.savingLessonIds} />
         )}
       </SectionErrorBoundary>
 
