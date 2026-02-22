@@ -416,29 +416,14 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
             if (batchError) throw batchError;
 
             if (timeOffsetMs !== 0 || originalDuration !== newDuration) {
-              const { data: futureTimes } = await supabase
-                .from('lessons')
-                .select('id, start_at')
-                .in('id', futureIds);
-
-              if (futureTimes && futureTimes.length > 0) {
-                const CHUNK_SIZE = 50;
-                for (let i = 0; i < futureTimes.length; i += CHUNK_SIZE) {
-                  const chunk = futureTimes.slice(i, i + CHUNK_SIZE);
-                  setSavingProgress(`Updating ${Math.min(i + CHUNK_SIZE, futureTimes.length)} of ${futureTimes.length} lessons…`);
-                  await Promise.all(chunk.map(fl => {
-                    const shiftedStart = new Date(parseISO(fl.start_at).getTime() + timeOffsetMs);
-                    const shiftedEnd = new Date(shiftedStart.getTime() + newDuration);
-                    return supabase
-                      .from('lessons')
-                      .update({
-                        start_at: shiftedStart.toISOString(),
-                        end_at: shiftedEnd.toISOString(),
-                      })
-                      .eq('id', fl.id);
-                  }));
-                }
-              }
+              setSavingProgress('Shifting future lesson times…');
+              await supabase.rpc('shift_recurring_lesson_times', {
+                p_recurrence_id: lesson.recurrence_id!,
+                p_after_start_at: lesson.start_at,
+                p_offset_ms: timeOffsetMs,
+                p_new_duration_ms: newDuration,
+                p_exclude_lesson_id: lesson.id,
+              });
             }
           }
 
