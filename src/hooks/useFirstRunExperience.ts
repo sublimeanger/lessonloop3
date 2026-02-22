@@ -1,9 +1,10 @@
 import { useState, useCallback, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg, OrgType } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useOnboardingProgress } from '@/hooks/useOnboardingProgress';
 
 type FirstRunPath = 'solo' | 'studio' | 'academy' | 'agency';
 
@@ -181,26 +182,17 @@ export function useFirstRunExperience(): FirstRunState & {
   const orgId = currentOrg?.id;
   const firstRunCompleted = profile?.first_run_completed;
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['first-run-experience', orgId, firstRunCompleted],
-    queryFn: async () => {
-      const [studentsResult, lessonsResult, locationsResult, teachersResult] = await Promise.all([
-        supabase.from('students').select('id', { count: 'exact', head: true }).eq('org_id', orgId!).eq('status', 'active'),
-        supabase.from('lessons').select('id', { count: 'exact', head: true }).eq('org_id', orgId!),
-        supabase.from('locations').select('id', { count: 'exact', head: true }).eq('org_id', orgId!),
-        supabase.from('org_memberships').select('id', { count: 'exact', head: true }).eq('org_id', orgId!).eq('status', 'active').in('role', ['teacher', 'admin']),
-      ]);
+  const { data: onboardingStatus, isLoading } = useOnboardingProgress();
 
-      return {
-        hasStudents: (studentsResult.count || 0) > 0,
-        hasLessons: (lessonsResult.count || 0) > 0,
-        hasLocations: (locationsResult.count || 0) > 0,
-        hasTeachers: (teachersResult.count || 0) > 1,
-      };
-    },
-    enabled: !!orgId && !!user && !firstRunCompleted,
-    staleTime: 60_000,
-  });
+  const data = useMemo(() => {
+    if (!onboardingStatus) return undefined;
+    return {
+      hasStudents: onboardingStatus.hasStudents,
+      hasLessons: onboardingStatus.hasLessons,
+      hasLocations: onboardingStatus.hasLocations,
+      hasTeachers: onboardingStatus.hasTeachers,
+    };
+  }, [onboardingStatus]);
 
   const state = useMemo<FirstRunState>(() => {
     if (!currentOrg || !user || firstRunCompleted || !data) {
@@ -245,7 +237,7 @@ export function useFirstRunExperience(): FirstRunState & {
         .update({ first_run_completed: true, first_run_path: state.path })
         .eq('id', user.id);
 
-      queryClient.invalidateQueries({ queryKey: ['first-run-experience'] });
+      queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] });
     } catch (error) {
       logger.error('Error completing first-run:', error);
     }
