@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOrg } from '@/contexts/OrgContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,7 +44,11 @@ export function ResourceCard({ resource, onShare }: ResourceCardProps) {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { currentRole } = useOrg();
   const deleteMutation = useDeleteResource();
+
+  const canDelete = currentRole === 'owner' || currentRole === 'admin' || user?.id === resource.uploaded_by;
 
   const FileIcon = getFileIcon(resource.file_type);
   const shareCount = resource.resource_shares?.length || 0;
@@ -129,13 +135,15 @@ export function ResourceCard({ resource, onShare }: ResourceCardProps) {
                   <Share2 className="mr-2 h-4 w-4" />
                   Share with students
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
+                {canDelete && (
+                  <DropdownMenuItem
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
