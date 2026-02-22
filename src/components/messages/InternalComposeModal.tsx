@@ -129,9 +129,11 @@ export function InternalComposeModal({
               id="body"
               value={body}
               onChange={(e) => setBody(e.target.value)}
+              onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleSend(); } }}
               placeholder="Write your message..."
               rows={6}
             />
+            <p className="text-xs text-muted-foreground mt-1">Press Ctrl+Enter to send</p>
           </div>
         </div>
 
