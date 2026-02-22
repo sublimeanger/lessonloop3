@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +31,33 @@ export interface StaffMember {
 export function useInternalMessages(view: 'inbox' | 'sent' = 'inbox') {
   const { currentOrg } = useOrg();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Realtime subscription for instant internal message updates
+  useEffect(() => {
+    if (!currentOrg?.id) return;
+
+    const channel = supabase
+      .channel(`internal-messages-realtime-${currentOrg.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'internal_messages',
+          filter: `org_id=eq.${currentOrg.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['internal-messages'] });
+          queryClient.invalidateQueries({ queryKey: ['internal-messages-unread'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentOrg?.id, queryClient]);
 
   return useQuery({
     queryKey: ['internal-messages', currentOrg?.id, view, user?.id],

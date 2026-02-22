@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +11,33 @@ import { useGuardianId } from '@/hooks/useParentPortal';
 export function useUnreadMessagesCount() {
   const { currentOrg } = useOrg();
   const { guardianId } = useGuardianId();
+  const queryClient = useQueryClient();
+
+  // Realtime subscription for instant unread count updates
+  useEffect(() => {
+    if (!guardianId || !currentOrg?.id) return;
+
+    const channel = supabase
+      .channel(`unread-messages-realtime-${guardianId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'message_log',
+          filter: `recipient_id=eq.${guardianId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
+          queryClient.invalidateQueries({ queryKey: ['parent-messages'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [guardianId, currentOrg?.id, queryClient]);
 
   return useQuery({
     queryKey: ['unread-messages-count', guardianId, currentOrg?.id],
