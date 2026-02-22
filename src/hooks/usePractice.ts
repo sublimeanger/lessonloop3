@@ -352,18 +352,19 @@ export function useCreateAssignment() {
 export function useLogPractice() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { currentOrg } = useOrg();
 
   return useMutation({
     mutationFn: async (data: {
-      org_id: string;
       student_id: string;
       assignment_id?: string;
       duration_minutes: number;
       practice_date?: string;
       notes?: string;
     }) => {
+      if (!currentOrg?.id) throw new Error('No organisation context');
       const { error } = await supabase.from('practice_logs').insert({
-        org_id: data.org_id,
+        org_id: currentOrg.id,
         student_id: data.student_id,
         assignment_id: data.assignment_id || null,
         logged_by_user_id: user!.id,
