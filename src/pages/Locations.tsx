@@ -136,7 +136,7 @@ export default function Locations() {
     
     const { data: locData, error } = await supabase
       .from('locations')
-      .select('*')
+      .select('*, rooms(*)')
       .eq('org_id', currentOrg.id)
       .order('name');
     
@@ -146,19 +146,10 @@ export default function Locations() {
       return;
     }
     
-    const locationsWithRooms: Location[] = [];
-    for (const loc of locData || []) {
-      const { data: rooms } = await supabase
-        .from('rooms')
-        .select('*')
-        .eq('location_id', loc.id)
-        .order('name');
-      
-      locationsWithRooms.push({
-        ...loc,
-        rooms: (rooms || []) as Room[],
-      });
-    }
+    const locationsWithRooms: Location[] = (locData || []).map(loc => ({
+      ...loc,
+      rooms: ((loc as any).rooms || []) as Room[],
+    }));
     
     setLocations(locationsWithRooms);
     setIsLoading(false);
