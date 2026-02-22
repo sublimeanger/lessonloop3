@@ -14,16 +14,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Upload, File, X, Loader2 } from 'lucide-react';
 import { useUploadResource } from '@/hooks/useResources';
 import { MAX_FILE_SIZE, ALLOWED_TYPES } from '@/lib/resource-validation';
+import { formatFileSize } from '@/lib/fileUtils';
 
 interface UploadResourceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalProps) {
