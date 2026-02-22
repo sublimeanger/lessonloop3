@@ -200,7 +200,8 @@ export default function OutstandingReport() {
                   <CollapsibleContent>
                     {bucket.invoices.length > 0 && (
                       <CardContent className="pt-0">
-                        <Table>
+                        <div className="overflow-x-auto">
+                        <Table className="min-w-[600px]">
                           <TableHeader>
                             <TableRow>
                               <TableHead>Invoice</TableHead>
@@ -251,6 +252,7 @@ export default function OutstandingReport() {
                             ))}
                           </TableBody>
                         </Table>
+                        </div>
                         <ReportPagination
                           totalItems={bucket.invoices.length}
                           currentPage={bucketPages[bucket.label] || 1}

@@ -209,7 +209,8 @@ export default function LessonsDeliveredReport() {
                   <CardTitle>Teacher Breakdown</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Table>
+                  <div className="overflow-x-auto">
+                  <Table className="min-w-[600px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Teacher</TableHead>
@@ -229,6 +230,7 @@ export default function LessonsDeliveredReport() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                   <ReportPagination totalItems={data.byTeacher.length} currentPage={teacherPage} onPageChange={setTeacherPage} />
                 </CardContent>
               </Card>
@@ -278,7 +280,8 @@ export default function LessonsDeliveredReport() {
                   <CardTitle>Location Breakdown</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Table>
+                  <div className="overflow-x-auto">
+                  <Table className="min-w-[600px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Location</TableHead>
@@ -296,6 +299,7 @@ export default function LessonsDeliveredReport() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                   <ReportPagination totalItems={data.byLocation.length} currentPage={locationPage} onPageChange={setLocationPage} />
                 </CardContent>
               </Card>

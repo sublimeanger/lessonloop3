@@ -467,7 +467,8 @@ function UtilisationRoomTable({ rooms }: { rooms: RoomUtilisationData[] }) {
         <CardTitle>Room Details</CardTitle>
       </CardHeader>
       <CardContent>
-        <Table>
+        <div className="overflow-x-auto">
+        <Table className="min-w-[600px]">
           <TableHeader>
             <TableRow>
               <SortableTableHead label="Room" field="roomName" currentField={sort.field} currentDir={sort.dir} onToggle={toggle} />
@@ -499,6 +500,7 @@ function UtilisationRoomTable({ rooms }: { rooms: RoomUtilisationData[] }) {
             ))}
           </TableBody>
         </Table>
+        </div>
         <ReportPagination totalItems={sorted.length} currentPage={page} onPageChange={setPage} />
       </CardContent>
     </Card>

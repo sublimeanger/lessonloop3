@@ -203,7 +203,8 @@ export default function RevenueReport() {
               <CardTitle>Monthly Breakdown</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
+              <div className="overflow-x-auto">
+              <Table className="min-w-[600px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Month</TableHead>
@@ -228,6 +229,7 @@ export default function RevenueReport() {
                   </TableRow>
                 </TableBody>
               </Table>
+              </div>
               <ReportPagination totalItems={data.months.length} currentPage={page} onPageChange={setPage} />
             </CardContent>
           </Card>

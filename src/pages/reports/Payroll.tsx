@@ -116,7 +116,7 @@ export default function PayrollReport() {
         <EmptyState
           icon={Banknote}
           title="No completed lessons"
-          description="There are no completed lessons in the selected date range."
+          description="No lessons were completed in this period. Ensure lessons have been marked as completed in the calendar, or try a different date range."
         >
           <Button asChild>
             <Link to="/calendar">Schedule lessons →</Link>
@@ -284,7 +284,8 @@ function PayrollTeacherList({
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="border-t px-4 pb-4 pt-2">
-                <Table>
+                <div className="overflow-x-auto">
+                <Table className="min-w-[600px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Lesson</TableHead>
@@ -315,6 +316,7 @@ function PayrollTeacherList({
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               </div>
             </CollapsibleContent>
           </div>
