@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
 Deno.serve(async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
@@ -36,6 +37,12 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Invalid or expired session" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Per-user rate limiting
+    const rlResult = await checkRateLimit(user.id, "invite-accept");
+    if (!rlResult.allowed) {
+      return rateLimitResponse(corsHeaders, rlResult);
     }
 
     const supabaseAdmin = createClient(
