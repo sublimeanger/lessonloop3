@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -44,11 +44,14 @@ const STEPS = [
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, session, signOut, refreshProfile, profile } = useAuth();
   const { toast } = useToast();
   
   const saved = useRef(loadOnboardingState());
   const [step, setStep] = useState<Step>(() => {
+    const urlStep = searchParams.get('step');
+    if (urlStep === 'plan') return 'plan';
     const s = saved.current?.step;
     return s === 'loading' || s === 'error' ? 'plan' : s || 'profile';
   });
@@ -168,6 +171,17 @@ export default function Onboarding() {
     }
   }, [fullName, orgType]);
 
+  // Sync browser back/forward with wizard step
+  useEffect(() => {
+    const urlStep = searchParams.get('step');
+    if (step === 'loading' || step === 'success' || step === 'error') return;
+    if (urlStep === 'plan' && step !== 'plan') {
+      setStep('plan');
+    } else if (urlStep !== 'plan' && step === 'plan') {
+      setStep('profile');
+    }
+  }, [searchParams]);
+
   const handleLogout = async () => {
     await signOut();
     navigate('/login');
@@ -189,6 +203,7 @@ export default function Onboarding() {
         return;
       }
       saveOnboardingState({ fullName, orgName, orgType, selectedPlan, step: 'plan' });
+      setSearchParams({ step: 'plan' }, { replace: false });
       setStep('plan');
     } else if (step === 'plan') {
       handleSubmit();
@@ -198,6 +213,7 @@ export default function Onboarding() {
   const handleBack = () => {
     if (step === 'plan') {
       saveOnboardingState({ fullName, orgName, orgType, selectedPlan, step: 'profile' });
+      setSearchParams({}, { replace: false });
       setStep('profile');
     }
   };
