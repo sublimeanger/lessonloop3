@@ -61,7 +61,7 @@ async function sendSingleEmail(
     }
 
     const errorText = await resendResponse.text();
-    console.error(`Resend API error for ${guardian.email}:`, errorText);
+    console.error("Resend API error for guardian:", guardian.id, errorText);
     return {
       guardianId: guardian.id,
       email: guardian.email,
@@ -69,7 +69,7 @@ async function sendSingleEmail(
       error: `HTTP ${resendResponse.status}: ${errorText}`,
     };
   } catch (err: any) {
-    console.error(`Error sending to ${guardian.email}:`, err);
+    console.error("Error sending to guardian:", guardian.id);
     return {
       guardianId: guardian.id,
       email: guardian.email,

@@ -149,7 +149,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         if (resendResponse.ok) {
           const emailResult = await resendResponse.json();
-          console.log("Internal notification email sent:", emailResult);
+          console.log("Internal notification sent, id:", emailResult?.id);
           emailSent = true;
         } else {
           const errorResult = await resendResponse.text();
