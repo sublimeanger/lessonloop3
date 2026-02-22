@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('[profile-ensure] User verified:', user.id);
+    console.debug('[profile-ensure] User verified');
 
     // Per-user rate limiting
     const rlResult = await checkRateLimit(user.id, "profile-ensure");
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
     }
 
     // Profile doesn't exist - create it
-    console.log('[profile-ensure] Creating profile for user:', user.id);
+    console.debug('[profile-ensure] Creating profile');
 
     const fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
 
