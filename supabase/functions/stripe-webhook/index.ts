@@ -468,12 +468,16 @@ async function handleSubscriptionDeleted(supabase: any, subscription: Stripe.Sub
     return;
   }
 
-  // Mark as cancelled — keep current plan for records, do NOT grant new trial
+  // Mark as cancelled and restrict DB-level limits so triggers block new inserts
+  const { CANCELLED_LIMITS } = await import("../_shared/plan-config.ts");
   const { error } = await supabase
     .from("organisations")
     .update({
       subscription_status: "cancelled",
       stripe_subscription_id: null,
+      // Downgrade limits to prevent continued usage after cancellation
+      max_students: CANCELLED_LIMITS.max_students,
+      max_teachers: CANCELLED_LIMITS.max_teachers,
       // Keep subscription_plan as-is for historical records
       // Do NOT set trial_ends_at — that would grant free access
     })

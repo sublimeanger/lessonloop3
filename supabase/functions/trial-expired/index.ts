@@ -38,9 +38,15 @@ serve(async (req) => {
     const results = [];
     for (const org of orgs || []) {
       // Update subscription status to expired
+      const { CANCELLED_LIMITS } = await import("../_shared/plan-config.ts");
       const { error: updateError } = await supabase
         .from("organisations")
-        .update({ subscription_status: "cancelled" }) // Using 'cancelled' as per the enum
+        .update({
+          subscription_status: "cancelled",
+          // Downgrade limits to prevent continued usage after trial expiry
+          max_students: CANCELLED_LIMITS.max_students,
+          max_teachers: CANCELLED_LIMITS.max_teachers,
+        })
         .eq("id", org.id);
 
       if (updateError) {
