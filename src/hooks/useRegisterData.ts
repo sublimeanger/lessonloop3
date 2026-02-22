@@ -383,7 +383,10 @@ export function useSaveBatchAttendance(dateKey: string) {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (attendance: Map<string, Map<string, string>>) => {
+    mutationFn: async ({ attendance, lessons }: {
+      attendance: Map<string, Map<string, string>>;
+      lessons: BatchLessonRow[];
+    }) => {
       if (!currentOrg || !user) throw new Error('No organisation or user');
 
       const upserts: {
@@ -415,6 +418,25 @@ export function useSaveBatchAttendance(dateKey: string) {
         .upsert(upserts as any, { onConflict: 'lesson_id,student_id' });
 
       if (error) throw error;
+
+      // Auto-complete lessons where all participants now have attendance
+      const fullyAttendedIds = lessons
+        .filter(l => l.status === 'scheduled')
+        .filter(l => {
+          const lessonMap = attendance.get(l.id);
+          if (!lessonMap) return false;
+          return l.participants.every(p => lessonMap.has(p.student_id));
+        })
+        .map(l => l.id);
+
+      if (fullyAttendedIds.length > 0) {
+        await supabase
+          .from('lessons')
+          .update({ status: 'completed' })
+          .in('id', fullyAttendedIds)
+          .eq('status', 'scheduled');
+      }
+
       return { count: upserts.length };
     },
     onSuccess: (data) => {
