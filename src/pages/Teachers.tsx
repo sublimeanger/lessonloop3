@@ -701,6 +701,7 @@ export default function Teachers() {
         open={!!quickViewTeacher}
         onOpenChange={(open) => { if (!open) setQuickViewTeacher(null); }}
         onEdit={openEditDialog}
+        onRemove={(t) => { setQuickViewTeacher(null); initiateRemoval(t); }}
         colour={quickViewTeacher ? TEACHER_COLOURS[getTeacherColourIndex(activeTeachers, quickViewTeacher.id)] : TEACHER_COLOURS[0]}
       />
       {teachers.length >= 100 && (
@@ -771,7 +772,7 @@ function TeacherCard({ teacher, studentCount, isAdmin, onRemove, onEdit, onReact
         </div>
       </div>
       {isAdmin && (
-        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           {isInactiveView ? (
             <Button
               variant="outline"
