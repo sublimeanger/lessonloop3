@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Sparkles, CreditCard, Clock, Check, ArrowRight, 
   Users, GraduationCap, Loader2, ExternalLink, AlertTriangle,
-  Link2, CheckCircle2, RefreshCw, Building2, Info, Eye, Save
+  Link2, CheckCircle2, RefreshCw, Building2, Info, Eye, EyeOff, Save
 } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useSubscriptionCheckout, BillingInterval } from '@/hooks/useSubscriptionCheckout';
@@ -578,6 +578,7 @@ export function BillingTab() {
 
 function PaymentPreferencesCard({ orgId, isConnected }: { orgId?: string; isConnected: boolean }) {
   const [onlinePayments, setOnlinePayments] = useState(true);
+  const [showAccountNumber, setShowAccountNumber] = useState(false);
   const [cardEnabled, setCardEnabled] = useState(true);
   const [bacsEnabled, setBacsEnabled] = useState(false);
   const [bankAccountName, setBankAccountName] = useState('');
@@ -708,7 +709,12 @@ function PaymentPreferencesCard({ orgId, isConnected }: { orgId?: string; isConn
             </div>
             <div className="space-y-2">
               <Label htmlFor="account-number" className="text-xs">Account Number</Label>
-              <Input id="account-number" placeholder="e.g. 12345678" value={bankAccountNumber} onChange={(e) => setBankAccountNumber(e.target.value)} />
+              <div className="flex gap-2">
+                <Input id="account-number" type={showAccountNumber ? "text" : "password"} placeholder="e.g. 12345678" value={bankAccountNumber} onChange={(e) => setBankAccountNumber(e.target.value)} />
+                <Button type="button" variant="ghost" size="icon" className="shrink-0" onClick={() => setShowAccountNumber(!showAccountNumber)} title={showAccountNumber ? "Hide" : "Show"}>
+                  {showAccountNumber ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="ref-prefix" className="text-xs">Reference Prefix</Label>
