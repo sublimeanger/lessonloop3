@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2, Loader2, Gift, Building2 } from 'lucide-react';
+import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2, Loader2, Gift, Building2, SplitSquareHorizontal } from 'lucide-react';
+import { PaymentPlanSetup } from '@/components/invoices/PaymentPlanSetup';
 import { useOrg } from '@/contexts/OrgContext';
 import { useInvoice, useUpdateInvoiceStatus } from '@/hooks/useInvoices';
 import { useStripePayment } from '@/hooks/useStripePayment';
@@ -76,6 +77,7 @@ export default function InvoiceDetail() {
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
   const [voidConfirmOpen, setVoidConfirmOpen] = useState(false);
+  const [paymentPlanOpen, setPaymentPlanOpen] = useState(false);
   const { data: orgPaymentPrefs } = useOrgPaymentPreferences();
 
   const onlinePaymentsEnabled = orgPaymentPrefs?.online_payments_enabled !== false;
@@ -439,6 +441,14 @@ export default function InvoiceDetail() {
                 </Button>
                 <Button
                   variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => setPaymentPlanOpen(true)}
+                >
+                  <SplitSquareHorizontal className="h-4 w-4" />
+                  {invoice.payment_plan_enabled ? 'View Payment Plan' : 'Set Up Payment Plan'}
+                </Button>
+                <Button
+                  variant="outline"
                   className="w-full gap-2 text-destructive hover:text-destructive"
                   onClick={() => setVoidConfirmOpen(true)}
                 >
@@ -467,6 +477,14 @@ export default function InvoiceDetail() {
         open={reminderModalOpen}
         onOpenChange={setReminderModalOpen}
         isReminder
+      />
+
+
+      {/* Payment Plan Setup */}
+      <PaymentPlanSetup
+        invoice={invoice}
+        open={paymentPlanOpen}
+        onOpenChange={setPaymentPlanOpen}
       />
 
       {/* Void confirmation dialog */}
