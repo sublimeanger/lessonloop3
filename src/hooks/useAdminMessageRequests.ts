@@ -208,32 +208,20 @@ export function useUpdateMessageRequest() {
 
         try {
           const { data: sessionData } = await supabase.auth.getSession();
-          const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-message`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${sessionData.session?.access_token}`,
-              },
-              body: JSON.stringify({
-                org_id: currentOrg.id,
-                sender_user_id: sessionData.session?.user.id,
-                recipient_type: 'guardian',
-                recipient_id: request.guardian_id,
-                recipient_email: guardian.email,
-                recipient_name: guardian.full_name,
-                subject: `Update: ${request.subject}`,
-                body: fullBody,
-                related_id: requestId,
-                message_type: 'request_update',
-              }),
-            }
-          );
-
-          if (!response.ok) {
-            logger.error('Failed to send notification email:', await response.text());
-          }
+          await supabase.functions.invoke('send-message', {
+            body: {
+              org_id: currentOrg.id,
+              sender_user_id: sessionData.session?.user.id,
+              recipient_type: 'guardian',
+              recipient_id: request.guardian_id,
+              recipient_email: guardian.email,
+              recipient_name: guardian.full_name,
+              subject: `Update: ${request.subject}`,
+              body: fullBody,
+              related_id: requestId,
+              message_type: 'request_update',
+            },
+          });
         } catch (emailError) {
           logger.error('Error sending notification email:', emailError);
         }

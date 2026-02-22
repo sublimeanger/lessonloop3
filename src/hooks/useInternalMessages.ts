@@ -199,25 +199,16 @@ export function useSendInternalMessage() {
 
       // Send email notification (best-effort, don't fail if this errors)
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-internal-message`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${sessionData.session?.access_token}`,
-            },
-            body: JSON.stringify({
-              org_id: currentOrg.id,
-              recipient_user_id: recipientUserId,
-              sender_name: senderProfile?.full_name || 'A team member',
-              sender_role: currentRole,
-              subject,
-              body,
-            }),
-          }
-        );
+        await supabase.functions.invoke('notify-internal-message', {
+          body: {
+            org_id: currentOrg.id,
+            recipient_user_id: recipientUserId,
+            sender_name: senderProfile?.full_name || 'A team member',
+            sender_role: currentRole,
+            subject,
+            body,
+          },
+        });
       } catch (emailError) {
         logger.error('Failed to send email notification:', emailError);
         // Don't throw - the message was saved successfully
