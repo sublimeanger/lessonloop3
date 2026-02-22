@@ -27,6 +27,7 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadMutation = useUploadResource();
@@ -71,14 +72,25 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
     e.preventDefault();
     if (!file || !title.trim()) return;
 
-    await uploadMutation.mutateAsync({
-      file,
-      title: title.trim(),
-      description: description.trim() || undefined,
-    });
+    setUploadProgress(0);
+    // Simulate progress based on file size (rough estimate: ~2MB/s upload)
+    const estimatedMs = Math.max(1000, (file.size / (2 * 1024 * 1024)) * 1000);
+    const interval = setInterval(() => {
+      setUploadProgress(prev => Math.min(prev + 3, 90));
+    }, estimatedMs / 30);
 
-    onOpenChange(false);
-    resetForm();
+    try {
+      await uploadMutation.mutateAsync({
+        file,
+        title: title.trim(),
+        description: description.trim() || undefined,
+      });
+      setUploadProgress(100);
+      onOpenChange(false);
+      resetForm();
+    } finally {
+      clearInterval(interval);
+    }
   };
 
   const resetForm = () => {
@@ -86,6 +98,7 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
     setDescription('');
     setFile(null);
     setError(null);
+    setUploadProgress(0);
   };
 
   const handleClose = (isOpen: boolean) => {
@@ -196,11 +209,26 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
             />
           </div>
 
+          {uploadMutation.isPending && (
+            <div className="space-y-1">
+              <div className="w-full bg-muted rounded-full h-2">
+                <div
+                  className="bg-primary h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground text-right">
+                Uploading{file ? ` ${formatFileSize(file.size)}` : ''}… {uploadProgress}%
+              </p>
+            </div>
+          )}
+
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
               onClick={() => handleClose(false)}
+              disabled={uploadMutation.isPending}
             >
               Cancel
             </Button>
