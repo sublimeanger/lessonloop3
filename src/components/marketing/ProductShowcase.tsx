@@ -1,43 +1,13 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, Receipt, Users, Sparkles, ChevronRight } from "lucide-react";
+import { Calendar, Receipt, Users, Sparkles, ChevronRight, RefreshCw, Play, X, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { calendarWeek, invoicesList, parentPortal, loopassistChat } from "@/assets/marketing";
+import { calendarWeek, invoicesList, parentPortal, loopassistChat, studentsList } from "@/assets/marketing";
 
 const tabs = [
-  { 
-    id: "calendar", 
-    label: "Calendar", 
-    icon: Calendar,
-    description: "Drag-and-drop scheduling with conflict detection",
-    features: ["Week & day views", "Recurring lessons", "Room booking", "Closure dates"],
-    screenshot: calendarWeek,
-    alt: "Weekly calendar view with colour-coded lessons",
-    url: "app.lessonloop.net/calendar",
-  },
-  { 
-    id: "invoices", 
-    label: "Invoicing", 
-    icon: Receipt,
-    description: "Automated billing with online payments",
-    features: ["Bulk generation", "Auto reminders", "Stripe payments", "VAT support"],
-    screenshot: invoicesList,
-    alt: "Invoice management with status tracking and bulk actions",
-    url: "app.lessonloop.net/invoices",
-  },
-  { 
-    id: "students", 
-    label: "Students", 
-    icon: Users,
-    description: "Complete student and family management",
-    features: ["Student profiles", "Guardian linking", "Lesson history", "Practice tracking"],
-    screenshot: parentPortal,
-    alt: "Student list with search, filters, and active badges",
-    url: "app.lessonloop.net/students",
-  },
-  { 
-    id: "ai", 
-    label: "AI Assistant", 
+  {
+    id: "ai",
+    label: "AI Assistant",
     icon: Sparkles,
     description: "Your intelligent teaching assistant",
     features: ["Natural queries", "Smart actions", "Draft messages", "Insights"],
@@ -45,10 +15,124 @@ const tabs = [
     alt: "LoopAssist AI assistant interface",
     url: "app.lessonloop.net/loopassist",
   },
+  {
+    id: "calendar",
+    label: "Calendar",
+    icon: Calendar,
+    description: "Drag-and-drop scheduling with conflict detection",
+    features: ["Week & day views", "Recurring lessons", "Room booking", "Closure dates"],
+    screenshot: calendarWeek,
+    alt: "Weekly calendar view with colour-coded lessons",
+    url: "app.lessonloop.net/calendar",
+  },
+  {
+    id: "invoices",
+    label: "Invoicing",
+    icon: Receipt,
+    description: "Automated billing with online payments",
+    features: ["Bulk generation", "Auto reminders", "Stripe payments", "VAT support"],
+    screenshot: invoicesList,
+    alt: "Invoice management with status tracking and bulk actions",
+    url: "app.lessonloop.net/invoices",
+  },
+  {
+    id: "students",
+    label: "Students",
+    icon: Users,
+    description: "Complete student and family management",
+    features: ["Student profiles", "Guardian linking", "Lesson history", "Practice tracking"],
+    screenshot: parentPortal,
+    alt: "Student list with search, filters, and active badges",
+    url: "app.lessonloop.net/students",
+  },
+  {
+    id: "makeups",
+    label: "Make-Ups",
+    icon: RefreshCw,
+    description: "Automatic make-up lesson matching",
+    features: ["Automatic slot detection", "Parent notification", "One-click accept", "Make-up credits"],
+    screenshot: studentsList,
+    alt: "Make-up lesson matching and credit management",
+    url: "app.lessonloop.net/make-ups",
+  },
 ];
 
+function VideoModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  if (!open) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          onClick={(e) => e.stopPropagation()}
+          className="bg-ink border border-white/10 rounded-2xl p-8 max-w-md w-full text-center relative"
+        >
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          <div className="w-16 h-16 rounded-2xl bg-teal/20 flex items-center justify-center mx-auto mb-5">
+            <Play className="w-8 h-8 text-teal-light ml-1" />
+          </div>
+
+          <h3 className="text-xl font-bold text-white mb-2">Video coming soon</h3>
+          <p className="text-sm text-white/50 mb-6">
+            We're recording product walkthroughs. Get notified when they're ready.
+          </p>
+
+          {submitted ? (
+            <p className="text-sm text-teal-light font-medium">Thanks! We'll let you know. ✓</p>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (email) setSubmitted(true);
+              }}
+              className="flex gap-2"
+            >
+              <div className="relative flex-1">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                <input
+                  type="email"
+                  required
+                  placeholder="you@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-teal/50"
+                />
+              </div>
+              <button
+                type="submit"
+                className="px-5 py-2.5 rounded-xl bg-teal text-white text-sm font-semibold hover:bg-teal-dark transition-colors shrink-0"
+              >
+                Notify me
+              </button>
+            </form>
+          )}
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 export function ProductShowcase() {
-  const [activeTab, setActiveTab] = useState("calendar");
+  const [activeTab, setActiveTab] = useState("ai");
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
   const activeTabData = tabs.find((t) => t.id === activeTab)!;
 
   return (
@@ -159,7 +243,7 @@ export function ProductShowcase() {
                   </div>
                 </div>
 
-                {/* Real Screenshot */}
+                {/* Screenshot with play overlay */}
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={activeTab}
@@ -167,6 +251,8 @@ export function ProductShowcase() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
+                    className="relative group cursor-pointer"
+                    onClick={() => setVideoModalOpen(true)}
                   >
                     <img
                       src={activeTabData.screenshot}
@@ -174,6 +260,12 @@ export function ProductShowcase() {
                       className="w-full"
                       loading="lazy"
                     />
+                    {/* Play button overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors duration-300">
+                      <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 border border-white/20">
+                        <Play className="w-7 h-7 text-white ml-1" />
+                      </div>
+                    </div>
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -181,6 +273,8 @@ export function ProductShowcase() {
           </div>
         </div>
       </div>
+
+      <VideoModal open={videoModalOpen} onClose={() => setVideoModalOpen(false)} />
     </section>
   );
 }
