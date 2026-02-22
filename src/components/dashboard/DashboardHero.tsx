@@ -162,27 +162,30 @@ function getTimeTheme() {
   if (hour < 12) {
     return {
       greeting: 'Good morning',
-      bg: 'from-amber-50 via-orange-50/50 to-yellow-50/30',
-      border: 'border-amber-200/40',
-      accentText: 'text-amber-700',
+      bg: 'bg-gradient-morning',
+      border: 'border-transparent',
+      accentText: 'text-amber-200',
       wave: '👋',
+      dark: true,
     };
   }
   if (hour < 18) {
     return {
       greeting: 'Good afternoon',
-      bg: 'from-sky-50 via-blue-50/40 to-cyan-50/30',
-      border: 'border-sky-200/40',
-      accentText: 'text-sky-700',
+      bg: 'bg-gradient-afternoon',
+      border: 'border-transparent',
+      accentText: 'text-sky-200',
       wave: '👋',
+      dark: true,
     };
   }
   return {
     greeting: 'Good evening',
-    bg: 'from-indigo-50 via-violet-50/40 to-slate-50/30',
-    border: 'border-indigo-200/40',
-    accentText: 'text-indigo-700',
+    bg: 'bg-gradient-evening',
+    border: 'border-transparent',
+    accentText: 'text-indigo-200',
     wave: '👋',
+    dark: true,
   };
 }
 
@@ -206,17 +209,17 @@ function StatPill({
       <motion.div
         className={cn(
           'group flex items-center gap-1.5 sm:gap-2 rounded-full border px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm transition-all',
-          'hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5',
+          'hover:shadow-md hover:-translate-y-0.5',
           highlight 
-            ? 'bg-destructive/5 border-destructive/20 text-destructive' 
-            : 'bg-background/80 border-border/60 text-foreground'
+            ? 'bg-white/20 border-white/30 text-white' 
+            : 'bg-white/15 border-white/20 text-white/90'
         )}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
         <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-60 shrink-0" />
         <span className="font-semibold">{value}</span>
-        <span className="text-muted-foreground text-[10px] sm:text-xs hidden xs:inline">{label}</span>
+        <span className="text-white/60 text-[10px] sm:text-xs hidden xs:inline">{label}</span>
       </motion.div>
     </Link>
   );
@@ -290,11 +293,11 @@ export function DashboardHero({
   return (
     <motion.div
       className={cn(
-        'relative overflow-hidden rounded-2xl border',
+        'relative overflow-hidden rounded-2xl',
         'p-4 sm:p-6 md:p-8',
-        'bg-gradient-to-br',
         theme.bg,
         theme.border,
+        theme.dark && 'text-white',
         className
       )}
       initial={{ opacity: 0, y: 12 }}
@@ -307,7 +310,7 @@ export function DashboardHero({
         <div className="flex-1 space-y-2 sm:space-y-3 min-w-0">
           {/* Date badge */}
           <motion.div
-            className="inline-flex items-center gap-1.5 rounded-full bg-background/60 border border-border/40 px-2.5 py-0.5 sm:px-3 sm:py-1 text-[11px] sm:text-xs font-medium text-muted-foreground backdrop-blur-sm"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/20 px-2.5 py-0.5 sm:px-3 sm:py-1 text-[11px] sm:text-xs font-medium text-white/80 backdrop-blur-sm"
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
@@ -325,7 +328,7 @@ export function DashboardHero({
             transition={{ delay: 0.1 }}
           >
             {theme.greeting},{' '}
-            <span className="bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+             <span className="text-white">
               {firstName}
             </span>
             {' '}
@@ -341,7 +344,7 @@ export function DashboardHero({
           {/* Sub-message for new users */}
           {!hasStudents && (
             <motion.p
-              className="text-xs sm:text-sm text-muted-foreground"
+              className="text-xs sm:text-sm text-white/70"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
@@ -367,7 +370,7 @@ export function DashboardHero({
           {/* All clear message */}
           {hasStudents && pills.length === 0 && (
             <motion.p
-              className="text-xs sm:text-sm text-muted-foreground"
+              className="text-xs sm:text-sm text-white/70"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
@@ -389,8 +392,8 @@ export function DashboardHero({
       </div>
 
       {/* Decorative gradient orbs */}
-      <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-primary/5 blur-3xl" />
-      <div className="pointer-events-none absolute -left-12 -bottom-12 h-36 w-36 rounded-full bg-primary/3 blur-2xl" />
+      <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/5 blur-3xl" />
+      <div className="pointer-events-none absolute -left-12 -bottom-12 h-36 w-36 rounded-full bg-white/3 blur-2xl" />
     </motion.div>
   );
 }
