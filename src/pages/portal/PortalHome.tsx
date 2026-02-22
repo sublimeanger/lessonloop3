@@ -2,7 +2,9 @@ import { PortalLayout } from '@/components/layout/PortalLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { useParentSummary, useChildrenWithDetails } from '@/hooks/useParentPortal';
+import { useParentWaitlistEntries } from '@/hooks/useMakeUpWaitlist';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Calendar,
   Clock,
@@ -19,6 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RequestModal } from '@/components/portal/RequestModal';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { parseISO, formatDistanceToNowStrict, isBefore, isToday, isTomorrow, isAfter, addMinutes } from 'date-fns';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
@@ -37,6 +40,7 @@ export default function PortalHome() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const makeupHandled = useRef(false);
 
   // Handle make-up accept/decline from email links
@@ -82,6 +86,7 @@ export default function PortalHome() {
       } finally {
         // Clean URL params
         setSearchParams({}, { replace: true });
+        queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_parent'] });
       }
     };
 
@@ -91,6 +96,42 @@ export default function PortalHome() {
   const { data: summary, isLoading: summaryLoading } = useParentSummary();
   const { data: children, isLoading: childrenLoading } = useChildrenWithDetails();
   const { data: unreadCount } = useUnreadMessagesCount();
+  const { data: waitlistEntries } = useParentWaitlistEntries();
+
+  const activeWaitlist = (waitlistEntries ?? []).filter((e) =>
+    ['waiting', 'matched', 'offered', 'accepted', 'booked'].includes(e.status)
+  );
+
+  const handleInlineAccept = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('make_up_waitlist')
+        .update({ status: 'accepted', responded_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+      toast({ title: 'Make-up accepted! The academy will confirm the booking shortly.' });
+      queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_parent'] });
+    } catch (err: any) {
+      toast({ title: 'Something went wrong', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  const handleInlineDecline = async (id: string) => {
+    try {
+      await supabase
+        .from('make_up_waitlist')
+        .update({ status: 'declined', responded_at: new Date().toISOString() })
+        .eq('id', id);
+      await supabase
+        .from('make_up_waitlist')
+        .update({ status: 'waiting', matched_lesson_id: null, matched_at: null, offered_at: null })
+        .eq('id', id);
+      toast({ title: "Slot declined. We'll keep looking for another available time." });
+      queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_parent'] });
+    } catch (err: any) {
+      toast({ title: 'Something went wrong', description: err.message, variant: 'destructive' });
+    }
+  };
 
   const firstName = profile?.full_name?.split(' ')[0] || 'there';
   const currencyCode = currentOrg?.currency_code || 'GBP';
@@ -225,6 +266,101 @@ export default function PortalHome() {
                       </CardContent>
                     </Card>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* 3.5 Make-Up Lessons */}
+            {activeWaitlist.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  🎵 Make-Up Lessons
+                </h2>
+                <div className="space-y-3">
+                  {activeWaitlist.map((entry) => {
+                    const studentName = entry.student
+                      ? `${entry.student.first_name} ${entry.student.last_name}`
+                      : 'Student';
+                    const missedDate = formatDateUK(parseISO(entry.missed_lesson_date), 'd MMM');
+                    const matched = entry.matched_lesson;
+
+                    return (
+                      <Card
+                        key={entry.id}
+                        className={
+                          entry.status === 'offered'
+                            ? 'border-green-300 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20'
+                            : ''
+                        }
+                      >
+                        <CardContent className="p-4 space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold">
+                                {studentName} — {entry.lesson_title}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Missed {missedDate} · Waiting {formatDistanceToNowStrict(parseISO(entry.created_at || entry.missed_lesson_date))}
+                              </p>
+                            </div>
+                            {entry.status === 'waiting' && (
+                              <Badge variant="secondary" className="shrink-0 text-xs">⏳ Awaiting slot</Badge>
+                            )}
+                            {entry.status === 'matched' && (
+                              <Badge variant="secondary" className="shrink-0 text-xs text-blue-600 dark:text-blue-400">🔍 Being reviewed</Badge>
+                            )}
+                            {entry.status === 'accepted' && (
+                              <Badge variant="secondary" className="shrink-0 text-xs text-green-600 dark:text-green-400">✅ Accepted</Badge>
+                            )}
+                            {entry.status === 'booked' && (
+                              <Badge variant="secondary" className="shrink-0 text-xs text-green-700 dark:text-green-300">📅 Booked</Badge>
+                            )}
+                          </div>
+
+                          {/* Offered: show lesson details + buttons */}
+                          {entry.status === 'offered' && matched && (
+                            <div className="space-y-3 pt-1">
+                              <div className="rounded-lg border border-green-200 dark:border-green-800 bg-white dark:bg-background p-3 space-y-1 text-sm">
+                                <p className="font-medium">{matched.title}</p>
+                                <p className="text-muted-foreground text-xs flex items-center gap-1.5">
+                                  <Calendar className="h-3 w-3" />
+                                  {formatDateUK(parseISO(matched.start_at), 'EEEE d MMM')} at {formatTimeUK(parseISO(matched.start_at))}
+                                </p>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  className="gap-1"
+                                  onClick={() => handleInlineAccept(entry.id)}
+                                >
+                                  ✅ Accept
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleInlineDecline(entry.id)}
+                                >
+                                  Decline
+                                </Button>
+                              </div>
+                              <p className="text-xs text-muted-foreground">⏰ Please respond within 48 hours</p>
+                            </div>
+                          )}
+
+                          {/* Booked: show the booked lesson date */}
+                          {entry.status === 'booked' && entry.booked_lesson_id && matched && (
+                            <p className="text-xs text-green-600 dark:text-green-400">
+                              📅 {formatDateUK(parseISO(matched.start_at), 'EEEE d MMM')} at {formatTimeUK(parseISO(matched.start_at))}
+                            </p>
+                          )}
+
+                          {entry.status === 'accepted' && (
+                            <p className="text-xs text-muted-foreground">Awaiting confirmation from your academy</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               </div>
             )}
