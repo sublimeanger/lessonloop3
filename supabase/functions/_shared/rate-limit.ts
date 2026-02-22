@@ -36,6 +36,7 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
 
   // Auth flows
   "invite-accept":         { maxRequests: 10,  windowMinutes: 1 },
+  "invite_get":            { maxRequests: 5,   windowMinutes: 1 },
   "profile-ensure":        { maxRequests: 5,   windowMinutes: 1 },
 
   // Default for regular queries
@@ -53,8 +54,25 @@ export interface RateLimitResult {
 }
 
 /**
- * Check if a request is within per-user rate limits.
- * Uses the check_rate_limit database function for atomic operations.
+ * Convert a non-UUID identifier (e.g. IP address) to a deterministic UUID.
+ * Uses a simple hash-to-UUID approach for rate limiting purposes.
+ */
+async function toUuid(input: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = new Uint8Array(hashBuffer);
+  // Format first 16 bytes as UUID v4-like
+  const hex = Array.from(hashArray.slice(0, 16))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-${(parseInt(hex[16], 16) & 0x3 | 0x8).toString(16)}${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
+
+/**
+ * Check if a request is within rate limits.
+ * userId can be a UUID (for authenticated users) or any string like "ip:1.2.3.4"
+ * (will be hashed to a deterministic UUID for storage).
  */
 export async function checkRateLimit(
   userId: string,
@@ -67,8 +85,12 @@ export async function checkRateLimit(
 
   const limits = config || RATE_LIMITS[actionType] || RATE_LIMITS["default"];
 
+  // Convert non-UUID identifiers (e.g. IP-based keys) to a deterministic UUID
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+  const effectiveUserId = isUuid ? userId : await toUuid(userId);
+
   const { data, error } = await supabase.rpc("check_rate_limit", {
-    _user_id: userId,
+    _user_id: effectiveUserId,
     _action_type: actionType,
     _max_requests: limits.maxRequests,
     _window_minutes: limits.windowMinutes,
