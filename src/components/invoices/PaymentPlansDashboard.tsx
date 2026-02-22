@@ -1,0 +1,291 @@
+import { useState, useMemo } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import {
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
+} from '@/components/ui/table';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { SortableTableHead } from '@/components/reports/SortableTableHead';
+import { useSortableTable } from '@/hooks/useSortableTable';
+import { useActivePaymentPlans, type Installment } from '@/hooks/useInvoiceInstallments';
+import { formatCurrencyMinor } from '@/lib/utils';
+import { differenceInDays, parseISO, formatDistanceToNowStrict } from 'date-fns';
+import { AlertTriangle, CheckCircle2, Clock, Eye, Send, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { LoadingState } from '@/components/shared/LoadingState';
+
+type PlanHealth = 'on_track' | 'attention' | 'overdue';
+
+interface PlanRow {
+  id: string;
+  invoiceNumber: string;
+  familyName: string;
+  paidMinor: number;
+  totalMinor: number;
+  currencyCode: string;
+  paidCount: number;
+  totalCount: number;
+  nextDueDate: string | null;
+  nextDueAmount: number;
+  nextInstallmentId: string | null;
+  health: PlanHealth;
+  overdueDays: number;
+  installments: Installment[];
+}
+
+function getPlanHealth(installments: Installment[]): PlanHealth {
+  const hasOverdue = installments.some((i: Installment) => i.status === 'overdue');
+  if (hasOverdue) return 'overdue';
+
+  const nextPending = installments.find((i: Installment) => i.status === 'pending');
+  if (nextPending) {
+    const daysUntilDue = differenceInDays(parseISO(nextPending.due_date), new Date());
+    if (daysUntilDue <= 3) return 'attention';
+  }
+
+  return 'on_track';
+}
+
+function getMaxOverdueDays(installments: Installment[]): number {
+  const today = new Date();
+  return installments
+    .filter((i: Installment) => i.status === 'overdue')
+    .reduce((max: number, i: Installment) => {
+      const days = differenceInDays(today, parseISO(i.due_date));
+      return Math.max(max, days);
+    }, 0);
+}
+
+const healthOrder: Record<PlanHealth, number> = { overdue: 0, attention: 1, on_track: 2 };
+
+const healthConfig: Record<PlanHealth, { label: string; color: string; icon: typeof AlertTriangle }> = {
+  on_track: { label: 'On Track', color: 'bg-emerald-500/10 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
+  attention: { label: 'Attention', color: 'bg-amber-500/10 text-amber-700 border-amber-200', icon: Clock },
+  overdue: { label: 'Overdue', color: 'bg-destructive/10 text-destructive border-destructive/20', icon: AlertTriangle },
+};
+
+type SortField = 'family' | 'nextDue' | 'status' | 'progress';
+
+export function PaymentPlansDashboard() {
+  const { data: plans, isLoading } = useActivePaymentPlans();
+  const navigate = useNavigate();
+  const [statusFilter, setStatusFilter] = useState<'all' | PlanHealth>('all');
+
+  const rows: PlanRow[] = useMemo(() => {
+    if (!plans) return [];
+    return plans.map((plan: any) => {
+      const installments: Installment[] = (plan.invoice_installments || []).map((i: any) => ({
+        ...i,
+        payment_id: i.payment_id ?? null,
+      }));
+      const paidInstallments = installments.filter((i: Installment) => i.status === 'paid');
+      const nextPending = installments.find((i: Installment) => i.status === 'pending' || i.status === 'overdue');
+      const health = getPlanHealth(installments);
+      const overdueDays = getMaxOverdueDays(installments);
+
+      const guardian = plan.payer_guardian as any;
+      const student = plan.payer_student as any;
+      const familyName = guardian?.full_name
+        || (student ? `${student.first_name} ${student.last_name}` : 'Unknown');
+
+      return {
+        id: plan.id,
+        invoiceNumber: plan.invoice_number,
+        familyName,
+        paidMinor: plan.paid_minor ?? 0,
+        totalMinor: plan.total_minor,
+        currencyCode: plan.currency_code,
+        paidCount: paidInstallments.length,
+        totalCount: plan.installment_count ?? installments.length,
+        nextDueDate: nextPending?.due_date ?? null,
+        nextDueAmount: nextPending?.amount_minor ?? 0,
+        nextInstallmentId: nextPending?.id ?? null,
+        health,
+        overdueDays,
+        installments,
+      };
+    });
+  }, [plans]);
+
+  const filtered = useMemo(() => {
+    if (statusFilter === 'all') return rows;
+    return rows.filter((r) => r.health === statusFilter);
+  }, [rows, statusFilter]);
+
+  const comparators: Record<SortField, (a: PlanRow, b: PlanRow) => number> = useMemo(() => ({
+    family: (a, b) => a.familyName.localeCompare(b.familyName),
+    nextDue: (a, b) => (a.nextDueDate ?? '').localeCompare(b.nextDueDate ?? ''),
+    status: (a, b) => healthOrder[a.health] - healthOrder[b.health],
+    progress: (a, b) => (a.paidMinor / (a.totalMinor || 1)) - (b.paidMinor / (b.totalMinor || 1)),
+  }), []);
+
+  const { sorted, sort, toggle } = useSortableTable<PlanRow, SortField>(
+    filtered, 'status', 'asc', comparators
+  );
+
+  const stats = useMemo(() => {
+    const total = rows.length;
+    const onTrack = rows.filter((r) => r.health === 'on_track').length;
+    const attention = rows.filter((r) => r.health === 'attention').length;
+    const overdue = rows.filter((r) => r.health === 'overdue').length;
+    return { total, onTrack, attention, overdue };
+  }, [rows]);
+
+  if (isLoading) return <LoadingState message="Loading payment plans..." />;
+
+  if (rows.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-40" />
+        <p className="text-sm">No active payment plans</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard label="Active Plans" value={stats.total} onClick={() => setStatusFilter('all')} active={statusFilter === 'all'} />
+        <StatCard label="On Track" value={stats.onTrack} variant="success" onClick={() => setStatusFilter('on_track')} active={statusFilter === 'on_track'} />
+        <StatCard label="Attention" value={stats.attention} variant="warning" onClick={() => setStatusFilter('attention')} active={statusFilter === 'attention'} />
+        <StatCard label="Overdue" value={stats.overdue} variant="danger" onClick={() => setStatusFilter('overdue')} active={statusFilter === 'overdue'} />
+      </div>
+
+      {/* Filter bar */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {sorted.length} plan{sorted.length !== 1 ? 's' : ''}
+        </p>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+          <SelectTrigger className="w-[160px] h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="on_track">On Track</SelectItem>
+            <SelectItem value="attention">Attention</SelectItem>
+            <SelectItem value="overdue">Overdue</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Plan table */}
+      <div className="rounded-lg border bg-card overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <SortableTableHead label="Family" field="family" currentField={sort.field} currentDir={sort.dir} onToggle={(f) => toggle(f as SortField)} />
+              <TableHead>Invoice</TableHead>
+              <SortableTableHead label="Progress" field="progress" currentField={sort.field} currentDir={sort.dir} onToggle={(f) => toggle(f as SortField)} />
+              <SortableTableHead label="Next Due" field="nextDue" currentField={sort.field} currentDir={sort.dir} onToggle={(f) => toggle(f as SortField)} />
+              <SortableTableHead label="Status" field="status" currentField={sort.field} currentDir={sort.dir} onToggle={(f) => toggle(f as SortField)} />
+              <TableHead className="text-right">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sorted.map((row) => {
+              const pct = row.totalMinor > 0 ? Math.round((row.paidMinor / row.totalMinor) * 100) : 0;
+              const cfg = healthConfig[row.health];
+              const Icon = cfg.icon;
+
+              return (
+                <TableRow key={row.id}>
+                  <TableCell className="font-medium">{row.familyName}</TableCell>
+                  <TableCell className="text-muted-foreground text-sm">{row.invoiceNumber}</TableCell>
+                  <TableCell>
+                    <div className="space-y-1 min-w-[140px]">
+                      <Progress value={pct} className="h-2" />
+                      <p className="text-xs text-muted-foreground">
+                        {row.paidCount}/{row.totalCount} · {formatCurrencyMinor(row.paidMinor, row.currencyCode)}/{formatCurrencyMinor(row.totalMinor, row.currencyCode)}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {row.nextDueDate ? (
+                      <div className="text-sm">
+                        <p>{formatCurrencyMinor(row.nextDueAmount, row.currencyCode)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDistanceToNowStrict(parseISO(row.nextDueDate), { addSuffix: true })}
+                        </p>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Complete</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`gap-1 ${cfg.color}`}>
+                      <Icon className="h-3 w-3" />
+                      {cfg.label}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() => navigate(`/invoices/${row.id}`)}
+                      >
+                        <Eye className="h-3 w-3" />
+                        View
+                      </Button>
+                      {row.health === 'overdue' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 gap-1 text-xs border-destructive/30 text-destructive hover:bg-destructive/10"
+                          onClick={() => navigate(`/messaging?prefill=installment-reminder&invoiceId=${row.id}`)}
+                        >
+                          <Send className="h-3 w-3" />
+                          Chase
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  variant = 'default',
+  onClick,
+  active,
+}: {
+  label: string;
+  value: number;
+  variant?: 'default' | 'success' | 'warning' | 'danger';
+  onClick: () => void;
+  active: boolean;
+}) {
+  const variantStyles: Record<string, string> = {
+    default: '',
+    success: 'text-emerald-700',
+    warning: 'text-amber-700',
+    danger: 'text-destructive',
+  };
+
+  return (
+    <Card
+      className={`cursor-pointer transition-all ${active ? 'ring-2 ring-primary' : 'hover:shadow-md'}`}
+      onClick={onClick}
+    >
+      <CardContent className="p-4">
+        <p className={`text-2xl font-bold ${variantStyles[variant]}`}>{value}</p>
+        <p className="text-xs text-muted-foreground">{label}</p>
+      </CardContent>
+    </Card>
+  );
+}
