@@ -21,6 +21,7 @@ import { useCreateAssignment } from '@/hooks/usePractice';
 import { supabase } from '@/integrations/supabase/client';
 import { activeStudentsQuery } from '@/lib/studentQuery';
 import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 interface CreateAssignmentModalProps {
@@ -40,7 +41,9 @@ export function CreateAssignmentModal({
   onOpenChange,
   preselectedStudentId 
 }: CreateAssignmentModalProps) {
-  const { currentOrg } = useOrg();
+  const { currentOrg, currentRole } = useOrg();
+  const { user } = useAuth();
+  const isAdmin = currentRole === 'owner' || currentRole === 'admin';
   const [students, setStudents] = useState<Student[]>([]);
   const [studentId, setStudentId] = useState(preselectedStudentId || '');
   const [title, setTitle] = useState('');
@@ -65,10 +68,38 @@ export function CreateAssignmentModal({
   }, [preselectedStudentId]);
 
   const fetchStudents = async () => {
-    const { data } = await activeStudentsQuery(currentOrg!.id)
-      .order('first_name');
-    
-    setStudents((data || []) as any);
+    if (isAdmin) {
+      const { data } = await activeStudentsQuery(currentOrg!.id)
+        .order('first_name');
+      setStudents((data || []) as any);
+    } else if (user) {
+      // Teacher: only show assigned students
+      const { data: teacherRecord } = await supabase
+        .from('teachers')
+        .select('id')
+        .eq('org_id', currentOrg!.id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (teacherRecord) {
+        const { data: assignments } = await supabase
+          .from('student_teacher_assignments')
+          .select('student_id')
+          .eq('teacher_id', teacherRecord.id);
+
+        const studentIds = (assignments || []).map(a => a.student_id);
+        if (studentIds.length > 0) {
+          const { data } = await activeStudentsQuery(currentOrg!.id)
+            .in('id', studentIds)
+            .order('first_name');
+          setStudents((data || []) as any);
+        } else {
+          setStudents([]);
+        }
+      } else {
+        setStudents([]);
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

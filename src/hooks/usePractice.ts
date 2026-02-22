@@ -313,8 +313,9 @@ export function useWeeklyProgress(studentIds: string[]) {
 // Mutation to create assignment
 export function useCreateAssignment() {
   const queryClient = useQueryClient();
-  const { currentOrg } = useOrg();
+  const { currentOrg, currentRole } = useOrg();
   const { user } = useAuth();
+  const isAdmin = currentRole === 'owner' || currentRole === 'admin';
 
   return useMutation({
     mutationFn: async (data: {
@@ -326,6 +327,25 @@ export function useCreateAssignment() {
       start_date?: string;
       end_date?: string;
     }) => {
+      // Teachers can only create assignments for their assigned students
+      if (!isAdmin && user && currentOrg) {
+        const { data: teacherRecord } = await supabase
+          .from('teachers')
+          .select('id')
+          .eq('org_id', currentOrg.id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (teacherRecord) {
+          const { data: sta } = await supabase
+            .from('student_teacher_assignments')
+            .select('id')
+            .eq('teacher_id', teacherRecord.id)
+            .eq('student_id', data.student_id)
+            .maybeSingle();
+          if (!sta) throw new Error('You can only create assignments for your assigned students');
+        }
+      }
+
       const { error } = await supabase.from('practice_assignments').insert({
         org_id: currentOrg!.id,
         teacher_user_id: user!.id,
