@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { safeGetItem, safeSetItem } from '@/lib/storage';
 import { format, addDays, subDays, isToday } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -21,7 +22,8 @@ import {
   CheckCircle2,
   Clock,
   Users,
-  XCircle
+  XCircle,
+  UserCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -143,6 +145,14 @@ export default function DailyRegister() {
         )}
 
         <div className="flex-1" />
+
+        {/* Batch Mode Link */}
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/batch-attendance" className="gap-2">
+            <UserCheck className="h-4 w-4" />
+            Batch Mode
+          </Link>
+        </Button>
 
         {/* Mark Day Complete Button */}
         <MarkDayCompleteButton
