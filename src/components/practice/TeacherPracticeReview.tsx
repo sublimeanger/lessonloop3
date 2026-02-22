@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,14 +22,8 @@ export function TeacherPracticeReview() {
   const [activeTab, setActiveTab] = useState('pending');
   const [feedbackText, setFeedbackText] = useState<Record<string, string>>({});
   
-  const { data: pendingLogs = [], isLoading: loadingPending } = usePracticeLogs({ 
-    unreviewed: true,
-    limit: 50 
-  });
-  
-  const { data: allLogs = [], isLoading: loadingAll } = usePracticeLogs({ 
-    limit: 100 
-  });
+  const { data: allLogs = [], isLoading } = usePracticeLogs({ limit: 100 });
+  const pendingLogs = useMemo(() => allLogs.filter(l => !l.reviewed_at), [allLogs]);
   
   const addFeedback = useAddPracticeFeedback();
 
@@ -128,7 +122,7 @@ export function TeacherPracticeReview() {
     </div>
   );
 
-  const isLoading = loadingPending || loadingAll;
+  
 
   return (
     <Card>
