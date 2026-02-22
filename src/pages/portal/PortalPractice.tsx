@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PracticeTimer } from '@/components/portal/PracticeTimer';
@@ -9,16 +10,26 @@ import { useChildrenStreaks, PracticeStreak } from '@/hooks/usePracticeStreaks';
 import { useParentPracticeAssignments } from '@/hooks/usePractice';
 import { StreakDisplay } from '@/components/practice/StreakBadge';
 import { Flame } from 'lucide-react';
+import { useChildFilter } from '@/contexts/ChildFilterContext';
 
 export default function PortalPractice() {
+  const { selectedChildId } = useChildFilter();
   const { data: streaks = [] } = useChildrenStreaks();
   const { data: assignments = [] } = useParentPracticeAssignments();
   
-  // Get unique student IDs from assignments for trends
-  const studentIds = [...new Set(assignments.map(a => a.student_id))];
+  // Filter by selected child
+  const filteredAssignments = useMemo(
+    () => selectedChildId ? assignments.filter(a => a.student_id === selectedChildId) : assignments,
+    [assignments, selectedChildId]
+  );
+  const studentIds = [...new Set(filteredAssignments.map(a => a.student_id))];
 
-  // Filter to streaks with activity
-  const activeStreaks = streaks.filter(s => s.current_streak > 0 || s.longest_streak > 0);
+  const activeStreaks = useMemo(() => {
+    const filtered = selectedChildId
+      ? streaks.filter((s: PracticeStreak & { students?: { id: string } }) => s.students?.id === selectedChildId)
+      : streaks;
+    return filtered.filter(s => s.current_streak > 0 || s.longest_streak > 0);
+  }, [streaks, selectedChildId]);
 
   return (
     <PortalLayout>

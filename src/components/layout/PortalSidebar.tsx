@@ -13,6 +13,7 @@ import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
+import { ChildSwitcher } from '@/components/portal/ChildSwitcher';
 import {
   Sidebar,
   SidebarContent,
@@ -76,7 +77,10 @@ export function PortalSidebar() {
           </span>
         </div>
 
-
+        {/* Child filter */}
+        <div className="mb-3 px-2">
+          <ChildSwitcher className="w-full" />
+        </div>
 
         {/* Navigation */}
         <SidebarGroup>

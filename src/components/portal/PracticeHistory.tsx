@@ -6,9 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Clock, Calendar, MessageSquare, CheckCircle2, Loader2, Music } from 'lucide-react';
 import { useParentPracticeLogs, PracticeLog } from '@/hooks/usePractice';
+import { useChildFilter } from '@/contexts/ChildFilterContext';
 
 export function PracticeHistory() {
-  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useParentPracticeLogs();
+  const { selectedChildId } = useChildFilter();
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useParentPracticeLogs(selectedChildId || undefined);
 
   const logs = useMemo(() => data?.pages.flatMap(p => p.data) ?? [], [data]);
 

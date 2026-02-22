@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { useSearchParams } from 'react-router-dom';
+import { useChildFilter } from '@/contexts/ChildFilterContext';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,7 +23,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Calendar, Clock, MapPin, User, Loader2, MessageSquare, CheckCircle, XCircle, AlertCircle, FileText, CalendarClock, CalendarPlus } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, startOfToday, differenceInHours } from 'date-fns';
-import { useParentLessons, useChildrenWithDetails, useCreateMessageRequest } from '@/hooks/useParentPortal';
+import { useParentLessons, useCreateMessageRequest } from '@/hooks/useParentPortal';
 import { useOrg } from '@/contexts/OrgContext';
 import { RequestModal } from '@/components/portal/RequestModal';
 import { RescheduleSlotPicker } from '@/components/portal/RescheduleSlotPicker';
@@ -31,7 +32,7 @@ import { downloadICSFile, generateGoogleCalendarUrl } from '@/lib/calendarExport
 
 export default function PortalSchedule() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const studentFilter = searchParams.get('student') || '';
+  const { selectedChildId } = useChildFilter();
   const [statusFilter, setStatusFilter] = useState<'all' | 'scheduled' | 'completed' | 'cancelled'>('all');
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<{ id: string; title: string } | null>(null);
@@ -48,9 +49,9 @@ export default function PortalSchedule() {
 
   const { currentOrg } = useOrg();
   const { toast } = useToast();
-  const { data: children } = useChildrenWithDetails();
+  
   const { data: lessons, isLoading, refetch: refetchLessons } = useParentLessons({
-    studentId: studentFilter || undefined,
+    studentId: selectedChildId || undefined,
     status: statusFilter === 'all' ? undefined : statusFilter,
   });
   const createRequest = useCreateMessageRequest();
@@ -60,13 +61,7 @@ export default function PortalSchedule() {
   const canReschedule = reschedulePolicy !== 'admin_locked';
   const showSlotPicker = reschedulePolicy === 'self_service';
 
-  const handleStudentChange = (value: string) => {
-    if (value) {
-      setSearchParams({ student: value });
-    } else {
-      setSearchParams({});
-    }
-  };
+  // handleStudentChange removed — now handled by global ChildSwitcher
 
   const handleRequestChange = (lesson: { id: string; title: string }) => {
     setSelectedLesson(lesson);
@@ -306,21 +301,6 @@ export default function PortalSchedule() {
 
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center mb-6">
-        {children && children.length > 1 && (
-          <Select value={studentFilter || '__all__'} onValueChange={(v) => handleStudentChange(v === '__all__' ? '' : v)}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="All children" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All children</SelectItem>
-              {children.map((child) => (
-                <SelectItem key={child.id} value={child.id}>
-                  {child.first_name} {child.last_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
         <Select
           value={statusFilter}
           onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}

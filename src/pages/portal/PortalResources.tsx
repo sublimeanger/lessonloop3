@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ListSkeleton } from '@/components/shared/LoadingState';
@@ -20,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getFileIcon, getFileTypeBadge, formatFileSize } from '@/lib/fileUtils';
 import { ResourcePreviewModal, isPreviewable } from '@/components/resources/ResourcePreviewModal';
 import { AudioPlayer } from '@/components/resources/AudioPlayer';
+import { useChildFilter } from '@/contexts/ChildFilterContext';
 
 interface ResourceDownloadButtonProps {
   filePath: string;
@@ -83,13 +84,27 @@ export default function PortalResources() {
     fileType: string;
     title: string;
   } | null>(null);
+  const { selectedChildId } = useChildFilter();
 
   const { data: resources = [], isLoading } = useSharedResources();
 
-  const filteredResources = resources.filter(resource =>
-    resource.title.toLowerCase().includes(search.toLowerCase()) ||
-    resource.description?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredResources = useMemo(() => {
+    let result = resources;
+    // Filter by selected child
+    if (selectedChildId) {
+      result = result.filter(r =>
+        r.resource_shares?.some((share: ShareWithStudent) => share.student_id === selectedChildId)
+      );
+    }
+    // Filter by search
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(r =>
+        r.title.toLowerCase().includes(q) || r.description?.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [resources, selectedChildId, search]);
 
   return (
     <PortalLayout>
