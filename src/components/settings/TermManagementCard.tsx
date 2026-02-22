@@ -64,6 +64,11 @@ export function TermManagementCard() {
   const handleSave = async () => {
     if (!form.name.trim() || !form.start_date || !form.end_date) return;
 
+    if (form.end_date < form.start_date) {
+      toast({ title: 'Invalid dates', description: 'End date must be after start date.', variant: 'destructive' });
+      return;
+    }
+
     // Check for overlapping terms
     const overlapping = terms.find(t => {
       if (editingTerm && t.id === editingTerm.id) return false;
