@@ -263,6 +263,12 @@ export default function Signup() {
                 autoComplete="new-password"
               />
             </div>
+            <p className="text-xs text-muted-foreground text-center">
+              By creating an account, you agree to our{' '}
+              <Link to="/terms" className="font-medium text-primary hover:underline">Terms of Service</Link>{' '}
+              and{' '}
+              <Link to="/privacy" className="font-medium text-primary hover:underline">Privacy Policy</Link>.
+            </p>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button type="submit" className="w-full gradient-accent shadow-glow-teal hover:opacity-90 transition-opacity" disabled={isLoading || isGoogleLoading || isAppleLoading}>

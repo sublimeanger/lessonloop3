@@ -325,6 +325,12 @@ export default function AcceptInvite() {
               placeholder="Confirm your password"
             />
           </div>
+          <p className="text-xs text-muted-foreground text-center">
+            By creating an account, you agree to our{' '}
+            <Link to="/terms" className="font-medium text-primary hover:underline">Terms of Service</Link>{' '}
+            and{' '}
+            <Link to="/privacy" className="font-medium text-primary hover:underline">Privacy Policy</Link>.
+          </p>
           <Button 
             onClick={signUpAndAccept} 
             disabled={isAccepting || !fullName || !password} 
