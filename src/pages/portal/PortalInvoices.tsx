@@ -121,7 +121,7 @@ export default function PortalInvoices() {
   const otherInvoices = invoices?.filter(inv => !['sent', 'overdue'].includes(inv.status)) || [];
 
   // Calculate total outstanding
-  const totalOutstanding = outstandingInvoices.reduce((sum, inv) => sum + inv.total_minor, 0);
+  const totalOutstanding = outstandingInvoices.reduce((sum, inv) => sum + (inv.total_minor - (inv.paid_minor || 0)), 0);
 
   return (
     <PortalLayout>
