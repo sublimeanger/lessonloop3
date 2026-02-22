@@ -77,20 +77,35 @@ export default function PortalInvoices() {
 
   const handlePayInvoice = async (invoiceId: string) => {
     setPayingInvoiceId(invoiceId);
-    await initiatePayment(invoiceId);
-    setPayingInvoiceId(null);
+    try {
+      await initiatePayment(invoiceId);
+    } catch {
+      toast({ title: 'Payment failed', description: 'Something went wrong. Please try again or contact your academy.', variant: 'destructive' });
+    } finally {
+      setPayingInvoiceId(null);
+    }
   };
 
   const handlePayInstallment = async (invoiceId: string, installmentId: string) => {
     setPayingInvoiceId(invoiceId);
-    await initiatePayment(invoiceId, { installmentId });
-    setPayingInvoiceId(null);
+    try {
+      await initiatePayment(invoiceId, { installmentId });
+    } catch {
+      toast({ title: 'Payment failed', description: 'Something went wrong. Please try again or contact your academy.', variant: 'destructive' });
+    } finally {
+      setPayingInvoiceId(null);
+    }
   };
 
   const handlePayRemaining = async (invoiceId: string) => {
     setPayingInvoiceId(invoiceId);
-    await initiatePayment(invoiceId, { payRemaining: true });
-    setPayingInvoiceId(null);
+    try {
+      await initiatePayment(invoiceId, { payRemaining: true });
+    } catch {
+      toast({ title: 'Payment failed', description: 'Something went wrong. Please try again or contact your academy.', variant: 'destructive' });
+    } finally {
+      setPayingInvoiceId(null);
+    }
   };
 
   const getStatusBadge = (status: string, dueDate: string) => {
