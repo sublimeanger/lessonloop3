@@ -20,10 +20,11 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText, PoundSterling, Users, CheckCircle2 } from 'lucide-react';
+import { Loader2, FileText, PoundSterling, Users, CheckCircle2, AlertTriangle, RotateCcw } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useUnbilledLessons } from '@/hooks/useInvoices';
-import { useCreateBillingRun } from '@/hooks/useBillingRuns';
+import { useCreateBillingRun, useRetryBillingRunPayers } from '@/hooks/useBillingRuns';
+import type { BillingRunSummary } from '@/hooks/useBillingRuns';
 import { useRateCards, findRateForDuration } from '@/hooks/useRateCards';
 import { useTerms } from '@/hooks/useTerms';
 import type { Database } from '@/integrations/supabase/types';
@@ -40,9 +41,11 @@ interface BillingRunWizardProps {
 export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) {
   const { currentOrg } = useOrg();
   const createBillingRun = useCreateBillingRun();
+  const retryPayers = useRetryBillingRunPayers();
   const { data: rateCards = [], isLoading: loadingRateCards } = useRateCards();
   const { data: terms = [] } = useTerms();
   const [step, setStep] = useState<'config' | 'preview' | 'complete'>('config');
+  const [billingResult, setBillingResult] = useState<{ billingRunId: string; status: string; summary: BillingRunSummary } | null>(null);
   const lastMonth = subMonths(new Date(), 1);
   const stepFocusRef = useRef<HTMLButtonElement>(null);
 
@@ -143,7 +146,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
   };
 
   const handleGenerate = async () => {
-    await createBillingRun.mutateAsync({
+    const result = await createBillingRun.mutateAsync({
       run_type: config.runType,
       start_date: config.startDate,
       end_date: config.endDate,
@@ -152,7 +155,31 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
       term_id: config.termId || undefined,
     });
 
+    setBillingResult({
+      billingRunId: result.id,
+      status: result.status,
+      summary: result.summary as BillingRunSummary,
+    });
     setStep('complete');
+  };
+
+  const handleRetry = async () => {
+    if (!billingResult?.summary.failedPayers?.length) return;
+
+    const result = await retryPayers.mutateAsync({
+      billingRunId: billingResult.billingRunId,
+      failedPayers: billingResult.summary.failedPayers,
+    });
+
+    setBillingResult((prev) => prev ? {
+      ...prev,
+      status: result.finalStatus,
+      summary: {
+        ...prev.summary,
+        invoiceCount: (prev.summary.invoiceCount || 0) + result.newInvoiceCount,
+        failedPayers: result.stillFailed.length > 0 ? result.stillFailed : undefined,
+      },
+    } : null);
   };
 
   const handleClose = () => {
@@ -432,17 +459,68 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
 
         {step === 'complete' && (
           <div className="space-y-4">
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-center">
-              <div className="text-2xl">✓</div>
-              <p className="mt-2 font-medium text-primary">
-                Billing run completed successfully!
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {totalInvoices} invoice{totalInvoices !== 1 ? 's' : ''} created as drafts
-              </p>
-            </div>
+            {billingResult?.status === 'completed' ? (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-center">
+                <div className="text-2xl">✓</div>
+                <p className="mt-2 font-medium text-primary">
+                  Billing run completed successfully!
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {billingResult.summary.invoiceCount} invoice{billingResult.summary.invoiceCount !== 1 ? 's' : ''} created as drafts
+                </p>
+              </div>
+            ) : billingResult?.status === 'partial' ? (
+              <div className="space-y-3">
+                <div className="rounded-lg border border-accent bg-accent/10 p-4 text-center">
+                  <AlertTriangle className="mx-auto h-6 w-6 text-accent-foreground" />
+                  <p className="mt-2 font-medium text-accent-foreground">
+                    Billing run partially completed
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {billingResult.summary.invoiceCount} invoice{billingResult.summary.invoiceCount !== 1 ? 's' : ''} created, {billingResult.summary.failedPayers?.length || 0} payer{(billingResult.summary.failedPayers?.length || 0) !== 1 ? 's' : ''} failed
+                  </p>
+                </div>
 
-            <DialogFooter>
+                {billingResult.summary.failedPayers && billingResult.summary.failedPayers.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Failed Payers</Label>
+                    <div className="max-h-36 space-y-1 overflow-y-auto rounded-lg border p-2">
+                      {billingResult.summary.failedPayers.map((fp, i) => (
+                        <div key={i} className="flex items-center justify-between rounded p-2 text-sm bg-destructive/5">
+                          <span className="font-medium">{fp.payerName}</span>
+                          <span className="text-xs text-muted-foreground truncate max-w-[200px]">{fp.error}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-center">
+                <AlertTriangle className="mx-auto h-6 w-6 text-destructive" />
+                <p className="mt-2 font-medium text-destructive">
+                  Billing run failed
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  No invoices could be created
+                </p>
+              </div>
+            )}
+
+            <DialogFooter className="gap-2">
+              {billingResult?.summary.failedPayers && billingResult.summary.failedPayers.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={handleRetry}
+                  disabled={retryPayers.isPending}
+                >
+                  {retryPayers.isPending ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Retrying...</>
+                  ) : (
+                    <><RotateCcw className="mr-2 h-4 w-4" />Retry Failed ({billingResult.summary.failedPayers.length})</>
+                  )}
+                </Button>
+              )}
               <Button ref={step === 'complete' ? stepFocusRef : undefined} onClick={handleClose}>Done</Button>
             </DialogFooter>
           </div>

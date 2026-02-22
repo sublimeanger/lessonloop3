@@ -10,12 +10,16 @@ import type { Database } from '@/integrations/supabase/types';
 type BillingRun = Database['public']['Tables']['billing_runs']['Row'];
 type BillingRunType = Database['public']['Enums']['billing_run_type'];
 
-export interface BillingRunWithDetails extends BillingRun {
-  summary: {
-    invoiceCount: number;
-    totalAmount: number;
-    invoiceIds?: string[];
-  };
+export interface BillingRunSummary {
+  invoiceCount: number;
+  totalAmount: number;
+  invoiceIds?: string[];
+  skippedLessons?: number;
+  failedPayers?: Array<{ payerName: string; payerEmail: string | null; error: string; payerType?: 'guardian' | 'student'; payerId?: string }>;
+}
+
+export interface BillingRunWithDetails extends Omit<BillingRun, 'summary'> {
+  summary: BillingRunSummary;
 }
 
 export function useBillingRuns() {
@@ -33,7 +37,7 @@ export function useBillingRuns() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as BillingRunWithDetails[];
+      return data as unknown as BillingRunWithDetails[];
     },
     enabled: !!currentOrg?.id,
   });
@@ -213,7 +217,7 @@ export function useCreateBillingRun() {
 
         invoiceIds = [];
         let totalAmount = 0;
-        const failedPayers: Array<{ payerName: string; payerEmail: string | null; error: string }> = [];
+        const failedPayers: BillingRunSummary['failedPayers'] = [];
 
         if (data.generate_invoices) {
           const dueDate = new Date();
@@ -276,6 +280,8 @@ export function useCreateBillingRun() {
               failedPayers.push({
                 payerName: payer.payerName,
                 payerEmail: payer.payerEmail,
+                payerType: payer.payerType,
+                payerId: payer.payerId,
                 error: payerError.message || 'Unknown error',
               });
             }
@@ -366,6 +372,215 @@ export function useCreateBillingRun() {
     },
     onError: (error) => {
       toast({ title: 'Error', description: 'Billing run failed: ' + error.message, variant: 'destructive' });
+    },
+  });
+}
+
+export function useRetryBillingRunPayers() {
+  const queryClient = useQueryClient();
+  const { currentOrg } = useOrg();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ billingRunId, failedPayers }: {
+      billingRunId: string;
+      failedPayers: NonNullable<BillingRunSummary['failedPayers']>;
+    }) => {
+      if (!currentOrg?.id) throw new Error('No organisation selected');
+
+      // Fetch rate cards
+      const { data: rateCards } = await supabase
+        .from('rate_cards')
+        .select('*')
+        .eq('org_id', currentOrg.id);
+
+      // Fetch the billing run to get date range
+      const { data: billingRun, error: brError } = await supabase
+        .from('billing_runs')
+        .select('*')
+        .eq('id', billingRunId)
+        .single();
+
+      if (brError) throw brError;
+
+      const fallbackRate = 3000;
+      const retryPayerIds = new Set(failedPayers.map(fp => fp.payerId).filter(Boolean));
+
+      // Re-fetch lessons in the billing run date range
+      const { data: lessons, error: lessonsError } = await supabase
+        .from('lessons')
+        .select(`
+          id, title, start_at, end_at,
+          lesson_participants(
+            student:students(
+              id, first_name, last_name, status,
+              student_guardians(
+                guardian:guardians(id, full_name, email),
+                is_primary_payer
+              )
+            )
+          )
+        `)
+        .eq('org_id', currentOrg.id)
+        .in('status', ['completed', 'scheduled'])
+        .gte('start_at', billingRun.start_date)
+        .lte('start_at', billingRun.end_date);
+
+      if (lessonsError) throw lessonsError;
+
+      // Get already billed lesson IDs
+      const { data: billedItems } = await supabase
+        .from('invoice_items')
+        .select('linked_lesson_id')
+        .eq('org_id', currentOrg.id)
+        .not('linked_lesson_id', 'is', null);
+
+      const billedLessonIds = new Set(billedItems?.map(i => i.linked_lesson_id) || []);
+      const unbilledLessons = lessons?.filter(l => !billedLessonIds.has(l.id)) || [];
+
+      // Group by payer, only for retry payers
+      const payerGroups = new Map<string, {
+        payerType: 'guardian' | 'student';
+        payerId: string;
+        lessons: typeof unbilledLessons;
+        addedLessonIds: Set<string>;
+      }>();
+
+      unbilledLessons.forEach((lesson) => {
+        (lesson as any).lesson_participants?.forEach((lp: any) => {
+          const student = lp.student;
+          if (!student || student.status !== 'active') return;
+
+          const primaryGuardian = student.student_guardians?.find(
+            (sg: any) => sg.is_primary_payer
+          )?.guardian;
+
+          const payerId = primaryGuardian ? primaryGuardian.id : student.id;
+          if (!retryPayerIds.has(payerId)) return;
+
+          const key = primaryGuardian ? `guardian-${payerId}` : `student-${payerId}`;
+          if (!payerGroups.has(key)) {
+            payerGroups.set(key, {
+              payerType: primaryGuardian ? 'guardian' : 'student',
+              payerId,
+              lessons: [],
+              addedLessonIds: new Set(),
+            });
+          }
+          const group = payerGroups.get(key)!;
+          if (!group.addedLessonIds.has(lesson.id)) {
+            group.lessons.push(lesson);
+            group.addedLessonIds.add(lesson.id);
+          }
+        });
+      });
+
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 14);
+
+      const newInvoiceIds: string[] = [];
+      let newTotal = 0;
+      const stillFailed: NonNullable<BillingRunSummary['failedPayers']> = [];
+
+      for (const [, payer] of payerGroups) {
+        try {
+          const lessonRates = payer.lessons.map((lesson) => {
+            const durationMins = differenceInMinutes(new Date(lesson.end_at), new Date(lesson.start_at));
+            return findRateForDuration(durationMins, rateCards || [], fallbackRate);
+          });
+          const subtotal = lessonRates.reduce((sum, r) => sum + r, 0);
+          const vatRate = currentOrg.vat_enabled ? currentOrg.vat_rate : 0;
+          const taxMinor = Math.round(subtotal * (vatRate / 100));
+          const total = subtotal + taxMinor;
+
+          const { data: invoice, error: invoiceError } = await supabase
+            .from('invoices')
+            .insert({
+              org_id: currentOrg.id,
+              invoice_number: '',
+              due_date: dueDate.toISOString().split('T')[0],
+              payer_guardian_id: payer.payerType === 'guardian' ? payer.payerId : null,
+              payer_student_id: payer.payerType === 'student' ? payer.payerId : null,
+              subtotal_minor: subtotal,
+              tax_minor: taxMinor,
+              total_minor: total,
+              vat_rate: vatRate,
+              currency_code: currentOrg.currency_code,
+              status: 'draft',
+              term_id: billingRun.term_id || null,
+            })
+            .select()
+            .single();
+
+          if (invoiceError) throw invoiceError;
+
+          newInvoiceIds.push(invoice.id);
+          newTotal += total;
+
+          const items = payer.lessons.map((lesson, idx) => ({
+            invoice_id: invoice.id,
+            org_id: currentOrg.id,
+            description: lesson.title,
+            quantity: 1,
+            unit_price_minor: lessonRates[idx],
+            amount_minor: lessonRates[idx],
+            linked_lesson_id: lesson.id,
+          }));
+
+          const { error: itemsError } = await supabase
+            .from('invoice_items')
+            .insert(items);
+
+          if (itemsError) throw itemsError;
+        } catch (err: any) {
+          const fp = failedPayers.find(f => f.payerId === payer.payerId);
+          stillFailed.push({
+            payerName: fp?.payerName || payer.payerId,
+            payerEmail: fp?.payerEmail || null,
+            payerType: payer.payerType,
+            payerId: payer.payerId,
+            error: err.message || 'Unknown error',
+          });
+        }
+      }
+
+      // Update billing run summary
+      const existingSummary = (billingRun.summary || {}) as Record<string, any>;
+      const existingInvoiceIds: string[] = existingSummary.invoiceIds || [];
+      const updatedSummary = {
+        ...existingSummary,
+        invoiceCount: (existingSummary.invoiceCount || 0) + newInvoiceIds.length,
+        totalAmount: (existingSummary.totalAmount || 0) + newTotal,
+        invoiceIds: [...existingInvoiceIds, ...newInvoiceIds],
+        failedPayers: stillFailed.length > 0 ? stillFailed : undefined,
+      };
+
+      const finalStatus = stillFailed.length === 0 ? 'completed' : 'partial';
+
+      await supabase
+        .from('billing_runs')
+        .update({ status: finalStatus, summary: updatedSummary })
+        .eq('id', billingRunId);
+
+      return { newInvoiceCount: newInvoiceIds.length, stillFailed, finalStatus };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['billing-runs'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+
+      if (data.stillFailed.length === 0) {
+        toast({ title: `Retry successful: ${data.newInvoiceCount} invoice${data.newInvoiceCount !== 1 ? 's' : ''} created` });
+      } else {
+        toast({
+          title: 'Partial retry',
+          description: `${data.newInvoiceCount} created, ${data.stillFailed.length} still failed`,
+          variant: 'destructive',
+        });
+      }
+    },
+    onError: (error) => {
+      toast({ title: 'Retry failed', description: error.message, variant: 'destructive' });
     },
   });
 }
