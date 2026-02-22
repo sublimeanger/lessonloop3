@@ -105,7 +105,7 @@ export function useConflictDetection() {
                     start_at, 
                     end_at, 
                     location_id,
-                    (currentOrg as any).buffer_minutes_between_locations || 0,
+                    currentOrg.buffer_minutes_between_locations || 0,
                     exclude_lesson_id
                   ),
                 'teacher lessons'
@@ -421,7 +421,7 @@ async function checkStudentConflicts(
     const conflictingStudents = new Set<string>();
     
     for (const p of participations) {
-      const lesson = p.lesson as any;
+      const lesson = p.lesson as { id: string; title: string; start_at: string; end_at: string; status: string } | null;
       if (!lesson || lesson.status === 'cancelled') continue;
       if (excludeLessonId && lesson.id === excludeLessonId) continue;
       

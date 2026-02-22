@@ -209,7 +209,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
 
   // Calculate hours until lesson for late cancellation warning
   const hoursUntilLesson = differenceInHours(startTime, new Date());
-  const cancellationNoticeHours = (currentOrg as any)?.cancellation_notice_hours || 24;
+  const cancellationNoticeHours = currentOrg?.cancellation_notice_hours || 24;
   const isLateCancellation = hoursUntilLesson < cancellationNoticeHours && hoursUntilLesson >= 0;
 
   const handleCancelClick = () => {

@@ -82,15 +82,16 @@ async function fetchCalendarLessons(
       .in('lesson_id', lessonIds),
   ]);
 
+  const teacherData = ('data' in teacherRecords ? teacherRecords.data : teacherRecords) as { id: string; display_name: string | null; email: string | null }[] | null;
   const teacherMap = new Map<string, { full_name: string | null; email: string | null }>(
-    ((teacherRecords as any).data || []).map((t: any) => [t.id, { full_name: t.display_name, email: t.email }])
+    (teacherData || []).map((t) => [t.id, { full_name: t.display_name, email: t.email }])
   );
-  const participantsMap = new Map<string, any[]>();
+  const participantsMap = new Map<string, { id: string; lesson_id: string; student: { id: string; first_name: string; last_name: string } | null }[]>();
   (participantsData.data || []).forEach(p => {
     const existing = participantsMap.get(p.lesson_id) || [];
     participantsMap.set(p.lesson_id, [...existing, p]);
   });
-  const attendanceMap = new Map<string, any[]>();
+  const attendanceMap = new Map<string, { lesson_id: string; student_id: string; attendance_status: string }[]>();
   (attendanceData.data || []).forEach(a => {
     const existing = attendanceMap.get(a.lesson_id) || [];
     attendanceMap.set(a.lesson_id, [...existing, a]);
@@ -101,8 +102,8 @@ async function fetchCalendarLessons(
     start_at: toOrgLocalIso(lesson.start_at, orgTimezone),
     end_at: toOrgLocalIso(lesson.end_at, orgTimezone),
     teacher: teacherMap.get(lesson.teacher_id),
-    participants: participantsMap.get(lesson.id) as any || [],
-    attendance: attendanceMap.get(lesson.id) || [],
+    participants: (participantsMap.get(lesson.id) || []) as LessonWithDetails['participants'],
+    attendance: (attendanceMap.get(lesson.id) || []) as LessonWithDetails['attendance'],
   }));
 
   return { lessons: enrichedLessons, isCapReached };
