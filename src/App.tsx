@@ -66,6 +66,7 @@ const Resources = lazy(() => import("./pages/Resources"));
 const DailyRegister = lazy(() => import("./pages/DailyRegister"));
 const BatchAttendance = lazy(() => import("./pages/BatchAttendance"));
 const Help = lazy(() => import("./pages/Help"));
+const MakeUpDashboard = lazy(() => import("./pages/MakeUpDashboard"));
 
 // Portal Pages – grouped into one chunk
 const PortalHome = lazy(() => import("./pages/portal/PortalHome"));
@@ -276,6 +277,11 @@ const App = () => (
               <Route path="/resources" element={
                 <RouteGuard allowedRoles={['owner', 'admin', 'teacher']}>
                   <Resources />
+                </RouteGuard>
+              } />
+              <Route path="/make-ups" element={
+                <RouteGuard allowedRoles={['owner', 'admin']}>
+                  <MakeUpDashboard />
                 </RouteGuard>
               } />
               <Route path="/settings" element={
