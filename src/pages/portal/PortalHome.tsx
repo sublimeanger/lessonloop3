@@ -80,9 +80,10 @@ export default function PortalHome() {
           if (resetErr) throw resetErr;
           toast({ title: "Slot declined. We'll keep looking for another available time." });
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
         console.error('Make-up action error:', err);
-        toast({ title: 'Something went wrong', description: err.message, variant: 'destructive' });
+        toast({ title: 'Something went wrong', description: message, variant: 'destructive' });
       } finally {
         // Clean URL params
         setSearchParams({}, { replace: true });
@@ -111,25 +112,31 @@ export default function PortalHome() {
       if (error) throw error;
       toast({ title: 'Make-up accepted! The academy will confirm the booking shortly.' });
       queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_parent'] });
-    } catch (err: any) {
-      toast({ title: 'Something went wrong', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      toast({ title: 'Something went wrong', description: message, variant: 'destructive' });
     }
   };
 
   const handleInlineDecline = async (id: string) => {
     try {
-      await supabase
+      const { error: declineErr } = await supabase
         .from('make_up_waitlist')
         .update({ status: 'declined', responded_at: new Date().toISOString() })
         .eq('id', id);
-      await supabase
+      if (declineErr) throw declineErr;
+
+      const { error: resetErr } = await supabase
         .from('make_up_waitlist')
         .update({ status: 'waiting', matched_lesson_id: null, matched_at: null, offered_at: null })
         .eq('id', id);
+      if (resetErr) throw resetErr;
+
       toast({ title: "Slot declined. We'll keep looking for another available time." });
       queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_parent'] });
-    } catch (err: any) {
-      toast({ title: 'Something went wrong', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      toast({ title: 'Something went wrong', description: message, variant: 'destructive' });
     }
   };
 
