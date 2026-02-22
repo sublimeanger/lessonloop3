@@ -18,6 +18,7 @@ export interface StudentListItem {
   notes: string | null;
   status: StudentStatus;
   created_at: string;
+  guardian_count: number;
 }
 
 async function fetchStudentsForRole(
@@ -48,25 +49,33 @@ async function fetchStudentsForRole(
 
     const { data, error } = await supabase
       .from('students')
-      .select()
+      .select('*, student_guardians(count)')
       .eq('org_id', orgId)
       .is('deleted_at', null)
       .in('id', assignedIds)
       .order('last_name', { ascending: true });
 
     if (error) throw error;
-    return (data || []) as unknown as StudentListItem[];
+    return (data || []).map(mapStudentWithGuardianCount);
   }
 
   const { data, error } = await supabase
     .from('students')
-    .select()
+    .select('*, student_guardians(count)')
     .eq('org_id', orgId)
     .is('deleted_at', null)
     .order('last_name', { ascending: true });
 
   if (error) throw error;
-  return (data || []) as unknown as StudentListItem[];
+  return (data || []).map(mapStudentWithGuardianCount);
+}
+
+function mapStudentWithGuardianCount(row: Record<string, unknown>): StudentListItem {
+  const guardians = row.student_guardians as Array<{ count: number }> | undefined;
+  return {
+    ...(row as unknown as Omit<StudentListItem, 'guardian_count'>),
+    guardian_count: guardians?.[0]?.count ?? 0,
+  };
 }
 
 export function useStudents() {
