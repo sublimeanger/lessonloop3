@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { ListSkeleton } from '@/components/shared/LoadingState';
@@ -151,6 +152,7 @@ export default function Students() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [confirmToggle, setConfirmToggle] = useState<StudentListItem | null>(null);
+  const [sortBy, setSortBy] = useState<'last_name' | 'first_name' | 'created_at'>('last_name');
 
   const statusCounts = useMemo(() => ({
     all: students.length,
@@ -159,15 +161,21 @@ export default function Students() {
   }), [students]);
 
   const filteredStudents = useMemo(() => {
-    return students.filter((student) => {
-      const matchesSearch =
-        `${student.first_name} ${student.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.phone?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || student.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [students, searchQuery, statusFilter]);
+    return students
+      .filter((student) => {
+        const matchesSearch =
+          `${student.first_name} ${student.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          student.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          student.phone?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === 'all' || student.status === statusFilter;
+        return matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'first_name') return a.first_name.localeCompare(b.first_name);
+        if (sortBy === 'created_at') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        return a.last_name.localeCompare(b.last_name);
+      });
+  }, [students, searchQuery, statusFilter, sortBy]);
 
   const openAddWizard = () => {
     // Client-side guard only — server-side enforcement pending
@@ -229,7 +237,19 @@ export default function Students() {
             aria-label="Search students"
           />
         </div>
-        <StatusPills value={statusFilter} onChange={setStatusFilter} counts={statusCounts} />
+        <div className="flex items-center gap-2">
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+            <SelectTrigger className="w-[140px] h-9 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="last_name">Last name</SelectItem>
+              <SelectItem value="first_name">First name</SelectItem>
+              <SelectItem value="created_at">Newest first</SelectItem>
+            </SelectContent>
+          </Select>
+          <StatusPills value={statusFilter} onChange={setStatusFilter} counts={statusCounts} />
+        </div>
       </div>
 
       {isLoading ? (
