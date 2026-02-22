@@ -642,11 +642,18 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
             });
           }
         } catch (batchError: any) {
-          toast({
-            title: 'Error creating lessons',
-            description: `${batchError.message}. Partial creation may have occurred — please check the calendar.`,
-            variant: 'destructive',
-          });
+          const msg = batchError.message || '';
+          if (msg.includes('CONFLICT:TEACHER:')) {
+            toast({ title: 'Teacher conflict', description: msg.split('CONFLICT:TEACHER:')[1], variant: 'destructive' });
+          } else if (msg.includes('CONFLICT:ROOM:')) {
+            toast({ title: 'Room conflict', description: msg.split('CONFLICT:ROOM:')[1], variant: 'destructive' });
+          } else {
+            toast({
+              title: 'Error creating lessons',
+              description: `${msg}. Partial creation may have occurred — please check the calendar.`,
+              variant: 'destructive',
+            });
+          }
           throw batchError;
         }
 
@@ -659,7 +666,14 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
       onSaved();
       onClose();
     } catch (error: any) {
-      toast({ title: 'Error saving lesson', description: error.message, variant: 'destructive' });
+      const msg = error.message || '';
+      if (msg.includes('CONFLICT:TEACHER:')) {
+        toast({ title: 'Teacher conflict', description: msg.split('CONFLICT:TEACHER:')[1], variant: 'destructive' });
+      } else if (msg.includes('CONFLICT:ROOM:')) {
+        toast({ title: 'Room conflict', description: msg.split('CONFLICT:ROOM:')[1], variant: 'destructive' });
+      } else {
+        toast({ title: 'Error saving lesson', description: msg, variant: 'destructive' });
+      }
     } finally {
       setIsSaving(false);
       setSavingProgress('');

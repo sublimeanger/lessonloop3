@@ -246,18 +246,25 @@ export function useCalendarActions({
           description: `Moved to ${format(newStart, 'EEE d MMM, HH:mm')}`,
         });
         refetch();
-      } catch (err) {
+      } catch (err: any) {
         logger.error('Failed to reschedule lesson:', err);
         setLessons(prev => prev.map(l => {
           const original = originalPositions.get(l.id);
           return original ? { ...l, ...original } : l;
         }));
         refetch();
-        toast({
-          title: 'Failed to reschedule',
-          description: 'An error occurred. The lesson has been restored to its original time.',
-          variant: 'destructive',
-        });
+        const msg = err?.message || '';
+        if (msg.includes('CONFLICT:TEACHER:')) {
+          toast({ title: 'Teacher conflict', description: msg.split('CONFLICT:TEACHER:')[1], variant: 'destructive' });
+        } else if (msg.includes('CONFLICT:ROOM:')) {
+          toast({ title: 'Room conflict', description: msg.split('CONFLICT:ROOM:')[1], variant: 'destructive' });
+        } else {
+          toast({
+            title: 'Failed to reschedule',
+            description: 'An error occurred. The lesson has been restored to its original time.',
+            variant: 'destructive',
+          });
+        }
       } finally {
         setSavingLessonIds(prev => {
           const next = new Set(prev);
