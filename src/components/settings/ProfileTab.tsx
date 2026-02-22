@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
-import { Loader2, LogOut, ShieldAlert, Mail } from 'lucide-react';
+import { Loader2, LogOut, ShieldAlert, Mail, Eye, EyeOff, Lock } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +38,12 @@ export function ProfileTab() {
   const [phone, setPhone] = useState('');
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [newEmail, setNewEmail] = useState('');
+  const [isEmailProvider, setIsEmailProvider] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
 
   // Sync from profile context (already fetched via AuthContext)
   useEffect(() => {
@@ -50,11 +56,12 @@ export function ProfileTab() {
   }, [profile]);
 
   useEffect(() => {
-    const getEmail = async () => {
+    const getUser = async () => {
       const { data } = await supabase.auth.getUser();
       if (data.user?.email) setEmail(data.user.email);
+      setIsEmailProvider(data.user?.app_metadata?.provider === 'email');
     };
-    getEmail();
+    getUser();
   }, []);
 
   const saveMutation = useMutation({
@@ -90,6 +97,30 @@ export function ProfileTab() {
         variant: 'destructive',
       });
     },
+  });
+
+  const passwordError = (() => {
+    if (!newPassword) return null;
+    if (newPassword.length < 8) return 'Password must be at least 8 characters';
+    if (confirmPassword && newPassword !== confirmPassword) return 'Passwords do not match';
+    return null;
+  })();
+
+  const canSubmitPassword = newPassword.length >= 8 && newPassword === confirmPassword;
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async () => {
+      if (!canSubmitPassword) throw new Error('Please fix password errors');
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Password updated', description: 'Your password has been changed successfully.' });
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordTouched(false);
+    },
+    onError: (err: Error) => toast({ title: 'Password change failed', description: err.message, variant: 'destructive' }),
   });
 
   const globalSignOutMutation = useMutation({
@@ -230,6 +261,79 @@ export function ProfileTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Change Password Section — only for email/password users */}
+      {isEmailProvider && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Change Password
+            </CardTitle>
+            <CardDescription>Update your account password</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New password</Label>
+              <div className="relative">
+                <Input
+                  id="newPassword"
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  onBlur={() => setPasswordTouched(true)}
+                  placeholder="Minimum 8 characters"
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                </Button>
+              </div>
+              {passwordTouched && newPassword && newPassword.length < 8 && (
+                <p className="text-xs text-destructive">Password must be at least 8 characters</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm new password</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter your new password"
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                </Button>
+              </div>
+              {confirmPassword && newPassword !== confirmPassword && (
+                <p className="text-xs text-destructive">Passwords do not match</p>
+              )}
+            </div>
+            <Button
+              onClick={() => { setPasswordTouched(true); if (canSubmitPassword) changePasswordMutation.mutate(); }}
+              disabled={changePasswordMutation.isPending || !canSubmitPassword}
+            >
+              {changePasswordMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Update Password
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
