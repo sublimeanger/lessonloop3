@@ -68,12 +68,30 @@ const handler = async (req: Request): Promise<Response> => {
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get lesson participants and their guardians
+    // Verify sender is a staff member of the org
+    const { data: senderMembership } = await supabaseService
+      .from("org_memberships")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("org_id", orgId)
+      .eq("status", "active")
+      .single();
+
+    if (!senderMembership || !["owner", "admin", "teacher"].includes(senderMembership.role)) {
+      return new Response(
+        JSON.stringify({ error: "Not a member of this organisation" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get lesson participants and verify lesson belongs to org
     const { data: participants } = await supabaseService
       .from("lesson_participants")
-      .select("student_id")
-      .eq("lesson_id", lessonId);
+      .select("student_id, lesson:lessons!inner(org_id)")
+      .eq("lesson_id", lessonId)
+      .eq("lesson.org_id", orgId);
 
+    // Filter out any results where lesson org didn't match (belt-and-suspenders)
     if (!participants || participants.length === 0) {
       return new Response(
         JSON.stringify({ success: true, message: "No participants to notify" }),
