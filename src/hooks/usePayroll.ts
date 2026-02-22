@@ -252,7 +252,7 @@ export function exportPayrollToCSV(data: PayrollData, orgName: string, currencyC
   const sym = currencySymbol(currencyCode);
   
   // Header
-  rows.push(`Teacher,Pay Rate Type,Pay Rate Value,Completed Lessons,Total Hours,Gross Owed (${sym})`);
+  rows.push(`Teacher,Pay Rate Type,Pay Rate Value,Completed Lessons,Total Hours,Gross Owed (${sanitiseCSVCell(sym)})`);
   
   // Data rows
   for (const teacher of data.teachers) {
