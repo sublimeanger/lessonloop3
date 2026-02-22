@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { HelpCircle, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -63,6 +64,30 @@ const faqs = [
 ];
 
 export function PricingFAQ() {
+  // Inject FAQPage JSON-LD structured data
+  useEffect(() => {
+    const allItems = faqs.flatMap((cat) => cat.items);
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: allItems.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.answer,
+        },
+      })),
+    };
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.textContent = JSON.stringify(jsonLd);
+    document.head.appendChild(script);
+    return () => {
+      document.head.removeChild(script);
+    };
+  }, []);
+
   return (
     <section className="py-20 lg:py-28 bg-muted/30">
       <div className="container mx-auto px-6 lg:px-8">
