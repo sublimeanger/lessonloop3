@@ -14,7 +14,7 @@ export interface AdminMessageRequest {
   created_at: string;
   guardian?: { id: string; full_name: string; email: string | null } | null;
   student?: { id: string; first_name: string; last_name: string } | null;
-  lesson?: { id: string; title: string; start_at: string; end_at: string } | null;
+  lesson?: { id: string; title: string; start_at: string; end_at: string; teacher_id: string | null; location_id: string | null } | null;
 }
 
 export function useAdminMessageRequests(options?: { status?: string }) {
@@ -37,7 +37,7 @@ export function useAdminMessageRequests(options?: { status?: string }) {
           created_at,
           guardian:guardians(id, full_name, email),
           student:students(id, first_name, last_name),
-          lesson:lessons(id, title, start_at, end_at)
+          lesson:lessons(id, title, start_at, end_at, teacher_id, location_id)
         `)
         .eq('org_id', currentOrg.id)
         .order('created_at', { ascending: false });
@@ -98,6 +98,48 @@ export function useUpdateMessageRequest() {
 
       if (status === 'approved' && lessonId) {
         if (requestType === 'reschedule' && newStartAt && newEndAt) {
+          // Fetch the lesson to get teacher_id and location_id for validation
+          const { data: lessonData } = await supabase
+            .from('lessons')
+            .select('teacher_id, location_id')
+            .eq('id', lessonId)
+            .eq('org_id', currentOrg.id)
+            .single();
+
+          // --- Validation: check for closure dates ---
+          const newDateStr = newStartAt.slice(0, 10); // YYYY-MM-DD
+          const { data: closureDates } = await supabase
+            .from('closure_dates')
+            .select('id, reason')
+            .eq('org_id', currentOrg.id)
+            .eq('date', newDateStr)
+            .or(
+              lessonData?.location_id
+                ? `applies_to_all_locations.eq.true,location_id.eq.${lessonData.location_id}`
+                : 'applies_to_all_locations.eq.true'
+            );
+
+          if (closureDates && closureDates.length > 0) {
+            throw new Error(`Cannot reschedule: ${newDateStr} is a closure date (${closureDates[0].reason})`);
+          }
+
+          // --- Validation: check for teacher lesson overlaps ---
+          if (lessonData?.teacher_id) {
+            const { data: conflicts } = await supabase
+              .from('lessons')
+              .select('id, title, start_at')
+              .eq('org_id', currentOrg.id)
+              .eq('teacher_id', lessonData.teacher_id)
+              .neq('id', lessonId)
+              .neq('status', 'cancelled')
+              .lt('start_at', newEndAt)
+              .gt('end_at', newStartAt);
+
+            if (conflicts && conflicts.length > 0) {
+              throw new Error(`Conflict: teacher already has "${conflicts[0].title}" at that time`);
+            }
+          }
+
           // Actually reschedule the lesson on the calendar
           const { error: lessonError } = await supabase
             .from('lessons')
