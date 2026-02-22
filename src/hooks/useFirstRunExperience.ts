@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg, OrgType } from '@/contexts/OrgContext';
@@ -130,32 +131,42 @@ const AGENCY_STEPS: FirstRunStep[] = [
 
 function getStepsForOrgType(orgType: OrgType): FirstRunStep[] {
   switch (orgType) {
-    case 'solo_teacher':
-      return SOLO_STEPS;
-    case 'studio':
-      return STUDIO_STEPS;
-    case 'academy':
-      return ACADEMY_STEPS;
-    case 'agency':
-      return AGENCY_STEPS;
-    default:
-      return SOLO_STEPS;
+    case 'solo_teacher': return SOLO_STEPS;
+    case 'studio': return STUDIO_STEPS;
+    case 'academy': return ACADEMY_STEPS;
+    case 'agency': return AGENCY_STEPS;
+    default: return SOLO_STEPS;
   }
 }
 
 function getPathFromOrgType(orgType: OrgType): FirstRunPath {
   switch (orgType) {
-    case 'solo_teacher':
-      return 'solo';
-    case 'studio':
-      return 'studio';
-    case 'academy':
-      return 'academy';
-    case 'agency':
-      return 'agency';
-    default:
-      return 'solo';
+    case 'solo_teacher': return 'solo';
+    case 'studio': return 'studio';
+    case 'academy': return 'academy';
+    case 'agency': return 'agency';
+    default: return 'solo';
   }
+}
+
+function deriveCurrentStep(orgType: OrgType, steps: FirstRunStep[], has: { students: boolean; lessons: boolean; locations: boolean; teachers: boolean }): FirstRunStep | null {
+  if (orgType === 'solo_teacher') {
+    if (!has.students) return steps.find(s => s.id === 'add-student') || null;
+    if (!has.lessons) return steps.find(s => s.id === 'schedule-lesson') || null;
+  } else if (orgType === 'studio') {
+    if (!has.locations) return steps.find(s => s.id === 'add-location') || null;
+    if (!has.teachers) return steps.find(s => s.id === 'invite-teacher') || null;
+    if (!has.students) return steps.find(s => s.id === 'add-student') || null;
+  } else if (orgType === 'academy') {
+    if (!has.locations) return steps.find(s => s.id === 'add-locations') || null;
+    if (!has.teachers) return steps.find(s => s.id === 'invite-team') || null;
+    if (!has.students) return steps.find(s => s.id === 'add-students') || null;
+  } else if (orgType === 'agency') {
+    if (!has.locations) return steps.find(s => s.id === 'add-client-sites') || null;
+    if (!has.teachers) return steps.find(s => s.id === 'invite-teachers') || null;
+    return steps.find(s => s.id === 'configure-policy') || null;
+  }
+  return null;
 }
 
 export function useFirstRunExperience(): FirstRunState & {
@@ -164,143 +175,81 @@ export function useFirstRunExperience(): FirstRunState & {
 } {
   const { profile, user } = useAuth();
   const { currentOrg } = useOrg();
-  
-  const [state, setState] = useState<FirstRunState>({
-    isFirstRun: false,
-    isLoading: true,
-    path: null,
-    currentStep: null,
-    steps: [],
-    hasStudents: false,
-    hasLessons: false,
-    hasLocations: false,
-    hasTeachers: false,
-  });
-  
+  const queryClient = useQueryClient();
   const [isDismissed, setIsDismissed] = useState(false);
 
-  useEffect(() => {
-    const checkFirstRun = async () => {
-      if (!currentOrg || !user) {
-        setState(prev => ({ ...prev, isLoading: false }));
-        return;
-      }
+  const orgId = currentOrg?.id;
+  const firstRunCompleted = profile?.first_run_completed;
 
-      // Check if first run is already completed
-      const firstRunCompleted = profile?.first_run_completed;
-      if (firstRunCompleted) {
-        setState(prev => ({ ...prev, isFirstRun: false, isLoading: false }));
-        return;
-      }
+  const { data, isLoading } = useQuery({
+    queryKey: ['first-run-experience', orgId, firstRunCompleted],
+    queryFn: async () => {
+      const [studentsResult, lessonsResult, locationsResult, teachersResult] = await Promise.all([
+        supabase.from('students').select('id', { count: 'exact', head: true }).eq('org_id', orgId!).eq('status', 'active'),
+        supabase.from('lessons').select('id', { count: 'exact', head: true }).eq('org_id', orgId!),
+        supabase.from('locations').select('id', { count: 'exact', head: true }).eq('org_id', orgId!),
+        supabase.from('org_memberships').select('id', { count: 'exact', head: true }).eq('org_id', orgId!).eq('status', 'active').in('role', ['teacher', 'admin']),
+      ]);
 
-      try {
-        // Check completion status in parallel
-        const [studentsResult, lessonsResult, locationsResult, teachersResult] = await Promise.all([
-          supabase
-            .from('students')
-            .select('id', { count: 'exact', head: true })
-            .eq('org_id', currentOrg.id)
-            .eq('status', 'active'),
-          supabase
-            .from('lessons')
-            .select('id', { count: 'exact', head: true })
-            .eq('org_id', currentOrg.id),
-          supabase
-            .from('locations')
-            .select('id', { count: 'exact', head: true })
-            .eq('org_id', currentOrg.id),
-          supabase
-            .from('org_memberships')
-            .select('id', { count: 'exact', head: true })
-            .eq('org_id', currentOrg.id)
-            .eq('status', 'active')
-            .in('role', ['teacher', 'admin']),
-        ]);
+      return {
+        hasStudents: (studentsResult.count || 0) > 0,
+        hasLessons: (lessonsResult.count || 0) > 0,
+        hasLocations: (locationsResult.count || 0) > 0,
+        hasTeachers: (teachersResult.count || 0) > 1,
+      };
+    },
+    enabled: !!orgId && !!user && !firstRunCompleted,
+    staleTime: 60_000,
+  });
 
-        const hasStudents = (studentsResult.count || 0) > 0;
-        const hasLessons = (lessonsResult.count || 0) > 0;
-        const hasLocations = (locationsResult.count || 0) > 0;
-        const hasTeachers = (teachersResult.count || 0) > 1; // More than just owner
+  const state = useMemo<FirstRunState>(() => {
+    if (!currentOrg || !user || firstRunCompleted || !data) {
+      return {
+        isFirstRun: false,
+        isLoading,
+        path: null,
+        currentStep: null,
+        steps: [],
+        hasStudents: false,
+        hasLessons: false,
+        hasLocations: false,
+        hasTeachers: false,
+      };
+    }
 
-        const orgType = currentOrg.org_type || 'solo_teacher';
-        const path = getPathFromOrgType(orgType);
-        const steps = getStepsForOrgType(orgType);
+    const orgType = currentOrg.org_type || 'solo_teacher';
+    const path = getPathFromOrgType(orgType);
+    const steps = getStepsForOrgType(orgType);
+    const currentStep = deriveCurrentStep(orgType, steps, {
+      students: data.hasStudents,
+      lessons: data.hasLessons,
+      locations: data.hasLocations,
+      teachers: data.hasTeachers,
+    });
 
-        // Determine current step based on completion
-        let currentStep: FirstRunStep | null = null;
-        
-        if (orgType === 'solo_teacher') {
-          if (!hasStudents) {
-            currentStep = steps.find(s => s.id === 'add-student') || null;
-          } else if (!hasLessons) {
-            currentStep = steps.find(s => s.id === 'schedule-lesson') || null;
-          }
-        } else if (orgType === 'studio') {
-          if (!hasLocations) {
-            currentStep = steps.find(s => s.id === 'add-location') || null;
-          } else if (!hasTeachers) {
-            currentStep = steps.find(s => s.id === 'invite-teacher') || null;
-          } else if (!hasStudents) {
-            currentStep = steps.find(s => s.id === 'add-student') || null;
-          }
-        } else if (orgType === 'academy') {
-          if (!hasLocations) {
-            currentStep = steps.find(s => s.id === 'add-locations') || null;
-          } else if (!hasTeachers) {
-            currentStep = steps.find(s => s.id === 'invite-team') || null;
-          } else if (!hasStudents) {
-            currentStep = steps.find(s => s.id === 'add-students') || null;
-          }
-        } else if (orgType === 'agency') {
-          if (!hasLocations) {
-            currentStep = steps.find(s => s.id === 'add-client-sites') || null;
-          } else if (!hasTeachers) {
-            currentStep = steps.find(s => s.id === 'invite-teachers') || null;
-          } else {
-            currentStep = steps.find(s => s.id === 'configure-policy') || null;
-          }
-        }
-
-        // Only show first-run if there's an incomplete step
-        const isFirstRun = currentStep !== null;
-
-        setState({
-          isFirstRun,
-          isLoading: false,
-          path,
-          currentStep,
-          steps,
-          hasStudents,
-          hasLessons,
-          hasLocations,
-          hasTeachers,
-        });
-      } catch (error) {
-        logger.error('Error checking first-run status:', error);
-        setState(prev => ({ ...prev, isLoading: false }));
-      }
+    return {
+      isFirstRun: currentStep !== null,
+      isLoading: false,
+      path,
+      currentStep,
+      steps,
+      ...data,
     };
-
-    checkFirstRun();
-  }, [currentOrg, user, profile]);
+  }, [currentOrg, user, firstRunCompleted, data, isLoading]);
 
   const completeFirstRun = useCallback(async () => {
     if (!user) return;
-
     try {
       await supabase
         .from('profiles')
-        .update({ 
-          first_run_completed: true,
-          first_run_path: state.path,
-        })
+        .update({ first_run_completed: true, first_run_path: state.path })
         .eq('id', user.id);
 
-      setState(prev => ({ ...prev, isFirstRun: false }));
+      queryClient.invalidateQueries({ queryKey: ['first-run-experience'] });
     } catch (error) {
       logger.error('Error completing first-run:', error);
     }
-  }, [user, state.path]);
+  }, [user, state.path, queryClient]);
 
   const dismissFirstRun = useCallback(() => {
     setIsDismissed(true);
