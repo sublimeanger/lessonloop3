@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useMakeUpCredits } from '@/hooks/useMakeUpCredits';
 import { useRateCards, findRateForDuration } from '@/hooks/useRateCards';
+import { useUpdateAttendance } from '@/hooks/useRegisterData';
 import { supabase } from '@/integrations/supabase/client';
 import { logAudit } from '@/lib/auditLog';
 import { logger } from '@/lib/logger';
@@ -43,6 +44,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
   const { toast } = useToast();
   const { createCredit, checkCreditEligibility } = useMakeUpCredits();
   const { data: rateCards } = useRateCards();
+  const updateAttendance = useUpdateAttendance();
   const firstActionRef = useRef<HTMLButtonElement>(null);
 
   // Auto-focus first action button when panel opens
@@ -141,48 +143,22 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
     setSavingAttendance(studentId);
 
     try {
-      // Check if attendance record exists
-      const existing = lesson.attendance?.find(a => a.student_id === studentId);
-
-      if (existing) {
-        // Update existing
-        await supabase
-          .from('attendance_records')
-          .update({ 
-            attendance_status: status,
-            recorded_by: user.id,
-            recorded_at: new Date().toISOString(),
-          })
-          .eq('lesson_id', lesson.id)
-          .eq('student_id', studentId);
-      } else {
-        // Create new
-        await supabase
-          .from('attendance_records')
-          .insert({
-            org_id: currentOrg.id,
-            lesson_id: lesson.id,
-            student_id: studentId,
-            attendance_status: status,
-            recorded_by: user.id,
-          });
-      }
-
-      onUpdated();
-      toast({ title: 'Attendance recorded' });
+      await updateAttendance.mutateAsync({
+        lessonId: lesson.id,
+        studentId,
+        status,
+      });
       
       // Check for make-up credit eligibility on student cancellation
       if (status === 'cancelled_by_student') {
         const eligibility = await checkCreditEligibility(lesson.start_at);
         
         if (eligibility.eligible) {
-          // Find student name for the dialog
           const participant = lesson.participants?.find(p => p.student.id === studentId);
           const studentName = participant 
             ? `${participant.student.first_name} ${participant.student.last_name}`
             : 'Student';
           
-          // Calculate credit value based on lesson duration and rate cards
           const creditValue = findRateForDuration(duration, rateCards || []);
           
           setPendingCreditInfo({
@@ -195,7 +171,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         }
       }
     } catch (error: any) {
-      toast({ title: 'Error recording attendance', description: error.message, variant: 'destructive' });
+      // Error toast is handled by the hook
     } finally {
       setSavingAttendance(null);
     }

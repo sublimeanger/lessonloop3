@@ -7,10 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { X, Clock, User, MapPin, Repeat, Users, Edit2, Check, UserX, Ban, AlertCircle, Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { useUpdateAttendance } from '@/hooks/useRegisterData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
-import { useToast } from '@/hooks/use-toast';
 
 interface LessonDetailSidePanelProps {
   lesson: LessonWithDetails | null;
@@ -47,33 +46,22 @@ export function LessonDetailSidePanel({
 }: LessonDetailSidePanelProps) {
   const { currentOrg } = useOrg();
   const { user } = useAuth();
-  const { toast } = useToast();
+  const updateAttendance = useUpdateAttendance();
   const [savingAttendance, setSavingAttendance] = useState<string | null>(null);
 
   const handleAttendanceChange = useCallback(async (studentId: string, status: AttendanceStatus) => {
     if (!currentOrg || !user || !lesson) return;
     setSavingAttendance(studentId);
     try {
-      const existing = lesson.attendance?.find(a => a.student_id === studentId);
-      if (existing) {
-        await supabase
-          .from('attendance_records')
-          .update({ attendance_status: status, recorded_by: user.id, recorded_at: new Date().toISOString() })
-          .eq('lesson_id', lesson.id)
-          .eq('student_id', studentId);
-      } else {
-        await supabase
-          .from('attendance_records')
-          .insert({ org_id: currentOrg.id, lesson_id: lesson.id, student_id: studentId, attendance_status: status, recorded_by: user.id });
-      }
-      onUpdated();
-      toast({ title: 'Attendance recorded' });
-    } catch (error: any) {
-      toast({ title: 'Error recording attendance', description: error.message, variant: 'destructive' });
+      await updateAttendance.mutateAsync({
+        lessonId: lesson.id,
+        studentId,
+        status,
+      });
     } finally {
       setSavingAttendance(null);
     }
-  }, [currentOrg, user, lesson, onUpdated, toast]);
+  }, [currentOrg, user, lesson, updateAttendance]);
 
   const getStudentAttendance = useCallback((studentId: string): AttendanceStatus | null => {
     return lesson?.attendance?.find(a => a.student_id === studentId)?.attendance_status || null;
