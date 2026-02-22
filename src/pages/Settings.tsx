@@ -129,8 +129,10 @@ function AvailabilityTabWithSelector({ isOrgAdmin }: { isOrgAdmin: boolean }) {
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab') || 'profile';
   const { isOrgAdmin } = useOrg();
+  const adminTabs = ['members', 'scheduling', 'audit', 'privacy', 'rate-cards'];
+  const rawTab = searchParams.get('tab') || 'profile';
+  const initialTab = (!isOrgAdmin && adminTabs.includes(rawTab)) ? 'profile' : rawTab;
 
   return (
     <AppLayout>
