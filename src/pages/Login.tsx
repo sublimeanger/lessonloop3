@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,13 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isAppleLoading, setIsAppleLoading] = useState(false);
+  const [isOAuthCallback, setIsOAuthCallback] = useState(false);
+
+  useEffect(() => {
+    if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
+      setIsOAuthCallback(true);
+    }
+  }, []);
 
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
@@ -84,6 +91,18 @@ export default function Login() {
       });
     }
   };
+
+  if (isOAuthCallback) {
+    return (
+      <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
+        <div className="text-center space-y-4">
+          <LogoHorizontal size="lg" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Signing you in…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
