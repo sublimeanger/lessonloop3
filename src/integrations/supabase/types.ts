@@ -1114,6 +1114,39 @@ export type Database = {
           },
         ]
       }
+      invoice_number_sequences: {
+        Row: {
+          current_number: number
+          current_year: string
+          org_id: string
+        }
+        Insert: {
+          current_number?: number
+          current_year: string
+          org_id: string
+        }
+        Update: {
+          current_number?: number
+          current_year?: string
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_number_sequences_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_number_sequences_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           created_at: string
