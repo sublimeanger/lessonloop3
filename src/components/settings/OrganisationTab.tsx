@@ -42,6 +42,7 @@ export function OrganisationTab() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      if (!orgName.trim()) throw new Error('Organisation name is required');
       const { error } = await supabase
         .from('organisations')
         .update({ name: orgName, address: orgAddress })
@@ -92,7 +93,7 @@ export function OrganisationTab() {
           </div>
         </div>
         {canEdit && (
-          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !orgName.trim()}>
             {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Save Changes
           </Button>
