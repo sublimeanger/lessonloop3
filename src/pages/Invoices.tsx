@@ -89,23 +89,30 @@ export default function Invoices() {
     setVoidConfirmInvoice(null);
   };
 
+  const processInChunks = async (
+    items: typeof invoices,
+    action: (inv: typeof invoices[0]) => Promise<unknown>,
+  ) => {
+    let successCount = 0;
+    let failCount = 0;
+    const CHUNK_SIZE = 5;
+    for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+      const chunk = items.slice(i, i + CHUNK_SIZE);
+      const results = await Promise.allSettled(chunk.map(action));
+      successCount += results.filter(r => r.status === 'fulfilled').length;
+      failCount += results.filter(r => r.status === 'rejected').length;
+    }
+    return { successCount, failCount };
+  };
+
   const handleBulkSend = async () => {
     const drafts = invoices.filter((inv) => selectedIds.has(inv.id) && inv.status === 'draft');
     if (drafts.length === 0) return;
 
     setBulkSending(true);
-    let successCount = 0;
-    let failCount = 0;
-
-    for (const invoice of drafts) {
-      try {
-        await updateStatus.mutateAsync({ id: invoice.id, status: 'sent' });
-        successCount++;
-      } catch {
-        failCount++;
-      }
-    }
-
+    const { successCount, failCount } = await processInChunks(drafts, (inv) =>
+      updateStatus.mutateAsync({ id: inv.id, status: 'sent' }),
+    );
     setBulkSending(false);
     setSelectedIds(new Set());
 
@@ -117,18 +124,9 @@ export default function Invoices() {
   };
 
   const handleBulkVoidConfirm = async () => {
-    let successCount = 0;
-    let failCount = 0;
-
-    for (const invoice of voidableInvoices) {
-      try {
-        await updateStatus.mutateAsync({ id: invoice.id, status: 'void', orgId: currentOrg?.id });
-        successCount++;
-      } catch {
-        failCount++;
-      }
-    }
-
+    const { successCount, failCount } = await processInChunks(voidableInvoices, (inv) =>
+      updateStatus.mutateAsync({ id: inv.id, status: 'void', orgId: currentOrg?.id }),
+    );
     setBulkVoidConfirmOpen(false);
     setSelectedIds(new Set());
 
