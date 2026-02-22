@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { PortalErrorState } from '@/components/portal/PortalErrorState';
@@ -8,13 +8,21 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare, Loader2, Plus, Clock, CheckCircle, XCircle, AlertCircle, Mail, User } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { MessageSquare, Loader2, Plus, Clock, CheckCircle, XCircle, AlertCircle, Mail, Pencil } from 'lucide-react';
+import { format, parseISO, isToday, isYesterday } from 'date-fns';
 import { useMessageRequests } from '@/hooks/useParentPortal';
 import { useParentMessages } from '@/hooks/useMessages';
 import { RequestModal } from '@/components/portal/RequestModal';
 import { useMarkMessagesAsRead } from '@/hooks/useUnreadMessages';
 import { sanitizeHtml } from '@/lib/sanitize';
+import { cn } from '@/lib/utils';
+
+function formatMessageTime(dateStr: string) {
+  const d = parseISO(dateStr);
+  if (isToday(d)) return format(d, 'HH:mm');
+  if (isYesterday(d)) return `Yesterday, ${format(d, 'HH:mm')}`;
+  return format(d, 'd MMM, HH:mm');
+}
 
 export default function PortalMessages() {
   const [requestModalOpen, setRequestModalOpen] = useState(false);
@@ -25,7 +33,6 @@ export default function PortalMessages() {
   const { data: messages, isLoading: messagesLoading, isError: messagesError, hasMore, loadMore, isFetchingMore } = useParentMessages();
   const markAsRead = useMarkMessagesAsRead();
 
-  // Track which batch of unread IDs we've already marked, so new arrivals trigger again
   const lastMarkedKey = useRef('');
 
   useEffect(() => {
@@ -40,7 +47,6 @@ export default function PortalMessages() {
     const key = unreadIds.join(',');
     if (key === lastMarkedKey.current) return;
 
-    // Optimistic UI: immediately mark messages as read in the cache
     const now = new Date().toISOString();
     queryClient.setQueriesData(
       { queryKey: ['parent-messages'], exact: false },
@@ -58,7 +64,6 @@ export default function PortalMessages() {
       }
     );
 
-    // Also optimistically clear the unread badge count
     queryClient.setQueriesData(
       { queryKey: ['unread-messages-count'], exact: false },
       () => 0
@@ -127,7 +132,7 @@ export default function PortalMessages() {
         title="Messages"
         description="View your messages and requests"
         actions={
-          <Button onClick={() => setRequestModalOpen(true)} className="gap-2">
+          <Button onClick={() => setRequestModalOpen(true)} className="gap-2 hidden sm:inline-flex">
             <Plus className="h-4 w-4" />
             New Request
           </Button>
@@ -147,7 +152,7 @@ export default function PortalMessages() {
           <TabsTrigger value="requests">My Requests</TabsTrigger>
         </TabsList>
 
-        {/* Inbox - messages received from staff */}
+        {/* Inbox - chat bubble style */}
         <TabsContent value="inbox">
           {messagesLoading ? (
             <ListSkeleton count={3} />
@@ -164,35 +169,48 @@ export default function PortalMessages() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
-              {messages.map((msg) => (
-                <Card key={msg.id} className={!msg.read_at ? 'border-primary/20 bg-primary/5' : ''}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4 mb-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Mail className="h-4 w-4 text-primary" />
-                        <span className="font-medium">{msg.subject}</span>
-                        {!msg.read_at && (
-                          <Badge variant="default" className="text-xs">New</Badge>
-                        )}
-                      </div>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {format(parseISO(msg.created_at), 'd MMM yyyy, HH:mm')}
-                      </span>
+            <div className="space-y-2">
+              {messages.map((msg) => {
+                const isUnread = !msg.read_at;
+                return (
+                  <div key={msg.id} className="flex items-start gap-3">
+                    {/* Unread dot */}
+                    <div className="pt-3 flex-shrink-0 w-2.5">
+                      {isUnread && (
+                        <span className="block h-2.5 w-2.5 rounded-full bg-primary" />
+                      )}
                     </div>
-                    {/<[a-z][\s\S]*>/i.test(msg.body) ? (
-                      <div
-                        className="text-sm text-muted-foreground prose prose-sm max-w-none dark:prose-invert [&_a]:text-primary [&_a]:underline"
-                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.body) }}
-                      />
-                    ) : (
-                      <div className="whitespace-pre-wrap text-sm text-muted-foreground">
-                        {msg.body}
+
+                    {/* Chat bubble */}
+                    <div
+                      className={cn(
+                        'flex-1 rounded-2xl rounded-tl-sm px-4 py-3 transition-all duration-150',
+                        'bg-muted/60 dark:bg-muted/30',
+                        isUnread && 'bg-primary/5 dark:bg-primary/10 ring-1 ring-primary/15'
+                      )}
+                    >
+                      <div className="flex items-baseline justify-between gap-3 mb-1">
+                        <h4 className={cn('text-sm font-semibold leading-tight', isUnread && 'text-primary')}>
+                          {msg.subject}
+                        </h4>
+                        <span className="text-[11px] text-muted-foreground whitespace-nowrap flex-shrink-0">
+                          {formatMessageTime(msg.created_at)}
+                        </span>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                      {/<[a-z][\s\S]*>/i.test(msg.body) ? (
+                        <div
+                          className="text-sm text-muted-foreground prose prose-sm max-w-none dark:prose-invert [&_a]:text-primary [&_a]:underline"
+                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.body) }}
+                        />
+                      ) : (
+                        <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                          {msg.body}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
 
               {hasMore && (
                 <div className="flex justify-center pt-2">
@@ -282,6 +300,15 @@ export default function PortalMessages() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Mobile FAB for compose */}
+      <button
+        onClick={() => setRequestModalOpen(true)}
+        className="fixed bottom-20 right-4 z-40 sm:hidden h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+        aria-label="New request"
+      >
+        <Pencil className="h-5 w-5" />
+      </button>
 
       <RequestModal open={requestModalOpen} onOpenChange={setRequestModalOpen} />
     </PortalLayout>
