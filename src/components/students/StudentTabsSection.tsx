@@ -62,6 +62,17 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
       <TabsContent value="teachers">
         <SectionErrorBoundary name="Teacher Assignments">
           <TeacherAssignmentsPanel studentId={hook.id!} />
+          <p className="text-xs text-muted-foreground mt-4">
+            Default teaching location, teacher, and rate card can be configured in the{' '}
+            <button
+              type="button"
+              onClick={() => (document.querySelector('[data-value="overview"]') as HTMLElement)?.click()}
+              className="text-primary hover:underline"
+            >
+              Overview
+            </button>{' '}
+            tab.
+          </p>
         </SectionErrorBoundary>
       </TabsContent>
 
