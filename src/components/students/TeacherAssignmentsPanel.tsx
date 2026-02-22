@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { logger } from '@/lib/logger';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
+import { useTeachers } from '@/hooks/useTeachers';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, GraduationCap, Star, Loader2 } from 'lucide-react';
 
@@ -24,13 +25,6 @@ interface TeacherAssignment {
   };
 }
 
-interface AvailableTeacher {
-  id: string;
-  display_name: string;
-  email: string | null;
-  user_id: string | null;
-}
-
 interface TeacherAssignmentsPanelProps {
   studentId: string;
 }
@@ -38,149 +32,121 @@ interface TeacherAssignmentsPanelProps {
 export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelProps) {
   const { currentOrg, isOrgAdmin } = useOrg();
   const { toast } = useToast();
-  
-  const [assignments, setAssignments] = useState<TeacherAssignment[]>([]);
-  const [availableTeachers, setAvailableTeachers] = useState<AvailableTeacher[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  const assignmentQueryKey = ['teacher-assignments', currentOrg?.id, studentId];
+
+  const { data: assignments = [], isLoading } = useQuery({
+    queryKey: assignmentQueryKey,
+    queryFn: async () => {
+      if (!currentOrg || !studentId) return [];
+      const { data, error } = await supabase
+        .from('student_teacher_assignments')
+        .select(`
+          id, 
+          teacher_id, 
+          is_primary,
+          teacher:teachers!student_teacher_assignments_teacher_id_fkey (
+            id,
+            display_name,
+            email,
+            user_id
+          )
+        `)
+        .eq('org_id', currentOrg.id)
+        .eq('student_id', studentId);
+      if (error) throw error;
+      return (data || []).map((a: any) => ({
+        id: a.id,
+        teacher_id: a.teacher_id,
+        is_primary: a.is_primary,
+        teacher: a.teacher,
+      })) as TeacherAssignment[];
+    },
+    enabled: !!currentOrg && !!studentId,
+  });
+
+  const { data: availableTeachers = [] } = useTeachers();
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  
-  // Form state
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [isPrimary, setIsPrimary] = useState(false);
 
-  const fetchAssignments = async () => {
-    if (!currentOrg || !studentId) return;
-    setIsLoading(true);
-    
-    // Query assignments with teacher details from new teachers table
-    const { data, error } = await supabase
-      .from('student_teacher_assignments')
-      .select(`
-        id, 
-        teacher_id, 
-        is_primary,
-        teacher:teachers!student_teacher_assignments_teacher_id_fkey (
-          id,
-          display_name,
-          email,
-          user_id
-        )
-      `)
-      .eq('org_id', currentOrg.id)
-      .eq('student_id', studentId);
-    
-    if (error) {
-      logger.error('Error fetching assignments:', error);
-      setIsLoading(false);
-      return;
-    }
-    
-    setAssignments((data || []).map((a: any) => ({
-      id: a.id,
-      teacher_id: a.teacher_id,
-      is_primary: a.is_primary,
-      teacher: a.teacher,
-    })));
-    setIsLoading(false);
-  };
-
-  const fetchAvailableTeachers = async () => {
-    if (!currentOrg) return;
-    
-    // Get all active teachers from the teachers table
-    const { data: teachers } = await supabase
-      .from('teachers')
-      .select('id, display_name, email, user_id')
-      .eq('org_id', currentOrg.id)
-      .eq('status', 'active')
-      .order('display_name');
-    
-    setAvailableTeachers((teachers || []) as AvailableTeacher[]);
-  };
-
-  useEffect(() => {
-    fetchAssignments();
-    fetchAvailableTeachers();
-  }, [currentOrg?.id, studentId]);
-
-  const handleAddAssignment = async () => {
-    if (!selectedTeacherId || !currentOrg) {
-      toast({ title: 'Select a teacher', variant: 'destructive' });
-      return;
-    }
-    
-    setIsSaving(true);
-    
-    // Find the teacher to get their user_id for backward compat
-    const teacher = availableTeachers.find(t => t.id === selectedTeacherId);
-    
-    const { error } = await supabase
-      .from('student_teacher_assignments')
-      .insert({
-        org_id: currentOrg.id,
-        student_id: studentId,
-        teacher_id: selectedTeacherId,                      // New: teachers.id
-        teacher_user_id: teacher?.user_id || null,          // For backward compat
-        is_primary: isPrimary,
-      });
-    
-    if (error) {
-      if (error.message.includes('duplicate')) {
-        toast({ title: 'Already assigned', description: 'This teacher is already assigned to this student.', variant: 'destructive' });
-      } else {
-        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+  const addAssignment = useMutation({
+    mutationFn: async () => {
+      if (!selectedTeacherId || !currentOrg) throw new Error('Select a teacher');
+      const teacher = availableTeachers.find(t => t.id === selectedTeacherId);
+      const { error } = await supabase
+        .from('student_teacher_assignments')
+        .insert({
+          org_id: currentOrg.id,
+          student_id: studentId,
+          teacher_id: selectedTeacherId,
+          teacher_user_id: teacher?.user_id || null,
+          is_primary: isPrimary,
+        });
+      if (error) {
+        if (error.message.includes('duplicate')) {
+          throw new Error('This teacher is already assigned to this student.');
+        }
+        throw error;
       }
-    } else {
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: assignmentQueryKey });
       toast({ title: 'Teacher assigned' });
       setIsDialogOpen(false);
       setSelectedTeacherId('');
       setIsPrimary(false);
-      fetchAssignments();
-    }
-    
-    setIsSaving(false);
-  };
-
-  const handleRemoveAssignment = async (assignmentId: string) => {
-    const { error } = await supabase
-      .from('student_teacher_assignments')
-      .delete()
-      .eq('id', assignmentId);
-    
-    if (error) {
+    },
+    onError: (error: Error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Teacher removed' });
-      fetchAssignments();
-    }
-  };
+    },
+  });
 
-  const handleSetPrimary = async (assignmentId: string, isPrimary: boolean) => {
-    // If setting as primary, first unset all others
-    if (isPrimary && currentOrg) {
-      await supabase
+  const removeAssignment = useMutation({
+    mutationFn: async (assignmentId: string) => {
+      const { error } = await supabase
         .from('student_teacher_assignments')
-        .update({ is_primary: false })
-        .eq('org_id', currentOrg.id)
-        .eq('student_id', studentId);
-    }
-    
-    const { error } = await supabase
-      .from('student_teacher_assignments')
-      .update({ is_primary: isPrimary })
-      .eq('id', assignmentId);
-    
-    if (error) {
+        .delete()
+        .eq('id', assignmentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: assignmentQueryKey });
+      toast({ title: 'Teacher removed' });
+    },
+    onError: (error: Error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      fetchAssignments();
-    }
-  };
+    },
+  });
 
-  // Filter out already assigned teachers
-  const unassignedTeachers = availableTeachers.filter(
-    t => !assignments.some(a => a.teacher_id === t.id)
+  const setPrimary = useMutation({
+    mutationFn: async ({ assignmentId, primary }: { assignmentId: string; primary: boolean }) => {
+      if (primary && currentOrg) {
+        await supabase
+          .from('student_teacher_assignments')
+          .update({ is_primary: false })
+          .eq('org_id', currentOrg.id)
+          .eq('student_id', studentId);
+      }
+      const { error } = await supabase
+        .from('student_teacher_assignments')
+        .update({ is_primary: primary })
+        .eq('id', assignmentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: assignmentQueryKey });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const unassignedTeachers = useMemo(
+    () => availableTeachers.filter(t => !assignments.some(a => a.teacher_id === t.id)),
+    [availableTeachers, assignments]
   );
 
   return (
@@ -245,7 +211,7 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleSetPrimary(assignment.id, true)}
+                        onClick={() => setPrimary.mutate({ assignmentId: assignment.id, primary: true })}
                       >
                         Set Primary
                       </Button>
@@ -253,7 +219,7 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleRemoveAssignment(assignment.id)}
+                      onClick={() => removeAssignment.mutate(assignment.id)}
                     >
                       Remove
                     </Button>
@@ -307,8 +273,8 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddAssignment} disabled={isSaving || !selectedTeacherId}>
-              {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Assigning...</> : 'Assign Teacher'}
+            <Button onClick={() => addAssignment.mutate()} disabled={addAssignment.isPending || !selectedTeacherId}>
+              {addAssignment.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Assigning...</> : 'Assign Teacher'}
             </Button>
           </DialogFooter>
         </DialogContent>
