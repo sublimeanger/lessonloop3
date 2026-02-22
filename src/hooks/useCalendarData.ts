@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
@@ -181,79 +181,66 @@ export function useCalendarData(
 
 export function useTeachersAndLocations() {
   const { currentOrg } = useOrg();
-  const [teachers, setTeachers] = useState<{ id: string; name: string; userId: string | null }[]>([]);
-  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
-  const [rooms, setRooms] = useState<{ id: string; name: string; location_id: string }[]>([]);
-  const [students, setStudents] = useState<{ 
-    id: string; 
-    name: string; 
-    default_location_id: string | null;
-    default_teacher_id: string | null;
-    default_rate_card_id: string | null;
-  }[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (!currentOrg) return;
-
-    const fetchData = async () => {
-      setIsLoading(true);
-      
-      // Fetch all data in parallel - now using teachers table
+  const { data, isLoading } = useQuery({
+    queryKey: ['teachers-and-locations', currentOrg?.id],
+    queryFn: async () => {
       const [teachersResult, locationResult, roomResult, studentResult] = await Promise.all([
         supabase
           .from('teachers')
           .select('id, display_name, user_id')
-          .eq('org_id', currentOrg.id)
+          .eq('org_id', currentOrg!.id)
           .eq('status', 'active')
           .order('display_name'),
         supabase
           .from('locations')
           .select('id, name')
-          .eq('org_id', currentOrg.id)
+          .eq('org_id', currentOrg!.id)
           .order('name'),
         supabase
           .from('rooms')
           .select('id, name, location_id')
-          .eq('org_id', currentOrg.id)
+          .eq('org_id', currentOrg!.id)
           .order('name'),
         supabase
           .from('students')
           .select('id, first_name, last_name, default_location_id, default_teacher_id, default_rate_card_id')
-          .eq('org_id', currentOrg.id)
+          .eq('org_id', currentOrg!.id)
           .eq('status', 'active')
           .is('deleted_at', null)
           .order('first_name')
           .limit(500)
       ]);
 
-      // Map teachers from new teachers table
-      const teacherList = (teachersResult.data || []).map((t: any) => ({
-        id: t.id,
-        name: t.display_name || 'Unknown',
-        userId: t.user_id,
-      }));
-      setTeachers(teacherList);
-
-      setLocations(locationResult.data || []);
-      setRooms(roomResult.data || []);
-      setStudents(
-        (studentResult.data || []).map((s) => ({
+      return {
+        teachers: (teachersResult.data || []).map((t: any) => ({
+          id: t.id,
+          name: t.display_name || 'Unknown',
+          userId: t.user_id,
+        })),
+        locations: locationResult.data || [],
+        rooms: (roomResult.data || []).map((r: any) => ({ id: r.id, name: r.name, location_id: r.location_id })),
+        students: (studentResult.data || []).map((s: any) => ({
           id: s.id,
           name: `${s.first_name} ${s.last_name}`,
           default_location_id: s.default_location_id,
           default_teacher_id: s.default_teacher_id,
           default_rate_card_id: s.default_rate_card_id,
-        }))
-      );
-      
-      setIsLoading(false);
-    };
+        })),
+      };
+    },
+    enabled: !!currentOrg,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 
-    fetchData();
-  }, [currentOrg]);
-
-  return { teachers, locations, rooms, students, isLoading };
+  return {
+    teachers: data?.teachers ?? [],
+    locations: data?.locations ?? [],
+    rooms: data?.rooms ?? [],
+    students: data?.students ?? [],
+    isLoading,
+  };
 }
 
 export interface ClosureInfo {
