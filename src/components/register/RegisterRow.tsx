@@ -256,6 +256,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
                               )}
                             >
                               <Icon className="h-3.5 w-3.5" />
+                              <span className="sm:hidden">{config.shortLabel}</span>
                               <span className="hidden sm:inline">{config.label}</span>
                             </Button>
                           );
