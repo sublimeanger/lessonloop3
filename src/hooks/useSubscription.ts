@@ -33,6 +33,7 @@ export interface SubscriptionState {
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   pastDueSince: Date | null;
+  cancelsAt: Date | null;
 }
 
 // Unlimited students for all paid plans - matches pricing-config.ts
@@ -99,6 +100,8 @@ export function useSubscription(): SubscriptionState {
     const trialEndsAt = trialEndsAtRaw ? parseISO(trialEndsAtRaw) : null;
     const pastDueSinceRaw = (currentOrg as any)?.past_due_since;
     const pastDueSince = pastDueSinceRaw ? parseISO(pastDueSinceRaw as string) : null;
+    const cancelsAtRaw = (currentOrg as any)?.cancels_at;
+    const cancelsAt = cancelsAtRaw ? parseISO(cancelsAtRaw as string) : null;
     
     const isTrialing = status === 'trialing';
     const isTrialExpired = trialEndsAt ? isPast(trialEndsAt) : false;
@@ -130,6 +133,7 @@ export function useSubscription(): SubscriptionState {
       stripeCustomerId: currentOrg?.stripe_customer_id ?? null,
       stripeSubscriptionId: currentOrg?.stripe_subscription_id ?? null,
       pastDueSince,
+      cancelsAt,
     };
   }, [currentOrg]);
 }

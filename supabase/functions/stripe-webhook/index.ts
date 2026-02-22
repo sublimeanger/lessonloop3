@@ -392,6 +392,13 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
 
   const orgId = subscription.metadata?.lessonloop_org_id;
   
+  // Detect pending cancellation (cancel_at_period_end)
+  // Stripe keeps status "active" until period end, then fires "deleted"
+  const isPendingCancellation = subscription.cancel_at_period_end === true && subscription.status === "active";
+  const cancelsAtTs = isPendingCancellation && subscription.current_period_end
+    ? new Date(subscription.current_period_end * 1000).toISOString()
+    : null;
+
   // Map Stripe status to our status
   let status: string;
   switch (subscription.status) {
@@ -427,7 +434,7 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
     const plan = detectedPlan || subscription.metadata?.lessonloop_plan;
     const limits = plan ? (PLAN_LIMITS[plan] || PLAN_LIMITS.solo_teacher) : undefined;
 
-    const updateData: Record<string, unknown> = { subscription_status: status };
+    const updateData: Record<string, unknown> = { subscription_status: status, cancels_at: cancelsAtTs };
     // Clear past_due_since when returning to active
     if (status === "active") {
       updateData.past_due_since = null;
@@ -466,6 +473,7 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
       max_teachers: limits.max_teachers,
       // Clear past_due_since when returning to active
       past_due_since: status === "active" ? null : undefined,
+      cancels_at: cancelsAtTs,
     })
     .eq("id", orgId);
 
