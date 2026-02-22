@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { logger } from '@/lib/logger';
-import { format, getDay, differenceInMinutes, addMinutes, subMinutes } from 'date-fns';
+import { format, getDay, differenceInMinutes, addMinutes, subMinutes, subHours, addHours } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { ConflictResult } from '@/components/calendar/types';
@@ -413,7 +413,9 @@ async function checkStudentConflicts(
       lesson:lessons!inner(id, title, start_at, end_at, status)
     `)
     .eq('org_id', orgId)
-    .in('student_id', studentIds);
+    .in('student_id', studentIds)
+    .gte('lesson.start_at', subHours(startAt, 24).toISOString())
+    .lte('lesson.start_at', addHours(endAt, 24).toISOString());
 
   if (participations) {
     const conflictingStudents = new Set<string>();
