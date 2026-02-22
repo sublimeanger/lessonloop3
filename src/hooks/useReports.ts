@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { activeStudentsQuery } from '@/lib/studentQuery';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, subMonths, startOfMonth, endOfMonth, differenceInDays, addMonths, parseISO } from 'date-fns';
+import { format, subMonths, startOfMonth, endOfMonth, differenceInDays, differenceInMonths, addMonths, parseISO } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { sanitiseCSVCell, currencySymbol } from '@/lib/utils';
 
@@ -46,7 +46,7 @@ export function useRevenueReport(startDate: string, endDate: string) {
       // Calculate previous period dates (same duration, shifted back)
       const startParsed = parseISO(startDate);
       const endParsed = parseISO(endDate);
-      const durationMonths = Math.round((endParsed.getTime() - startParsed.getTime()) / (30.44 * 24 * 60 * 60 * 1000)) + 1;
+      const durationMonths = differenceInMonths(endOfMonth(endParsed), startOfMonth(startParsed)) + 1;
       const prevStartDate = format(subMonths(startParsed, durationMonths), 'yyyy-MM-dd');
       const prevEndDate = format(subMonths(endParsed, durationMonths), 'yyyy-MM-dd');
 
