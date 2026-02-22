@@ -334,6 +334,7 @@ export function useWeeklyProgress(studentIds: string[]) {
       return Array.from(progressMap.values());
     },
     enabled: !!currentOrg?.id && studentIds.length > 0,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes to avoid redundant 3-query recomputation
   });
 }
 
