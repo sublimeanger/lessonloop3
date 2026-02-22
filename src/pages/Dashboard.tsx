@@ -100,7 +100,6 @@ export default function Dashboard() {
   return <SoloTeacherDashboard firstName={firstName} />;
 }
 
-// Remove useFirstMount — no longer needed
 
 
 function SoloTeacherDashboard({ firstName }: { firstName: string }) {

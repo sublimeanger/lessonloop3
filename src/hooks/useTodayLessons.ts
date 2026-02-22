@@ -112,8 +112,8 @@ export function useTodayLessons() {
           }
           
           const students = (lesson.lesson_participants || [])
-            .filter((lp: any) => lp.student)
-            .map((lp: any) => ({
+            .filter((lp: { student: { id: string; first_name: string; last_name: string } | null }) => lp.student)
+            .map((lp: { student: { id: string; first_name: string; last_name: string } }) => ({
               id: lp.student.id,
               name: `${lp.student.first_name} ${lp.student.last_name}`.trim(),
             }));
@@ -129,7 +129,7 @@ export function useTodayLessons() {
             students,
             location: lesson.location ? { id: lesson.location.id, name: lesson.location.name } : undefined,
             room: lesson.room ? { id: lesson.room.id, name: lesson.room.name } : undefined,
-            teacherName: (lesson as any).teacher?.display_name || undefined,
+            teacherName: (lesson as unknown as { teacher?: { display_name: string } | null }).teacher?.display_name || undefined,
           };
         });
     },
