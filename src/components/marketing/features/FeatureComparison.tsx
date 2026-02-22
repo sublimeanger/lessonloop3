@@ -18,11 +18,12 @@ const tiers = PLAN_ORDER.map((key) => {
 const features = [
   { name: "Unlimited students", teacher: true, studio: true, agency: true },
   { name: "Drag & drop calendar", teacher: true, studio: true, agency: true },
+  { name: "LoopAssist AI", teacher: true, studio: true, agency: true },
   { name: "Invoice generation", teacher: true, studio: true, agency: true },
   { name: "Parent portal", teacher: true, studio: true, agency: true },
   { name: "Online payments", teacher: true, studio: true, agency: true },
+  { name: "Make-up credits", teacher: true, studio: true, agency: true },
   { name: "Practice tracking", teacher: true, studio: true, agency: true },
-  { name: "LoopAssist AI", teacher: true, studio: true, agency: true },
   { name: "Resource library", teacher: true, studio: true, agency: true },
   { name: "Up to 5 teachers", teacher: false, studio: true, agency: false },
   { name: "Unlimited teachers", teacher: false, studio: false, agency: true },
