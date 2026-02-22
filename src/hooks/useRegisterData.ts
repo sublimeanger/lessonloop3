@@ -27,6 +27,7 @@ export interface RegisterLesson {
     student_name: string;
     attendance_status: AttendanceStatus | null;
     attendance_notes: string | null;
+    absence_reason_category?: string | null;
   }>;
 }
 
@@ -69,10 +70,11 @@ export function useRegisterData(date: Date) {
             )
           ),
           attendance_records (
-            student_id,
-            attendance_status,
-            cancellation_reason
-          )
+72:             student_id,
+73:             attendance_status,
+74:             cancellation_reason,
+75:             absence_reason_category
+76:           )
         `)
         .eq('org_id', currentOrg.id)
         .gte('start_at', dayStart)
@@ -139,6 +141,7 @@ export function useRegisterData(date: Date) {
               : 'Unknown Student',
             attendance_status: attendance?.attendance_status || null,
             attendance_notes: attendance?.cancellation_reason || null,
+            absence_reason_category: attendance?.absence_reason_category || null,
           };
         });
 
@@ -176,11 +179,15 @@ export function useUpdateAttendance() {
       studentId,
       status,
       notes,
+      absenceReason,
+      absenceNotifiedAt,
     }: {
       lessonId: string;
       studentId: string;
       status: AttendanceStatus;
       notes?: string;
+      absenceReason?: string;
+      absenceNotifiedAt?: string;
     }) => {
       if (!currentOrg || !user) throw new Error('No organisation or user');
 
@@ -193,7 +200,9 @@ export function useUpdateAttendance() {
             org_id: currentOrg.id,
             attendance_status: status,
             recorded_by: user.id,
-          },
+            absence_reason_category: absenceReason || null,
+            absence_notified_at: absenceNotifiedAt || null,
+          } as any,
           {
             onConflict: 'lesson_id,student_id',
           }
@@ -201,14 +210,11 @@ export function useUpdateAttendance() {
 
       if (error) throw error;
     },
-    onMutate: async ({ lessonId, studentId, status }) => {
-      // Cancel outgoing refetches so they don't overwrite our optimistic update
+    onMutate: async ({ lessonId, studentId, status, absenceReason }) => {
       await queryClient.cancelQueries({ queryKey: ['register-lessons'] });
 
-      // Snapshot all matching queries
       const previousQueries = queryClient.getQueriesData<RegisterLesson[]>({ queryKey: ['register-lessons'] });
 
-      // Optimistically update every matching query cache
       queryClient.setQueriesData<RegisterLesson[]>(
         { queryKey: ['register-lessons'] },
         (old) => {
@@ -219,7 +225,7 @@ export function useUpdateAttendance() {
               ...lesson,
               participants: lesson.participants.map(p =>
                 p.student_id === studentId
-                  ? { ...p, attendance_status: status }
+                  ? { ...p, attendance_status: status, absence_reason_category: absenceReason || null }
                   : p
               ),
             };
