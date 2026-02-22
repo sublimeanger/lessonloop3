@@ -940,6 +940,80 @@ export type Database = {
           },
         ]
       }
+      invoice_installments: {
+        Row: {
+          amount_minor: number
+          created_at: string | null
+          due_date: string
+          id: string
+          installment_number: number
+          invoice_id: string
+          org_id: string
+          paid_at: string | null
+          payment_id: string | null
+          status: string
+          stripe_payment_intent_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount_minor: number
+          created_at?: string | null
+          due_date: string
+          id?: string
+          installment_number: number
+          invoice_id: string
+          org_id: string
+          paid_at?: string | null
+          payment_id?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount_minor?: number
+          created_at?: string | null
+          due_date?: string
+          id?: string
+          installment_number?: number
+          invoice_id?: string
+          org_id?: string
+          paid_at?: string | null
+          payment_id?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_installments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_installments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_installments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_installments_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           amount_minor: number
@@ -1035,12 +1109,15 @@ export type Database = {
           currency_code: string
           due_date: string
           id: string
+          installment_count: number | null
           invoice_number: string
           issue_date: string
           notes: string | null
           org_id: string
+          paid_minor: number | null
           payer_guardian_id: string | null
           payer_student_id: string | null
+          payment_plan_enabled: boolean | null
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal_minor: number
           tax_minor: number
@@ -1055,12 +1132,15 @@ export type Database = {
           currency_code?: string
           due_date: string
           id?: string
+          installment_count?: number | null
           invoice_number: string
           issue_date?: string
           notes?: string | null
           org_id: string
+          paid_minor?: number | null
           payer_guardian_id?: string | null
           payer_student_id?: string | null
+          payment_plan_enabled?: boolean | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal_minor?: number
           tax_minor?: number
@@ -1075,12 +1155,15 @@ export type Database = {
           currency_code?: string
           due_date?: string
           id?: string
+          installment_count?: number | null
           invoice_number?: string
           issue_date?: string
           notes?: string | null
           org_id?: string
+          paid_minor?: number | null
           payer_guardian_id?: string | null
           payer_student_id?: string | null
+          payment_plan_enabled?: boolean | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal_minor?: number
           tax_minor?: number
