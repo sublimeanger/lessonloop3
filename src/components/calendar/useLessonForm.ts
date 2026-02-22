@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { logger } from '@/lib/logger';
-import { format, addMinutes, setHours, setMinutes, startOfDay, parseISO, addWeeks, isSameDay } from 'date-fns';
+import { format, addMinutes, setHours, setMinutes, startOfDay, parseISO, addWeeks, isSameDay, eachDayOfInterval } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -520,21 +520,23 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
           if (recError) throw recError;
           recurrenceId = recurrence.id;
 
-          const endDate = recurrenceEndDate
-            ? fromZonedTime(
-                setHours(startOfDay(recurrenceEndDate), 23),
-                orgTimezone
-              )
-            : addMinutes(startAtUtc, 90 * 24 * 60);
-          let currentDate = new Date(startAtUtc);
+          // Build recurrence dates in org timezone to handle DST correctly
+          const zonedStart = toZonedTime(startAtUtc, orgTimezone);
+          const zonedEnd = recurrenceEndDate
+            ? setHours(startOfDay(recurrenceEndDate), 23)
+            : toZonedTime(addMinutes(startAtUtc, 90 * 24 * 60), orgTimezone);
 
-          while (currentDate <= endDate) {
-            const zonedDate = toZonedTime(currentDate, orgTimezone);
-            const dayOfWeek = zonedDate.getDay();
-            if (recurrenceDays.includes(dayOfWeek) && currentDate.getTime() > startAtUtc.getTime()) {
-              lessonsToCreate.push(new Date(currentDate));
+          const allDays = eachDayOfInterval({ start: zonedStart, end: zonedEnd });
+          for (const day of allDays) {
+            const dayOfWeek = day.getDay();
+            if (recurrenceDays.includes(dayOfWeek)) {
+              // Set the same wall-clock time as the original lesson
+              const lessonLocal = setMinutes(setHours(day, zonedStart.getHours()), zonedStart.getMinutes());
+              const lessonUtc = fromZonedTime(lessonLocal, orgTimezone);
+              if (lessonUtc.getTime() > startAtUtc.getTime()) {
+                lessonsToCreate.push(lessonUtc);
+              }
             }
-            currentDate = addMinutes(currentDate, 24 * 60);
           }
         }
 
