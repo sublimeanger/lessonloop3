@@ -7,6 +7,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useCancellationNoticeSetting } from '@/hooks/useMakeUpCredits';
+import { useMakeUpPolicies, useWaitlistExpiry, ABSENCE_REASON_LABELS, ELIGIBILITY_OPTIONS, type Eligibility } from '@/hooks/useMakeUpPolicies';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -240,6 +241,115 @@ function ParentReschedulePolicySetting() {
   );
 }
 
+function MakeUpPolicySettings() {
+  const { policies, isLoading, updatePolicy } = useMakeUpPolicies();
+  const { expiryWeeks, updateExpiry } = useWaitlistExpiry();
+  const [localExpiry, setLocalExpiry] = useState(expiryWeeks);
+
+  useEffect(() => {
+    setLocalExpiry(expiryWeeks);
+  }, [expiryWeeks]);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CalendarIconSolid className="h-5 w-5" />
+          Make-Up Policy
+        </CardTitle>
+        <CardDescription>
+          Configure how each absence reason is handled for make-up eligibility
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Policy table */}
+        <div className="rounded-lg border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="text-left p-3 font-medium">Absence Reason</th>
+                <th className="text-left p-3 font-medium">Make-Up Eligibility</th>
+              </tr>
+            </thead>
+            <tbody>
+              {policies.map((policy) => {
+                const meta = ABSENCE_REASON_LABELS[policy.absence_reason];
+                return (
+                  <tr key={policy.id} className="border-b last:border-b-0">
+                    <td className="p-3">
+                      <span className="mr-2">{meta?.emoji}</span>
+                      {meta?.label || policy.absence_reason}
+                    </td>
+                    <td className="p-3">
+                      <Select
+                        value={policy.eligibility}
+                        onValueChange={(val) =>
+                          updatePolicy.mutate({ id: policy.id, eligibility: val as Eligibility })
+                        }
+                      >
+                        <SelectTrigger className="w-[180px] bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover z-50">
+                          {ELIGIBILITY_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <Separator />
+
+        {/* Waitlist expiry */}
+        <div className="space-y-2">
+          <div className="font-medium">Waitlist expiry</div>
+          <div className="text-sm text-muted-foreground">
+            Waitlist entries automatically expire after this many weeks
+          </div>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-sm text-muted-foreground">Entries expire after</span>
+            <Input
+              type="number"
+              min={1}
+              max={52}
+              value={localExpiry}
+              onChange={(e) => setLocalExpiry(parseInt(e.target.value) || 8)}
+              className="w-20"
+            />
+            <span className="text-sm text-muted-foreground">weeks</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => updateExpiry.mutate(localExpiry)}
+              disabled={localExpiry === expiryWeeks || updateExpiry.isPending}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function SchedulingSettingsTab() {
   const { currentOrg, refreshOrganisations } = useOrg();
   const { user } = useAuth();
@@ -395,6 +505,9 @@ export function SchedulingSettingsTab() {
           <ParentReschedulePolicySetting />
         </CardContent>
       </Card>
+
+      {/* Make-Up Policy */}
+      <MakeUpPolicySettings />
 
       {/* Closure Dates */}
       <Card>

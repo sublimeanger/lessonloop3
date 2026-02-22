@@ -35,6 +35,8 @@ export interface Organisation {
   schedule_end_hour?: number;
   // Parent portal scheduling policy
   parent_reschedule_policy?: 'self_service' | 'request_only' | 'admin_locked';
+  // Make-up waitlist
+  make_up_waitlist_expiry_weeks?: number | null;
   // Subscription fields
   subscription_plan: SubscriptionPlan;
   subscription_status: SubscriptionStatus;
