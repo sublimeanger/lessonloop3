@@ -150,8 +150,8 @@ export function useStudentsImport() {
 
         if (teacherData) {
           const teacherList = teacherData
-            .filter((t: any) => t.display_name)
-            .map((t: any) => ({ id: t.id, userId: t.user_id, name: t.display_name }));
+            .filter((t) => t.display_name)
+            .map((t) => ({ id: t.id, userId: t.user_id, name: t.display_name! }));
           setTeachers(teacherList);
           if (teacherList.length > 0) setSelectedTeacher(teacherList[0].id);
         }
@@ -188,8 +188,9 @@ export function useStudentsImport() {
       setWarnings(mappingData.warnings || []);
       setImportLessons(mappingData.has_lesson_data || false);
       setStep("mapping");
-    } catch (error: any) {
-      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: "Upload failed", description: message, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -273,8 +274,9 @@ export function useStudentsImport() {
       const result = await response.json() as DryRunResult;
       setDryRunResult(result);
       setStep("preview");
-    } catch (error: any) {
-      toast({ title: "Validation failed", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: "Validation failed", description: message, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -329,8 +331,9 @@ export function useStudentsImport() {
         title: "Import complete",
         description: `Created ${result.studentsCreated} students, ${result.guardiansCreated} guardians, ${result.lessonsCreated} lessons`,
       });
-    } catch (error: any) {
-      toast({ title: "Import failed", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: "Import failed", description: message, variant: "destructive" });
       setStep("preview");
     } finally {
       setIsLoading(false);

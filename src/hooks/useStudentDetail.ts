@@ -70,7 +70,7 @@ export function useStudentLessons(studentId: string | undefined) {
       }
 
       const lessonParticipants = data || [];
-      const lessonIds = lessonParticipants.map((lp: any) => lp.lesson_id);
+      const lessonIds = lessonParticipants.map((lp) => lp.lesson_id);
 
       let attendanceMap: Record<string, string> = {};
       if (lessonIds.length > 0) {
@@ -88,18 +88,18 @@ export function useStudentLessons(studentId: string | undefined) {
         }
       }
 
-      const items: StudentLesson[] = lessonParticipants.map((lp: any) => ({
+      const items: StudentLesson[] = lessonParticipants.map((lp) => ({
         id: lp.id,
         lesson_id: lp.lesson_id,
         attendance_status: attendanceMap[lp.lesson_id] || null,
         lesson: {
-          id: lp.lessons.id,
-          start_at: lp.lessons.start_at,
-          end_at: lp.lessons.end_at,
-          status: lp.lessons.status,
-          title: lp.lessons.title,
-          location_name: lp.lessons.locations?.name || null,
-          teacher_name: lp.lessons.teacher?.display_name || null,
+          id: (lp.lessons as Record<string, unknown>).id as string,
+          start_at: (lp.lessons as Record<string, unknown>).start_at as string,
+          end_at: (lp.lessons as Record<string, unknown>).end_at as string,
+          status: (lp.lessons as Record<string, unknown>).status as string,
+          title: (lp.lessons as Record<string, unknown>).title as string,
+          location_name: ((lp.lessons as Record<string, unknown>).locations as { name: string } | null)?.name || null,
+          teacher_name: ((lp.lessons as Record<string, unknown>).teacher as { display_name: string } | null)?.display_name || null,
         },
       }));
 
@@ -214,7 +214,18 @@ export function useStudentInvoices(studentId: string | undefined) {
   });
 }
 
-function mapInvoices(invoices: any[]): StudentInvoice[] {
+interface InvoiceRow {
+  id: string;
+  invoice_number: string;
+  status: string;
+  total_minor: number;
+  due_date: string | null;
+  issue_date: string | null;
+  payer_guardian: { full_name: string } | null;
+  payer_student: { first_name: string; last_name: string } | null;
+}
+
+function mapInvoices(invoices: InvoiceRow[]): StudentInvoice[] {
   return invoices.map((inv) => ({
     id: inv.id,
     invoice_number: inv.invoice_number,

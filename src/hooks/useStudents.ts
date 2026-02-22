@@ -97,7 +97,7 @@ export function useToggleStudentStatus() {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({ title: 'Error updating status', description: error.message, variant: 'destructive' });
     },
   });
