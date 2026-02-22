@@ -530,18 +530,52 @@ export function useSaveBatchAttendance(dateKey: string) {
 
       return { count: upserts.length };
     },
+    onMutate: async ({ attendance }) => {
+      await queryClient.cancelQueries({ queryKey: ['batch-attendance-lessons'] });
+
+      const previousQueries = queryClient.getQueriesData<BatchLessonRow[]>({ queryKey: ['batch-attendance-lessons'] });
+
+      queryClient.setQueriesData<BatchLessonRow[]>(
+        { queryKey: ['batch-attendance-lessons'] },
+        (old) => {
+          if (!old) return old;
+          return old.map(lesson => {
+            const lessonMap = attendance.get(lesson.id);
+            if (!lessonMap) return lesson;
+            return {
+              ...lesson,
+              participants: lesson.participants.map(p => {
+                const newStatus = lessonMap.get(p.student_id);
+                return newStatus
+                  ? { ...p, current_status: newStatus as AttendanceStatus }
+                  : p;
+              }),
+            };
+          });
+        }
+      );
+
+      return { previousQueries };
+    },
     onSuccess: (data) => {
       if (data.count === 0) {
         toast({ title: 'Nothing to save', description: 'No attendance records marked.' });
       } else {
         toast({ title: 'Attendance saved', description: `${data.count} records updated successfully.` });
       }
+    },
+    onError: (error: Error, _vars, context) => {
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data);
+        });
+      }
+      toast({ title: 'Failed to save', description: error.message || 'Please try again.', variant: 'destructive' });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['batch-attendance-lessons', currentOrg?.id, dateKey] });
       queryClient.invalidateQueries({ queryKey: ['register-lessons'] });
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
-    },
-    onError: (error: Error) => {
-      toast({ title: 'Failed to save', description: error.message || 'Please try again.', variant: 'destructive' });
     },
   });
 }

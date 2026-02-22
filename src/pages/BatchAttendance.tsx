@@ -215,7 +215,15 @@ export default function BatchAttendance() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className={cn("space-y-4 relative", saveMutation.isPending && "opacity-70 pointer-events-none")}>
+          {saveMutation.isPending && (
+            <div className="absolute inset-0 z-10 flex items-start justify-center pt-12">
+              <div className="flex items-center gap-2 rounded-md bg-background/90 px-4 py-2 shadow-sm border text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving…
+              </div>
+            </div>
+          )}
           {lessons.map((lesson) => {
             const lessonMap = attendance.get(lesson.id) || new Map();
             return (
