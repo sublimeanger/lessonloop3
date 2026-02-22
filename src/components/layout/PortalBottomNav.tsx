@@ -1,4 +1,4 @@
-import { Home, Calendar, Music, CreditCard, MessageSquare } from 'lucide-react';
+import { Home, Calendar, Music, CreditCard, MessageSquare, User } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
 import { cn } from '@/lib/utils';
@@ -9,6 +9,7 @@ const tabs = [
   { label: 'Practice', path: '/portal/practice', icon: Music },
   { label: 'Invoices', path: '/portal/invoices', icon: CreditCard },
   { label: 'Messages', path: '/portal/messages', icon: MessageSquare },
+  { label: 'Profile', path: '/portal/profile', icon: User },
 ];
 
 export function PortalBottomNav() {
