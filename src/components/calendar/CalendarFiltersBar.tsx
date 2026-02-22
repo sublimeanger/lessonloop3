@@ -11,6 +11,7 @@ interface CalendarFiltersBarProps {
   teachers: { id: string; name: string }[];
   locations: { id: string; name: string }[];
   rooms: { id: string; name: string; location_id: string }[];
+  instruments?: string[];
   teachersWithColours?: TeacherWithColour[];
   lessons?: LessonWithDetails[];
   currentDate?: Date;
@@ -21,6 +22,7 @@ export function CalendarFiltersBar({
   onChange,
   teachers,
   locations,
+  instruments = [],
   teachersWithColours,
   lessons = [],
   currentDate,
@@ -124,7 +126,36 @@ export function CalendarFiltersBar({
         );
       })}
 
-      {/* Divider */}
+      {/* Divider before instruments */}
+      {instruments.length > 0 && (
+        <div className="h-5 w-px bg-border shrink-0 mx-0.5" />
+      )}
+
+      {/* Instrument pills */}
+      {instruments.map((instrument) => {
+        const isSelected = filters.instrument === instrument;
+        return (
+          <button
+            key={instrument}
+            onClick={() =>
+              onChange({
+                ...filters,
+                instrument: isSelected ? null : instrument,
+              })
+            }
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all cursor-pointer shrink-0',
+              isSelected
+                ? 'bg-foreground text-background shadow-sm'
+                : 'bg-muted/50 text-foreground hover:bg-muted'
+            )}
+          >
+            {instrument}
+          </button>
+        );
+      })}
+
+      {/* Divider before locations */}
       {locations.length > 0 && (
         <div className="h-5 w-px bg-border shrink-0 mx-0.5" />
       )}

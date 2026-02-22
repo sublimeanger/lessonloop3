@@ -30,7 +30,7 @@ async function fetchCalendarLessons(
   endIso: string,
   filters: CalendarFilters
 ): Promise<{ lessons: LessonWithDetails[]; isCapReached: boolean }> {
-  const hasFilters = !!(filters.teacher_id || filters.location_id || filters.room_id);
+  const hasFilters = !!(filters.teacher_id || filters.location_id || filters.room_id || filters.instrument);
   const pageSize = hasFilters ? LESSONS_PAGE_SIZE_FILTERED : LESSONS_PAGE_SIZE;
 
   let query = supabase
@@ -52,6 +52,35 @@ async function fetchCalendarLessons(
   if (filters.location_id) query = query.eq('location_id', filters.location_id);
   if (filters.room_id) query = query.eq('room_id', filters.room_id);
   if (filters.hide_cancelled) query = query.neq('status', 'cancelled');
+
+  // Instrument filter: find teachers who teach this instrument, then filter lessons by those teacher IDs
+  if (filters.instrument) {
+    const { data: matchingProfiles } = await supabase
+      .from('teacher_profiles')
+      .select('user_id')
+      .eq('org_id', orgId)
+      .contains('instruments', [filters.instrument]);
+
+    if (matchingProfiles && matchingProfiles.length > 0) {
+      // Get teacher IDs (from teachers table) for these user_ids
+      const userIds = matchingProfiles.map(p => p.user_id);
+      const { data: matchingTeachers } = await supabase
+        .from('teachers')
+        .select('id')
+        .eq('org_id', orgId)
+        .in('user_id', userIds);
+
+      const teacherIds = (matchingTeachers || []).map(t => t.id);
+      if (teacherIds.length > 0) {
+        query = query.in('teacher_id', teacherIds);
+      } else {
+        // No teachers for this instrument — return empty
+        return { lessons: [], isCapReached: false };
+      }
+    } else {
+      return { lessons: [], isCapReached: false };
+    }
+  }
 
   const { data: lessonsData, error } = await query;
 
@@ -131,8 +160,8 @@ export function useCalendarData(
   }, [currentDate, view]);
 
   const queryKey = useMemo(
-    () => ['calendar-lessons', currentOrg?.id, startIso, endIso, filters.teacher_id, filters.location_id, filters.room_id, filters.hide_cancelled],
-    [currentOrg?.id, startIso, endIso, filters.teacher_id, filters.location_id, filters.room_id, filters.hide_cancelled]
+    () => ['calendar-lessons', currentOrg?.id, startIso, endIso, filters.teacher_id, filters.location_id, filters.room_id, filters.instrument, filters.hide_cancelled],
+    [currentOrg?.id, startIso, endIso, filters.teacher_id, filters.location_id, filters.room_id, filters.instrument, filters.hide_cancelled]
   );
 
   const { data, isLoading, refetch } = useQuery({
@@ -200,12 +229,28 @@ export function useTeachersAndLocations() {
           .limit(500)
       ]);
 
+      const teachersList = (teachersResult.data || []).map((t: any) => ({
+        id: t.id,
+        name: t.display_name || 'Unknown',
+        userId: t.user_id,
+      }));
+
+      // Fetch instruments from teacher_profiles for the org
+      const { data: profilesData } = await supabase
+        .from('teacher_profiles')
+        .select('instruments')
+        .eq('org_id', currentOrg!.id);
+
+      const instrumentSet = new Set<string>();
+      (profilesData || []).forEach((p: any) => {
+        (p.instruments || []).forEach((i: string) => {
+          if (i) instrumentSet.add(i);
+        });
+      });
+      const instruments = [...instrumentSet].sort();
+
       return {
-        teachers: (teachersResult.data || []).map((t: any) => ({
-          id: t.id,
-          name: t.display_name || 'Unknown',
-          userId: t.user_id,
-        })),
+        teachers: teachersList,
         locations: locationResult.data || [],
         rooms: (roomResult.data || []).map((r: any) => ({ id: r.id, name: r.name, location_id: r.location_id })),
         students: (studentResult.data || []).map((s: any) => ({
@@ -215,6 +260,7 @@ export function useTeachersAndLocations() {
           default_teacher_id: s.default_teacher_id,
           default_rate_card_id: s.default_rate_card_id,
         })),
+        instruments,
       };
     },
     enabled: !!currentOrg,
@@ -227,6 +273,7 @@ export function useTeachersAndLocations() {
     locations: data?.locations ?? [],
     rooms: data?.rooms ?? [],
     students: data?.students ?? [],
+    instruments: data?.instruments ?? [],
     isLoading,
   };
 }

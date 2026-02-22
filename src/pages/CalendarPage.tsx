@@ -27,7 +27,7 @@ export default function CalendarPage() {
   const { currentRole, currentOrg } = useOrg();
   const { user } = useAuth();
   const isParent = currentRole === 'parent';
-  const { teachers, locations, rooms } = useTeachersAndLocations();
+  const { teachers, locations, rooms, instruments } = useTeachersAndLocations();
   const [searchParams] = useSearchParams();
   const { checkConflicts } = useConflictDetection();
   const { isOnline } = useOnlineStatus();
@@ -48,6 +48,7 @@ export default function CalendarPage() {
     teacher_id: searchParams.get('teacher') || null,
     location_id: searchParams.get('location') || null,
     room_id: searchParams.get('room') || null,
+    instrument: searchParams.get('instrument') || null,
     hide_cancelled: searchParams.get('hide_cancelled') === '1',
   }));
 
@@ -76,6 +77,7 @@ export default function CalendarPage() {
         teacher: next.teacher_id,
         location: next.location_id,
         room: next.room_id,
+        instrument: next.instrument,
         hide_cancelled: next.hide_cancelled ? '1' : null,
       });
       return next;
@@ -147,7 +149,7 @@ export default function CalendarPage() {
   const sharedProps = {
     currentDate, setCurrentDate, goToToday,
     lessons, lessonsByDay, isLoading, isParent, isOnline,
-    filters, setFilters, teachers, locations, rooms,
+    filters, setFilters, teachers, locations, rooms, instruments,
     teachersWithColours, teacherColourMap, actions,
   };
 
