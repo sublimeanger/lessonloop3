@@ -55,6 +55,7 @@ interface CalendarDesktopLayoutProps {
   teachers: TeacherInfo[];
   locations: { id: string; name: string }[];
   rooms: { id: string; name: string; location_id: string }[];
+  instruments: string[];
   teachersWithColours: TeacherWithColour[];
   teacherColourMap: Map<string, TeacherWithColour>;
   actions: ReturnType<typeof useCalendarActions>;
@@ -85,6 +86,7 @@ export function CalendarDesktopLayout({
   teachers,
   locations,
   rooms,
+  instruments,
   teachersWithColours,
   teacherColourMap,
   actions,
@@ -157,7 +159,7 @@ export function CalendarDesktopLayout({
         <WeekContextStrip currentDate={currentDate} onDayClick={setCurrentDate} lessonsByDay={lessonsByDay} view={view} />
 
         <div data-tour="calendar-filters">
-          <CalendarFiltersBar filters={filters} onChange={setFilters} teachers={teachers} locations={locations} rooms={rooms} teachersWithColours={teachersWithColours} lessons={lessons} currentDate={currentDate} />
+          <CalendarFiltersBar filters={filters} onChange={setFilters} teachers={teachers} locations={locations} rooms={rooms} instruments={instruments} teachersWithColours={teachersWithColours} lessons={lessons} currentDate={currentDate} />
         </div>
       </div>
 

@@ -9,6 +9,7 @@ interface CalendarFiltersBarWithHelpProps {
   teachers: Array<{ id: string; name: string }>;
   locations: Array<{ id: string; name: string }>;
   rooms: Array<{ id: string; name: string; location_id: string }>;
+  instruments?: string[];
   teachersWithColours?: TeacherWithColour[];
   lessons?: LessonWithDetails[];
   currentDate?: Date;
