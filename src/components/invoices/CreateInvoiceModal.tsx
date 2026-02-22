@@ -160,6 +160,11 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
   const onSubmit = async (data: InvoiceFormData) => {
     if (guardOffline()) return;
 
+    if (!data.payerId) {
+      toast({ title: 'Please select a payer', variant: 'destructive' });
+      return;
+    }
+
     if (tab === 'manual') {
       const invalidItems = data.items.filter(item => item.unitPrice <= 0 || item.quantity <= 0);
       if (invalidItems.length > 0) {
@@ -528,6 +533,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                 type="submit"
                 disabled={
                   createInvoice.isPending ||
+                  !watch('payerId') ||
                   (tab === 'lessons' && selectedLessons.size === 0) ||
                   !isOnline
                 }
