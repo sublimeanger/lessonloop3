@@ -66,5 +66,13 @@ jobs:
             -H "Content-Type: application/json" \
             --fail-with-body || echo "iCal expiry reminders completed (may have no recipients)"
 
+      - name: Run waitlist expiry check
+        run: |
+          curl -X POST "${{ env.SUPABASE_URL }}/functions/v1/waitlist-expiry" \
+            -H "Authorization: Bearer ${{ env.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "x-cron-secret: ${{ env.INTERNAL_CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --fail-with-body || echo "Waitlist expiry completed (may have no entries)"
+
       - name: Log completion
         run: echo "Trial lifecycle emails processed at $(date -u)"

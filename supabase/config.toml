@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.notify-makeup-offer]
 verify_jwt = false
+
+[functions.waitlist-expiry]
+verify_jwt = false
