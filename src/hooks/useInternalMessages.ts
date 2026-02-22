@@ -15,6 +15,8 @@ export interface InternalMessage {
   recipient_role: string;
   subject: string;
   body: string;
+  thread_id: string | null;
+  parent_message_id: string | null;
   read_at: string | null;
   created_at: string;
   sender_profile?: { full_name: string; email: string } | null;
