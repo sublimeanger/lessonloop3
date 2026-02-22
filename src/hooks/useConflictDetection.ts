@@ -156,9 +156,12 @@ export function useConflictDetection() {
 
     } catch (error) {
       logger.error('Conflict detection error:', error);
-      // Return empty array - allow lesson creation even if conflict check completely fails
-      // This is better than blocking the user entirely
-      return [];
+      // Return a warning so the user knows validation was skipped
+      return [{
+        type: 'teacher' as const,
+        severity: 'warning' as const,
+        message: 'Conflict check failed due to a network error. Please verify there are no scheduling conflicts manually.',
+      }];
     }
 
     return conflicts;
