@@ -239,6 +239,10 @@ export type Database = {
       }
       attendance_records: {
         Row: {
+          absence_notified_at: string | null
+          absence_reason_category:
+            | Database["public"]["Enums"]["absence_reason"]
+            | null
           attendance_status: Database["public"]["Enums"]["attendance_status"]
           cancellation_reason: string | null
           id: string
@@ -249,6 +253,10 @@ export type Database = {
           student_id: string
         }
         Insert: {
+          absence_notified_at?: string | null
+          absence_reason_category?:
+            | Database["public"]["Enums"]["absence_reason"]
+            | null
           attendance_status?: Database["public"]["Enums"]["attendance_status"]
           cancellation_reason?: string | null
           id?: string
@@ -259,6 +267,10 @@ export type Database = {
           student_id: string
         }
         Update: {
+          absence_notified_at?: string | null
+          absence_reason_category?:
+            | Database["public"]["Enums"]["absence_reason"]
+            | null
           attendance_status?: Database["public"]["Enums"]["attendance_status"]
           cancellation_reason?: string | null
           id?: string
@@ -1562,6 +1574,45 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      make_up_policies: {
+        Row: {
+          absence_reason: Database["public"]["Enums"]["absence_reason"]
+          description: string | null
+          eligibility: string
+          id: string
+          org_id: string
+        }
+        Insert: {
+          absence_reason: Database["public"]["Enums"]["absence_reason"]
+          description?: string | null
+          eligibility?: string
+          id?: string
+          org_id: string
+        }
+        Update: {
+          absence_reason?: Database["public"]["Enums"]["absence_reason"]
+          description?: string | null
+          eligibility?: string
+          id?: string
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "make_up_policies_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_policies_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
             referencedColumns: ["id"]
           },
         ]
@@ -3663,8 +3714,18 @@ export type Database = {
         Returns: Json
       }
       reset_stale_streaks: { Args: never; Returns: undefined }
+      seed_make_up_policies: { Args: { _org_id: string }; Returns: undefined }
     }
     Enums: {
+      absence_reason:
+        | "sick"
+        | "school_commitment"
+        | "family_emergency"
+        | "holiday"
+        | "teacher_cancelled"
+        | "weather_closure"
+        | "no_show"
+        | "other"
       app_role: "owner" | "admin" | "teacher" | "finance" | "parent"
       attendance_status:
         | "present"
@@ -3840,6 +3901,16 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      absence_reason: [
+        "sick",
+        "school_commitment",
+        "family_emergency",
+        "holiday",
+        "teacher_cancelled",
+        "weather_closure",
+        "no_show",
+        "other",
+      ],
       app_role: ["owner", "admin", "teacher", "finance", "parent"],
       attendance_status: [
         "present",
