@@ -117,8 +117,11 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
 
   return (
     <AppLayout>
-      <div
+      <motion.div
         className="space-y-4 sm:space-y-6"
+        initial="hidden"
+        animate="visible"
+        variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
       >
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Dashboard Hero">
@@ -192,7 +195,7 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
             <QuickActionsGrid variant="solo" className="lg:col-span-3" />
           </SectionErrorBoundary>
         </motion.div>
-      </div>
+      </motion.div>
     </AppLayout>
   );
 }
@@ -212,8 +215,11 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
 
   return (
     <AppLayout>
-      <div
+      <motion.div
         className="space-y-4 sm:space-y-6"
+        initial="hidden"
+        animate="visible"
+        variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
       >
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Dashboard Hero">
@@ -300,7 +306,7 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
             </SectionErrorBoundary>
           </div>
         </motion.div>
-      </div>
+      </motion.div>
     </AppLayout>
   );
 }
@@ -311,8 +317,11 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
 
   return (
     <AppLayout>
-      <div
+      <motion.div
         className="space-y-4 sm:space-y-6 max-w-4xl"
+        initial="hidden"
+        animate="visible"
+        variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
       >
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Dashboard Hero">
@@ -369,7 +378,7 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
             <QuickActionsGrid variant="teacher" className="lg:col-span-2" />
           </SectionErrorBoundary>
         </motion.div>
-      </div>
+      </motion.div>
     </AppLayout>
   );
 }
