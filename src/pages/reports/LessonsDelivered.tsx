@@ -15,7 +15,7 @@ import { ReportPagination, paginateArray } from '@/components/reports/ReportPagi
 import { useOrg } from '@/contexts/OrgContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTerms } from '@/hooks/useTerms';
-import { Download, Calendar, Clock, MapPin, Users, XCircle, AlertTriangle } from 'lucide-react';
+import { Download, Calendar, Clock, MapPin, Users, XCircle, AlertTriangle, Printer } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
@@ -59,10 +59,16 @@ export default function LessonsDeliveredReport() {
         ]}
         actions={
           data && (data.byTeacher.length > 0 || data.byLocation.length > 0) && (
-            <Button onClick={handleExport} variant="outline" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => window.print()} variant="outline" className="gap-2 print:hidden">
+                <Printer className="h-4 w-4" />
+                Print
+              </Button>
+              <Button onClick={handleExport} variant="outline" className="gap-2 print:hidden">
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+            </div>
           )
         }
       />
@@ -170,17 +176,28 @@ export default function LessonsDeliveredReport() {
                     {data.byTeacher.every(t => t.completedLessons === 0) ? (
                       <p className="text-sm text-muted-foreground text-center py-12">All values are zero for this period.</p>
                     ) : (
-                      <div className="h-[300px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={data.byTeacher} layout="vertical">
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis type="number" />
-                            <YAxis dataKey="teacherName" type="category" width={isMobile ? 80 : 120} className="text-xs" tick={{ fontSize: isMobile ? 11 : 12 }} tickFormatter={(v: string) => isMobile && v.length > 15 ? v.slice(0, 15) + '…' : v} />
-                            <Tooltip />
-                            <Bar dataKey="completedLessons" fill="hsl(var(--primary))" name="Completed" radius={[0, 4, 4, 0]} maxBarSize={60} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
+                      <>
+                        <div className="h-[300px]" role="img" aria-label="Horizontal bar chart showing completed lessons by teacher">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={data.byTeacher} layout="vertical">
+                              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                              <XAxis type="number" />
+                              <YAxis dataKey="teacherName" type="category" width={isMobile ? 80 : 120} className="text-xs" tick={{ fontSize: isMobile ? 11 : 12 }} tickFormatter={(v: string) => isMobile && v.length > 15 ? v.slice(0, 15) + '…' : v} />
+                              <Tooltip />
+                              <Bar dataKey="completedLessons" fill="hsl(var(--primary))" name="Completed" radius={[0, 4, 4, 0]} maxBarSize={60} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <table className="sr-only">
+                          <caption>Completed lessons by teacher</caption>
+                          <thead><tr><th>Teacher</th><th>Completed</th></tr></thead>
+                          <tbody>
+                            {data.byTeacher.map(t => (
+                              <tr key={t.teacherId}><td>{t.teacherName}</td><td>{t.completedLessons}</td></tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </>
                     )}
                   </CardContent>
                 </Card>
@@ -228,17 +245,28 @@ export default function LessonsDeliveredReport() {
                     {data.byLocation.every(l => l.completedLessons === 0) ? (
                       <p className="text-sm text-muted-foreground text-center py-12">All values are zero for this period.</p>
                     ) : (
-                      <div className="h-[300px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={data.byLocation} layout="vertical">
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis type="number" />
-                            <YAxis dataKey="locationName" type="category" width={isMobile ? 80 : 150} className="text-xs" tick={{ fontSize: isMobile ? 11 : 12 }} tickFormatter={(v: string) => isMobile && v.length > 15 ? v.slice(0, 15) + '…' : v} />
-                            <Tooltip />
-                            <Bar dataKey="completedLessons" fill="hsl(var(--chart-2))" name="Completed" radius={[0, 4, 4, 0]} maxBarSize={60} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
+                      <>
+                        <div className="h-[300px]" role="img" aria-label="Horizontal bar chart showing completed lessons by location">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={data.byLocation} layout="vertical">
+                              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                              <XAxis type="number" />
+                              <YAxis dataKey="locationName" type="category" width={isMobile ? 80 : 150} className="text-xs" tick={{ fontSize: isMobile ? 11 : 12 }} tickFormatter={(v: string) => isMobile && v.length > 15 ? v.slice(0, 15) + '…' : v} />
+                              <Tooltip />
+                              <Bar dataKey="completedLessons" fill="hsl(var(--chart-2))" name="Completed" radius={[0, 4, 4, 0]} maxBarSize={60} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <table className="sr-only">
+                          <caption>Completed lessons by location</caption>
+                          <thead><tr><th>Location</th><th>Completed</th></tr></thead>
+                          <tbody>
+                            {data.byLocation.map(l => (
+                              <tr key={l.locationId || 'online'}><td>{l.locationName}</td><td>{l.completedLessons}</td></tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </>
                     )}
                   </CardContent>
                 </Card>

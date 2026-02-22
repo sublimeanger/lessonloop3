@@ -17,7 +17,7 @@ import { useSortableTable } from '@/hooks/useSortableTable';
 import { useOrg } from '@/contexts/OrgContext';
 import { formatCurrency, formatDateUK } from '@/lib/utils';
 import { useTerms } from '@/hooks/useTerms';
-import { Download, ChevronDown, ChevronRight, Banknote, Clock, Users, FileSpreadsheet, AlertTriangle } from 'lucide-react';
+import { Download, ChevronDown, ChevronRight, Banknote, Clock, Users, FileSpreadsheet, AlertTriangle, Printer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function PayrollReport() {
@@ -82,10 +82,16 @@ export default function PayrollReport() {
         ]}
         actions={
           data && data.teachers.length > 0 && (
-            <Button onClick={handleExport} variant="outline" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => window.print()} variant="outline" className="gap-2 print:hidden">
+                <Printer className="h-4 w-4" />
+                Print
+              </Button>
+              <Button onClick={handleExport} variant="outline" className="gap-2 print:hidden">
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+            </div>
           )
         }
       />

@@ -13,7 +13,7 @@ import { useAgeingReport, exportAgeingToCSV } from '@/hooks/useReports';
 import { ReportPagination, paginateArray } from '@/components/reports/ReportPagination';
 import { useOrg } from '@/contexts/OrgContext';
 import { formatCurrency, formatDateUK } from '@/lib/utils';
-import { Download, Clock, AlertTriangle, CheckCircle, ChevronDown, ChevronRight, Send, Megaphone } from 'lucide-react';
+import { Download, Clock, AlertTriangle, CheckCircle, ChevronDown, ChevronRight, Send, Megaphone, Printer } from 'lucide-react';
 import { useTerms } from '@/hooks/useTerms';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -80,10 +80,16 @@ export default function OutstandingReport() {
         ]}
         actions={
           data && data.totalOutstanding > 0 && (
-            <Button onClick={handleExport} variant="outline" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => window.print()} variant="outline" className="gap-2 print:hidden">
+                <Printer className="h-4 w-4" />
+                Print
+              </Button>
+              <Button onClick={handleExport} variant="outline" className="gap-2 print:hidden">
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+            </div>
           )
         }
       />

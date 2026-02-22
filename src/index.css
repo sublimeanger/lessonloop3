@@ -296,6 +296,60 @@ html {
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+}
+}
+
+/* Print-friendly styles for reports */
+@media print {
+  /* Hide non-essential UI */
+  [data-sidebar],
+  nav,
+  header,
+  .print\\:hidden,
+  button,
+  [role="tablist"] {
+    display: none !important;
+  }
+
+  /* Remove main content padding/margin so it fills the page */
+  main,
+  [data-main-content] {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Card and table row break control */
+  .rounded-lg,
+  [class*="Card"] {
+    break-inside: avoid;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: 1px solid #e5e7eb !important;
+  }
+
+  tr {
+    break-inside: avoid;
+  }
+
+  /* Force chart containers to fixed print dimensions */
+  .recharts-responsive-container {
+    width: 100% !important;
+    height: 250px !important;
+  }
+
+  /* Remove shadows globally */
+  * {
+    box-shadow: none !important;
   }
 }
 
