@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,6 +41,7 @@ export function ResourceCard({ resource, onShare }: ResourceCardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
+  const { toast } = useToast();
   const deleteMutation = useDeleteResource();
 
   const FileIcon = getFileIcon(resource.file_type);
@@ -55,6 +57,12 @@ export function ResourceCard({ resource, onShare }: ResourceCardProps) {
       if (data?.signedUrl) {
         window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
       }
+    } catch (error: any) {
+      toast({
+        title: 'Download failed',
+        description: error?.message || 'Could not generate download link. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsDownloading(false);
     }
