@@ -115,6 +115,10 @@ export function WeekTimeGrid({
   const wasSlotDragging = useRef(false);
   const isSlotDraggingRef = useRef(false);
 
+  // Keyboard navigation state
+  const [focusedCell, setFocusedCell] = useState<{ dayIndex: number; hourIndex: number } | null>(null);
+  const cellRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
   // Now indicator
   const [nowMinutes, setNowMinutes] = useState(() => {
     const n = new Date();
@@ -283,6 +287,51 @@ export function WeekTimeGrid({
     onSlotClick(clickDate);
   };
 
+  // ─── Keyboard navigation handler ───────────────────────────
+  const handleGridKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!focusedCell) return;
+    const { dayIndex, hourIndex } = focusedCell;
+    let nextDay = dayIndex;
+    let nextHour = hourIndex;
+
+    switch (e.key) {
+      case 'ArrowRight':
+        nextDay = Math.min(dayIndex + 1, days.length - 1);
+        break;
+      case 'ArrowLeft':
+        nextDay = Math.max(dayIndex - 1, 0);
+        break;
+      case 'ArrowDown':
+        nextHour = Math.min(hourIndex + 1, HOURS.length - 1);
+        break;
+      case 'ArrowUp':
+        nextHour = Math.max(hourIndex - 1, 0);
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        if (!isParent) {
+          const day = days[dayIndex];
+          const hour = HOURS[hourIndex];
+          const clickDate = setHours(startOfDay(day), hour);
+          onSlotClick(clickDate);
+        }
+        return;
+      case 'Escape':
+        setFocusedCell(null);
+        return;
+      default:
+        return;
+    }
+
+    e.preventDefault();
+    if (nextDay !== dayIndex || nextHour !== hourIndex) {
+      setFocusedCell({ dayIndex: nextDay, hourIndex: nextHour });
+      const key = `${nextDay}-${nextHour}`;
+      cellRefs.current.get(key)?.focus();
+    }
+  }, [focusedCell, days, HOURS, isParent, onSlotClick]);
+
   // ─── Now-line position ────────────────────────────────────
   const nowTop = ((nowMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
   const showNowLine = nowMinutes >= START_HOUR * 60 && nowMinutes <= END_HOUR * 60;
@@ -316,6 +365,7 @@ export function WeekTimeGrid({
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
+          onKeyDown={handleGridKeyDown}
         >
           {/* ── Sticky day headers ── */}
           <div className="sticky top-0 z-20 flex bg-background border-b" role="row">
@@ -400,12 +450,28 @@ export function WeekTimeGrid({
                       closure && 'bg-warning/5 dark:bg-warning/5'
                     )}
                   >
-                    {/* Hour grid lines + half-hour dividers */}
-                    {HOURS.map((hour) => (
-                      <div key={hour} className="relative border-b border-muted/40" style={{ height: HOUR_HEIGHT }}>
-                        <div className="absolute top-1/2 left-0 right-0 border-b border-dashed border-muted/20" />
-                      </div>
-                    ))}
+                    {/* Hour grid lines + half-hour dividers (keyboard-navigable) */}
+                    {HOURS.map((hour, hourIndex) => {
+                      const cellKey = `${dayIndex}-${hourIndex}`;
+                      const isFocused = focusedCell?.dayIndex === dayIndex && focusedCell?.hourIndex === hourIndex;
+                      return (
+                        <div
+                          key={hour}
+                          ref={(el) => { if (el) cellRefs.current.set(cellKey, el); else cellRefs.current.delete(cellKey); }}
+                          role="gridcell"
+                          tabIndex={isFocused ? 0 : -1}
+                          aria-label={`${format(day, 'EEEE')}, ${hour.toString().padStart(2, '0')}:00`}
+                          className={cn(
+                            'relative border-b border-muted/40 outline-none',
+                            isFocused && 'ring-2 ring-inset ring-primary/50'
+                          )}
+                          style={{ height: HOUR_HEIGHT }}
+                          onFocus={() => setFocusedCell({ dayIndex, hourIndex })}
+                        >
+                          <div className="absolute top-1/2 left-0 right-0 border-b border-dashed border-muted/20" />
+                        </div>
+                      );
+                    })}
 
                     {/* Now indicator */}
                     {today && showNowLine && (
