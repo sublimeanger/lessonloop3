@@ -13,13 +13,29 @@ serve(async (req) => {
 
   const today = new Date().toISOString().split("T")[0];
 
-  // 1. Mark overdue installments
-  const { data: overdueInstallments, error: updateError } = await supabase
+  // 1. Mark overdue installments (only for non-void/paid invoices)
+  // First get eligible installment IDs
+  const { data: eligibleInstallments } = await supabase
     .from("invoice_installments")
-    .update({ status: "overdue" })
+    .select("id, invoice:invoices!inner(status)")
     .eq("status", "pending")
     .lt("due_date", today)
-    .select("invoice_id");
+    .not("invoice.status", "in", "(void,paid)");
+
+  const eligibleIds = (eligibleInstallments || []).map((i: any) => i.id);
+
+  let overdueInstallments: { invoice_id: string }[] | null = null;
+  let updateError: any = null;
+
+  if (eligibleIds.length > 0) {
+    const result = await supabase
+      .from("invoice_installments")
+      .update({ status: "overdue" })
+      .in("id", eligibleIds)
+      .select("invoice_id");
+    overdueInstallments = result.data;
+    updateError = result.error;
+  }
 
   if (updateError) {
     console.error("Failed to mark overdue installments:", updateError);

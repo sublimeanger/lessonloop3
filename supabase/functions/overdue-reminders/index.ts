@@ -59,13 +59,14 @@ serve(async (req) => {
       .select(`
         id, installment_number, amount_minor, due_date, invoice_id,
         invoice:invoices!inner (
-          id, invoice_number, total_minor, currency_code, org_id,
+          id, invoice_number, total_minor, currency_code, org_id, status,
           paid_minor, installment_count,
           organisation:organisations!inner(name, overdue_reminder_days),
           payer_guardian:guardians(id, full_name, email, user_id)
         )
       `)
-      .eq("status", "overdue");
+      .eq("status", "overdue")
+      .not("invoice.status", "in", "(void,paid)");
 
     if (installError) {
       console.error("Failed to fetch overdue installments:", installError.message);
