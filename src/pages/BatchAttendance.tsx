@@ -65,7 +65,7 @@ export default function BatchAttendance() {
     });
   }, [lessons]);
 
-  const handleSave = () => saveMutation.mutate(attendance);
+  const handleSave = () => saveMutation.mutate({ attendance, lessons });
 
   const totalStudents = lessons.reduce((sum, l) => sum + l.participants.length, 0);
   const markedCount = Array.from(attendance.values()).reduce((sum, m) => sum + m.size, 0);
