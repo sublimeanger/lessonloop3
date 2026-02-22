@@ -551,52 +551,50 @@ export function useDashboardStats() {
       const weekStart = fromZonedTime(new Date(`${weekStartStr}T00:00:00`), orgTimezone).toISOString();
       const weekEnd = fromZonedTime(new Date(`${weekEndStr}T23:59:59`), orgTimezone).toISOString();
 
-      // Today's lessons
-      const { data: todayLessonsData } = await supabase
-        .from('lessons')
-        .select('id')
-        .eq('org_id', currentOrg.id)
-        .gte('start_at', todayStart)
-        .lte('start_at', todayEnd)
-        .eq('status', 'scheduled');
+      // Run all independent queries in parallel
+      const [
+        { data: todayLessonsData },
+        { data: studentsData },
+        { data: invoiceStatsRaw },
+        { data: weekLessons },
+        { data: mtdInvoices },
+        { count: totalLessonsCount },
+      ] = await Promise.all([
+        supabase
+          .from('lessons')
+          .select('id')
+          .eq('org_id', currentOrg.id)
+          .gte('start_at', todayStart)
+          .lte('start_at', todayEnd)
+          .eq('status', 'scheduled'),
+        activeStudentsQuery(currentOrg.id),
+        supabase.rpc('get_invoice_stats', { _org_id: currentOrg.id }),
+        supabase
+          .from('lessons')
+          .select('start_at, end_at, status')
+          .eq('org_id', currentOrg.id)
+          .gte('start_at', weekStart)
+          .lte('start_at', weekEnd)
+          .limit(5000),
+        supabase
+          .from('invoices')
+          .select('total_minor')
+          .eq('org_id', currentOrg.id)
+          .eq('status', 'paid')
+          .gte('issue_date', monthStart)
+          .lte('issue_date', monthEnd)
+          .limit(5000),
+        supabase
+          .from('lessons')
+          .select('id', { count: 'exact', head: true })
+          .eq('org_id', currentOrg.id),
+      ]);
 
-      // Active students
-      const { data: studentsData } = await activeStudentsQuery(currentOrg.id);
-
-      // Outstanding invoices — use RPC for accurate totals (no row-limit issues)
-      const { data: invoiceStatsRaw } = await supabase.rpc('get_invoice_stats', {
-        _org_id: currentOrg.id,
-      });
       const invoiceStats = invoiceStatsRaw as {
         total_outstanding: number;
         overdue: number;
         paid_total: number;
       } | null;
-
-      // Hours this week (completed lessons)
-      const { data: weekLessons } = await supabase
-        .from('lessons')
-        .select('start_at, end_at, status')
-        .eq('org_id', currentOrg.id)
-        .gte('start_at', weekStart)
-        .lte('start_at', weekEnd)
-        .limit(5000);
-
-      // Revenue MTD
-      const { data: mtdInvoices } = await supabase
-        .from('invoices')
-        .select('total_minor')
-        .eq('org_id', currentOrg.id)
-        .eq('status', 'paid')
-        .gte('issue_date', monthStart)
-        .lte('issue_date', monthEnd)
-        .limit(5000);
-
-      // Total lessons ever (for new user detection)
-      const { count: totalLessonsCount } = await supabase
-        .from('lessons')
-        .select('id', { count: 'exact', head: true })
-        .eq('org_id', currentOrg.id);
 
       const todayLessons = todayLessonsData?.length || 0;
       const activeStudents = studentsData?.length || 0;
