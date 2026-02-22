@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { LogoHorizontal } from '@/components/brand/Logo';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Lock, CheckCircle } from 'lucide-react';
+import { PasswordStrengthIndicator, PASSWORD_MIN_LENGTH } from '@/components/auth/PasswordStrengthIndicator';
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
@@ -15,6 +16,7 @@ export default function ResetPassword() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,8 +39,8 @@ export default function ResetPassword() {
       return;
     }
 
-    if (password.length < 8) {
-      toast.error('Password must be at least 8 characters');
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      toast.error(`Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
       return;
     }
 
@@ -105,9 +107,11 @@ export default function ResetPassword() {
                   placeholder="Enter new password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => setPasswordFocused(false)}
                   className="pl-10 pr-10"
                   required
-                  minLength={8}
+                  minLength={PASSWORD_MIN_LENGTH}
                 />
                 <button
                   type="button"
@@ -117,6 +121,7 @@ export default function ResetPassword() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              <PasswordStrengthIndicator password={password} visible={passwordFocused || password.length > 0} />
             </div>
 
             <div className="space-y-2">
@@ -131,7 +136,7 @@ export default function ResetPassword() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="pl-10"
                   required
-                  minLength={8}
+                  minLength={PASSWORD_MIN_LENGTH}
                 />
               </div>
             </div>
