@@ -320,6 +320,14 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
       toast({ title: 'Please select at least one student', variant: 'destructive' });
       return;
     }
+    if (durationMins < 15) {
+      toast({ title: 'Lesson too short', description: 'Minimum lesson duration is 15 minutes.', variant: 'destructive' });
+      return;
+    }
+    if (durationMins > 240) {
+      toast({ title: 'Lesson too long', description: 'Maximum lesson duration is 4 hours.', variant: 'destructive' });
+      return;
+    }
 
     const selectedTeacher = teachers.find(t => t.id === teacherId);
     const teacherUserId = selectedTeacher?.userId || null;
