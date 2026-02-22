@@ -191,6 +191,32 @@ export function useUpdateAttendance() {
     }) => {
       if (!currentOrg || !user) throw new Error('No organisation or user');
 
+      // Authorisation guard: verify user is the lesson's teacher or an admin
+      const { data: lesson } = await supabase
+        .from('lessons')
+        .select('teacher_user_id')
+        .eq('id', lessonId)
+        .single();
+
+      if (!lesson) throw new Error('Lesson not found');
+
+      const isAssignedTeacher = lesson.teacher_user_id === user.id;
+      if (!isAssignedTeacher) {
+        // Check if user is owner/admin
+        const { data: membership } = await supabase
+          .from('org_memberships')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('org_id', currentOrg.id)
+          .eq('status', 'active')
+          .maybeSingle();
+
+        const isAdmin = membership?.role === 'owner' || membership?.role === 'admin';
+        if (!isAdmin) {
+          throw new Error('You are not authorised to mark attendance for this lesson.');
+        }
+      }
+
       const { error } = await supabase
         .from('attendance_records')
         .upsert(
@@ -335,10 +361,11 @@ export interface BatchLessonRow {
 }
 
 export function useBatchAttendanceLessons(date: Date) {
-  const { currentOrg } = useOrg();
+  const { currentOrg, currentRole } = useOrg();
+  const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['batch-attendance-lessons', currentOrg?.id, format(date, 'yyyy-MM-dd')],
+    queryKey: ['batch-attendance-lessons', currentOrg?.id, format(date, 'yyyy-MM-dd'), user?.id, currentRole],
     queryFn: async (): Promise<BatchLessonRow[]> => {
       if (!currentOrg) return [];
 
@@ -346,7 +373,7 @@ export function useBatchAttendanceLessons(date: Date) {
       const dayStart = fromZonedTime(startOfDay(date), orgTimezone).toISOString();
       const dayEnd = fromZonedTime(endOfDay(date), orgTimezone).toISOString();
 
-      const { data: lessonsData, error } = await supabase
+      let query = supabase
         .from('lessons')
         .select(`
           id, title, start_at, end_at, status,
@@ -358,6 +385,24 @@ export function useBatchAttendanceLessons(date: Date) {
         .lte('start_at', dayEnd)
         .in('status', ['scheduled', 'completed'])
         .order('start_at', { ascending: true });
+
+      // Teacher role: only show their own lessons
+      if (currentRole === 'teacher' && user) {
+        const { data: teacherRecord } = await supabase
+          .from('teachers')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('org_id', currentOrg.id)
+          .maybeSingle();
+
+        if (teacherRecord) {
+          query = query.eq('teacher_id', teacherRecord.id);
+        } else {
+          query = query.eq('teacher_user_id', user.id);
+        }
+      }
+
+      const { data: lessonsData, error } = await query;
 
       if (error) throw error;
 
