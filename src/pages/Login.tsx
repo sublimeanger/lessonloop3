@@ -27,6 +27,19 @@ export default function Login() {
   useEffect(() => {
     if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
       setIsOAuthCallback(true);
+
+      // Timeout: if auth doesn't complete in 10 seconds, show the login form
+      const timeout = setTimeout(() => {
+        setIsOAuthCallback(false);
+        toast({
+          title: 'Sign in timed out',
+          description: 'Please try again.',
+          variant: 'destructive',
+        });
+        window.history.replaceState({}, '', '/login');
+      }, 10000);
+
+      return () => clearTimeout(timeout);
     }
   }, []);
 
