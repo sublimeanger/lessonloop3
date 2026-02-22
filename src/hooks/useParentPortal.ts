@@ -329,11 +329,12 @@ export function useParentInvoices(options?: { status?: string }) {
 export function useMessageRequests() {
   const { user } = useAuth();
   const { currentOrg } = useOrg();
+  const { guardianId } = useGuardianId();
 
   return useQuery({
-    queryKey: ['message-requests', user?.id, currentOrg?.id],
+    queryKey: ['message-requests', user?.id, currentOrg?.id, guardianId],
     queryFn: async () => {
-      if (!user || !currentOrg) return [];
+      if (!user || !currentOrg || !guardianId) return [];
 
       const { data, error } = await supabase
         .from('message_requests')
@@ -349,12 +350,13 @@ export function useMessageRequests() {
           lesson:lessons(title, start_at)
         `)
         .eq('org_id', currentOrg.id)
+        .eq('guardian_id', guardianId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return (data || []) as MessageRequest[];
     },
-    enabled: !!user && !!currentOrg,
+    enabled: !!user && !!currentOrg && !!guardianId,
   });
 }
 
@@ -383,6 +385,38 @@ export function useCreateMessageRequest() {
         .single();
 
       if (!guardian) throw new Error('Guardian not found');
+
+      // Verify student_id belongs to this guardian's linked children
+      if (data.student_id) {
+        const { data: link } = await supabase
+          .from('student_guardians')
+          .select('id')
+          .eq('guardian_id', guardian.id)
+          .eq('student_id', data.student_id)
+          .maybeSingle();
+        if (!link) throw new Error('Student not linked to your account');
+      }
+
+      // Verify lesson_id belongs to one of this guardian's children
+      if (data.lesson_id) {
+        const { data: children } = await supabase
+          .from('student_guardians')
+          .select('student_id')
+          .eq('guardian_id', guardian.id);
+        const childIds = (children || []).map((c) => c.student_id);
+
+        if (childIds.length > 0) {
+          const { data: participant } = await supabase
+            .from('lesson_participants')
+            .select('id')
+            .eq('lesson_id', data.lesson_id)
+            .in('student_id', childIds)
+            .maybeSingle();
+          if (!participant) throw new Error('Lesson not linked to your children');
+        } else {
+          throw new Error('No children linked to your account');
+        }
+      }
 
       const { error } = await supabase.from('message_requests').insert({
         org_id: currentOrg.id,
