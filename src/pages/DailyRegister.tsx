@@ -31,30 +31,36 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 export default function DailyRegister() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const { user } = useAuth();
-  const { currentRole } = useOrg();
+  const { currentRole, currentOrg } = useOrg();
   
+  const storageKey = `register_teacher_filter_${currentOrg?.id}`;
+
   // P1 Fix: Auto-filter to teacher's own lessons, persist via URL/localStorage
-  // Now uses teacher_id (from teachers table) instead of auth user id
   const [teacherFilter, setTeacherFilter] = useState<string | null>(() => {
-    // Initialize from localStorage for persistence
-    const stored = safeGetItem('register_teacher_filter');
+    if (!currentOrg?.id) return null;
+    const stored = safeGetItem(storageKey);
     return stored || null;
   });
+
+  // Reset filter when org changes
+  useEffect(() => {
+    if (!currentOrg?.id) return;
+    const stored = safeGetItem(storageKey);
+    setTeacherFilter(stored || null);
+  }, [currentOrg?.id, storageKey]);
 
   const { data: allLessons, isLoading, refetch } = useRegisterData(selectedDate);
   
   // For teachers, we need to find their teacher_id from the teachers table
-  // This is done by matching user_id in the lessons data
   useEffect(() => {
     if (currentRole === 'teacher' && user?.id && !teacherFilter && allLessons) {
-      // Find a lesson where this user is the teacher and get the teacher_id
       const myLesson = allLessons.find(l => l.teacher_user_id === user.id);
       if (myLesson?.teacher_id) {
         setTeacherFilter(myLesson.teacher_id);
-        safeSetItem('register_teacher_filter', myLesson.teacher_id);
+        safeSetItem(storageKey, myLesson.teacher_id);
       }
     }
-  }, [currentRole, user?.id, teacherFilter, allLessons]);
+  }, [currentRole, user?.id, teacherFilter, allLessons, storageKey]);
 
   // Filter lessons by teacher_id if filter is set (supports both new and legacy lessons)
   const lessons = allLessons?.filter(lesson => 
