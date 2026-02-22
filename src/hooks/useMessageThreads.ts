@@ -132,6 +132,8 @@ export function useThreadMessages(threadId: string | null, enabled: boolean) {
     queryFn: async (): Promise<ThreadMessage[]> => {
       if (!currentOrg || !threadId) return [];
 
+      // Validate threadId is a valid UUID before interpolation
+      if (!/^[a-f0-9-]{36}$/i.test(threadId)) return [];
       // A thread could be a single standalone message (thread_id == message id)
       // or multiple messages sharing the same thread_id
       const { data: messages, error } = await supabase
