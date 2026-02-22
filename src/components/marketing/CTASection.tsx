@@ -129,26 +129,6 @@ export function CTASection() {
                 </p>
               </div>
 
-              {/* Founder quote */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.6 }}
-                className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/10"
-              >
-                <p className="text-white/70 text-sm italic mb-3">
-                  "Most scheduling tools weren't built for the reality of music teaching. So I built one that was."
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal to-teal-dark flex items-center justify-center text-white font-bold text-xs">
-                    LT
-                  </div>
-                  <div className="text-white/60 text-sm">
-                    Lauren Twilley • Founder & Piano Teacher
-                  </div>
-                </div>
-              </motion.div>
             </motion.div>
           </div>
         </div>
