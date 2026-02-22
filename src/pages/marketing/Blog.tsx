@@ -6,9 +6,12 @@ import { Clock, ArrowRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { BlogPost } from "@/data/blogPosts";
 
+const CATEGORIES = ["All", "Teaching Tips", "Product Updates", "Music Business", "Guides"] as const;
+
 export default function Blog() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState<string>("All");
 
   useEffect(() => {
     import("@/data/blogPosts").then(mod => {
@@ -16,6 +19,10 @@ export default function Blog() {
       setIsLoading(false);
     });
   }, []);
+
+  const filteredPosts = activeCategory === "All" 
+    ? posts 
+    : posts.filter(p => p.category === activeCategory);
 
   return (
     <MarketingLayout>
@@ -50,6 +57,22 @@ export default function Blog() {
       {/* Blog Grid */}
       <section className="py-16 lg:py-24 bg-background">
         <div className="container mx-auto px-6 lg:px-8">
+          {/* Category Filters */}
+          <div className="flex flex-wrap gap-2 mb-10 justify-center">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  activeCategory === cat
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
           {isLoading ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -69,7 +92,7 @@ export default function Blog() {
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {posts.map((post, index) => (
+              {filteredPosts.map((post, index) => (
                 <motion.article
                   key={post.slug}
                   initial={{ opacity: 0, y: 30 }}

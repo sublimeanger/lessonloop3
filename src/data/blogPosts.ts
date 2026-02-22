@@ -21,7 +21,7 @@ export const blogPosts: BlogPost[] = [
     title: "10 Time-Saving Tips for Music Teachers in 2026",
     excerpt: "Discover proven strategies to streamline your admin work and focus more on what you love: teaching music.",
     date: "28 Jan 2026",
-    category: "Productivity",
+    category: "Teaching Tips",
     readTime: "5 min read",
     author: {
       name: "Sarah Mitchell",
@@ -159,7 +159,7 @@ The most successful music teachers aren't necessarily working harder—they're w
     title: "How to Set Your Lesson Rates in the UK",
     excerpt: "A comprehensive guide to pricing your music lessons competitively while maintaining profitability.",
     date: "21 Jan 2026",
-    category: "Business",
+    category: "Music Business",
     readTime: "8 min read",
     author: {
       name: "James Crawford",
@@ -367,7 +367,7 @@ Review your pricing annually, track your time carefully, and remember that susta
     title: "The Complete Guide to Parent Communication",
     excerpt: "Best practices for keeping parents informed and engaged in their child's musical journey.",
     date: "14 Jan 2026",
-    category: "Communication",
+    category: "Guides",
     readTime: "6 min read",
     author: {
       name: "Emma Thompson",
@@ -572,7 +572,7 @@ The goal isn't to communicate more; it's to communicate better. A few well-craft
     title: "Managing Multiple Teaching Locations",
     excerpt: "Tips and tools for teachers who work across several venues, from schools to home studios.",
     date: "7 Jan 2026",
-    category: "Operations",
+    category: "Teaching Tips",
     readTime: "7 min read",
     author: {
       name: "David Chen",
@@ -826,7 +826,7 @@ The most successful peripatetic teachers aren't necessarily the busiest—they'r
     title: "GDPR Compliance for Music Teachers",
     excerpt: "What you need to know about data protection and student privacy in your teaching practice.",
     date: "31 Dec 2025",
-    category: "Legal",
+    category: "Guides",
     readTime: "10 min read",
     author: {
       name: "Rebecca Foster",
@@ -1073,7 +1073,7 @@ When in doubt, ask yourself: "Would I be comfortable if students/parents knew ex
     title: "Building a Sustainable Teaching Practice",
     excerpt: "Long-term strategies for growing your music teaching business without burning out.",
     date: "24 Dec 2025",
-    category: "Business",
+    category: "Music Business",
     readTime: "9 min read",
     author: {
       name: "Michael Roberts",
