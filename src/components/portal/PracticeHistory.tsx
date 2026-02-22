@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Clock, Calendar, MessageSquare, CheckCircle2, Loader2 } from 'lucide-react';
+import { Clock, Calendar, MessageSquare, CheckCircle2, Loader2, Music } from 'lucide-react';
 import { useParentPracticeLogs, PracticeLog } from '@/hooks/usePractice';
 
 export function PracticeHistory() {
@@ -25,8 +25,12 @@ export function PracticeHistory() {
   if (logs.length === 0) {
     return (
       <Card>
-        <CardContent className="p-6 text-center text-muted-foreground">
-          No practice sessions logged yet. Use the timer above to start practicing!
+        <CardContent className="flex flex-col items-center py-10 text-center">
+          <Music className="h-16 w-16 text-primary/30 animate-bounce" style={{ animationDuration: '2s' }} />
+          <h3 className="mt-4 text-lg font-semibold">Ready to make some music? 🎵</h3>
+          <p className="mt-2 text-sm text-muted-foreground max-w-xs">
+            Your practice journal starts here — tap the timer and let's go!
+          </p>
         </CardContent>
       </Card>
     );

@@ -8,8 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TeacherPracticeReview } from '@/components/practice/TeacherPracticeReview';
 import { CreateAssignmentModal } from '@/components/practice/CreateAssignmentModal';
 import { usePracticeAssignments, usePracticeLogs, useWeeklyProgress } from '@/hooks/usePractice';
-import { Plus, Music, Target, Users, TrendingUp } from 'lucide-react';
+import { Plus, Music, Target, Users, TrendingUp, Circle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export default function Practice() {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -102,6 +103,73 @@ export default function Practice() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Student Practice Status */}
+      {weeklyProgress.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Users className="h-5 w-5" />
+              Student Practice Status
+              <span className="text-xs font-normal text-muted-foreground ml-auto">This week</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              const onTrack = weeklyProgress.filter(p => p.percentComplete >= 70);
+              const falling = weeklyProgress.filter(p => p.percentComplete > 0 && p.percentComplete < 70);
+              const notStarted = weeklyProgress.filter(p => p.percentComplete === 0);
+
+              const StatusChip = ({ name, percent, color }: { name: string; percent?: number; color: string }) => (
+                <div className={cn(
+                  "flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm",
+                )}>
+                  <Circle className={cn("h-2.5 w-2.5 fill-current", color)} />
+                  <span className="font-medium truncate">{name}</span>
+                  {percent !== undefined && percent > 0 && percent < 100 && (
+                    <span className="text-xs text-muted-foreground ml-auto">{percent}%</span>
+                  )}
+                </div>
+              );
+
+              return (
+                <div className="space-y-4">
+                  {onTrack.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">On track ({onTrack.length})</p>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {onTrack.map(p => (
+                          <StatusChip key={p.studentId} name={p.studentName} color="text-success" />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {falling.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Falling behind ({falling.length})</p>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {falling.map(p => (
+                          <StatusChip key={p.studentId} name={p.studentName} percent={p.percentComplete} color="text-warning" />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {notStarted.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Not started ({notStarted.length})</p>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {notStarted.map(p => (
+                          <StatusChip key={p.studentId} name={p.studentName} color="text-destructive" />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Review Panel */}
