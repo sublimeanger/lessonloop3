@@ -75,6 +75,7 @@ const PortalPractice = lazy(() => import("./pages/portal/PortalPractice"));
 const PortalResources = lazy(() => import("./pages/portal/PortalResources"));
 const PortalInvoices = lazy(() => import("./pages/portal/PortalInvoices"));
 const PortalMessages = lazy(() => import("./pages/portal/PortalMessages"));
+const PortalProfile = lazy(() => import("./pages/portal/PortalProfile"));
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -174,6 +175,11 @@ const App = () => (
               <Route path="/portal/messages" element={
                 <RouteGuard allowedRoles={['parent']}>
                   <PortalMessages />
+                </RouteGuard>
+              } />
+              <Route path="/portal/profile" element={
+                <RouteGuard allowedRoles={['parent']}>
+                  <PortalProfile />
                 </RouteGuard>
               } />
               

@@ -6,6 +6,7 @@ import {
   LogOut,
   Music,
   FolderOpen,
+  User,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
@@ -33,6 +34,7 @@ const portalNav = [
   { title: 'Resources', url: '/portal/resources', icon: FolderOpen },
   { title: 'Invoices', url: '/portal/invoices', icon: CreditCard },
   { title: 'Messages', url: '/portal/messages', icon: MessageSquare },
+  { title: 'Profile', url: '/portal/profile', icon: User },
 ];
 
 function getInitials(name: string | null | undefined): string {
