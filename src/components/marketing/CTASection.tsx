@@ -115,7 +115,7 @@ export function CTASection() {
                       size="xl" 
                       className="w-full bg-gradient-to-r from-teal to-teal-dark text-white hover:from-teal-dark hover:to-teal font-bold shadow-xl h-14 text-lg"
                     >
-                      Get Started Free
+                      Start free trial
                       <ChevronRight className="w-5 h-5 ml-1" />
                     </Button>
                   </motion.div>

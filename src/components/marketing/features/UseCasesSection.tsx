@@ -69,7 +69,7 @@ export function UseCasesSection() {
             <span className="text-muted-foreground">or one thousand.</span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            LessonLoop scales with your needs—from independent teachers to large music organizations.
+            LessonLoop scales with your needs — from independent teachers to large music organisations.
           </p>
         </motion.div>
 

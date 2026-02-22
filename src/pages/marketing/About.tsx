@@ -85,7 +85,7 @@ export default function About() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-6"
             >
               <Music className="w-4 h-4" />
-              Our Story
+              Our story
             </motion.span>
             
             <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-foreground leading-[1.1] mb-6">
@@ -150,7 +150,7 @@ export default function About() {
               <div className="flex flex-wrap gap-4 mt-8">
                 <Link to="/features">
                   <Button size="lg" className="group">
-                    See How It Works
+                    See how it works
                     <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>
@@ -344,7 +344,7 @@ export default function About() {
           >
             <span className="inline-block text-sm font-semibold text-primary mb-4">WHAT DRIVES US</span>
             <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-4">
-              Our Values
+              Our values
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               The principles that guide everything we build.
@@ -445,7 +445,7 @@ export default function About() {
                 </Link>
                 <Link to="/signup">
                   <Button size="lg" className="border border-white/30 bg-transparent text-white hover:bg-white/10 h-14 px-8 text-lg">
-                    Start Free Trial
+                    Start free trial
                   </Button>
                 </Link>
               </div>

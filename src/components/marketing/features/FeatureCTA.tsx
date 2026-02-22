@@ -37,9 +37,9 @@ export function FeatureCTA() {
           </motion.div>
 
           <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-6">
-            Ready to streamline
+            Ready to get your
             <br />
-            <span className="text-muted-foreground">your teaching practice?</span>
+            <span className="text-muted-foreground">evenings back?</span>
           </h2>
 
           <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
@@ -52,14 +52,14 @@ export function FeatureCTA() {
               to="/signup"
               className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-primary text-primary-foreground font-semibold text-lg shadow-lg hover:bg-primary/90 transition-all hover:scale-105"
             >
-              Start Free Trial
+              Start free trial
               <ArrowRight className="w-5 h-5" />
             </Link>
             <Link
               to="/contact"
               className="inline-flex items-center gap-2 px-8 py-4 rounded-xl border border-border text-foreground font-medium hover:bg-muted transition-colors"
             >
-              Book a Demo
+              Book a demo
             </Link>
           </div>
 

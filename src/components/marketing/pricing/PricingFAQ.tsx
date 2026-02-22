@@ -14,7 +14,7 @@ const faqs = [
     items: [
       {
         question: "Is there a free trial?",
-        answer: "Yes! All plans include a 30-day free trial with full access to all features. No credit card required—just sign up and start using LessonLoop immediately.",
+        answer: "Yes! All plans include a 30-day free trial with full access to all features. No credit card required — just start your trial and begin using LessonLoop immediately.",
       },
       {
         question: "What happens after my trial ends?",
@@ -48,7 +48,7 @@ const faqs = [
     items: [
       {
         question: "Do you offer discounts for charities or schools?",
-        answer: "Yes! We offer special pricing for registered charities, non-profits, and educational institutions. Contact our team to learn more about our education pricing.",
+        answer: "Yes! We offer special pricing for registered charities, non-profits, and educational institutions. Get in touch with our team for details on our education pricing.",
       },
       {
         question: "Is my data secure?",
