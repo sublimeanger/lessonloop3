@@ -142,27 +142,38 @@ export default function RevenueReport() {
               <CardTitle>Revenue by Month</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.months}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="monthLabel" className="text-xs" />
-                    <YAxis 
-                      tickFormatter={(value) => `${currencySymbol(currentOrg?.currency_code || 'GBP')}${value}`}
-                      className="text-xs"
-                    />
-                    <Tooltip 
-                      formatter={(value: number, name: string) => [
-                        fmtCurrency(value),
-                        name === 'paidAmount' ? 'Current' : 'Previous Period',
-                      ]}
-                      labelClassName="font-medium"
-                    />
-                    <Bar dataKey="previousPaidAmount" name="Previous Period" fill="hsl(var(--muted-foreground) / 0.25)" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="paidAmount" name="Current" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              {data.months.every(m => m.paidAmount === 0 && (m.previousPaidAmount ?? 0) === 0) ? (
+                <p className="text-sm text-muted-foreground text-center py-12">All values are zero for this period.</p>
+              ) : (
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data.months}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="monthLabel" className="text-xs" />
+                      <YAxis 
+                        tickFormatter={(value) => {
+                          const sym = currencySymbol(currentOrg?.currency_code || 'GBP');
+                          if (value >= 1_000_000) return `${sym}${(value / 1_000_000).toFixed(1)}M`;
+                          if (value >= 1_000) return `${sym}${(value / 1_000).toFixed(1)}k`;
+                          return `${sym}${value}`;
+                        }}
+                        className="text-xs"
+                      />
+                      <Tooltip 
+                        formatter={(value: number, name: string) => [
+                          fmtCurrency(value),
+                          name === 'paidAmount' ? 'Current' : 'Previous Period',
+                        ]}
+                        labelClassName="font-medium"
+                      />
+                      {data.months.some(m => (m.previousPaidAmount ?? 0) > 0) && (
+                        <Bar dataKey="previousPaidAmount" name="Previous Period" fill="hsl(var(--muted-foreground) / 0.25)" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                      )}
+                      <Bar dataKey="paidAmount" name="Current" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
 

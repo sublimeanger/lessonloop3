@@ -375,24 +375,28 @@ export default function UtilisationReport() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
-                      <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-                      <YAxis type="category" dataKey="name" width={120} className="text-xs" />
-                      <Tooltip
-                        formatter={(value: number) => [`${value}%`, 'Utilisation']}
-                        labelClassName="font-medium"
-                      />
-                      <Bar dataKey="utilisation" radius={[0, 4, 4, 0]}>
-                        {chartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                {chartData.every(d => d.utilisation === 0) ? (
+                  <p className="text-sm text-muted-foreground text-center py-12">All values are zero for this period.</p>
+                ) : (
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
+                        <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                        <YAxis type="category" dataKey="name" width={120} className="text-xs" />
+                        <Tooltip
+                          formatter={(value: number) => [`${value}%`, 'Utilisation']}
+                          labelClassName="font-medium"
+                        />
+                        <Bar dataKey="utilisation" radius={[0, 4, 4, 0]} maxBarSize={60}>
+                          {chartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

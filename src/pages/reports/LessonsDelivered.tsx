@@ -164,17 +164,21 @@ export default function LessonsDeliveredReport() {
                     <CardTitle>Lessons by Teacher</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={data.byTeacher} layout="vertical">
-                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                          <XAxis type="number" />
-                          <YAxis dataKey="teacherName" type="category" width={isMobile ? 80 : 120} className="text-xs" tick={{ fontSize: isMobile ? 11 : 12 }} tickFormatter={(v: string) => isMobile && v.length > 15 ? v.slice(0, 15) + '…' : v} />
-                          <Tooltip />
-                          <Bar dataKey="completedLessons" fill="hsl(var(--primary))" name="Completed" radius={[0, 4, 4, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
+                    {data.byTeacher.every(t => t.completedLessons === 0) ? (
+                      <p className="text-sm text-muted-foreground text-center py-12">All values are zero for this period.</p>
+                    ) : (
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={data.byTeacher} layout="vertical">
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                            <XAxis type="number" />
+                            <YAxis dataKey="teacherName" type="category" width={isMobile ? 80 : 120} className="text-xs" tick={{ fontSize: isMobile ? 11 : 12 }} tickFormatter={(v: string) => isMobile && v.length > 15 ? v.slice(0, 15) + '…' : v} />
+                            <Tooltip />
+                            <Bar dataKey="completedLessons" fill="hsl(var(--primary))" name="Completed" radius={[0, 4, 4, 0]} maxBarSize={60} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -218,17 +222,21 @@ export default function LessonsDeliveredReport() {
                     <CardTitle>Lessons by Location</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={data.byLocation} layout="vertical">
-                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                          <XAxis type="number" />
-                          <YAxis dataKey="locationName" type="category" width={isMobile ? 80 : 150} className="text-xs" tick={{ fontSize: isMobile ? 11 : 12 }} tickFormatter={(v: string) => isMobile && v.length > 15 ? v.slice(0, 15) + '…' : v} />
-                          <Tooltip />
-                          <Bar dataKey="completedLessons" fill="hsl(var(--chart-2))" name="Completed" radius={[0, 4, 4, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
+                    {data.byLocation.every(l => l.completedLessons === 0) ? (
+                      <p className="text-sm text-muted-foreground text-center py-12">All values are zero for this period.</p>
+                    ) : (
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={data.byLocation} layout="vertical">
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                            <XAxis type="number" />
+                            <YAxis dataKey="locationName" type="category" width={isMobile ? 80 : 150} className="text-xs" tick={{ fontSize: isMobile ? 11 : 12 }} tickFormatter={(v: string) => isMobile && v.length > 15 ? v.slice(0, 15) + '…' : v} />
+                            <Tooltip />
+                            <Bar dataKey="completedLessons" fill="hsl(var(--chart-2))" name="Completed" radius={[0, 4, 4, 0]} maxBarSize={60} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
