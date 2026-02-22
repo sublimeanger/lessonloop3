@@ -15,8 +15,7 @@ const useCases = [
       "Practice tracking with streaks",
       "LoopAssist for quick answers",
     ],
-    quote: "I used to spend Sunday nights sorting invoices. Now it takes 5 minutes.",
-    author: "Sarah, Piano Teacher",
+    benefit: "Set up billing once, and invoices generate themselves every term.",
   },
   {
     icon: Building2,
@@ -30,8 +29,7 @@ const useCases = [
       "Payroll reports by teacher",
       "Team permissions and roles",
     ],
-    quote: "Managing 8 teachers used to be chaos. LessonLoop made it effortless.",
-    author: "David, Academy Director",
+    benefit: "See every teacher's schedule, room booking, and payroll in one place.",
   },
   {
     icon: Briefcase,
@@ -45,8 +43,7 @@ const useCases = [
       "Comprehensive reporting",
       "White-label parent portal",
     ],
-    quote: "We finally have visibility across all our placements in one place.",
-    author: "Emma, Operations Manager",
+    benefit: "Track every placement, teacher, and school from a single dashboard.",
   },
 ];
 
@@ -121,13 +118,10 @@ export function UseCasesSection() {
                 ))}
               </div>
 
-              {/* Quote */}
+              {/* Key benefit */}
               <div className="bg-muted/50 rounded-xl p-4">
-                <p className="text-sm text-muted-foreground italic mb-2">
-                  "{useCase.quote}"
-                </p>
-                <p className="text-xs text-muted-foreground font-medium">
-                  — {useCase.author}
+                <p className="text-sm font-medium text-foreground">
+                  {useCase.benefit}
                 </p>
               </div>
             </motion.div>

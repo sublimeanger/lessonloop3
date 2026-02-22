@@ -42,9 +42,9 @@ const securityFeatures = [
 ];
 
 const certifications = [
-  { name: "GDPR", description: "EU & UK Compliant" },
-  { name: "ISO 27001", description: "Security Standards" },
-  { name: "ICO", description: "Registered" },
+  { name: "GDPR", description: "UK & EU Compliant" },
+  { name: "Encryption", description: "AES-256 at rest, TLS in transit" },
+  { name: "Hosting", description: "Enterprise-grade hosting" },
 ];
 
 export function SecuritySection() {

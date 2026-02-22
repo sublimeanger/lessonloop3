@@ -37,7 +37,7 @@ const notifications = [
   {
     icon: CheckCircle2,
     title: "Payment received",
-    subtitle: "Emma Watson paid £45.00",
+    subtitle: "Emily Parker paid £45.00",
     color: "from-success to-success",
     position: "left-[5%] top-[25%]",
     delay: 1.2,
@@ -349,7 +349,7 @@ export function HeroSection() {
               </div>
               <div>
                 <div className="text-xs font-semibold text-foreground">Payment received</div>
-                <div className="text-xs text-muted-foreground">£45.00 from Emma W.</div>
+                <div className="text-xs text-muted-foreground">£45.00 from Emily P.</div>
               </div>
             </div>
           </motion.div>
