@@ -50,7 +50,7 @@ export function InternalMessageList({ view }: InternalMessageListProps) {
       recipientRole: originalMsg.sender_role,
       subject: originalMsg.subject.startsWith('Re:') ? originalMsg.subject : `Re: ${originalMsg.subject}`,
       body: replyBody.trim(),
-      threadId: (originalMsg as any).thread_id || originalMsg.id,
+      threadId: originalMsg.thread_id || originalMsg.id,
       parentMessageId: originalMsg.id,
     });
 
