@@ -427,7 +427,7 @@ export function BillingTab() {
               >
                 Yearly
                 <Badge variant="secondary" className="ml-2 text-xs">
-                  Save 17%
+                  Save {Math.round((1 - PRICING_CONFIG.studio.price.yearly / (PRICING_CONFIG.studio.price.monthly * 12)) * 100)}%
                 </Badge>
               </button>
             </div>
