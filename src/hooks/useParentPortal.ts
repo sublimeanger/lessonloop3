@@ -48,7 +48,10 @@ export interface ParentInvoice {
   due_date: string;
   issue_date: string;
   total_minor: number;
+  paid_minor: number | null;
   currency_code: string;
+  payment_plan_enabled: boolean | null;
+  installment_count: number | null;
   payer_guardian?: { full_name: string } | null;
   payer_student?: { first_name: string; last_name: string } | null;
 }
@@ -299,7 +302,10 @@ export function useParentInvoices(options?: { status?: string }) {
           due_date,
           issue_date,
           total_minor,
+          paid_minor,
           currency_code,
+          payment_plan_enabled,
+          installment_count,
           payer_guardian:guardians(full_name),
           payer_student:students(first_name, last_name)
         `)

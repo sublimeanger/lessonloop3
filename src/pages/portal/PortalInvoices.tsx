@@ -22,6 +22,7 @@ import { useStripePayment } from '@/hooks/useStripePayment';
 import { useInvoicePdf } from '@/hooks/useInvoicePdf';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrencyMinor } from '@/lib/utils';
+import { PaymentPlanInvoiceCard } from '@/components/portal/PaymentPlanInvoiceCard';
 
 export default function PortalInvoices() {
   const { currentOrg } = useOrg();
@@ -77,6 +78,18 @@ export default function PortalInvoices() {
   const handlePayInvoice = async (invoiceId: string) => {
     setPayingInvoiceId(invoiceId);
     await initiatePayment(invoiceId);
+    setPayingInvoiceId(null);
+  };
+
+  const handlePayInstallment = async (invoiceId: string, installmentId: string) => {
+    setPayingInvoiceId(invoiceId);
+    await initiatePayment(invoiceId, { installmentId });
+    setPayingInvoiceId(null);
+  };
+
+  const handlePayRemaining = async (invoiceId: string) => {
+    setPayingInvoiceId(invoiceId);
+    await initiatePayment(invoiceId, { payRemaining: true });
     setPayingInvoiceId(null);
   };
 
@@ -197,16 +210,30 @@ export default function PortalInvoices() {
               <h2 className="text-lg font-semibold mb-4">Outstanding</h2>
               <div className="space-y-3">
                   {outstandingInvoices.map((invoice) => (
-                    <InvoiceCard
-                      key={invoice.id}
-                      invoice={invoice}
-                      currencyCode={currentOrg?.currency_code || 'GBP'}
-                      getStatusBadge={getStatusBadge}
-                      onPay={handlePayInvoice}
-                      isPaying={payingInvoiceId === invoice.id || isPaymentLoading}
-                      isHighlighted={invoice.id === highlightedInvoiceId}
-                      showPayButton={onlinePaymentsEnabled}
-                    />
+                    invoice.payment_plan_enabled ? (
+                      <PaymentPlanInvoiceCard
+                        key={invoice.id}
+                        invoice={invoice}
+                        currencyCode={currentOrg?.currency_code || 'GBP'}
+                        onPayInstallment={handlePayInstallment}
+                        onPayRemaining={handlePayRemaining}
+                        isPaying={payingInvoiceId === invoice.id && isPaymentLoading}
+                        isHighlighted={invoice.id === highlightedInvoiceId}
+                        showPayButton={onlinePaymentsEnabled}
+                        bankReferencePrefix={orgPaymentPrefs?.bank_reference_prefix}
+                      />
+                    ) : (
+                      <InvoiceCard
+                        key={invoice.id}
+                        invoice={invoice}
+                        currencyCode={currentOrg?.currency_code || 'GBP'}
+                        getStatusBadge={getStatusBadge}
+                        onPay={handlePayInvoice}
+                        isPaying={payingInvoiceId === invoice.id || isPaymentLoading}
+                        isHighlighted={invoice.id === highlightedInvoiceId}
+                        showPayButton={onlinePaymentsEnabled}
+                      />
+                    )
                   ))}
               </div>
             </div>
@@ -220,16 +247,30 @@ export default function PortalInvoices() {
               )}
               <div className="space-y-3">
                 {(statusFilter !== 'all' ? invoices : otherInvoices).map((invoice) => (
-                  <InvoiceCard
-                    key={invoice.id}
-                    invoice={invoice}
-                    currencyCode={currentOrg?.currency_code || 'GBP'}
-                    getStatusBadge={getStatusBadge}
-                    onPay={handlePayInvoice}
-                    isPaying={payingInvoiceId === invoice.id || isPaymentLoading}
-                    isHighlighted={invoice.id === highlightedInvoiceId}
-                    showPayButton={onlinePaymentsEnabled}
-                  />
+                  invoice.payment_plan_enabled ? (
+                    <PaymentPlanInvoiceCard
+                      key={invoice.id}
+                      invoice={invoice}
+                      currencyCode={currentOrg?.currency_code || 'GBP'}
+                      onPayInstallment={handlePayInstallment}
+                      onPayRemaining={handlePayRemaining}
+                      isPaying={payingInvoiceId === invoice.id && isPaymentLoading}
+                      isHighlighted={invoice.id === highlightedInvoiceId}
+                      showPayButton={onlinePaymentsEnabled}
+                      bankReferencePrefix={orgPaymentPrefs?.bank_reference_prefix}
+                    />
+                  ) : (
+                    <InvoiceCard
+                      key={invoice.id}
+                      invoice={invoice}
+                      currencyCode={currentOrg?.currency_code || 'GBP'}
+                      getStatusBadge={getStatusBadge}
+                      onPay={handlePayInvoice}
+                      isPaying={payingInvoiceId === invoice.id || isPaymentLoading}
+                      isHighlighted={invoice.id === highlightedInvoiceId}
+                      showPayButton={onlinePaymentsEnabled}
+                    />
+                  )
                 ))}
               </div>
             </div>
