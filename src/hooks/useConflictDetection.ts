@@ -348,16 +348,17 @@ async function checkRoomConflicts(
   // Get room capacity
   const { data: room } = await supabase
     .from('rooms')
-    .select('name, max_capacity')
+    .select('name, capacity, max_capacity')
     .eq('id', roomId)
     .single();
 
-  // Check capacity for group lessons
-  if (room && room.max_capacity && studentIds.length > room.max_capacity) {
+  // Check capacity — prefer max_capacity, fall back to capacity
+  const roomCapacity = room?.max_capacity ?? room?.capacity;
+  if (room && roomCapacity && studentIds.length > roomCapacity) {
     conflicts.push({
       type: 'room',
       severity: 'error',
-      message: `Room "${room.name}" has a capacity of ${room.max_capacity} students, but ${studentIds.length} are assigned`,
+      message: `Room "${room.name}" has a capacity of ${roomCapacity} students, but ${studentIds.length} are assigned`,
     });
   }
 

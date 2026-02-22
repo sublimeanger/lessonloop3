@@ -309,6 +309,7 @@ export default function Locations() {
     const data = {
       name: roomName.trim(),
       capacity: roomCapacity ? parseInt(roomCapacity) : null,
+      max_capacity: roomCapacity ? parseInt(roomCapacity) : null,
     };
     
     if (editingRoom) {
