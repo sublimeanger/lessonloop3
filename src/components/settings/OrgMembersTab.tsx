@@ -28,7 +28,6 @@ export function OrgMembersTab() {
   const { members, isLoading, changeRole, disableMember, updatingMember } = useOrgMembers();
 
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
-  const [inviteRefreshKey, setInviteRefreshKey] = useState(0);
 
   if (isLoading) {
     return (
@@ -158,7 +157,7 @@ export function OrgMembersTab() {
             <p className="text-center text-muted-foreground py-8">No members found</p>
           )}
 
-          <PendingInvitesList refreshKey={inviteRefreshKey} />
+          <PendingInvitesList />
 
           {!isOrgAdmin && (
             <p className="text-sm text-muted-foreground">
@@ -171,7 +170,6 @@ export function OrgMembersTab() {
       <InviteMemberDialog
         open={isInviteDialogOpen}
         onOpenChange={setIsInviteDialogOpen}
-        onInviteSent={() => setInviteRefreshKey(k => k + 1)}
       />
     </>
   );
