@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useTeachersAndLocations } from '@/hooks/useCalendarData';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -176,18 +177,8 @@ export function QuickCreatePopover({
   };
 
   return (
-    <Popover open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      {/* Invisible trigger — positioned by parent */}
-      <PopoverTrigger asChild>
-        <span className="sr-only" />
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-72 p-3"
-        side="right"
-        align="start"
-        sideOffset={8}
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-xs p-3" onOpenAutoFocus={(e) => e.preventDefault()}>
         <div className="space-y-3">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -231,7 +222,6 @@ export function QuickCreatePopover({
                           onSelect={() => {
                             setStudentId(s.id);
                             setStudentSearchOpen(false);
-                            // Auto-fill teacher from student defaults
                             if (s.default_teacher_id && teachers.some(t => t.id === s.default_teacher_id)) {
                               setTeacherId(s.default_teacher_id);
                             }
@@ -296,7 +286,7 @@ export function QuickCreatePopover({
             Create Lesson
           </Button>
         </div>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 }
