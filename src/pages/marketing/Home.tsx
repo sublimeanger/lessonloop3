@@ -2,14 +2,15 @@ import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { HeroSection } from "@/components/marketing/HeroSection";
 import { CredibilityStrip } from "@/components/marketing/CredibilityStrip";
 import { BeforeAfter } from "@/components/marketing/BeforeAfter";
-import { BentoFeatures } from "@/components/marketing/BentoFeatures";
-import { ProductShowcase } from "@/components/marketing/ProductShowcase";
 import { AISpotlight } from "@/components/marketing/AISpotlight";
-import { HowItWorks } from "@/components/marketing/HowItWorks";
+import { ProductShowcase } from "@/components/marketing/ProductShowcase";
+import { BentoFeatures } from "@/components/marketing/BentoFeatures";
 import { UKDifferentiator } from "@/components/marketing/UKDifferentiator";
-import { StatsCounter } from "@/components/marketing/StatsCounter";
 import { AudiencePaths } from "@/components/marketing/AudiencePaths";
+import { HowItWorks } from "@/components/marketing/HowItWorks";
 import { FounderStory } from "@/components/marketing/FounderStory";
+// import { TestimonialsCarousel } from "@/components/marketing/TestimonialsCarousel"; // TODO: when ready
+import { StatsCounter } from "@/components/marketing/StatsCounter";
 import { CTASection } from "@/components/marketing/CTASection";
 
 export default function MarketingHome() {
@@ -18,14 +19,15 @@ export default function MarketingHome() {
       <HeroSection />
       <CredibilityStrip />
       <BeforeAfter />
-      <BentoFeatures />
-      <ProductShowcase />
       <AISpotlight />
-      <HowItWorks />
+      <ProductShowcase />
+      <BentoFeatures />
       <UKDifferentiator />
-      <StatsCounter />
       <AudiencePaths />
+      <HowItWorks />
       <FounderStory />
+      {/* <TestimonialsCarousel /> */}
+      <StatsCounter />
       <CTASection />
     </MarketingLayout>
   );
