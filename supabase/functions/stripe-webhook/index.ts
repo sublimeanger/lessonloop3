@@ -55,6 +55,20 @@ serve(async (req) => {
 
     console.log(`Processing Stripe event: ${event.type}`);
 
+    // Deduplication: Stripe can retry webhooks up to ~100 times over 3 days.
+    // Record the event ID to ensure exactly-once processing.
+    const { error: dedupError } = await supabase
+      .from("stripe_webhook_events")
+      .insert({ event_id: event.id, event_type: event.type });
+
+    if (dedupError?.code === "23505") {
+      console.log(`Duplicate event ${event.id}, skipping`);
+      return new Response(JSON.stringify({ received: true, duplicate: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     switch (event.type) {
       // Invoice payment events (for one-off invoice payments)
       case "checkout.session.completed": {
