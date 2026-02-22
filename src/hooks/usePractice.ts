@@ -60,12 +60,33 @@ export interface WeeklyProgress {
   percentComplete: number;
 }
 
+// Helper to get assigned student IDs for a teacher
+async function getTeacherStudentIds(orgId: string, userId: string): Promise<string[] | null> {
+  const { data: teacherRecord } = await supabase
+    .from('teachers')
+    .select('id')
+    .eq('org_id', orgId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!teacherRecord) return [];
+
+  const { data: assignments } = await supabase
+    .from('student_teacher_assignments')
+    .select('student_id')
+    .eq('teacher_id', teacherRecord.id);
+
+  return (assignments || []).map(a => a.student_id);
+}
+
 // Hook for fetching assignments (for teachers/admins)
 export function usePracticeAssignments(studentId?: string) {
-  const { currentOrg } = useOrg();
+  const { currentOrg, currentRole } = useOrg();
+  const { user } = useAuth();
+  const isAdmin = currentRole === 'owner' || currentRole === 'admin';
 
   return useQuery({
-    queryKey: ['practice-assignments', currentOrg?.id, studentId],
+    queryKey: ['practice-assignments', currentOrg?.id, studentId, user?.id, isAdmin],
     queryFn: async () => {
       let query = supabase
         .from('practice_assignments')
@@ -78,6 +99,11 @@ export function usePracticeAssignments(studentId?: string) {
 
       if (studentId) {
         query = query.eq('student_id', studentId);
+      } else if (!isAdmin && user) {
+        // Teacher: scope to assigned students only
+        const studentIds = await getTeacherStudentIds(currentOrg!.id, user.id);
+        if (!studentIds || studentIds.length === 0) return [];
+        query = query.in('student_id', studentIds);
       }
 
       const { data, error } = await query;
@@ -94,10 +120,12 @@ export function usePracticeLogs(options?: {
   unreviewed?: boolean;
   limit?: number;
 }) {
-  const { currentOrg } = useOrg();
+  const { currentOrg, currentRole } = useOrg();
+  const { user } = useAuth();
+  const isAdmin = currentRole === 'owner' || currentRole === 'admin';
 
   return useQuery({
-    queryKey: ['practice-logs', currentOrg?.id, options],
+    queryKey: ['practice-logs', currentOrg?.id, options, user?.id, isAdmin],
     queryFn: async () => {
       let query = supabase
         .from('practice_logs')
@@ -111,6 +139,11 @@ export function usePracticeLogs(options?: {
 
       if (options?.studentId) {
         query = query.eq('student_id', options.studentId);
+      } else if (!isAdmin && user) {
+        // Teacher: scope to assigned students only
+        const studentIds = await getTeacherStudentIds(currentOrg!.id, user.id);
+        if (!studentIds || studentIds.length === 0) return [];
+        query = query.in('student_id', studentIds);
       }
 
       if (options?.unreviewed) {
