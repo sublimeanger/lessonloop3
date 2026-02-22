@@ -120,7 +120,7 @@ export default function CalendarPage() {
   return (
     <>
       {isMobile ? (
-        <CalendarMobileLayout {...sharedProps} />
+        <CalendarMobileLayout {...sharedProps} isCapReached={isCapReached} />
       ) : (
         <CalendarDesktopLayout
           {...sharedProps}
