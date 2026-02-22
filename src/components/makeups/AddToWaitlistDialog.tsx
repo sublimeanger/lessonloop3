@@ -4,22 +4,19 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useOrg } from '@/contexts/OrgContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ABSENCE_REASON_LABELS } from '@/hooks/useMakeUpPolicies';
+import { format } from 'date-fns';
 
 const schema = z.object({
   student_id: z.string().min(1, 'Student is required'),
-  lesson_title: z.string().min(1, 'Lesson title is required'),
-  missed_lesson_date: z.string().min(1, 'Date is required'),
-  lesson_duration_minutes: z.coerce.number().min(15),
+  missed_lesson_id: z.string().min(1, 'Missed lesson is required'),
   absence_reason: z.string().min(1, 'Reason is required'),
   notes: z.string().optional(),
 });
@@ -33,10 +30,16 @@ interface AddToWaitlistDialogProps {
 
 export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogProps) {
   const { currentOrg } = useOrg();
-  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { absence_reason: 'other' },
+  });
+
+  const selectedStudentId = watch('student_id');
 
   const { data: students } = useQuery({
     queryKey: ['students_for_waitlist', currentOrg?.id],
@@ -54,41 +57,51 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
     enabled: !!currentOrg?.id && open,
   });
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: { lesson_duration_minutes: 30, absence_reason: 'other' },
+  // Fetch recent lessons for the selected student
+  const { data: studentLessons, isLoading: lessonsLoading } = useQuery({
+    queryKey: ['student_lessons_for_waitlist', currentOrg?.id, selectedStudentId],
+    queryFn: async () => {
+      if (!currentOrg?.id || !selectedStudentId) return [];
+      const { data, error } = await supabase
+        .from('lesson_participants')
+        .select(`
+          lesson_id,
+          lesson:lessons!inner (
+            id, title, start_at, end_at,
+            teacher:teachers!lessons_teacher_id_fkey (id, display_name),
+            location:locations!lessons_location_id_fkey (name)
+          )
+        `)
+        .eq('student_id', selectedStudentId)
+        .eq('lesson.org_id', currentOrg.id)
+        .order('lesson(start_at)', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return (data || []).map((row: any) => row.lesson).filter(Boolean);
+    },
+    enabled: !!currentOrg?.id && !!selectedStudentId && open,
   });
 
+  const selectedLesson = studentLessons?.find((l: any) => l.id === watch('missed_lesson_id'));
+
   const onSubmit = async (formData: FormData) => {
-    if (!currentOrg?.id) return;
+    if (!currentOrg?.id || !selectedLesson) return;
     setIsSubmitting(true);
     try {
-      // We need a valid missed_lesson_id — for manual entries we'll create a placeholder
-      // For now, we use a dummy approach: find the latest lesson for the student
-      const { data: recentLesson } = await supabase
-        .from('lessons')
-        .select('id')
-        .eq('org_id', currentOrg.id)
-        .order('start_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const missedLessonId = recentLesson?.id;
-      if (!missedLessonId) {
-        toast({ title: 'No lessons found to reference', variant: 'destructive' });
-        setIsSubmitting(false);
-        return;
-      }
+      const durationMs = new Date(selectedLesson.end_at).getTime() - new Date(selectedLesson.start_at).getTime();
+      const durationMins = Math.round(durationMs / 60000);
 
       const { error } = await supabase
         .from('make_up_waitlist')
         .insert({
           org_id: currentOrg.id,
           student_id: formData.student_id,
-          missed_lesson_id: missedLessonId,
-          missed_lesson_date: formData.missed_lesson_date,
-          lesson_title: formData.lesson_title,
-          lesson_duration_minutes: formData.lesson_duration_minutes,
+          missed_lesson_id: formData.missed_lesson_id,
+          missed_lesson_date: selectedLesson.start_at.split('T')[0],
+          lesson_title: selectedLesson.title,
+          lesson_duration_minutes: durationMins,
+          teacher_id: selectedLesson.teacher?.id || null,
+          location_id: null,
           absence_reason: formData.absence_reason as any,
           notes: formData.notes || null,
           status: 'waiting',
@@ -107,6 +120,11 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
     }
   };
 
+  const handleStudentChange = (v: string) => {
+    setValue('student_id', v);
+    setValue('missed_lesson_id', '');
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -116,7 +134,7 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1.5">
             <Label>Student</Label>
-            <Select onValueChange={(v) => setValue('student_id', v)} value={watch('student_id')}>
+            <Select onValueChange={handleStudentChange} value={watch('student_id')}>
               <SelectTrigger>
                 <SelectValue placeholder="Select student" />
               </SelectTrigger>
@@ -132,22 +150,43 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
           </div>
 
           <div className="space-y-1.5">
-            <Label>Lesson Title</Label>
-            <Input {...register('lesson_title')} placeholder="e.g. Piano - 30min" />
-            {errors.lesson_title && <p className="text-xs text-destructive">{errors.lesson_title.message}</p>}
+            <Label>Missed Lesson</Label>
+            {selectedStudentId ? (
+              lessonsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading lessons…</p>
+              ) : studentLessons && studentLessons.length > 0 ? (
+                <Select onValueChange={(v) => setValue('missed_lesson_id', v)} value={watch('missed_lesson_id')}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select missed lesson" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {studentLessons.map((l: any) => (
+                      <SelectItem key={l.id} value={l.id}>
+                        {l.title} — {format(new Date(l.start_at), 'dd/MM/yyyy HH:mm')}
+                        {l.teacher?.display_name ? ` (${l.teacher.display_name})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm text-muted-foreground">No lessons found for this student</p>
+              )
+            ) : (
+              <p className="text-sm text-muted-foreground">Select a student first</p>
+            )}
+            {errors.missed_lesson_id && <p className="text-xs text-destructive">{errors.missed_lesson_id.message}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Missed Date</Label>
-              <Input type="date" {...register('missed_lesson_date')} />
-              {errors.missed_lesson_date && <p className="text-xs text-destructive">{errors.missed_lesson_date.message}</p>}
+          {selectedLesson && (
+            <div className="rounded-md bg-muted p-3 text-sm space-y-1">
+              <p><span className="text-muted-foreground">Title:</span> {selectedLesson.title}</p>
+              <p><span className="text-muted-foreground">Date:</span> {format(new Date(selectedLesson.start_at), 'dd/MM/yyyy')}</p>
+              <p><span className="text-muted-foreground">Duration:</span> {Math.round((new Date(selectedLesson.end_at).getTime() - new Date(selectedLesson.start_at).getTime()) / 60000)} mins</p>
+              {selectedLesson.teacher?.display_name && (
+                <p><span className="text-muted-foreground">Teacher:</span> {selectedLesson.teacher.display_name}</p>
+              )}
             </div>
-            <div className="space-y-1.5">
-              <Label>Duration (mins)</Label>
-              <Input type="number" {...register('lesson_duration_minutes')} />
-            </div>
-          </div>
+          )}
 
           <div className="space-y-1.5">
             <Label>Absence Reason</Label>
@@ -172,7 +211,7 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || !selectedLesson}>
               {isSubmitting ? 'Adding…' : 'Add to Waitlist'}
             </Button>
           </DialogFooter>
