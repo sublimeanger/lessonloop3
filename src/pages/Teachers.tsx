@@ -209,17 +209,22 @@ export default function Teachers() {
       return;
     }
     setIsSaving(true);
-    await createTeacher.mutateAsync({
-      display_name: newTeacherName.trim(),
-      email: newTeacherEmail.trim() || undefined,
-      phone: newTeacherPhone.trim() || undefined,
-      instruments: newTeacherInstruments.trim() ? newTeacherInstruments.split(',').map(s => s.trim()).filter(Boolean) : undefined,
-      employment_type: newTeacherEmploymentType as 'contractor' | 'employee',
-      bio: newTeacherBio.trim() || undefined,
-    });
-    setIsCreateDialogOpen(false);
-    resetCreateForm();
-    setIsSaving(false);
+    try {
+      await createTeacher.mutateAsync({
+        display_name: newTeacherName.trim(),
+        email: newTeacherEmail.trim() || undefined,
+        phone: newTeacherPhone.trim() || undefined,
+        instruments: newTeacherInstruments.trim() ? newTeacherInstruments.split(',').map(s => s.trim()).filter(Boolean) : undefined,
+        employment_type: newTeacherEmploymentType as 'contractor' | 'employee',
+        bio: newTeacherBio.trim() || undefined,
+      });
+      setIsCreateDialogOpen(false);
+      resetCreateForm();
+    } catch {
+      // Error handled by mutation's onError
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const openEditDialog = (teacher: Teacher) => {
@@ -257,8 +262,9 @@ export default function Teachers() {
       setEditDialogOpen(false);
     } catch {
       // Error handled by mutation's onError
+    } finally {
+      setIsEditing(false);
     }
-    setIsEditing(false);
   };
 
   const initiateRemoval = async (teacher: Teacher) => {
