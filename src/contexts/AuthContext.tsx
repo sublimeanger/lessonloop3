@@ -325,7 +325,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoles([]);
     
     // Sign out from Supabase with global scope to clear all sessions
-    await supabase.auth.signOut({ scope: 'local' });
+    await supabase.auth.signOut({ scope: 'global' });
     
     // Explicitly clear localStorage auth tokens
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
