@@ -15,6 +15,7 @@ export interface BillingRunSummary {
   totalAmount: number;
   invoiceIds?: string[];
   skippedLessons?: number;
+  skippedForCancellation?: number;
   failedPayers?: Array<{ payerName: string; payerEmail: string | null; error: string; payerType?: 'guardian' | 'student'; payerId?: string }>;
 }
 
@@ -147,6 +148,28 @@ export function useCreateBillingRun() {
         const billedLessonIds = new Set(billedItems?.map((i) => i.linked_lesson_id) || []);
         const unbilledLessons = lessons?.filter((l) => !billedLessonIds.has(l.id)) || [];
 
+        // Fetch attendance records for unbilled lessons to exclude teacher cancellations
+        const unbilledLessonIds = unbilledLessons.map(l => l.id);
+        let attendanceMap = new Map<string, string>(); // key: lessonId-studentId → status
+        let skippedForCancellation = 0;
+
+        if (unbilledLessonIds.length > 0) {
+          // Fetch in batches if needed (Supabase limit)
+          const batchSize = 500;
+          const allAttendance: { lesson_id: string; student_id: string; attendance_status: string }[] = [];
+          for (let i = 0; i < unbilledLessonIds.length; i += batchSize) {
+            const batch = unbilledLessonIds.slice(i, i + batchSize);
+            const { data: attData } = await supabase
+              .from('attendance_records')
+              .select('lesson_id, student_id, attendance_status')
+              .in('lesson_id', batch);
+            if (attData) allAttendance.push(...attData);
+          }
+          allAttendance.forEach(a => {
+            attendanceMap.set(`${a.lesson_id}-${a.student_id}`, a.attendance_status);
+          });
+        }
+
         // Group lessons by payer with deduplication
         const payerGroups = new Map<
           string,
@@ -155,8 +178,8 @@ export function useCreateBillingRun() {
             payerId: string;
             payerName: string;
             payerEmail: string | null;
-            lessons: typeof unbilledLessons;
-            addedLessonIds: Set<string>;
+            lessons: Array<{ lesson: (typeof unbilledLessons)[0]; studentId: string }>;
+            addedKeys: Set<string>;
           }
         >();
 
@@ -164,6 +187,14 @@ export function useCreateBillingRun() {
           lesson.lesson_participants?.forEach((lp: any) => {
             const student = lp.student;
             if (!student || student.status !== 'active') return;
+
+            // Check attendance: skip if teacher cancelled this student's lesson
+            const attKey = `${lesson.id}-${student.id}`;
+            const attStatus = attendanceMap.get(attKey);
+            if (attStatus === 'cancelled_by_teacher') {
+              skippedForCancellation++;
+              return; // Don't bill for teacher cancellations
+            }
 
             const primaryGuardian = student.student_guardians?.find(
               (sg: any) => sg.is_primary_payer
@@ -178,13 +209,14 @@ export function useCreateBillingRun() {
                   payerName: primaryGuardian.full_name,
                   payerEmail: primaryGuardian.email,
                   lessons: [],
-                  addedLessonIds: new Set(),
+                  addedKeys: new Set(),
                 });
               }
               const group = payerGroups.get(key)!;
-              if (!group.addedLessonIds.has(lesson.id)) {
-                group.lessons.push(lesson);
-                group.addedLessonIds.add(lesson.id);
+              const dedupKey = `${lesson.id}-${student.id}`;
+              if (!group.addedKeys.has(dedupKey)) {
+                group.lessons.push({ lesson, studentId: student.id });
+                group.addedKeys.add(dedupKey);
               }
             } else if (student.email) {
               const key = `student-${student.id}`;
@@ -195,13 +227,14 @@ export function useCreateBillingRun() {
                   payerName: `${student.first_name} ${student.last_name}`,
                   payerEmail: student.email,
                   lessons: [],
-                  addedLessonIds: new Set(),
+                  addedKeys: new Set(),
                 });
               }
               const group = payerGroups.get(key)!;
-              if (!group.addedLessonIds.has(lesson.id)) {
-                group.lessons.push(lesson);
-                group.addedLessonIds.add(lesson.id);
+              const dedupKey = `${lesson.id}-${student.id}`;
+              if (!group.addedKeys.has(dedupKey)) {
+                group.lessons.push({ lesson, studentId: student.id });
+                group.addedKeys.add(dedupKey);
               }
             }
           });
@@ -210,7 +243,7 @@ export function useCreateBillingRun() {
         // Count orphaned lessons (no payer resolved)
         const billedLessonIds2 = new Set<string>();
         for (const [, group] of payerGroups) {
-          group.addedLessonIds.forEach(id => billedLessonIds2.add(id));
+          group.lessons.forEach(({ lesson }) => billedLessonIds2.add(lesson.id));
         }
         const skippedLessons = unbilledLessons.filter(l => !billedLessonIds2.has(l.id));
         const skippedCount = skippedLessons.length;
@@ -226,7 +259,7 @@ export function useCreateBillingRun() {
           for (const [, payer] of payerGroups) {
             try {
               // Calculate per-lesson rates based on duration and rate cards
-              const lessonRates = payer.lessons.map((lesson) => {
+              const lessonRates = payer.lessons.map(({ lesson }) => {
                 const durationMins = differenceInMinutes(new Date(lesson.end_at), new Date(lesson.start_at));
                 return findRateForDuration(durationMins, rateCards || [], fallbackRate);
               });
@@ -260,7 +293,7 @@ export function useCreateBillingRun() {
               invoiceIds.push(invoice.id);
               totalAmount += total;
 
-              const items = payer.lessons.map((lesson, idx) => ({
+              const items = payer.lessons.map(({ lesson, studentId }, idx) => ({
                 invoice_id: invoice.id,
                 org_id: currentOrg.id,
                 description: lesson.title,
@@ -268,6 +301,7 @@ export function useCreateBillingRun() {
                 unit_price_minor: lessonRates[idx],
                 amount_minor: lessonRates[idx],
                 linked_lesson_id: lesson.id,
+                student_id: studentId,
               }));
 
               const { error: itemsError } = await supabase
@@ -300,11 +334,12 @@ export function useCreateBillingRun() {
           finalStatus = 'failed';
         }
 
-        const summary = {
+        const summary: BillingRunSummary = {
           invoiceCount: invoiceIds.length,
           totalAmount,
           invoiceIds,
           skippedLessons: skippedCount,
+          skippedForCancellation,
           ...(failedPayers.length > 0 ? { failedPayers } : {}),
         };
 
@@ -313,7 +348,7 @@ export function useCreateBillingRun() {
           .from('billing_runs')
           .update({
             status: finalStatus,
-            summary,
+            summary: summary as unknown as Record<string, any>,
           })
           .eq('id', billingRun.id);
 
@@ -367,6 +402,13 @@ export function useCreateBillingRun() {
         toast({
           title: 'Warning',
           description: `${summary.skippedLessons} lesson${summary.skippedLessons === 1 ? '' : 's'} skipped — students have no primary payer configured`,
+        });
+      }
+
+      if (summary.skippedForCancellation > 0) {
+        toast({
+          title: 'Teacher cancellations excluded',
+          description: `${summary.skippedForCancellation} lesson-student record${summary.skippedForCancellation === 1 ? '' : 's'} excluded due to teacher cancellations`,
         });
       }
     },
