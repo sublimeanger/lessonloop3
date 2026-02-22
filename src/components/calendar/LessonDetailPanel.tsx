@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { format, parseISO, differenceInMinutes, differenceInHours, eachWeekOfInterval, addWeeks, isAfter, isBefore, getDay } from 'date-fns';
+import { format, parseISO, subDays, differenceInMinutes, differenceInHours, eachWeekOfInterval, addWeeks, isAfter, isBefore, getDay } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { LessonWithDetails, AttendanceStatus } from './types';
 import { RecurringActionDialog, RecurringActionMode } from './RecurringActionDialog';
@@ -10,6 +10,7 @@ import { useMakeUpCredits } from '@/hooks/useMakeUpCredits';
 import { useRateCards, findRateForDuration } from '@/hooks/useRateCards';
 import { supabase } from '@/integrations/supabase/client';
 import { logAudit } from '@/lib/auditLog';
+import { logger } from '@/lib/logger';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -256,19 +257,29 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         cancelled_at: new Date().toISOString(),
       };
 
+      let cancelledLessonIds: string[] = [];
+
       if (cancelMode === 'this_only') {
-        // Cancel just this lesson
         const { error } = await supabase
           .from('lessons')
           .update(cancelData)
           .eq('id', lesson.id);
         if (error) throw error;
+        cancelledLessonIds = [lesson.id];
         logAudit(currentOrg!.id, user.id, 'cancel', 'lesson', lesson.id, {
           after: { reason: cancellationReason || null },
         });
         toast({ title: 'Lesson cancelled' });
       } else {
-        // Cancel this and all future lessons in series
+        // First get the IDs of lessons we're about to cancel
+        const { data: futureLessons } = await supabase
+          .from('lessons')
+          .select('id')
+          .eq('recurrence_id', lesson.recurrence_id)
+          .gte('start_at', lesson.start_at)
+          .neq('status', 'cancelled');
+        cancelledLessonIds = (futureLessons || []).map(l => l.id);
+
         const { error } = await supabase
           .from('lessons')
           .update(cancelData)
@@ -280,6 +291,73 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         });
         toast({ title: 'Series cancelled', description: 'This and all future lessons have been cancelled.' });
       }
+
+      // === Cascade side effects (fire-and-forget, non-blocking) ===
+      if (cancelledLessonIds.length > 0) {
+        // 1. Delete attendance records for cancelled lessons
+        supabase
+          .from('attendance_records')
+          .delete()
+          .in('lesson_id', cancelledLessonIds)
+          .then(({ error: attErr }) => {
+            if (attErr) logger.warn('[cancel-cascade] Failed to delete attendance records:', attErr.message);
+          });
+
+        // 2. For "this_and_future", cap the recurrence rule end_date
+        if (cancelMode === 'this_and_future' && lesson.recurrence_id) {
+          const newEndDate = format(subDays(parseISO(lesson.start_at), 1), 'yyyy-MM-dd');
+          supabase
+            .from('recurrence_rules')
+            .update({ end_date: newEndDate })
+            .eq('id', lesson.recurrence_id)
+            .then(({ error: recErr }) => {
+              if (recErr) logger.warn('[cancel-cascade] Failed to update recurrence end_date:', recErr.message);
+            });
+        }
+
+        // 3. Check for draft invoice items referencing cancelled lessons
+        supabase
+          .from('invoice_items')
+          .select('id, invoice_id, invoices!inner(status)')
+          .in('linked_lesson_id', cancelledLessonIds)
+          .eq('invoices.status', 'draft')
+          .then(({ data: draftItems, error: invErr }) => {
+            if (invErr) {
+              logger.warn('[cancel-cascade] Failed to check draft invoices:', invErr.message);
+              return;
+            }
+            if (draftItems && draftItems.length > 0) {
+              const invoiceIds = [...new Set(draftItems.map(i => i.invoice_id))];
+              logAudit(currentOrg!.id, user.id, 'warning', 'invoice', null, {
+                after: {
+                  message: `${draftItems.length} draft invoice item(s) reference cancelled lesson(s)`,
+                  affected_invoice_ids: invoiceIds,
+                  cancelled_lesson_ids: cancelledLessonIds,
+                },
+              });
+              toast({
+                title: 'Draft invoices affected',
+                description: `${invoiceIds.length} draft invoice(s) contain items for cancelled lessons. Please review them.`,
+                variant: 'default',
+              });
+            }
+          });
+
+        // 4. Notify parents about the cancellation
+        supabase.functions.invoke('send-cancellation-notification', {
+          body: {
+            lessonIds: cancelledLessonIds,
+            lessonTitle: lesson.title,
+            lessonDate: format(parseISO(lesson.start_at), 'dd/MM/yyyy HH:mm'),
+            cancellationReason: cancellationReason || 'No reason provided',
+            orgName: currentOrg!.name,
+            orgId: currentOrg!.id,
+          },
+        }).catch(err => {
+          logger.warn('[cancel-cascade] Failed to send cancellation notification:', err);
+        });
+      }
+
       setCancellationReason('');
       onUpdated();
       onClose();
