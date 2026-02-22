@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Quote, ArrowRight } from "lucide-react";
+import { Quote } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export function FounderStory() {
@@ -18,12 +18,12 @@ export function FounderStory() {
           className="text-center max-w-3xl mx-auto mb-16"
         >
           <span className="inline-block px-4 py-1.5 rounded-full bg-coral/10 text-coral text-sm font-semibold mb-6">
-            Our story
+            Our Story
           </span>
           <h2 className="text-4xl lg:text-5xl font-bold text-foreground leading-tight">
-            Built by a teacher,
+            Built to solve real
             <br />
-            <span className="text-muted-foreground">for teachers</span>
+            <span className="text-muted-foreground">teaching problems</span>
           </h2>
         </motion.div>
 
@@ -76,16 +76,13 @@ export function FounderStory() {
           className="max-w-2xl mx-auto text-center mt-10"
         >
           <p className="text-muted-foreground leading-relaxed">
-            After two decades of teaching piano and running a busy music academy, Lauren experienced every admin headache
-            first-hand — spreadsheets, chasing invoices, missed messages. She built LessonLoop to be the platform she
-            always wished existed: purpose-built for UK music educators, with AI that genuinely saves time.
+            Lauren Twilley spent 20 years as a piano teacher before building LessonLoop. Every feature exists because she lived the problem firsthand.
           </p>
           <Link
             to="/about"
             className="inline-flex items-center gap-1.5 mt-5 text-sm font-semibold text-primary hover:gap-2.5 transition-all"
           >
-            Read our story
-            <ArrowRight className="w-4 h-4" />
+            Read our full story →
           </Link>
         </motion.div>
       </div>
