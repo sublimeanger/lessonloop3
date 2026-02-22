@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
+import { logAudit } from '@/lib/auditLog';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -250,6 +252,8 @@ export function isValidStatusTransition(from: InvoiceStatus, to: InvoiceStatus):
 
 export function useUpdateInvoiceStatus() {
   const queryClient = useQueryClient();
+  const { currentOrg } = useOrg();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   return useMutation({
@@ -267,7 +271,7 @@ export function useUpdateInvoiceStatus() {
           _org_id: orgId,
         });
         if (error) throw error;
-        return;
+        return { id, status, currentStatus };
       }
 
       const { error } = await supabase
@@ -276,8 +280,15 @@ export function useUpdateInvoiceStatus() {
         .eq('id', id);
 
       if (error) throw error;
+      return { id, status, currentStatus };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result && currentOrg?.id && user?.id) {
+        logAudit(currentOrg.id, user.id, `invoice_status_${result.status}`, 'invoice', result.id, {
+          before: result.currentStatus ? { status: result.currentStatus } : null,
+          after: { status: result.status },
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice'] });
       queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
@@ -293,6 +304,7 @@ export function useUpdateInvoiceStatus() {
 export function useRecordPayment() {
   const queryClient = useQueryClient();
   const { currentOrg } = useOrg();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   return useMutation({
@@ -321,9 +333,15 @@ export function useRecordPayment() {
       });
 
       if (error) throw error;
-      return result;
+      return { result, input: data };
     },
-    onSuccess: () => {
+    onSuccess: ({ result, input }) => {
+      const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+      if (currentOrg?.id && user?.id) {
+        logAudit(currentOrg.id, user.id, 'payment_recorded', 'payment', parsed?.payment_id ?? null, {
+          after: { invoice_id: input.invoice_id, amount_minor: input.amount_minor, method: input.method, new_status: parsed?.new_status },
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice'] });
       queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
