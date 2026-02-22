@@ -423,8 +423,8 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
                 return (
                   <div key={p.id} className="space-y-2">
                     <div className="font-medium text-sm">{p.student.first_name} {p.student.last_name}</div>
-                    <div className="flex flex-wrap gap-1">
-                      {ATTENDANCE_OPTIONS.slice(0, 3).map((option) => (
+                    <div className="grid grid-cols-3 gap-1">
+                      {ATTENDANCE_OPTIONS.map((option) => (
                         <Button
                           key={option.value}
                           size="sm"
