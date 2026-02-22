@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
@@ -54,6 +55,34 @@ export interface MessageThread {
  */
 export function useMessageThreads() {
   const { currentOrg } = useOrg();
+  const queryClient = useQueryClient();
+
+  // Realtime subscription for instant message updates
+  useEffect(() => {
+    if (!currentOrg?.id) return;
+
+    const channel = supabase
+      .channel(`message-log-realtime-${currentOrg.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'message_log',
+          filter: `org_id=eq.${currentOrg.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['message-threads'] });
+          queryClient.invalidateQueries({ queryKey: ['thread-messages'] });
+          queryClient.invalidateQueries({ queryKey: ['message-log'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentOrg?.id, queryClient]);
 
   return useQuery({
     queryKey: ['message-threads', currentOrg?.id],
