@@ -67,8 +67,9 @@ export default function Signup() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedEmail = email.trim();
     
-    if (!fullName || !email || !password) {
+    if (!fullName || !trimmedEmail || !password) {
       toast({
         title: 'Missing fields',
         description: 'Please fill in all fields.',
@@ -96,7 +97,7 @@ export default function Signup() {
     }
 
     setIsLoading(true);
-    const { error } = await signUp(email, password, fullName);
+    const { error } = await signUp(trimmedEmail, password, fullName);
     setIsLoading(false);
 
     if (error) {
