@@ -676,9 +676,21 @@ export default function Locations() {
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                       {(location.address_line_1 || location.city) && (
-                        <span className="truncate">
-                          {[location.address_line_1, location.city, location.postcode].filter(Boolean).join(', ')}
-                        </span>
+                        <>
+                          <span className="truncate">
+                            {[location.address_line_1, location.city, location.postcode].filter(Boolean).join(', ')}
+                          </span>
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location.address_line_1, location.city, location.postcode].filter(Boolean).join(', '))}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                          >
+                            <MapPin className="h-3 w-3" />
+                            Directions
+                          </a>
+                        </>
                       )}
                     </div>
                     {/* Usage stats */}
