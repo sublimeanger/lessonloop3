@@ -153,7 +153,15 @@ export function PublicRoute({ children }: { children: ReactNode }) {
   // If profile is still loading (isLoading was true), we'd have returned above
   // If profile is null after auth init, user needs onboarding
   if (profile === null || !profile.has_completed_onboarding) {
+    // Preserve invite return URL through onboarding - don't consume it here
     return <Navigate to="/onboarding" replace />;
+  }
+
+  // Check for stored invite return URL (survives onboarding redirect)
+  const inviteReturn = (() => { try { return sessionStorage.getItem('lessonloop_invite_return'); } catch { return null; } })();
+  if (inviteReturn) {
+    try { sessionStorage.removeItem('lessonloop_invite_return'); } catch {}
+    return <Navigate to={inviteReturn} replace />;
   }
 
   // Wait for org context to initialise before role-based redirects
