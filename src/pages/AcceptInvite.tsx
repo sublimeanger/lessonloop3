@@ -251,16 +251,28 @@ export default function AcceptInvite() {
   }
 
   if (error) {
+    const isExpired = error.toLowerCase().includes('expired');
     return (
       <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center py-12">
             <XCircle className="h-12 w-12 text-destructive" />
-            <h2 className="mt-4 text-lg font-semibold">Invalid Invitation</h2>
-            <p className="mt-2 text-center text-muted-foreground">{error}</p>
+            <h2 className="mt-4 text-lg font-semibold">
+              {isExpired ? 'Invitation Expired' : 'Invalid Invitation'}
+            </h2>
+            <p className="mt-2 text-center text-muted-foreground">
+              {isExpired
+                ? 'This invitation link has expired. Please contact your academy administrator and ask them to send a new invitation from the Teachers page.'
+                : error}
+            </p>
             <Button asChild className="mt-6">
               <Link to="/login">Go to Login</Link>
             </Button>
+            {isExpired && (
+              <p className="mt-4 text-center text-xs text-muted-foreground">
+                If you already have an account, you can log in and your administrator can resend the invite from Settings &gt; Team.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
