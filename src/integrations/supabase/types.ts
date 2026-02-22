@@ -3537,6 +3537,36 @@ export type Database = {
       }
       cleanup_rate_limits: { Args: never; Returns: undefined }
       generate_ical_token: { Args: never; Returns: string }
+      generate_installments: {
+        Args: {
+          _count: number
+          _custom_schedule?: Json
+          _frequency?: string
+          _invoice_id: string
+          _org_id: string
+          _start_date?: string
+        }
+        Returns: {
+          amount_minor: number
+          created_at: string | null
+          due_date: string
+          id: string
+          installment_number: number
+          invoice_id: string
+          org_id: string
+          paid_at: string | null
+          payment_id: string | null
+          status: string
+          stripe_payment_intent_id: string | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "invoice_installments"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       generate_invoice_number: { Args: { _org_id: string }; Returns: string }
       get_guardian_ids_for_user: {
         Args: { _user_id: string }
