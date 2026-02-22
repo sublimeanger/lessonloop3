@@ -315,14 +315,15 @@ export function useMarkLessonComplete() {
       if (missing.length > 0) {
         const { error: insertError } = await supabase
           .from('attendance_records')
-          .insert(
+          .upsert(
             missing.map(p => ({
               lesson_id: lessonId,
               student_id: p.student_id,
               org_id: currentOrg.id,
               attendance_status: 'present' as const,
               recorded_by: user.id,
-            }))
+            })),
+            { onConflict: 'lesson_id,student_id' }
           );
 
         if (insertError) throw insertError;
