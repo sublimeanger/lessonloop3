@@ -321,7 +321,26 @@ export default function Locations() {
     if (error) {
       toast({ title: 'Error deleting location', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Location deleted' });
+      // Auto-promote another location if we deleted the primary
+      const deletedLocation = locations.find(l => l.id === locationId);
+      if (deletedLocation?.is_primary) {
+        const { data: remaining } = await supabase
+          .from('locations')
+          .select('id, name')
+          .eq('org_id', currentOrg.id)
+          .neq('id', locationId)
+          .eq('is_archived', false)
+          .order('created_at')
+          .limit(1);
+        if (remaining && remaining.length > 0) {
+          await supabase.from('locations').update({ is_primary: true }).eq('id', remaining[0].id).eq('org_id', currentOrg.id);
+          toast({ title: 'Location deleted', description: `Primary location auto-assigned to ${remaining[0].name}.` });
+        } else {
+          toast({ title: 'Location deleted' });
+        }
+      } else {
+        toast({ title: 'Location deleted' });
+      }
       invalidateLocations();
     }
     setDeleteLocDialog(prev => ({ ...prev, open: false, isDeleting: false }));
