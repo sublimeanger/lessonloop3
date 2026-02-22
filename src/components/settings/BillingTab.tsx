@@ -551,6 +551,8 @@ export function BillingTab() {
             <div className="flex items-center gap-2 p-1 bg-muted rounded-lg">
               <button
                 onClick={() => setBillingInterval('monthly')}
+                aria-label="Monthly billing"
+                aria-pressed={billingInterval === 'monthly'}
                 className={cn(
                   'px-4 py-2 text-sm font-medium rounded-md transition-colors',
                   billingInterval === 'monthly' 
@@ -562,6 +564,8 @@ export function BillingTab() {
               </button>
               <button
                 onClick={() => setBillingInterval('yearly')}
+                aria-label="Yearly billing"
+                aria-pressed={billingInterval === 'yearly'}
                 className={cn(
                   'px-4 py-2 text-sm font-medium rounded-md transition-colors',
                   billingInterval === 'yearly' 
