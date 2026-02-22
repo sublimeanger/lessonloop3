@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { validateResourceFile } from '@/lib/resource-validation';
 
 export interface Resource {
   id: string;
@@ -74,6 +75,9 @@ export function useUploadResource() {
       if (!currentOrg?.id || !user?.id) {
         throw new Error('No organisation or user context');
       }
+
+      // Validate file type and size before upload
+      validateResourceFile(file);
 
       // Upload file to storage
       const fileExt = file.name.split('.').pop();

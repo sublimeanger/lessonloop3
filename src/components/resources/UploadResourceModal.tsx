@@ -13,25 +13,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, File, X, Loader2 } from 'lucide-react';
 import { useUploadResource } from '@/hooks/useResources';
+import { MAX_FILE_SIZE, ALLOWED_TYPES } from '@/lib/resource-validation';
 
 interface UploadResourceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-const ALLOWED_TYPES = [
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'audio/mpeg',
-  'audio/mp3',
-  'audio/wav',
-  'video/mp4',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-];
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -52,7 +39,7 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
   const handleFileSelect = (selectedFile: File) => {
     setError(null);
 
-    if (!ALLOWED_TYPES.includes(selectedFile.type)) {
+    if (!(ALLOWED_TYPES as readonly string[]).includes(selectedFile.type)) {
       setError('File type not supported. Please upload PDF, images, audio, video, or Word documents.');
       return;
     }
