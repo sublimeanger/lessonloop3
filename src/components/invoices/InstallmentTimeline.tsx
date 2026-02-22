@@ -85,9 +85,13 @@ export function InstallmentTimeline({ invoice, onEditPlan, onRecordPayment }: In
 
   return (
     <>
-      <Card>
+      <Card className="print:border-none print:shadow-none">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Payment Plan</CardTitle>
+          {/* Print-only header */}
+          <p className="hidden print:block text-sm text-muted-foreground">
+            {invoice.invoice_number}
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Timeline */}
@@ -102,7 +106,7 @@ export function InstallmentTimeline({ invoice, onEditPlan, onRecordPayment }: In
                   )} />
                 )}
                 {/* Icon */}
-                <div className="flex-shrink-0 z-10 bg-background">
+                <div className="flex-shrink-0 z-10 bg-background print:bg-transparent">
                   {getStepIcon(inst.status)}
                 </div>
                 {/* Content */}
@@ -130,7 +134,7 @@ export function InstallmentTimeline({ invoice, onEditPlan, onRecordPayment }: In
                       <Button
                         size="sm"
                         variant="outline"
-                        className="flex-shrink-0 gap-1 text-xs h-7"
+                        className="flex-shrink-0 gap-1 text-xs h-7 print:hidden"
                         onClick={() => onRecordPayment(inst.amount_minor)}
                       >
                         <CreditCard className="h-3 w-3" />
@@ -151,8 +155,8 @@ export function InstallmentTimeline({ invoice, onEditPlan, onRecordPayment }: In
             </p>
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-2 pt-1">
+          {/* Actions — hidden when printing */}
+          <div className="flex gap-2 pt-1 print:hidden">
             <Button variant="outline" size="sm" className="gap-1" onClick={onEditPlan}>
               <Pencil className="h-3 w-3" />
               Edit Plan

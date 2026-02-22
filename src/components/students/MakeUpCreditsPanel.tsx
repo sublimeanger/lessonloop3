@@ -96,9 +96,21 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
 
           {/* Credits List */}
           {(!credits || credits.length === 0) ? (
-            <p className="text-muted-foreground text-sm text-center py-4">
-              No make-up credits issued yet
-            </p>
+            <div className="flex flex-col items-center text-center py-8 space-y-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <Gift className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-medium text-sm">No make-up credits</p>
+                <p className="text-xs text-muted-foreground max-w-xs">
+                  Credits are issued when a lesson is cancelled by the teacher or when the academy grants a make-up for an eligible absence.
+                </p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setIssueModalOpen(true)}>
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Issue Credit
+              </Button>
+            </div>
           ) : (
             <div className="space-y-3">
               {credits.map((credit) => {
