@@ -6,6 +6,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useParentSummary, useChildrenWithDetails, useGuardianInfo } from '@/hooks/useParentPortal';
 import { useParentWaitlistEntries } from '@/hooks/useMakeUpWaitlist';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
+import { useParentCredits } from '@/hooks/useParentCredits';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Calendar,
@@ -13,6 +14,7 @@ import {
   CreditCard,
   ChevronRight,
   MessageSquare,
+  Gift,
   MapPin,
   FolderOpen,
   UserX,
@@ -104,6 +106,7 @@ export default function PortalHome() {
   const { data: guardianInfo, isLoading: guardianLoading, isError: guardianError } = useGuardianInfo();
   const { data: unreadCount } = useUnreadMessagesCount();
   const { data: waitlistEntries } = useParentWaitlistEntries();
+  const { data: parentCredits } = useParentCredits();
 
   const activeWaitlist = (waitlistEntries ?? []).filter((e) =>
     ['waiting', 'matched', 'offered', 'accepted', 'booked'].includes(e.status)
@@ -432,6 +435,53 @@ export default function PortalHome() {
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* 3.6 Available Make-Up Credits */}
+            {parentCredits && parentCredits.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  🎁 Available Credits
+                </h2>
+                <Card>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Gift className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-semibold">
+                          {formatCurrencyMinor(
+                            parentCredits.reduce((sum, c) => sum + c.credit_value_minor, 0),
+                            currencyCode
+                          )} total credit
+                        </span>
+                      </div>
+                      <Badge variant="secondary">{parentCredits.length} available</Badge>
+                    </div>
+                    <div className="space-y-2">
+                      {parentCredits.map((credit) => (
+                        <div key={credit.id} className="flex items-center justify-between text-sm border-t pt-2 first:border-t-0 first:pt-0">
+                          <div className="min-w-0">
+                            <p className="font-medium">
+                              {formatCurrencyMinor(credit.credit_value_minor, currencyCode)}
+                              {credit.student && (
+                                <span className="text-muted-foreground font-normal"> — {credit.student.first_name}</span>
+                              )}
+                            </p>
+                            {credit.expires_at && (
+                              <p className="text-xs text-muted-foreground">
+                                Expires {formatDateUK(parseISO(credit.expires_at), 'd MMM yyyy')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Credits are automatically applied when your next invoice is generated.
+                    </p>
+                  </CardContent>
+                </Card>
               </div>
             )}
 
