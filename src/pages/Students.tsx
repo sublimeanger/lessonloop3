@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ import type { StudentListItem, StudentStatus } from '@/hooks/useStudents';
 import { Plus, Search, Users, Upload, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
-import { useInvoices } from '@/hooks/useInvoices';
+import { supabase } from '@/integrations/supabase/client';
 
 const STATUS_FILTERS = ['all', 'active', 'inactive'] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
@@ -308,16 +308,28 @@ export default function Students() {
 }
 
 function StudentsOverdueBanner() {
-  const { data: overdueInvoices = [] } = useInvoices({ status: 'overdue' });
-  const studentIds = new Set(overdueInvoices.map(inv => inv.payer_student_id).filter(Boolean));
-  const count = studentIds.size;
+  const { currentOrg } = useOrg();
+  const { data: overdueStudentCount = 0 } = useQuery({
+    queryKey: ['overdue-student-count', currentOrg?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('invoices')
+        .select('payer_student_id')
+        .eq('org_id', currentOrg!.id)
+        .in('status', ['overdue'])
+        .not('payer_student_id', 'is', null);
+      return new Set(data?.map(d => d.payer_student_id)).size;
+    },
+    enabled: !!currentOrg,
+    staleTime: 60_000,
+  });
 
-  if (count === 0) return null;
+  if (overdueStudentCount === 0) return null;
 
   return (
     <LoopAssistPageBanner
       bannerKey="students_overdue"
-      message={`${count} student${count !== 1 ? 's have' : ' has'} overdue invoices — Ask LoopAssist to send reminders`}
+      message={`${overdueStudentCount} student${overdueStudentCount !== 1 ? 's have' : ' has'} overdue invoices — Ask LoopAssist to send reminders`}
       prompt="Send reminders for students with overdue invoices"
     />
   );
