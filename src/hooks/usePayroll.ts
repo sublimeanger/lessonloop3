@@ -280,4 +280,5 @@ export function exportPayrollToCSV(data: PayrollData, orgName: string, currencyC
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

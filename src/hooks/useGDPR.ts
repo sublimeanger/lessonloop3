@@ -64,6 +64,7 @@ export function useGDPRExport() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
       };
 
       const timestamp = new Date().toISOString().split('T')[0];
