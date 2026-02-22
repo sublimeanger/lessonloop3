@@ -178,6 +178,18 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, onRemove
             </div>
           ))}
 
+          {/* Calendar Colour */}
+          <div className="flex items-start gap-3">
+            <div className="text-muted-foreground mt-0.5"><Calendar className="h-4 w-4" /></div>
+            <div>
+              <p className="text-xs text-muted-foreground">Calendar Colour</p>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="h-4 w-4 rounded-full border" style={{ backgroundColor: colour.hex }} />
+                <span className="text-sm">{colour.name}</span>
+              </div>
+            </div>
+          </div>
+
           {isOrgAdmin && teacher.pay_rate_type && teacher.pay_rate_value != null && (
             <div className="flex items-start gap-3">
               <div className="text-muted-foreground mt-0.5"><Briefcase className="h-4 w-4" /></div>
