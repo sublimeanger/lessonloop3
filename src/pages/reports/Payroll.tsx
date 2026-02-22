@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -12,6 +12,7 @@ import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { SortableTableHead } from '@/components/reports/SortableTableHead';
 import { usePayroll, exportPayrollToCSV, type TeacherPayrollSummary } from '@/hooks/usePayroll';
+import { ReportPagination, paginateArray } from '@/components/reports/ReportPagination';
 import { useSortableTable } from '@/hooks/useSortableTable';
 import { useOrg } from '@/contexts/OrgContext';
 import { formatCurrency, formatDateUK } from '@/lib/utils';
@@ -205,6 +206,8 @@ function PayrollTeacherList({
     teachers, 'name', 'asc', payrollComparators
   );
 
+  const [page, setPage] = useState(1);
+
   return (
     <div className="space-y-2">
       {/* Sort controls */}
@@ -225,7 +228,7 @@ function PayrollTeacherList({
           </button>
         ))}
       </div>
-      {sorted.map((teacher) => (
+      {paginateArray(sorted, page).map((teacher) => (
         <Collapsible
           key={teacher.teacherId}
           open={expandedTeachers.has(teacher.teacherId)}
@@ -308,6 +311,7 @@ function PayrollTeacherList({
           </div>
         </Collapsible>
       ))}
+      <ReportPagination totalItems={sorted.length} currentPage={page} onPageChange={setPage} />
     </div>
   );
 }
