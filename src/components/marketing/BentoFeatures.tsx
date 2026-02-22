@@ -3,15 +3,13 @@ import {
   Calendar, 
   Receipt, 
   Users, 
-  Sparkles, 
   Bell, 
   Shield,
-  Clock,
   CreditCard,
   MessageSquare,
   BarChart3,
   Repeat,
-  Smartphone
+  RefreshCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MouseEvent } from "react";
@@ -169,45 +167,6 @@ function InvoiceDemo() {
   );
 }
 
-// Chat bubble animation
-function AIDemo() {
-  const messages = [
-    { role: "user", text: "Who has outstanding invoices?" },
-    { role: "ai", text: "3 guardians have unpaid invoices totaling £285..." },
-  ];
-
-  return (
-    <div className="mt-6 space-y-3">
-      {messages.map((msg, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0, y: 10, scale: 0.9 }}
-          whileInView={{ opacity: 1, y: 0, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.3 + i * 0.3 }}
-          className={cn(
-            "p-3 rounded-2xl text-xs max-w-[85%]",
-            msg.role === "user" 
-              ? "bg-primary text-primary-foreground ml-auto rounded-br-sm" 
-              : "bg-muted text-foreground rounded-bl-sm"
-          )}
-        >
-          {msg.text}
-        </motion.div>
-      ))}
-      <div className="flex gap-1 ml-2">
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-pulse"
-            style={{ animationDelay: `${i * 200}ms` }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // Feature list
 function FeatureList({ features }: { features: string[] }) {
   return (
@@ -228,6 +187,16 @@ function FeatureList({ features }: { features: string[] }) {
     </ul>
   );
 }
+
+// Compact "And more" items
+const moreFeatures = [
+  { icon: CreditCard, label: "Online Payments", desc: "Card payments via Stripe with auto reconciliation" },
+  { icon: Bell, label: "Smart Reminders", desc: "Automated lesson & payment reminders" },
+  { icon: Repeat, label: "Recurring Lessons", desc: "Weekly patterns that skip closures" },
+  { icon: MessageSquare, label: "Messaging", desc: "In-app messaging with email templates" },
+  { icon: BarChart3, label: "Reports", desc: "Revenue, utilisation & attendance analytics" },
+  { icon: Shield, label: "UK Compliant", desc: "GDPR, VAT, bank holidays & term dates" },
+];
 
 export function BentoFeatures() {
   return (
@@ -263,7 +232,7 @@ export function BentoFeatures() {
           </p>
         </motion.div>
 
-        {/* Bento Grid */}
+        {/* Bento Grid — Hero cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
           {/* Smart Scheduling - Large */}
           <BentoCard size="large" className="lg:row-span-2">
@@ -297,18 +266,18 @@ export function BentoFeatures() {
             <InvoiceDemo />
           </BentoCard>
 
-          {/* AI Assistant */}
+          {/* Make-Up Matching — NEW */}
           <BentoCard>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-white" />
+                <RefreshCw className="w-6 h-6 text-white" />
               </div>
-              <h3 className="text-lg font-bold text-foreground">AI Assistant</h3>
+              <h3 className="text-lg font-bold text-foreground">Make-Up Matching</h3>
             </div>
             <p className="text-muted-foreground text-sm">
-              Ask questions about your schedule, finances, and students. Get smart suggestions.
+              Cancelled slots are automatically offered to waitlisted families. No revenue lost.
             </p>
-            <AIDemo />
+            <FeatureList features={["Auto slot detection", "Parent notification", "One-click accept", "Make-up credits"]} />
           </BentoCard>
 
           {/* Parent Portal - Wide */}
@@ -366,68 +335,37 @@ export function BentoFeatures() {
               </div>
             </div>
           </BentoCard>
-
-          {/* Smaller feature cards */}
-          <BentoCard>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
-                <CreditCard className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="font-bold text-foreground">Online Payments</h3>
-            </div>
-            <p className="text-muted-foreground text-sm">Accept card payments via Stripe. Automatic reconciliation.</p>
-          </BentoCard>
-
-          <BentoCard>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                <Bell className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="font-bold text-foreground">Smart Reminders</h3>
-            </div>
-            <p className="text-muted-foreground text-sm">Automated lesson and payment reminders. Reduce no-shows.</p>
-          </BentoCard>
-
-          <BentoCard>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center">
-                <Repeat className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="font-bold text-foreground">Recurring Lessons</h3>
-            </div>
-            <p className="text-muted-foreground text-sm">Set up weekly patterns. Auto-skip closures and holidays.</p>
-          </BentoCard>
-
-          <BentoCard>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center">
-                <MessageSquare className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="font-bold text-foreground">Messaging</h3>
-            </div>
-            <p className="text-muted-foreground text-sm">In-app messaging with parents. Email templates and logs.</p>
-          </BentoCard>
-
-          <BentoCard>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="font-bold text-foreground">Reports</h3>
-            </div>
-            <p className="text-muted-foreground text-sm">Revenue, utilisation, and attendance analytics at a glance.</p>
-          </BentoCard>
-
-          <BentoCard>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center">
-                <Shield className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="font-bold text-foreground">UK Compliant</h3>
-            </div>
-            <p className="text-muted-foreground text-sm">GDPR ready. VAT support. UK bank holidays. Term dates.</p>
-          </BentoCard>
         </div>
+
+        {/* "And more…" compact grid */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-12"
+        >
+          <h3 className="text-lg font-semibold text-muted-foreground text-center mb-6">And more…</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {moreFeatures.map((feat, i) => (
+              <motion.div
+                key={feat.label}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.06 }}
+                className="flex items-start gap-3 p-4 rounded-2xl border border-border bg-card"
+              >
+                <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                  <feat.icon className="w-4.5 h-4.5 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{feat.label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{feat.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
       </div>
     </section>
   );
