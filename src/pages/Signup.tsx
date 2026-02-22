@@ -229,6 +229,7 @@ export default function Signup() {
               <Label htmlFor="fullName">Full name</Label>
               <Input
                 id="fullName"
+                autoFocus
                 type="text"
                 placeholder="John Smith"
                 value={fullName}

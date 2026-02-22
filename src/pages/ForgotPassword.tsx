@@ -120,6 +120,7 @@ export default function ForgotPassword() {
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                autoFocus
                 type="email"
                 placeholder="you@example.com"
                 value={email}
