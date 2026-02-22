@@ -135,6 +135,7 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
               currencyCode={currentOrg?.currency_code}
               hasStudents={(stats?.activeStudents ?? 0) > 0}
               hasLessons={(stats?.totalLessons ?? 0) > 0}
+              timezone={currentOrg?.timezone}
             />
           </SectionErrorBoundary>
         </motion.div>
@@ -236,6 +237,7 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
               currencyCode={currentOrg?.currency_code}
               hasStudents={(stats?.activeStudents ?? 0) > 0}
               hasLessons={(stats?.totalLessons ?? 0) > 0}
+              timezone={currentOrg?.timezone}
             />
           </SectionErrorBoundary>
         </motion.div>
@@ -318,6 +320,7 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
 }
 
 function TeacherDashboard({ firstName }: { firstName: string }) {
+  const { currentOrg } = useOrg();
   const { data: stats, isLoading } = useTeacherDashboardStats();
   const { actions } = useUrgentActions();
   const needsAttendance = actions.find(a => a.type === 'unmarked_lessons')?.count ?? 0;
@@ -338,6 +341,7 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
               todayLessons={stats?.todayLessons}
               needsAttendance={needsAttendance}
               hasStudents={(stats?.myStudentsCount ?? 0) > 0}
+              timezone={currentOrg?.timezone}
             />
           </SectionErrorBoundary>
         </motion.div>
