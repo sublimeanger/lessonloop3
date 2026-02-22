@@ -52,13 +52,13 @@ export function CTASection() {
               transition={{ duration: 0.6 }}
             >
               <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
-                Ready to simplify
+                Ready to get your
                 <br />
-                your teaching?
+                evenings back?
               </h2>
               <p className="text-xl text-white/70 mb-8">
-                Join a growing community of music educators who've simplified their admin 
-                and reclaimed their time for what matters most — teaching.
+                Join music educators across the UK who've swapped spreadsheets and chasing 
+                payments for a platform that handles it all.
               </p>
 
               {/* Founder credential */}
