@@ -19,6 +19,28 @@ import { useOrg } from '@/contexts/OrgContext';
 import { EntityChip } from '@/components/loopassist/EntityChip';
 import { ThreadMessageItem } from './ThreadMessageItem';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+/** Check if a guardian recipient is still active */
+function useRecipientActive(recipientType: string | null, recipientId: string | null, orgId: string | undefined) {
+  return useQuery({
+    queryKey: ['recipient-active', recipientType, recipientId],
+    queryFn: async () => {
+      if (!recipientId || recipientType !== 'guardian') return { active: true, email: null };
+      const { data } = await supabase
+        .from('guardians')
+        .select('id, deleted_at, email')
+        .eq('id', recipientId)
+        .maybeSingle();
+      if (!data) return { active: false, email: null };
+      return { active: data.deleted_at === null && !!data.email, email: data.email };
+    },
+    enabled: !!recipientId && !!orgId && recipientType === 'guardian',
+    staleTime: 60_000,
+  });
+}
 
 interface ThreadCardProps {
   thread: MessageThread;
@@ -31,6 +53,7 @@ interface ThreadCardProps {
 export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyingTo }: ThreadCardProps) {
   const replyMutation = useReplyToMessage();
   const [replyBody, setReplyBody] = useState('');
+  const { toast } = useToast();
 
   // Lazy-load full message bodies only when expanded
   const { data: messages, isLoading: messagesLoading } = useThreadMessages(
@@ -41,9 +64,17 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
   const latestMessage = messages?.[messages.length - 1];
   const { currentOrg } = useOrg();
   const { data: relatedStudent } = useRelatedStudent(thread.related_id, currentOrg?.id);
+  const { data: recipientStatus } = useRecipientActive(thread.recipient_type, thread.recipient_id, currentOrg?.id);
+
+  const isRecipientInactive = recipientStatus && !recipientStatus.active;
 
   const handleSendReply = async () => {
     if (!replyBody.trim() || !latestMessage) return;
+
+    if (isRecipientInactive) {
+      toast({ title: 'Cannot send reply', description: 'This recipient is no longer active.', variant: 'destructive' });
+      return;
+    }
 
     await replyMutation.mutateAsync({
       parentMessageId: latestMessage.id,
@@ -89,6 +120,11 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
                 <span className="truncate">
                   {thread.recipient_name || thread.recipient_email}
                 </span>
+                {isRecipientInactive && (
+                  <Badge variant="outline" className="text-muted-foreground text-xs">
+                    Inactive
+                  </Badge>
+                )}
                 {relatedStudent && (
                   <span onClick={(e) => e.stopPropagation()}>
                     <EntityChip
