@@ -636,6 +636,7 @@ export function useDashboardStats() {
     },
     enabled: !!currentOrg,
     staleTime: 10 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
   });
 }
