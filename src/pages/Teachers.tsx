@@ -697,6 +697,9 @@ export default function Teachers() {
         onEdit={openEditDialog}
         colour={quickViewTeacher ? TEACHER_COLOURS[getTeacherColourIndex(activeTeachers, quickViewTeacher.id)] : TEACHER_COLOURS[0]}
       />
+      {teachers.length >= 100 && (
+        <p className="text-xs text-muted-foreground text-center mt-4">Showing first 100 teachers. Use the search bar to find specific teachers.</p>
+      )}
     </AppLayout>
   );
 }

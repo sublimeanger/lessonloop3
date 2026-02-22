@@ -47,7 +47,8 @@ export function useTeachers() {
         .from('teachers')
         .select('id, org_id, user_id, display_name, email, phone, instruments, employment_type, bio, status, default_lesson_length_mins, created_at, updated_at')
         .eq('org_id', currentOrg.id)
-        .order('display_name');
+        .order('display_name')
+        .limit(100);
 
       if (error) throw error;
 
