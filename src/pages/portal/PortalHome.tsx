@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -82,7 +83,7 @@ export default function PortalHome() {
         }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Unknown error';
-        console.error('Make-up action error:', err);
+        logger.error('Make-up action error:', err);
         toast({ title: 'Something went wrong', description: message, variant: 'destructive' });
       } finally {
         // Clean URL params
@@ -192,10 +193,10 @@ export default function PortalHome() {
                           {relativeDayLabel(nextLesson.start_at)} at{' '}
                           {formatTimeUK(parseISO(nextLesson.start_at))}
                         </span>
-                        {(nextLesson as any).location_name && (
+                        {nextLesson.location_name && (
                           <span className="flex items-center gap-1.5">
                             <MapPin className="h-3.5 w-3.5" />
-                            {(nextLesson as any).location_name}
+                            {nextLesson.location_name}
                           </span>
                         )}
                       </div>
