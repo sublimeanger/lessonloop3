@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { activeStudentsQuery } from '@/lib/studentQuery';
+
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -44,7 +44,11 @@ async function fetchStudentsForRole(
     const assignedIds = assignments?.map((a) => a.student_id) || [];
     if (assignedIds.length === 0) return [];
 
-    const { data, error } = await activeStudentsQuery(orgId)
+    const { data, error } = await supabase
+      .from('students')
+      .select()
+      .eq('org_id', orgId)
+      .is('deleted_at', null)
       .in('id', assignedIds)
       .order('last_name', { ascending: true });
 
@@ -52,7 +56,11 @@ async function fetchStudentsForRole(
     return (data || []) as unknown as StudentListItem[];
   }
 
-  const { data, error } = await activeStudentsQuery(orgId)
+  const { data, error } = await supabase
+    .from('students')
+    .select()
+    .eq('org_id', orgId)
+    .is('deleted_at', null)
     .order('last_name', { ascending: true });
 
   if (error) throw error;
