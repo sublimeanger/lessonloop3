@@ -5,7 +5,7 @@ import {
   Users, 
   Sparkles, 
   BarChart3, 
-  Shield,
+  RefreshCw,
   ChevronDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,8 +16,8 @@ const categories = [
   { id: "billing", label: "Billing", icon: Receipt },
   { id: "portal", label: "Parent Portal", icon: Users },
   { id: "ai", label: "AI Assistant", icon: Sparkles },
-  { id: "more", label: "More Features", icon: BarChart3 },
-  { id: "security", label: "Security", icon: Shield },
+  { id: "makeups", label: "Make-Ups", icon: RefreshCw },
+  { id: "more", label: "More", icon: BarChart3 },
 ];
 
 interface FeaturesHeroProps {
