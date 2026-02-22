@@ -13,6 +13,7 @@ import { safeGetItem, safeSetItem, safeRemoveItem } from '@/lib/storage';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { StreakCelebration } from '@/components/practice/StreakCelebration';
+import { useChildFilter } from '@/contexts/ChildFilterContext';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -64,8 +65,15 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
   const [customDuration, setCustomDuration] = useState('');
   const [quickNotes, setQuickNotes] = useState('');
 
-  const { data: assignments = [], isLoading } = useParentPracticeAssignments();
+  const { selectedChildId } = useChildFilter();
+  const { data: allAssignments = [], isLoading } = useParentPracticeAssignments();
   const logPractice = useLogPractice();
+
+  // Filter assignments by selected child
+  const assignments = useMemo(
+    () => selectedChildId ? allAssignments.filter(a => a.student_id === selectedChildId) : allAssignments,
+    [allAssignments, selectedChildId]
+  );
 
   // Group assignments by student
   const studentAssignments = assignments.reduce((acc, assignment) => {

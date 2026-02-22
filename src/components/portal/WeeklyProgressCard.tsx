@@ -1,12 +1,19 @@
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { TrendingUp, Target, Calendar } from 'lucide-react';
 import { useParentPracticeAssignments, useWeeklyProgress } from '@/hooks/usePractice';
 import { useChildrenStreaks } from '@/hooks/usePracticeStreaks';
 import { StreakBadge } from '@/components/practice/StreakBadge';
+import { useChildFilter } from '@/contexts/ChildFilterContext';
 
 export function WeeklyProgressCard() {
-  const { data: assignments = [] } = useParentPracticeAssignments();
+  const { selectedChildId } = useChildFilter();
+  const { data: allAssignments = [] } = useParentPracticeAssignments();
+  const assignments = useMemo(
+    () => selectedChildId ? allAssignments.filter(a => a.student_id === selectedChildId) : allAssignments,
+    [allAssignments, selectedChildId]
+  );
   const studentIds = [...new Set(assignments.map(a => a.student_id))];
   
   const { data: progress = [], isLoading } = useWeeklyProgress(studentIds);
