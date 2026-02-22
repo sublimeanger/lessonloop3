@@ -183,7 +183,6 @@ export function useUpdateAttendance() {
     }) => {
       if (!currentOrg || !user) throw new Error('No organisation or user');
 
-      // Upsert attendance record
       const { error } = await supabase
         .from('attendance_records')
         .upsert(
@@ -201,15 +200,49 @@ export function useUpdateAttendance() {
 
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['register-lessons'] });
+    onMutate: async ({ lessonId, studentId, status }) => {
+      // Cancel outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ['register-lessons'] });
+
+      // Snapshot all matching queries
+      const previousQueries = queryClient.getQueriesData<RegisterLesson[]>({ queryKey: ['register-lessons'] });
+
+      // Optimistically update every matching query cache
+      queryClient.setQueriesData<RegisterLesson[]>(
+        { queryKey: ['register-lessons'] },
+        (old) => {
+          if (!old) return old;
+          return old.map(lesson => {
+            if (lesson.id !== lessonId) return lesson;
+            return {
+              ...lesson,
+              participants: lesson.participants.map(p =>
+                p.student_id === studentId
+                  ? { ...p, attendance_status: status }
+                  : p
+              ),
+            };
+          });
+        }
+      );
+
+      return { previousQueries };
     },
-    onError: (error: any) => {
+    onError: (error: any, _vars, context) => {
+      // Roll back to previous state
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data);
+        });
+      }
       toast({
         title: 'Error saving attendance',
         description: error.message,
         variant: 'destructive',
       });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['register-lessons'] });
     },
   });
 }
