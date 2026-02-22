@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
               display_name: displayName, // Update name in case it's more accurate now
             })
             .eq("id", existingTeacher.id);
-          console.debug('[invite-accept] Linked existing teacher record');
+          // teacher record linked
         }
       } else {
         // Create a new teacher record
@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
           });
 
         if (teacherError) {
-          console.error("Error creating teacher record:", teacherError);
+          console.error("Error creating teacher record:", teacherError?.message || "unknown error");
         }
       }
 
@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
         }, { onConflict: "org_id,user_id" });
 
       if (teacherProfileError) {
-        console.error("Error creating teacher profile:", teacherProfileError);
+        console.error("Error creating teacher profile:", teacherProfileError?.message || "unknown error");
       }
     }
 
@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
           .single();
 
         if (guardianError) {
-          console.error("Error creating guardian:", guardianError);
+          console.error("Error creating guardian:", guardianError?.message || "unknown error");
         } else {
           guardianId = newGuardian.id;
         }
@@ -234,7 +234,7 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("Unexpected error:", err);
+    console.error("Unexpected error:", (err as Error)?.message || "unknown error");
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

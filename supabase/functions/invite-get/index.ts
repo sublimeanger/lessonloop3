@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (inviteError) {
-      console.error("Error fetching invite:", inviteError);
+      console.error("Error fetching invite:", inviteError?.message || "unknown error");
       return new Response(
         JSON.stringify({ error: "Failed to fetch invitation" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (orgError) {
-      console.error("Error fetching organisation:", orgError);
+      console.error("Error fetching organisation:", orgError?.message || "unknown error");
     }
 
     // Return minimal safe payload with redacted email
@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("Unexpected error:", err);
+    console.error("Unexpected error:", (err as Error)?.message || "unknown error");
     const corsHeaders = getCorsHeaders(req);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),

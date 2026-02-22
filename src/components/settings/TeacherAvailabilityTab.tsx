@@ -261,12 +261,12 @@ export function TeacherAvailabilityTab({ teacherId, teacherUserId }: TeacherAvai
                 <div
                   key={day.value}
                   className={cn(
-                    'flex items-center justify-between rounded-lg border p-3',
+                    'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border p-3',
                     day.blocks.length === 0 && 'bg-muted/30'
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="w-24 font-medium">{day.label}</span>
+                    <span className="w-24 font-medium shrink-0">{day.label}</span>
                     {day.blocks.length === 0 ? (
                       <span className="text-sm text-muted-foreground">Not available</span>
                     ) : (

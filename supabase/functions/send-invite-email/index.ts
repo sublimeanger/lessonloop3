@@ -72,7 +72,7 @@ serve(async (req: Request): Promise<Response> => {
       .single();
 
     if (fetchError || !invite) {
-      console.error("Error fetching invite:", fetchError);
+      console.error("Error fetching invite:", fetchError?.message || "unknown error");
       return new Response(
         JSON.stringify({ error: "Invite not found" }),
         { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -109,7 +109,7 @@ serve(async (req: Request): Promise<Response> => {
     const frontendUrl = Deno.env.get("FRONTEND_URL") || req.headers.get("origin") || "https://lessonloop.net";
     const inviteUrl = `${frontendUrl}/accept-invite?token=${inviteToken}`;
 
-    console.debug("[send-invite-email] Sending invite email");
+    // Sending invite email
 
     const subject = `You've been invited to join ${escapeHtml(orgName)}`;
     const body = `
@@ -135,7 +135,7 @@ serve(async (req: Request): Promise<Response> => {
     });
 
     if (logError) {
-      console.error("Error logging message:", logError);
+      console.error("Error logging message:", logError?.message || "unknown error");
     }
 
     // Check if Resend API key is configured
@@ -159,7 +159,7 @@ serve(async (req: Request): Promise<Response> => {
         .eq("related_id", inviteId)
         .eq("message_type", "invite");
 
-      console.debug("[send-invite-email] Email sent successfully");
+      // Email sent successfully
 
       return new Response(
         JSON.stringify({ success: true, emailSent: true }),
@@ -167,7 +167,7 @@ serve(async (req: Request): Promise<Response> => {
       );
     } else {
       // No email provider configured - just log
-      console.debug("[send-invite-email] No RESEND_API_KEY configured. Email logged but not sent.");
+      // No RESEND_API_KEY configured — email logged but not sent
 
       await supabase
         .from("message_log")
@@ -189,7 +189,7 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
   } catch (error: any) {
-    console.error("Error in send-invite-email:", error);
+    console.error("Error in send-invite-email:", error?.message || "unknown error");
     const corsHeaders = getCorsHeaders(req);
     return new Response(
       JSON.stringify({ error: error.message }),
