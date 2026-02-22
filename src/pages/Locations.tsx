@@ -352,6 +352,21 @@ export default function Locations() {
       return;
     }
 
+    // Check for duplicate room name within the same location
+    let dupQuery = supabase
+      .from('rooms')
+      .select('id')
+      .eq('location_id', roomLocationId)
+      .ilike('name', roomName.trim());
+    if (editingRoom) {
+      dupQuery = dupQuery.neq('id', editingRoom.id);
+    }
+    const { data: existingRooms } = await dupQuery;
+    if (existingRooms && existingRooms.length > 0) {
+      toast({ title: 'Name already in use', description: 'A room with this name already exists at this location.', variant: 'destructive' });
+      return;
+    }
+
     setIsRoomSaving(true);
     const data = {
       name: roomName.trim(),
