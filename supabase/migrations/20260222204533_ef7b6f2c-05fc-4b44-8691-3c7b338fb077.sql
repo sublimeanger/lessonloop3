@@ -1,0 +1,1 @@
+ALTER TABLE public.invites ADD CONSTRAINT invites_role_not_owner CHECK (role != 'owner');
