@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { logger } from '@/lib/logger';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
@@ -55,14 +56,77 @@ export function useStudentDetailPage() {
   const navigate = useNavigate();
   const { currentOrg, isOrgAdmin } = useOrg();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Student state
-  const [student, setStudent] = useState<Student | null>(null);
-  const [guardians, setGuardians] = useState<StudentGuardian[]>([]);
-  const [allGuardians, setAllGuardians] = useState<Guardian[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  // React Query for student data
+  const studentQuery = useQuery({
+    queryKey: ['student', id, currentOrg?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', id!)
+        .eq('org_id', currentOrg!.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) return null;
+      return data as unknown as Student;
+    },
+    enabled: !!id && !!currentOrg,
+    staleTime: 30_000,
+  });
+
+  const student = studentQuery.data ?? null;
+  const isLoading = studentQuery.isLoading;
+
+  // Navigate away if student not found after query settles
+  useEffect(() => {
+    if (!studentQuery.isLoading && studentQuery.isFetched && !student && id && currentOrg) {
+      toast({ title: 'Student not found', variant: 'destructive' });
+      navigate('/students');
+    }
+  }, [studentQuery.isLoading, studentQuery.isFetched, student, id, currentOrg]);
+
+  // React Query for guardians
+  const guardiansQuery = useQuery({
+    queryKey: ['student-guardians', id, currentOrg?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('student_guardians')
+        .select(`*, guardian:guardians(id, full_name, email, phone, user_id)`)
+        .eq('student_id', id!);
+
+      const mapped = (data || []).map((sg: any) => ({
+        ...sg,
+        guardian: sg.guardian as Guardian,
+      }));
+
+      const { data: allG } = await supabase
+        .from('guardians')
+        .select('*')
+        .eq('org_id', currentOrg!.id)
+        .is('deleted_at', null);
+
+      return {
+        guardians: mapped as StudentGuardian[],
+        allGuardians: (allG || []) as Guardian[],
+      };
+    },
+    enabled: !!id && !!currentOrg,
+    staleTime: 30_000,
+  });
+
+  const guardians = guardiansQuery.data?.guardians ?? [];
+  const allGuardians = guardiansQuery.data?.allGuardians ?? [];
+
+  // Invalidation helpers (keep API compatible for consumers)
+  const invalidateStudent = () => {
+    queryClient.invalidateQueries({ queryKey: ['student', id] });
+  };
+  const invalidateGuardians = () => {
+    queryClient.invalidateQueries({ queryKey: ['student-guardians', id] });
+  };
 
   // Delete state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -83,12 +147,26 @@ export function useStudentDetailPage() {
   }>({ open: false, sgId: '', guardianName: '', guardianId: '', checkResult: null, isChecking: false, isDeleting: false });
 
   // Edit form
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [dob, setDob] = useState('');
   const [notes, setNotes] = useState('');
+
+  // Sync edit form when student data loads/changes
+  useEffect(() => {
+    if (student) {
+      setFirstName(student.first_name);
+      setLastName(student.last_name);
+      setEmail(student.email || '');
+      setPhone(student.phone || '');
+      setDob(student.dob || '');
+      setNotes(student.notes || '');
+    }
+  }, [student]);
 
   // Guardian form
   const [isGuardianDialogOpen, setIsGuardianDialogOpen] = useState(false);
@@ -127,55 +205,6 @@ export function useStudentDetailPage() {
   const lessonsLoadMore = () => lessonsQuery.fetchNextPage();
   const lessonsIsFetchingMore = lessonsQuery.isFetchingNextPage;
   const { data: studentInvoices, isLoading: invoicesLoading } = useStudentInvoices(id);
-
-  const fetchStudent = async () => {
-    if (!id || !currentOrg) return;
-    setIsLoading(true);
-
-    const { data, error } = await supabase
-      .from('students')
-      .select('*')
-      .eq('id', id)
-      .eq('org_id', currentOrg.id)
-      .maybeSingle();
-
-    if (error || !data) {
-      toast({ title: 'Student not found', variant: 'destructive' });
-      navigate('/students');
-      return;
-    }
-
-    setStudent(data as Student);
-    setFirstName(data.first_name);
-    setLastName(data.last_name);
-    setEmail(data.email || '');
-    setPhone(data.phone || '');
-    setDob(data.dob || '');
-    setNotes(data.notes || '');
-    setIsLoading(false);
-  };
-
-  const fetchGuardians = async () => {
-    if (!id || !currentOrg) return;
-
-    const { data } = await supabase
-      .from('student_guardians')
-      .select(`*, guardian:guardians(id, full_name, email, phone, user_id)`)
-      .eq('student_id', id);
-
-    setGuardians((data || []).map((sg: any) => ({
-      ...sg,
-      guardian: sg.guardian as Guardian
-    })));
-
-    const { data: allG } = await supabase
-      .from('guardians')
-      .select('*')
-      .eq('org_id', currentOrg.id)
-      .is('deleted_at', null);
-
-    setAllGuardians((allG || []) as Guardian[]);
-  };
 
   const fetchGuardianInvites = async () => {
     if (!currentOrg) return;
@@ -224,11 +253,6 @@ export function useStudentDetailPage() {
   };
 
   useEffect(() => {
-    fetchStudent();
-    fetchGuardians();
-  }, [id, currentOrg?.id]);
-
-  useEffect(() => {
     if (guardians.length > 0) {
       fetchGuardianInvites();
     }
@@ -255,7 +279,7 @@ export function useStudentDetailPage() {
     } else {
       toast({ title: 'Student updated' });
       setIsEditing(false);
-      fetchStudent();
+      invalidateStudent();
     }
     setIsSaving(false);
   };
@@ -383,7 +407,7 @@ export function useStudentDetailPage() {
       toast({ title: 'Guardian added' });
       setIsGuardianDialogOpen(false);
       resetGuardianForm();
-      fetchGuardians();
+      invalidateGuardians();
     }
     setIsSaving(false);
   };
@@ -426,7 +450,7 @@ export function useStudentDetailPage() {
       } else {
         toast({ title: 'Guardian unlinked' });
       }
-      fetchGuardians();
+      invalidateGuardians();
     }
     setGuardianDeleteDialog(prev => ({ ...prev, open: false, isDeleting: false }));
   };
@@ -466,7 +490,7 @@ export function useStudentDetailPage() {
         description: `Portal invite sent to ${guardian.full_name} at ${guardian.email}`,
       });
 
-      fetchGuardians();
+      invalidateGuardians();
     } catch (error: any) {
       toast({ title: 'Error sending invite', description: error.message, variant: 'destructive' });
     } finally {
@@ -502,7 +526,7 @@ export function useStudentDetailPage() {
 
       toast({ title: 'Guardian updated', description: 'Contact details have been saved.' });
       setEditGuardianDialog(prev => ({ ...prev, open: false }));
-      fetchGuardians();
+      invalidateGuardians();
     } catch (error: any) {
       toast({ title: 'Error updating guardian', description: error.message, variant: 'destructive' });
     } finally {
@@ -576,7 +600,7 @@ export function useStudentDetailPage() {
     studentLessons, lessonsLoading, lessonsHasMore, lessonsLoadMore, lessonsIsFetchingMore,
     studentInvoices, invoicesLoading,
 
-    fetchStudent,
-    fetchGuardians,
+    fetchStudent: invalidateStudent,
+    fetchGuardians: invalidateGuardians,
   };
 }
