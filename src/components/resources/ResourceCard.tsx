@@ -9,11 +9,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import {
-  FileText,
-  Image,
-  Music,
-  Video,
-  File,
   MoreVertical,
   Download,
   Share2,
@@ -34,33 +29,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { getFileIcon, getFileTypeBadge, formatFileSize } from '@/lib/fileUtils';
 
 interface ResourceCardProps {
   resource: ResourceWithShares;
   onShare: (resource: ResourceWithShares) => void;
-}
-
-function getFileIcon(fileType: string) {
-  if (fileType.startsWith('image/')) return Image;
-  if (fileType.startsWith('audio/')) return Music;
-  if (fileType.startsWith('video/')) return Video;
-  if (fileType.includes('pdf') || fileType.includes('word')) return FileText;
-  return File;
-}
-
-function getFileTypeBadge(fileType: string): string {
-  if (fileType.startsWith('image/')) return 'Image';
-  if (fileType.startsWith('audio/')) return 'Audio';
-  if (fileType.startsWith('video/')) return 'Video';
-  if (fileType.includes('pdf')) return 'PDF';
-  if (fileType.includes('word')) return 'Document';
-  return 'File';
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function ResourceCard({ resource, onShare }: ResourceCardProps) {
