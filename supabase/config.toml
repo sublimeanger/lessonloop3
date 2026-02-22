@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.create-billing-run]
 verify_jwt = false
+
+[functions.invoice-overdue-check]
+verify_jwt = false
