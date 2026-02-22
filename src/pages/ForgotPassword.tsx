@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,15 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+    const timer = setInterval(() => {
+      setCooldownSeconds((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownSeconds]);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +50,7 @@ export default function ForgotPassword() {
       });
     } else {
       setEmailSent(true);
+      setCooldownSeconds(60);
     }
   };
 
@@ -64,8 +74,24 @@ export default function ForgotPassword() {
             </p>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={async () => {
+                setIsLoading(true);
+                const { error } = await resetPassword(email.trim());
+                setIsLoading(false);
+                if (!error) {
+                  setCooldownSeconds(60);
+                  toast({ title: 'Reset email resent', description: 'Check your inbox.' });
+                }
+              }}
+              disabled={isLoading || cooldownSeconds > 0}
+            >
+              {cooldownSeconds > 0 ? `Resend in ${cooldownSeconds}s` : 'Resend reset email'}
+            </Button>
             <Link to="/login" className="w-full">
-              <Button variant="outline" className="w-full gap-2">
+              <Button variant="ghost" className="w-full gap-2">
                 <ArrowLeft className="h-4 w-4" />
                 Back to sign in
               </Button>
