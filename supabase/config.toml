@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.invoice-overdue-check]
 verify_jwt = false
+
+[functions.stripe-billing-history]
+verify_jwt = false
