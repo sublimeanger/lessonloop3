@@ -37,7 +37,7 @@ export function FeaturesHero({ activeCategory, onCategoryClick }: FeaturesHeroPr
   };
 
   return (
-    <section className="relative min-h-[70vh] lg:min-h-[85vh] flex flex-col items-center justify-center overflow-hidden">
+    <section className="relative min-h-[70vh] lg:min-h-[85vh] flex flex-col items-center justify-center overflow-hidden pt-24 lg:pt-28">
       {/* Animated background */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-primary/5" />
