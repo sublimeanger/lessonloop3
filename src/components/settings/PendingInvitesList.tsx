@@ -88,8 +88,8 @@ export function PendingInvitesList({ roleFilter, onReinvite }: PendingInvitesLis
       });
       toast({ title: 'Invite resent', description: `Resent to ${invite.email} with a fresh 7-day expiry.` });
       queryClient.invalidateQueries({ queryKey: ['pending-invites'] });
-    } catch (err: any) {
-      toast({ title: 'Error resending', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Error resending', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
     }
     setResendingId(null);
   };

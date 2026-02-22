@@ -64,7 +64,7 @@ export function InvoiceSettingsTab() {
       queryClient.invalidateQueries({ queryKey });
       toast({ title: 'Billing settings saved', description: 'Your billing preferences have been updated.' });
     },
-    onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+    onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
 
   return (

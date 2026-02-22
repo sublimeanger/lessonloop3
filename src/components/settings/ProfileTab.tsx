@@ -64,7 +64,7 @@ export function ProfileTab() {
       if (error) throw error;
     },
     onSuccess: () => toast({ title: 'Profile updated', description: 'Your profile has been saved.' }),
-    onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+    onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
 
   const changeEmailMutation = useMutation({
@@ -83,7 +83,7 @@ export function ProfileTab() {
       setShowEmailDialog(false);
       setNewEmail('');
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({
         title: 'Email change failed',
         description: err.message || 'Unable to change email. The address may already be in use.',

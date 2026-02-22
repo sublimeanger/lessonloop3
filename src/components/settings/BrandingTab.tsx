@@ -63,7 +63,7 @@ export function BrandingTab() {
       queryClient.invalidateQueries({ queryKey });
       toast({ title: 'Branding updated', description: 'Your invoice branding has been saved.' });
     },
-    onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+    onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
 
   const handleLogoUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -113,8 +113,8 @@ export function BrandingTab() {
       setLogoUrl(publicUrl);
       queryClient.invalidateQueries({ queryKey });
       toast({ title: 'Logo uploaded', description: 'Your logo has been saved.' });
-    } catch (error: any) {
-      toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      toast({ title: 'Upload failed', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
     } finally {
       setLogoUploading(false);
     }
@@ -131,8 +131,8 @@ export function BrandingTab() {
       setLogoUrl(null);
       queryClient.invalidateQueries({ queryKey });
       toast({ title: 'Logo removed' });
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
     }
   };
 
