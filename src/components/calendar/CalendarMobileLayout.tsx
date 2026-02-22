@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { format } from 'date-fns';
+import { useMemo, useCallback } from 'react';
+import { format, addWeeks, subWeeks } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { MobileDayView } from './MobileDayView';
@@ -9,7 +9,7 @@ import { CalendarFiltersBar } from './CalendarFiltersBar';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { CalendarSkeleton } from '@/components/shared/LoadingState';
 import { getTeacherColour, TeacherWithColour } from './teacherColours';
-import { Plus } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { CalendarFilters, LessonWithDetails } from './types';
 import type { useCalendarActions } from '@/hooks/useCalendarActions';
 
@@ -61,17 +61,30 @@ export function CalendarMobileLayout({
     [lessons, filters.hide_cancelled]
   );
 
+  const navigatePrev = useCallback(() => setCurrentDate(subWeeks(currentDate, 1)), [currentDate, setCurrentDate]);
+  const navigateNext = useCallback(() => setCurrentDate(addWeeks(currentDate, 1)), [currentDate, setCurrentDate]);
+
   return (
     <AppLayout>
-      <div className="space-y-2 mb-2">
-        <div className="flex items-center justify-between">
+      <div className="sticky top-0 z-20 bg-background pb-2 space-y-2">
+        <div className="flex items-center justify-between pt-2">
           <div>
             <h1 className="text-xl font-bold text-foreground">{format(currentDate, 'MMMM d')}</h1>
             <p className="text-xs text-muted-foreground">{format(currentDate, 'EEEE')}</p>
           </div>
           <Button variant="outline" size="sm" onClick={goToToday} className="h-8 px-3 text-xs">Today</Button>
         </div>
-        <WeekContextStrip currentDate={currentDate} onDayClick={setCurrentDate} lessonsByDay={lessonsByDay} view="day" />
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={navigatePrev} aria-label="Previous week">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <WeekContextStrip currentDate={currentDate} onDayClick={setCurrentDate} lessonsByDay={lessonsByDay} view="day" />
+          </div>
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={navigateNext} aria-label="Next week">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
         <div data-tour="calendar-filters">
           <CalendarFiltersBar filters={filters} onChange={setFilters} teachers={teachers} locations={locations} rooms={rooms} teachersWithColours={teachersWithColours} lessons={lessons} currentDate={currentDate} />
         </div>
