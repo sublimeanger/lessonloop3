@@ -276,7 +276,8 @@ export function useStudentDetailPage() {
         dob: dob || null,
         notes: notes.trim() || null,
       })
-      .eq('id', student.id);
+      .eq('id', student.id)
+      .eq('org_id', currentOrg!.id);
 
     if (error) {
       toast({ title: 'Error saving', description: error.message, variant: 'destructive' });
@@ -323,7 +324,8 @@ export function useStudentDetailPage() {
       const { error } = await supabase
         .from('students')
         .update({ deleted_at: now, status: 'inactive' })
-        .eq('id', student.id);
+        .eq('id', student.id)
+        .eq('org_id', currentOrg.id);
 
       if (error) {
         toast({ title: 'Error deleting', description: error.message, variant: 'destructive' });

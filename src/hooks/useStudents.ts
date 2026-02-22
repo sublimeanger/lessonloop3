@@ -84,11 +84,12 @@ export function useToggleStudentStatus() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ studentId, newStatus }: { studentId: string; newStatus: StudentStatus }) => {
+    mutationFn: async ({ studentId, newStatus, orgId }: { studentId: string; newStatus: StudentStatus; orgId: string }) => {
       const { error } = await supabase
         .from('students')
         .update({ status: newStatus })
-        .eq('id', studentId);
+        .eq('id', studentId)
+        .eq('org_id', orgId);
       if (error) throw error;
     },
     onSuccess: () => {
