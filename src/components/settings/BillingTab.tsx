@@ -722,7 +722,7 @@ function PaymentPreferencesCard({ orgId, isConnected }: { orgId?: string; isConn
         bank_sort_code: bankSortCode || null,
         bank_account_number: bankAccountNumber || null,
         bank_reference_prefix: bankReferencePrefix || null,
-      } as any)
+      })
       .eq('id', orgId);
 
     setIsSaving(false);
