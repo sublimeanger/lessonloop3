@@ -52,7 +52,9 @@ export function useInvoicePdf() {
   const downloadPdf = async (invoiceId: string, invoiceNumber: string) => {
     setIsLoading(true);
     try {
-      // Fetch full invoice data
+      if (!currentOrg?.id) throw new Error('No organisation selected');
+
+      // Fetch full invoice data (org-scoped for defence-in-depth)
       const { data: invoice, error: invErr } = await supabase
         .from('invoices')
         .select(`
@@ -61,6 +63,7 @@ export function useInvoicePdf() {
           payer_student:students(id, first_name, last_name, email)
         `)
         .eq('id', invoiceId)
+        .eq('org_id', currentOrg.id)
         .single();
 
       if (invErr || !invoice) throw new Error('Invoice not found');
