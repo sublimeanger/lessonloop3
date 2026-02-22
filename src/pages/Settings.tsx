@@ -62,7 +62,7 @@ function MobileTabBar({ initialTab, isOrgAdmin }: { initialTab: string; isOrgAdm
       {isOrgAdmin && <TabsTrigger value="rate-cards">Rate Cards</TabsTrigger>}
       <TabsTrigger value="availability">Availability</TabsTrigger>
       <TabsTrigger value="calendar">Calendar Sync</TabsTrigger>
-      <TabsTrigger value="billing">Billing</TabsTrigger>
+      {isOrgAdmin && <TabsTrigger value="billing">Billing</TabsTrigger>}
       <TabsTrigger value="notifications">Notifications</TabsTrigger>
       <TabsTrigger value="help-tours">Help &amp; Tours</TabsTrigger>
     </>
@@ -130,7 +130,7 @@ function AvailabilityTabWithSelector({ isOrgAdmin }: { isOrgAdmin: boolean }) {
 export default function Settings() {
   const [searchParams] = useSearchParams();
   const { isOrgAdmin } = useOrg();
-  const adminTabs = ['members', 'scheduling', 'audit', 'privacy', 'rate-cards'];
+  const adminTabs = ['members', 'scheduling', 'audit', 'privacy', 'rate-cards', 'billing'];
   const rawTab = searchParams.get('tab') || 'profile';
   const initialTab = (!isOrgAdmin && adminTabs.includes(rawTab)) ? 'profile' : rawTab;
 
@@ -163,12 +163,14 @@ export default function Settings() {
         </TabsContent>
         <TabsContent value="calendar"><CalendarIntegrationsTab /></TabsContent>
 
-        <TabsContent value="billing">
-          <div className="space-y-8">
-            <BillingTab />
-            <InvoiceSettingsTab />
-          </div>
-        </TabsContent>
+        {isOrgAdmin && (
+          <TabsContent value="billing">
+            <div className="space-y-8">
+              <BillingTab />
+              <InvoiceSettingsTab />
+            </div>
+          </TabsContent>
+        )}
 
         <TabsContent value="notifications"><NotificationsTab /></TabsContent>
         <TabsContent value="help-tours"><HelpToursTab /></TabsContent>
