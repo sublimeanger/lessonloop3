@@ -197,6 +197,70 @@ export default function About() {
         </div>
       </section>
 
+      {/* Journey Timeline */}
+      <section className="py-20 lg:py-28 bg-muted/30 relative overflow-hidden">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <span className="inline-block text-sm font-semibold text-primary mb-4">OUR JOURNEY</span>
+            <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-4">
+              How we got here
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              LessonLoop didn't start in a startup accelerator. It started at a piano.
+            </p>
+          </motion.div>
+
+          <div className="max-w-3xl mx-auto relative">
+            {/* Vertical line */}
+            <div className="absolute left-6 lg:left-1/2 top-0 bottom-0 w-px bg-border lg:-translate-x-px" />
+
+            {[
+              {
+                year: "2005–2024",
+                title: "Idea born from 20 years of music teaching",
+                description: "Lauren spent two decades teaching piano, growing from solo lessons to running LTP Music with ~300 students and ~10 teachers. Every spreadsheet, every chased invoice, every missed message planted the seed for something better.",
+              },
+              {
+                year: "2024–2025",
+                title: "Built alongside real music educators",
+                description: "Rather than guessing what teachers need, LessonLoop was designed and tested with working music educators. Real scheduling patterns, real billing cycles, real UK term dates — not theoretical use cases.",
+              },
+              {
+                year: "2025",
+                title: "Launched with AI assistant from day one",
+                description: "LoopAssist wasn't bolted on as an afterthought. From the very first release, AI was woven into the platform — drafting emails, answering questions about your schedule, and proposing actions you can approve with one click.",
+              },
+            ].map((item, index) => (
+              <motion.div
+                key={item.year}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.15 }}
+                className={`relative flex gap-6 lg:gap-0 mb-12 last:mb-0 ${
+                  index % 2 === 0 ? "lg:flex-row" : "lg:flex-row-reverse"
+                }`}
+              >
+                {/* Dot */}
+                <div className="absolute left-6 lg:left-1/2 w-3 h-3 rounded-full bg-primary border-2 border-background -translate-x-1.5 lg:-translate-x-1.5 mt-1.5 z-10" />
+
+                {/* Content */}
+                <div className={`ml-14 lg:ml-0 lg:w-1/2 ${index % 2 === 0 ? "lg:pr-12 lg:text-right" : "lg:pl-12"}`}>
+                  <span className="inline-block text-xs font-mono font-semibold text-primary mb-2">{item.year}</span>
+                  <h3 className="text-xl font-bold text-foreground mb-2">{item.title}</h3>
+                  <p className="text-muted-foreground leading-relaxed">{item.description}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* What LessonLoop Solves */}
       <section className="py-20 lg:py-28 bg-muted/30 relative overflow-hidden">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
