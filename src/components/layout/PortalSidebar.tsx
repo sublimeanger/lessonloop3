@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
 import { ChildSwitcher } from '@/components/portal/ChildSwitcher';
+import { usePortalFeatures } from '@/hooks/usePortalFeatures';
 import {
   Sidebar,
   SidebarContent,
@@ -28,14 +29,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
-const portalNav = [
-  { title: 'Home', url: '/portal/home', icon: Home },
-  { title: 'Schedule', url: '/portal/schedule', icon: Calendar },
-  { title: 'Practice', url: '/portal/practice', icon: Music },
-  { title: 'Resources', url: '/portal/resources', icon: FolderOpen },
-  { title: 'Invoices', url: '/portal/invoices', icon: CreditCard },
-  { title: 'Messages', url: '/portal/messages', icon: MessageSquare },
-  { title: 'Profile', url: '/portal/profile', icon: User },
+const allPortalNav = [
+  { title: 'Home', url: '/portal/home', icon: Home, key: 'always' as const },
+  { title: 'Schedule', url: '/portal/schedule', icon: Calendar, key: 'always' as const },
+  { title: 'Practice', url: '/portal/practice', icon: Music, key: 'practice' as const },
+  { title: 'Resources', url: '/portal/resources', icon: FolderOpen, key: 'resources' as const },
+  { title: 'Invoices', url: '/portal/invoices', icon: CreditCard, key: 'invoices' as const },
+  { title: 'Messages', url: '/portal/messages', icon: MessageSquare, key: 'always' as const },
+  { title: 'Profile', url: '/portal/profile', icon: User, key: 'always' as const },
 ];
 
 function getInitials(name: string | null | undefined): string {
@@ -61,6 +62,15 @@ export function PortalSidebar() {
   const { currentOrg } = useOrg();
   const { data: unreadCount } = useUnreadMessagesCount();
   const navigate = useNavigate();
+  const { practiceEnabled, resourcesEnabled, invoicesEnabled } = usePortalFeatures();
+
+  const portalNav = allPortalNav.filter((item) => {
+    if (item.key === 'always') return true;
+    if (item.key === 'practice') return practiceEnabled;
+    if (item.key === 'resources') return resourcesEnabled;
+    if (item.key === 'invoices') return invoicesEnabled;
+    return true;
+  });
 
   const handleSignOut = async () => {
     await signOut();

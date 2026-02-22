@@ -11,8 +11,11 @@ import { useParentPracticeAssignments } from '@/hooks/usePractice';
 import { StreakDisplay } from '@/components/practice/StreakBadge';
 import { Flame } from 'lucide-react';
 import { useChildFilter } from '@/contexts/ChildFilterContext';
+import { usePortalFeatures } from '@/hooks/usePortalFeatures';
+import { PortalFeatureDisabled } from '@/components/portal/PortalFeatureDisabled';
 
 export default function PortalPractice() {
+  const { practiceEnabled } = usePortalFeatures();
   const { selectedChildId } = useChildFilter();
   const { data: streaks = [] } = useChildrenStreaks();
   const { data: assignments = [] } = useParentPracticeAssignments();
@@ -30,6 +33,13 @@ export default function PortalPractice() {
       : streaks;
     return filtered.filter(s => s.current_streak > 0 || s.longest_streak > 0);
   }, [streaks, selectedChildId]);
+  if (!practiceEnabled) {
+    return (
+      <PortalLayout>
+        <PortalFeatureDisabled featureLabel="Practice Tracking" />
+      </PortalLayout>
+    );
+  }
 
   return (
     <PortalLayout>
