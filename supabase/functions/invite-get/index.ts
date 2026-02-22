@@ -20,16 +20,16 @@ Deno.serve(async (req) => {
     // IP-based rate limiting — 5 requests per minute
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
+    const rlResult = await checkRateLimit(`ip:${clientIp}`, "invite_get");
+    if (!rlResult.allowed) {
+      return rateLimitResponse(corsHeaders, rlResult);
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
-
-    const rlResult = await checkRateLimit(supabaseAdmin, `ip:${clientIp}`, "invite_get", 5, 60);
-    if (!rlResult.allowed) {
-      return rateLimitResponse(rlResult, corsHeaders);
-    }
 
     const { token } = await req.json();
 
