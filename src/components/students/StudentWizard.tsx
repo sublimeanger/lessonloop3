@@ -9,6 +9,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Check, ChevronLeft, ChevronRight, Loader2, User, Users, GraduationCap } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isValidEmail, isValidPhone } from '@/lib/validation';
 import { StudentInfoStep, StudentInfoData } from './wizard/StudentInfoStep';
 import { GuardianStep, GuardianData } from './wizard/GuardianStep';
 import { TeachingDefaultsStep, TeachingDefaultsData } from './wizard/TeachingDefaultsStep';
@@ -92,6 +93,14 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
   const validateStep1 = (): boolean => {
     if (!studentData.firstName.trim() || !studentData.lastName.trim()) {
       toast({ title: 'Name required', description: 'Please enter first and last name.', variant: 'destructive' });
+      return false;
+    }
+    if (studentData.email.trim() && !isValidEmail(studentData.email.trim())) {
+      toast({ title: 'Invalid email', description: 'Please enter a valid email address.', variant: 'destructive' });
+      return false;
+    }
+    if (studentData.phone.trim() && !isValidPhone(studentData.phone.trim())) {
+      toast({ title: 'Invalid phone', description: 'Please enter a valid phone number.', variant: 'destructive' });
       return false;
     }
     return true;

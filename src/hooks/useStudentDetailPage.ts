@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { logger } from '@/lib/logger';
+import { isValidEmail, isValidPhone } from '@/lib/validation';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -264,6 +265,14 @@ export function useStudentDetailPage() {
       toast({ title: 'Name required', description: 'First and last name cannot be empty.', variant: 'destructive' });
       return;
     }
+    if (email.trim() && !isValidEmail(email.trim())) {
+      toast({ title: 'Invalid email', description: 'Please enter a valid email address.', variant: 'destructive' });
+      return;
+    }
+    if (phone.trim() && !isValidPhone(phone.trim())) {
+      toast({ title: 'Invalid phone', description: 'Please enter a valid phone number.', variant: 'destructive' });
+      return;
+    }
     setIsSaving(true);
 
     const { error } = await supabase
@@ -360,6 +369,16 @@ export function useStudentDetailPage() {
     if (isNewGuardian) {
       if (!newGuardianName.trim()) {
         toast({ title: 'Name required', variant: 'destructive' });
+        setIsSaving(false);
+        return;
+      }
+      if (newGuardianEmail.trim() && !isValidEmail(newGuardianEmail.trim())) {
+        toast({ title: 'Invalid email', description: 'Please enter a valid guardian email.', variant: 'destructive' });
+        setIsSaving(false);
+        return;
+      }
+      if (newGuardianPhone.trim() && !isValidPhone(newGuardianPhone.trim())) {
+        toast({ title: 'Invalid phone', description: 'Please enter a valid guardian phone number.', variant: 'destructive' });
         setIsSaving(false);
         return;
       }
@@ -518,6 +537,16 @@ export function useStudentDetailPage() {
   const handleSaveGuardianEdit = async () => {
     if (!currentOrg || !editGuardianDialog.guardianId) return;
     setIsEditGuardianSaving(true);
+    if (editGuardianDialog.email.trim() && !isValidEmail(editGuardianDialog.email.trim())) {
+      toast({ title: 'Invalid email', description: 'Please enter a valid email address.', variant: 'destructive' });
+      setIsEditGuardianSaving(false);
+      return;
+    }
+    if (editGuardianDialog.phone.trim() && !isValidPhone(editGuardianDialog.phone.trim())) {
+      toast({ title: 'Invalid phone', description: 'Please enter a valid phone number.', variant: 'destructive' });
+      setIsEditGuardianSaving(false);
+      return;
+    }
     try {
       const { error } = await supabase
         .from('guardians')
