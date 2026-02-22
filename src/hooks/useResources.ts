@@ -258,12 +258,39 @@ export function useResourceDownloadUrl(filePath: string) {
 // For parent portal - get resources shared with their children
 export function useSharedResources() {
   const { currentOrg } = useOrg();
+  const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['shared-resources', currentOrg?.id],
+    queryKey: ['shared-resources', currentOrg?.id, user?.id],
     queryFn: async () => {
-      if (!currentOrg?.id) return [];
+      if (!currentOrg?.id || !user?.id) return [];
 
+      // 1. Get guardian record for current user
+      const { data: guardian } = await supabase
+        .from('guardians')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('org_id', currentOrg.id)
+        .maybeSingle();
+      if (!guardian) return [];
+
+      // 2. Get student IDs linked to this guardian
+      const { data: studentGuardians } = await supabase
+        .from('student_guardians')
+        .select('student_id')
+        .eq('guardian_id', guardian.id);
+      const studentIds = (studentGuardians || []).map(sg => sg.student_id);
+      if (studentIds.length === 0) return [];
+
+      // 3. Get resource IDs shared with these students only
+      const { data: shares } = await supabase
+        .from('resource_shares')
+        .select('resource_id')
+        .in('student_id', studentIds);
+      const resourceIds = [...new Set((shares || []).map(s => s.resource_id))];
+      if (resourceIds.length === 0) return [];
+
+      // 4. Fetch only those resources
       const { data, error } = await supabase
         .from('resources')
         .select(`
@@ -278,12 +305,13 @@ export function useSharedResources() {
             )
           )
         `)
+        .in('id', resourceIds)
         .eq('org_id', currentOrg.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data;
     },
-    enabled: !!currentOrg?.id,
+    enabled: !!currentOrg?.id && !!user?.id,
   });
 }
