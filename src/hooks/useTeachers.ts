@@ -109,10 +109,12 @@ export function useTeacherMutations() {
 
   const updateTeacher = useMutation({
     mutationFn: async ({ id, ...data }: Partial<Teacher> & { id: string }) => {
+      if (!currentOrg) throw new Error('No organisation selected');
       const { error } = await supabase
         .from('teachers')
         .update(data)
-        .eq('id', id);
+        .eq('id', id)
+        .eq('org_id', currentOrg.id);
 
       if (error) throw error;
     },
@@ -138,6 +140,7 @@ export function useTeacherMutations() {
         .from('teachers')
         .select('user_id')
         .eq('id', id)
+        .eq('org_id', currentOrg.id)
         .single();
       if (fetchError) throw fetchError;
 
@@ -145,7 +148,8 @@ export function useTeacherMutations() {
       const { error } = await supabase
         .from('teachers')
         .update({ status: 'inactive' })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('org_id', currentOrg.id);
       if (error) throw error;
 
       // Disable org membership to revoke access
@@ -182,13 +186,15 @@ export function useTeacherMutations() {
         .from('teachers')
         .select('user_id')
         .eq('id', id)
+        .eq('org_id', currentOrg.id)
         .single();
       if (fetchError) throw fetchError;
 
       const { error } = await supabase
         .from('teachers')
         .update({ status: 'active' })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('org_id', currentOrg.id);
       if (error) throw error;
 
       // Re-enable org membership
