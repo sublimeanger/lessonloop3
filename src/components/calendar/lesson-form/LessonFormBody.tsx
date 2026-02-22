@@ -1,10 +1,13 @@
-import { RefObject } from 'react';
-import { format } from 'date-fns';
+import { RefObject, useMemo } from 'react';
+import { format, subDays } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useOrg } from '@/contexts/OrgContext';
 import { LessonWithDetails, LessonStatus, LessonType, ConflictResult } from '../types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
@@ -92,6 +95,39 @@ export function LessonFormBody({
   studentSelectorRef,
 }: LessonFormBodyProps) {
   const isMobile = useIsMobile();
+  const { currentOrg } = useOrg();
+
+  // Find which teacher is selected and get their recent locations
+  const selectedTeacherId = teacherId || null;
+  const { data: teacherLocationIds = [] } = useQuery({
+    queryKey: ['teacher-recent-locations', selectedTeacherId, currentOrg?.id],
+    queryFn: async () => {
+      if (!selectedTeacherId || !currentOrg) return [];
+      const since = subDays(new Date(), 90).toISOString();
+      const { data } = await supabase
+        .from('lessons')
+        .select('location_id')
+        .eq('teacher_id', selectedTeacherId)
+        .eq('org_id', currentOrg.id)
+        .gte('start_at', since)
+        .not('location_id', 'is', null);
+      if (!data) return [];
+      return [...new Set(data.map(l => l.location_id).filter(Boolean))] as string[];
+    },
+    enabled: !!selectedTeacherId && !!currentOrg,
+    staleTime: 60_000,
+  });
+
+  const { recentLocations, otherLocations } = useMemo(() => {
+    if (!selectedTeacherId || teacherLocationIds.length === 0) {
+      return { recentLocations: [], otherLocations: locations };
+    }
+    const idSet = new Set(teacherLocationIds);
+    return {
+      recentLocations: locations.filter(l => idSet.has(l.id)),
+      otherLocations: locations.filter(l => !idSet.has(l.id)),
+    };
+  }, [locations, teacherLocationIds, selectedTeacherId]);
 
   const durationSelector = isMobile ? (
     <div className="space-y-2">
@@ -234,9 +270,31 @@ export function LessonFormBody({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">No location</SelectItem>
-              {locations.map((l) => (
-                <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
-              ))}
+              {recentLocations.length > 0 ? (
+                <>
+                  <SelectGroup>
+                    <SelectLabel className="text-xs text-muted-foreground">Recent locations</SelectLabel>
+                    {recentLocations.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                  {otherLocations.length > 0 && (
+                    <>
+                      <SelectSeparator />
+                      <SelectGroup>
+                        <SelectLabel className="text-xs text-muted-foreground">All locations</SelectLabel>
+                        {otherLocations.map((l) => (
+                          <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </>
+                  )}
+                </>
+              ) : (
+                locations.map((l) => (
+                  <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         </div>
