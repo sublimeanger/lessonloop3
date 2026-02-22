@@ -2,7 +2,7 @@ import { logger } from '@/lib/logger';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
-import { useParentSummary, useChildrenWithDetails } from '@/hooks/useParentPortal';
+import { useParentSummary, useChildrenWithDetails, useGuardianInfo } from '@/hooks/useParentPortal';
 import { useParentWaitlistEntries } from '@/hooks/useMakeUpWaitlist';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
 import { useQueryClient } from '@tanstack/react-query';
@@ -14,6 +14,8 @@ import {
   MessageSquare,
   MapPin,
   FolderOpen,
+  UserX,
+  Users,
 } from 'lucide-react';
 import { PortalHomeSkeleton } from '@/components/shared/LoadingState';
 import { useEffect, useRef, useState } from 'react';
@@ -97,6 +99,7 @@ export default function PortalHome() {
 
   const { data: summary, isLoading: summaryLoading } = useParentSummary();
   const { data: children, isLoading: childrenLoading } = useChildrenWithDetails();
+  const { data: guardianInfo, isLoading: guardianLoading } = useGuardianInfo();
   const { data: unreadCount } = useUnreadMessagesCount();
   const { data: waitlistEntries } = useParentWaitlistEntries();
 
@@ -144,8 +147,14 @@ export default function PortalHome() {
   const firstName = profile?.full_name?.split(' ')[0] || 'there';
   const currencyCode = currentOrg?.currency_code || 'GBP';
 
-  const isLoading = summaryLoading || childrenLoading;
+  const isLoading = summaryLoading || childrenLoading || guardianLoading;
 
+  const allChildrenInactive = children && children.length > 0 && children.every(c => c.status === 'inactive');
+  const noLinkedChildren = !childrenLoading && (!children || children.length === 0);
+  const noGuardianRecord = !guardianLoading && !guardianInfo;
+  const hasAccessIssue = noGuardianRecord || noLinkedChildren || allChildrenInactive;
+
+  const academyName = currentOrg?.name || 'your academy';
   // Derive the overall "next lesson" from summary or children
   const nextLesson = summary?.nextLesson;
   // Find which child this next lesson belongs to
@@ -171,6 +180,52 @@ export default function PortalHome() {
 
         {isLoading ? (
           <PortalHomeSkeleton />
+        ) : hasAccessIssue ? (
+          <Card className="border-muted">
+            <CardContent className="p-8 flex flex-col items-center text-center space-y-4">
+              {noGuardianRecord ? (
+                <>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                    <UserX className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="font-semibold">Account Not Linked</h3>
+                    <p className="text-sm text-muted-foreground max-w-sm">
+                      Your account isn't linked to any children yet. Please contact {academyName} if you need help getting set up.
+                    </p>
+                  </div>
+                </>
+              ) : noLinkedChildren ? (
+                <>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                    <Users className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="font-semibold">No Students Found</h3>
+                    <p className="text-sm text-muted-foreground max-w-sm">
+                      No active students are linked to your account. Contact {academyName} for assistance.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                    <Users className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="font-semibold">Enrolments Inactive</h3>
+                    <p className="text-sm text-muted-foreground max-w-sm">
+                      All your children's enrolments are currently inactive. Reach out to {academyName} if you believe this is an error.
+                    </p>
+                  </div>
+                </>
+              )}
+              <Button variant="outline" className="gap-2" onClick={() => setRequestModalOpen(true)}>
+                <MessageSquare className="h-4 w-4" />
+                Send a Message
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
           <>
             {/* 2. Next Lesson Hero Card */}
