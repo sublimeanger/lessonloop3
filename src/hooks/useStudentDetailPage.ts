@@ -423,6 +423,21 @@ export function useStudentDetailPage() {
       return;
     }
 
+    // Check for existing link to prevent duplicates
+    const { data: existingLink } = await supabase
+      .from('student_guardians')
+      .select('id')
+      .eq('student_id', student.id)
+      .eq('guardian_id', guardianId)
+      .eq('org_id', currentOrg.id)
+      .maybeSingle();
+
+    if (existingLink) {
+      toast({ title: 'Already linked', description: 'This guardian is already linked to this student.', variant: 'destructive' });
+      setIsSaving(false);
+      return;
+    }
+
     // If marking as primary payer, clear any existing primary payer first
     if (isPrimaryPayer) {
       await supabase
