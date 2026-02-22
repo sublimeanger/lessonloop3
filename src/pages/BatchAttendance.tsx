@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { format, parseISO, startOfDay, addDays, subDays, isToday, isFuture } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -9,7 +9,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useBatchAttendanceLessons, useSaveBatchAttendance } from '@/hooks/useRegisterData';
-import { Loader2, CheckCircle2, Save, UserCheck, ChevronLeft, ChevronRight, CalendarIcon, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, Save, UserCheck, ChevronLeft, ChevronRight, CalendarIcon, AlertCircle, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AttendanceStatus, AbsenceReason } from '@/hooks/useRegisterData';
 import { AbsenceReasonPicker, needsAbsenceReason, type AbsenceReasonValue } from '@/components/register/AbsenceReasonPicker';
@@ -25,6 +25,9 @@ export default function BatchAttendance() {
   const [attendance, setAttendance] = useState<Map<string, Map<string, AttendanceStatus>>>(new Map());
   const [absenceReasons, setAbsenceReasons] = useState<Map<string, Map<string, AbsenceReason>>>(new Map());
   const [notifiedDates, setNotifiedDates] = useState<Map<string, Map<string, Date>>>(new Map());
+  const [savedLessons, setSavedLessons] = useState<Set<string>>(new Set());
+  const [saveError, setSaveError] = useState(false);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Sync attendance map when query data changes
   useEffect(() => {
@@ -121,9 +124,22 @@ export default function BatchAttendance() {
       dateStrings.set(lessonId, sMap);
     });
 
-    saveMutation.mutate({ attendance, lessons, absenceReasons: reasonStrings, notifiedDates: dateStrings });
+    saveMutation.mutate(
+      { attendance, lessons, absenceReasons: reasonStrings, notifiedDates: dateStrings },
+      {
+        onSuccess: () => {
+          setSaveError(false);
+          const allIds = new Set(lessons.map(l => l.id));
+          setSavedLessons(allIds);
+          if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+          savedTimerRef.current = setTimeout(() => setSavedLessons(new Set()), 2500);
+        },
+        onError: () => {
+          setSaveError(true);
+        },
+      }
+    );
   };
-
   const totalStudents = lessons.reduce((sum, l) => sum + l.participants.length, 0);
   const markedCount = Array.from(attendance.values()).reduce((sum, m) => sum + m.size, 0);
 
@@ -151,9 +167,20 @@ export default function BatchAttendance() {
               <UserCheck className="h-4 w-4" />
               Mark All Present
             </Button>
-            <Button onClick={handleSave} disabled={saveMutation.isPending || isFutureDate} className="gap-1.5">
-              {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save All ({markedCount}/{totalStudents})
+            <Button
+              onClick={() => { setSaveError(false); handleSave(); }}
+              disabled={saveMutation.isPending || isFutureDate}
+              className={cn("gap-1.5", saveError && "border-destructive")}
+              variant={saveError ? "outline" : "default"}
+            >
+              {saveMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : saveError ? (
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {saveError ? 'Retry Save' : `Save All (${markedCount}/${totalStudents})`}
             </Button>
           </div>
         }
@@ -227,7 +254,19 @@ export default function BatchAttendance() {
           {lessons.map((lesson) => {
             const lessonMap = attendance.get(lesson.id) || new Map();
             return (
-              <Card key={lesson.id}>
+              <Card key={lesson.id} className={cn(
+                "relative overflow-hidden transition-all duration-300",
+                saveMutation.isPending && "animate-pulse",
+                savedLessons.has(lesson.id) && "ring-2 ring-success/40"
+              )}>
+                {savedLessons.has(lesson.id) && (
+                  <div className="absolute top-2 right-2 z-10 animate-fade-in">
+                    <div className="flex items-center gap-1 rounded-full bg-success/15 text-success px-2 py-0.5 text-xs font-medium">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Saved
+                    </div>
+                  </div>
+                )}
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">
