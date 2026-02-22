@@ -43,6 +43,25 @@ interface InvoicePdfData {
     paid_at: string | null;
   }>;
 }
+
+interface OrgPdfDetails {
+  name: string | null;
+  address: string | null;
+  invoice_from_name: string | null;
+  invoice_from_address_line1: string | null;
+  invoice_from_address_line2: string | null;
+  invoice_from_city: string | null;
+  invoice_from_postcode: string | null;
+  invoice_from_country: string | null;
+  invoice_footer_note: string | null;
+  vat_enabled: boolean | null;
+  vat_registration_number: string | null;
+  bank_account_name: string | null;
+  bank_sort_code: string | null;
+  bank_account_number: string | null;
+  bank_reference_prefix: string | null;
+}
+
 export function useInvoicePdf() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -81,7 +100,7 @@ export function useInvoicePdf() {
         .order('paid_at', { ascending: false });
 
       // Fetch installments if payment plan
-      let installments: any[] = [];
+      let installments: InvoicePdfData['installments'] = [];
       if (invoice.payment_plan_enabled) {
         const { data: instData } = await supabase
           .from('invoice_installments')
@@ -92,11 +111,11 @@ export function useInvoicePdf() {
       }
 
       // Fetch org details for header
-      let orgDetails: any = null;
+      let orgDetails: OrgPdfDetails | null = null;
       if (currentOrg?.id) {
         const { data } = await supabase
           .from('organisations')
-          .select('name, address_line_1, address_line_2, city, postcode, vat_number, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix')
+          .select('name, address, invoice_from_name, invoice_from_address_line1, invoice_from_address_line2, invoice_from_city, invoice_from_postcode, invoice_from_country, invoice_footer_note, vat_enabled, vat_registration_number, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix')
           .eq('id', currentOrg.id)
           .single();
         orgDetails = data;
@@ -129,11 +148,11 @@ export function useInvoicePdf() {
         title: 'Download Complete',
         description: `Invoice ${invoiceNumber} downloaded.`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('PDF generation error:', error);
       toast({
         title: 'Download Failed',
-        description: error.message || 'Failed to generate invoice PDF.',
+        description: error instanceof Error ? error.message : 'Failed to generate invoice PDF.',
         variant: 'destructive',
       });
     } finally {
@@ -146,7 +165,7 @@ export function useInvoicePdf() {
 
 function generatePdf(
   inv: InvoicePdfData,
-  org: any,
+  org: OrgPdfDetails | null,
   currency: string,
   filename: string
 ) {
@@ -179,17 +198,17 @@ function generatePdf(
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 100, 100);
   const addressParts = [
-    org?.address_line_1,
-    org?.address_line_2,
-    org?.city,
-    org?.postcode,
+    org?.invoice_from_address_line1,
+    org?.invoice_from_address_line2,
+    org?.invoice_from_city,
+    org?.invoice_from_postcode,
   ].filter(Boolean);
   if (addressParts.length) {
     doc.text(addressParts.join(', '), margin, y);
     y += 4;
   }
-  if (org?.vat_number) {
-    doc.text(`VAT: ${org.vat_number}`, margin, y);
+  if (org?.vat_registration_number) {
+    doc.text(`VAT: ${org.vat_registration_number}`, margin, y);
     y += 4;
   }
   doc.setTextColor(0, 0, 0);
