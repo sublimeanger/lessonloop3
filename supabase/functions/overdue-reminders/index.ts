@@ -37,7 +37,7 @@ serve(async (req) => {
       console.log(`Marked ${markedOverdue?.length || 0} installments as overdue`);
 
       // Also update parent invoice status for newly overdue installments
-      const invoiceIds = [...new Set((markedOverdue || []).map((i: any) => i.invoice_id))];
+      const invoiceIds = [...new Set((markedOverdue || []).map((i) => i.invoice_id))];
       if (invoiceIds.length > 0) {
         await supabase
           .from("invoices")
@@ -67,12 +67,13 @@ serve(async (req) => {
     for (const invoice of overdueInvoices || []) {
       try {
         // Skip invoices with active payment plans — they get installment-level reminders
-        if ((invoice as any).payment_plan_enabled) continue;
+        if (invoice.payment_plan_enabled) continue;
 
         const result = await processInvoiceReminder(supabase, invoice, today, resendApiKey);
         if (result === "sent") remindersSent++;
-      } catch (err: any) {
-        errors.push(`Invoice ${(invoice as any).invoice_number}: ${err.message}`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push(`Invoice ${invoice.invoice_number}: ${msg}`);
       }
     }
 
@@ -101,8 +102,9 @@ serve(async (req) => {
       try {
         const result = await processInstallmentReminder(supabase, installment, today, resendApiKey);
         if (result === "sent") remindersSent++;
-      } catch (err: any) {
-        errors.push(`Installment ${(installment as any).id}: ${err.message}`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push(`Installment ${installment.id}: ${msg}`);
       }
     }
 
@@ -112,10 +114,11 @@ serve(async (req) => {
       JSON.stringify({ success: true, sent: remindersSent, errors: errors.length > 0 ? errors : undefined }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     console.error("Overdue reminders error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: message }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -137,8 +140,9 @@ function formatDateGB(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 }
 
+// deno-lint-ignore no-explicit-any
 async function shouldSkipGuardian(
-  supabase: any, orgId: string, guardian: any, relatedId: string, messageType: string, today: Date
+  supabase: ReturnType<typeof createClient>, orgId: string, guardian: { email?: string; user_id?: string | null } | null, relatedId: string, messageType: string, today: Date
 ): Promise<boolean> {
   if (!guardian?.email) return true;
 
@@ -164,8 +168,9 @@ async function shouldSkipGuardian(
   return false;
 }
 
+// deno-lint-ignore no-explicit-any
 async function logAndSend(
-  supabase: any, resendApiKey: string | undefined,
+  supabase: ReturnType<typeof createClient>, resendApiKey: string | undefined,
   opts: { orgId: string; orgName: string; subject: string; html: string; recipientEmail: string; recipientName: string; guardianId: string; relatedId: string; messageType: string }
 ): Promise<boolean> {
   const status = resendApiKey ? "pending" : "logged";
@@ -224,7 +229,21 @@ async function logAndSend(
 
 // ── INVOICE REMINDER ───────────────────────────────────────
 
-async function processInvoiceReminder(supabase: any, invoice: any, today: Date, resendApiKey: string | undefined): Promise<string> {
+interface OverdueInvoice {
+  id: string;
+  invoice_number: string;
+  total_minor: number;
+  currency_code: string;
+  due_date: string;
+  org_id: string;
+  payment_plan_enabled: boolean | null;
+  organisation: { name: string; overdue_reminder_days: number[] | null } | null;
+  payer_guardian: { id: string; full_name: string; email: string; user_id: string | null } | null;
+  payer_student: { id: string; first_name: string; last_name: string } | null;
+}
+
+// deno-lint-ignore no-explicit-any
+async function processInvoiceReminder(supabase: ReturnType<typeof createClient>, invoice: OverdueInvoice, today: Date, resendApiKey: string | undefined): Promise<string> {
   const org = invoice.organisation;
   const reminderDays: number[] = org?.overdue_reminder_days || [7, 14, 30];
   const daysOverdue = calcDaysOverdue(invoice.due_date, today);
@@ -287,7 +306,28 @@ async function processInvoiceReminder(supabase: any, invoice: any, today: Date, 
 
 // ── INSTALLMENT REMINDER ───────────────────────────────────
 
-async function processInstallmentReminder(supabase: any, installment: any, today: Date, resendApiKey: string | undefined): Promise<string> {
+interface OverdueInstallment {
+  id: string;
+  installment_number: number;
+  amount_minor: number;
+  due_date: string;
+  invoice_id: string;
+  invoice: {
+    id: string;
+    invoice_number: string;
+    total_minor: number;
+    currency_code: string;
+    org_id: string;
+    status: string;
+    paid_minor: number | null;
+    installment_count: number | null;
+    organisation: { name: string; overdue_reminder_days: number[] | null } | null;
+    payer_guardian: { id: string; full_name: string; email: string; user_id: string | null } | null;
+  };
+}
+
+// deno-lint-ignore no-explicit-any
+async function processInstallmentReminder(supabase: ReturnType<typeof createClient>, installment: OverdueInstallment, today: Date, resendApiKey: string | undefined): Promise<string> {
   const invoice = installment.invoice;
   const org = invoice.organisation;
   const guardian = invoice.payer_guardian;
