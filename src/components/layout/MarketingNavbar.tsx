@@ -143,7 +143,7 @@ export function MarketingNavbar() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="absolute right-0 top-0 bottom-0 w-full max-w-sm bg-background shadow-2xl"
+              className="absolute right-0 top-0 bottom-0 w-[85vw] max-w-[24rem] bg-background shadow-2xl"
             >
               <div className="flex flex-col h-full pt-24 pb-8 px-6">
                 <nav className="flex-1 space-y-1">

@@ -162,24 +162,30 @@ export function ProductShowcase() {
         </motion.div>
 
         {/* Tab Buttons */}
-        <div className="flex flex-wrap justify-center gap-3 mb-12">
-          {tabs.map((tab) => (
-            <motion.button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className={cn(
-                "flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all",
-                activeTab === tab.id
-                  ? "bg-white text-ink shadow-xl"
-                  : "bg-white/10 text-white/70 hover:bg-white/15 hover:text-white"
-              )}
-            >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-            </motion.button>
-          ))}
+        <div className="relative mb-12">
+          {/* Edge fades for mobile scroll */}
+          <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-ink to-transparent z-10 pointer-events-none lg:hidden" />
+          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-ink to-transparent z-10 pointer-events-none lg:hidden" />
+          
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide flex-nowrap lg:flex-wrap lg:justify-center px-4 -mx-4 lg:mx-0 lg:px-0" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {tabs.map((tab) => (
+              <motion.button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className={cn(
+                  "flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all flex-shrink-0",
+                  activeTab === tab.id
+                    ? "bg-white text-ink shadow-xl"
+                    : "bg-white/10 text-white/70 hover:bg-white/15 hover:text-white"
+                )}
+              >
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+              </motion.button>
+            ))}
+          </div>
         </div>
 
         {/* Content Area */}

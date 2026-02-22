@@ -156,31 +156,36 @@ export function FeaturesHero({ activeCategory, onCategoryClick }: FeaturesHeroPr
           transition={{ duration: 0.5 }}
           className="mb-8 lg:mb-12"
         >
-          <div 
-            ref={scrollRef}
-            className="flex gap-2 justify-start lg:justify-center overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 lg:flex-wrap scrollbar-hide"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          >
-            {categories.map((category, index) => (
-              <motion.button
-                key={category.id}
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                onClick={() => scrollToSection(category.id)}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2 lg:px-4 rounded-full text-sm font-medium transition-all whitespace-nowrap flex-shrink-0",
-                  "border hover:border-primary/50",
-                  activeCategory === category.id
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-card/80 text-muted-foreground border-border hover:text-foreground"
-                )}
-              >
-                <category.icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{category.label}</span>
-                <span className="sm:hidden">{category.label.split(' ')[0]}</span>
-              </motion.button>
-            ))}
+          <div className="relative">
+            {/* Right edge fade on mobile */}
+            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none lg:hidden" />
+            
+            <div 
+              ref={scrollRef}
+              className="flex gap-2 justify-start lg:justify-center overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 lg:flex-wrap scrollbar-hide"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {categories.map((category, index) => (
+                <motion.button
+                  key={category.id}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  onClick={() => scrollToSection(category.id)}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 lg:px-4 rounded-full text-sm font-medium transition-all whitespace-nowrap flex-shrink-0",
+                    "border hover:border-primary/50",
+                    activeCategory === category.id
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-card/80 text-muted-foreground border-border hover:text-foreground"
+                  )}
+                >
+                  <category.icon className="w-4 h-4" />
+                  <span className="hidden sm:inline">{category.label}</span>
+                  <span className="sm:hidden">{category.label.split(' ')[0]}</span>
+                </motion.button>
+              ))}
+            </div>
           </div>
         </motion.div>
 

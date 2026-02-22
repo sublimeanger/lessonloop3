@@ -301,7 +301,7 @@ export function BentoFeatures() {
                   ))}
                 </div>
               </div>
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 hidden md:block">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   whileInView={{ opacity: 1, scale: 1 }}
