@@ -8,13 +8,16 @@ import { startOfWeek, endOfWeek, startOfDay, endOfDay, addDays, format, parseISO
 import { toZonedTime } from 'date-fns-tz';
 
 /**
- * Converts a UTC ISO string to a "fake-local" ISO string whose wall-clock
- * values match the org timezone. Downstream code that calls parseISO().getHours()
- * will then get the correct org-local hour regardless of the browser's timezone.
+ * Converts a UTC ISO string to an org-local wall-clock ISO string.
+ * The result has NO timezone indicator — it represents the org's local time.
+ * parseISO() will treat it as local time, so .getHours() returns the correct org-local hour.
+ *
+ * WARNING: Do NOT pass these strings to APIs or functions expecting real UTC.
+ * For real UTC values, use the original start_at/end_at from the database.
  */
 function toOrgLocalIso(utcIso: string, timezone: string): string {
   const zoned = toZonedTime(utcIso, timezone);
-  return format(zoned, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+  return format(zoned, "yyyy-MM-dd'T'HH:mm:ss.SSS");
 }
 
 const LESSONS_PAGE_SIZE = 500;

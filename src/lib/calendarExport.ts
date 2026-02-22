@@ -7,7 +7,11 @@ interface ExportLesson {
   location?: { name: string } | null;
 }
 
-/** Format a Date as an iCalendar DATETIME string (UTC) */
+/**
+ * Format a Date as an iCalendar DATETIME string (UTC).
+ * WARNING: This expects real UTC ISO strings (with Z suffix) from Supabase,
+ * NOT the org-local strings produced by useCalendarData's toOrgLocalIso().
+ */
 function toICSDate(dateStr: string): string {
   const d = parseISO(dateStr);
   return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
