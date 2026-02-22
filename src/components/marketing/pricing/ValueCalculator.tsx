@@ -8,6 +8,7 @@ export function ValueCalculator() {
   
   // Calculate savings based on students
   const hoursPerWeek = Math.round(students * 0.15); // ~9 mins per student in admin
+  const hoursPerMonth = hoursPerWeek * 4;
   const invoicesPerMonth = students;
   const monthlyValueSaved = Math.round(students * 8); // £8 value per student
   const yearlyValueSaved = monthlyValueSaved * 12;
@@ -81,7 +82,7 @@ export function ValueCalculator() {
           </div>
           
           {/* Results grid */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 lg:gap-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -101,6 +102,27 @@ export function ValueCalculator() {
                 {hoursPerWeek}
               </motion.div>
               <p className="text-sm text-muted-foreground">Hours saved per week</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.35 }}
+              className="bg-card border border-border rounded-2xl p-6 text-center hover:border-primary/30 hover:shadow-lg transition-all"
+            >
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Clock className="w-6 h-6 text-primary" />
+              </div>
+              <motion.div
+                key={`m-${hoursPerMonth}`}
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                className="text-3xl font-bold text-foreground mb-1"
+              >
+                {hoursPerMonth}
+              </motion.div>
+              <p className="text-sm text-muted-foreground">Hours saved per month</p>
             </motion.div>
             
             <motion.div
