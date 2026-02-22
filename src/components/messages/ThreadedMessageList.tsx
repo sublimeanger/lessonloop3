@@ -1,10 +1,19 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Mail, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMessageThreads } from '@/hooks/useMessageThreads';
+import { useMessageThreads, useSearchMessageThreads } from '@/hooks/useMessageThreads';
 import { ThreadCard } from './ThreadCard';
+
+function useDebouncedValue(value: string, delay: number) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
 
 interface ThreadedMessageListProps {
   searchQuery?: string;
@@ -14,6 +23,11 @@ export function ThreadedMessageList({ searchQuery }: ThreadedMessageListProps) {
   const { threads, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useMessageThreads();
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
+
+  const debouncedQuery = useDebouncedValue(searchQuery || '', 300);
+  const isServerSearch = debouncedQuery.trim().length >= 3;
+
+  const { threads: searchResults, isLoading: searchLoading, isSearching } = useSearchMessageThreads(debouncedQuery);
 
   const toggleThread = (threadId: string) => {
     setExpandedThreads(prev => {
@@ -27,8 +41,9 @@ export function ThreadedMessageList({ searchQuery }: ThreadedMessageListProps) {
     });
   };
 
-  // Client-side search filtering
+  // Use server-side results for 3+ char queries, client-side filter for shorter
   const filteredThreads = useMemo(() => {
+    if (isServerSearch) return searchResults;
     if (!threads) return [];
     if (!searchQuery?.trim()) return threads;
 
@@ -38,9 +53,9 @@ export function ThreadedMessageList({ searchQuery }: ThreadedMessageListProps) {
       thread.recipient_name?.toLowerCase().includes(query) ||
       thread.recipient_email.toLowerCase().includes(query)
     );
-  }, [threads, searchQuery]);
+  }, [threads, searchQuery, isServerSearch, searchResults]);
 
-  if (isLoading) {
+  if (isLoading || (isSearching && searchLoading)) {
     return (
       <div className="space-y-4">
         {[1, 2, 3].map(i => (

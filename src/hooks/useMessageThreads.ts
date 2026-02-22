@@ -217,6 +217,39 @@ export function useThreadMessages(threadId: string | null, enabled: boolean) {
   });
 }
 
+/**
+ * Server-side search across message bodies, subjects, and recipient names.
+ * Only fires when query is 3+ characters.
+ */
+export function useSearchMessageThreads(query: string) {
+  const { currentOrg } = useOrg();
+  const trimmed = query.trim();
+  const enabled = !!currentOrg && trimmed.length >= 3;
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['message-search', currentOrg?.id, trimmed],
+    queryFn: async (): Promise<MessageThread[]> => {
+      if (!currentOrg) return [];
+
+      const pattern = `%${trimmed}%`;
+      const { data: messages, error } = await supabase
+        .from('message_log')
+        .select('id, subject, recipient_email, recipient_name, recipient_type, recipient_id, related_id, sender_user_id, status, created_at, sent_at, read_at, thread_id, parent_message_id, channel, message_type')
+        .eq('org_id', currentOrg.id)
+        .or(`subject.ilike.${pattern},body.ilike.${pattern},recipient_name.ilike.${pattern}`)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      return groupMessagesIntoThreads(messages || []);
+    },
+    enabled,
+    staleTime: 30_000,
+  });
+
+  return { threads: data || [], isLoading, isSearching: enabled };
+}
+
 export function useReplyToMessage() {
   const { currentOrg } = useOrg();
   const { user } = useAuth();
