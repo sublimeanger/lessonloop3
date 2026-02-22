@@ -5,6 +5,7 @@ import { SchedulingDeepDive } from "@/components/marketing/features/SchedulingDe
 import { BillingDeepDive } from "@/components/marketing/features/BillingDeepDive";
 import { PortalDeepDive } from "@/components/marketing/features/PortalDeepDive";
 import { AIDeepDive } from "@/components/marketing/features/AIDeepDive";
+import { MakeUpDeepDive } from "@/components/marketing/features/MakeUpDeepDive";
 import { ExpandedFeaturesGrid } from "@/components/marketing/features/ExpandedFeaturesGrid";
 import { UseCasesSection } from "@/components/marketing/features/UseCasesSection";
 import { FeatureComparison } from "@/components/marketing/features/FeatureComparison";
@@ -17,7 +18,7 @@ export default function Features() {
   // Update active category based on scroll position
   useEffect(() => {
     const handleScroll = () => {
-      const sections = ["scheduling", "billing", "portal", "ai", "more", "security"];
+      const sections = ["scheduling", "billing", "portal", "ai", "makeups", "more"];
       
       for (const section of sections) {
         const element = document.getElementById(section);
@@ -42,6 +43,7 @@ export default function Features() {
       <BillingDeepDive />
       <PortalDeepDive />
       <AIDeepDive />
+      <MakeUpDeepDive />
       <ExpandedFeaturesGrid />
       <UseCasesSection />
       <FeatureComparison />
