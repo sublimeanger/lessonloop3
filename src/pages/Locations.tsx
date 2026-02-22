@@ -143,9 +143,8 @@ export default function Locations() {
   }, [locations, filterTab, search]);
 
   const typeCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: locations.length };
-    FILTER_PILLS.forEach(p => { if (p.value !== 'all') counts[p.value] = 0; });
-    locations.forEach(l => { counts[l.location_type] = (counts[l.location_type] || 0) + 1; });
+    const counts: Record<string, number> = { all: locations.length, studio: 0, school: 0, home: 0, online: 0 };
+    locations.forEach(l => { counts[l.location_type]++; });
     return counts;
   }, [locations]);
 
