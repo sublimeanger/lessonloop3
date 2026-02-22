@@ -19,7 +19,8 @@ export default function ForgotPassword() {
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
       toast({
         title: 'Email required',
         description: 'Please enter your email address.',
@@ -29,7 +30,7 @@ export default function ForgotPassword() {
     }
 
     setIsLoading(true);
-    const { error } = await resetPassword(email);
+    const { error } = await resetPassword(trimmedEmail);
     setIsLoading(false);
 
     if (error) {

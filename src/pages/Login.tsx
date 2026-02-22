@@ -60,8 +60,9 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedEmail = email.trim();
     
-    if (!email || !password) {
+    if (!trimmedEmail || !password) {
       toast({
         title: 'Missing fields',
         description: 'Please enter your email and password.',
@@ -71,7 +72,7 @@ export default function Login() {
     }
 
     setIsLoading(true);
-    const { error } = await signIn(email, password);
+    const { error } = await signIn(trimmedEmail, password);
     setIsLoading(false);
 
     if (error) {
