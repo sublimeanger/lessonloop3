@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ABSENCE_REASON_LABELS } from '@/hooks/useMakeUpPolicies';
 
 const schema = z.object({
   student_id: z.string().min(1, 'Student is required'),
@@ -155,11 +156,11 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="sick">Sick</SelectItem>
-                <SelectItem value="family_emergency">Family Emergency</SelectItem>
-                <SelectItem value="school_event">School Event</SelectItem>
-                <SelectItem value="holiday">Holiday</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
+                {Object.entries(ABSENCE_REASON_LABELS).map(([value, { emoji, label }]) => (
+                  <SelectItem key={value} value={value}>
+                    {emoji} {label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
