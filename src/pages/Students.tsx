@@ -77,9 +77,17 @@ function StudentCard({
   return (
     <div
       onClick={() => navigate(`/students/${student.id}`)}
-      className="flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md cursor-pointer group"
-      role="listitem"
-    >
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          navigate(`/students/${student.id}`);
+        }
+      }}
+      tabIndex={0}
+      role="link"
+      aria-label={`View ${fullName}`}
+      className="flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
       <div
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
         style={{ backgroundColor: avatarColor }}
