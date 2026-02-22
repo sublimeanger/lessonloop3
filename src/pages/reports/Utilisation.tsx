@@ -22,6 +22,7 @@ import { ReportPagination, paginateArray } from '@/components/reports/ReportPagi
 import { Download, MapPin, Clock, TrendingUp, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSortableTable } from '@/hooks/useSortableTable';
+import { useTerms } from '@/hooks/useTerms';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 // Default working hours
@@ -185,6 +186,7 @@ function formatHoursMinutes(minutes: number): string {
 export default function UtilisationReport() {
   const { currentOrg } = useOrg();
   const { toast } = useToast();
+  const { data: terms } = useTerms();
   // Default to last month
   const [startDate, setStartDate] = useState(format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'));
@@ -287,6 +289,7 @@ export default function UtilisationReport() {
         endDate={endDate}
         onStartDateChange={setStartDate}
         onEndDateChange={setEndDate}
+        terms={terms}
       />
 
       {isLoading ? (

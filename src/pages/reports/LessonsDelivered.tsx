@@ -14,6 +14,7 @@ import { useLessonsDeliveredReport, exportLessonsDeliveredToCSV } from '@/hooks/
 import { ReportPagination, paginateArray } from '@/components/reports/ReportPagination';
 import { useOrg } from '@/contexts/OrgContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTerms } from '@/hooks/useTerms';
 import { Download, Calendar, Clock, MapPin, Users, XCircle, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -23,6 +24,7 @@ export default function LessonsDeliveredReport() {
   const { currentOrg } = useOrg();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { data: terms } = useTerms();
   
   const lastMonth = subMonths(new Date(), 1);
   const [startDate, setStartDate] = useState(format(startOfMonth(lastMonth), 'yyyy-MM-dd'));
@@ -70,6 +72,7 @@ export default function LessonsDeliveredReport() {
         endDate={endDate}
         onStartDateChange={setStartDate}
         onEndDateChange={setEndDate}
+        terms={terms}
       />
 
       {isLoading ? (

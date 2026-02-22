@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { format, subMonths, startOfMonth, endOfMonth, startOfQuarter } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import type { Term } from '@/hooks/useTerms';
 
 export type DatePreset = {
   label: string;
@@ -56,12 +57,39 @@ function isValidDate(d: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(Date.parse(d));
 }
 
+function buildTermPresets(terms: Term[]): DatePreset[] {
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const presets: DatePreset[] = [];
+
+  const currentTerm = terms.find(t => t.start_date <= today && t.end_date >= today);
+  if (currentTerm) {
+    presets.push({
+      label: `This Term (${currentTerm.name})`,
+      getRange: () => ({ start: currentTerm.start_date, end: currentTerm.end_date }),
+    });
+  }
+
+  // Last term = most recent term that ended before today (or before current term start)
+  const cutoff = currentTerm ? currentTerm.start_date : today;
+  const pastTerms = terms.filter(t => t.end_date < cutoff).sort((a, b) => b.end_date.localeCompare(a.end_date));
+  if (pastTerms.length > 0) {
+    const lastTerm = pastTerms[0];
+    presets.push({
+      label: `Last Term (${lastTerm.name})`,
+      getRange: () => ({ start: lastTerm.start_date, end: lastTerm.end_date }),
+    });
+  }
+
+  return presets;
+}
+
 interface DateRangeFilterProps {
   startDate: string;
   endDate: string;
   onStartDateChange: (date: string) => void;
   onEndDateChange: (date: string) => void;
   presets?: DatePreset[];
+  terms?: Term[];
 }
 
 export function DateRangeFilter({
@@ -70,7 +98,12 @@ export function DateRangeFilter({
   onStartDateChange,
   onEndDateChange,
   presets = DEFAULT_PRESETS,
+  terms,
 }: DateRangeFilterProps) {
+  const allPresets = useMemo(() => {
+    const termPresets = terms && terms.length > 0 ? buildTermPresets(terms) : [];
+    return [...termPresets, ...presets];
+  }, [terms, presets]);
   const today = format(new Date(), 'yyyy-MM-dd');
 
   // Internal working state — updates on every keystroke
@@ -138,7 +171,7 @@ export function DateRangeFilter({
             />
           </div>
           <div className="flex flex-wrap gap-2">
-            {presets.map((preset) => (
+            {allPresets.map((preset) => (
               <Button
                 key={preset.label}
                 variant="outline"
