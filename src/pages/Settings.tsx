@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { useSearchParams } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -70,7 +71,7 @@ function MobileTabBar({ initialTab, isOrgAdmin }: { initialTab: string; isOrgAdm
 
   if (!isMobile) {
     return (
-      <TabsList className="w-full overflow-x-auto flex-nowrap justify-start h-auto gap-1 scrollbar-hide">
+      <TabsList className="w-full overflow-x-auto flex-nowrap justify-start h-auto gap-1 scrollbar-hide" aria-label="Settings navigation">
         {tabs}
       </TabsList>
     );
@@ -78,9 +79,10 @@ function MobileTabBar({ initialTab, isOrgAdmin }: { initialTab: string; isOrgAdm
 
   return (
     <div className="relative">
-      <TabsList
+    <TabsList
         ref={scrollRef}
         className="w-full overflow-x-auto flex-nowrap justify-start h-auto gap-1 scrollbar-hide scroll-smooth snap-x snap-mandatory"
+        aria-label="Settings navigation"
       >
         {tabs}
       </TabsList>
@@ -128,6 +130,7 @@ function AvailabilityTabWithSelector({ isOrgAdmin }: { isOrgAdmin: boolean }) {
 }
 
 export default function Settings() {
+  usePageMeta('Settings — LessonLoop', 'Manage your account, organisation, and subscription settings');
   const [searchParams, setSearchParams] = useSearchParams();
   const { isOrgAdmin } = useOrg();
   const adminTabs = ['members', 'scheduling', 'audit', 'privacy', 'rate-cards', 'billing'];
