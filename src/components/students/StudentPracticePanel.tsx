@@ -143,6 +143,9 @@ export function StudentPracticePanel({ studentId, studentName }: StudentPractice
               <p className="mt-1 text-sm text-muted-foreground">
                 Create an assignment to set practice goals for {studentName.split(' ')[0]}.
               </p>
+              <p className="mt-1 text-xs text-muted-foreground/70 italic max-w-xs">
+                Tip: Students with clear practice goals practise 3× more consistently.
+              </p>
               <Button variant="outline" className="mt-4" onClick={() => setShowCreateModal(true)}>
                 Create Assignment
               </Button>
@@ -257,10 +260,10 @@ export function StudentPracticePanel({ studentId, studentName }: StudentPractice
         <CardContent>
           {logs.length === 0 ? (
             <div className="flex flex-col items-center py-8 text-center">
-              <Clock className="h-10 w-10 text-muted-foreground/40" />
-              <p className="mt-3 font-medium">No practice logged yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Practice sessions will appear here once the student logs them.
+              <Music className="h-12 w-12 text-primary/30 animate-bounce" style={{ animationDuration: '2s' }} />
+              <p className="mt-3 font-medium">Waiting for the first note! 🎶</p>
+              <p className="mt-1 text-sm text-muted-foreground max-w-xs">
+                Once {studentName.split(' ')[0]} starts practising, you'll see their progress here.
               </p>
             </div>
           ) : (
