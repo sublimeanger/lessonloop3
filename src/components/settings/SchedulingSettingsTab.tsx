@@ -58,6 +58,11 @@ function CancellationNoticeSetting() {
           Save
         </Button>
       </div>
+      {localHours === 0 && (
+        <p className="text-xs text-warning mt-1">
+          A 0-hour notice period means all cancellations qualify for a make-up credit.
+        </p>
+      )}
     </div>
   );
 }
