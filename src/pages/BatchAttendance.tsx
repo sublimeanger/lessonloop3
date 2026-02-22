@@ -104,7 +104,25 @@ export default function BatchAttendance() {
     });
   }, [lessons]);
 
-  const handleSave = () => saveMutation.mutate({ attendance, lessons });
+  const handleSave = () => {
+    // Convert absenceReasons Map<string, Map<string, AbsenceReasonValue>> to Map<string, Map<string, string>>
+    const reasonStrings = new Map<string, Map<string, string>>();
+    absenceReasons.forEach((studentMap, lessonId) => {
+      const sMap = new Map<string, string>();
+      studentMap.forEach((reason, studentId) => sMap.set(studentId, reason));
+      reasonStrings.set(lessonId, sMap);
+    });
+
+    // Convert notifiedDates Map<string, Map<string, Date>> to Map<string, Map<string, string>> (ISO)
+    const dateStrings = new Map<string, Map<string, string>>();
+    notifiedDates.forEach((studentMap, lessonId) => {
+      const sMap = new Map<string, string>();
+      studentMap.forEach((date, studentId) => sMap.set(studentId, date.toISOString()));
+      dateStrings.set(lessonId, sMap);
+    });
+
+    saveMutation.mutate({ attendance, lessons, absenceReasons: reasonStrings, notifiedDates: dateStrings });
+  };
 
   const totalStudents = lessons.reduce((sum, l) => sum + l.participants.length, 0);
   const markedCount = Array.from(attendance.values()).reduce((sum, m) => sum + m.size, 0);

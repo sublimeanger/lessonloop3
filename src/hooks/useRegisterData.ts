@@ -434,9 +434,11 @@ export function useSaveBatchAttendance(dateKey: string) {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ attendance, lessons }: {
+    mutationFn: async ({ attendance, lessons, absenceReasons, notifiedDates }: {
       attendance: Map<string, Map<string, string>>;
       lessons: BatchLessonRow[];
+      absenceReasons?: Map<string, Map<string, string>>;
+      notifiedDates?: Map<string, Map<string, string>>;
     }) => {
       if (!currentOrg || !user) throw new Error('No organisation or user');
 
@@ -446,16 +448,22 @@ export function useSaveBatchAttendance(dateKey: string) {
         attendance_status: string;
         org_id: string;
         recorded_by: string;
+        absence_reason_category?: string | null;
+        absence_notified_at?: string | null;
       }[] = [];
 
       attendance.forEach((studentMap, lessonId) => {
         studentMap.forEach((status, studentId) => {
+          const reason = absenceReasons?.get(lessonId)?.get(studentId) || null;
+          const notified = notifiedDates?.get(lessonId)?.get(studentId) || null;
           upserts.push({
             lesson_id: lessonId,
             student_id: studentId,
             attendance_status: status as any,
             org_id: currentOrg.id,
             recorded_by: user.id,
+            absence_reason_category: reason,
+            absence_notified_at: notified,
           });
         });
       });
