@@ -360,6 +360,12 @@ export function useLogPractice() {
       notes?: string;
     }) => {
       if (!currentOrg?.id) throw new Error('No organisation context');
+      if (!data.duration_minutes || data.duration_minutes < 1) {
+        throw new Error('Practice must be at least 1 minute');
+      }
+      if (data.duration_minutes > 720) {
+        throw new Error('Practice cannot exceed 12 hours');
+      }
       const { error } = await supabase.from('practice_logs').insert({
         org_id: currentOrg.id,
         student_id: data.student_id,
