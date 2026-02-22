@@ -200,7 +200,7 @@ export function BulkComposeModal({ open, onOpenChange }: BulkComposeModalProps) 
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto">
           {/* Recipient Filters */}
           <RecipientFilter
             filters={filters}

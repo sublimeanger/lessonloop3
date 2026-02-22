@@ -177,7 +177,7 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
             </div>
 
             {/* Reply section */}
-            <div className="p-4 bg-background border-t">
+            <div className="p-3 sm:p-4 bg-background border-t">
               {replyingTo === thread.thread_id ? (
                 <div className="space-y-3">
                   <Textarea

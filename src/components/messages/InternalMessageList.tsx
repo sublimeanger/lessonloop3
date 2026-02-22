@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { Mail, MailOpen, User, Reply as ReplyIcon } from 'lucide-react';
+import { Mail, MailOpen, User, Reply as ReplyIcon, MessageSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -72,11 +72,12 @@ export function InternalMessageList({ view }: InternalMessageListProps) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-          <Mail className="h-12 w-12 text-muted-foreground/50 mb-4" />
-          <p className="text-muted-foreground">
+          <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-4" />
+          <h3 className="font-medium text-lg mb-1">No internal messages yet</h3>
+          <p className="text-sm text-muted-foreground max-w-sm">
             {view === 'inbox' 
-              ? 'No messages received yet.'
-              : 'No messages sent yet.'}
+              ? 'Internal messages from your team will appear here.'
+              : 'Send a message to a team member to get started.'}
           </p>
         </CardContent>
       </Card>
