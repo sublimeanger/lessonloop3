@@ -203,6 +203,21 @@ export default function Locations() {
       return;
     }
     
+    // Check for duplicate name within the org
+    let dupQuery = supabase
+      .from('locations')
+      .select('id')
+      .eq('org_id', currentOrg.id)
+      .ilike('name', locName.trim());
+    if (editingLocation) {
+      dupQuery = dupQuery.neq('id', editingLocation.id);
+    }
+    const { data: duplicates } = await dupQuery;
+    if (duplicates && duplicates.length > 0) {
+      toast({ title: 'Name already in use', description: 'A location with this name already exists.', variant: 'destructive' });
+      return;
+    }
+
     setIsLocationSaving(true);
     const data = {
       name: locName.trim(),
