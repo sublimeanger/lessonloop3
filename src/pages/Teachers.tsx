@@ -333,6 +333,29 @@ export default function Teachers() {
         }
       }
 
+      // Clean up student-teacher assignments
+      const { error: staError } = await supabase
+        .from('student_teacher_assignments')
+        .delete()
+        .eq('teacher_id', teacher.id)
+        .eq('org_id', currentOrg.id);
+      if (staError) console.error('Failed to clean up student-teacher assignments:', staError);
+
+      // Null out practice assignments for this teacher
+      const { error: paError } = await supabase
+        .from('practice_assignments')
+        .update({ teacher_id: null })
+        .eq('teacher_id', teacher.id);
+      if (paError) console.error('Failed to clean up practice assignments:', paError);
+
+      // Clear default_teacher_id on students
+      const { error: sdError } = await supabase
+        .from('students')
+        .update({ default_teacher_id: null })
+        .eq('default_teacher_id', teacher.id)
+        .eq('org_id', currentOrg.id);
+      if (sdError) console.error('Failed to clear default teacher on students:', sdError);
+
       await deleteTeacher.mutateAsync(teacher.id);
 
       const parts: string[] = [`${teacher.display_name} has been removed.`];
