@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { usePracticeAssignments, usePracticeLogs, useWeeklyProgress, useAddPracticeFeedback } from '@/hooks/usePractice';
 import { usePracticeStreak } from '@/hooks/usePracticeStreaks';
 import { CreateAssignmentModal } from '@/components/practice/CreateAssignmentModal';
+import { PracticeTrendsChart } from '@/components/practice/PracticeTrendsChart';
 import { StreakDisplay } from '@/components/practice/StreakBadge';
 import { Plus, Music, Target, Clock, CheckCircle, MessageSquare, Loader2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -110,6 +111,14 @@ export function StudentPracticePanel({ studentId, studentName }: StudentPractice
           </CardContent>
         </Card>
       )}
+
+      {/* Practice Trends */}
+      <PracticeTrendsChart
+        studentId={studentId}
+        targetMinutesPerWeek={
+          progress ? progress.targetMinutes : undefined
+        }
+      />
 
       {/* Active Assignments */}
       <Card>
