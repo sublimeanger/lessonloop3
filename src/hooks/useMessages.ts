@@ -268,7 +268,6 @@ export function useSendMessage() {
       const { error } = await supabase.functions.invoke('send-message', {
         body: {
           org_id: currentOrg.id,
-          sender_user_id: user.id,
           ...data,
         },
       });
