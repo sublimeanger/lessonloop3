@@ -21,6 +21,7 @@ function toOrgLocalIso(utcIso: string, timezone: string): string {
 }
 
 const LESSONS_PAGE_SIZE = 500;
+const LESSONS_PAGE_SIZE_FILTERED = 1000;
 
 async function fetchCalendarLessons(
   orgId: string,
@@ -29,6 +30,9 @@ async function fetchCalendarLessons(
   endIso: string,
   filters: CalendarFilters
 ): Promise<{ lessons: LessonWithDetails[]; isCapReached: boolean }> {
+  const hasFilters = !!(filters.teacher_id || filters.location_id || filters.room_id);
+  const pageSize = hasFilters ? LESSONS_PAGE_SIZE_FILTERED : LESSONS_PAGE_SIZE;
+
   let query = supabase
     .from('lessons')
     .select(`
@@ -42,7 +46,7 @@ async function fetchCalendarLessons(
     .gte('start_at', startIso)
     .lte('start_at', endIso)
     .order('start_at', { ascending: true })
-    .limit(LESSONS_PAGE_SIZE);
+    .limit(pageSize);
 
   if (filters.teacher_id) query = query.eq('teacher_id', filters.teacher_id);
   if (filters.location_id) query = query.eq('location_id', filters.location_id);
@@ -55,7 +59,7 @@ async function fetchCalendarLessons(
     return { lessons: [], isCapReached: false };
   }
 
-  const isCapReached = lessonsData.length >= LESSONS_PAGE_SIZE;
+  const isCapReached = lessonsData.length >= pageSize;
 
   if (lessonsData.length === 0) {
     return { lessons: [], isCapReached: false };

@@ -2,6 +2,7 @@ import { useMemo, useCallback } from 'react';
 import { format, addWeeks, subWeeks } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { MobileDayView } from './MobileDayView';
 import { MobileLessonSheet } from './MobileLessonSheet';
 import { WeekContextStrip } from './WeekContextStrip';
@@ -9,7 +10,7 @@ import { CalendarFiltersBar } from './CalendarFiltersBar';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { CalendarSkeleton } from '@/components/shared/LoadingState';
 import { getTeacherColour, TeacherWithColour } from './teacherColours';
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import type { CalendarFilters, LessonWithDetails } from './types';
 import type { useCalendarActions } from '@/hooks/useCalendarActions';
 
@@ -26,6 +27,7 @@ interface CalendarMobileLayoutProps {
   lessons: LessonWithDetails[];
   lessonsByDay: Map<string, LessonWithDetails[]>;
   isLoading: boolean;
+  isCapReached?: boolean;
   isParent: boolean;
   isOnline: boolean;
   filters: CalendarFilters;
@@ -45,6 +47,7 @@ export function CalendarMobileLayout({
   lessons,
   lessonsByDay,
   isLoading,
+  isCapReached,
   isParent,
   isOnline,
   filters,
@@ -89,6 +92,13 @@ export function CalendarMobileLayout({
           <CalendarFiltersBar filters={filters} onChange={setFilters} teachers={teachers} locations={locations} rooms={rooms} teachersWithColours={teachersWithColours} lessons={lessons} currentDate={currentDate} />
         </div>
       </div>
+
+      {isCapReached && (
+        <Alert variant="default" className="mb-2 border-warning/50 bg-warning/10">
+          <AlertTriangle className="h-4 w-4 text-warning" />
+          <AlertDescription className="text-xs">Showing maximum lessons. Use filters to narrow results.</AlertDescription>
+        </Alert>
+      )}
 
       <SectionErrorBoundary name="Calendar">
         {isLoading ? <CalendarSkeleton /> : (
