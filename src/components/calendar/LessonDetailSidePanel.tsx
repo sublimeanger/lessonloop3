@@ -1,11 +1,16 @@
+import { useState, useCallback } from 'react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
-import { LessonWithDetails } from './types';
+import { LessonWithDetails, AttendanceStatus } from './types';
 import { TeacherColourEntry } from './teacherColours';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { X, Clock, User, MapPin, Repeat, Users, Edit2, Check, UserX, Ban } from 'lucide-react';
+import { X, Clock, User, MapPin, Repeat, Users, Edit2, Check, UserX, Ban, AlertCircle, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOrg } from '@/contexts/OrgContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface LessonDetailSidePanelProps {
   lesson: LessonWithDetails | null;
@@ -13,6 +18,7 @@ interface LessonDetailSidePanelProps {
   onClose: () => void;
   onEdit: (lesson: LessonWithDetails) => void;
   onMarkAttendance: (lesson: LessonWithDetails, status: string) => void;
+  onUpdated: () => void;
   teacherColour: TeacherColourEntry;
 }
 
@@ -22,14 +28,57 @@ const STATUS_STYLES: Record<string, { className: string; label: string }> = {
   cancelled: { className: 'bg-muted text-muted-foreground', label: 'Cancelled' },
 };
 
+const ATTENDANCE_OPTIONS: { value: AttendanceStatus; label: string; icon: React.ReactNode; color: string }[] = [
+  { value: 'present', label: 'Present', icon: <Check className="h-3.5 w-3.5" />, color: 'bg-success text-success-foreground' },
+  { value: 'absent', label: 'Absent', icon: <X className="h-3.5 w-3.5" />, color: 'bg-destructive text-destructive-foreground' },
+  { value: 'late', label: 'Late', icon: <Clock className="h-3.5 w-3.5" />, color: 'bg-warning text-warning-foreground' },
+  { value: 'cancelled_by_teacher', label: 'Teacher', icon: <AlertCircle className="h-3.5 w-3.5" />, color: 'bg-muted text-muted-foreground' },
+  { value: 'cancelled_by_student', label: 'Student', icon: <AlertCircle className="h-3.5 w-3.5" />, color: 'bg-muted text-muted-foreground' },
+];
+
 export function LessonDetailSidePanel({
   lesson,
   open,
   onClose,
   onEdit,
   onMarkAttendance,
+  onUpdated,
   teacherColour,
 }: LessonDetailSidePanelProps) {
+  const { currentOrg } = useOrg();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [savingAttendance, setSavingAttendance] = useState<string | null>(null);
+
+  const handleAttendanceChange = useCallback(async (studentId: string, status: AttendanceStatus) => {
+    if (!currentOrg || !user || !lesson) return;
+    setSavingAttendance(studentId);
+    try {
+      const existing = lesson.attendance?.find(a => a.student_id === studentId);
+      if (existing) {
+        await supabase
+          .from('attendance_records')
+          .update({ attendance_status: status, recorded_by: user.id, recorded_at: new Date().toISOString() })
+          .eq('lesson_id', lesson.id)
+          .eq('student_id', studentId);
+      } else {
+        await supabase
+          .from('attendance_records')
+          .insert({ org_id: currentOrg.id, lesson_id: lesson.id, student_id: studentId, attendance_status: status, recorded_by: user.id });
+      }
+      onUpdated();
+      toast({ title: 'Attendance recorded' });
+    } catch (error: any) {
+      toast({ title: 'Error recording attendance', description: error.message, variant: 'destructive' });
+    } finally {
+      setSavingAttendance(null);
+    }
+  }, [currentOrg, user, lesson, onUpdated, toast]);
+
+  const getStudentAttendance = useCallback((studentId: string): AttendanceStatus | null => {
+    return lesson?.attendance?.find(a => a.student_id === studentId)?.attendance_status || null;
+  }, [lesson]);
+
   if (!lesson && !open) return null;
 
   const startTime = lesson ? parseISO(lesson.start_at) : new Date();
@@ -41,19 +90,10 @@ export function LessonDetailSidePanel({
   ) ?? [];
 
   const primaryStudentName = studentNames[0] || lesson?.title || 'Untitled Lesson';
-
   const statusInfo = lesson ? STATUS_STYLES[lesson.status] || STATUS_STYLES.scheduled : STATUS_STYLES.scheduled;
-
   const teacherName = lesson?.teacher?.full_name || lesson?.teacher?.email || 'Unknown';
-  const teacherInitials = teacherName
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join('');
-
-  // Recurrence display
+  const teacherInitials = teacherName.split(' ').slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
   const recurrenceLabel = lesson?.recurrence_id ? 'Recurring lesson' : null;
-
   const isCancelled = lesson?.status === 'cancelled';
 
   return (
@@ -71,9 +111,7 @@ export function LessonDetailSidePanel({
           <div className="space-y-1.5">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <h2 className="text-lg font-bold text-foreground truncate">
-                  {primaryStudentName}
-                </h2>
+                <h2 className="text-lg font-bold text-foreground truncate">{primaryStudentName}</h2>
                 <p className="text-sm text-muted-foreground truncate">
                   {lesson.title !== primaryStudentName ? lesson.title : ''}
                 </p>
@@ -86,29 +124,23 @@ export function LessonDetailSidePanel({
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <Badge className={cn('text-[11px]', statusInfo.className)}>
-              {statusInfo.label}
-            </Badge>
+            <Badge className={cn('text-[11px]', statusInfo.className)}>{statusInfo.label}</Badge>
           </div>
 
           <Separator />
 
           {/* Detail rows */}
           <div className="space-y-3">
-            {/* Time */}
             <div className="flex items-center gap-3">
               <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="flex items-center gap-2 text-sm">
                 <span className="tabular-nums text-foreground">
                   {format(startTime, 'HH:mm')} – {format(endTime, 'HH:mm')}
                 </span>
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  {duration} min
-                </Badge>
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{duration} min</Badge>
               </div>
             </div>
 
-            {/* Teacher */}
             <div className="flex items-center gap-3">
               <User className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="flex items-center gap-2 text-sm">
@@ -122,7 +154,6 @@ export function LessonDetailSidePanel({
               </div>
             </div>
 
-            {/* Location */}
             {lesson.location && (
               <div className="flex items-center gap-3">
                 <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -133,23 +164,10 @@ export function LessonDetailSidePanel({
               </div>
             )}
 
-            {/* Recurrence */}
             {recurrenceLabel && (
               <div className="flex items-center gap-3">
                 <Repeat className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className="text-sm text-muted-foreground">{recurrenceLabel}</span>
-              </div>
-            )}
-
-            {/* Participants (group lessons) */}
-            {studentNames.length > 1 && (
-              <div className="flex items-start gap-3">
-                <Users className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                <div className="text-sm space-y-0.5">
-                  {studentNames.map((name, i) => (
-                    <div key={i} className="text-foreground">{name}</div>
-                  ))}
-                </div>
               </div>
             )}
           </div>
@@ -175,41 +193,60 @@ export function LessonDetailSidePanel({
             </>
           )}
 
+          {/* Inline Attendance */}
+          {!isCancelled && lesson.participants && lesson.participants.length > 0 && (
+            <>
+              <Separator />
+              <div>
+                <h3 className="font-semibold mb-2 text-sm">Attendance</h3>
+                <div className="space-y-3">
+                  {lesson.participants.map((p) => {
+                    const currentStatus = getStudentAttendance(p.student.id);
+                    return (
+                      <div key={p.id} className="space-y-1.5">
+                        <div className="font-medium text-sm text-foreground">
+                          {p.student.first_name} {p.student.last_name}
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          {ATTENDANCE_OPTIONS.map((option) => (
+                            <Button
+                              key={option.value}
+                              size="sm"
+                              variant={currentStatus === option.value ? 'default' : 'outline'}
+                              className={cn(
+                                'h-7 text-[10px] px-1.5 gap-0.5',
+                                currentStatus === option.value ? option.color : ''
+                              )}
+                              onClick={() => handleAttendanceChange(p.student.id, option.value)}
+                              disabled={savingAttendance === p.student.id}
+                            >
+                              {savingAttendance === p.student.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <>
+                                  {option.icon}
+                                  <span className="truncate">{option.label}</span>
+                                </>
+                              )}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+
           <Separator />
 
           {/* Quick actions */}
           <div className="space-y-2">
-            <Button
-              onClick={() => onEdit(lesson)}
-              className="w-full gap-2"
-              disabled={isCancelled}
-            >
+            <Button onClick={() => onEdit(lesson)} className="w-full gap-2" disabled={isCancelled}>
               <Edit2 className="h-4 w-4" />
               Edit Lesson
             </Button>
-
-            {!isCancelled && (
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => onMarkAttendance(lesson, 'completed')}
-                >
-                  <Check className="h-3.5 w-3.5" />
-                  Complete
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => onMarkAttendance(lesson, 'absent')}
-                >
-                  <UserX className="h-3.5 w-3.5" />
-                  Absent
-                </Button>
-              </div>
-            )}
 
             {!isCancelled && (
               <Button
