@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { useDashboardStats } from '@/hooks/useReports';
 import { useTeacherDashboardStats } from '@/hooks/useTeacherDashboard';
+import { useUrgentActions } from '@/hooks/useUrgentActions';
 import { OnboardingChecklist } from '@/components/shared/OnboardingChecklist';
 import { GridSkeleton } from '@/components/shared/LoadingState';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
@@ -105,6 +106,8 @@ export default function Dashboard() {
 function SoloTeacherDashboard({ firstName }: { firstName: string }) {
   const { currentOrg } = useOrg();
   const { data: stats, isLoading } = useDashboardStats();
+  const { actions } = useUrgentActions();
+  const needsAttendance = actions.find(a => a.type === 'unmarked_lessons')?.count ?? 0;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GB', {
@@ -128,6 +131,7 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
             <DashboardHero
               firstName={firstName}
               todayLessons={stats?.todayLessons}
+              needsAttendance={needsAttendance}
               outstandingAmount={stats?.outstandingAmount}
               currencyCode={currentOrg?.currency_code}
               hasStudents={(stats?.activeStudents ?? 0) > 0}
@@ -203,6 +207,8 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
 function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?: string }) {
   const { currentOrg } = useOrg();
   const { data: stats, isLoading } = useDashboardStats();
+  const { actions } = useUrgentActions();
+  const needsAttendance = actions.find(a => a.type === 'unmarked_lessons')?.count ?? 0;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GB', {
@@ -226,6 +232,7 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
             <DashboardHero
               firstName={firstName}
               todayLessons={stats?.todayLessons}
+              needsAttendance={needsAttendance}
               outstandingAmount={stats?.outstandingAmount}
               currencyCode={currentOrg?.currency_code}
               hasStudents={(stats?.activeStudents ?? 0) > 0}
@@ -313,6 +320,8 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
 
 function TeacherDashboard({ firstName }: { firstName: string }) {
   const { data: stats, isLoading } = useTeacherDashboardStats();
+  const { actions } = useUrgentActions();
+  const needsAttendance = actions.find(a => a.type === 'unmarked_lessons')?.count ?? 0;
   
 
   return (
@@ -328,6 +337,7 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
             <DashboardHero
               firstName={firstName}
               todayLessons={stats?.todayLessons}
+              needsAttendance={needsAttendance}
               hasStudents={(stats?.myStudentsCount ?? 0) > 0}
             />
           </SectionErrorBoundary>
