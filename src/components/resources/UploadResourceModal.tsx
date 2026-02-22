@@ -11,10 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, File, X, Loader2 } from 'lucide-react';
-import { useUploadResource } from '@/hooks/useResources';
+import { Upload, File, X, Loader2, HardDrive } from 'lucide-react';
+import { useUploadResource, useStorageUsage } from '@/hooks/useResources';
 import { MAX_FILE_SIZE, ALLOWED_TYPES } from '@/lib/resource-validation';
 import { formatFileSize } from '@/lib/fileUtils';
+import { formatStorageSize } from '@/lib/pricing-config';
+import { Progress } from '@/components/ui/progress';
 
 interface UploadResourceModalProps {
   open: boolean;
@@ -31,6 +33,8 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadMutation = useUploadResource();
+  const { totalBytes, limitBytes, percentUsed, isLoading: quotaLoading } = useStorageUsage();
+  const quotaExceeded = file ? totalBytes + file.size > limitBytes : totalBytes >= limitBytes;
 
   const handleFileSelect = (selectedFile: File) => {
     setError(null);
@@ -119,6 +123,25 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Storage quota bar */}
+          {!quotaLoading && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <HardDrive className="h-3 w-3" />
+                  Using {formatStorageSize(totalBytes)} of {formatStorageSize(limitBytes)}
+                </span>
+                <span>{percentUsed}%</span>
+              </div>
+              <Progress value={percentUsed} className="h-1.5" />
+              {quotaExceeded && (
+                <p className="text-xs text-destructive">
+                  Storage quota exceeded. Delete unused resources or upgrade your plan.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Drop zone */}
           <div
             className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
@@ -234,7 +257,7 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
             </Button>
             <Button
               type="submit"
-              disabled={!file || !title.trim() || uploadMutation.isPending}
+              disabled={!file || !title.trim() || uploadMutation.isPending || quotaExceeded}
             >
               {uploadMutation.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

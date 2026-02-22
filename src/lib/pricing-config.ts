@@ -205,3 +205,31 @@ export function formatLimit(value: number): string {
 
 // Plan order for display
 export const PLAN_ORDER: PlanKey[] = ['teacher', 'studio', 'agency'];
+
+/**
+ * Storage quota per plan (in bytes).
+ * Maps DB enum values to storage limits.
+ * 9999 * GB = effectively unlimited.
+ */
+const GB = 1024 * 1024 * 1024;
+const MB = 1024 * 1024;
+
+export const STORAGE_LIMITS: Record<string, number> = {
+  trial: 100 * MB,         // 100 MB
+  solo_teacher: 500 * MB,  // 500 MB
+  teacher: 500 * MB,       // alias
+  academy: 2 * GB,         // 2 GB
+  studio: 2 * GB,          // alias
+  agency: 10 * GB,         // 10 GB
+  custom: 9999 * GB,       // unlimited
+};
+
+export function getStorageLimit(plan: string | undefined): number {
+  if (!plan) return STORAGE_LIMITS.trial;
+  return STORAGE_LIMITS[plan] ?? STORAGE_LIMITS.trial;
+}
+
+export function formatStorageSize(bytes: number): string {
+  if (bytes >= GB) return `${(bytes / GB).toFixed(1).replace(/\.0$/, '')} GB`;
+  return `${Math.round(bytes / MB)} MB`;
+}
