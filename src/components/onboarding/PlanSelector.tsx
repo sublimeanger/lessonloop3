@@ -85,7 +85,7 @@ export function PlanSelector({ selectedPlan, onSelectPlan, recommendedPlan }: Pl
       </motion.div>
 
       {/* Plan cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 md:grid md:grid-cols-3 md:overflow-visible md:snap-none md:pb-0 -mx-2 px-2 md:mx-0 md:px-0">
         {PLANS.map((plan, index) => {
           const Icon = plan.icon;
           const isSelected = selectedDisplayPlan === plan.value;
@@ -100,7 +100,8 @@ export function PlanSelector({ selectedPlan, onSelectPlan, recommendedPlan }: Pl
               type="button"
               onClick={() => onSelectPlan(plan.dbValue)}
               className={cn(
-                'relative flex flex-col rounded-xl border-2 p-5 text-left transition-all duration-200',
+                'relative flex flex-col rounded-xl border-2 p-4 md:p-5 text-left transition-all duration-200',
+                'min-w-[260px] snap-center shrink-0 md:min-w-0 md:shrink',
                 isSelected
                   ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10'
                   : 'border-border hover:border-primary/50 hover:bg-muted/30',
@@ -129,7 +130,7 @@ export function PlanSelector({ selectedPlan, onSelectPlan, recommendedPlan }: Pl
               </div>
 
               {/* Plan header */}
-              <div className="mb-4 flex items-center gap-3">
+              <div className="mb-3 md:mb-4 flex items-center gap-3">
                 <div
                   className={cn(
                     'rounded-lg p-2',
@@ -145,13 +146,13 @@ export function PlanSelector({ selectedPlan, onSelectPlan, recommendedPlan }: Pl
               </div>
 
               {/* Price */}
-              <div className="mb-4">
+              <div className="mb-3 md:mb-4">
                 <span className="text-3xl font-bold">{plan.price}</span>
                 <span className="text-muted-foreground">{plan.priceNote}</span>
               </div>
 
               {/* Features */}
-              <ul className="space-y-2">
+              <ul className="space-y-1.5 md:space-y-2">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-2 text-sm">
                     <Check
@@ -167,6 +168,19 @@ export function PlanSelector({ selectedPlan, onSelectPlan, recommendedPlan }: Pl
             </motion.button>
           );
         })}
+      </div>
+
+      {/* Scroll hint dots on mobile */}
+      <div className="flex justify-center gap-1.5 md:hidden">
+        {PLANS.map((plan) => (
+          <div
+            key={plan.value}
+            className={cn(
+              'h-1.5 w-1.5 rounded-full transition-colors',
+              selectedDisplayPlan === plan.value ? 'bg-primary' : 'bg-muted-foreground/30'
+            )}
+          />
+        ))}
       </div>
 
       {/* Plan comparison link */}
