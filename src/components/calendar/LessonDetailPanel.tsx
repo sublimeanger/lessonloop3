@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
-import { format, parseISO, differenceInMinutes, differenceInHours } from 'date-fns';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { format, parseISO, differenceInMinutes, differenceInHours, eachWeekOfInterval, addWeeks, isAfter, isBefore, getDay } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
 import { LessonWithDetails, AttendanceStatus } from './types';
 import { RecurringActionDialog, RecurringActionMode } from './RecurringActionDialog';
 import { useOrg } from '@/contexts/OrgContext';
@@ -17,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban, Gift, AlertTriangle, CalendarClock, StopCircle } from 'lucide-react';
+import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban, Gift, AlertTriangle, CalendarClock, StopCircle, Repeat } from 'lucide-react';
 
 interface LessonDetailPanelProps {
   lesson: LessonWithDetails | null;
@@ -76,6 +77,50 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancellationReason, setCancellationReason] = useState('');
   const [cancelMode, setCancelMode] = useState<RecurringActionMode>('this_only');
+
+  // Fetch recurrence rule details
+  const { data: recurrenceRule } = useQuery({
+    queryKey: ['recurrence-rule', lesson?.recurrence_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('recurrence_rules')
+        .select('days_of_week, end_date, interval_weeks, start_date')
+        .eq('id', lesson!.recurrence_id!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!lesson?.recurrence_id,
+    staleTime: 5 * 60_000,
+  });
+
+  const recurrenceDescription = useMemo(() => {
+    if (!recurrenceRule) return null;
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const days = (recurrenceRule.days_of_week || []).sort().map(d => dayNames[d]).join(', ');
+    const freq = recurrenceRule.interval_weeks === 1 ? 'Weekly' : `Every ${recurrenceRule.interval_weeks} weeks`;
+    const endDate = recurrenceRule.end_date ? format(parseISO(recurrenceRule.end_date), 'd MMM yyyy') : null;
+
+    // Count remaining lessons
+    let remaining: number | null = null;
+    if (recurrenceRule.end_date && recurrenceRule.days_of_week?.length) {
+      const now = new Date();
+      const end = parseISO(recurrenceRule.end_date);
+      const daysSet = new Set(recurrenceRule.days_of_week as number[]);
+      let count = 0;
+      let current = now;
+      while (isBefore(current, end)) {
+        if (daysSet.has(getDay(current))) count++;
+        current = new Date(current.getTime() + 86400000);
+      }
+      remaining = Math.max(0, Math.ceil(count / (recurrenceRule.interval_weeks || 1)));
+    }
+
+    let desc = `${freq} on ${days}`;
+    if (endDate) desc += ` · Until ${endDate}`;
+    if (remaining !== null) desc += ` · ${remaining} remaining`;
+    return desc;
+  }, [recurrenceRule]);
 
   if (!lesson) return null;
 
@@ -396,9 +441,17 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
             </div>
           )}
 
+          {/* Recurrence info */}
+          {isRecurring && recurrenceDescription && (
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <Repeat className="h-4 w-4 flex-shrink-0" />
+              <span className="text-sm text-foreground">{recurrenceDescription}</span>
+            </div>
+          )}
+
           {/* Students */}
           <div className="flex items-start gap-3 text-muted-foreground">
-            <Users className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <Users className="h-4 mt-0.5 flex-shrink-0" />
             <div className="flex-1 text-sm">
               {lesson.participants?.map((p, i) => (
                 <span key={p.id} className="text-foreground">
