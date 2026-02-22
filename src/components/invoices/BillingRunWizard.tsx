@@ -77,32 +77,32 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
   };
 
   // Group lessons by payer for preview
-  const payerGroups = new Map<string, { name: string; lessonCount: number; totalMinor: number }>();
+  const payerGroups = new Map<string, { name: string; lessonCount: number; totalMinor: number; addedLessonIds: Set<string> }>();
 
   unbilledLessons.forEach((lesson: any) => {
     const lessonRate = getLessonRate(lesson);
-    
-    lesson.lesson_participants?.forEach((lp: any) => {
-      const student = lp.student;
+    const participants = lesson.lesson_participants || [];
+
+    participants.forEach((p: any) => {
+      const student = p.student;
       if (!student) return;
 
-      const primaryGuardian = student.student_guardians?.find(
-        (sg: any) => sg.is_primary_payer
-      )?.guardian;
+      const guardianLinks = student.student_guardians || [];
+      const primaryGuardianLink = guardianLinks.find((sg: any) => sg.is_primary_payer);
+      const primaryGuardian = primaryGuardianLink?.guardian;
 
       const payerName = primaryGuardian
         ? primaryGuardian.full_name
-        : student.email
-        ? `${student.first_name} ${student.last_name}`
-        : null;
+        : `${student.first_name} ${student.last_name}`;
 
-      if (payerName) {
-        const payerId = primaryGuardian ? primaryGuardian.id : student.id;
-        const key = primaryGuardian ? `guardian-${payerId}` : `student-${payerId}`;
-        if (!payerGroups.has(key)) {
-          payerGroups.set(key, { name: payerName, lessonCount: 0, totalMinor: 0 });
-        }
-        const group = payerGroups.get(key)!;
+      const payerId = primaryGuardian ? primaryGuardian.id : student.id;
+      const key = primaryGuardian ? `guardian-${payerId}` : `student-${payerId}`;
+      if (!payerGroups.has(key)) {
+        payerGroups.set(key, { name: payerName, lessonCount: 0, totalMinor: 0, addedLessonIds: new Set() });
+      }
+      const group = payerGroups.get(key)!;
+      if (!group.addedLessonIds.has(lesson.id)) {
+        group.addedLessonIds.add(lesson.id);
         group.lessonCount++;
         group.totalMinor += lessonRate;
       }
