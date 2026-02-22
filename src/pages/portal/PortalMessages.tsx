@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { PortalErrorState } from '@/components/portal/PortalErrorState';
 import { PortalLayout } from '@/components/layout/PortalLayout';
@@ -18,12 +19,12 @@ import { sanitizeHtml } from '@/lib/sanitize';
 export default function PortalMessages() {
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('inbox');
+  const queryClient = useQueryClient();
 
   const { data: requests, isLoading: requestsLoading, isError: requestsError, refetch: refetchRequests } = useMessageRequests();
   const { data: messages, isLoading: messagesLoading, isError: messagesError, hasMore, loadMore, isFetchingMore } = useParentMessages();
   const markAsRead = useMarkMessagesAsRead();
 
-  // Mark messages as read when inbox tab is viewed
   // Track which batch of unread IDs we've already marked, so new arrivals trigger again
   const lastMarkedKey = useRef('');
 
@@ -39,10 +40,34 @@ export default function PortalMessages() {
     const key = unreadIds.join(',');
     if (key === lastMarkedKey.current) return;
 
+    // Optimistic UI: immediately mark messages as read in the cache
+    const now = new Date().toISOString();
+    queryClient.setQueriesData(
+      { queryKey: ['parent-messages'], exact: false },
+      (old: any) => {
+        if (!old?.pages) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            data: page.data.map((msg: any) =>
+              unreadIds.includes(msg.id) ? { ...msg, read_at: now } : msg
+            ),
+          })),
+        };
+      }
+    );
+
+    // Also optimistically clear the unread badge count
+    queryClient.setQueriesData(
+      { queryKey: ['unread-messages-count'], exact: false },
+      () => 0
+    );
+
     const timer = setTimeout(() => {
       lastMarkedKey.current = key;
       markAsRead.mutate(unreadIds);
-    }, 3000);
+    }, 1000);
     return () => clearTimeout(timer);
   }, [activeTab, messages]);
 
