@@ -4,6 +4,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { validateResourceFile, sanitizeFileName } from '@/lib/resource-validation';
+import { getStorageLimit } from '@/lib/pricing-config';
 
 export interface Resource {
   id: string;
@@ -30,6 +31,32 @@ export interface ResourceShare {
 
 export interface ResourceWithShares extends Resource {
   resource_shares: ResourceShare[];
+}
+
+export function useStorageUsage() {
+  const { currentOrg } = useOrg();
+  const limit = getStorageLimit(currentOrg?.subscription_plan);
+
+  const query = useQuery({
+    queryKey: ['storage-usage', currentOrg?.id],
+    queryFn: async () => {
+      if (!currentOrg?.id) return 0;
+      const { data, error } = await supabase
+        .from('resources')
+        .select('file_size_bytes')
+        .eq('org_id', currentOrg.id);
+      if (error) throw error;
+      return (data || []).reduce((sum, r) => sum + (r.file_size_bytes || 0), 0);
+    },
+    enabled: !!currentOrg?.id,
+  });
+
+  return {
+    totalBytes: query.data ?? 0,
+    limitBytes: limit,
+    isLoading: query.isLoading,
+    percentUsed: query.data != null ? Math.min(100, Math.round((query.data / limit) * 100)) : 0,
+  };
 }
 
 export function useResources() {
@@ -79,6 +106,17 @@ export function useUploadResource() {
       // Validate file type and size before upload
       validateResourceFile(file);
 
+      // Check storage quota
+      const { data: existing } = await supabase
+        .from('resources')
+        .select('file_size_bytes')
+        .eq('org_id', currentOrg.id);
+      const currentUsage = (existing || []).reduce((sum, r) => sum + (r.file_size_bytes || 0), 0);
+      const limit = getStorageLimit(currentOrg.subscription_plan);
+      if (currentUsage + file.size > limit) {
+        throw new Error('Storage quota exceeded. Please upgrade your plan or delete unused resources.');
+      }
+
       // Upload file to storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -116,6 +154,7 @@ export function useUploadResource() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['resources'] });
+      queryClient.invalidateQueries({ queryKey: ['storage-usage'] });
       toast({
         title: 'Resource uploaded',
         description: 'Your resource has been uploaded successfully.',
@@ -151,6 +190,7 @@ export function useDeleteResource() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['resources'] });
+      queryClient.invalidateQueries({ queryKey: ['storage-usage'] });
       toast({
         title: 'Resource deleted',
         description: 'The resource has been removed.',
