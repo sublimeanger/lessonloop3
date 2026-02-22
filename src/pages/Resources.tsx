@@ -1,9 +1,11 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, FolderOpen, Loader2, CheckSquare, Trash2, X, ArrowUpDown } from 'lucide-react';
+import { Plus, Search, FolderOpen, Loader2, CheckSquare, Trash2, X, ArrowUpDown, LayoutGrid, List } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { safeGetItem, safeSetItem } from '@/lib/storage';
 import { useResources, useDeleteResource, ResourceWithShares } from '@/hooks/useResources';
 import { ResourceCard } from '@/components/resources/ResourceCard';
 import { UploadResourceModal } from '@/components/resources/UploadResourceModal';
@@ -38,6 +40,23 @@ export default function Resources() {
   const [fileTypeFilter, setFileTypeFilter] = useState('all');
   const [sharedOnly, setSharedOnly] = useState(false);
   const [sortNewest, setSortNewest] = useState(true);
+  const isMobile = useIsMobile();
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+    const saved = safeGetItem('resources-view-mode');
+    return saved === 'list' || saved === 'grid' ? saved : 'grid';
+  });
+
+  // Default to list on mobile, grid on desktop — only on initial mount
+  useEffect(() => {
+    if (isMobile && !safeGetItem('resources-view-mode')) {
+      setViewMode('list');
+    }
+  }, [isMobile]);
+
+  const handleViewChange = (mode: 'grid' | 'list') => {
+    setViewMode(mode);
+    safeSetItem('resources-view-mode', mode);
+  };
 
   // Selection / bulk delete state
   const [selectionMode, setSelectionMode] = useState(false);
@@ -192,6 +211,27 @@ export default function Resources() {
               <ArrowUpDown className="h-3 w-3" />
               {sortNewest ? 'Newest' : 'Oldest'}
             </Toggle>
+
+            <div className="ml-auto flex items-center border rounded-md">
+              <Button
+                variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                size="icon"
+                className="h-8 w-8 rounded-r-none"
+                onClick={() => handleViewChange('grid')}
+                title="Grid view"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                size="icon"
+                className="h-8 w-8 rounded-l-none"
+                onClick={() => handleViewChange('list')}
+                title="List view"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -216,7 +256,7 @@ export default function Resources() {
           )
         ) : (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={viewMode === 'grid' ? 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-3'}>
               {filteredResources.map(resource => (
                 <ResourceCard
                   key={resource.id}
