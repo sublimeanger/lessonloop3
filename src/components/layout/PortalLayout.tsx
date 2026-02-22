@@ -1,6 +1,6 @@
 import { ReactNode, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { PortalSidebar } from './PortalSidebar';
 import { PortalBottomNav } from './PortalBottomNav';
@@ -17,19 +17,16 @@ export function PortalLayout({ children }: PortalLayoutProps) {
   const location = useLocation();
 
   const contentTransition = (
-    <AnimatePresence mode="wait">
+    <Suspense fallback={<PageTransitionFallback />}>
       <motion.div
         key={location.pathname}
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -4 }}
-        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.15, ease: 'easeOut' }}
       >
-        <Suspense fallback={<PageTransitionFallback />}>
-          {children}
-        </Suspense>
+        {children}
       </motion.div>
-    </AnimatePresence>
+    </Suspense>
   );
 
   if (isMobile) {
