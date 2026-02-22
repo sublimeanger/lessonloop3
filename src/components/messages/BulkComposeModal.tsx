@@ -1,4 +1,14 @@
 import { useState, useEffect } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import {
   Dialog,
@@ -68,6 +78,8 @@ export function BulkComposeModal({ open, onOpenChange }: BulkComposeModalProps) 
       }
     }
   }, [selectedTemplateId, templates]);
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -175,6 +187,7 @@ export function BulkComposeModal({ open, onOpenChange }: BulkComposeModalProps) 
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -269,7 +282,7 @@ export function BulkComposeModal({ open, onOpenChange }: BulkComposeModalProps) 
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSend} disabled={!canSend || !isOnline} className="gap-2">
+          <Button onClick={() => setConfirmOpen(true)} disabled={!canSend || !isOnline} className="gap-2">
             {sendBulkMessage.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -285,5 +298,22 @@ export function BulkComposeModal({ open, onOpenChange }: BulkComposeModalProps) 
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Send to {recipientCount} guardian{recipientCount !== 1 ? 's' : ''}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will send an email to {recipientCount} guardian{recipientCount !== 1 ? 's' : ''}.
+            This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleSend}>Send Now</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
