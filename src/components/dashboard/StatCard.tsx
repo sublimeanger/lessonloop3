@@ -131,7 +131,7 @@ export function StatCard({
   );
 
   if (href) {
-    return <Link to={href}>{content}</Link>;
+    return <Link to={href} aria-label={`${title}: ${value}${subtitle ? `. ${subtitle}` : ''}`}>{content}</Link>;
   }
 
   return content;
