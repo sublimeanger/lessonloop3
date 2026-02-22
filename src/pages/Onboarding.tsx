@@ -18,6 +18,18 @@ type OrgType = 'solo_teacher' | 'studio' | 'academy' | 'agency';
 type SubscriptionPlan = 'solo_teacher' | 'academy' | 'agency';
 type Step = 'profile' | 'plan' | 'loading' | 'success' | 'error';
 
+const STORAGE_KEY = 'lessonloop-onboarding-state';
+interface SavedState { fullName: string; orgName: string; orgType: OrgType; selectedPlan: SubscriptionPlan; step: Step; }
+function saveOnboardingState(state: SavedState) {
+  try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+}
+function loadOnboardingState(): SavedState | null {
+  try { const s = sessionStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : null; } catch { return null; }
+}
+function clearOnboardingState() {
+  try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+}
+
 const ORG_TYPES = [
   { value: 'solo_teacher' as const, label: 'Solo Teacher', description: 'Independent music teacher', icon: User },
   { value: 'studio' as const, label: 'Music Studio', description: 'Small studio with a few teachers', icon: Building2 },
@@ -35,13 +47,17 @@ export default function Onboarding() {
   const { user, session, signOut, refreshProfile, profile } = useAuth();
   const { toast } = useToast();
   
-  const [step, setStep] = useState<Step>('profile');
-  const [orgType, setOrgType] = useState<OrgType>('solo_teacher');
-  const [fullName, setFullName] = useState('');
-  const [orgName, setOrgName] = useState('');
-  const hasEditedOrgName = useRef(false);
+  const saved = useRef(loadOnboardingState());
+  const [step, setStep] = useState<Step>(() => {
+    const s = saved.current?.step;
+    return s === 'loading' || s === 'error' ? 'plan' : s || 'profile';
+  });
+  const [orgType, setOrgType] = useState<OrgType>(saved.current?.orgType || 'solo_teacher');
+  const [fullName, setFullName] = useState(saved.current?.fullName || '');
+  const [orgName, setOrgName] = useState(saved.current?.orgName || '');
+  const hasEditedOrgName = useRef(!!saved.current?.orgName);
   const isSubmitting = useRef(false);
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>('academy');
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>(saved.current?.selectedPlan || 'academy');
   const [error, setError] = useState<string | null>(null);
   const [profileReady, setProfileReady] = useState(false);
   const [loadingStage, setLoadingStage] = useState(0);
@@ -114,6 +130,7 @@ export default function Onboarding() {
 
   // Pre-fill name from user metadata or profile
   useEffect(() => {
+    if (saved.current?.fullName) return; // Don't overwrite restored state
     if (profile?.full_name) {
       setFullName(profile.full_name);
     } else if (user?.user_metadata?.full_name) {
@@ -171,6 +188,7 @@ export default function Onboarding() {
         toast({ title: 'Name must be 100 characters or fewer', variant: 'destructive' });
         return;
       }
+      saveOnboardingState({ fullName, orgName, orgType, selectedPlan, step: 'plan' });
       setStep('plan');
     } else if (step === 'plan') {
       handleSubmit();
@@ -179,6 +197,7 @@ export default function Onboarding() {
 
   const handleBack = () => {
     if (step === 'plan') {
+      saveOnboardingState({ fullName, orgName, orgType, selectedPlan, step: 'profile' });
       setStep('profile');
     }
   };
@@ -243,6 +262,7 @@ export default function Onboarding() {
       logger.debug('[Onboarding] Setup complete:', result);
 
       await refreshProfile();
+      clearOnboardingState();
       setStep('success');
     } catch (err) {
       logger.error('[Onboarding] Error:', err);
