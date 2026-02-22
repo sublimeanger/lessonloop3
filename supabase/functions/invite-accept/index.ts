@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
 
     if (user.email?.toLowerCase() !== invite.email.toLowerCase()) {
       return new Response(
-        JSON.stringify({ error: `This invitation was sent to ${invite.email}. Please log in with that email address.` }),
+        JSON.stringify({ error: "Your email address does not match this invitation. Please log in with the email address where you received the invite." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
