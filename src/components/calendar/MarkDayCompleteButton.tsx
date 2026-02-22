@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { format, startOfDay, endOfDay, isBefore } from 'date-fns';
 import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ interface MarkDayCompleteButtonProps {
 
 export function MarkDayCompleteButton({ currentDate, lessons, onComplete }: MarkDayCompleteButtonProps) {
   const { currentOrg } = useOrg();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -34,7 +36,7 @@ export function MarkDayCompleteButton({ currentDate, lessons, onComplete }: Mark
   });
 
   const handleMarkComplete = async () => {
-    if (!currentOrg || eligibleLessons.length === 0) return;
+    if (!currentOrg || !user || eligibleLessons.length === 0) return;
     
     setIsProcessing(true);
     setConfirmOpen(false);
@@ -42,6 +44,7 @@ export function MarkDayCompleteButton({ currentDate, lessons, onComplete }: Mark
     try {
       const lessonIds = eligibleLessons.map(l => l.id);
       
+      // 1. Mark lessons as completed
       const { error } = await supabase
         .from('lessons')
         .update({ status: 'completed' })
@@ -49,9 +52,43 @@ export function MarkDayCompleteButton({ currentDate, lessons, onComplete }: Mark
 
       if (error) throw error;
 
+      // 2. Fetch participants for these lessons
+      const { data: participants } = await supabase
+        .from('lesson_participants')
+        .select('lesson_id, student_id')
+        .in('lesson_id', lessonIds);
+
+      // 3. Check existing attendance records
+      const { data: existing } = await supabase
+        .from('attendance_records')
+        .select('lesson_id, student_id')
+        .in('lesson_id', lessonIds);
+
+      const existingSet = new Set(
+        (existing || []).map(e => `${e.lesson_id}-${e.student_id}`)
+      );
+
+      // 4. Insert 'present' for participants without records
+      const newRecords = (participants || [])
+        .filter(p => !existingSet.has(`${p.lesson_id}-${p.student_id}`))
+        .map(p => ({
+          lesson_id: p.lesson_id,
+          student_id: p.student_id,
+          org_id: currentOrg.id,
+          attendance_status: 'present' as const,
+          recorded_by: user.id,
+        }));
+
+      if (newRecords.length > 0) {
+        const { error: attError } = await supabase
+          .from('attendance_records')
+          .insert(newRecords);
+        if (attError) throw attError;
+      }
+
       toast({
         title: 'Lessons marked complete',
-        description: `${eligibleLessons.length} lesson${eligibleLessons.length > 1 ? 's' : ''} marked as completed.`,
+        description: `${eligibleLessons.length} lesson${eligibleLessons.length > 1 ? 's' : ''} completed with ${newRecords.length} attendance record${newRecords.length !== 1 ? 's' : ''} created.`,
       });
       
       onComplete();
