@@ -2,12 +2,14 @@ import { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { Receipt, Plus, PlayCircle } from 'lucide-react';
+import { Receipt, Plus, PlayCircle, CreditCard } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useInvoices, useUpdateInvoiceStatus, type InvoiceFilters, type InvoiceWithDetails } from '@/hooks/useInvoices';
 import { InvoiceFiltersBar } from '@/components/invoices/InvoiceFiltersBar';
 import { InvoiceStatsWidget } from '@/components/invoices/InvoiceStatsWidget';
+import { PaymentPlansDashboard } from '@/components/invoices/PaymentPlansDashboard';
 import { InvoiceList } from '@/components/invoices/InvoiceList';
 import { BulkActionsBar } from '@/components/invoices/BulkActionsBar';
 import { CreateInvoiceModal } from '@/components/invoices/CreateInvoiceModal';
@@ -179,57 +181,92 @@ export default function Invoices() {
         />
       )}
 
-      <div className="space-y-4">
-        {!isParent && (
-          <InvoiceFiltersBar
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-            statusCounts={statusCounts}
-          />
-        )}
+      {!isParent ? (
+        <Tabs defaultValue="invoices" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="invoices" className="gap-1.5">
+              <Receipt className="h-3.5 w-3.5" />
+              Invoices
+            </TabsTrigger>
+            <TabsTrigger value="plans" className="gap-1.5">
+              <CreditCard className="h-3.5 w-3.5" />
+              Payment Plans
+            </TabsTrigger>
+          </TabsList>
 
-        {!isParent && (
-          <BulkActionsBar
-            selectedCount={selectedIds.size}
-            draftCount={draftCount}
-            voidableCount={voidableCount}
-            onBulkSend={handleBulkSend}
-            onBulkVoid={() => setBulkVoidConfirmOpen(true)}
-            onClearSelection={() => setSelectedIds(new Set())}
-            isSending={bulkSending}
-          />
-        )}
-
-        {invoices.length === 0 ? (
-          <EmptyState
-            icon={Receipt}
-            title="No invoices"
-            description={
-              isParent
-                ? "You don't have any invoices yet. They will appear here when your teacher creates them."
-                : 'Create an invoice or run billing to generate invoices for completed lessons.'
-            }
-            actionLabel={!isParent ? 'Start Billing Run' : undefined}
-            onAction={!isParent ? () => setBillingRunOpen(true) : undefined}
-            secondaryActionLabel={!isParent ? 'Create Manually' : undefined}
-            onSecondaryAction={!isParent ? () => setCreateModalOpen(true) : undefined}
-          />
-        ) : (
-          <div className="rounded-lg border bg-card" data-tour="invoice-list">
-            <InvoiceList
-              invoices={invoices}
-              onSend={(inv) => setSendModalInvoice(inv)}
-              onMarkPaid={(inv) => setPaymentModalInvoice(inv)}
-              onVoid={(inv) => setVoidConfirmInvoice(inv)}
-              onSendReminder={(inv) => setReminderModalInvoice(inv)}
-              selectedIds={selectedIds}
-              onSelectionChange={setSelectedIds}
-              currentPage={currentPage}
-              onPageChange={setCurrentPage}
+          <TabsContent value="invoices" className="space-y-4">
+            <InvoiceFiltersBar
+              filters={filters}
+              onFiltersChange={handleFiltersChange}
+              statusCounts={statusCounts}
             />
-          </div>
-        )}
-      </div>
+
+            <BulkActionsBar
+              selectedCount={selectedIds.size}
+              draftCount={draftCount}
+              voidableCount={voidableCount}
+              onBulkSend={handleBulkSend}
+              onBulkVoid={() => setBulkVoidConfirmOpen(true)}
+              onClearSelection={() => setSelectedIds(new Set())}
+              isSending={bulkSending}
+            />
+
+            {invoices.length === 0 ? (
+              <EmptyState
+                icon={Receipt}
+                title="No invoices"
+                description="Create an invoice or run billing to generate invoices for completed lessons."
+                actionLabel="Start Billing Run"
+                onAction={() => setBillingRunOpen(true)}
+                secondaryActionLabel="Create Manually"
+                onSecondaryAction={() => setCreateModalOpen(true)}
+              />
+            ) : (
+              <div className="rounded-lg border bg-card" data-tour="invoice-list">
+                <InvoiceList
+                  invoices={invoices}
+                  onSend={(inv) => setSendModalInvoice(inv)}
+                  onMarkPaid={(inv) => setPaymentModalInvoice(inv)}
+                  onVoid={(inv) => setVoidConfirmInvoice(inv)}
+                  onSendReminder={(inv) => setReminderModalInvoice(inv)}
+                  selectedIds={selectedIds}
+                  onSelectionChange={setSelectedIds}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="plans">
+            <PaymentPlansDashboard />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <div className="space-y-4">
+          {invoices.length === 0 ? (
+            <EmptyState
+              icon={Receipt}
+              title="No invoices"
+              description="You don't have any invoices yet. They will appear here when your teacher creates them."
+            />
+          ) : (
+            <div className="rounded-lg border bg-card" data-tour="invoice-list">
+              <InvoiceList
+                invoices={invoices}
+                onSend={(inv) => setSendModalInvoice(inv)}
+                onMarkPaid={(inv) => setPaymentModalInvoice(inv)}
+                onVoid={(inv) => setVoidConfirmInvoice(inv)}
+                onSendReminder={(inv) => setReminderModalInvoice(inv)}
+                selectedIds={selectedIds}
+                onSelectionChange={setSelectedIds}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Modals */}
       <CreateInvoiceModal open={createModalOpen} onOpenChange={setCreateModalOpen} />
