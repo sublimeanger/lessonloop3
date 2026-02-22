@@ -69,6 +69,25 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing required fields");
     }
 
+    // Verify user is a staff member of the specified org
+    const { data: membership } = await supabase
+      .from("org_memberships")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("org_id", data.org_id)
+      .eq("status", "active")
+      .single();
+
+    if (!membership || !["owner", "admin", "teacher"].includes(membership.role)) {
+      return new Response(
+        JSON.stringify({ error: "Not a member of this organisation" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Always use authenticated user's ID as sender to prevent impersonation
+    const senderId = user.id;
+
     // Get org details for branding
     const { data: org } = await supabase
       .from("organisations")
@@ -86,7 +105,7 @@ const handler = async (req: Request): Promise<Response> => {
         channel: "email",
         subject: data.subject,
         body: data.body,
-        sender_user_id: data.sender_user_id || user.id,
+        sender_user_id: senderId,
         recipient_type: data.recipient_type,
         recipient_id: data.recipient_id,
         recipient_email: data.recipient_email,
