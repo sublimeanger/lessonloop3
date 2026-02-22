@@ -13,9 +13,11 @@ import {
   CheckCircle2,
   Loader2,
   StickyNote,
-  Ban
+  Ban,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AbsenceReasonPicker, needsAbsenceReason, type AbsenceReasonValue } from './AbsenceReasonPicker';
 
 interface RegisterRowProps {
   lesson: RegisterLesson;
@@ -43,16 +45,66 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
   const isCancelled = lesson.status === 'cancelled';
   const allMarked = lesson.participants.every(p => p.attendance_status !== null);
 
+  // Track per-student absence reason & notified date locally
+  const [absenceReasons, setAbsenceReasons] = useState<Record<string, AbsenceReasonValue | null>>({});
+  const [notifiedDates, setNotifiedDates] = useState<Record<string, Date>>({});
+
   const handleAttendanceClick = async (studentId: string, status: AttendanceStatus) => {
+    // Auto-set reason for teacher cancellations
+    const autoReason = status === 'cancelled_by_teacher' ? 'teacher_cancelled' as any : undefined;
+    
     setSavingStudent(studentId);
     try {
       await updateAttendance.mutateAsync({
         lessonId: lesson.id,
         studentId,
         status,
+        absenceReason: autoReason || absenceReasons[studentId] || undefined,
+        absenceNotifiedAt: needsAbsenceReason(status)
+          ? (notifiedDates[studentId] || new Date()).toISOString()
+          : undefined,
       });
     } finally {
       setSavingStudent(null);
+    }
+  };
+
+  const handleReasonChange = async (studentId: string, reason: AbsenceReasonValue) => {
+    setAbsenceReasons(prev => ({ ...prev, [studentId]: reason }));
+    // Immediately persist
+    const participant = lesson.participants.find(p => p.student_id === studentId);
+    if (participant?.attendance_status) {
+      setSavingStudent(studentId);
+      try {
+        await updateAttendance.mutateAsync({
+          lessonId: lesson.id,
+          studentId,
+          status: participant.attendance_status,
+          absenceReason: reason,
+          absenceNotifiedAt: (notifiedDates[studentId] || new Date()).toISOString(),
+        });
+      } finally {
+        setSavingStudent(null);
+      }
+    }
+  };
+
+  const handleNotifiedDateChange = async (studentId: string, date: Date) => {
+    setNotifiedDates(prev => ({ ...prev, [studentId]: date }));
+    const participant = lesson.participants.find(p => p.student_id === studentId);
+    if (participant?.attendance_status && absenceReasons[studentId]) {
+      setSavingStudent(studentId);
+      try {
+        await updateAttendance.mutateAsync({
+          lessonId: lesson.id,
+          studentId,
+          status: participant.attendance_status,
+          absenceReason: absenceReasons[studentId]!,
+          absenceNotifiedAt: date.toISOString(),
+        });
+      } finally {
+        setSavingStudent(null);
+      }
     }
   };
 
@@ -129,65 +181,84 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
               const isSaving = savingStudent === participant.student_id;
 
               return (
-                <div key={participant.student_id} className="flex items-center justify-between gap-4 py-2">
-                  <div className="font-medium">{participant.student_name}</div>
-                  
-                  <div className="flex flex-col items-end gap-1">
-                    {isSaving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                    
-                    {/* Primary statuses row */}
-                    <div className="flex items-center gap-1">
-                      {primaryStatuses.map((status) => {
-                        const config = statusConfig[status];
-                        const isActive = currentStatus === status;
-                        const Icon = config.icon;
-                        
-                        return (
-                          <Button
-                            key={status}
-                            variant="outline"
-                            size="sm"
-                            disabled={isCancelled || isSaving}
-                            onClick={() => handleAttendanceClick(participant.student_id, status)}
-                            className={cn(
-                              "gap-1.5 transition-colors",
-                              isActive && config.className
-                            )}
-                          >
-                            <Icon className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">{config.label}</span>
-                          </Button>
-                        );
-                      })}
+                <div key={participant.student_id} className="py-2 border-b last:border-b-0">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{participant.student_name}</span>
+                      {needsAbsenceReason(currentStatus) && !participant.absence_reason_category && !absenceReasons[participant.student_id] && (
+                        <span title="Absence reason missing" className="text-warning">
+                          <AlertCircle className="h-3.5 w-3.5" />
+                        </span>
+                      )}
                     </div>
+                    
+                    <div className="flex flex-col items-end gap-1">
+                      {isSaving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                      
+                      {/* Primary statuses row */}
+                      <div className="flex items-center gap-1">
+                        {primaryStatuses.map((status) => {
+                          const config = statusConfig[status];
+                          const isActive = currentStatus === status;
+                          const Icon = config.icon;
+                          
+                          return (
+                            <Button
+                              key={status}
+                              variant="outline"
+                              size="sm"
+                              disabled={isCancelled || isSaving}
+                              onClick={() => handleAttendanceClick(participant.student_id, status)}
+                              className={cn(
+                                "gap-1.5 transition-colors",
+                                isActive && config.className
+                              )}
+                            >
+                              <Icon className="h-3.5 w-3.5" />
+                              <span className="hidden sm:inline">{config.label}</span>
+                            </Button>
+                          );
+                        })}
+                      </div>
 
-                    {/* Cancellation statuses row */}
-                    <div className="flex items-center gap-1">
-                      {cancellationStatuses.map((status) => {
-                        const config = statusConfig[status];
-                        const isActive = currentStatus === status;
-                        const Icon = config.icon;
-                        
-                        return (
-                          <Button
-                            key={status}
-                            variant="outline"
-                            size="sm"
-                            disabled={isCancelled || isSaving}
-                            onClick={() => handleAttendanceClick(participant.student_id, status)}
-                            className={cn(
-                              "gap-1.5 transition-colors text-xs",
-                              isActive && config.className
-                            )}
-                          >
-                            <Icon className="h-3 w-3" />
-                            <span className="hidden sm:inline">{config.label}</span>
-                            <span className="sm:hidden">{config.shortLabel}</span>
-                          </Button>
-                        );
-                      })}
+                      {/* Cancellation statuses row */}
+                      <div className="flex items-center gap-1">
+                        {cancellationStatuses.map((status) => {
+                          const config = statusConfig[status];
+                          const isActive = currentStatus === status;
+                          const Icon = config.icon;
+                          
+                          return (
+                            <Button
+                              key={status}
+                              variant="outline"
+                              size="sm"
+                              disabled={isCancelled || isSaving}
+                              onClick={() => handleAttendanceClick(participant.student_id, status)}
+                              className={cn(
+                                "gap-1.5 transition-colors text-xs",
+                                isActive && config.className
+                              )}
+                            >
+                              <Icon className="h-3 w-3" />
+                              <span className="hidden sm:inline">{config.label}</span>
+                              <span className="sm:hidden">{config.shortLabel}</span>
+                            </Button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
+
+                  {/* Absence reason picker — shown for absent / cancelled_by_student */}
+                  {needsAbsenceReason(currentStatus) && (
+                    <AbsenceReasonPicker
+                      reason={(absenceReasons[participant.student_id] ?? participant.absence_reason_category as AbsenceReasonValue) || null}
+                      notifiedAt={notifiedDates[participant.student_id] || new Date()}
+                      onReasonChange={(r) => handleReasonChange(participant.student_id, r)}
+                      onNotifiedAtChange={(d) => handleNotifiedDateChange(participant.student_id, d)}
+                    />
+                  )}
                 </div>
               );
             })}
