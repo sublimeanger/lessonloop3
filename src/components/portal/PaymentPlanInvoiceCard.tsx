@@ -79,7 +79,10 @@ export function PaymentPlanInvoiceCard({
   return (
     <Card
       id={`invoice-${invoice.id}`}
-      className={cn(isHighlighted && 'ring-2 ring-primary ring-offset-2 animate-pulse')}
+      className={cn(
+        'print:border-none print:shadow-none',
+        isHighlighted && 'ring-2 ring-primary ring-offset-2 animate-pulse',
+      )}
     >
       <CardContent className="p-4 space-y-4">
         {/* Header */}
@@ -93,6 +96,7 @@ export function PaymentPlanInvoiceCard({
           <Button
             variant="ghost"
             size="sm"
+            className="print:hidden"
             onClick={() => downloadPdf(invoice.id, invoice.invoice_number)}
             disabled={isPdfLoading}
           >
@@ -145,6 +149,7 @@ export function PaymentPlanInvoiceCard({
                   onClick={() => onPayInstallment(invoice.id, nextInstallment.id)}
                   disabled={isPaying}
                   size="sm"
+                  className="print:hidden"
                 >
                   {isPaying ? (
                     <Loader2 className="h-4 w-4 mr-1 animate-spin" />
@@ -163,7 +168,7 @@ export function PaymentPlanInvoiceCard({
           <div>
             <button
               type="button"
-              className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
+              className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full print:hidden"
               onClick={() => setTimelineOpen(!timelineOpen)}
             >
               {timelineOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
@@ -216,7 +221,7 @@ export function PaymentPlanInvoiceCard({
             <Button
               variant="link"
               size="sm"
-              className="h-auto p-0 text-xs"
+              className="h-auto p-0 text-xs print:hidden"
               onClick={() => onPayRemaining(invoice.id)}
               disabled={isPaying}
             >
