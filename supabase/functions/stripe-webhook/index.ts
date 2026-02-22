@@ -238,7 +238,7 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
     .insert({
       invoice_id: invoiceId,
       org_id: checkoutSession?.org_id,
-      amount_minor: session.amount_total || checkoutSession?.amount_minor,
+      amount_minor: checkoutSession?.amount_minor || session.amount_total,
       method: "card",
       provider: "stripe",
       provider_reference: paymentIntentId,
