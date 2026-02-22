@@ -24,6 +24,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RequestModal } from '@/components/portal/RequestModal';
+import { PortalWelcomeDialog } from '@/components/portal/PortalWelcomeDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -171,6 +172,7 @@ export default function PortalHome() {
   return (
     <PortalLayout>
       <div className="space-y-6">
+        {profile?.id && <PortalWelcomeDialog userId={profile.id} academyName={currentOrg?.name || 'your academy'} />}
         {/* 1. Greeting */}
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
