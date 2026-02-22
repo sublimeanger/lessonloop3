@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
 import { SendInvoiceModal } from '@/components/invoices/SendInvoiceModal';
+import { InstallmentTimeline } from '@/components/invoices/InstallmentTimeline';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,6 +75,7 @@ export default function InvoiceDetail() {
   const { downloadPdf, isLoading: isPdfLoading } = useInvoicePdf();
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentPrefillAmount, setPaymentPrefillAmount] = useState<number | undefined>();
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
   const [voidConfirmOpen, setVoidConfirmOpen] = useState(false);
@@ -420,6 +422,18 @@ export default function InvoiceDetail() {
             </CardContent>
           </Card>
 
+          {/* Payment Plan Timeline */}
+          {!isParent && invoice.payment_plan_enabled && invoice.status !== 'void' && (
+            <InstallmentTimeline
+              invoice={invoice}
+              onEditPlan={() => setPaymentPlanOpen(true)}
+              onRecordPayment={(prefillAmount) => {
+                setPaymentPrefillAmount(prefillAmount);
+                setPaymentModalOpen(true);
+              }}
+            />
+          )}
+
           {!isParent && invoice.status !== 'void' && invoice.status !== 'paid' && (
             <Card>
               <CardHeader>
@@ -439,14 +453,16 @@ export default function InvoiceDetail() {
                   )}
                   {isPdfLoading ? 'Generating...' : 'Download PDF'}
                 </Button>
-                <Button
-                  variant="outline"
-                  className="w-full gap-2"
-                  onClick={() => setPaymentPlanOpen(true)}
-                >
-                  <SplitSquareHorizontal className="h-4 w-4" />
-                  {invoice.payment_plan_enabled ? 'View Payment Plan' : 'Set Up Payment Plan'}
-                </Button>
+                {!invoice.payment_plan_enabled && (
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => setPaymentPlanOpen(true)}
+                  >
+                    <SplitSquareHorizontal className="h-4 w-4" />
+                    Set Up Payment Plan
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   className="w-full gap-2 text-destructive hover:text-destructive"
