@@ -259,7 +259,14 @@ export default function Locations() {
     }
 
     // Clean up location-specific closure dates
-    await supabase.from('closure_dates').delete().eq('location_id', locationId);
+    // TODO: Ideally this entire cascade (rooms → closure_dates → location) should be
+    // a single Supabase database function (RPC) for true atomicity.
+    const { error: closureErr } = await supabase.from('closure_dates').delete().eq('location_id', locationId);
+    if (closureErr) {
+      toast({ title: 'Error deleting closure dates', description: closureErr.message, variant: 'destructive' });
+      setDeleteLocDialog(prev => ({ ...prev, isDeleting: false }));
+      return;
+    }
 
     const { error } = await supabase.from('locations').delete().eq('id', locationId);
     if (error) {
