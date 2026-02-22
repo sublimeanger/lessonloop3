@@ -3,13 +3,22 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, FolderOpen, Loader2, CheckSquare, Trash2, X } from 'lucide-react';
+import { Plus, Search, FolderOpen, Loader2, CheckSquare, Trash2, X, ArrowUpDown } from 'lucide-react';
 import { useResources, useDeleteResource, ResourceWithShares } from '@/hooks/useResources';
 import { ResourceCard } from '@/components/resources/ResourceCard';
 import { UploadResourceModal } from '@/components/resources/UploadResourceModal';
 import { ShareResourceModal } from '@/components/resources/ShareResourceModal';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useOrg } from '@/contexts/OrgContext';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Toggle } from '@/components/ui/toggle';
+import { getFileTypeBadge } from '@/lib/fileUtils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +35,9 @@ export default function Resources() {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [selectedResource, setSelectedResource] = useState<ResourceWithShares | null>(null);
   const [search, setSearch] = useState('');
+  const [fileTypeFilter, setFileTypeFilter] = useState('all');
+  const [sharedOnly, setSharedOnly] = useState(false);
+  const [sortNewest, setSortNewest] = useState(true);
 
   // Selection / bulk delete state
   const [selectionMode, setSelectionMode] = useState(false);
@@ -45,10 +57,23 @@ export default function Resources() {
     [data]
   );
 
-  const filteredResources = resources.filter(resource =>
-    resource.title.toLowerCase().includes(search.toLowerCase()) ||
-    resource.description?.toLowerCase().includes(search.toLowerCase())
-  );
+  // Client-side filtering — TODO: move to server-side when pagination is implemented (RES-009)
+  const filteredResources = resources
+    .filter(resource => {
+      const matchesSearch =
+        resource.title.toLowerCase().includes(search.toLowerCase()) ||
+        resource.description?.toLowerCase().includes(search.toLowerCase());
+      const matchesType =
+        fileTypeFilter === 'all' || getFileTypeBadge(resource.file_type) === fileTypeFilter;
+      const matchesShared =
+        !sharedOnly || (resource.resource_shares?.length ?? 0) > 0;
+      return matchesSearch && matchesType && matchesShared;
+    })
+    .sort((a, b) => {
+      const da = new Date(a.created_at).getTime();
+      const db = new Date(b.created_at).getTime();
+      return sortNewest ? db - da : da - db;
+    });
 
   const handleShare = (resource: ResourceWithShares) => {
     setSelectedResource(resource);
@@ -124,15 +149,50 @@ export default function Resources() {
           }
         />
 
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search resources..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+        {/* Search & Filters */}
+        <div className="space-y-3">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search resources..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={fileTypeFilter} onValueChange={setFileTypeFilter}>
+              <SelectTrigger className="w-[130px] h-9 text-xs">
+                <SelectValue placeholder="File type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                <SelectItem value="PDF">PDF</SelectItem>
+                <SelectItem value="Image">Image</SelectItem>
+                <SelectItem value="Audio">Audio</SelectItem>
+                <SelectItem value="Video">Video</SelectItem>
+                <SelectItem value="Document">Document</SelectItem>
+                <SelectItem value="File">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            <Toggle
+              size="sm"
+              pressed={sharedOnly}
+              onPressedChange={setSharedOnly}
+              className="text-xs"
+            >
+              Shared only
+            </Toggle>
+            <Toggle
+              size="sm"
+              pressed={!sortNewest}
+              onPressedChange={(pressed) => setSortNewest(!pressed)}
+              className="text-xs gap-1"
+            >
+              <ArrowUpDown className="h-3 w-3" />
+              {sortNewest ? 'Newest' : 'Oldest'}
+            </Toggle>
+          </div>
         </div>
 
         {/* Content */}
