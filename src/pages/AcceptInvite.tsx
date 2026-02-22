@@ -338,7 +338,7 @@ export default function AcceptInvite() {
           </Button>
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{' '}
-            <Link to={`/login?redirect=/accept-invite?token=${token}`} className="text-primary hover:underline">
+            <Link to="/login" state={{ from: { pathname: '/accept-invite', search: `?token=${token}` } }} className="text-primary hover:underline">
               Log in
             </Link>
           </p>
