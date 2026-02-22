@@ -185,13 +185,15 @@ async function handleSubscriptionCheckoutCompleted(
 // Handle invoice payment checkout completion
 async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Checkout.Session) {
   const invoiceId = session.metadata?.lessonloop_invoice_id;
+  const installmentId = session.metadata?.lessonloop_installment_id || null;
+  const payRemaining = session.metadata?.lessonloop_pay_remaining === "true";
   
   if (!invoiceId) {
     console.error("No invoice ID in session metadata");
     return;
   }
 
-  console.log(`Processing completed checkout for invoice: ${invoiceId}`);
+  console.log(`Processing completed checkout for invoice: ${invoiceId}, installmentId: ${installmentId || 'none'}, payRemaining: ${payRemaining}`);
 
   const paymentIntentId = session.payment_intent as string;
 
@@ -244,7 +246,6 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
     });
 
   if (paymentError) {
-    // Check if it's a duplicate key error (another safety net)
     if (paymentError.code === '23505') {
       console.log(`Duplicate payment prevented by database constraint for: ${paymentIntentId}`);
       return;
@@ -253,13 +254,42 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
     return;
   }
 
-  // Check if invoice is fully paid
-  const { data: invoice } = await supabase
-    .from("invoices")
-    .select("total_minor")
-    .eq("id", invoiceId)
-    .single();
+  // ─── Installment reconciliation ───────────────────────────
 
+  // If pay_remaining, mark all pending/overdue installments as paid
+  if (payRemaining) {
+    const { error: bulkUpdateError } = await supabase
+      .from("invoice_installments")
+      .update({ status: "paid", paid_at: new Date().toISOString() })
+      .eq("invoice_id", invoiceId)
+      .in("status", ["pending", "overdue"]);
+
+    if (bulkUpdateError) {
+      console.error("Failed to bulk-update installments for pay_remaining:", bulkUpdateError);
+    } else {
+      console.log(`All remaining installments marked paid for invoice ${invoiceId}`);
+    }
+  }
+
+  // If specific installment, store the stripe payment intent on it
+  if (installmentId) {
+    const { error: instUpdateError } = await supabase
+      .from("invoice_installments")
+      .update({
+        stripe_payment_intent_id: paymentIntentId,
+        status: "paid",
+        paid_at: new Date().toISOString(),
+      })
+      .eq("id", installmentId);
+
+    if (instUpdateError) {
+      console.error("Failed to update installment with payment intent:", instUpdateError);
+    } else {
+      console.log(`Installment ${installmentId} marked paid with PI ${paymentIntentId}`);
+    }
+  }
+
+  // Update paid_minor on the invoice
   const { data: payments } = await supabase
     .from("payments")
     .select("amount_minor")
@@ -267,21 +297,28 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
 
   const totalPaid = payments?.reduce((sum: number, p: any) => sum + p.amount_minor, 0) || 0;
 
-  if (invoice && totalPaid >= invoice.total_minor) {
-    // Mark invoice as paid
-    const { error: invoiceUpdateError } = await supabase
-      .from("invoices")
-      .update({ status: "paid" })
-      .eq("id", invoiceId);
+  // Update paid_minor and check if fully paid
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select("total_minor")
+    .eq("id", invoiceId)
+    .single();
 
-    if (invoiceUpdateError) {
-      console.error("Failed to update invoice status:", invoiceUpdateError);
-    } else {
-      console.log(`Invoice ${invoiceId} marked as paid`);
-    }
+  const updateData: Record<string, unknown> = { paid_minor: totalPaid };
+  if (invoice && totalPaid >= invoice.total_minor) {
+    updateData.status = "paid";
   }
 
-  console.log(`Payment recorded for invoice ${invoiceId}: ${session.amount_total}`);
+  const { error: invoiceUpdateError } = await supabase
+    .from("invoices")
+    .update(updateData)
+    .eq("id", invoiceId);
+
+  if (invoiceUpdateError) {
+    console.error("Failed to update invoice:", invoiceUpdateError);
+  } else {
+    console.log(`Invoice ${invoiceId} updated: paid_minor=${totalPaid}${totalPaid >= (invoice?.total_minor || 0) ? ', status=paid' : ''}`);
+  }
 }
 
 async function handleCheckoutExpired(supabase: any, session: Stripe.Checkout.Session) {
