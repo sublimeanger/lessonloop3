@@ -54,6 +54,38 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing required fields");
     }
 
+    // Verify sender is a staff member of the org
+    const { data: senderMembership } = await supabase
+      .from("org_memberships")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("org_id", data.org_id)
+      .eq("status", "active")
+      .single();
+
+    if (!senderMembership || !["owner", "admin", "teacher"].includes(senderMembership.role)) {
+      return new Response(
+        JSON.stringify({ error: "Not a member of this organisation" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify recipient is also a member of the same org
+    const { data: recipientMembership } = await supabase
+      .from("org_memberships")
+      .select("role")
+      .eq("user_id", data.recipient_user_id)
+      .eq("org_id", data.org_id)
+      .eq("status", "active")
+      .single();
+
+    if (!recipientMembership) {
+      return new Response(
+        JSON.stringify({ error: "Recipient is not a member of this organisation" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Get org name for branding
     const { data: org } = await supabase
       .from("organisations")
