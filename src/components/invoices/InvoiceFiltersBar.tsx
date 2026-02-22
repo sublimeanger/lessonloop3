@@ -120,7 +120,7 @@ export function InvoiceFiltersBar({
               onChange={(e) =>
                 onFiltersChange({ ...filters, dueDateFrom: e.target.value || undefined })
               }
-              className="w-full sm:w-[130px] h-8 text-xs"
+              className="w-full sm:w-[150px] h-8 text-xs"
             />
           </div>
 
@@ -135,7 +135,7 @@ export function InvoiceFiltersBar({
               onChange={(e) =>
                 onFiltersChange({ ...filters, dueDateTo: e.target.value || undefined })
               }
-              className="w-full sm:w-[130px] h-8 text-xs"
+              className="w-full sm:w-[150px] h-8 text-xs"
             />
           </div>
 
