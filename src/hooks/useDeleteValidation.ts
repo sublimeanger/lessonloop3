@@ -213,6 +213,32 @@ export function useDeleteValidation() {
       });
     }
 
+    // Check for future lessons in rooms belonging to this location
+    const { data: locationRooms } = await supabase
+      .from('rooms')
+      .select('id')
+      .eq('location_id', locationId);
+
+    if (locationRooms && locationRooms.length > 0) {
+      const roomIds = locationRooms.map(r => r.id);
+      const { count: roomLessonCount } = await supabase
+        .from('lessons')
+        .select('id', { count: 'exact', head: true })
+        .in('room_id', roomIds)
+        .eq('org_id', currentOrg.id)
+        .gte('start_at', now)
+        .neq('status', 'cancelled');
+
+      if (roomLessonCount && roomLessonCount > 0) {
+        blocks.push({
+          reason: `Rooms at this location have ${roomLessonCount} upcoming lesson${roomLessonCount > 1 ? 's' : ''} scheduled`,
+          entityType: 'lessons',
+          count: roomLessonCount,
+          details: 'Reassign these lessons to other rooms before deleting this location.',
+        });
+      }
+    }
+
     // Check if this is the primary location
     const { data: location } = await supabase
       .from('locations')
