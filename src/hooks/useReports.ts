@@ -4,6 +4,7 @@ import { activeStudentsQuery } from '@/lib/studentQuery';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, subMonths, startOfMonth, endOfMonth, differenceInDays, addMonths, parseISO } from 'date-fns';
+import { fromZonedTime } from 'date-fns-tz';
 import { sanitiseCSVCell, currencySymbol } from '@/lib/utils';
 
 // Helper: resolve teacher_id for the current user (returns null if not a teacher)
@@ -277,13 +278,17 @@ export function useLessonsDeliveredReport(startDate: string, endDate: string) {
         teacherFilter = await resolveTeacherId(currentOrg.id, user.id);
       }
 
-      // Fetch lessons in date range with teacher_id
+      // Fetch lessons in date range with teacher_id (timezone-aware)
+      const orgTimezone = currentOrg.timezone || 'Europe/London';
+      const rangeStart = fromZonedTime(new Date(`${startDate}T00:00:00`), orgTimezone).toISOString();
+      const rangeEnd = fromZonedTime(new Date(`${endDate}T23:59:59`), orgTimezone).toISOString();
+
       let lessonsQuery = supabase
         .from('lessons')
         .select('id, teacher_id, location_id, start_at, end_at, status')
         .eq('org_id', currentOrg.id)
-        .gte('start_at', `${startDate}T00:00:00`)
-        .lte('start_at', `${endDate}T23:59:59`);
+        .gte('start_at', rangeStart)
+        .lte('start_at', rangeEnd);
 
       if (teacherFilter) {
         lessonsQuery = lessonsQuery.eq('teacher_id', teacherFilter);
@@ -418,13 +423,17 @@ export function useCancellationReport(startDate: string, endDate: string) {
         teacherFilter = await resolveTeacherId(currentOrg.id, user.id);
       }
 
-      // Fetch all lessons in date range with teacher_id
+      // Fetch all lessons in date range with teacher_id (timezone-aware)
+      const orgTimezone = currentOrg.timezone || 'Europe/London';
+      const rangeStart = fromZonedTime(new Date(`${startDate}T00:00:00`), orgTimezone).toISOString();
+      const rangeEnd = fromZonedTime(new Date(`${endDate}T23:59:59`), orgTimezone).toISOString();
+
       let lessonsQuery = supabase
         .from('lessons')
         .select('id, teacher_id, status')
         .eq('org_id', currentOrg.id)
-        .gte('start_at', `${startDate}T00:00:00`)
-        .lte('start_at', `${endDate}T23:59:59`);
+        .gte('start_at', rangeStart)
+        .lte('start_at', rangeEnd);
 
       if (teacherFilter) {
         lessonsQuery = lessonsQuery.eq('teacher_id', teacherFilter);
@@ -527,6 +536,7 @@ export function useDashboardStats() {
       }
 
       const today = new Date();
+      const orgTimezone = currentOrg.timezone || 'Europe/London';
       const todayStr = format(today, 'yyyy-MM-dd');
       const startOfWeek = new Date(today);
       startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Monday
@@ -535,13 +545,19 @@ export function useDashboardStats() {
       const monthStart = format(startOfMonth(today), 'yyyy-MM-dd');
       const monthEnd = format(endOfMonth(today), 'yyyy-MM-dd');
 
+      // Timezone-aware date ranges
+      const todayStart = fromZonedTime(new Date(`${todayStr}T00:00:00`), orgTimezone).toISOString();
+      const todayEnd = fromZonedTime(new Date(`${todayStr}T23:59:59`), orgTimezone).toISOString();
+      const weekStart = fromZonedTime(new Date(`${weekStartStr}T00:00:00`), orgTimezone).toISOString();
+      const weekEnd = fromZonedTime(new Date(`${weekEndStr}T23:59:59`), orgTimezone).toISOString();
+
       // Today's lessons
       const { data: todayLessonsData } = await supabase
         .from('lessons')
         .select('id')
         .eq('org_id', currentOrg.id)
-        .gte('start_at', `${todayStr}T00:00:00`)
-        .lte('start_at', `${todayStr}T23:59:59`)
+        .gte('start_at', todayStart)
+        .lte('start_at', todayEnd)
         .eq('status', 'scheduled');
 
       // Active students
@@ -562,8 +578,8 @@ export function useDashboardStats() {
         .from('lessons')
         .select('start_at, end_at, status')
         .eq('org_id', currentOrg.id)
-        .gte('start_at', `${weekStartStr}T00:00:00`)
-        .lte('start_at', `${weekEndStr}T23:59:59`)
+        .gte('start_at', weekStart)
+        .lte('start_at', weekEnd)
         .limit(5000);
 
       // Revenue MTD
