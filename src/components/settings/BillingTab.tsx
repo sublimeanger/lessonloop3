@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -190,6 +191,7 @@ export function BillingTab() {
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('monthly');
   const [searchParams, setSearchParams] = useSearchParams();
   const [downgradeTarget, setDowngradeTarget] = useState<PlanKey | null>(null);
+  const queryClient = useQueryClient();
   const { 
     plan, 
     status, 
@@ -204,7 +206,7 @@ export function BillingTab() {
   } = useSubscription();
   const { initiateSubscription, openCustomerPortal, isLoading } = useSubscriptionCheckout();
   const { counts, usage } = useUsageCounts();
-  const { isOrgOwner, isOrgAdmin, currentOrg } = useOrg();
+  const { isOrgOwner, isOrgAdmin, currentOrg, refreshOrganisations } = useOrg();
   const {
     connectStatus,
     isLoading: isConnectLoading,
@@ -230,6 +232,42 @@ export function BillingTab() {
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, refreshStatus, setSearchParams]);
+
+  // Handle subscription success redirect with polling
+  useEffect(() => {
+    const subParam = searchParams.get('subscription');
+    if (subParam !== 'success' || !currentOrg?.id) return;
+
+    // Clear the param immediately
+    searchParams.delete('subscription');
+    setSearchParams(searchParams, { replace: true });
+
+    // Refresh data right away
+    refreshOrganisations();
+    queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
+
+    // Poll for up to 10s until status becomes 'active'
+    let attempts = 0;
+    const maxAttempts = 5;
+    const pollInterval = setInterval(async () => {
+      attempts++;
+      const { data } = await supabase
+        .from('organisations')
+        .select('subscription_status, subscription_plan')
+        .eq('id', currentOrg.id)
+        .single();
+
+      if (data?.subscription_status === 'active' || attempts >= maxAttempts) {
+        clearInterval(pollInterval);
+        refreshOrganisations();
+        queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
+        const planName = data?.subscription_plan ? (PLAN_DISPLAY_NAMES[data.subscription_plan] || data.subscription_plan) : 'your plan';
+        toast.success(`Subscription activated! Welcome to LessonLoop ${planName}.`);
+      }
+    }, 2000);
+
+    return () => clearInterval(pollInterval);
+  }, [searchParams, currentOrg?.id, setSearchParams, refreshOrganisations, queryClient]);
 
   const canManageBilling = isOrgOwner || isOrgAdmin;
   const hasActiveSubscription = stripeSubscriptionId && status === 'active';

@@ -156,7 +156,7 @@ export function OrganisationTab() {
       queryClient.invalidateQueries({ queryKey: ['org-details', currentOrg?.id] });
       toast({ title: 'Organisation updated', description: 'Your organisation has been saved.' });
     },
-    onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+    onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
 
   return (

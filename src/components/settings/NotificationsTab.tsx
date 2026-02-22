@@ -76,7 +76,7 @@ export function NotificationsTab() {
       queryClient.invalidateQueries({ queryKey });
       toast({ title: 'Notifications saved', description: 'Your notification preferences have been updated.' });
     },
-    onError: (err: any) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+    onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
 
   const items: { key: keyof NotificationPreferences; label: string; description: string }[] = [
