@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { validateResourceFile } from '@/lib/resource-validation';
+import { validateResourceFile, sanitizeFileName } from '@/lib/resource-validation';
 
 export interface Resource {
   id: string;
@@ -98,7 +98,7 @@ export function useUploadResource() {
           title,
           description: description || null,
           file_path: filePath,
-          file_name: file.name,
+          file_name: sanitizeFileName(file.name),
           file_type: file.type,
           file_size_bytes: file.size,
           uploaded_by: user.id,
