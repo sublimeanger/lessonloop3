@@ -215,20 +215,56 @@ export function useUpdateAttendance() {
 }
 
 export function useMarkLessonComplete() {
+  const { user } = useAuth();
+  const { currentOrg } = useOrg();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (lessonId: string) => {
+      if (!currentOrg || !user) throw new Error('No organisation or user');
+
+      // Update lesson status
       const { error } = await supabase
         .from('lessons')
         .update({ status: 'completed' })
         .eq('id', lessonId);
 
       if (error) throw error;
+
+      // Back-fill 'present' for any participant without an attendance record
+      const { data: participants } = await supabase
+        .from('lesson_participants')
+        .select('student_id')
+        .eq('lesson_id', lessonId);
+
+      const { data: existing } = await supabase
+        .from('attendance_records')
+        .select('student_id')
+        .eq('lesson_id', lessonId);
+
+      const existingSet = new Set((existing || []).map(e => e.student_id));
+      const missing = (participants || []).filter(p => !existingSet.has(p.student_id));
+
+      if (missing.length > 0) {
+        const { error: insertError } = await supabase
+          .from('attendance_records')
+          .insert(
+            missing.map(p => ({
+              lesson_id: lessonId,
+              student_id: p.student_id,
+              org_id: currentOrg.id,
+              attendance_status: 'present' as const,
+              recorded_by: user.id,
+            }))
+          );
+
+        if (insertError) throw insertError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['register-lessons'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance'] });
       toast({
         title: 'Lesson marked complete',
       });
