@@ -32,8 +32,11 @@ export default function PortalMessages() {
         .map(m => m.id);
 
       if (unreadIds.length > 0) {
-        hasMarkedRead.current = true;
-        markAsRead.mutate(unreadIds);
+        const timer = setTimeout(() => {
+          hasMarkedRead.current = true;
+          markAsRead.mutate(unreadIds);
+        }, 3000);
+        return () => clearTimeout(timer);
       }
     }
   }, [activeTab, messages]);
