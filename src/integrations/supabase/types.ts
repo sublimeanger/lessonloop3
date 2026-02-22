@@ -2097,6 +2097,7 @@ export type Database = {
           created_at: string
           email_invoice_reminders: boolean
           email_lesson_reminders: boolean
+          email_makeup_offers: boolean
           email_marketing: boolean
           email_payment_receipts: boolean
           id: string
@@ -2108,6 +2109,7 @@ export type Database = {
           created_at?: string
           email_invoice_reminders?: boolean
           email_lesson_reminders?: boolean
+          email_makeup_offers?: boolean
           email_marketing?: boolean
           email_payment_receipts?: boolean
           id?: string
@@ -2119,6 +2121,7 @@ export type Database = {
           created_at?: string
           email_invoice_reminders?: boolean
           email_lesson_reminders?: boolean
+          email_makeup_offers?: boolean
           email_marketing?: boolean
           email_payment_receipts?: boolean
           id?: string
