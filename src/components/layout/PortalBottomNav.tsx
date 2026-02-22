@@ -1,19 +1,29 @@
+import { useMemo } from 'react';
 import { Home, Calendar, Music, CreditCard, MessageSquare, User } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
+import { usePortalFeatures } from '@/hooks/usePortalFeatures';
 import { cn } from '@/lib/utils';
 
-const tabs = [
-  { label: 'Home', path: '/portal/home', icon: Home },
-  { label: 'Schedule', path: '/portal/schedule', icon: Calendar },
-  { label: 'Practice', path: '/portal/practice', icon: Music },
-  { label: 'Invoices', path: '/portal/invoices', icon: CreditCard },
-  { label: 'Messages', path: '/portal/messages', icon: MessageSquare },
-  { label: 'Profile', path: '/portal/profile', icon: User },
+const allTabs = [
+  { label: 'Home', path: '/portal/home', icon: Home, key: 'always' as const },
+  { label: 'Schedule', path: '/portal/schedule', icon: Calendar, key: 'always' as const },
+  { label: 'Practice', path: '/portal/practice', icon: Music, key: 'practice' as const },
+  { label: 'Invoices', path: '/portal/invoices', icon: CreditCard, key: 'invoices' as const },
+  { label: 'Messages', path: '/portal/messages', icon: MessageSquare, key: 'always' as const },
+  { label: 'Profile', path: '/portal/profile', icon: User, key: 'always' as const },
 ];
 
 export function PortalBottomNav() {
   const { data: unreadCount } = useUnreadMessagesCount();
+  const { practiceEnabled, resourcesEnabled, invoicesEnabled } = usePortalFeatures();
+
+  const tabs = useMemo(() => allTabs.filter((t) => {
+    if (t.key === 'always') return true;
+    if (t.key === 'practice') return practiceEnabled;
+    if (t.key === 'invoices') return invoicesEnabled;
+    return true;
+  }), [practiceEnabled, invoicesEnabled]);
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-50 border-t bg-white dark:bg-card pb-[env(safe-area-inset-bottom)]">

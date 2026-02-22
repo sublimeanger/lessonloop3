@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { useSearchParams } from 'react-router-dom';
 import { PortalLayout } from '@/components/layout/PortalLayout';
+import { usePortalFeatures } from '@/hooks/usePortalFeatures';
+import { PortalFeatureDisabled } from '@/components/portal/PortalFeatureDisabled';
 import { useOrgPaymentPreferences } from '@/hooks/useOrgPaymentPreferences';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,6 +27,7 @@ import { formatCurrencyMinor } from '@/lib/utils';
 import { PaymentPlanInvoiceCard } from '@/components/portal/PaymentPlanInvoiceCard';
 
 export default function PortalInvoices() {
+  const { invoicesEnabled } = usePortalFeatures();
   const { currentOrg } = useOrg();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchParams, setSearchParams] = useSearchParams();
@@ -137,6 +140,14 @@ export default function PortalInvoices() {
 
   // Calculate total outstanding
   const totalOutstanding = outstandingInvoices.reduce((sum, inv) => sum + (inv.total_minor - (inv.paid_minor || 0)), 0);
+
+  if (!invoicesEnabled) {
+    return (
+      <PortalLayout>
+        <PortalFeatureDisabled featureLabel="Invoices & Payments" />
+      </PortalLayout>
+    );
+  }
 
   return (
     <PortalLayout>

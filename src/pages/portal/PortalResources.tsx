@@ -3,6 +3,8 @@ import { useToast } from '@/hooks/use-toast';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { PortalLayout } from '@/components/layout/PortalLayout';
+import { usePortalFeatures } from '@/hooks/usePortalFeatures';
+import { PortalFeatureDisabled } from '@/components/portal/PortalFeatureDisabled';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -77,6 +79,7 @@ function ResourceDownloadButton({ filePath, fileName }: ResourceDownloadButtonPr
 }
 
 export default function PortalResources() {
+  const { resourcesEnabled } = usePortalFeatures();
   const [search, setSearch] = useState('');
   const [previewResource, setPreviewResource] = useState<{
     filePath: string;
@@ -105,6 +108,14 @@ export default function PortalResources() {
     }
     return result;
   }, [resources, selectedChildId, search]);
+
+  if (!resourcesEnabled) {
+    return (
+      <PortalLayout>
+        <PortalFeatureDisabled featureLabel="Resources" />
+      </PortalLayout>
+    );
+  }
 
   return (
     <PortalLayout>
