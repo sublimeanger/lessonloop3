@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { ListSkeleton } from '@/components/shared/LoadingState';
@@ -149,6 +150,7 @@ export default function Students() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [confirmToggle, setConfirmToggle] = useState<StudentListItem | null>(null);
 
   const statusCounts = useMemo(() => ({
     all: students.length,
@@ -181,8 +183,14 @@ export default function Students() {
   };
 
   const toggleStatus = (student: StudentListItem) => {
-    const newStatus: StudentStatus = student.status === 'active' ? 'inactive' : 'active';
-    toggleMutation.mutate({ studentId: student.id, newStatus });
+    setConfirmToggle(student);
+  };
+
+  const confirmToggleStatus = () => {
+    if (!confirmToggle) return;
+    const newStatus: StudentStatus = confirmToggle.status === 'active' ? 'inactive' : 'active';
+    toggleMutation.mutate({ studentId: confirmToggle.id, newStatus });
+    setConfirmToggle(null);
   };
 
   return (
@@ -254,6 +262,27 @@ export default function Students() {
         onOpenChange={setIsWizardOpen}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ['students'] })}
       />
+
+      <AlertDialog open={!!confirmToggle} onOpenChange={(open) => !open && setConfirmToggle(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmToggle?.status === 'active' ? 'Deactivate' : 'Reactivate'} {confirmToggle?.first_name} {confirmToggle?.last_name}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmToggle?.status === 'active'
+                ? 'This student will be hidden from the calendar and billing. You can reactivate them later.'
+                : 'This student will appear in the calendar and be eligible for billing again.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmToggleStatus}>
+              {confirmToggle?.status === 'active' ? 'Deactivate' : 'Reactivate'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
