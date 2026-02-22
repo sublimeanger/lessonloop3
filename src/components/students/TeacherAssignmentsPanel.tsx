@@ -4,13 +4,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTeachers } from '@/hooks/useTeachers';
 import { supabase } from '@/integrations/supabase/client';
+import { logAudit } from '@/lib/auditLog';
 import { Plus, GraduationCap, Star, Loader2 } from 'lucide-react';
 
 interface TeacherAssignment {
@@ -31,6 +34,7 @@ interface TeacherAssignmentsPanelProps {
 
 export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelProps) {
   const { currentOrg, isOrgAdmin } = useOrg();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -72,6 +76,7 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [isPrimary, setIsPrimary] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<{ open: boolean; assignmentId: string; teacherName: string }>({ open: false, assignmentId: '', teacherName: '' });
 
   const addAssignment = useMutation({
     mutationFn: async () => {
@@ -96,6 +101,11 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: assignmentQueryKey });
       toast({ title: 'Teacher assigned' });
+      if (currentOrg && user) {
+        logAudit(currentOrg.id, user.id, 'student.teacher_assigned', 'student', studentId, {
+          after: { teacher_id: selectedTeacherId, is_primary: isPrimary },
+        });
+      }
       setIsDialogOpen(false);
       setSelectedTeacherId('');
       setIsPrimary(false);
@@ -117,6 +127,12 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: assignmentQueryKey });
       toast({ title: 'Teacher removed' });
+      if (currentOrg && user) {
+        logAudit(currentOrg.id, user.id, 'student.teacher_removed', 'student', studentId, {
+          before: { teacher_name: confirmRemove.teacherName },
+        });
+      }
+      setConfirmRemove({ open: false, assignmentId: '', teacherName: '' });
     },
     onError: (error: Error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -222,7 +238,7 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => removeAssignment.mutate(assignment.id)}
+                      onClick={() => setConfirmRemove({ open: true, assignmentId: assignment.id, teacherName: assignment.teacher?.display_name || 'Unknown' })}
                     >
                       Remove
                     </Button>
@@ -282,6 +298,23 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Remove Teacher Confirmation */}
+      <AlertDialog open={confirmRemove.open} onOpenChange={(open) => { if (!open) setConfirmRemove({ open: false, assignmentId: '', teacherName: '' }); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {confirmRemove.teacherName}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              They will no longer see this student in their dashboard. This action can be undone by re-assigning the teacher.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => removeAssignment.mutate(confirmRemove.assignmentId)}>
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

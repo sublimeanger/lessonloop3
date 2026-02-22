@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { logAudit } from '@/lib/auditLog';
 
 export type StudentStatus = 'active' | 'inactive';
 
@@ -82,6 +83,7 @@ export function useStudents() {
 
 export function useToggleStudentStatus() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -92,10 +94,16 @@ export function useToggleStudentStatus() {
         .eq('id', studentId)
         .eq('org_id', orgId);
       if (error) throw error;
+      return { studentId, newStatus, orgId };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
+      if (user && result) {
+        logAudit(result.orgId, user.id, 'student.status_changed', 'student', result.studentId, {
+          after: { status: result.newStatus },
+        });
+      }
     },
     onError: (error: Error) => {
       toast({ title: 'Error updating status', description: error.message, variant: 'destructive' });

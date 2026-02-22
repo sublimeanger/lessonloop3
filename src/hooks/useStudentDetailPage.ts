@@ -7,9 +7,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useDeleteValidation, DeletionCheckResult } from '@/hooks/useDeleteValidation';
 import { useStudentMessages } from '@/hooks/useMessages';
 import { useStudentLessons, useStudentInvoices } from '@/hooks/useStudentDetail';
+import { logAudit } from '@/lib/auditLog';
 
 export type StudentStatus = 'active' | 'inactive';
 export type RelationshipType = 'mother' | 'father' | 'guardian' | 'other';
@@ -57,6 +59,7 @@ export function useStudentDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { currentOrg, isOrgAdmin } = useOrg();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -295,6 +298,12 @@ export function useStudentDetailPage() {
       toast({ title: 'Student updated' });
       setIsEditing(false);
       invalidateStudent();
+      if (currentOrg && user) {
+        logAudit(currentOrg.id, user.id, 'student.updated', 'student', student.id, {
+          before: { first_name: student.first_name, last_name: student.last_name, email: student.email, phone: student.phone, dob: student.dob, notes: student.notes },
+          after: { first_name: firstName.trim(), last_name: lastName.trim(), email: email.trim() || null, phone: phone.trim() || null, dob: dob || null, notes: notes.trim() ? stripHtml(notes.trim()) : null },
+        });
+      }
     }
     setIsSaving(false);
   };
@@ -341,6 +350,11 @@ export function useStudentDetailPage() {
         toast({ title: 'Error deleting', description: error.message, variant: 'destructive' });
       } else {
         toast({ title: 'Student archived', description: `${student.first_name} ${student.last_name} has been soft-deleted. Historical records preserved.` });
+        if (currentOrg && user) {
+          logAudit(currentOrg.id, user.id, 'student.deleted', 'student', student.id, {
+            before: { first_name: student.first_name, last_name: student.last_name, status: student.status },
+          });
+        }
         navigate('/students');
       }
     } catch (err: unknown) {
@@ -432,6 +446,11 @@ export function useStudentDetailPage() {
       toast({ title: 'Error linking guardian', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Guardian added' });
+      if (currentOrg && user && student) {
+        logAudit(currentOrg.id, user.id, 'student.guardian_added', 'student', student.id, {
+          after: { guardian_id: guardianId, relationship, is_primary_payer: isPrimaryPayer },
+        });
+      }
       setIsGuardianDialogOpen(false);
       resetGuardianForm();
       invalidateGuardians();
@@ -477,6 +496,11 @@ export function useStudentDetailPage() {
         toast({ title: 'Guardian removed', description: 'Guardian record archived (no remaining student links).' });
       } else {
         toast({ title: 'Guardian unlinked' });
+      }
+      if (currentOrg && user && id) {
+        logAudit(currentOrg.id, user.id, 'student.guardian_removed', 'student', id, {
+          before: { guardian_id: guardianId, guardian_name: guardianDeleteDialog.guardianName },
+        });
       }
       invalidateGuardians();
     }
@@ -564,6 +588,11 @@ export function useStudentDetailPage() {
       if (error) throw error;
 
       toast({ title: 'Guardian updated', description: 'Contact details have been saved.' });
+      if (currentOrg && user && id) {
+        logAudit(currentOrg.id, user.id, 'student.guardian_edited', 'student', id, {
+          after: { guardian_id: editGuardianDialog.guardianId, full_name: editGuardianDialog.fullName.trim() },
+        });
+      }
       setEditGuardianDialog(prev => ({ ...prev, open: false }));
       invalidateGuardians();
     } catch (error: unknown) {
