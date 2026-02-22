@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -25,8 +25,9 @@ import {
 } from '@/components/dashboard';
 import { 
   Calendar, Users, Receipt, Clock, TrendingUp, PoundSterling,
-  Building2, Loader2, AlertCircle, ChevronRight, BookOpen
+  Building2, Loader2, AlertCircle, ChevronRight, BookOpen, X, Settings, CalendarDays
 } from 'lucide-react';
+import { differenceInDays } from 'date-fns';
 import { Link } from 'react-router-dom';
 
 const itemVariants = {
@@ -320,11 +321,22 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
 }
 
 function TeacherDashboard({ firstName }: { firstName: string }) {
+  const { profile } = useAuth();
   const { currentOrg } = useOrg();
   const { data: stats, isLoading } = useTeacherDashboardStats();
   const { actions } = useUrgentActions();
   const needsAttendance = actions.find(a => a.type === 'unmarked_lessons')?.count ?? 0;
-  
+
+  const dismissKey = `teacher-welcome-dismissed-${currentOrg?.id}`;
+  const [welcomeDismissed, setWelcomeDismissed] = useState(() => localStorage.getItem(dismissKey) === '1');
+  const isNewTeacher = profile?.created_at && differenceInDays(new Date(), new Date(profile.created_at)) < 7;
+  const showWelcome = isNewTeacher && !welcomeDismissed;
+
+  const dismissWelcome = () => {
+    setWelcomeDismissed(true);
+    localStorage.setItem(dismissKey, '1');
+  };
+
 
   return (
     <AppLayout>
@@ -345,6 +357,30 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
             />
           </SectionErrorBoundary>
         </motion.div>
+
+        {showWelcome && (
+          <motion.div variants={itemVariants}>
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="flex flex-col gap-3 p-4 sm:p-6 relative">
+                <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={dismissWelcome}>
+                  <X className="h-4 w-4" />
+                </Button>
+                <h3 className="text-lg font-semibold">Welcome to {currentOrg?.name}! 🎵</h3>
+                <p className="text-sm text-muted-foreground">
+                  View your schedule, manage attendance, and communicate with students. Here are some things to get started:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" className="gap-1.5" asChild>
+                    <Link to="/settings?tab=availability"><Settings className="h-3.5 w-3.5" />Set Up Availability</Link>
+                  </Button>
+                  <Button size="sm" className="gap-1.5" asChild>
+                    <Link to="/calendar"><CalendarDays className="h-3.5 w-3.5" />View Calendar</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Urgent Actions">

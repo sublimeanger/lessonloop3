@@ -35,11 +35,11 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, onRemove
         .eq('teacher_id', teacher.id);
 
       if (error) throw error;
-      return (data || []).map((row: any) => ({
-        id: row.students.id,
-        name: `${row.students.first_name} ${row.students.last_name}`,
-        isPrimary: row.is_primary,
-      }));
+      type StudentJoin = { id: string; first_name: string; last_name: string };
+      return (data || []).map((row) => {
+        const s = row.students as unknown as StudentJoin;
+        return { id: s.id, name: `${s.first_name} ${s.last_name}`, isPrimary: row.is_primary };
+      });
     },
     enabled: !!teacher && !!currentOrg && open,
   });

@@ -163,8 +163,17 @@ export function usePayroll(startDate: string, endDate: string) {
   });
 }
 
+interface PayrollLesson {
+  id: string;
+  title: string;
+  start_at: string;
+  end_at: string;
+  teacher_id: string | null;
+  status: string;
+}
+
 function calculatePayroll(
-  lessons: any[],
+  lessons: PayrollLesson[],
   teacherMap: Map<string, { name: string; payRateType: 'per_lesson' | 'hourly' | 'percentage' | null; payRateValue: number }>,
   startDate: string,
   endDate: string,
