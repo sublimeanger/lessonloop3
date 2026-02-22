@@ -40,6 +40,7 @@ export default function Onboarding() {
   const [fullName, setFullName] = useState('');
   const [orgName, setOrgName] = useState('');
   const hasEditedOrgName = useRef(false);
+  const isSubmitting = useRef(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>('academy');
   const [error, setError] = useState<string | null>(null);
   const [profileReady, setProfileReady] = useState(false);
@@ -156,6 +157,7 @@ export default function Onboarding() {
   };
 
   const handleNext = () => {
+    if (isSubmitting.current) return;
     if (step === 'profile') {
       if (!fullName.trim()) {
         toast({ title: 'Please enter your name', variant: 'destructive' });
@@ -178,6 +180,8 @@ export default function Onboarding() {
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting.current) return;
+    isSubmitting.current = true;
     setStep('loading');
     setError(null);
 
@@ -241,6 +245,7 @@ export default function Onboarding() {
       const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
       setError(message);
       setStep('error');
+      isSubmitting.current = false;
     }
   };
 
