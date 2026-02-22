@@ -1,6 +1,6 @@
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { HeroSection } from "@/components/marketing/HeroSection";
-import { LogoMarquee } from "@/components/marketing/LogoMarquee";
+import { CredibilityStrip } from "@/components/marketing/CredibilityStrip";
 import { BentoFeatures } from "@/components/marketing/BentoFeatures";
 import { ProductShowcase } from "@/components/marketing/ProductShowcase";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
@@ -12,7 +12,7 @@ export default function MarketingHome() {
   return (
     <MarketingLayout>
       <HeroSection />
-      <LogoMarquee />
+      <CredibilityStrip />
       <BentoFeatures />
       <ProductShowcase />
       <HowItWorks />
