@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -28,19 +28,9 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.08,
-    },
-  },
-};
-
 const itemVariants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] as const } },
+  hidden: { opacity: 0, y: 8 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const } },
 };
 
 export default function Dashboard() {
@@ -109,18 +99,12 @@ export default function Dashboard() {
   return <SoloTeacherDashboard firstName={firstName} />;
 }
 
-// Hook to only animate on first mount
-function useFirstMount() {
-  const hasAnimated = useRef(false);
-  const isFirst = !hasAnimated.current;
-  useEffect(() => { hasAnimated.current = true; }, []);
-  return isFirst;
-}
+// Remove useFirstMount — no longer needed
+
 
 function SoloTeacherDashboard({ firstName }: { firstName: string }) {
   const { currentOrg } = useOrg();
   const { data: stats, isLoading } = useDashboardStats();
-  const isFirstMount = useFirstMount();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GB', {
@@ -133,11 +117,8 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
 
   return (
     <AppLayout>
-      <motion.div
+      <div
         className="space-y-4 sm:space-y-6"
-        variants={isFirstMount ? containerVariants : undefined}
-        initial={isFirstMount ? "hidden" : false}
-        animate="visible"
       >
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Dashboard Hero">
@@ -211,7 +192,7 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
             <QuickActionsGrid variant="solo" className="lg:col-span-3" />
           </SectionErrorBoundary>
         </motion.div>
-      </motion.div>
+      </div>
     </AppLayout>
   );
 }
@@ -219,7 +200,6 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
 function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?: string }) {
   const { currentOrg } = useOrg();
   const { data: stats, isLoading } = useDashboardStats();
-  const isFirstMount = useFirstMount();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GB', {
@@ -232,11 +212,8 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
 
   return (
     <AppLayout>
-      <motion.div
+      <div
         className="space-y-4 sm:space-y-6"
-        variants={isFirstMount ? containerVariants : undefined}
-        initial={isFirstMount ? "hidden" : false}
-        animate="visible"
       >
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Dashboard Hero">
@@ -323,22 +300,19 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
             </SectionErrorBoundary>
           </div>
         </motion.div>
-      </motion.div>
+      </div>
     </AppLayout>
   );
 }
 
 function TeacherDashboard({ firstName }: { firstName: string }) {
   const { data: stats, isLoading } = useTeacherDashboardStats();
-  const isFirstMount = useFirstMount();
+  
 
   return (
     <AppLayout>
-      <motion.div
+      <div
         className="space-y-4 sm:space-y-6 max-w-4xl"
-        variants={isFirstMount ? containerVariants : undefined}
-        initial={isFirstMount ? "hidden" : false}
-        animate="visible"
       >
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Dashboard Hero">
@@ -395,7 +369,7 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
             <QuickActionsGrid variant="teacher" className="lg:col-span-2" />
           </SectionErrorBoundary>
         </motion.div>
-      </motion.div>
+      </div>
     </AppLayout>
   );
 }
