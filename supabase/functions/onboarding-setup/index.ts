@@ -51,6 +51,25 @@ Deno.serve(async (req) => {
 
     console.log('[onboarding-setup] User verified:', user.id);
 
+    // Idempotency guard: check if user already onboarded
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const adminClientEarly = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+    const { data: existingCheck } = await adminClientEarly
+      .from('profiles')
+      .select('has_completed_onboarding, current_org_id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (existingCheck?.has_completed_onboarding && existingCheck?.current_org_id) {
+      console.log('[onboarding-setup] Already onboarded, returning existing org:', existingCheck.current_org_id);
+      return new Response(
+        JSON.stringify({ success: true, org_id: existingCheck.current_org_id, message: 'Already onboarded — returning existing organisation' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Parse request body
     const body: OnboardingRequest = await req.json();
     const { org_name, org_type, full_name, phone, subscription_plan } = body;
