@@ -34,19 +34,53 @@ export default function CalendarPage() {
   const isMobile = useIsMobile();
   const isDesktop = useIsDesktop();
 
-  const [currentDate, setCurrentDate] = useState(() => {
+  const [currentDate, setCurrentDateRaw] = useState(() => {
     const dateParam = searchParams.get('date');
     return dateParam ? new Date(dateParam) : new Date();
   });
-  const [view, setView] = useState<CalendarView>('day');
+  const [view, setViewRaw] = useState<CalendarView>(() => {
+    const v = searchParams.get('view');
+    return (v === 'day' || v === 'week' || v === 'stacked' || v === 'agenda') ? v : 'day';
+  });
   const [isCompact, setIsCompact] = useState(() => safeGetItem('ll-calendar-compact') === '1');
   const [groupByTeacher, setGroupByTeacher] = useState(false);
-  const [filters, setFilters] = useState<CalendarFilters>(() => ({
+  const [filters, setFiltersRaw] = useState<CalendarFilters>(() => ({
     teacher_id: searchParams.get('teacher') || null,
-    location_id: null,
-    room_id: null,
-    hide_cancelled: false,
+    location_id: searchParams.get('location') || null,
+    room_id: searchParams.get('room') || null,
+    hide_cancelled: searchParams.get('hide_cancelled') === '1',
   }));
+
+  // Sync state changes to URL (replaceState to avoid history spam)
+  const syncToUrl = (overrides: Record<string, string | null>) => {
+    const params = new URLSearchParams(window.location.search);
+    for (const [key, value] of Object.entries(overrides)) {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    }
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  };
+
+  const setCurrentDate = (d: Date) => {
+    setCurrentDateRaw(d);
+    syncToUrl({ date: format(d, 'yyyy-MM-dd') });
+  };
+  const setView = (v: CalendarView) => {
+    setViewRaw(v);
+    syncToUrl({ view: v === 'day' ? null : v });
+  };
+  const setFilters = (f: CalendarFilters | ((prev: CalendarFilters) => CalendarFilters)) => {
+    setFiltersRaw(prev => {
+      const next = typeof f === 'function' ? f(prev) : f;
+      syncToUrl({
+        teacher: next.teacher_id,
+        location: next.location_id,
+        room: next.room_id,
+        hide_cancelled: next.hide_cancelled ? '1' : null,
+      });
+      return next;
+    });
+  };
 
   useEffect(() => { safeSetItem('ll-calendar-compact', isCompact ? '1' : '0'); }, [isCompact]);
 
