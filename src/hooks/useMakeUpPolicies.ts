@@ -22,6 +22,7 @@ export interface MakeUpPolicy {
   absence_reason: AbsenceReason;
   eligibility: Eligibility;
   description: string | null;
+  releases_slot: boolean;
 }
 
 const ABSENCE_REASON_LABELS: Record<AbsenceReason, { emoji: string; label: string }> = {
@@ -81,11 +82,14 @@ export function useMakeUpPolicies() {
   }, [currentOrg?.id, policies, isLoading, refetch]);
 
   const updatePolicy = useMutation({
-    mutationFn: async ({ id, eligibility }: { id: string; eligibility: Eligibility }) => {
+    mutationFn: async (params: { id: string; eligibility?: Eligibility; releases_slot?: boolean }) => {
+      const update: Record<string, unknown> = {};
+      if (params.eligibility !== undefined) update.eligibility = params.eligibility;
+      if (params.releases_slot !== undefined) update.releases_slot = params.releases_slot;
       const { error } = await supabase
         .from('make_up_policies')
-        .update({ eligibility })
-        .eq('id', id);
+        .update(update)
+        .eq('id', params.id);
       if (error) throw error;
     },
     onSuccess: () => {

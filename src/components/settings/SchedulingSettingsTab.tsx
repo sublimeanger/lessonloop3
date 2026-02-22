@@ -279,6 +279,7 @@ function MakeUpPolicySettings() {
               <tr className="border-b bg-muted/50">
                 <th className="text-left p-3 font-medium">Absence Reason</th>
                 <th className="text-left p-3 font-medium">Make-Up Eligibility</th>
+                <th className="text-center p-3 font-medium">Releases Slot</th>
               </tr>
             </thead>
             <tbody>
@@ -308,6 +309,14 @@ function MakeUpPolicySettings() {
                           ))}
                         </SelectContent>
                       </Select>
+                    </td>
+                    <td className="p-3 text-center">
+                      <Switch
+                        checked={policy.releases_slot}
+                        onCheckedChange={(checked) =>
+                          updatePolicy.mutate({ id: policy.id, releases_slot: checked })
+                        }
+                      />
                     </td>
                   </tr>
                 );
