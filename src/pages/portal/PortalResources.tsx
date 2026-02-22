@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ListSkeleton } from '@/components/shared/LoadingState';
+import { PortalErrorState } from '@/components/portal/PortalErrorState';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { usePortalFeatures } from '@/hooks/usePortalFeatures';
 import { PortalFeatureDisabled } from '@/components/portal/PortalFeatureDisabled';
@@ -89,7 +90,7 @@ export default function PortalResources() {
   } | null>(null);
   const { selectedChildId } = useChildFilter();
 
-  const { data: resources = [], isLoading } = useSharedResources();
+  const { data: resources = [], isLoading, isError, refetch } = useSharedResources();
 
   const filteredResources = useMemo(() => {
     let result = resources;
@@ -136,6 +137,8 @@ export default function PortalResources() {
         {/* Content */}
         {isLoading ? (
           <ListSkeleton count={3} />
+        ) : isError ? (
+          <PortalErrorState onRetry={() => refetch()} />
         ) : filteredResources.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <FolderOpen className="h-12 w-12 text-muted-foreground/50" />

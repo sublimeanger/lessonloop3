@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { PortalErrorState } from '@/components/portal/PortalErrorState';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PracticeTimer } from '@/components/portal/PracticeTimer';
@@ -17,8 +18,8 @@ import { PortalFeatureDisabled } from '@/components/portal/PortalFeatureDisabled
 export default function PortalPractice() {
   const { practiceEnabled } = usePortalFeatures();
   const { selectedChildId } = useChildFilter();
-  const { data: streaks = [] } = useChildrenStreaks();
-  const { data: assignments = [] } = useParentPracticeAssignments();
+  const { data: streaks = [], isError: streaksError, refetch: refetchStreaks } = useChildrenStreaks();
+  const { data: assignments = [], isError: assignmentsError, refetch: refetchAssignments } = useParentPracticeAssignments();
   
   // Filter by selected child
   const filteredAssignments = useMemo(
@@ -37,6 +38,16 @@ export default function PortalPractice() {
     return (
       <PortalLayout>
         <PortalFeatureDisabled featureLabel="Practice Tracking" />
+      </PortalLayout>
+    );
+  }
+
+  const practiceError = streaksError || assignmentsError;
+
+  if (practiceError) {
+    return (
+      <PortalLayout>
+        <PortalErrorState onRetry={() => { refetchStreaks(); refetchAssignments(); }} />
       </PortalLayout>
     );
   }
