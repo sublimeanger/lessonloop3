@@ -28,6 +28,11 @@ interface Room {
   id: string;
   name: string;
   capacity: number | null;
+  max_capacity: number | null;
+  location_id: string;
+  org_id: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Location {
@@ -77,7 +82,7 @@ export default function Locations() {
       if (error) throw error;
       return (data || []).map(loc => ({
         ...loc,
-        rooms: ((loc as any).rooms || []) as Room[],
+        rooms: (loc.rooms || []) as Room[],
       })) as Location[];
     },
     enabled: !!currentOrg,
