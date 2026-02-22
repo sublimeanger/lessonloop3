@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { fromZonedTime } from 'date-fns-tz';
 
 export interface TeacherDashboardStats {
   todayLessons: number;
@@ -35,12 +36,14 @@ export function useTeacherDashboardStats() {
         };
       }
 
+      const tz = currentOrg.timezone || 'Europe/London';
       const today = new Date();
-      const todayStr = format(today, 'yyyy-MM-dd');
-      const weekStart = format(startOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-      const weekEnd = format(endOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-      const monthStart = format(startOfMonth(today), 'yyyy-MM-dd');
-      const monthEnd = format(endOfMonth(today), 'yyyy-MM-dd');
+      const todayStartUtc = fromZonedTime(startOfDay(today), tz).toISOString();
+      const todayEndUtc = fromZonedTime(endOfDay(today), tz).toISOString();
+      const weekStartUtc = fromZonedTime(startOfWeek(today, { weekStartsOn: 1 }), tz).toISOString();
+      const weekEndUtc = fromZonedTime(endOfDay(endOfWeek(today, { weekStartsOn: 1 })), tz).toISOString();
+      const monthStartUtc = fromZonedTime(startOfMonth(today), tz).toISOString();
+      const monthEndUtc = fromZonedTime(endOfDay(endOfMonth(today)), tz).toISOString();
 
       // Look up this user's teacher record to get teacher_id
       const { data: teacherRecord } = await supabase
@@ -68,8 +71,8 @@ export function useTeacherDashboardStats() {
         .eq('org_id', currentOrg.id)
         .eq('teacher_id', myTeacherId)
         .eq('status', 'scheduled')
-        .gte('start_at', `${todayStr}T00:00:00`)
-        .lte('start_at', `${todayStr}T23:59:59`);
+        .gte('start_at', todayStartUtc)
+        .lte('start_at', todayEndUtc);
 
       // Get students assigned to this teacher
       const { data: assignments } = await supabase
@@ -84,8 +87,8 @@ export function useTeacherDashboardStats() {
         .select('start_at, end_at')
         .eq('org_id', currentOrg.id)
         .eq('teacher_id', myTeacherId)
-        .gte('start_at', `${weekStart}T00:00:00`)
-        .lte('start_at', `${weekEnd}T23:59:59`);
+        .gte('start_at', weekStartUtc)
+        .lte('start_at', weekEndUtc);
 
       // This month's completed lessons
       const { data: monthLessons } = await supabase
@@ -94,8 +97,8 @@ export function useTeacherDashboardStats() {
         .eq('org_id', currentOrg.id)
         .eq('teacher_id', myTeacherId)
         .eq('status', 'completed')
-        .gte('start_at', `${monthStart}T00:00:00`)
-        .lte('start_at', `${monthEnd}T23:59:59`);
+        .gte('start_at', monthStartUtc)
+        .lte('start_at', monthEndUtc);
 
       // Upcoming lessons (next 5)
       const { data: upcomingData } = await supabase
@@ -104,7 +107,7 @@ export function useTeacherDashboardStats() {
         .eq('org_id', currentOrg.id)
         .eq('teacher_id', myTeacherId)
         .eq('status', 'scheduled')
-        .gte('start_at', `${todayStr}T00:00:00`)
+        .gte('start_at', todayStartUtc)
         .order('start_at', { ascending: true })
         .limit(5);
 
