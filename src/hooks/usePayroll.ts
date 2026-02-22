@@ -34,7 +34,7 @@ export interface PayrollData {
 export function usePayroll(startDate: string, endDate: string) {
   const { currentOrg, currentRole } = useOrg();
   const { user } = useAuth();
-  const isAdmin = currentRole === 'owner' || currentRole === 'admin';
+  const isAdmin = currentRole === 'owner' || currentRole === 'admin' || currentRole === 'finance';
 
   return useQuery({
     queryKey: ['payroll', currentOrg?.id, startDate, endDate, user?.id, isAdmin],
