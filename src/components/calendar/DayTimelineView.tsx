@@ -49,20 +49,37 @@ export function DayTimelineView({
   savingLessonIds = new Set(),
 }: DayTimelineViewProps) {
   const { currentOrg } = useOrg();
-  const startHour = (currentOrg as any)?.schedule_start_hour ?? DEFAULT_START_HOUR;
-  const endHour = (currentOrg as any)?.schedule_end_hour ?? DEFAULT_END_HOUR;
-  const totalHours = endHour - startHour;
-  const gridHeight = totalHours * DAY_HOUR_HEIGHT;
-  const hours = useMemo(() => Array.from({ length: totalHours }, (_, i) => startHour + i), [startHour, totalHours]);
-
-  const gridRef = useRef<HTMLDivElement>(null);
-  const scrollViewportRef = useRef<HTMLDivElement>(null);
+  const orgStartHour = (currentOrg as any)?.schedule_start_hour ?? DEFAULT_START_HOUR;
+  const orgEndHour = (currentOrg as any)?.schedule_end_hour ?? DEFAULT_END_HOUR;
 
   // Filter lessons to current day
   const dayLessons = useMemo(
     () => lessons.filter((l) => isSameDay(parseISO(l.start_at), currentDate)),
     [lessons, currentDate]
   );
+
+  // Expand hour range to include any out-of-range lessons
+  const startHour = useMemo(() => {
+    if (dayLessons.length === 0) return orgStartHour;
+    const minHour = Math.min(...dayLessons.map(l => parseISO(l.start_at).getHours()));
+    return Math.min(orgStartHour, minHour);
+  }, [orgStartHour, dayLessons]);
+
+  const endHour = useMemo(() => {
+    if (dayLessons.length === 0) return orgEndHour;
+    const maxHour = Math.max(...dayLessons.map(l => {
+      const end = parseISO(l.end_at);
+      return end.getMinutes() > 0 ? end.getHours() + 1 : end.getHours();
+    }));
+    return Math.max(orgEndHour, maxHour);
+  }, [orgEndHour, dayLessons]);
+
+  const totalHours = endHour - startHour;
+  const gridHeight = totalHours * DAY_HOUR_HEIGHT;
+  const hours = useMemo(() => Array.from({ length: totalHours }, (_, i) => startHour + i), [startHour, totalHours]);
+
+  const gridRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
 
   // Overlap layout
   const { positions } = useMemo(
