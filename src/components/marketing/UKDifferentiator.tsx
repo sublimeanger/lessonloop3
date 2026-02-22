@@ -12,7 +12,7 @@ const ukFeatures = [
 
 export function UKDifferentiator() {
   return (
-    <section className="py-24 lg:py-32 bg-background relative overflow-hidden">
+    <section className="py-24 lg:py-32 bg-muted/30 relative overflow-hidden">
       {/* Subtle accent gradient */}
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-blue-600/3 via-transparent to-transparent rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-red-600/3 via-transparent to-transparent rounded-full blur-3xl pointer-events-none" />
