@@ -109,7 +109,7 @@ serve(async (req: Request): Promise<Response> => {
     const frontendUrl = Deno.env.get("FRONTEND_URL") || req.headers.get("origin") || "https://lessonloop.net";
     const inviteUrl = `${frontendUrl}/accept-invite?token=${inviteToken}`;
 
-    console.log("Sending invite email to:", recipientEmail, "for org:", orgName);
+    console.debug("[send-invite-email] Sending invite email");
 
     const subject = `You've been invited to join ${escapeHtml(orgName)}`;
     const body = `
@@ -159,7 +159,7 @@ serve(async (req: Request): Promise<Response> => {
         .eq("related_id", inviteId)
         .eq("message_type", "invite");
 
-      console.log("Email sent successfully:", emailResponse);
+      console.debug("[send-invite-email] Email sent successfully");
 
       return new Response(
         JSON.stringify({ success: true, emailSent: true }),
@@ -167,8 +167,7 @@ serve(async (req: Request): Promise<Response> => {
       );
     } else {
       // No email provider configured - just log
-      console.log("No RESEND_API_KEY configured. Email logged but not sent.");
-      console.log("Invite URL:", inviteUrl);
+      console.debug("[send-invite-email] No RESEND_API_KEY configured. Email logged but not sent.");
 
       await supabase
         .from("message_log")

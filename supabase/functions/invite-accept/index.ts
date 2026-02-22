@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
               display_name: displayName, // Update name in case it's more accurate now
             })
             .eq("id", existingTeacher.id);
-          console.log(`Linked existing teacher record ${existingTeacher.id} to user ${user.id}`);
+          console.debug('[invite-accept] Linked existing teacher record');
         }
       } else {
         // Create a new teacher record
