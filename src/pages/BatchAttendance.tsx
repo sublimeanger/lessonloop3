@@ -191,7 +191,17 @@ export default function BatchAttendance() {
                               type="single"
                               value={currentStatus || ''}
                               onValueChange={(v) => {
-                                if (v) setStudentAttendance(lesson.id, p.student_id, v as AttendanceStatus);
+                                if (v) {
+                                  setStudentAttendance(lesson.id, p.student_id, v as AttendanceStatus);
+                                } else {
+                                  setAttendance((prev) => {
+                                    const next = new Map(prev);
+                                    const lessonMap = new Map(next.get(lesson.id) || []);
+                                    lessonMap.delete(p.student_id);
+                                    next.set(lesson.id, lessonMap);
+                                    return next;
+                                  });
+                                }
                               }}
                               className="gap-1 flex-wrap justify-end"
                             >
