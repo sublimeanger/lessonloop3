@@ -23,3 +23,26 @@ export function validateResourceFile(file: File): void {
     throw new Error('File exceeds 50MB limit');
   }
 }
+
+/**
+ * Sanitise a user-supplied file name before storing in the database.
+ * Strips path traversal, null bytes, control characters, and truncates.
+ */
+export function sanitizeFileName(rawName: string): string {
+  let name = rawName;
+  // Strip any directory path (forward and back slashes)
+  const lastSlash = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));
+  if (lastSlash >= 0) name = name.substring(lastSlash + 1);
+  // Remove null bytes and control characters (U+0000–U+001F, U+007F)
+  name = name.replace(/[\x00-\x1f\x7f]/g, '');
+  // Remove characters problematic in file systems / HTML contexts
+  name = name.replace(/[<>"'`|*?]/g, '_');
+  // Collapse consecutive dots (prevents hidden-file tricks)
+  name = name.replace(/\.{2,}/g, '.');
+  // Trim leading/trailing whitespace and dots
+  name = name.replace(/^[\s.]+|[\s.]+$/g, '');
+  // Truncate to 255 characters
+  if (name.length > 255) name = name.substring(0, 255);
+  // Fallback if empty after sanitisation
+  return name || 'unnamed-file';
+}
