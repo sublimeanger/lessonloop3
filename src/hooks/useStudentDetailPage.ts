@@ -502,7 +502,7 @@ export function useStudentDetailPage() {
 
       toast({ title: 'Guardian updated', description: 'Contact details have been saved.' });
       setEditGuardianDialog(prev => ({ ...prev, open: false }));
-      fetchStudent();
+      fetchGuardians();
     } catch (error: any) {
       toast({ title: 'Error updating guardian', description: error.message, variant: 'destructive' });
     } finally {
@@ -577,5 +577,6 @@ export function useStudentDetailPage() {
     studentInvoices, invoicesLoading,
 
     fetchStudent,
+    fetchGuardians,
   };
 }
