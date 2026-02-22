@@ -101,15 +101,30 @@ export function useCreateAvailabilityBlock() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (block: Omit<TablesInsert<'availability_blocks'>, 'org_id' | 'teacher_user_id'> & { teacher_user_id?: string }) => {
+    mutationFn: async (block: Omit<TablesInsert<'availability_blocks'>, 'org_id' | 'teacher_user_id'> & { teacher_user_id?: string; teacher_id?: string }) => {
       if (!currentOrg?.id || !user?.id) throw new Error('No organisation selected');
+
+      const teacherUserId = block.teacher_user_id || user.id;
+      let teacherId = block.teacher_id;
+
+      // Look up teacher_id if not provided
+      if (!teacherId) {
+        const { data: teacher } = await supabase
+          .from('teachers')
+          .select('id')
+          .eq('user_id', teacherUserId)
+          .eq('org_id', currentOrg.id)
+          .maybeSingle();
+        teacherId = teacher?.id ?? undefined;
+      }
 
       const { data, error } = await supabase
         .from('availability_blocks')
         .insert({
           ...block,
           org_id: currentOrg.id,
-          teacher_user_id: block.teacher_user_id || user.id,
+          teacher_user_id: teacherUserId,
+          teacher_id: teacherId ?? null,
         })
         .select()
         .single();
@@ -163,14 +178,29 @@ export function useCreateTimeOffBlock() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (block: { start_at: string; end_at: string; reason?: string; teacher_user_id?: string }) => {
+    mutationFn: async (block: { start_at: string; end_at: string; reason?: string; teacher_user_id?: string; teacher_id?: string }) => {
       if (!currentOrg?.id || !user?.id) throw new Error('No organisation selected');
+
+      const teacherUserId = block.teacher_user_id || user.id;
+      let teacherId = block.teacher_id;
+
+      // Look up teacher_id if not provided
+      if (!teacherId) {
+        const { data: teacher } = await supabase
+          .from('teachers')
+          .select('id')
+          .eq('user_id', teacherUserId)
+          .eq('org_id', currentOrg.id)
+          .maybeSingle();
+        teacherId = teacher?.id ?? undefined;
+      }
 
       const { data, error } = await supabase
         .from('time_off_blocks')
         .insert({
           org_id: currentOrg.id,
-          teacher_user_id: block.teacher_user_id || user.id,
+          teacher_user_id: teacherUserId,
+          teacher_id: teacherId ?? null,
           start_at: block.start_at,
           end_at: block.end_at,
           reason: block.reason || null,
