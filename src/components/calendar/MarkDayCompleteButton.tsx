@@ -82,7 +82,7 @@ export function MarkDayCompleteButton({ currentDate, lessons, onComplete }: Mark
       if (newRecords.length > 0) {
         const { error: attError } = await supabase
           .from('attendance_records')
-          .insert(newRecords);
+          .upsert(newRecords as any, { onConflict: 'lesson_id,student_id' });
         if (attError) throw attError;
       }
 
