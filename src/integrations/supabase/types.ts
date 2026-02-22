@@ -3980,6 +3980,10 @@ export type Database = {
       }
       cleanup_rate_limits: { Args: never; Returns: undefined }
       complete_expired_assignments: { Args: never; Returns: undefined }
+      confirm_makeup_booking: {
+        Args: { _org_id: string; _waitlist_id: string }
+        Returns: Json
+      }
       create_invoice_with_items: {
         Args: {
           _credit_ids?: string[]
