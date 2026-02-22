@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LogoHorizontal } from '@/components/brand/Logo';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Lock, CheckCircle } from 'lucide-react';
 import { PasswordStrengthIndicator, PASSWORD_MIN_LENGTH } from '@/components/auth/PasswordStrengthIndicator';
 
@@ -18,13 +18,13 @@ export default function ResetPassword() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Check if we have a valid session from the recovery link
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        toast.error('Invalid or expired reset link. Please request a new one.');
+        toast({ title: 'Invalid reset link', description: 'Please request a new one.', variant: 'destructive' });
         navigate('/forgot-password');
       }
     };
@@ -35,12 +35,12 @@ export default function ResetPassword() {
     e.preventDefault();
     
     if (password !== confirmPassword) {
-      toast.error('Passwords do not match');
+      toast({ title: 'Passwords don\'t match', description: 'Please make sure your passwords match.', variant: 'destructive' });
       return;
     }
 
     if (password.length < PASSWORD_MIN_LENGTH) {
-      toast.error(`Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
+      toast({ title: 'Password too short', description: `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`, variant: 'destructive' });
       return;
     }
 
@@ -54,14 +54,13 @@ export default function ResetPassword() {
       }
 
       setIsSuccess(true);
-      toast.success('Password updated successfully!');
+      toast({ title: 'Password updated', description: 'Your password has been successfully reset.' });
       
-      // Redirect to login after a short delay
       setTimeout(() => {
         navigate('/login');
       }, 2000);
     } catch (error: any) {
-      toast.error(error.message || 'Failed to update password');
+      toast({ title: 'Update failed', description: error.message || 'Failed to update password', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -69,8 +68,8 @@ export default function ResetPassword() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-        <Card className="w-full max-w-md">
+      <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
+        <Card className="w-full max-w-md shadow-elevated">
           <CardContent className="pt-6 text-center">
             <CheckCircle className="w-16 h-16 text-success mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-foreground mb-2">Password Updated!</h2>
@@ -84,8 +83,8 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
+      <Card className="w-full max-w-md shadow-elevated">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <LogoHorizontal size="lg" />
@@ -141,7 +140,7 @@ export default function ResetPassword() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full gradient-accent shadow-glow-teal hover:opacity-90 transition-opacity" disabled={isLoading}>
               {isLoading ? 'Updating...' : 'Update Password'}
             </Button>
           </form>
