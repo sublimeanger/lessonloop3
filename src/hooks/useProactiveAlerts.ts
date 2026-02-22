@@ -127,14 +127,27 @@ export function useProactiveAlerts() {
         });
       }
 
-      // Check absences missing reasons (last 7 days)
-      const { count: missingReasonCount } = await supabase
+      // Check absences missing reasons (last 7 days) — exclude cancelled lessons
+      const { data: cancelledLessonIds } = await supabase
+        .from('lessons')
+        .select('id')
+        .eq('org_id', currentOrg.id)
+        .eq('status', 'cancelled');
+
+      let missingReasonQuery = supabase
         .from('attendance_records')
         .select('id', { count: 'exact' })
         .eq('org_id', currentOrg.id)
         .in('attendance_status', ['absent', 'cancelled_by_student'])
         .is('absence_reason_category', null)
         .gte('recorded_at', weekAgoUtc);
+
+      if (cancelledLessonIds && cancelledLessonIds.length > 0) {
+        const ids = cancelledLessonIds.map(l => l.id);
+        missingReasonQuery = missingReasonQuery.not('lesson_id', 'in', `(${ids.join(',')})`);
+      }
+
+      const { count: missingReasonCount } = await missingReasonQuery;
 
       if (missingReasonCount && missingReasonCount > 0) {
         alerts.push({
