@@ -62,7 +62,7 @@ function BentoCard({
         sizeClasses[size],
         className
       )}
-      whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+      whileHover={size !== "normal" ? { scale: 1.02, transition: { duration: 0.2 } } : undefined}
     >
       {/* Gradient follow effect — only visible when hovered */}
       <motion.div
