@@ -29,6 +29,12 @@ export interface ResourceShare {
   shared_at: string;
 }
 
+export interface ShareWithStudent {
+  student_id: string;
+  shared_at: string;
+  students: { id: string; first_name: string; last_name: string } | null;
+}
+
 export interface ResourceWithShares extends Resource {
   resource_shares: ResourceShare[];
 }

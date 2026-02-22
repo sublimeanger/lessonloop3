@@ -15,7 +15,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useSharedResources, useResourceDownloadUrl } from '@/hooks/useResources';
+import { useSharedResources, type ShareWithStudent } from '@/hooks/useResources';
 import { supabase } from '@/integrations/supabase/client';
 import { getFileIcon, getFileTypeBadge, formatFileSize } from '@/lib/fileUtils';
 
@@ -114,7 +114,7 @@ export default function PortalResources() {
             {filteredResources.map(resource => {
               const FileIcon = getFileIcon(resource.file_type);
               const sharedStudents = resource.resource_shares?.map(
-                (s: any) => s.students ? `${s.students.first_name} ${s.students.last_name}` : ''
+                (s: ShareWithStudent) => s.students ? `${s.students.first_name} ${s.students.last_name}` : ''
               ).filter(Boolean);
 
               return (
