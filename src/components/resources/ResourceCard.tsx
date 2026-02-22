@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -59,9 +60,24 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
   const canDelete = currentRole === 'owner' || currentRole === 'admin' || user?.id === resource.uploaded_by;
   const canPreview = isPreviewable(resource.file_type) !== 'none';
   const isAudio = resource.file_type.startsWith('audio/');
+  const isImage = resource.file_type.startsWith('image/');
 
   const FileIcon = getFileIcon(resource.file_type);
   const shareCount = resource.resource_shares?.length || 0;
+
+  const { data: thumbnailUrl } = useQuery({
+    queryKey: ['resource-thumbnail', resource.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.storage
+        .from('teaching-resources')
+        .createSignedUrl(resource.file_path, 3600);
+      if (error) throw error;
+      return data.signedUrl;
+    },
+    enabled: isImage,
+    staleTime: 55 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+  });
 
   const handleDownload = async () => {
     setIsDownloading(true);
@@ -111,12 +127,24 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
             )}
             <button
               type="button"
-              className={`p-2 rounded-lg bg-muted shrink-0 ${canPreview && !selectionMode ? 'hover:bg-primary/10 cursor-pointer transition-colors' : ''}`}
+              className={`rounded-lg shrink-0 overflow-hidden ${isImage && thumbnailUrl ? 'h-12 w-12' : 'p-2 bg-muted'} ${canPreview && !selectionMode ? 'hover:bg-primary/10 cursor-pointer transition-colors' : ''}`}
               onClick={handleTitleClick}
               disabled={selectionMode || !canPreview}
               title={canPreview ? 'Preview' : undefined}
             >
-              <FileIcon className="h-6 w-6 text-muted-foreground" />
+              {isImage && thumbnailUrl ? (
+                <img
+                  src={thumbnailUrl}
+                  alt={resource.title}
+                  className="h-12 w-12 rounded-lg object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.parentElement?.classList.add('p-2', 'bg-muted');
+                  }}
+                />
+              ) : (
+                <FileIcon className="h-6 w-6 text-muted-foreground" />
+              )}
             </button>
 
             <div className="flex-1 min-w-0">
