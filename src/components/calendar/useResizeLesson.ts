@@ -53,7 +53,7 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHou
         top,
       });
     },
-    []
+    [startHour]
   );
 
   const updateResize = useCallback(
@@ -69,12 +69,12 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHou
 
       // Enforce minimum duration (15 minutes = HOUR_HEIGHT/4)
       const minBottom = resizeState.top + (MIN_DURATION / 60) * HOUR_HEIGHT;
-      const maxBottom = (endHour - startHour + 1) * HOUR_HEIGHT;
+      const maxBottom = (endHour - startHour) * HOUR_HEIGHT;
       const snapped = snapToGrid(Math.min(Math.max(y, minBottom), maxBottom));
 
       setResizeState((prev) => (prev ? { ...prev, currentBottom: snapped } : null));
     },
-    [resizeState, gridRef, scrollViewportRef]
+    [resizeState, gridRef, scrollViewportRef, startHour, endHour]
   );
 
   const completeResize = useCallback(() => {
@@ -100,7 +100,7 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHou
 
     setResizeState(null);
     onResize(lesson, newEnd);
-  }, [resizeState, onResize]);
+  }, [resizeState, onResize, startHour]);
 
   const cancelResize = useCallback(() => {
     isResizingRef.current = false;

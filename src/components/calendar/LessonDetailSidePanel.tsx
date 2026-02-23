@@ -67,11 +67,11 @@ export function LessonDetailSidePanel({
     return lesson?.attendance?.find(a => a.student_id === studentId)?.attendance_status || null;
   }, [lesson]);
 
-  if (!lesson && !open) return null;
+  if (!lesson) return null;
 
-  const startTime = lesson ? parseISO(lesson.start_at) : new Date();
-  const endTime = lesson ? parseISO(lesson.end_at) : new Date();
-  const duration = lesson ? differenceInMinutes(endTime, startTime) : 0;
+  const startTime = parseISO(lesson.start_at);
+  const endTime = parseISO(lesson.end_at);
+  const duration = differenceInMinutes(endTime, startTime);
 
   const studentNames = lesson?.participants?.map(
     (p) => `${p.student.first_name} ${p.student.last_name}`

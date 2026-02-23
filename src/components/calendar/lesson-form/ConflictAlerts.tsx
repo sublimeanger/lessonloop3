@@ -45,8 +45,8 @@ export function ConflictAlerts({ conflictState, errors, warnings, setConflictSta
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {errors.map((e, i) => (
-              <div key={i}>{e.message}</div>
+            {errors.map((e) => (
+              <div key={`${e.type}-${e.message}`}>{e.message}</div>
             ))}
           </AlertDescription>
         </Alert>
@@ -56,8 +56,8 @@ export function ConflictAlerts({ conflictState, errors, warnings, setConflictSta
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            {warnings.map((w, i) => (
-              <div key={i}>{w.message}</div>
+            {warnings.map((w) => (
+              <div key={`${w.type}-${w.message}`}>{w.message}</div>
             ))}
           </AlertDescription>
         </Alert>

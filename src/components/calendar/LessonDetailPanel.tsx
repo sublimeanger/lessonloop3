@@ -347,7 +347,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
   };
 
   const performDelete = async () => {
-    if (!lesson) return;
+    if (!lesson || !currentOrg || !user) return;
     setActionInProgress(true);
     setConfirmDeleteOpen(false);
 
@@ -361,7 +361,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           .delete()
           .eq('id', lesson.id);
         if (error) throw error;
-        logAudit(currentOrg!.id, user!.id, 'delete', 'lesson', lesson.id, {
+        logAudit(currentOrg.id, user.id, 'delete', 'lesson', lesson.id, {
           before: { title: lesson.title, start_at: lesson.start_at },
         });
         toast({ title: 'Lesson deleted' });
@@ -373,7 +373,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           .eq('recurrence_id', lesson.recurrence_id!)
           .gte('start_at', lesson.start_at);
         if (error) throw error;
-        logAudit(currentOrg!.id, user!.id, 'delete', 'lesson', lesson.id, {
+        logAudit(currentOrg.id, user.id, 'delete', 'lesson', lesson.id, {
           before: { title: lesson.title, start_at: lesson.start_at, scope: 'this_and_future' },
         });
         toast({ title: 'Series deleted', description: 'This and all future lessons have been deleted.' });

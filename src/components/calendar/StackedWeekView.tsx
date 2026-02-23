@@ -96,7 +96,7 @@ export function StackedWeekView({
       map.set(format(day, 'yyyy-MM-dd'), []);
     }
     for (const lesson of lessons) {
-      const key = format(new Date(lesson.start_at), 'yyyy-MM-dd');
+      const key = format(parseISO(lesson.start_at), 'yyyy-MM-dd');
       map.get(key)?.push(lesson);
     }
     for (const [, dayLessons] of map) {

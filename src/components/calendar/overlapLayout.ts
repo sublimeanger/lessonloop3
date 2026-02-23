@@ -173,8 +173,8 @@ function getVerticalPosition(
   const start = parseISO(lesson.start_at);
   const end = parseISO(lesson.end_at);
   const startMinutes = start.getHours() * 60 + start.getMinutes();
-  const endMinutes = end.getHours() * 60 + end.getMinutes();
-  const duration = endMinutes - startMinutes;
+  // Use timestamp difference to handle lessons crossing midnight correctly
+  const duration = Math.round((end.getTime() - start.getTime()) / 60000);
 
   const top = ((startMinutes - startHour * 60) / 60) * hourHeight;
   const height = (duration / 60) * hourHeight;

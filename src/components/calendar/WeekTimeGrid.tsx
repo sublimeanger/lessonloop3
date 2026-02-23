@@ -42,9 +42,13 @@ function resolveColour(
 
 function getTimeFromY(y: number, startHour: number, endHour: number): { hour: number; minute: number } {
   const totalMinutes = (y / HOUR_HEIGHT) * 60 + startHour * 60;
-  const hour = Math.floor(totalMinutes / 60);
-  const minute = Math.round((totalMinutes % 60) / 15) * 15;
-  return { hour: Math.min(Math.max(hour, startHour), endHour), minute: minute % 60 };
+  let hour = Math.floor(totalMinutes / 60);
+  let minute = Math.round((totalMinutes % 60) / 15) * 15;
+  if (minute >= 60) {
+    hour += 1;
+    minute = 0;
+  }
+  return { hour: Math.min(Math.max(hour, startHour), endHour), minute };
 }
 
 function formatTimeFromTop(top: number, startHour: number, endHour: number): string {

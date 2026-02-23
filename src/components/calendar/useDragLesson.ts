@@ -28,11 +28,15 @@ interface UseDragLessonOptions {
 
 function getTimeFromY(y: number, startHour: number, endHour: number): { hour: number; minute: number } {
   const totalMinutes = (y / HOUR_HEIGHT) * 60 + startHour * 60;
-  const hour = Math.floor(totalMinutes / 60);
-  const minute = Math.round((totalMinutes % 60) / 15) * 15;
+  let hour = Math.floor(totalMinutes / 60);
+  let minute = Math.round((totalMinutes % 60) / 15) * 15;
+  if (minute >= 60) {
+    hour += 1;
+    minute = 0;
+  }
   return {
     hour: Math.min(Math.max(hour, startHour), endHour),
-    minute: minute >= 60 ? 0 : minute,
+    minute,
   };
 }
 
@@ -85,7 +89,7 @@ export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef, startH
         }
       }, 150);
     },
-    [days, gridRef]
+    [days, gridRef, startHour]
   );
 
   /** Cancel the hold timer if we release early (click, not drag) */
@@ -151,7 +155,7 @@ export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef, startH
 
     setDragState(null);
     onDrop(lesson, newStart, newEnd);
-  }, [dragState, days, onDrop]);
+  }, [dragState, days, onDrop, startHour, endHour]);
 
   /** Cancel drag without saving */
   const cancelDrag = useCallback(() => {
