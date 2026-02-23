@@ -352,7 +352,7 @@ function LandingView({
   dismissProactiveMessage,
 }: {
   alerts: ProactiveAlert[];
-  proactiveMessage: any;
+  proactiveMessage: { title: string; message: string; suggestedPrompts: string[] } | null;
   suggestedPrompts: string[];
   conversations: AIConversation[];
   onSendMessage: (msg: string) => void;
