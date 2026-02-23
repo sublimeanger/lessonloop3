@@ -201,6 +201,9 @@ export function useCalendarConnections() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendar-connections'] });
     },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to update sync setting', variant: 'destructive' });
+    },
   });
 
   // Trigger manual sync

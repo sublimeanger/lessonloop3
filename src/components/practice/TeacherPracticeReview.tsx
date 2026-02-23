@@ -172,7 +172,9 @@ export function TeacherPracticeReview() {
             <ScrollArea className="h-[500px]">
               <div className="p-6 space-y-4">
                 {isLoading ? (
-                  <p className="text-center text-muted-foreground py-8">Loading...</p>
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
                 ) : pendingLogs.length === 0 ? (
                   <div className="text-center py-8">
                     <CheckCircle2 className="h-12 w-12 text-success mx-auto mb-4" />
@@ -189,7 +191,9 @@ export function TeacherPracticeReview() {
             <ScrollArea className="h-[500px]">
               <div className="p-6 space-y-4">
                 {isLoading ? (
-                  <p className="text-center text-muted-foreground py-8">Loading...</p>
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
                 ) : allLogs.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
                     No practice logs yet

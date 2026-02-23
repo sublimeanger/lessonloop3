@@ -275,5 +275,8 @@ export function useMarkInternalRead() {
       queryClient.invalidateQueries({ queryKey: ['internal-messages'] });
       queryClient.invalidateQueries({ queryKey: ['internal-messages-unread'] });
     },
+    onError: () => {
+      console.error('Failed to mark message as read');
+    },
   });
 }
