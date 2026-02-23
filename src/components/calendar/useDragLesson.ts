@@ -34,10 +34,12 @@ function getTimeFromY(y: number, startHour: number, endHour: number): { hour: nu
     hour += 1;
     minute = 0;
   }
-  return {
-    hour: Math.min(Math.max(hour, startHour), endHour),
-    minute,
-  };
+  hour = Math.min(Math.max(hour, startHour), endHour);
+  // Clamp minute to 0 when at the boundary hour to prevent times like endHour:15
+  if (hour >= endHour) {
+    minute = 0;
+  }
+  return { hour, minute };
 }
 
 function snapToGrid(y: number): number {
@@ -47,10 +49,14 @@ function snapToGrid(y: number): number {
 
 export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef, startHour = 7, endHour = 21 }: UseDragLessonOptions) {
   const [dragState, setDragState] = useState<DragLessonState | null>(null);
+  const dragStateRef = useRef<DragLessonState | null>(null);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startMousePos = useRef<{ x: number; y: number } | null>(null);
   const pendingLesson = useRef<LessonWithDetails | null>(null);
   const isDraggingRef = useRef(false);
+
+  // Keep ref in sync with state
+  dragStateRef.current = dragState;
 
   /** Call on mousedown / touchstart on a lesson card */
   const startDragIntent = useCallback(
@@ -105,7 +111,7 @@ export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef, startH
   /** Update position during drag */
   const updateDragPosition = useCallback(
     (clientX: number, clientY: number) => {
-      if (!dragState || !gridRef.current) return;
+      if (!dragStateRef.current || !gridRef.current) return;
 
       const rect = gridRef.current.getBoundingClientRect();
       const viewport = scrollViewportRef.current?.querySelector(
@@ -126,15 +132,16 @@ export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef, startH
           : null
       );
     },
-    [dragState, days, gridRef, scrollViewportRef]
+    [days, gridRef, scrollViewportRef]
   );
 
   /** Complete the drag — compute new times and call onDrop */
   const completeDrag = useCallback(() => {
-    if (!dragState) return;
+    const current = dragStateRef.current;
+    if (!current) return;
     isDraggingRef.current = false;
 
-    const { lesson, currentTop, currentDayIndex, originalTop, originalDayIndex } = dragState;
+    const { lesson, currentTop, currentDayIndex, originalTop, originalDayIndex } = current;
 
     // If position hasn't changed, just cancel
     if (currentTop === originalTop && currentDayIndex === originalDayIndex) {
@@ -155,7 +162,7 @@ export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef, startH
 
     setDragState(null);
     onDrop(lesson, newStart, newEnd);
-  }, [dragState, days, onDrop, startHour, endHour]);
+  }, [days, onDrop, startHour, endHour]);
 
   /** Cancel drag without saving */
   const cancelDrag = useCallback(() => {
@@ -165,8 +172,10 @@ export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef, startH
   }, [cancelDragIntent]);
 
   // Global mouse/touch move and up listeners during drag
+  // Only attach/detach when drag starts/stops (boolean toggle), not on every position update
+  const isDragActive = !!dragState;
   useEffect(() => {
-    if (!dragState) return;
+    if (!isDragActive) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       e.preventDefault();
@@ -198,7 +207,7 @@ export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef, startH
       window.removeEventListener('touchend', handleTouchEnd);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [dragState, updateDragPosition, completeDrag, cancelDrag]);
+  }, [isDragActive, updateDragPosition, completeDrag, cancelDrag]);
 
   // Clean up hold timer on unmount
   useEffect(() => {

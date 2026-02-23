@@ -115,7 +115,7 @@ export function computeOverlapLayout(
       for (const lesson of cluster) {
         positions.set(lesson.id, {
           ...getVerticalPosition(lesson, hourHeight, startHour),
-          columnIndex: columnAssignments.get(lesson.id) || 0,
+          columnIndex: columnAssignments.get(lesson.id) ?? 0,
           totalColumns: rawTotalColumns,
         });
       }
@@ -127,7 +127,7 @@ export function computeOverlapLayout(
       const overflowLessons: LessonWithDetails[] = [];
 
       for (const lesson of cluster) {
-        const col = columnAssignments.get(lesson.id) || 0;
+        const col = columnAssignments.get(lesson.id) ?? 0;
         if (col < visibleCols) {
           // Visible lesson
           positions.set(lesson.id, {

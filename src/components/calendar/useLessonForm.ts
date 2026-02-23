@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { logger } from '@/lib/logger';
-import { format, addMinutes, setHours, setMinutes, startOfDay, parseISO, addWeeks, eachDayOfInterval } from 'date-fns';
+import { format, addMinutes, addDays, setHours, setMinutes, startOfDay, parseISO, eachDayOfInterval } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -512,7 +512,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
           const zonedStart = toZonedTime(startAtUtc, orgTimezone);
           const zonedEnd = recurrenceEndDate
             ? setHours(startOfDay(recurrenceEndDate), 23)
-            : toZonedTime(addMinutes(startAtUtc, 90 * 24 * 60), orgTimezone);
+            : toZonedTime(addDays(startAtUtc, 90), orgTimezone);
 
           const allDays = eachDayOfInterval({ start: zonedStart, end: zonedEnd });
           for (const day of allDays) {
@@ -533,7 +533,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
         if (isRecurring && lessonsToCreate.length > 1) {
           const seriesStart = format(selectedDate, 'yyyy-MM-dd');
           const seriesEnd = format(
-            recurrenceEndDate || addWeeks(selectedDate, 90),
+            recurrenceEndDate || addDays(selectedDate, 90),
             'yyyy-MM-dd'
           );
           const { data: closureDates } = await supabase
