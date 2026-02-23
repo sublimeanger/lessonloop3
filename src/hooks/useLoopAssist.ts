@@ -82,7 +82,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
-  const [contextHash, setContextHash] = useState<string | null>(null);
+  const contextHashRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pageContext = externalPageContext || { type: 'general' as const };
@@ -158,7 +158,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     },
     onSuccess: (data) => {
       setCurrentConversationId(data.id);
-      setContextHash(null);
+      contextHashRef.current = null;
       queryClient.invalidateQueries({ queryKey: ['ai-conversations'] });
     },
   });
@@ -229,7 +229,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
           messages: historyMessages,
           context: pageContext,
           orgId: currentOrg.id,
-          lastContextHash: contextHash,
+          lastContextHash: contextHashRef.current,
         }),
         signal: abortController.signal,
       });
@@ -241,7 +241,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
 
       const newContextHash = response.headers.get('X-Context-Hash');
       if (newContextHash) {
-        setContextHash(newContextHash);
+        contextHashRef.current = newContextHash;
       }
 
       if (!response.body) throw new Error('No response body');
@@ -377,7 +377,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
       setIsStreaming(false);
       setStreamingContent('');
     }
-  }, [currentOrg?.id, user?.id, session?.access_token, currentConversationId, messages, pageContext, queryClient, createConversation, contextHash, toast]);
+  }, [currentOrg?.id, user?.id, session?.access_token, currentConversationId, messages, pageContext, queryClient, createConversation, toast]);
 
   // Execute or cancel proposal
   const handleProposal = useMutation({
