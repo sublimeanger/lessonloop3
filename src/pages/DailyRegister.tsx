@@ -63,7 +63,7 @@ export default function DailyRegister() {
     }
   }, [currentRole, currentOrg?.id, storageKey]);
 
-  const { data: allLessons, isLoading, refetch } = useRegisterData(selectedDate);
+  const { data: allLessons, isLoading, isError, error, refetch } = useRegisterData(selectedDate);
 
   // Fetch teachers list for the filter dropdown (owners/admins only)
   const { data: teachers = [] } = useQuery({
@@ -271,6 +271,16 @@ export default function DailyRegister() {
       {/* Lessons List */}
       {isLoading ? (
         <LoadingState message="Loading lessons..." />
+      ) : isError ? (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center">
+          <p className="text-destructive font-medium">Failed to load lessons</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {error instanceof Error ? error.message : 'An unexpected error occurred'}
+          </p>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
+            Try Again
+          </Button>
+        </div>
       ) : !lessons || lessons.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
