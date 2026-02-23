@@ -42,20 +42,21 @@ export function LoopAssistPageBanner({ bannerKey, message, prompt }: LoopAssistP
 
   return (
     <div
-      className="mb-3 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 cursor-pointer group transition-colors hover:bg-primary/10"
+      className="mb-3 flex min-h-11 items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 group cursor-pointer transition-colors hover:bg-primary/10"
       onClick={() => openDrawerWithMessage(prompt)}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && openDrawerWithMessage(prompt)}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && openDrawerWithMessage(prompt)}
     >
       <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
-      <span className="flex-1 text-xs text-foreground/80 truncate">
+      <span className="flex-1 text-body text-foreground/80 truncate">
         {message}
       </span>
       <ArrowRight className="h-3 w-3 text-primary/60 shrink-0 group-hover:translate-x-0.5 transition-transform" />
       <button
+        type="button"
         onClick={dismiss}
-        className="text-muted-foreground hover:text-foreground transition-colors shrink-0 ml-1"
+        className="ml-1 shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         aria-label="Dismiss"
       >
         <X className="h-3 w-3" />

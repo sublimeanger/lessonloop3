@@ -2,7 +2,6 @@ import { Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +11,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useUnreadInternalCount, useInternalMessages } from '@/hooks/useInternalMessages';
 import { usePendingRequestsCount } from '@/hooks/useAdminMessageRequests';
-import { cn } from '@/lib/utils';
 
 export function NotificationBell() {
   const navigate = useNavigate();
@@ -31,7 +29,7 @@ export function NotificationBell() {
         <Button
           variant="ghost"
           size="sm"
-          className="relative h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+          className="relative h-11 w-11 p-0 text-muted-foreground hover:text-foreground"
           aria-label="Notifications"
         >
           <Bell className="h-4 w-4" />
@@ -42,7 +40,7 @@ export function NotificationBell() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 bg-popover z-50">
+      <DropdownMenuContent align="end" className="z-50 w-[min(20rem,calc(100vw-1rem))] bg-popover">
         <div className="px-3 py-2 border-b">
           <p className="text-sm font-medium">Notifications</p>
           {totalCount > 0 && (

@@ -12,13 +12,10 @@ import {
   Users, 
   FileText, 
   Settings, 
-  LayoutDashboard, 
-  Search,
-  Plus,
-  ArrowRight
+  LayoutDashboard,
+  Plus
 } from "lucide-react";
 import { Shortcut } from "@/hooks/useKeyboardShortcuts";
-import { Badge } from "@/components/ui/badge";
 
 interface KeyboardShortcutsDialogProps {
   open: boolean;
@@ -42,7 +39,7 @@ export function KeyboardShortcutsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Keyboard Shortcuts</DialogTitle>
           <DialogDescription>
@@ -50,17 +47,17 @@ export function KeyboardShortcutsDialog({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="grid gap-6 py-4">
+        <div className="grid gap-5 py-4">
           {Object.entries(groupedShortcuts).map(([category, categoryShortcuts]) => (
             <div key={category} className="space-y-3">
               <h4 className="text-sm font-medium text-muted-foreground">{category}</h4>
               <div className="grid gap-2">
                 {categoryShortcuts.map((shortcut) => (
-                  <div key={shortcut.key} className="flex items-center justify-between text-sm">
+                  <div key={shortcut.key} className="flex flex-wrap items-center justify-between gap-2 text-body">
                     <span>{shortcut.description}</span>
                     <div className="flex gap-1">
                       {shortcut.displayKey?.split(' ').map((k, i) => (
-                        <kbd key={i} className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+                        <kbd key={i} className="pointer-events-none inline-flex min-h-6 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-micro font-medium text-muted-foreground opacity-100">
                           {k}
                         </kbd>
                       ))}
@@ -91,7 +88,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Type a command or search..." />
+      <CommandInput placeholder="Type a command or search…" />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup heading="Pages">

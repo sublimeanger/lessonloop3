@@ -51,16 +51,16 @@ export function QuickActionsGrid({ variant = 'solo', className }: QuickActionsGr
   return (
     <Card className={cn('', className)} data-tour="quick-actions">
       <CardHeader className="pb-2 sm:pb-3">
-        <CardTitle className="text-sm font-semibold">Quick Actions</CardTitle>
+        <CardTitle className="text-body-strong">Quick Actions</CardTitle>
       </CardHeader>
       <CardContent className="pb-4">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {actions.map((action) => (
             <Link
               key={action.id}
               to={action.href}
               className={cn(
-                'flex items-center gap-2 sm:gap-3 rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 transition-all',
+                'flex min-h-11 items-center gap-2 sm:gap-3 rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 transition-all',
                 'hover:shadow-sm active:scale-[0.98]',
                 action.primary
                   ? 'bg-primary text-primary-foreground hover:bg-primary/90'
@@ -68,7 +68,7 @@ export function QuickActionsGrid({ variant = 'solo', className }: QuickActionsGr
               )}
             >
               <action.icon className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" strokeWidth={1.5} />
-              <span className="text-xs sm:text-sm font-medium truncate">{action.label}</span>
+              <span className="text-body font-medium truncate">{action.label}</span>
             </Link>
           ))}
         </div>

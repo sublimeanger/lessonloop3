@@ -7,7 +7,7 @@ export function OfflineBanner() {
   if (isOnline) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] bg-warning/90 text-warning-foreground px-4 py-1.5 text-center text-sm font-medium flex items-center justify-center gap-2">
+    <div className="fixed inset-x-0 top-0 z-[100] flex min-h-11 items-center justify-center gap-2 bg-warning/95 px-4 py-2 text-center text-body-strong text-warning-foreground" role="status" aria-live="polite">
       <WifiOff className="h-4 w-4" />
       Offline — showing cached data
     </div>

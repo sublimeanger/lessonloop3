@@ -47,7 +47,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
       <Header />
       <div className="flex flex-1">
         <AppSidebar />
-        <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
+        <main className="flex-1 overflow-auto p-4 md:p-6">
           <AutoBreadcrumbs />
           <SectionErrorBoundary name="Page" key={location.pathname}>
             <Suspense fallback={<PageTransitionFallback />}>

@@ -23,7 +23,7 @@ function LessonRow({ lesson }: { lesson: TodayLesson }) {
     <Link
       to={`/calendar?date=${lessonDate}`}
       className={cn(
-        'flex items-stretch gap-0 py-2 sm:py-2.5 px-1 transition-colors hover:bg-muted/50 rounded-lg group',
+        'group flex min-h-11 items-stretch gap-0 rounded-xl px-1 py-2 sm:py-2.5 transition-colors hover:bg-muted/50',
         isCancelled && 'opacity-40',
       )}
     >
@@ -83,7 +83,7 @@ function EmptyTimeline() {
       <p className="text-xs text-muted-foreground mt-0.5">Your schedule is clear.</p>
       <button
         onClick={() => openDrawerWithMessage("What's coming up this week?")}
-        className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+        className="mt-3 inline-flex min-h-11 items-center gap-1 text-body text-muted-foreground transition-colors hover:text-primary"
       >
         <Sparkles className="h-3 w-3" />
         <span>or ask LoopAssist →</span>
@@ -123,7 +123,7 @@ export function TodayTimeline({ className }: TodayTimelineProps) {
     <Card className={cn('', className)} data-tour="today-timeline">
       <CardHeader className="pb-2 sm:pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold">Today's Schedule</CardTitle>
+          <CardTitle className="text-body-strong">Today's Schedule</CardTitle>
           {activeLessons.length > 0 && (
             <Link
               to="/calendar"

@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Sparkles, Send, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
@@ -41,15 +40,15 @@ export function LoopAssistWidget() {
 
   return (
     <Card className="relative overflow-hidden border-primary/20 bg-gradient-to-r from-primary/[0.04] via-transparent to-primary/[0.06]">
-      <CardContent className="p-3 sm:p-4">
+      <CardContent className="p-4 sm:p-5">
         <div className="flex flex-col gap-3">
           {/* Header row */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
               </div>
-              <span className="text-sm font-medium">LoopAssist</span>
+              <span className="text-body-strong">LoopAssist</span>
             </div>
             <kbd className="hidden sm:inline-flex h-5 items-center gap-0.5 rounded border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
               ⌘J
@@ -58,7 +57,7 @@ export function LoopAssistWidget() {
 
           {/* Top alert if present */}
           {topAlert && (
-            <div className="flex items-start gap-2 rounded-md bg-muted/60 px-2.5 py-2 text-xs">
+            <div className="flex items-start gap-2 rounded-xl bg-muted/60 px-3 py-2.5 text-body">
               <AlertTriangle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
               <span className="text-muted-foreground line-clamp-2">{topAlert.message}</span>
             </div>
@@ -72,29 +71,31 @@ export function LoopAssistWidget() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask anything about your business..."
-              className="h-8 text-sm bg-background/80"
+              className="h-11 text-body bg-background/80"
             />
             <Button
               onClick={handleSend}
               disabled={!input.trim()}
               size="icon"
-              className="h-8 w-8 shrink-0"
+              className="h-11 w-11 shrink-0"
             >
               <Send className="h-3.5 w-3.5" />
             </Button>
           </div>
 
           {/* Suggested prompts */}
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {SUGGESTED_PROMPTS.map((prompt) => (
-              <Badge
+              <Button
                 key={prompt}
-                variant="secondary"
-                className="cursor-pointer text-[11px] font-normal hover:bg-accent transition-colors"
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-11 text-body font-normal"
                 onClick={() => handlePromptClick(prompt)}
               >
                 {prompt}
-              </Badge>
+              </Button>
             ))}
           </div>
         </div>

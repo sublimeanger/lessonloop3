@@ -87,7 +87,7 @@ export function ContextualHint({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             className={cn(
-              'flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3',
+              'flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3',
               className
             )}
           >
@@ -96,7 +96,7 @@ export function ContextualHint({
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 shrink-0"
+              className="h-8 w-8 shrink-0" aria-label="Dismiss hint"
               onClick={dismiss}
             >
               <X className="h-3 w-3" />
@@ -117,7 +117,7 @@ export function ContextualHint({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           className={cn(
-            'fixed z-50 flex max-w-xs items-start gap-2 rounded-lg border bg-popover p-3 shadow-lg',
+            'fixed z-50 flex max-w-[calc(100vw-1.5rem)] sm:max-w-xs items-start gap-2 rounded-xl border bg-popover p-3 shadow-lg',
             className
           )}
           style={{ top: coords.top, left: coords.left }}
@@ -127,7 +127,7 @@ export function ContextualHint({
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 shrink-0"
+            className="h-8 w-8 shrink-0" aria-label="Dismiss hint"
             onClick={dismiss}
           >
             <X className="h-3 w-3" />

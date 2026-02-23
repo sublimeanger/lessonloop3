@@ -25,9 +25,9 @@ export function CalendarSyncBanner() {
   if (!errorCount || errorCount === 0) return null;
 
   return (
-    <Alert className="border-amber-200/50 bg-amber-50/30">
-      <AlertCircle className="h-4 w-4 text-amber-600" />
-      <AlertDescription className="text-sm">
+    <Alert className="border-warning/30 bg-warning/10">
+      <AlertCircle className="h-4 w-4 text-warning" />
+      <AlertDescription className="text-body">
         {errorCount} calendar sync connection{errorCount > 1 ? 's' : ''} need{errorCount === 1 ? 's' : ''} attention.
         <Link to="/settings?tab=calendar" className="underline ml-1 font-medium">
           View details

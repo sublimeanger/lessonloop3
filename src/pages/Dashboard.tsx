@@ -185,9 +185,9 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
         {/* Stats Grid — 6 cards, 2 cols mobile, 3 cols desktop */}
         <motion.div variants={itemVariants}>
           {isLoading ? (
-            <GridSkeleton count={6} columns={3} />
+            <GridSkeleton count={6} columns={4} />
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
               <StatCard title="Today's Lessons" value={stats?.todayLessons ?? 0} subtitle="Across all teachers" icon={Calendar} href="/calendar" variant="teal" />
               <StatCard title="Active Students" value={stats?.activeStudents ?? 0} subtitle="Currently enrolled" icon={Users} href="/students" variant="coral" />
               <StatCard title="This Week" value={`${stats?.lessonsThisWeek ?? 0} lessons`} subtitle={`${stats?.hoursThisWeek ?? 0} teaching hours`} icon={Clock} href="/calendar" variant="emerald" />
@@ -285,9 +285,9 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
         {/* Stats Grid — 2 cols mobile, 3 cols desktop */}
         <motion.div variants={itemVariants}>
           {isLoading ? (
-            <GridSkeleton count={6} columns={3} />
+            <GridSkeleton count={6} columns={4} />
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
               <StatCard title="Today's Lessons" value={stats?.todayLessons ?? 0} subtitle="Across all teachers" icon={Calendar} href="/calendar" variant="teal" />
               <StatCard title="Active Students" value={stats?.activeStudents ?? 0} subtitle="Currently enrolled" icon={Users} href="/students" variant="coral" />
               <StatCard title="This Week" value={`${stats?.lessonsThisWeek ?? 0} lessons`} subtitle={`${stats?.hoursThisWeek ?? 0} teaching hours`} icon={Clock} href="/calendar" variant="emerald" />
@@ -372,12 +372,12 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
         {showWelcome && (
           <motion.div variants={itemVariants}>
             <Card className="border-primary/30 bg-primary/5">
-              <CardContent className="flex flex-col gap-3 p-4 sm:p-6 relative">
-                <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={dismissWelcome}>
+              <CardContent className="relative flex flex-col gap-3 p-4 sm:p-5">
+                <Button variant="ghost" size="icon" className="absolute right-2 top-2 h-11 w-11" onClick={dismissWelcome}>
                   <X className="h-4 w-4" />
                 </Button>
-                <h3 className="text-lg font-semibold">Welcome to {currentOrg?.name}! 🎵</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="text-section-title tracking-tight">Welcome to {currentOrg?.name}! 🎵</h3>
+                <p className="text-body text-muted-foreground">
                   View your schedule, manage attendance, and communicate with students. Here are some things to get started:
                 </p>
                 <div className="flex flex-wrap gap-2">

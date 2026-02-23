@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useSyncExternalStore } from 'react';
+import { useState, useEffect, useMemo, useSyncExternalStore, useCallback } from 'react';
 import { safeGetItem, safeSetItem } from '@/lib/storage';
 import { useSearchParams } from 'react-router-dom';
 import { format, addWeeks, subWeeks, addDays, subDays, parseISO } from 'date-fns';
@@ -16,7 +16,6 @@ import { CalendarDesktopLayout } from '@/components/calendar/CalendarDesktopLayo
 import { LessonModal } from '@/components/calendar/LessonModal';
 import { LessonDetailPanel } from '@/components/calendar/LessonDetailPanel';
 import { RecurringActionDialog } from '@/components/calendar/RecurringActionDialog';
-import { QuickCreatePopover } from '@/components/calendar/QuickCreatePopover';
 
 const LG_QUERY = '(min-width: 1024px)';
 const subscribe = (cb: () => void) => { const mql = window.matchMedia(LG_QUERY); mql.addEventListener('change', cb); return () => mql.removeEventListener('change', cb); };
@@ -62,15 +61,15 @@ export default function CalendarPage() {
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
   };
 
-  const setCurrentDate = (d: Date) => {
+  const setCurrentDate = useCallback((d: Date) => {
     setCurrentDateRaw(d);
     syncToUrl({ date: format(d, 'yyyy-MM-dd') });
-  };
-  const setView = (v: CalendarView) => {
+  }, []);
+  const setView = useCallback((v: CalendarView) => {
     setViewRaw(v);
     syncToUrl({ view: v === 'day' ? null : v });
-  };
-  const setFilters = (f: CalendarFilters | ((prev: CalendarFilters) => CalendarFilters)) => {
+  }, []);
+  const setFilters = useCallback((f: CalendarFilters | ((prev: CalendarFilters) => CalendarFilters)) => {
     setFiltersRaw(prev => {
       const next = typeof f === 'function' ? f(prev) : f;
       syncToUrl({
@@ -82,7 +81,7 @@ export default function CalendarPage() {
       });
       return next;
     });
-  };
+  }, []);
 
   useEffect(() => { safeSetItem('ll-calendar-compact', isCompact ? '1' : '0'); }, [isCompact]);
 
@@ -108,9 +107,9 @@ export default function CalendarPage() {
   const teacherColourMap = useMemo(() => buildTeacherColourMap(teachers), [teachers]);
   const teachersWithColours = useMemo(() => Array.from(teacherColourMap.values()), [teacherColourMap]);
 
-  const navigatePrev = () => setCurrentDate(view === 'day' ? subDays(currentDate, 1) : subWeeks(currentDate, 1));
-  const navigateNext = () => setCurrentDate(view === 'day' ? addDays(currentDate, 1) : addWeeks(currentDate, 1));
-  const goToToday = () => setCurrentDate(new Date());
+  const navigatePrev = useCallback(() => setCurrentDate(view === 'day' ? subDays(currentDate, 1) : subWeeks(currentDate, 1)), [currentDate, setCurrentDate, view]);
+  const navigateNext = useCallback(() => setCurrentDate(view === 'day' ? addDays(currentDate, 1) : addWeeks(currentDate, 1)), [currentDate, setCurrentDate, view]);
+  const goToToday = useCallback(() => setCurrentDate(new Date()), [setCurrentDate]);
 
   useEffect(() => {
     const handleCalendarToday = () => goToToday();
@@ -135,7 +134,7 @@ export default function CalendarPage() {
       window.removeEventListener('calendar-view-week', handleCalendarViewWeek);
       window.removeEventListener('calendar-view-stacked', handleCalendarViewStacked);
     };
-  }, [currentDate, view, isParent]);
+  }, [actions, goToToday, isParent, navigateNext, navigatePrev, setView]);
 
   useEffect(() => {
     if (searchParams.get('action') === 'new' && !isParent && !actions.isModalOpen) {
@@ -144,7 +143,7 @@ export default function CalendarPage() {
       newParams.delete('action');
       window.history.replaceState(null, '', `?${newParams.toString()}`);
     }
-  }, [searchParams, isParent, actions.isModalOpen]);
+  }, [searchParams, isParent, actions]);
 
   const sharedProps = {
     currentDate, setCurrentDate, goToToday,

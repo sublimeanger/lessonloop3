@@ -35,7 +35,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center text-center py-20',
+        'flex flex-col items-center justify-center text-center px-4 py-12 sm:py-16',
         className
       )}
       role="status"
@@ -47,14 +47,14 @@ export function EmptyState({
             src={previewImage} 
             alt={previewAlt || 'Preview of what this will look like'} 
             loading="lazy"
-            className="w-full h-auto rounded-lg"
+            className="h-auto w-full rounded-xl border border-border/50"
           />
         </div>
       )}
       
       <Icon className="h-12 w-12 text-muted-foreground/30" aria-hidden="true" />
-      <h3 className="mt-4 text-lg font-semibold text-foreground">{title}</h3>
-      <p className="mt-2 max-w-sm mx-auto text-sm text-muted-foreground">{description}</p>
+      <h3 className="mt-4 text-section-title tracking-tight text-foreground">{title}</h3>
+      <p className="mt-2 mx-auto max-w-sm text-body text-muted-foreground">{description}</p>
       
       {(actionLabel || secondaryActionLabel) && (
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
@@ -99,13 +99,13 @@ export function InlineEmptyState({
   return (
     <div 
       className={cn(
-        'flex flex-col items-center justify-center py-8 text-center',
+        'flex flex-col items-center justify-center px-3 py-6 text-center sm:py-8',
         className
       )}
       role="status"
     >
       <Icon className="h-8 w-8 text-muted-foreground/50" aria-hidden="true" />
-      <p className="mt-2 text-sm text-muted-foreground">{message}</p>
+      <p className="mt-2 text-body text-muted-foreground">{message}</p>
       {actionLabel && onAction && (
         <Button onClick={onAction} variant="link" size="sm" className="mt-1">
           {actionLabel}

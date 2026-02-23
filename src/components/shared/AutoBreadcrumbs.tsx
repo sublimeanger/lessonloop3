@@ -14,26 +14,6 @@ interface AutoBreadcrumbsProps {
   currentPageTitle?: string;
 }
 
-/** Top-level segment → path mapping (only app routes that act as parents) */
-const ROOT_SEGMENTS: Record<string, string> = {
-  dashboard: '/dashboard',
-  students: '/students',
-  teachers: '/teachers',
-  invoices: '/invoices',
-  calendar: '/calendar',
-  reports: '/reports',
-  settings: '/settings',
-  messages: '/messages',
-  practice: '/practice',
-  resources: '/resources',
-  register: '/register',
-  locations: '/locations',
-  'make-ups': '/make-ups',
-  help: '/help',
-  'batch-attendance': '/batch-attendance',
-  portal: '/portal/home',
-};
-
 /** Look up a label from the centralised route config */
 function findLabel(path: string): string | undefined {
   const route = allRoutes.find((r) => r.path === path);
@@ -99,7 +79,7 @@ export function AutoBreadcrumbs({ currentPageTitle }: AutoBreadcrumbsProps) {
   if (crumbs.length <= 1) return null;
 
   return (
-    <Breadcrumb className="mb-4">
+    <Breadcrumb className="mb-4 overflow-x-auto whitespace-nowrap">
       <BreadcrumbList>
         {crumbs.map((crumb, i) => {
           const isLast = i === crumbs.length - 1;

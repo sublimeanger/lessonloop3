@@ -69,7 +69,7 @@ function AlertRow({
   return (
     <div
       className={cn(
-        'flex items-center gap-2 rounded-lg border px-3 py-2',
+        'flex items-center gap-2 rounded-xl border px-3 py-2',
         isUrgent
           ? 'border-destructive/30 bg-destructive/5'
           : 'border-warning/30 bg-warning/5'
@@ -81,13 +81,13 @@ function AlertRow({
         <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
       )}
 
-      <span className="flex-1 text-sm text-foreground truncate">{alert.message}</span>
+      <span className="flex-1 text-body text-foreground truncate">{alert.message}</span>
 
       {alert.suggestedAction && (
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 gap-1 px-2 text-xs shrink-0"
+          className="h-11 gap-1 px-3 text-body shrink-0"
           onClick={onAction}
         >
           <Sparkles className="h-3 w-3" />
@@ -98,7 +98,7 @@ function AlertRow({
 
       <button
         onClick={onDismiss}
-        className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        className="shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         aria-label="Dismiss"
       >
         <X className="h-3.5 w-3.5" />

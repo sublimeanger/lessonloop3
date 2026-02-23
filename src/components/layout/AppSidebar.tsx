@@ -203,7 +203,7 @@ function SidebarNavItem({ item, collapsed, badge }: { item: NavItem; collapsed: 
     <SidebarMenuButton asChild>
       <NavLink
         to={item.url}
-        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-medium"
       >
         <item.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.5} />
@@ -244,7 +244,7 @@ function SidebarNavItem({ item, collapsed, badge }: { item: NavItem; collapsed: 
 
 export function AppSidebar() {
   const { profile, signOut } = useAuth();
-  const { currentRole, currentOrg } = useOrg();
+  const { currentRole } = useOrg();
   const navigate = useNavigate();
   const { state } = useSidebar();
   const { setIsOpen: openLoopAssist } = useLoopAssistUI();
@@ -313,7 +313,7 @@ export function AppSidebar() {
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => openLoopAssist(true)}
-                    className="relative flex items-center justify-center rounded-lg p-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    className="relative flex h-11 w-11 items-center justify-center rounded-xl text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   >
                     <Sparkles className="h-[18px] w-[18px]" strokeWidth={1.5} />
                     {totalActionable > 0 && (
@@ -331,7 +331,7 @@ export function AppSidebar() {
             ) : (
               <button
                 onClick={() => openLoopAssist(true)}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ring-1 ring-sidebar-border"
+                className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-sidebar-foreground ring-1 ring-sidebar-border transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               >
                 <Sparkles className="h-[18px] w-[18px] text-sidebar-primary" strokeWidth={1.5} />
                 <span className="flex-1 text-left">LoopAssist</span>
@@ -384,7 +384,7 @@ export function AppSidebar() {
                 variant="ghost"
                 size="icon"
                 onClick={handleSignOut}
-                className="h-7 w-7 shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                className="h-11 w-11 shrink-0 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 title="Sign out"
               >
                 <LogOut className="h-4 w-4" />

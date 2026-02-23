@@ -29,14 +29,15 @@ export function HelpTooltip({
         <button
           type="button"
           className={cn(
-            'inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors',
+            'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground',
             className
           )}
         >
           <HelpCircle className={cn('h-4 w-4', iconClassName)} />
+          <span className="sr-only">Help</span>
         </button>
       </TooltipTrigger>
-      <TooltipContent side={side} className="max-w-xs">
+      <TooltipContent side={side} className="max-w-[min(20rem,calc(100vw-2rem))]">
         <div className="text-sm">
           {content}
           {articleId && (
