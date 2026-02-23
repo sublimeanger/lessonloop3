@@ -138,7 +138,7 @@ function ConversationCard({
 
   return (
     <Card className={cn(
-      'transition-all duration-150',
+      'transition-all duration-150 rounded-2xl shadow-card hover:shadow-elevated',
       hasUnread && !isExpanded && 'ring-1 ring-primary/20 bg-primary/[0.02]'
     )}>
       {/* Conversation header - clickable */}
@@ -292,8 +292,8 @@ export default function PortalMessages() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="inbox" className={cn('gap-2', pulseInbox && 'animate-pulse')}>
+        <TabsList className="rounded-full bg-muted/60 p-1 h-auto">
+          <TabsTrigger value="inbox" className={cn('rounded-full px-5 py-2 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm gap-2', pulseInbox && 'animate-pulse')}>
             Inbox
             {totalUnread > 0 && (
               <Badge variant="destructive" className={cn(
@@ -304,7 +304,7 @@ export default function PortalMessages() {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="requests">My Requests</TabsTrigger>
+          <TabsTrigger value="requests" className="rounded-full px-5 py-2 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">My Requests</TabsTrigger>
         </TabsList>
 
         {/* Inbox - conversation threads */}

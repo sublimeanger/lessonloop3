@@ -25,6 +25,7 @@ import { useStripePayment } from '@/hooks/useStripePayment';
 import { useInvoicePdf } from '@/hooks/useInvoicePdf';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrencyMinor } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { PaymentPlanInvoiceCard } from '@/components/portal/PaymentPlanInvoiceCard';
 
 export default function PortalInvoices() {
@@ -159,13 +160,15 @@ export default function PortalInvoices() {
 
       {/* Outstanding Summary */}
       {totalOutstanding > 0 && (
-        <Card className="mb-6 border-warning/30 dark:border-warning/40 bg-warning/10 dark:bg-warning/10">
-          <CardContent className="p-4">
+        <Card className="mb-6 rounded-2xl border-0 overflow-hidden bg-gradient-to-br from-warning/15 via-warning/8 to-transparent">
+          <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <AlertCircle className="h-5 w-5 text-warning" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-warning/20 shrink-0">
+                  <AlertCircle className="h-5 w-5 text-warning" />
+                </div>
                 <div>
-                  <p className="font-medium">Outstanding Balance</p>
+                  <p className="font-medium text-sm">Outstanding Balance</p>
                   <p className="text-2xl font-bold text-warning">
                     {formatCurrencyMinor(totalOutstanding, currentOrg?.currency_code || 'GBP')}
                   </p>
@@ -334,12 +337,15 @@ function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, i
   const isPaid = invoice.status === 'paid';
   const { downloadPdf, isLoading: isPdfLoading } = useInvoicePdf();
 
+  const accentColor = isPaid ? 'bg-success' : invoice.status === 'void' ? 'bg-muted-foreground/30' : 'bg-warning';
+
   return (
     <Card 
       id={`invoice-${invoice.id}`}
-      className={isHighlighted ? 'ring-2 ring-primary ring-offset-2 animate-pulse' : ''}
+      className={cn('rounded-2xl shadow-card hover:shadow-elevated transition-all duration-150 overflow-hidden relative', isHighlighted && 'ring-2 ring-primary ring-offset-2 animate-pulse')}
     >
-      <CardContent className="p-4">
+      <div className={cn('absolute inset-y-0 left-0 w-1 rounded-l-2xl', accentColor)} />
+      <CardContent className="p-4 pl-5">
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">

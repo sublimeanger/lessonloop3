@@ -65,7 +65,7 @@ export default function PortalPractice() {
           
           {/* Streak Display for each child */}
           {activeStreaks.length > 0 && (
-            <Card>
+            <Card className="rounded-2xl shadow-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Flame className="h-5 w-5 text-orange-500" />
