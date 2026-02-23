@@ -2484,6 +2484,7 @@ export type Database = {
       organisations: {
         Row: {
           address: string | null
+          ai_preferences: Json | null
           auto_pause_lessons_after_days: number | null
           bank_account_name: string | null
           bank_account_number: string | null
@@ -2540,6 +2541,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          ai_preferences?: Json | null
           auto_pause_lessons_after_days?: number | null
           bank_account_name?: string | null
           bank_account_number?: string | null
@@ -2596,6 +2598,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          ai_preferences?: Json | null
           auto_pause_lessons_after_days?: number | null
           bank_account_name?: string | null
           bank_account_number?: string | null

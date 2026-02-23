@@ -1594,7 +1594,7 @@ serve(async (req) => {
     // Fetch org data early so currency_code is available for context builders
     const { data: orgData } = await supabase
       .from("organisations")
-      .select("name, org_type, currency_code, subscription_plan")
+      .select("name, org_type, currency_code, subscription_plan, ai_preferences")
       .eq("id", orgId)
       .single();
 
@@ -1725,12 +1725,24 @@ Currency: ${orgData.currency_code}
 AI tier: ${isPro ? "Pro (Sonnet)" : "Standard (Haiku)"}`
       : "";
 
+    // Build academy AI preferences context
+    let preferencesContext = "";
+    const aiPrefs = orgData?.ai_preferences as Record<string, string> | null;
+    if (aiPrefs && typeof aiPrefs === "object" && Object.keys(aiPrefs).length > 0) {
+      preferencesContext += "\n\nACADEMY AI PREFERENCES:";
+      if (aiPrefs.term_name) preferencesContext += `\n- This academy calls their terms "${aiPrefs.term_name}" — always use this word instead of "term"`;
+      if (aiPrefs.billing_cycle) preferencesContext += `\n- Billing cycle: ${aiPrefs.billing_cycle}`;
+      if (aiPrefs.tone) preferencesContext += `\n- Preferred tone: ${aiPrefs.tone}`;
+      if (aiPrefs.progress_report_style) preferencesContext += `\n- Progress report instructions: ${aiPrefs.progress_report_style}`;
+      if (aiPrefs.custom_instructions) preferencesContext += `\n- Custom instructions: ${String(aiPrefs.custom_instructions).slice(0, 500)}`;
+    }
+
     // Add current datetime context
     const now = new Date();
     const dateTimeStr = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ', ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     const timeContext = `\n\nCurrent date and time: ${dateTimeStr}`;
 
-    const fullContext = SYSTEM_PROMPT + timeContext + orgContext + pageContextInfo + dataContext;
+    const fullContext = SYSTEM_PROMPT + timeContext + orgContext + preferencesContext + pageContextInfo + dataContext;
 
     const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
     if (!ANTHROPIC_API_KEY) {
