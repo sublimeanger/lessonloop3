@@ -403,32 +403,17 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     onSuccess: (data, variables) => {
       if (variables.action === 'confirm') {
         toast({ title: data.result?.message || 'Action executed successfully' });
-        
-        if (currentConversationId && currentOrg?.id && user?.id) {
-          const resultMessage = typeof data.result?.message === 'string' 
-            ? data.result.message 
-            : 'Action completed successfully';
-          
-          supabase.from('ai_messages').insert({
-            conversation_id: currentConversationId,
-            org_id: currentOrg.id,
-            user_id: user.id,
-            role: 'assistant',
-            content: `✅ Action Executed\n\n${resultMessage}`,
-          }).then(() => {
-            queryClient.invalidateQueries({ queryKey: ['ai-messages', currentConversationId] });
-            setTimeout(() => {
-              const messagesContainer = document.querySelector('[data-loop-assist-messages]');
-              if (messagesContainer) {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-              }
-            }, 100);
-          });
-        }
       } else {
         toast({ title: 'Action cancelled' });
       }
       queryClient.invalidateQueries({ queryKey: ['ai-proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-messages', currentConversationId] });
+      setTimeout(() => {
+        const messagesContainer = document.querySelector('[data-loop-assist-messages]');
+        if (messagesContainer) {
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+      }, 500);
     },
     onError: (error) => {
       toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to process action', variant: 'destructive' });
