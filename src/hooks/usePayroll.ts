@@ -196,7 +196,7 @@ function calculatePayroll(
     for (const lesson of teacherLessons) {
       const start = new Date(lesson.start_at);
       const end = new Date(lesson.end_at);
-      const durationMins = Math.round((end.getTime() - start.getTime()) / 60000);
+      const durationMins = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
       totalMinutes += durationMins;
 
       let calculatedPay = 0;
@@ -206,12 +206,12 @@ function calculatePayroll(
           calculatedPay = teacherInfo.payRateValue;
           break;
         case 'hourly':
-          calculatedPay = (durationMins / 60) * teacherInfo.payRateValue;
+          calculatedPay = Math.round((durationMins / 60) * teacherInfo.payRateValue * 100) / 100;
           break;
         case 'percentage': {
           const lessonRevenue = invoiceItemsMap.get(lesson.id);
           if (lessonRevenue !== undefined) {
-            calculatedPay = (teacherInfo.payRateValue / 100) * (lessonRevenue / 100);
+            calculatedPay = Math.round((teacherInfo.payRateValue / 100) * (lessonRevenue / 100) * 100) / 100;
           } else {
             calculatedPay = 0;
             hasWarning = true;
