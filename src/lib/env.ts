@@ -30,7 +30,7 @@ const supabaseProjectId = requireEnv('VITE_SUPABASE_PROJECT_ID');
 if (!supabaseProjectId) missing.push('VITE_SUPABASE_PROJECT_ID');
 
 if (missing.length > 0) {
-  console.error(
+  throw new Error(
     `[LessonLoop] Missing or invalid environment variables:\n  - ${missing.join('\n  - ')}\n\nCheck your .env file or deployment configuration.`
   );
 }

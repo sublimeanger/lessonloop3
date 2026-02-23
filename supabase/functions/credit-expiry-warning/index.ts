@@ -64,8 +64,7 @@ Deno.serve(async (req) => {
 
   for (const credit of unsent) {
     try {
-      const studentsArr = credit.students as unknown as Array<{ id: string; first_name: string; last_name: string }> | null;
-      const student = studentsArr?.[0] ?? null;
+      const student = credit.students as { id: string; first_name: string; last_name: string } | null;
       if (!student) continue;
 
       const studentName = `${student.first_name} ${student.last_name}`.trim();

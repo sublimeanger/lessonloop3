@@ -1,4 +1,4 @@
-// Notification preference check utility
+import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 export type NotifPrefKey =
   | "email_lesson_reminders"
@@ -12,7 +12,7 @@ export type NotifPrefKey =
  * Returns true if no preference row exists (opt-in by default).
  */
 export async function isNotificationEnabled(
-  supabase: any,
+  supabase: SupabaseClient,
   orgId: string,
   userId: string,
   prefKey: NotifPrefKey
@@ -25,5 +25,5 @@ export async function isNotificationEnabled(
     .maybeSingle();
 
   if (!data) return true; // No prefs row = defaults (all enabled except marketing)
-  return !!(data as any)[prefKey];
+  return !!data[prefKey];
 }
