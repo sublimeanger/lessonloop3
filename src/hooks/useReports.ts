@@ -580,7 +580,7 @@ export function useDashboardStats() {
           .eq('org_id', currentOrg.id)
           .gte('start_at', todayStart)
           .lte('start_at', todayEnd)
-          .eq('status', 'scheduled'),
+          .neq('status', 'cancelled'),
         supabase
           .from('students')
           .select('id', { count: 'exact', head: true })
