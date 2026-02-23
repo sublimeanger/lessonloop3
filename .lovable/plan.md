@@ -1,49 +1,105 @@
 
+# World-Class Parent Portal UX Upgrade
 
-# Fix: LoopAssist Action Proposals Not Rendering for Bulk Operations
+## Current Problems
 
-## Root Cause
+The parent portal looks like a basic wireframe compared to the polished main dashboard. Key issues:
 
-The system prompt in the chat edge function defines **10 action types**, but the frontend only recognises **8**. Two bulk-specific types are missing from the frontend validation:
+- **Sidebar**: Plain white background with unstyled nav links -- completely different from the dark, premium `AppSidebar` used by staff
+- **Home/Dashboard**: No hero section, no time-based greeting, plain text greeting instead of the cinematic `DashboardHero` that staff get
+- **Bottom Nav (mobile)**: Functional but bland -- no active indicator beyond colour change
+- **All page headers**: Plain `PageHeader` text with no visual distinction
+- **Cards everywhere**: Generic white cards with no elevation hierarchy, no hover effects, no branded accents
+- **Tabs (Messages)**: Default unstyled `TabsList` -- boring and generic
+- **Schedule lesson cards**: Dense, unstructured information dump
+- **Profile page**: Plain form with no visual personality
 
-- `bulk_complete_lessons` (used when the AI wants to mark all past lessons complete)
-- `send_bulk_reminders` (used when the AI wants to send all overdue reminders)
+## Design Vision
 
-When the AI emits one of these types, the frontend's `VALID_ACTION_TYPES` check silently discards it, so no proposal record is created and no ActionCard appears.
+Match the staff dashboard's premium "The Guide" identity: dark sidebar, cinematic hero, branded cards with hover elevation, tactile interactions, and polished micro-animations.
 
-## Fix Strategy
+## Changes (Visual/UX Only -- Zero Functionality Changes)
 
-Rather than adding two more action types to the frontend (which duplicates logic), the cleaner fix is to **consolidate** the prompt so the AI always uses the existing types (`complete_lessons` and `send_invoice_reminders`) for both single and bulk operations, and update the execute function to handle bulk params on those existing types.
+### 1. Portal Sidebar (`src/components/layout/PortalSidebar.tsx`)
+- Switch from `bg-white` to dark ink sidebar matching `AppSidebar` (uses `--sidebar-background` tokens)
+- Add org logo/branding area at top with `Logo` + `LogoWordmark` components
+- Style nav items with `text-sidebar-foreground`, active state `bg-sidebar-primary text-sidebar-primary-foreground`
+- Add grouped section label (e.g. "PORTAL") in `10px` uppercase tracking
+- Add separator between nav and footer
+- Style footer avatar with `bg-sidebar-primary` matching staff sidebar
+- Icon stroke width to 1.5 for consistency
 
-### Changes
+### 2. Portal Layout (`src/components/layout/PortalLayout.tsx`)
+- No structural changes, just ensure the sidebar/content split inherits the new sidebar styling
 
-**1. System prompt (`supabase/functions/looopassist-chat/index.ts`)**
-- Remove action types #9 (`send_bulk_reminders`) and #10 (`bulk_complete_lessons`) from the prompt
-- Update the `complete_lessons` description to clarify it handles both single and bulk (just pass multiple `lesson_ids`)
-- Update `send_invoice_reminders` similarly
+### 3. Portal Home / Dashboard (`src/pages/portal/PortalHome.tsx`)
+- Replace plain text greeting with a `DashboardHero`-style component (time-based gradient, animated sky scene, wave emoji)
+- Add stat pills for: next lesson countdown, outstanding balance, unread messages
+- Restyle "Your Children" cards with `shadow-card` base, `hover:shadow-elevated` on hover, `active:scale-[0.995]` tactile effect
+- Add subtle gradient accent stripe on the left edge of children cards
+- Restyle "Next Lesson" hero card with a more vibrant gradient and rounded-2xl
+- Restyle outstanding balance and messages cards with branded icon backgrounds
+- Add `rounded-2xl` to all cards for consistency
+- Make-up credits card: refine with softer gradient, cleaner typography
+- Quick actions at bottom: style as a row of rounded pill buttons similar to `QuickActionsGrid`
 
-**2. Execute function (`supabase/functions/looopassist-execute/index.ts`)**
-- Merge the `bulk_complete_lessons` case logic into the `complete_lessons` handler (if no `lesson_ids` provided, fall back to "all past scheduled" behaviour)
-- Merge `send_bulk_reminders` logic into `send_invoice_reminders` (if no `invoice_ids`, find all overdue)
-- Remove the standalone `bulk_complete_lessons` and `send_bulk_reminders` cases
-- Remove them from `ACTION_ROLE_PERMISSIONS`
+### 4. Bottom Nav (`src/components/layout/PortalBottomNav.tsx`)
+- Add an active indicator dot or bar below the active icon (small 4px rounded bar, bg-primary)
+- Increase tap target to `h-16`
+- Add subtle `backdrop-blur-lg` glass effect background
+- Add top shadow instead of hard border for depth
 
-**3. Frontend (`src/hooks/useLoopAssist.ts`)**
-- As a safety net, also add `bulk_complete_lessons` and `send_bulk_reminders` to `VALID_ACTION_TYPES` so any in-flight conversations that already have these types still work
+### 5. Schedule Page (`src/pages/portal/PortalSchedule.tsx`)
+- Restyle lesson cards: add left colour accent bar (green=upcoming, grey=past, red=cancelled)
+- Add `rounded-2xl` and `shadow-card hover:shadow-elevated` to lesson cards
+- Restyle week group headers with a subtle divider line and bolder typography
+- Calendar subscribe card: make it more compact and visually integrated
 
-**4. Frontend (`src/components/loopassist/ActionCard.tsx`)**
-- Add `bulk_complete_lessons` and `send_bulk_reminders` to `ACTION_ICONS`, `ACTION_LABELS`, `ACTION_ROLE_PERMISSIONS`
-- Add preview text logic for `bulk_complete_lessons`
-- Add to the `ActionProposalData.action_type` union
+### 6. Invoices Page (`src/pages/portal/PortalInvoices.tsx`)
+- Restyle invoice cards with left accent bar (amber=outstanding, green=paid, grey=void)
+- Add `rounded-2xl` consistency
+- Restyle the outstanding summary banner with a gradient background instead of flat colour
+- Status badges: use pill-shaped badges with softer colours
 
-### Summary of file changes
+### 7. Messages Page (`src/pages/portal/PortalMessages.tsx`)
+- Restyle `TabsList` with pill-shaped tabs, teal active indicator, and subtle background
+- Conversation cards: add `rounded-2xl`, cleaner spacing, hover elevation
+- Message bubbles: slightly larger border radius, softer shadow on staff messages
+- Empty state: warmer illustration style
 
-| File | Change |
-|------|--------|
-| `supabase/functions/looopassist-chat/index.ts` | Remove types #9 and #10 from system prompt; update #2 and #7 descriptions |
-| `supabase/functions/looopassist-execute/index.ts` | Merge bulk handlers into existing types; keep old cases as aliases for backwards compat |
-| `src/hooks/useLoopAssist.ts` | Add `bulk_complete_lessons` and `send_bulk_reminders` to `VALID_ACTION_TYPES` |
-| `src/components/loopassist/ActionCard.tsx` | Add both types to icons, labels, permissions, preview text, and the type union |
+### 8. Profile Page (`src/pages/portal/PortalProfile.tsx`)
+- Add a profile header card with user avatar, name, and org context
+- Style form cards with `rounded-2xl` and section icons
+- Notification toggles: add card-like rows with subtle separator
 
-This ensures existing conversations with the old types still work, while new conversations will use the consolidated types.
+### 9. Page Headers (all portal pages)
+- For portal pages, use slightly larger heading (text-2xl on mobile, text-3xl on desktop)
+- Add a subtle bottom gradient line beneath the title for branding
 
+### 10. Global Card Styling
+- All portal cards get `rounded-2xl shadow-card` base
+- Hover cards get `hover:shadow-elevated transition-all duration-150`
+- Clickable cards get `active:scale-[0.995] cursor-pointer`
+
+## Files to Edit
+
+| File | Scope |
+|------|-------|
+| `src/components/layout/PortalSidebar.tsx` | Dark sidebar, branded nav, styled footer |
+| `src/components/layout/PortalLayout.tsx` | Minor: ensure sidebar class pass-through |
+| `src/components/layout/PortalBottomNav.tsx` | Glass effect, active indicator, larger targets |
+| `src/pages/portal/PortalHome.tsx` | Hero section, card styling, stat pills, quick actions |
+| `src/pages/portal/PortalSchedule.tsx` | Lesson card accent bars, rounded cards, week headers |
+| `src/pages/portal/PortalInvoices.tsx` | Invoice card accents, outstanding banner, rounded cards |
+| `src/pages/portal/PortalMessages.tsx` | Pill tabs, conversation card styling, bubble polish |
+| `src/pages/portal/PortalProfile.tsx` | Profile header, card styling, form refinement |
+| `src/pages/portal/PortalPractice.tsx` | Card consistency (rounded-2xl, shadows) |
+| `src/pages/portal/PortalResources.tsx` | Card consistency (rounded-2xl, shadows) |
+
+## What Does NOT Change
+
+- Zero functionality, data fetching, or business logic changes
+- No new dependencies
+- No database or edge function changes
+- All existing features (make-up stepper, calendar sync, payment flow, etc.) remain identical
+- Mobile responsiveness maintained
