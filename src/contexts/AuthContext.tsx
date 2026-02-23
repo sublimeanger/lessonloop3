@@ -295,24 +295,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(async (email: string, password: string) => {
     const cleanEmail = email.trim().toLowerCase();
     const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-    return { error: error as Error | null };
+    if (error) {
+      // SEC-AUTH-03: Normalise error message to prevent account enumeration.
+      // Supabase may return different messages for "user not found" vs "wrong password"
+      // — we collapse both into one generic message so attackers learn nothing.
+      const msg = (error.message || '').toLowerCase();
+      const isCredentialError =
+        msg.includes('invalid login') ||
+        msg.includes('invalid credentials') ||
+        msg.includes('user not found') ||
+        msg.includes('no user') ||
+        msg.includes('wrong password') ||
+        msg.includes('invalid email or password');
+      if (isCredentialError) {
+        return { error: new Error('Invalid email or password') };
+      }
+      return { error: error as Error };
+    }
+    return { error: null };
   }, []);
 
   const signOut = useCallback(async () => {
     setIsLoading(true);
-    
+
+    // Clear state immediately so UI reflects signed-out status
     setUser(null);
     setSession(null);
     setProfile(null);
     setRoles([]);
-    
-    await supabase.auth.signOut({ scope: 'local' });
-    
+    profileIdRef.current = null;
+    fetchingRef.current = false;
+
+    // SEC-AUTH-07: Sign out globally to invalidate refresh tokens server-side,
+    // preventing reuse of old JWTs after logout.
+    // Falls back to local-only signout if global fails (e.g. network error).
+    try {
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch {
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    }
+
+    // Belt-and-suspenders: clear the auth token from storage
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     if (projectId) {
       safeRemoveItem(`sb-${projectId}-auth-token`);
     }
-    
+
+    Sentry.setUser(null);
     setIsLoading(false);
   }, []);
 

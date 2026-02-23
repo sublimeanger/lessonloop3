@@ -158,8 +158,9 @@ export function PublicRoute({ children }: { children: ReactNode }) {
   }
 
   // Check for stored invite return URL (survives onboarding redirect)
+  // SEC: Only allow relative paths starting with /accept-invite to prevent open-redirect
   const inviteReturn = (() => { try { return sessionStorage.getItem('lessonloop_invite_return'); } catch { return null; } })();
-  if (inviteReturn) {
+  if (inviteReturn && inviteReturn.startsWith('/accept-invite')) {
     try { sessionStorage.removeItem('lessonloop_invite_return'); } catch {}
     return <Navigate to={inviteReturn} replace />;
   }
@@ -171,8 +172,10 @@ export function PublicRoute({ children }: { children: ReactNode }) {
 
   // Authenticated and onboarded - redirect to appropriate dashboard
   const fromState = (location.state as { from?: { pathname: string; search?: string } })?.from;
-  const from = fromState ? fromState.pathname + (fromState.search || '') : null;
-  
+  // SEC: Only allow relative paths to prevent open-redirect attacks
+  const rawFrom = fromState ? fromState.pathname + (fromState.search || '') : null;
+  const from = rawFrom && rawFrom.startsWith('/') && !rawFrom.startsWith('//') ? rawFrom : null;
+
   if (currentRole === 'parent') {
     return <Navigate to="/portal/home" replace />;
   }
