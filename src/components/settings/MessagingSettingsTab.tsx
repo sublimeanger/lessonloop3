@@ -1,9 +1,22 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Loader2, MessageSquare, Bell, Shield } from 'lucide-react';
 import { useMessagingSettings, type MessagingSettings } from '@/hooks/useMessagingSettings';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useOrg } from '@/contexts/OrgContext';
+import { toast } from 'sonner';
 
 interface SettingRowProps {
   id: keyof Omit<MessagingSettings, 'org_id'>;
@@ -35,6 +48,36 @@ function SettingRow({ id, label, description, checked, onToggle, disabled }: Set
 
 export function MessagingSettingsTab() {
   const { settings, isLoading, updateSetting, isSaving } = useMessagingSettings();
+  const { currentOrg } = useOrg();
+  const [showReassignDialog, setShowReassignDialog] = useState(false);
+  const [isReassigning, setIsReassigning] = useState(false);
+
+  const handleTeacherMessagingToggle = (key: keyof Omit<MessagingSettings, 'org_id'>, value: boolean) => {
+    if (key === 'parent_can_message_teacher' && !value) {
+      // Toggling OFF — show confirmation
+      setShowReassignDialog(true);
+      return;
+    }
+    updateSetting(key, value);
+  };
+
+  const handleConfirmReassign = async () => {
+    if (!currentOrg) return;
+    setIsReassigning(true);
+    try {
+      const { error } = await supabase.rpc('reassign_teacher_conversations_to_owner', {
+        _org_id: currentOrg.id,
+      });
+      if (error) throw error;
+      updateSetting('parent_can_message_teacher', false);
+      toast.success('Teacher messaging disabled. Teachers will no longer see parent conversations.');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to reassign conversations');
+    } finally {
+      setIsReassigning(false);
+      setShowReassignDialog(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -85,10 +128,10 @@ export function MessagingSettingsTab() {
           <SettingRow
             id="parent_can_message_teacher"
             label="Parents can message teachers directly"
-            description="Allow parents to message their child's teacher directly. If disabled, messages are routed to the owner or admin team."
+            description="Allow parents to message their child's teacher directly. If disabled, teachers lose access to parent conversations and visibility reverts to admin/owner only."
             checked={settings.parent_can_message_teacher}
-            onToggle={updateSetting}
-            disabled={isSaving}
+            onToggle={handleTeacherMessagingToggle}
+            disabled={isSaving || isReassigning}
           />
         </CardContent>
       </Card>
@@ -146,6 +189,37 @@ export function MessagingSettingsTab() {
           />
         </CardContent>
       </Card>
+
+      {/* Reassignment Confirmation Dialog */}
+      <AlertDialog open={showReassignDialog} onOpenChange={setShowReassignDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disable teacher messaging?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will immediately revoke teachers' access to parent conversations. 
+              Teachers will no longer be able to see or reply to messages from parents. 
+              All conversations will remain accessible to admins and the organisation owner.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isReassigning}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmReassign}
+              disabled={isReassigning}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isReassigning ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Disabling…
+                </>
+              ) : (
+                'Disable & Revoke Access'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
