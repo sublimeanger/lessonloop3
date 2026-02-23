@@ -71,12 +71,12 @@ export class ErrorBoundary extends Component<Props, State> {
       // Default error UI
       return (
         <div className="flex min-h-screen items-center justify-center bg-background p-4">
-          <Card className="mx-auto max-w-md">
+          <Card className="mx-auto w-full max-w-md">
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
                 <AlertTriangle className="h-8 w-8 text-destructive" />
               </div>
-              <CardTitle className="text-xl">Something went wrong</CardTitle>
+              <CardTitle className="text-section-title tracking-tight">Something went wrong</CardTitle>
               <p className="mt-2 text-sm text-muted-foreground">
                 We encountered an unexpected error. This has been logged and our team will investigate.
               </p>
@@ -104,14 +104,14 @@ export class ErrorBoundary extends Component<Props, State> {
                   className="flex-1"
                 >
                   <RefreshCw className="mr-2 h-4 w-4" />
-                  Try Again
+                  Retry
                 </Button>
                 <Button
                   onClick={this.handleGoHome}
                   className="flex-1"
                 >
                   <Home className="mr-2 h-4 w-4" />
-                  Go to Dashboard
+                  Back to dashboard
                 </Button>
               </div>
 

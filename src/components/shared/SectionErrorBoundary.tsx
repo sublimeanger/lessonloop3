@@ -40,9 +40,9 @@ export class SectionErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex items-center gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
+        <div className="flex items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
           <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
-          <span className="flex-1 text-sm text-muted-foreground">
+          <span className="flex-1 text-body text-muted-foreground">
             Failed to load <span className="font-medium text-foreground">{this.props.name}</span>.
           </span>
           <Button variant="ghost" size="sm" onClick={this.handleRetry} className="gap-1.5 shrink-0">

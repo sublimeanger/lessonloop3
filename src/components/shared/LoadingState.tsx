@@ -1,5 +1,4 @@
 import { Loader2 } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 interface LoadingStateProps {
@@ -10,13 +9,13 @@ interface LoadingStateProps {
 export function LoadingState({ message = 'Loading...', className }: LoadingStateProps) {
   return (
     <div 
-      className={cn('flex min-h-[400px] flex-col items-center justify-center', className)}
+      className={cn('flex min-h-[280px] sm:min-h-[360px] flex-col items-center justify-center px-4', className)}
       role="status"
       aria-live="polite"
       aria-busy="true"
     >
       <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
-      <p className="mt-4 text-sm text-muted-foreground">{message}</p>
+      <p className="mt-4 text-body text-muted-foreground">{message}</p>
       <span className="sr-only">{message}</span>
     </div>
   );
@@ -182,7 +181,7 @@ export function PortalHomeSkeleton() {
         <Shimmer className="h-4 w-56" />
       </div>
       {/* Hero lesson card */}
-      <div className="rounded-2xl bg-muted/60 p-6 space-y-3">
+      <div className="rounded-2xl bg-muted/60 p-5 space-y-3">
         <Shimmer className="h-3 w-28" />
         <Shimmer className="h-5 w-48" />
         <Shimmer className="h-4 w-40" />
@@ -240,7 +239,7 @@ export function TableRowSkeleton({ columns = 5 }: { columns?: number }) {
 
 export function StatsCardSkeleton() {
   return (
-    <div className="rounded-xl border bg-card p-6">
+    <div className="rounded-xl border bg-card p-5">
       <div className="flex items-center justify-between">
         <Shimmer className="h-4 w-24" />
         <Shimmer className="h-4 w-4 rounded-lg" />

@@ -6,9 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
-  CheckCircle2, Circle, Users, Calendar, Receipt, 
+  CheckCircle2, Users, Calendar, Receipt, 
   Building, ChevronRight, X, Sparkles, PartyPopper, 
-  UserPlus, Settings, FileText
+  UserPlus, Settings
 } from 'lucide-react';
 import { useOrg, OrgType } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -178,7 +178,7 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
-        className={cn('relative overflow-hidden rounded-2xl bg-gradient-to-r from-teal to-teal-dark p-6 text-white', className)}
+        className={cn('relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-primary/80 p-5 text-primary-foreground sm:p-6', className)}
       >
         <div className="flex items-center gap-4">
           <motion.div
@@ -188,8 +188,8 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
             <PartyPopper className="h-12 w-12" />
           </motion.div>
           <div>
-            <h3 className="text-xl font-bold">You're all set! 🎉</h3>
-            <p className="text-white/80">You've completed all the setup steps. Happy teaching!</p>
+            <h3 className="text-section-title tracking-tight">You're all set! 🎉</h3>
+            <p className="text-caption text-primary-foreground/85">You've completed all the setup steps. Happy teaching!</p>
           </div>
         </div>
       </motion.div>
@@ -238,7 +238,7 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
                 <Link
                   to={item.completed ? '#' : item.href}
                   className={cn(
-                    'group flex items-center gap-3 rounded-lg p-3 transition-all',
+                    'group flex items-center gap-3 rounded-xl p-3 transition-all',
                     item.completed 
                       ? 'cursor-default opacity-60' 
                       : 'hover:bg-accent hover:shadow-sm'

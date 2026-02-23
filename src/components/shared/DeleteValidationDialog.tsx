@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { DeletionCheckResult, DeletionBlock } from '@/hooks/useDeleteValidation';
+import { DeletionCheckResult } from '@/hooks/useDeleteValidation';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,7 +40,7 @@ export function DeleteValidationDialog({
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <Loader2 className="h-5 w-5 animate-spin" />
-              Checking dependencies...
+              Checking dependencies…
             </AlertDialogTitle>
             <AlertDialogDescription>
               Verifying if {entityName} can be safely deleted.
@@ -59,7 +58,7 @@ export function DeleteValidationDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-lg">
+      <AlertDialogContent className="max-w-lg p-0 sm:max-w-lg">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             {hasBlocks ? (
@@ -87,7 +86,7 @@ export function DeleteValidationDialog({
             {checkResult.blocks.map((block, index) => (
               <div
                 key={index}
-                className="flex items-start gap-3 p-3 bg-destructive/10 border border-destructive/20 rounded-lg"
+                className="flex items-start gap-3 p-3 bg-destructive/10 border border-destructive/20 rounded-xl"
               >
                 <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
@@ -98,7 +97,7 @@ export function DeleteValidationDialog({
                     </Badge>
                   </div>
                   {block.details && (
-                    <p className="text-sm text-muted-foreground mt-1">{block.details}</p>
+                    <p className="mt-1 text-body text-muted-foreground">{block.details}</p>
                   )}
                 </div>
               </div>
@@ -112,10 +111,10 @@ export function DeleteValidationDialog({
             {checkResult.warnings.map((warning, index) => (
               <div
                 key={index}
-                className="flex items-start gap-3 p-3 bg-warning/10 border border-warning/20 rounded-lg"
+                className="flex items-start gap-3 p-3 bg-warning/10 border border-warning/20 rounded-xl"
               >
                 <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-warning dark:text-warning">{warning}</p>
+                <p className="text-body text-warning">{warning}</p>
               </div>
             ))}
           </div>
