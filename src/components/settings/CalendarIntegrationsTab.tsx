@@ -149,6 +149,9 @@ export function CalendarIntegrationsTab() {
                         {googleConnection.last_sync_at 
                           ? formatDistanceToNow(new Date(googleConnection.last_sync_at), { addSuffix: true })
                           : 'Never'}
+                        {googleConnection.last_sync_at && 
+                          (Date.now() - new Date(googleConnection.last_sync_at).getTime() > 2 * 60 * 60 * 1000) && 
+                          ' ⚠️'}
                       </p>
                     </div>
                   </div>
