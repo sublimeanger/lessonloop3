@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { useMakeUpCredits, MakeUpCredit } from '@/hooks/useMakeUpCredits';
 import { useOrg } from '@/contexts/OrgContext';
@@ -20,6 +20,10 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
   const { credits, availableCredits, totalAvailableValue, isLoading, deleteCredit } = useMakeUpCredits(studentId);
   const [issueModalOpen, setIssueModalOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(10);
+
+  const visibleCredits = useMemo(() => (credits || []).slice(0, visibleCount), [credits, visibleCount]);
+  const hasMore = (credits?.length || 0) > visibleCount;
 
   const formatCurrency = (minor: number) => {
     return new Intl.NumberFormat('en-GB', {
@@ -113,7 +117,7 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
             </div>
           ) : (
             <div className="space-y-3">
-              {credits.map((credit) => {
+              {visibleCredits.map((credit) => {
                 const status = getCreditStatus(credit);
                 return (
                   <div 
@@ -173,6 +177,16 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
                   </div>
                 );
               })}
+              {hasMore && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setVisibleCount((c) => c + 10)}
+                >
+                  Show older credits ({(credits?.length || 0) - visibleCount} more)
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
