@@ -45,11 +45,14 @@ async function refreshAccessToken(
 }
 
 async function getValidAccessToken(supabase: any, connection: any): Promise<string | null> {
+  if (!connection.token_expires_at) {
+    return await refreshAccessToken(supabase, connection.id, connection.refresh_token);
+  }
   const expiresAt = new Date(connection.token_expires_at);
   const now = new Date();
   const bufferMs = 5 * 60 * 1000;
 
-  if (expiresAt.getTime() - now.getTime() < bufferMs) {
+  if (isNaN(expiresAt.getTime()) || expiresAt.getTime() - now.getTime() < bufferMs) {
     return await refreshAccessToken(supabase, connection.id, connection.refresh_token);
   }
 

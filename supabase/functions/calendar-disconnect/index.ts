@@ -4,10 +4,15 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 async function getValidAccessToken(connection: any): Promise<string | null> {
   if (!connection.access_token) return null;
 
+  // If no expiry recorded, assume expired and try to refresh
+  if (!connection.token_expires_at) {
+    return connection.access_token; // Best-effort with existing token
+  }
+
   const expiresAt = new Date(connection.token_expires_at);
   const bufferMs = 5 * 60 * 1000;
 
-  if (expiresAt.getTime() - Date.now() < bufferMs) {
+  if (isNaN(expiresAt.getTime()) || expiresAt.getTime() - Date.now() < bufferMs) {
     const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
     const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET');
     if (!clientId || !clientSecret || !connection.refresh_token) return connection.access_token;
