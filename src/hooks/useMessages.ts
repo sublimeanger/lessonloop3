@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { toastError } from '@/lib/error-handler';
 
 const PAGE_SIZE = 50;
 
@@ -325,12 +326,12 @@ export function useSendMessage() {
       queryClient.invalidateQueries({ queryKey: ['message-threads'] });
       toast({ title: 'Message sent', description: 'Your message has been sent successfully.' });
     },
-    onError: (error, _variables, context) => {
+    onError: (error: unknown, _variables, context) => {
       // Rollback optimistic update
       if (context?.previousLog) {
         queryClient.setQueryData(['message-log', currentOrg?.id, undefined], context.previousLog);
       }
-      toast({ title: 'Error sending message', description: error.message, variant: 'destructive' });
+      toastError(error, 'Error sending message');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['message-log'] });
@@ -366,8 +367,8 @@ export function useCreateMessageTemplate() {
       queryClient.invalidateQueries({ queryKey: ['message-templates'] });
       toast({ title: 'Template created' });
     },
-    onError: (error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toastError(error, 'Failed to create template');
     },
   });
 }
@@ -389,8 +390,8 @@ export function useDeleteMessageTemplate() {
       queryClient.invalidateQueries({ queryKey: ['message-templates'] });
       toast({ title: 'Template deleted' });
     },
-    onError: (error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toastError(error, 'Failed to delete template');
     },
   });
 }
