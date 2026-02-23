@@ -1,4 +1,4 @@
-import { AlertCircle, AlertTriangle, Clock, Calendar, FileWarning } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Clock, Calendar, FileWarning, HelpCircle, Repeat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ProactiveAlert } from '@/hooks/useProactiveAlerts';
@@ -17,6 +17,10 @@ export function ProactiveAlerts({ alerts, onSuggestedAction }: ProactiveAlertsPr
         return AlertCircle;
       case 'unmarked':
         return FileWarning;
+      case 'unmarked_reason':
+        return HelpCircle;
+      case 'makeup_match':
+        return Repeat;
       case 'cancellation':
         return AlertTriangle;
       case 'upcoming':
@@ -58,6 +62,10 @@ export function ProactiveAlerts({ alerts, onSuggestedAction }: ProactiveAlertsPr
         return 'Send reminders for all overdue invoices';
       case 'unmarked':
         return 'Mark all past lessons as complete';
+      case 'unmarked_reason':
+        return 'Show me recent absences that are missing a reason';
+      case 'makeup_match':
+        return 'Show me make-up lesson matches that need action';
       case 'cancellation':
         return 'Show me cancelled lessons this week';
       case 'upcoming':

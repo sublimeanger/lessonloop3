@@ -90,21 +90,6 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, streamingContent]);
 
-  // On open: default to landing, or chat if pending message
-  useEffect(() => {
-    if (open) {
-      checkAndShowIntro();
-      const pending = consumePendingMessage();
-      if (pending) {
-        setView('chat');
-        doSend(pending);
-      } else {
-        setView('landing');
-      }
-      setTimeout(() => chatInputRef.current?.focus(), 300);
-    }
-  }, [open]);
-
   const doSend = useCallback(async (content: string) => {
     setFailedMessage(null);
     try {
@@ -115,6 +100,26 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
       setFailedMessage({ content, id: Date.now().toString() });
     }
   }, [sendMessage]);
+
+  // Keep a stable ref to doSend so the open effect doesn't re-run on every doSend change
+  const doSendRef = useRef(doSend);
+  doSendRef.current = doSend;
+
+  // On open: default to landing, or chat if pending message
+  useEffect(() => {
+    if (open) {
+      checkAndShowIntro();
+      const pending = consumePendingMessage();
+      if (pending) {
+        setView('chat');
+        doSendRef.current(pending);
+      } else {
+        setView('landing');
+      }
+      setTimeout(() => chatInputRef.current?.focus(), 300);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const handleSend = async () => {
     if (!input.trim() || isStreaming) return;
@@ -237,14 +242,13 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
             onSelectConversation={handleSelectConversation}
             onViewAllHistory={() => setView('history')}
             onDismissProactive={dismissProactiveMessage}
-            dismissProactiveMessage={dismissProactiveMessage}
           />
         )}
 
         {view === 'chat' && (
           <>
             {/* Messages */}
-            <ScrollArea className="flex-1 px-4">
+            <ScrollArea className="flex-1 px-4" data-loop-assist-messages>
               <div className="space-y-4 py-4">
                 {messagesLoading && (
                   <div className="space-y-4">
@@ -378,7 +382,6 @@ function LandingView({
   onSelectConversation,
   onViewAllHistory,
   onDismissProactive,
-  dismissProactiveMessage,
 }: {
   alerts: ProactiveAlert[];
   proactiveMessage: ProactiveMessage | null;
@@ -388,7 +391,6 @@ function LandingView({
   onSelectConversation: (id: string) => void;
   onViewAllHistory: () => void;
   onDismissProactive: () => void;
-  dismissProactiveMessage: () => void;
 }) {
   const [input, setInput] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -420,7 +422,7 @@ function LandingView({
             message={proactiveMessage.message}
             suggestedPrompts={proactiveMessage.suggestedPrompts}
             onPromptClick={(prompt) => {
-              dismissProactiveMessage();
+              onDismissProactive();
               onSendMessage(prompt);
             }}
             onDismiss={onDismissProactive}
