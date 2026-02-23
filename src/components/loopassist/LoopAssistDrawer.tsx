@@ -123,9 +123,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     setInput(e.target.value);
     const el = e.target;
     el.style.height = 'auto';
-    const lineHeight = 20;
-    const maxHeight = lineHeight * 4 + 16;
-    el.style.height = Math.min(el.scrollHeight, maxHeight) + 'px';
+    el.style.height = Math.min(el.scrollHeight, 96) + 'px'; // 96px max (~4 lines)
   };
 
   const handleNewConversation = () => {
@@ -521,6 +519,7 @@ function ConversationList({
 }) {
   const [searchQuery, setSearchQuery] = useState('');
 
+  // TODO: Add full-text search via Supabase for message content search
   const filteredConversations = searchQuery.trim()
     ? conversations.filter(conv =>
         conv.title.toLowerCase().includes(searchQuery.toLowerCase())
