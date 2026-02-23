@@ -78,7 +78,7 @@ export function FirstRunExperience() {
         <Button
           variant="ghost"
           size="icon"
-          className="absolute right-2 top-2 h-8 w-8 text-muted-foreground hover:text-foreground z-10"
+          className="absolute right-2 top-2 z-10 h-11 w-11 text-muted-foreground hover:text-foreground"
           onClick={dismissFirstRun}
           aria-label="Dismiss"
         >
@@ -96,14 +96,14 @@ export function FirstRunExperience() {
             </motion.div>
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <CardTitle className="text-xl">Let's get you set up 🚀</CardTitle>
+                <CardTitle className="text-section-title tracking-tight">Let's get you set up 🚀</CardTitle>
                 {path && (
                   <Badge variant="secondary" className="text-xs font-medium">
                     {pathLabels[path]}
                   </Badge>
                 )}
               </div>
-              <CardDescription className="text-sm">
+              <CardDescription className="text-body">
                 {path ? pathDescriptions[path] : 'Complete these steps to get the most out of LessonLoop'}
               </CardDescription>
             </div>
@@ -128,8 +128,8 @@ export function FirstRunExperience() {
                     Step {currentIndex + 1}
                   </span>
                 </div>
-                <h3 className="font-semibold text-foreground text-lg">{currentStep.title}</h3>
-                <p className="text-sm text-muted-foreground">{currentStep.description}</p>
+                <h3 className="text-section-title tracking-tight text-foreground">{currentStep.title}</h3>
+                <p className="text-body text-muted-foreground">{currentStep.description}</p>
               </div>
               <Button asChild className="gap-2 shadow-md">
                 <Link to={currentStep.href}>
@@ -144,7 +144,7 @@ export function FirstRunExperience() {
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{completedSteps} of {steps.length} complete</span>
-              <Button variant="ghost" size="sm" onClick={completeFirstRun} className="h-6 text-xs">
+              <Button variant="ghost" size="sm" onClick={completeFirstRun} className="h-11 text-body">
                 Skip all
               </Button>
             </div>

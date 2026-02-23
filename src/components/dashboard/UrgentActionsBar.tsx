@@ -51,9 +51,9 @@ export function UrgentActionsBar() {
         exit={{ opacity: 0, height: 0 }}
         className="overflow-hidden"
       >
-        <div className="flex items-center gap-2 rounded-lg bg-warning/10 border border-warning/20 px-3 py-2">
+        <div className="flex items-center gap-2 rounded-xl bg-warning/10 border border-warning/20 px-3 py-2">
           <div className="flex-1 min-w-0">
-            <span className="text-sm text-warning-foreground">
+            <span className="text-body text-warning-foreground">
               {summaryParts.map((part, i) => (
                 <span key={i}>
                   {i > 0 && <span className="mx-1 text-warning/50">·</span>}
@@ -70,7 +70,7 @@ export function UrgentActionsBar() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 shrink-0 text-warning hover:text-warning-foreground hover:bg-warning/20"
+            className="h-11 w-11 shrink-0 text-warning hover:bg-warning/20 hover:text-warning-foreground"
             onClick={handleDismiss}
             aria-label="Dismiss"
           >

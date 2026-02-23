@@ -201,7 +201,7 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
       <Button 
         variant="ghost" 
         size="icon" 
-        className="absolute right-2 top-2 h-8 w-8 text-muted-foreground hover:text-foreground z-10"
+        className="absolute right-2 top-2 z-10 h-11 w-11 text-muted-foreground hover:text-foreground"
         onClick={handleDismiss}
         aria-label="Dismiss checklist"
       >
@@ -214,12 +214,12 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
         <div className="flex items-center gap-4">
           <ProgressRing progress={progressPercent} />
           <div className="flex-1">
-            <CardTitle className="text-lg">Get Started</CardTitle>
+            <CardTitle className="text-section-title tracking-tight">Get Started</CardTitle>
             <CardDescription>
               {completedCount} of {totalCount} steps complete
             </CardDescription>
           </div>
-          <Badge variant="secondary" className="text-sm">
+          <Badge variant="secondary" className="text-body">
             {Math.round(progressPercent)}%
           </Badge>
         </div>
@@ -263,12 +263,12 @@ export function OnboardingChecklist({ onDismiss, className }: OnboardingChecklis
                   
                   <div className="flex-1 min-w-0">
                     <p className={cn(
-                      'text-sm font-medium',
+                      'text-body-strong',
                       item.completed && 'line-through text-muted-foreground'
                     )}>
                       {item.title}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className="text-caption text-muted-foreground truncate">
                       {item.description}
                     </p>
                   </div>

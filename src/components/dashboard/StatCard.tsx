@@ -67,11 +67,11 @@ export function StatCard({
       <Card
         className={cn(
           'relative overflow-hidden transition-all duration-200',
-          href && 'cursor-pointer hover:shadow-lg hover:border-primary/20',
+          href && 'cursor-pointer hover:shadow-card-hover hover:border-primary/20',
           className
         )}
       >
-        <CardContent className="p-4 sm:p-5 md:p-6">
+        <CardContent className="p-4 sm:p-5">
           <div className="flex items-start justify-between">
             {/* Icon */}
             <div
