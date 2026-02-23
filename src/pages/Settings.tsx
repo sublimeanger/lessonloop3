@@ -22,37 +22,38 @@ import { LoopAssistPreferencesTab } from '@/components/settings/LoopAssistPrefer
 import { MusicSettingsTab } from '@/components/settings/MusicSettingsTab';
 import { MessagingSettingsTab } from '@/components/settings/MessagingSettingsTab';
 import { useOrg } from '@/contexts/OrgContext';
-import { useIsMobile } from '@/hooks/use-mobile';
+
 import { useTeachers } from '@/hooks/useTeachers';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 
-// ─── Tab bar with horizontal scroll + gradient fade on mobile ───
-function MobileTabBar({ initialTab, isOrgAdmin }: { initialTab: string; isOrgAdmin: boolean }) {
-  const isMobile = useIsMobile();
+// ─── Tab bar with horizontal scroll + gradient fades ───
+function ScrollableTabBar({ initialTab, isOrgAdmin }: { initialTab: string; isOrgAdmin: boolean }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [showFade, setShowFade] = useState(true);
+  const [showFadeRight, setShowFadeRight] = useState(true);
+  const [showFadeLeft, setShowFadeLeft] = useState(false);
 
   useEffect(() => {
-    if (!isMobile || !scrollRef.current) return;
+    if (!scrollRef.current) return;
     const activeTab = scrollRef.current.querySelector('[data-state="active"]') as HTMLElement | null;
     if (activeTab) {
       activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
     }
-  }, [isMobile, initialTab]);
+  }, [initialTab]);
 
   useEffect(() => {
-    if (!isMobile) return;
     const el = scrollRef.current;
     if (!el) return;
     const handleScroll = () => {
       const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 8;
-      setShowFade(!atEnd);
+      const atStart = el.scrollLeft <= 8;
+      setShowFadeRight(!atEnd);
+      setShowFadeLeft(!atStart);
     };
     el.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
     return () => el.removeEventListener('scroll', handleScroll);
-  }, [isMobile]);
+  }, []);
 
   const tabs = (
     <>
@@ -75,25 +76,20 @@ function MobileTabBar({ initialTab, isOrgAdmin }: { initialTab: string; isOrgAdm
     </>
   );
 
-  if (!isMobile) {
-    return (
-      <TabsList className="w-full overflow-x-auto flex-nowrap justify-start h-auto gap-1 scrollbar-hide" aria-label="Settings navigation">
-        {tabs}
-      </TabsList>
-    );
-  }
-
   return (
     <div className="relative">
-    <TabsList
+      {showFadeLeft && (
+        <div className="absolute left-0 top-0 bottom-0 w-8 pointer-events-none bg-gradient-to-r from-muted to-transparent z-10 rounded-l-md" />
+      )}
+      <TabsList
         ref={scrollRef}
-        className="w-full overflow-x-auto flex-nowrap justify-start h-auto gap-1 scrollbar-hide scroll-smooth snap-x snap-mandatory"
+        className="w-full overflow-x-auto flex-nowrap justify-start h-auto gap-1 scrollbar-hide scroll-smooth"
         aria-label="Settings navigation"
       >
         {tabs}
       </TabsList>
-      {showFade && (
-        <div className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none bg-gradient-to-l from-background to-transparent z-10 rounded-r-md" />
+      {showFadeRight && (
+        <div className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none bg-gradient-to-l from-muted to-transparent z-10 rounded-r-md" />
       )}
     </div>
   );
@@ -159,7 +155,7 @@ export default function Settings() {
       />
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <MobileTabBar initialTab={activeTab} isOrgAdmin={isOrgAdmin} />
+        <ScrollableTabBar initialTab={activeTab} isOrgAdmin={isOrgAdmin} />
 
         <TabsContent value="profile"><ProfileTab /></TabsContent>
         <TabsContent value="organisation"><OrganisationTab /></TabsContent>
