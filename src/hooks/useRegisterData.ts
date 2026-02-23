@@ -6,6 +6,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 import { useToast } from '@/hooks/use-toast';
+import { useCalendarSync } from '@/hooks/useCalendarSync';
 import type { Database } from '@/integrations/supabase/types';
 
 export type AttendanceStatus = Database['public']['Enums']['attendance_status'];
@@ -319,6 +320,7 @@ export function useMarkLessonComplete() {
   const { currentOrg } = useOrg();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { syncLesson } = useCalendarSync();
 
   return useMutation({
     mutationFn: async (lessonId: string) => {
@@ -363,9 +365,11 @@ export function useMarkLessonComplete() {
         if (insertError) throw insertError;
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, lessonId) => {
       queryClient.invalidateQueries({ queryKey: ['register-lessons'] });
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
+      // Fire-and-forget calendar sync
+      syncLesson(lessonId, 'update');
       toast({
         title: 'Lesson marked complete',
       });

@@ -4,6 +4,18 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
+/** Fire-and-forget calendar sync for lesson mutations (non-critical). */
+function syncLessonToCalendar(lessonId: string, action: 'create' | 'update' | 'delete') {
+  fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/calendar-sync-lesson`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ lesson_id: lessonId, action }),
+  }).catch(() => { /* Non-critical — don't fail the action */ });
+}
+
 interface ActionProposal {
   id: string;
   org_id: string;
@@ -270,6 +282,7 @@ serve(async (req) => {
               if (!updateError) {
                 completedCount++;
                 completeEntities.push({ type: "lesson", id: lesson.id, label: lesson.title, detail: "Marked complete" });
+                syncLessonToCalendar(lesson.id, 'update');
               }
             }
 
@@ -767,6 +780,7 @@ async function executeRescheduleLessons(
     } else {
       lessonsUpdated++;
       results.push(`${lesson.title}: Moved to ${newStartAt.toLocaleString('en-GB')}`);
+      syncLessonToCalendar(lesson.id, 'update');
     }
   }
 
@@ -1011,6 +1025,7 @@ async function executeCancelLesson(
 
     cancelledCount++;
     results.push(`${lesson.title}: Cancelled`);
+    syncLessonToCalendar(lesson.id, 'update');
 
     // Issue make-up credits if requested - now with duration-aware pricing
     if (issueCredit && lesson.lesson_participants) {
@@ -1116,6 +1131,7 @@ async function executeCompleteLessons(
     } else {
       completedCount++;
       results.push(`${lesson.title}: Completed`);
+      syncLessonToCalendar(lesson.id, 'update');
     }
   }
 

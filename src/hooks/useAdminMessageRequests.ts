@@ -3,6 +3,7 @@ import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useToast } from '@/hooks/use-toast';
+import { useCalendarSync } from '@/hooks/useCalendarSync';
 
 export interface AdminMessageRequest {
   id: string;
@@ -72,6 +73,7 @@ export interface UpdateRequestPayload {
 export function useUpdateMessageRequest() {
   const { currentOrg } = useOrg();
   const queryClient = useQueryClient();
+  const { syncLesson } = useCalendarSync();
   const { toast } = useToast();
 
   return useMutation({
@@ -150,6 +152,8 @@ export function useUpdateMessageRequest() {
 
           if (lessonError) throw new Error(`Failed to reschedule lesson: ${lessonError.message}`);
           calendarAction = 'rescheduled';
+          // Fire-and-forget calendar sync
+          syncLesson(lessonId, 'update');
         } else if (requestType === 'cancellation') {
           // Actually cancel the lesson on the calendar
           const { data: sessionData } = await supabase.auth.getSession();
@@ -166,6 +170,8 @@ export function useUpdateMessageRequest() {
 
           if (lessonError) throw new Error(`Failed to cancel lesson: ${lessonError.message}`);
           calendarAction = 'cancelled';
+          // Fire-and-forget calendar sync
+          syncLesson(lessonId, 'update');
         }
       }
 
