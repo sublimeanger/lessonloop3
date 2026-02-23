@@ -21,6 +21,7 @@ import { CalendarIntegrationsTab } from '@/components/settings/CalendarIntegrati
 import { LoopAssistPreferencesTab } from '@/components/settings/LoopAssistPreferencesTab';
 import { MusicSettingsTab } from '@/components/settings/MusicSettingsTab';
 import { MessagingSettingsTab } from '@/components/settings/MessagingSettingsTab';
+import { SmsSettingsTab } from '@/components/settings/SmsSettingsTab';
 import { useOrg } from '@/contexts/OrgContext';
 
 import { useTeachers } from '@/hooks/useTeachers';
@@ -67,6 +68,7 @@ function ScrollableTabBar({ initialTab, isOrgAdmin }: { initialTab: string; isOr
       {isOrgAdmin && <TabsTrigger value="rate-cards">Rate Cards</TabsTrigger>}
       {isOrgAdmin && <TabsTrigger value="music">Music</TabsTrigger>}
       {isOrgAdmin && <TabsTrigger value="messaging">Messaging</TabsTrigger>}
+      {isOrgAdmin && <TabsTrigger value="sms">SMS</TabsTrigger>}
       <TabsTrigger value="availability">Availability</TabsTrigger>
       <TabsTrigger value="calendar">Calendar Sync</TabsTrigger>
       {isOrgAdmin && <TabsTrigger value="billing">Billing</TabsTrigger>}
@@ -137,7 +139,7 @@ export default function Settings() {
   usePageMeta('Settings — LessonLoop', 'Manage your account, organisation, and subscription settings');
   const [searchParams, setSearchParams] = useSearchParams();
   const { isOrgAdmin } = useOrg();
-  const adminTabs = ['members', 'scheduling', 'audit', 'privacy', 'rate-cards', 'music', 'messaging', 'billing', 'looopassist'];
+  const adminTabs = ['members', 'scheduling', 'audit', 'privacy', 'rate-cards', 'music', 'messaging', 'sms', 'billing', 'looopassist'];
   const rawTab = searchParams.get('tab') || 'profile';
   const activeTab = (!isOrgAdmin && adminTabs.includes(rawTab)) ? 'profile' : rawTab;
 
@@ -170,6 +172,7 @@ export default function Settings() {
         {isOrgAdmin && <TabsContent value="rate-cards"><RateCardsTab /></TabsContent>}
         {isOrgAdmin && <TabsContent value="music"><MusicSettingsTab /></TabsContent>}
         {isOrgAdmin && <TabsContent value="messaging"><MessagingSettingsTab /></TabsContent>}
+        {isOrgAdmin && <TabsContent value="sms"><SmsSettingsTab /></TabsContent>}
 
         <TabsContent value="availability">
           <AvailabilityTabWithSelector isOrgAdmin={isOrgAdmin} />

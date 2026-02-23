@@ -5,7 +5,11 @@ export type NotifPrefKey =
   | "email_invoice_reminders"
   | "email_payment_receipts"
   | "email_marketing"
-  | "email_makeup_offers";
+  | "email_makeup_offers"
+  | "sms_lesson_reminders"
+  | "sms_invoice_reminders"
+  | "sms_payment_receipts"
+  | "sms_lesson_cancellations";
 
 /**
  * Check if a user has a specific email notification enabled.

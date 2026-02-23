@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { escapeHtml } from "../_shared/escape-html.ts";
 import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
+import { maybeSendSms } from "../_shared/sms-helpers.ts";
 
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop.net";
 
@@ -55,7 +56,7 @@ serve(async (req) => {
       .select(`
         id, invoice_number, total_minor, currency_code, due_date, org_id, payment_plan_enabled,
         organisation:organisations!inner(name, overdue_reminder_days),
-        payer_guardian:guardians(id, full_name, email, user_id),
+        payer_guardian:guardians(id, full_name, email, phone, user_id, sms_opted_in),
         payer_student:students(id, first_name, last_name)
       `)
       .eq("status", "overdue");
@@ -88,7 +89,7 @@ serve(async (req) => {
           id, invoice_number, total_minor, currency_code, org_id, status,
           paid_minor, installment_count,
           organisation:organisations!inner(name, overdue_reminder_days),
-          payer_guardian:guardians(id, full_name, email, user_id)
+          payer_guardian:guardians(id, full_name, email, phone, user_id, sms_opted_in)
         )
       `)
       .eq("status", "overdue")
@@ -238,7 +239,7 @@ interface OverdueInvoice {
   org_id: string;
   payment_plan_enabled: boolean | null;
   organisation: { name: string; overdue_reminder_days: number[] | null } | null;
-  payer_guardian: { id: string; full_name: string; email: string; user_id: string | null } | null;
+  payer_guardian: { id: string; full_name: string; email: string; phone: string | null; user_id: string | null; sms_opted_in: boolean } | null;
   payer_student: { id: string; first_name: string; last_name: string } | null;
 }
 
@@ -297,6 +298,22 @@ async function processInvoiceReminder(supabase: ReturnType<typeof createClient>,
     guardianId: guardian.id, relatedId: invoice.id, messageType: "overdue_reminder",
   });
 
+  // SMS (additive, after email)
+  const smsBody = `${orgName}: Invoice ${invoice.invoice_number} (${amount}) is ${daysOverdue} days overdue. Pay at ${portalLink}`;
+  await maybeSendSms(supabase, {
+    orgId: invoice.org_id,
+    guardianId: guardian.id,
+    guardianPhone: guardian.phone,
+    guardianEmail: guardian.email,
+    guardianUserId: guardian.user_id,
+    guardianName: guardian.full_name,
+    guardianSmsOptedIn: guardian.sms_opted_in,
+    smsPrefKey: "sms_invoice_reminders",
+    relatedId: invoice.id,
+    messageType: "overdue_reminder_sms",
+    body: smsBody,
+  });
+
   if (sent) {
     console.log(`Sent ${daysOverdue}-day reminder for invoice ${invoice.invoice_number} to ${guardian.email}`);
     return "sent";
@@ -322,7 +339,7 @@ interface OverdueInstallment {
     paid_minor: number | null;
     installment_count: number | null;
     organisation: { name: string; overdue_reminder_days: number[] | null } | null;
-    payer_guardian: { id: string; full_name: string; email: string; user_id: string | null } | null;
+    payer_guardian: { id: string; full_name: string; email: string; phone: string | null; user_id: string | null; sms_opted_in: boolean } | null;
   };
 }
 
@@ -369,6 +386,22 @@ async function processInstallmentReminder(supabase: ReturnType<typeof createClie
     orgId: invoice.org_id, orgName, subject, html,
     recipientEmail: guardian.email, recipientName: guardian.full_name,
     guardianId: guardian.id, relatedId: installment.id, messageType: "installment_reminder",
+  });
+
+  // SMS (additive, after email)
+  const smsBody = `${orgName}: Installment ${installment.installment_number} of ${invoice.installment_count} (${installmentAmount}) for ${invoice.invoice_number} is ${daysOverdue} days overdue.`;
+  await maybeSendSms(supabase, {
+    orgId: invoice.org_id,
+    guardianId: guardian.id,
+    guardianPhone: guardian.phone,
+    guardianEmail: guardian.email,
+    guardianUserId: guardian.user_id,
+    guardianName: guardian.full_name,
+    guardianSmsOptedIn: guardian.sms_opted_in,
+    smsPrefKey: "sms_invoice_reminders",
+    relatedId: installment.id,
+    messageType: "installment_reminder_sms",
+    body: smsBody,
   });
 
   if (sent) {

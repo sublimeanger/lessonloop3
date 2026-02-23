@@ -18,7 +18,8 @@ export type Feature =
   | 'resource_library'
   | 'practice_tracking'
   | 'parent_portal'
-  | 'calendar_sync';
+  | 'calendar_sync'
+  | 'sms_notifications';
 
 // Define which features are available on each plan
 const FEATURE_MATRIX: Record<Feature, SubscriptionPlan[]> = {
@@ -36,6 +37,7 @@ const FEATURE_MATRIX: Record<Feature, SubscriptionPlan[]> = {
   practice_tracking: ['trial', 'solo_teacher', 'academy', 'agency', 'custom'],
   parent_portal: ['trial', 'solo_teacher', 'academy', 'agency', 'custom'],
   calendar_sync: ['solo_teacher', 'academy', 'agency', 'custom'],
+  sms_notifications: ['trial', 'solo_teacher', 'academy', 'agency', 'custom'],
 };
 
 // Define minimum plan required for each feature (for upgrade prompts)
@@ -53,6 +55,7 @@ const FEATURE_MIN_PLAN: Record<Feature, SubscriptionPlan> = {
   practice_tracking: 'trial',
   parent_portal: 'trial',
   calendar_sync: 'solo_teacher',
+  sms_notifications: 'trial',
 };
 
 // Human-readable feature names
@@ -70,6 +73,7 @@ export const FEATURE_NAMES: Record<Feature, string> = {
   practice_tracking: 'Practice Tracking',
   parent_portal: 'Parent Portal',
   calendar_sync: 'Calendar Sync',
+  sms_notifications: 'SMS Notifications',
 };
 
 // Human-readable plan names — delegates to canonical PLAN_DISPLAY_NAMES

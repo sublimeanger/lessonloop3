@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
+import { maybeSendSms } from "../_shared/sms-helpers.ts";
 
 // Get frontend URL from environment or use default
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop.net";
@@ -218,6 +219,36 @@ const handler = async (req: Request): Promise<Response> => {
         .eq("message_type", isReminder ? "invoice_reminder" : "invoice")
         .order("created_at", { ascending: false })
         .limit(1);
+    }
+
+    // SMS notification (complementary to email)
+    if (orgId) {
+      const { data: guardianData } = await supabaseService
+        .from("guardians")
+        .select("id, phone, user_id, full_name, sms_opted_in")
+        .eq("email", recipientEmail)
+        .eq("org_id", orgId)
+        .maybeSingle();
+
+      if (guardianData?.phone) {
+        const smsPrefKey = isReminder ? "sms_invoice_reminders" : "sms_payment_receipts";
+        const smsBody = isReminder
+          ? `${orgName}: Reminder — Invoice ${invoiceNumber} for ${amount} is due ${dueDate}.`
+          : `${orgName}: Invoice ${invoiceNumber} for ${amount}, due ${dueDate}. View in your portal.`;
+        await maybeSendSms(supabaseService, {
+          orgId,
+          guardianId: guardianData.id,
+          guardianPhone: guardianData.phone,
+          guardianEmail: recipientEmail,
+          guardianUserId: guardianData.user_id,
+          guardianName: guardianData.full_name,
+          guardianSmsOptedIn: guardianData.sms_opted_in,
+          smsPrefKey,
+          relatedId: invoiceId,
+          messageType: isReminder ? "invoice_reminder_sms" : "invoice_sms",
+          body: smsBody,
+        });
+      }
     }
 
     return new Response(JSON.stringify(result), {

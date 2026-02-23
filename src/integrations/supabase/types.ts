@@ -984,6 +984,8 @@ export type Database = {
           id: string
           org_id: string
           phone: string | null
+          sms_opted_in: boolean
+          sms_opted_in_at: string | null
           updated_at: string
           user_id: string | null
         }
@@ -995,6 +997,8 @@ export type Database = {
           id?: string
           org_id: string
           phone?: string | null
+          sms_opted_in?: boolean
+          sms_opted_in_at?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -1006,6 +1010,8 @@ export type Database = {
           id?: string
           org_id?: string
           phone?: string | null
+          sms_opted_in?: boolean
+          sms_opted_in_at?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -2174,9 +2180,10 @@ export type Database = {
           org_id: string
           parent_message_id: string | null
           read_at: string | null
-          recipient_email: string
+          recipient_email: string | null
           recipient_id: string | null
           recipient_name: string | null
+          recipient_phone: string | null
           recipient_type: string | null
           related_id: string | null
           sender_user_id: string | null
@@ -2196,9 +2203,10 @@ export type Database = {
           org_id: string
           parent_message_id?: string | null
           read_at?: string | null
-          recipient_email: string
+          recipient_email?: string | null
           recipient_id?: string | null
           recipient_name?: string | null
+          recipient_phone?: string | null
           recipient_type?: string | null
           related_id?: string | null
           sender_user_id?: string | null
@@ -2218,9 +2226,10 @@ export type Database = {
           org_id?: string
           parent_message_id?: string | null
           read_at?: string | null
-          recipient_email?: string
+          recipient_email?: string | null
           recipient_id?: string | null
           recipient_name?: string | null
+          recipient_phone?: string | null
           recipient_type?: string | null
           related_id?: string | null
           sender_user_id?: string | null
@@ -2403,6 +2412,10 @@ export type Database = {
           email_makeup_offers: boolean
           email_marketing: boolean
           email_payment_receipts: boolean
+          sms_lesson_reminders: boolean
+          sms_invoice_reminders: boolean
+          sms_payment_receipts: boolean
+          sms_lesson_cancellations: boolean
           id: string
           org_id: string
           updated_at: string
@@ -2415,6 +2428,10 @@ export type Database = {
           email_makeup_offers?: boolean
           email_marketing?: boolean
           email_payment_receipts?: boolean
+          sms_lesson_reminders?: boolean
+          sms_invoice_reminders?: boolean
+          sms_payment_receipts?: boolean
+          sms_lesson_cancellations?: boolean
           id?: string
           org_id: string
           updated_at?: string
@@ -2427,6 +2444,10 @@ export type Database = {
           email_makeup_offers?: boolean
           email_marketing?: boolean
           email_payment_receipts?: boolean
+          sms_lesson_reminders?: boolean
+          sms_invoice_reminders?: boolean
+          sms_payment_receipts?: boolean
+          sms_lesson_cancellations?: boolean
           id?: string
           org_id?: string
           updated_at?: string
@@ -2538,6 +2559,54 @@ export type Database = {
           },
           {
             foreignKeyName: "org_messaging_settings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_sms_settings: {
+        Row: {
+          org_id: string
+          sms_enabled: boolean
+          twilio_phone_number: string | null
+          monthly_sms_limit: number
+          sms_sent_this_month: number
+          current_month: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          org_id: string
+          sms_enabled?: boolean
+          twilio_phone_number?: string | null
+          monthly_sms_limit?: number
+          sms_sent_this_month?: number
+          current_month?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          org_id?: string
+          sms_enabled?: boolean
+          twilio_phone_number?: string | null
+          monthly_sms_limit?: number
+          sms_sent_this_month?: number
+          current_month?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_sms_settings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_sms_settings_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: true
             referencedRelation: "parent_org_info"

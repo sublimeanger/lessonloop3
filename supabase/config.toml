@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.calendar-refresh-busy]
 verify_jwt = false
+
+[functions.lesson-reminder]
+verify_jwt = false

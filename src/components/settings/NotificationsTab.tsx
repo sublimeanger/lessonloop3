@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, CalendarDays, Receipt, Megaphone } from 'lucide-react';
+import { Loader2, CalendarDays, Receipt, Megaphone, Smartphone } from 'lucide-react';
 
 interface NotificationPreferences {
   email_lesson_reminders: boolean;
@@ -15,6 +15,10 @@ interface NotificationPreferences {
   email_payment_receipts: boolean;
   email_makeup_offers: boolean;
   email_marketing: boolean;
+  sms_lesson_reminders: boolean;
+  sms_invoice_reminders: boolean;
+  sms_payment_receipts: boolean;
+  sms_lesson_cancellations: boolean;
 }
 
 const defaults: NotificationPreferences = {
@@ -23,6 +27,10 @@ const defaults: NotificationPreferences = {
   email_payment_receipts: true,
   email_makeup_offers: true,
   email_marketing: false,
+  sms_lesson_reminders: false,
+  sms_invoice_reminders: false,
+  sms_payment_receipts: false,
+  sms_lesson_cancellations: false,
 };
 
 interface NotifItem {
@@ -46,6 +54,20 @@ export function NotificationsTab() {
 
   const queryKey = ['notification-prefs', currentOrg?.id, user?.id];
 
+  // Check if org has SMS enabled
+  const { data: smsSettings } = useQuery({
+    queryKey: ['org-sms-settings', currentOrg?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('org_sms_settings')
+        .select('sms_enabled')
+        .eq('org_id', currentOrg!.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!currentOrg?.id,
+  });
+
   const { data: serverPrefs } = useQuery({
     queryKey,
     queryFn: async () => {
@@ -63,6 +85,10 @@ export function NotificationsTab() {
             email_payment_receipts: data.email_payment_receipts,
             email_makeup_offers: data.email_makeup_offers,
             email_marketing: data.email_marketing,
+            sms_lesson_reminders: data.sms_lesson_reminders ?? false,
+            sms_invoice_reminders: data.sms_invoice_reminders ?? false,
+            sms_payment_receipts: data.sms_payment_receipts ?? false,
+            sms_lesson_cancellations: data.sms_lesson_cancellations ?? false,
           }
         : defaults;
     },
@@ -82,7 +108,7 @@ export function NotificationsTab() {
     mutationFn: async () => {
       const { error } = await supabase
         .from('notification_preferences')
-        .upsert({ org_id: currentOrg!.id, user_id: user!.id, ...prefs }, { onConflict: 'org_id,user_id' });
+        .upsert({ org_id: currentOrg!.id, user_id: user!.id, ...prefs } as Record<string, unknown>, { onConflict: 'org_id,user_id' });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -140,6 +166,37 @@ export function NotificationsTab() {
       ],
     },
   ];
+
+  // Conditionally add SMS category when org has SMS enabled
+  if (smsSettings?.sms_enabled) {
+    categories.push({
+      title: 'SMS Notifications',
+      icon: <Smartphone className="h-5 w-5 text-primary" />,
+      description: 'Receive text message alerts for important events',
+      items: [
+        {
+          key: 'sms_lesson_reminders',
+          label: 'Lesson reminders (SMS)',
+          description: 'Get a text 24 hours before each lesson',
+        },
+        {
+          key: 'sms_invoice_reminders',
+          label: 'Invoice reminders (SMS)',
+          description: 'Text alerts for overdue invoices',
+        },
+        {
+          key: 'sms_payment_receipts',
+          label: 'Payment confirmations (SMS)',
+          description: 'Text confirmation when payments are recorded',
+        },
+        {
+          key: 'sms_lesson_cancellations',
+          label: 'Cancellation alerts (SMS)',
+          description: 'Immediate text when a lesson is cancelled',
+        },
+      ],
+    });
+  }
 
   return (
     <div className="space-y-6">

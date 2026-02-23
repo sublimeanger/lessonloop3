@@ -4,6 +4,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
+import { maybeSendSms } from "../_shared/sms-helpers.ts";
 
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop.net";
 
@@ -70,7 +71,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Get guardians
     const { data: guardianLinks } = await supabaseService
       .from("student_guardians")
-      .select("guardian:guardians(id, full_name, email, user_id)")
+      .select("guardian:guardians(id, full_name, email, phone, user_id, sms_opted_in)")
       .in("student_id", studentIds);
 
     if (!guardianLinks || guardianLinks.length === 0) {
@@ -81,7 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Deduplicate guardians
-    const guardianMap = new Map<string, { id: string; full_name: string; email: string | null; user_id: string | null }>();
+    const guardianMap = new Map<string, { id: string; full_name: string; email: string | null; phone: string | null; user_id: string | null; sms_opted_in: boolean }>();
     for (const link of guardianLinks) {
       const guardian = link.guardian as any;
       if (guardian?.id && !guardianMap.has(guardian.id)) {
@@ -170,6 +171,22 @@ const handler = async (req: Request): Promise<Response> => {
             .eq("id", logEntry.id);
         }
       }
+
+      // SMS (additive, after email)
+      const smsBody = `${orgName}: ${lessonTitle} on ${lessonDate} has been cancelled. Reason: ${cancellationReason}.`;
+      await maybeSendSms(supabaseService, {
+        orgId,
+        guardianId: guardian.id,
+        guardianPhone: guardian.phone,
+        guardianEmail: guardian.email,
+        guardianUserId: guardian.user_id,
+        guardianName: guardian.full_name,
+        guardianSmsOptedIn: guardian.sms_opted_in,
+        smsPrefKey: "sms_lesson_cancellations",
+        relatedId: lessonIds[0],
+        messageType: "lesson_cancellation_sms",
+        body: smsBody,
+      });
     }
 
     console.log(`Cancellation notification: ${emailsSent} sent, ${emailsLogged} logged`);

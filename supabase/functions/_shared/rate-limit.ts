@@ -44,6 +44,10 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   "invite_get":            { maxRequests: 5,   windowMinutes: 1 },
   "profile-ensure":        { maxRequests: 5,   windowMinutes: 1 },
 
+  // SMS — tighter limits for cost control
+  "sms-send":              { maxRequests: 20,  windowMinutes: 60 },
+  "sms-lesson-reminder":   { maxRequests: 200, windowMinutes: 60 },
+
   // Default for regular queries
   "default":               { maxRequests: 100, windowMinutes: 1 },
 };

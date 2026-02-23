@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
-import { Loader2, Plus, UserPlus, Send, Copy, Pencil } from 'lucide-react';
+import { Loader2, Plus, UserPlus, Send, Copy, Pencil, AlertCircle } from 'lucide-react';
 import type { Guardian, StudentGuardian, RelationshipType, GuardianInviteStatus } from '@/hooks/useStudentDetailPage';
+import { normalizeUkPhone, formatPhoneDisplay } from '@/lib/phone-utils';
 
 interface GuardiansCardProps {
   guardians: StudentGuardian[];
@@ -207,6 +208,17 @@ export function GuardiansCard({
                 <div className="space-y-2">
                   <Label>Phone</Label>
                   <Input type="tel" value={newGuardianPhone} onChange={(e) => setNewGuardianPhone(e.target.value)} placeholder="+44 7700 900000" />
+                  {newGuardianPhone.trim() && !normalizeUkPhone(newGuardianPhone) && (
+                    <p className="text-xs text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      Invalid format. Use e.g. 07700 900000 or +447700900000
+                    </p>
+                  )}
+                  {newGuardianPhone.trim() && normalizeUkPhone(newGuardianPhone) && (
+                    <p className="text-xs text-muted-foreground">
+                      Will be saved as {formatPhoneDisplay(normalizeUkPhone(newGuardianPhone)!)}
+                    </p>
+                  )}
                 </div>
               </>
             ) : (
@@ -287,6 +299,17 @@ export function GuardiansCard({
                 value={editGuardianDialog.phone}
                 onChange={(e) => setEditGuardianDialog(prev => ({ ...prev, phone: e.target.value }))}
               />
+              {editGuardianDialog.phone.trim() && !normalizeUkPhone(editGuardianDialog.phone) && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  Invalid format. Use e.g. 07700 900000 or +447700900000
+                </p>
+              )}
+              {editGuardianDialog.phone.trim() && normalizeUkPhone(editGuardianDialog.phone) && (
+                <p className="text-xs text-muted-foreground">
+                  Will be saved as {formatPhoneDisplay(normalizeUkPhone(editGuardianDialog.phone)!)}
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>

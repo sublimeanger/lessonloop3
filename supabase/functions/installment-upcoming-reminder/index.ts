@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { escapeHtml } from "../_shared/escape-html.ts";
 import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
+import { maybeSendSms } from "../_shared/sms-helpers.ts";
 
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop.net";
 
@@ -33,7 +34,7 @@ serve(async (req) => {
           id, invoice_number, total_minor, currency_code, org_id,
           paid_minor, installment_count,
           organisation:organisations!inner(name),
-          payer_guardian:guardians(id, full_name, email, user_id)
+          payer_guardian:guardians(id, full_name, email, phone, user_id, sms_opted_in)
         )
       `)
       .eq("status", "pending")
@@ -150,6 +151,22 @@ serve(async (req) => {
           remindersSent++;
           console.log(`Logged upcoming reminder for installment #${installment.installment_number} of ${invoice.invoice_number}`);
         }
+
+        // SMS (additive, after email)
+        const smsBody = `${orgName}: Installment ${installment.installment_number} of ${invoice.installment_count} (${installmentAmount}) is due in 3 days (${dueDate}).`;
+        await maybeSendSms(supabase, {
+          orgId: invoice.org_id,
+          guardianId: guardian.id,
+          guardianPhone: guardian.phone,
+          guardianEmail: guardian.email,
+          guardianUserId: guardian.user_id,
+          guardianName: guardian.full_name,
+          guardianSmsOptedIn: guardian.sms_opted_in,
+          smsPrefKey: "sms_invoice_reminders",
+          relatedId: installment.id,
+          messageType: "installment_upcoming_sms",
+          body: smsBody,
+        });
       } catch (err: any) {
         errors.push(`Installment ${installment.id}: ${err.message}`);
       }
