@@ -36,9 +36,12 @@ import { useCalendarConnections } from '@/hooks/useCalendarConnections';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { FeatureGate } from '@/components/subscription/FeatureGate';
+import { CalendarSyncHealth } from './CalendarSyncHealth';
+import { useOrg } from '@/contexts/OrgContext';
 
 export function CalendarIntegrationsTab() {
   const { toast } = useToast();
+  const { isOrgAdmin } = useOrg();
   const {
     googleConnection,
     appleConnection,
@@ -387,6 +390,13 @@ export function CalendarIntegrationsTab() {
             </Alert>
           </CardContent>
         </Card>
+
+        {isOrgAdmin && (
+          <>
+            <Separator />
+            <CalendarSyncHealth />
+          </>
+        )}
       </div>
     </FeatureGate>
   );
