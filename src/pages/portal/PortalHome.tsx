@@ -90,7 +90,13 @@ export default function PortalHome() {
         } else if (action === 'decline') {
           const { data, error: declineErr } = await supabase
             .from('make_up_waitlist')
-            .update({ status: 'declined', responded_at: new Date().toISOString() })
+            .update({
+              status: 'waiting',
+              responded_at: new Date().toISOString(),
+              matched_lesson_id: null,
+              matched_at: null,
+              offered_at: null,
+            })
             .eq('id', id)
             .eq('guardian_id', guardian.id)
             .eq('status', 'offered')
@@ -100,14 +106,6 @@ export default function PortalHome() {
             toast({ title: 'Unable to decline', description: 'This offer may have expired or already been actioned.', variant: 'destructive' });
             return;
           }
-
-          // Reset to waiting so the system can re-match
-          const { error: resetErr } = await supabase
-            .from('make_up_waitlist')
-            .update({ status: 'waiting', matched_lesson_id: null, matched_at: null, offered_at: null })
-            .eq('id', id)
-            .eq('guardian_id', guardian.id);
-          if (resetErr) throw resetErr;
           toast({ title: "Slot declined. We'll keep looking for another available time." });
         }
       } catch (err: unknown) {
@@ -181,23 +179,18 @@ export default function PortalHome() {
       }
       const { data, error: declineErr } = await supabase
         .from('make_up_waitlist')
-        .update({ status: 'declined', responded_at: new Date().toISOString() })
+        .update({
+          status: 'waiting',
+          responded_at: new Date().toISOString(),
+          matched_lesson_id: null,
+          matched_at: null,
+          offered_at: null,
+        })
         .eq('id', id)
         .eq('guardian_id', guardianId)
         .eq('status', 'offered')
         .select('id');
       if (declineErr) throw declineErr;
-      if (!data?.length) {
-        toast({ title: 'Unable to decline', description: 'This offer may have expired or already been actioned.', variant: 'destructive' });
-        return;
-      }
-
-      const { error: resetErr } = await supabase
-        .from('make_up_waitlist')
-        .update({ status: 'waiting', matched_lesson_id: null, matched_at: null, offered_at: null })
-        .eq('id', id)
-        .eq('guardian_id', guardianId);
-      if (resetErr) throw resetErr;
 
       toast({ title: "Slot declined. We'll keep looking for another available time." });
       queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_parent'] });
