@@ -1,262 +1,193 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
-// ─── VTIMEZONE definitions for common music-school timezones ───
-const VTIMEZONE_MAP: Record<string, string> = {
-  'Europe/London': [
-    'BEGIN:VTIMEZONE',
-    'TZID:Europe/London',
-    'BEGIN:STANDARD',
-    'DTSTART:19701025T020000',
-    'RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=10',
-    'TZOFFSETFROM:+0100',
-    'TZOFFSETTO:+0000',
-    'TZNAME:GMT',
-    'END:STANDARD',
-    'BEGIN:DAYLIGHT',
-    'DTSTART:19700329T010000',
-    'RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=3',
-    'TZOFFSETFROM:+0000',
-    'TZOFFSETTO:+0100',
-    'TZNAME:BST',
-    'END:DAYLIGHT',
-    'END:VTIMEZONE',
-  ].join('\r\n'),
-  'America/New_York': [
-    'BEGIN:VTIMEZONE',
-    'TZID:America/New_York',
-    'BEGIN:STANDARD',
-    'DTSTART:19701101T020000',
-    'RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=11',
-    'TZOFFSETFROM:-0400',
-    'TZOFFSETTO:-0500',
-    'TZNAME:EST',
-    'END:STANDARD',
-    'BEGIN:DAYLIGHT',
-    'DTSTART:19700308T020000',
-    'RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3',
-    'TZOFFSETFROM:-0500',
-    'TZOFFSETTO:-0400',
-    'TZNAME:EDT',
-    'END:DAYLIGHT',
-    'END:VTIMEZONE',
-  ].join('\r\n'),
-  'America/Chicago': [
-    'BEGIN:VTIMEZONE',
-    'TZID:America/Chicago',
-    'BEGIN:STANDARD',
-    'DTSTART:19701101T020000',
-    'RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=11',
-    'TZOFFSETFROM:-0500',
-    'TZOFFSETTO:-0600',
-    'TZNAME:CST',
-    'END:STANDARD',
-    'BEGIN:DAYLIGHT',
-    'DTSTART:19700308T020000',
-    'RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3',
-    'TZOFFSETFROM:-0600',
-    'TZOFFSETTO:-0500',
-    'TZNAME:CDT',
-    'END:DAYLIGHT',
-    'END:VTIMEZONE',
-  ].join('\r\n'),
-  'America/Denver': [
-    'BEGIN:VTIMEZONE',
-    'TZID:America/Denver',
-    'BEGIN:STANDARD',
-    'DTSTART:19701101T020000',
-    'RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=11',
-    'TZOFFSETFROM:-0600',
-    'TZOFFSETTO:-0700',
-    'TZNAME:MST',
-    'END:STANDARD',
-    'BEGIN:DAYLIGHT',
-    'DTSTART:19700308T020000',
-    'RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3',
-    'TZOFFSETFROM:-0700',
-    'TZOFFSETTO:-0600',
-    'TZNAME:MDT',
-    'END:DAYLIGHT',
-    'END:VTIMEZONE',
-  ].join('\r\n'),
-  'America/Los_Angeles': [
-    'BEGIN:VTIMEZONE',
-    'TZID:America/Los_Angeles',
-    'BEGIN:STANDARD',
-    'DTSTART:19701101T020000',
-    'RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=11',
-    'TZOFFSETFROM:-0700',
-    'TZOFFSETTO:-0800',
-    'TZNAME:PST',
-    'END:STANDARD',
-    'BEGIN:DAYLIGHT',
-    'DTSTART:19700308T020000',
-    'RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3',
-    'TZOFFSETFROM:-0800',
-    'TZOFFSETTO:-0700',
-    'TZNAME:PDT',
-    'END:DAYLIGHT',
-    'END:VTIMEZONE',
-  ].join('\r\n'),
-  'Australia/Sydney': [
-    'BEGIN:VTIMEZONE',
-    'TZID:Australia/Sydney',
-    'BEGIN:STANDARD',
-    'DTSTART:19700405T030000',
-    'RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=4',
-    'TZOFFSETFROM:+1100',
-    'TZOFFSETTO:+1000',
-    'TZNAME:AEST',
-    'END:STANDARD',
-    'BEGIN:DAYLIGHT',
-    'DTSTART:19701004T020000',
-    'RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=10',
-    'TZOFFSETFROM:+1000',
-    'TZOFFSETTO:+1100',
-    'TZNAME:AEDT',
-    'END:DAYLIGHT',
-    'END:VTIMEZONE',
-  ].join('\r\n'),
-  'Australia/Melbourne': [
-    'BEGIN:VTIMEZONE',
-    'TZID:Australia/Melbourne',
-    'BEGIN:STANDARD',
-    'DTSTART:19700405T030000',
-    'RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=4',
-    'TZOFFSETFROM:+1100',
-    'TZOFFSETTO:+1000',
-    'TZNAME:AEST',
-    'END:STANDARD',
-    'BEGIN:DAYLIGHT',
-    'DTSTART:19701004T020000',
-    'RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=10',
-    'TZOFFSETFROM:+1000',
-    'TZOFFSETTO:+1100',
-    'TZNAME:AEDT',
-    'END:DAYLIGHT',
-    'END:VTIMEZONE',
-  ].join('\r\n'),
-  'Pacific/Auckland': [
-    'BEGIN:VTIMEZONE',
-    'TZID:Pacific/Auckland',
-    'BEGIN:STANDARD',
-    'DTSTART:19700405T030000',
-    'RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=4',
-    'TZOFFSETFROM:+1300',
-    'TZOFFSETTO:+1200',
-    'TZNAME:NZST',
-    'END:STANDARD',
-    'BEGIN:DAYLIGHT',
-    'DTSTART:19700927T020000',
-    'RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=9',
-    'TZOFFSETFROM:+1200',
-    'TZOFFSETTO:+1300',
-    'TZNAME:NZDT',
-    'END:DAYLIGHT',
-    'END:VTIMEZONE',
-  ].join('\r\n'),
-};
+// ── iCal date helpers ────────────────────────────────────────────────
 
-// ─── DST offset rules for local-time conversion ───
-interface DSTRule {
-  stdOffset: number;   // minutes from UTC in standard time
-  dstOffset: number;   // minutes from UTC in daylight time
-  // DST start: month (1-based), weekday occurrence (negative = last), hour
-  dstStart: { month: number; week: number; hour: number };
-  // DST end (return to standard)
-  dstEnd: { month: number; week: number; hour: number };
-}
-
-const DST_RULES: Record<string, DSTRule> = {
-  'Europe/London':        { stdOffset: 0,    dstOffset: 60,   dstStart: { month: 3, week: -1, hour: 1 },  dstEnd: { month: 10, week: -1, hour: 2 } },
-  'America/New_York':     { stdOffset: -300, dstOffset: -240, dstStart: { month: 3, week: 2, hour: 2 },   dstEnd: { month: 11, week: 1, hour: 2 } },
-  'America/Chicago':      { stdOffset: -360, dstOffset: -300, dstStart: { month: 3, week: 2, hour: 2 },   dstEnd: { month: 11, week: 1, hour: 2 } },
-  'America/Denver':       { stdOffset: -420, dstOffset: -360, dstStart: { month: 3, week: 2, hour: 2 },   dstEnd: { month: 11, week: 1, hour: 2 } },
-  'America/Los_Angeles':  { stdOffset: -480, dstOffset: -420, dstStart: { month: 3, week: 2, hour: 2 },   dstEnd: { month: 11, week: 1, hour: 2 } },
-  'Australia/Sydney':     { stdOffset: 600,  dstOffset: 660,  dstStart: { month: 10, week: 1, hour: 2 },  dstEnd: { month: 4, week: 1, hour: 3 } },
-  'Australia/Melbourne':  { stdOffset: 600,  dstOffset: 660,  dstStart: { month: 10, week: 1, hour: 2 },  dstEnd: { month: 4, week: 1, hour: 3 } },
-  'Pacific/Auckland':     { stdOffset: 720,  dstOffset: 780,  dstStart: { month: 9, week: -1, hour: 2 },  dstEnd: { month: 4, week: 1, hour: 3 } },
-};
-
-/** Find the Nth (or last) occurrence of a given weekday (0=Sun) in a month/year */
-function nthWeekdayOfMonth(year: number, month: number, weekday: number, n: number): number {
-  if (n > 0) {
-    // Nth occurrence (1-based)
-    const first = new Date(Date.UTC(year, month - 1, 1));
-    let day = 1 + ((weekday - first.getUTCDay() + 7) % 7);
-    day += (n - 1) * 7;
-    return day;
-  } else {
-    // Last occurrence
-    const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-    const last = new Date(Date.UTC(year, month - 1, lastDay));
-    let day = lastDay - ((last.getUTCDay() - weekday + 7) % 7);
-    return day;
-  }
-}
-
-/** Get the UTC offset in minutes for a given UTC date in a given timezone */
-function getOffsetMinutes(utcDate: Date, tz: string): number {
-  const rule = DST_RULES[tz];
-  if (!rule) return 0; // Unknown timezone → UTC
-
-  const year = utcDate.getUTCFullYear();
-  // All DST transitions are on Sunday (weekday 0)
-  const dstStartDay = nthWeekdayOfMonth(year, rule.dstStart.month, 0, rule.dstStart.week);
-  const dstEndDay = nthWeekdayOfMonth(year, rule.dstEnd.month, 0, rule.dstEnd.week);
-
-  // Transition timestamps in UTC
-  const dstStartUTC = Date.UTC(year, rule.dstStart.month - 1, dstStartDay, rule.dstStart.hour) - rule.stdOffset * 60000;
-  const dstEndUTC = Date.UTC(year, rule.dstEnd.month - 1, dstEndDay, rule.dstEnd.hour) - rule.dstOffset * 60000;
-
-  const ts = utcDate.getTime();
-
-  // Southern hemisphere: DST spans across year boundary (start > end)
-  if (dstStartUTC > dstEndUTC) {
-    // DST if before end OR after start
-    if (ts >= dstStartUTC || ts < dstEndUTC) return rule.dstOffset;
-    return rule.stdOffset;
-  }
-
-  // Northern hemisphere: DST between start and end
-  if (ts >= dstStartUTC && ts < dstEndUTC) return rule.dstOffset;
-  return rule.stdOffset;
-}
-
-/** Convert a UTC ISO string to local iCal date format: YYYYMMDDTHHMMSS (no Z) */
-function formatICalLocalDate(utcIso: string, tz: string): string {
-  const utcDate = new Date(utcIso);
-  const offsetMs = getOffsetMinutes(utcDate, tz) * 60000;
-  const local = new Date(utcDate.getTime() + offsetMs);
-
-  const y = local.getUTCFullYear();
-  const mo = String(local.getUTCMonth() + 1).padStart(2, '0');
-  const d = String(local.getUTCDate()).padStart(2, '0');
-  const h = String(local.getUTCHours()).padStart(2, '0');
-  const mi = String(local.getUTCMinutes()).padStart(2, '0');
-  const s = String(local.getUTCSeconds()).padStart(2, '0');
-  return `${y}${mo}${d}T${h}${mi}${s}`;
-}
-
-/** Format date as UTC iCal: YYYYMMDDTHHMMSSZ */
+/** Format a Date as iCal UTC stamp: YYYYMMDDTHHMMSSZ */
 function formatICalDateUTC(date: Date): string {
   return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 }
 
-// Escape special characters for iCal text fields
+/** Format a UTC ISO string as local iCal date in the given timezone: YYYYMMDDTHHMMSS (no Z) */
+function formatICalLocalDate(utcIso: string, timezone: string): string {
+  const d = new Date(utcIso);
+  const offset = getTimezoneOffsetMinutes(d, timezone);
+  const local = new Date(d.getTime() + offset * 60 * 1000);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return (
+    `${local.getUTCFullYear()}${pad(local.getUTCMonth() + 1)}${pad(local.getUTCDate())}` +
+    `T${pad(local.getUTCHours())}${pad(local.getUTCMinutes())}${pad(local.getUTCSeconds())}`
+  );
+}
+
+// ── Timezone offset calculation ──────────────────────────────────────
+
+interface TZRule {
+  standard: { offsetFrom: string; offsetTo: string; name: string; month: number; day: 'lastSun' | number };
+  daylight: { offsetFrom: string; offsetTo: string; name: string; month: number; day: 'lastSun' | number } | null;
+  baseOffsetMinutes: number;
+  dstOffsetMinutes: number;
+}
+
+const TIMEZONE_RULES: Record<string, TZRule> = {
+  'Europe/London': {
+    standard: { offsetFrom: '+0100', offsetTo: '+0000', name: 'GMT', month: 10, day: 'lastSun' },
+    daylight: { offsetFrom: '+0000', offsetTo: '+0100', name: 'BST', month: 3, day: 'lastSun' },
+    baseOffsetMinutes: 0,
+    dstOffsetMinutes: 60,
+  },
+  'America/New_York': {
+    standard: { offsetFrom: '-0400', offsetTo: '-0500', name: 'EST', month: 11, day: 'lastSun' },
+    daylight: { offsetFrom: '-0500', offsetTo: '-0400', name: 'EDT', month: 3, day: 'lastSun' },
+    baseOffsetMinutes: -300,
+    dstOffsetMinutes: -240,
+  },
+  'America/Chicago': {
+    standard: { offsetFrom: '-0500', offsetTo: '-0600', name: 'CST', month: 11, day: 'lastSun' },
+    daylight: { offsetFrom: '-0600', offsetTo: '-0500', name: 'CDT', month: 3, day: 'lastSun' },
+    baseOffsetMinutes: -360,
+    dstOffsetMinutes: -300,
+  },
+  'America/Denver': {
+    standard: { offsetFrom: '-0600', offsetTo: '-0700', name: 'MST', month: 11, day: 'lastSun' },
+    daylight: { offsetFrom: '-0700', offsetTo: '-0600', name: 'MDT', month: 3, day: 'lastSun' },
+    baseOffsetMinutes: -420,
+    dstOffsetMinutes: -360,
+  },
+  'America/Los_Angeles': {
+    standard: { offsetFrom: '-0700', offsetTo: '-0800', name: 'PST', month: 11, day: 'lastSun' },
+    daylight: { offsetFrom: '-0800', offsetTo: '-0700', name: 'PDT', month: 3, day: 'lastSun' },
+    baseOffsetMinutes: -480,
+    dstOffsetMinutes: -420,
+  },
+  'Australia/Sydney': {
+    standard: { offsetFrom: '+1100', offsetTo: '+1000', name: 'AEST', month: 4, day: 'lastSun' },
+    daylight: { offsetFrom: '+1000', offsetTo: '+1100', name: 'AEDT', month: 10, day: 'lastSun' },
+    baseOffsetMinutes: 600,
+    dstOffsetMinutes: 660,
+  },
+  'Australia/Melbourne': {
+    standard: { offsetFrom: '+1100', offsetTo: '+1000', name: 'AEST', month: 4, day: 'lastSun' },
+    daylight: { offsetFrom: '+1000', offsetTo: '+1100', name: 'AEDT', month: 10, day: 'lastSun' },
+    baseOffsetMinutes: 600,
+    dstOffsetMinutes: 660,
+  },
+  'Pacific/Auckland': {
+    standard: { offsetFrom: '+1300', offsetTo: '+1200', name: 'NZST', month: 4, day: 'lastSun' },
+    daylight: { offsetFrom: '+1200', offsetTo: '+1300', name: 'NZDT', month: 9, day: 'lastSun' },
+    baseOffsetMinutes: 720,
+    dstOffsetMinutes: 780,
+  },
+};
+
+/** Find the last Sunday of a given month/year (UTC day-of-month). */
+function lastSundayOf(year: number, month: number): number {
+  // month is 1-based; Date uses 0-based so next month day 0 = last day of this month
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const lastDow = new Date(Date.UTC(year, month - 1, lastDay)).getUTCDay(); // 0=Sun
+  return lastDay - lastDow;
+}
+
+/** Is the given UTC date in DST for the specified timezone? */
+function isDST(d: Date, rule: TZRule): boolean {
+  if (!rule.daylight) return false;
+  const year = d.getUTCFullYear();
+
+  // DST start transition (clocks go forward) — last Sunday of daylight.month at 01:00 UTC
+  const dstStartDay = lastSundayOf(year, rule.daylight.month);
+  const dstStart = Date.UTC(year, rule.daylight.month - 1, dstStartDay, 1, 0, 0);
+
+  // DST end transition (clocks go back) — last Sunday of standard.month at 01:00 UTC
+  const dstEndDay = lastSundayOf(year, rule.standard.month);
+  const dstEnd = Date.UTC(year, rule.standard.month - 1, dstEndDay, 1, 0, 0);
+
+  const t = d.getTime();
+
+  // Northern hemisphere: DST start < DST end (e.g. March → November)
+  if (dstStart < dstEnd) {
+    return t >= dstStart && t < dstEnd;
+  }
+  // Southern hemisphere: DST start > DST end (e.g. October → April)
+  return t >= dstStart || t < dstEnd;
+}
+
+function getTimezoneOffsetMinutes(d: Date, timezone: string): number {
+  const rule = TIMEZONE_RULES[timezone];
+  if (!rule) return 0; // Unknown timezone → UTC
+  return isDST(d, rule) ? rule.dstOffsetMinutes : rule.baseOffsetMinutes;
+}
+
+// ── VTIMEZONE generation ─────────────────────────────────────────────
+
+function generateVTIMEZONE(timezone: string): string[] {
+  const rule = TIMEZONE_RULES[timezone];
+  if (!rule) return []; // Unknown timezone → no VTIMEZONE (UTC fallback)
+
+  const lines: string[] = [
+    'BEGIN:VTIMEZONE',
+    `TZID:${timezone}`,
+  ];
+
+  // Standard component
+  const stdDay = rule.standard.day === 'lastSun' ? '-1SU' : rule.standard.day.toString();
+  lines.push(
+    'BEGIN:STANDARD',
+    `DTSTART:19701025T020000`,
+    `RRULE:FREQ=YEARLY;BYDAY=${stdDay};BYMONTH=${rule.standard.month}`,
+    `TZOFFSETFROM:${rule.standard.offsetFrom}`,
+    `TZOFFSETTO:${rule.standard.offsetTo}`,
+    `TZNAME:${rule.standard.name}`,
+    'END:STANDARD',
+  );
+
+  // Daylight component
+  if (rule.daylight) {
+    const dstDay = rule.daylight.day === 'lastSun' ? '-1SU' : rule.daylight.day.toString();
+    lines.push(
+      'BEGIN:DAYLIGHT',
+      `DTSTART:19700329T010000`,
+      `RRULE:FREQ=YEARLY;BYDAY=${dstDay};BYMONTH=${rule.daylight.month}`,
+      `TZOFFSETFROM:${rule.daylight.offsetFrom}`,
+      `TZOFFSETTO:${rule.daylight.offsetTo}`,
+      `TZNAME:${rule.daylight.name}`,
+      'END:DAYLIGHT',
+    );
+  }
+
+  lines.push('END:VTIMEZONE');
+  return lines;
+}
+
+// ── iCal text helpers ────────────────────────────────────────────────
+
 function escapeICalText(text: string | null): string {
   if (!text) return '';
   return text
     .replace(/\\/g, '\\\\')
     .replace(/;/g, '\\;')
     .replace(/,/g, '\\,')
+    .replace(/\r\n/g, '\\n')
+    .replace(/\r/g, '\\n')
     .replace(/\n/g, '\\n');
 }
 
-// Generate a unique UID for each event
+/** Fold lines longer than 75 octets per RFC 5545 §3.1 */
+function foldLine(line: string): string {
+  if (line.length <= 75) return line;
+  let result = line.substring(0, 75);
+  let remaining = line.substring(75);
+  while (remaining.length > 0) {
+    result += '\r\n ' + remaining.substring(0, 74);
+    remaining = remaining.substring(74);
+  }
+  return result;
+}
+
 function generateEventUID(lessonId: string, domain: string): string {
   return `${lessonId}@${domain}`;
 }
+
+// ── Main handler ─────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
@@ -319,111 +250,90 @@ Deno.serve(async (req) => {
 
     const orgName = org?.name || 'LessonLoop';
     const timezone = org?.timezone || 'Europe/London';
-    const hasVtimezone = timezone in VTIMEZONE_MAP;
 
-    // 3 months back, 6 months ahead
+    // ── Date range: 3 months back → 6 months ahead ──────────────────
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - 3);
+
     const endDate = new Date();
     endDate.setMonth(endDate.getMonth() + 6);
 
-    const lessonSelect = `
-      id, title, start_at, end_at, status, notes_shared, updated_at,
-      location:locations(name, address_line_1, city, postcode),
-      room:rooms(name),
-      participants:lesson_participants(
-        student:students(first_name, last_name)
-      )
-    `;
-
-    let lessons: any[] | null = null;
-    let lessonsError: any = null;
+    // ── Build query based on connection type ─────────────────────────
     let calendarName = `${orgName} Lessons`;
+    let lessons: any[] = [];
 
     if (connection.guardian_id) {
-      // ─── Parent feed: scope to guardian's children ───
+      // Parent feed — scoped to guardian's children
       const { data: studentLinks } = await supabase
         .from('student_guardians')
-        .select('student_id')
+        .select('student_id, student:students(first_name)')
         .eq('guardian_id', connection.guardian_id)
         .eq('org_id', connection.org_id);
 
       const studentIds = (studentLinks || []).map((s: any) => s.student_id);
+      const childNames = (studentLinks || [])
+        .map((s: any) => s.student?.first_name)
+        .filter(Boolean)
+        .join(' & ');
 
-      if (studentIds.length === 0) {
-        // No children — return empty calendar
-        const emptyIcal = [
-          'BEGIN:VCALENDAR', 'VERSION:2.0',
-          'PRODID:-//LessonLoop//Calendar Feed//EN',
-          'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
-          `X-WR-CALNAME:Music Lessons`, `X-WR-TIMEZONE:${timezone}`,
-          'REFRESH-INTERVAL;VALUE=DURATION:PT1H', 'X-PUBLISHED-TTL:PT1H',
-          'END:VCALENDAR',
-        ].join('\r\n');
-        return new Response(emptyIcal, {
-          headers: { ...corsHeaders, 'Content-Type': 'text/calendar; charset=utf-8', 'Cache-Control': 'no-cache, no-store, must-revalidate' },
-        });
-      }
+      if (childNames) calendarName = `${childNames}'s Music Lessons`;
 
-      // Get lesson IDs for these students within date range
-      const { data: participantRecords } = await supabase
-        .from('lesson_participants')
-        .select('lesson_id')
-        .in('student_id', studentIds)
-        .eq('org_id', connection.org_id);
+      if (studentIds.length > 0) {
+        const { data: participantRecords } = await supabase
+          .from('lesson_participants')
+          .select('lesson_id')
+          .in('student_id', studentIds)
+          .eq('org_id', connection.org_id);
 
-      const lessonIds = [...new Set((participantRecords || []).map((p: any) => p.lesson_id))];
+        const lessonIds = [...new Set((participantRecords || []).map((p: any) => p.lesson_id))];
 
-      if (lessonIds.length === 0) {
-        lessons = [];
-      } else {
-        const result = await supabase
-          .from('lessons')
-          .select(lessonSelect)
-          .in('id', lessonIds)
-          .eq('org_id', connection.org_id)
-          .gte('start_at', startDate.toISOString())
-          .lte('start_at', endDate.toISOString())
-          .order('start_at', { ascending: true });
-        lessons = result.data;
-        lessonsError = result.error;
-      }
-
-      // Build child names for calendar title
-      const { data: children } = await supabase
-        .from('students')
-        .select('first_name')
-        .in('id', studentIds);
-      if (children && children.length > 0) {
-        const names = children.map((c: any) => c.first_name);
-        calendarName = names.length <= 3
-          ? `${names.join(' & ')}'s Music Lessons`
-          : `${names.slice(0, 2).join(', ')} + ${names.length - 2} more — Lessons`;
+        if (lessonIds.length > 0) {
+          const { data } = await supabase
+            .from('lessons')
+            .select(`
+              id, title, start_at, end_at, status, notes_shared, updated_at,
+              location:locations(name, address_line_1, city, postcode),
+              room:rooms(name),
+              participants:lesson_participants(student:students(first_name, last_name))
+            `)
+            .in('id', lessonIds)
+            .eq('org_id', connection.org_id)
+            .gte('start_at', startDate.toISOString())
+            .lte('start_at', endDate.toISOString())
+            .order('start_at', { ascending: true });
+          lessons = data || [];
+        }
       }
     } else {
-      // ─── Teacher feed: scope to teacher's own lessons ───
-      const result = await supabase
+      // Teacher feed — scoped to teacher's lessons
+      const { data, error: lessonsError } = await supabase
         .from('lessons')
-        .select(lessonSelect)
+        .select(`
+          id, title, start_at, end_at, status, notes_shared, updated_at,
+          location:locations(name, address_line_1, city, postcode),
+          room:rooms(name),
+          participants:lesson_participants(student:students(first_name, last_name))
+        `)
         .eq('org_id', connection.org_id)
         .eq('teacher_user_id', connection.user_id)
         .gte('start_at', startDate.toISOString())
         .lte('start_at', endDate.toISOString())
         .order('start_at', { ascending: true });
-      lessons = result.data;
-      lessonsError = result.error;
+
+      if (lessonsError) {
+        console.error('Error fetching lessons:', lessonsError);
+        return new Response('Error fetching lessons', {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+        });
+      }
+      lessons = data || [];
     }
 
-    if (lessonsError) {
-      console.error('Error fetching lessons:', lessonsError);
-      return new Response('Error fetching lessons', {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
-      });
-    }
-
+    // ── Generate iCal content ────────────────────────────────────────
     const domain = 'lessonloop.app';
     const now = formatICalDateUTC(new Date());
+    const useTZID = !!TIMEZONE_RULES[timezone];
 
     // Token expiry warning
     let expiryWarning: string | null = null;
@@ -431,35 +341,41 @@ Deno.serve(async (req) => {
       const expiresAt = new Date(connection.ical_token_expires_at);
       const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       if (expiresAt <= sevenDaysFromNow) {
-        expiryWarning = `Your calendar feed URL expires on ${expiresAt.toISOString().split('T')[0]}. Please regenerate in Settings.`;
+        const expiryDate = expiresAt.toISOString().split('T')[0];
+        expiryWarning = `Your calendar feed URL expires on ${expiryDate}. Please regenerate in Settings.`;
       }
     }
 
-    // ─── Build VCALENDAR ───
-    const icalContent: string[] = [
+    const icalLines: string[] = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
       'PRODID:-//LessonLoop//Calendar Feed//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
-      `X-WR-CALNAME:${calendarName}`,
+      `X-WR-CALNAME:${escapeICalText(calendarName)}`,
       `X-WR-TIMEZONE:${timezone}`,
       'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
       'X-PUBLISHED-TTL:PT1H',
     ];
 
     if (expiryWarning) {
-      icalContent.push(`X-LESSONLOOP-WARNING:${expiryWarning}`);
+      icalLines.push(`X-LESSONLOOP-WARNING:${escapeICalText(expiryWarning)}`);
     }
 
-    // Add VTIMEZONE if available
-    if (hasVtimezone) {
-      icalContent.push(VTIMEZONE_MAP[timezone]);
-    }
+    // VTIMEZONE block
+    icalLines.push(...generateVTIMEZONE(timezone));
 
-    // ─── Build VEVENTs ───
-    for (const lesson of lessons || []) {
-      // Build location string
+    // ── Events ───────────────────────────────────────────────────────
+    for (const lesson of lessons) {
+      // Date formatting — use TZID if we have rules, otherwise UTC
+      const dtStart = useTZID
+        ? `DTSTART;TZID=${timezone}:${formatICalLocalDate(lesson.start_at, timezone)}`
+        : `DTSTART:${formatICalDateUTC(new Date(lesson.start_at))}`;
+      const dtEnd = useTZID
+        ? `DTEND;TZID=${timezone}:${formatICalLocalDate(lesson.end_at, timezone)}`
+        : `DTEND:${formatICalDateUTC(new Date(lesson.end_at))}`;
+
+      // Location
       const locationParts: string[] = [];
       if ((lesson.room as any)?.name) locationParts.push((lesson.room as any).name);
       if ((lesson.location as any)?.name) locationParts.push((lesson.location as any).name);
@@ -468,68 +384,51 @@ Deno.serve(async (req) => {
       if ((lesson.location as any)?.postcode) locationParts.push((lesson.location as any).postcode);
       const location = locationParts.join(', ');
 
-      // Build description with student names
+      // Description
       const studentNames = (lesson.participants as any[])
-        ?.map(p => `${p.student?.first_name} ${p.student?.last_name}`)
+        ?.map((p: any) => `${p.student?.first_name} ${p.student?.last_name}`)
         .filter(Boolean)
         .join(', ') || '';
 
       let description = '';
       if (studentNames) description += `Students: ${studentNames}`;
       if (lesson.notes_shared) {
-        description += description ? '\\n\\n' : '';
+        description += description ? '\n\n' : '';
         description += lesson.notes_shared;
       }
 
-      // SEQUENCE from updated_at
-      const sequence = Math.floor(
-        new Date(lesson.updated_at || lesson.start_at).getTime() / 1000
-      );
+      // SEQUENCE from updated_at (seconds since epoch / 60 to keep small)
+      const updatedAt = lesson.updated_at || lesson.start_at;
+      const sequence = Math.floor(new Date(updatedAt).getTime() / 60000);
+      const lastModified = formatICalDateUTC(new Date(updatedAt));
 
-      // LAST-MODIFIED
-      const lastModified = formatICalDateUTC(
-        new Date(lesson.updated_at || lesson.start_at)
-      );
-
-      // Date formatting: use TZID if we have a VTIMEZONE, otherwise UTC
-      let dtStart: string;
-      let dtEnd: string;
-      if (hasVtimezone) {
-        dtStart = `DTSTART;TZID=${timezone}:${formatICalLocalDate(lesson.start_at, timezone)}`;
-        dtEnd = `DTEND;TZID=${timezone}:${formatICalLocalDate(lesson.end_at, timezone)}`;
-      } else {
-        dtStart = `DTSTART:${formatICalDateUTC(new Date(lesson.start_at))}`;
-        dtEnd = `DTEND:${formatICalDateUTC(new Date(lesson.end_at))}`;
-      }
-
+      // Status text for summary
       const isCancelled = lesson.status === 'cancelled';
-      const statusText = lesson.status === 'completed' ? ' [Completed]' : '';
+      const isCompleted = lesson.status === 'completed';
+      const summaryStatus = isCancelled ? ' [Cancelled]' : isCompleted ? ' [Completed]' : '';
 
-      const eventLines: string[] = [
-        'BEGIN:VEVENT',
-        `UID:${generateEventUID(lesson.id, domain)}`,
-        `DTSTAMP:${now}`,
-        dtStart,
-        dtEnd,
-        `SUMMARY:${escapeICalText(lesson.title)}${statusText}`,
-        `SEQUENCE:${sequence}`,
-        `LAST-MODIFIED:${lastModified}`,
-        'CATEGORIES:LessonLoop',
-        'COLOR:dodgerblue',
-      ];
+      icalLines.push('BEGIN:VEVENT');
+      icalLines.push(`UID:${generateEventUID(lesson.id, domain)}`);
+      icalLines.push(`DTSTAMP:${now}`);
+      icalLines.push(dtStart);
+      icalLines.push(dtEnd);
+      icalLines.push(`SUMMARY:${escapeICalText(lesson.title)}${summaryStatus}`);
+      icalLines.push(`SEQUENCE:${sequence}`);
+      icalLines.push(`LAST-MODIFIED:${lastModified}`);
 
-      if (isCancelled) {
-        eventLines.push('STATUS:CANCELLED');
-      } else {
-        eventLines.push('STATUS:CONFIRMED');
-      }
+      if (isCancelled) icalLines.push('STATUS:CANCELLED');
+      else if (isCompleted) icalLines.push('STATUS:CONFIRMED');
+      else icalLines.push('STATUS:CONFIRMED');
 
-      if (location) eventLines.push(`LOCATION:${escapeICalText(location)}`);
-      if (description) eventLines.push(`DESCRIPTION:${escapeICalText(description)}`);
+      if (location) icalLines.push(`LOCATION:${escapeICalText(location)}`);
+      if (description) icalLines.push(`DESCRIPTION:${escapeICalText(description)}`);
 
-      // 15-minute reminder (only for non-cancelled future lessons)
+      icalLines.push('CATEGORIES:LessonLoop');
+      icalLines.push('COLOR:dodgerblue');
+
+      // 15-minute reminder (only for non-cancelled)
       if (!isCancelled) {
-        eventLines.push(
+        icalLines.push(
           'BEGIN:VALARM',
           'TRIGGER:-PT15M',
           'ACTION:DISPLAY',
@@ -538,11 +437,13 @@ Deno.serve(async (req) => {
         );
       }
 
-      eventLines.push('END:VEVENT');
-      icalContent.push(...eventLines);
+      icalLines.push('END:VEVENT');
     }
 
-    icalContent.push('END:VCALENDAR');
+    icalLines.push('END:VCALENDAR');
+
+    // Fold long lines per RFC 5545
+    const folded = icalLines.map(foldLine);
 
     // Update last_sync_at
     await supabase
@@ -550,7 +451,7 @@ Deno.serve(async (req) => {
       .update({ last_sync_at: new Date().toISOString() })
       .eq('id', connection.id);
 
-    return new Response(icalContent.join('\r\n'), {
+    return new Response(folded.join('\r\n'), {
       headers: {
         ...corsHeaders,
         'Content-Type': 'text/calendar; charset=utf-8',
