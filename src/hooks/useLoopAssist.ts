@@ -287,6 +287,24 @@ export function useLoopAssist(externalPageContext?: PageContext) {
         }
       }
 
+      // Process any remaining data in the buffer after stream ends
+      if (textBuffer.trim()) {
+        const remainingLines = textBuffer.split('\n');
+        for (const line of remainingLines) {
+          const trimmed = line.replace(/\r$/, '');
+          if (!trimmed.startsWith('data: ')) continue;
+          const jsonStr = trimmed.slice(6).trim();
+          if (jsonStr === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            if (parsed.text) {
+              assistantContent += parsed.text;
+              setStreamingContent(assistantContent);
+            }
+          } catch { /* ignore final partial */ }
+        }
+      }
+
       if (assistantContent) {
         await supabase.from('ai_messages').insert({
           conversation_id: conversationId,
