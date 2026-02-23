@@ -1,4 +1,4 @@
-import { ReactNode, Suspense, useEffect } from 'react';
+import { ReactNode, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -39,10 +39,10 @@ export function PortalLayout({ children }: PortalLayoutProps) {
       <ChildFilterProvider>
         <div className="min-h-screen flex flex-col bg-background">
           <Header />
-          <div className="px-6 pt-3">
+          <div className="px-4 pt-3 md:px-6">
             <ChildSwitcher compact className="w-full" />
           </div>
-          <main className="flex-1 p-6 pb-24 overflow-auto">
+          <main className="flex-1 overflow-auto p-4 pb-24 md:p-6 md:pb-24">
             <div className="max-w-4xl mx-auto">
               {contentTransition}
             </div>
@@ -61,7 +61,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
           <PortalSidebar />
           <div className="flex-1 flex flex-col">
             <Header />
-            <main className="flex-1 p-6 md:p-8 overflow-auto">
+            <main className="flex-1 overflow-auto p-4 md:p-6">
               <div className="max-w-4xl mx-auto">
                 {contentTransition}
               </div>

@@ -20,12 +20,11 @@ export function Header() {
   const { totalActionable, hasCritical } = useProactiveAlerts();
   const hasMultipleOrgs = organisations.length > 1;
   const isStaff = currentRole && ['owner', 'admin', 'teacher', 'finance'].includes(currentRole);
-  const isParent = currentRole === 'parent';
 
   return (
-    <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-background px-4">
+    <header className="sticky top-0 z-50 flex min-h-14 items-center justify-between border-b bg-background px-4">
       <div className="flex items-center gap-2">
-        <SidebarTrigger className="md:hidden" />
+        <SidebarTrigger className="h-11 w-11 md:hidden" />
 
         {/* Brand logo */}
         <div className="flex items-center gap-2">
@@ -39,7 +38,7 @@ export function Header() {
             <span className="text-border mx-1">|</span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-1.5 text-sm font-medium h-8 px-2">
+                <Button variant="ghost" size="sm" className="h-11 gap-1.5 px-3 text-body-strong font-medium">
                   <span className="truncate max-w-[160px]">{currentOrg.name}</span>
                   <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
                 </Button>
@@ -63,7 +62,7 @@ export function Header() {
         )}
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5">
         {/* Notification bell — staff only */}
         {isStaff && <NotificationBell />}
 
@@ -72,7 +71,7 @@ export function Header() {
         variant="ghost"
         size="sm"
         className={cn(
-          'gap-1.5 h-8 px-2.5 text-muted-foreground hover:text-foreground relative',
+          'relative min-h-11 gap-1.5 px-3 text-muted-foreground hover:text-foreground',
           hasCritical && 'text-destructive'
         )}
         onClick={() => setIsOpen(true)}

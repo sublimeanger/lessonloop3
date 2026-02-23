@@ -15,7 +15,6 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
 import { ChildSwitcher } from '@/components/portal/ChildSwitcher';
 import { usePortalFeatures } from '@/hooks/usePortalFeatures';
-import { Logo, LogoWordmark } from '@/components/brand/Logo';
 import {
   Sidebar,
   SidebarContent,
@@ -27,11 +26,9 @@ import {
   SidebarMenuItem,
   SidebarMenuBadge,
   SidebarFooter,
-  SidebarSeparator,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
 
 const allPortalNav = [
   { title: 'Home', url: '/portal/home', icon: Home, key: 'always' as const },
@@ -99,7 +96,7 @@ export function PortalSidebar() {
                     <SidebarMenuButton asChild>
                       <NavLink
                         to={item.url}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                         activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                       >
                         <item.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.5} />
@@ -138,7 +135,7 @@ export function PortalSidebar() {
             variant="ghost"
             size="icon"
             onClick={handleSignOut}
-            className="h-7 w-7 shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+            className="h-11 w-11 shrink-0 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
             title="Sign out"
           >
             <LogOut className="h-4 w-4" />
