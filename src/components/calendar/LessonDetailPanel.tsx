@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban, Gift, AlertTriangle, CalendarClock, StopCircle, Repeat } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface LessonDetailPanelProps {
   lesson: LessonWithDetails | null;
@@ -511,11 +512,26 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
               {lesson.participants?.map((p, i) => (
                 <span key={p.id} className="text-foreground">
                   {p.student.first_name} {p.student.last_name}
-                  {lesson.makeupStudentIds?.includes(p.student.id) && (
-                    <Badge variant="outline" className="ml-1 text-[9px] px-1 py-0 h-4 border-amber-500/50 text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-900/30">
-                      Make-up
-                    </Badge>
-                  )}
+                  {lesson.makeupStudentIds?.includes(p.student.id) && (() => {
+                    const detail = lesson.makeupDetails?.[p.student.id];
+                    const tooltipText = detail
+                      ? `Make-up for ${detail.lessonTitle} on ${detail.missedDate} (${detail.absenceReason.replace(/_/g, ' ')})`
+                      : 'Make-up student';
+                    return (
+                      <TooltipProvider delayDuration={200}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="ml-1 text-[9px] px-1 py-0 h-4 border-amber-500/50 text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-900/30 cursor-help">
+                              Make-up
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="text-xs max-w-64">
+                            {tooltipText}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  })()}
                   {i < (lesson.participants?.length || 0) - 1 && ', '}
                 </span>
               ))}
