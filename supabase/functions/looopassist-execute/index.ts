@@ -423,26 +423,28 @@ async function executeGenerateBillingRun(
   }
 
   // Build lookup structures
+  // rate_amount is stored as decimal major units (e.g. 30.00 = £30)
+  // Convert to minor units (pence) for invoice calculations
   const rateByDuration = new Map<number, number>();
   let defaultRate: number | null = null;
 
   for (const rc of rateCards) {
-    const amount = Math.round(Number(rc.rate_amount));
-    rateByDuration.set(rc.duration_mins, amount);
+    const amountMinor = Math.round(Number(rc.rate_amount) * 100);
+    rateByDuration.set(rc.duration_mins, amountMinor);
     if (rc.is_default) {
-      defaultRate = amount;
+      defaultRate = amountMinor;
     }
   }
 
   // If no card is explicitly marked as default, use the first one
   if (defaultRate === null) {
-    defaultRate = Math.round(Number(rateCards[0].rate_amount));
+    defaultRate = Math.round(Number(rateCards[0].rate_amount) * 100);
   }
 
-  // Build a map of rate_card id → amount for student-specific lookups
+  // Build a map of rate_card id → amount (minor) for student-specific lookups
   const rateById = new Map<string, number>();
   for (const rc of rateCards) {
-    rateById.set(rc.id, Math.round(Number(rc.rate_amount)));
+    rateById.set(rc.id, Math.round(Number(rc.rate_amount) * 100));
   }
 
   // Fetch lessons with participants and student details

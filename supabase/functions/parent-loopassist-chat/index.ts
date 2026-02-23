@@ -264,6 +264,7 @@ serve(async (req) => {
         content: typeof m.content === "string" ? m.content : String(m.content),
       }));
 
+    // Use real Anthropic streaming for genuine incremental delivery
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -276,7 +277,7 @@ serve(async (req) => {
         max_tokens: 2048,
         system: fullContext,
         messages: anthropicMessages,
-        stream: false,
+        stream: true,
       }),
     });
 
@@ -295,23 +296,49 @@ serve(async (req) => {
       });
     }
 
-    const result = await response.json();
-    const textBlocks = result.content
-      ?.filter((b: any) => b.type === "text")
-      ?.map((b: any) => b.text)
-      ?.join("") || "";
+    if (!response.body) {
+      return new Response(JSON.stringify({ error: "No response body from AI" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    // Stream the response using SSE format
-    const sseEncoder = new TextEncoder();
+    // Transform Anthropic SSE stream into our SSE format
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    const anthropicReader = response.body.getReader();
+
     const stream = new ReadableStream({
-      start(controller) {
-        const chunkSize = 20;
-        for (let i = 0; i < textBlocks.length; i += chunkSize) {
-          const chunk = textBlocks.slice(i, i + chunkSize);
-          controller.enqueue(sseEncoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`));
+      async start(controller) {
+        let buffer = "";
+        try {
+          while (true) {
+            const { done, value } = await anthropicReader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              if (!line.startsWith("data: ")) continue;
+              const jsonStr = line.slice(6).trim();
+              if (!jsonStr || jsonStr === "[DONE]") continue;
+
+              try {
+                const event = JSON.parse(jsonStr);
+                if (event.type === "content_block_delta" && event.delta?.text) {
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`));
+                }
+              } catch { /* skip malformed events */ }
+            }
+          }
+        } catch (e) {
+          console.error("Stream processing error:", e);
+        } finally {
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
         }
-        controller.enqueue(sseEncoder.encode("data: [DONE]\n\n"));
-        controller.close();
       },
     });
 
