@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { logger } from '@/lib/logger';
-import { format, addMinutes, addDays, setHours, setMinutes, startOfDay, parseISO, eachDayOfInterval } from 'date-fns';
+import { format, addMinutes, addDays, addWeeks, setHours, setMinutes, startOfDay, parseISO, eachDayOfInterval } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -355,10 +355,10 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
 
       if (lesson) {
         let lessonIdsToUpdate: string[] = [lesson.id];
+        // Use UTC for DB queries (lesson.start_at is org-local after toOrgLocalIso)
+        const utcStartAt = lesson.utc_start_at || lesson.start_at;
 
         if (editMode === 'this_and_future' && lesson.recurrence_id) {
-          // Use UTC for DB queries (lesson.start_at is org-local after toOrgLocalIso)
-          const utcStartAt = lesson.utc_start_at || lesson.start_at;
           const { data: futureLessons } = await supabase
             .from('lessons')
             .select('id, start_at')

@@ -549,7 +549,7 @@ export function WeekTimeGrid({
                         >
                           <LessonCard
                             lesson={lesson}
-                            onClick={undefined}
+                            onClick={() => onLessonClick(lesson)}
                             teacherColour={resolveColour(teacherColourMap, lesson.teacher_id)}
                             showResizeHandle={!isParent && !!onLessonResize}
                             onResizeStart={(e) => startResize(lesson, e)}

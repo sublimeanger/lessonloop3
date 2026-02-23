@@ -45,6 +45,7 @@ export function MobileWeekView({
   savingLessonIds,
 }: MobileWeekViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const dayRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [activeDotIndex, setActiveDotIndex] = useState(0);
 
   // Long-press drag state
