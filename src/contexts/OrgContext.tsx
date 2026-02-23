@@ -46,7 +46,7 @@ export interface Organisation {
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   // Music settings (GRADE-003)
-  default_exam_board_id: string | null;
+  default_exam_board_id?: string | null;
 }
 
 export interface OrgMembership {
@@ -236,7 +236,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
 
     await fetchOrganisations();
     
-    return { org: org as Organisation, error: null };
+    return { org: org as unknown as Organisation, error: null };
   }, [user, fetchOrganisations]);
 
   const refreshOrganisations = useCallback(async () => {
