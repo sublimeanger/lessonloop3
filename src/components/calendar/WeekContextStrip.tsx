@@ -17,10 +17,12 @@ export function WeekContextStrip({
   lessonsByDay,
   view,
 }: WeekContextStripProps) {
+  const weekStartKey = format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
   const weekDays = useMemo(() => {
     const start = startOfWeek(currentDate, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, i) => addDays(start, i));
-  }, [currentDate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekStartKey]);
 
   const monthLabel = useMemo(() => {
     const start = weekDays[0];

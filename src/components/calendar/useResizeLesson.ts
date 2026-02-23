@@ -30,7 +30,11 @@ function snapToGrid(y: number): number {
 
 export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHour = 7, endHour = 21 }: UseResizeLessonOptions) {
   const [resizeState, setResizeState] = useState<ResizeState | null>(null);
+  const resizeStateRef = useRef<ResizeState | null>(null);
   const isResizingRef = useRef(false);
+
+  // Keep ref in sync with state
+  resizeStateRef.current = resizeState;
 
   const startResize = useCallback(
     (lesson: LessonWithDetails, e: React.MouseEvent | React.TouchEvent) => {
@@ -53,12 +57,13 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHou
         top,
       });
     },
-    []
+    [startHour]
   );
 
   const updateResize = useCallback(
     (clientY: number) => {
-      if (!resizeState || !gridRef.current) return;
+      const current = resizeStateRef.current;
+      if (!current || !gridRef.current) return;
 
       const rect = gridRef.current.getBoundingClientRect();
       const viewport = scrollViewportRef.current?.querySelector(
@@ -68,20 +73,21 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHou
       const y = clientY - rect.top + scrollTop;
 
       // Enforce minimum duration (15 minutes = HOUR_HEIGHT/4)
-      const minBottom = resizeState.top + (MIN_DURATION / 60) * HOUR_HEIGHT;
-      const maxBottom = (endHour - startHour + 1) * HOUR_HEIGHT;
+      const minBottom = current.top + (MIN_DURATION / 60) * HOUR_HEIGHT;
+      const maxBottom = (endHour - startHour) * HOUR_HEIGHT;
       const snapped = snapToGrid(Math.min(Math.max(y, minBottom), maxBottom));
 
       setResizeState((prev) => (prev ? { ...prev, currentBottom: snapped } : null));
     },
-    [resizeState, gridRef, scrollViewportRef]
+    [gridRef, scrollViewportRef, startHour, endHour]
   );
 
   const completeResize = useCallback(() => {
-    if (!resizeState) return;
+    const current = resizeStateRef.current;
+    if (!current) return;
     isResizingRef.current = false;
 
-    const { lesson, currentBottom, originalBottom, top } = resizeState;
+    const { lesson, currentBottom, originalBottom } = current;
 
     if (currentBottom === originalBottom) {
       setResizeState(null);
@@ -91,8 +97,13 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHou
     // Compute new end time from currentBottom
     const endMinutesFromGridTop = (currentBottom / HOUR_HEIGHT) * 60;
     const totalEndMinutes = endMinutesFromGridTop + startHour * 60;
-    const endHr = Math.floor(totalEndMinutes / 60);
-    const endMinute = Math.round(totalEndMinutes % 60);
+    let endHr = Math.floor(totalEndMinutes / 60);
+    let endMinute = Math.round(totalEndMinutes % 60);
+    // Clamp minute overflow (e.g. 60 → next hour)
+    if (endMinute >= 60) {
+      endHr += 1;
+      endMinute = 0;
+    }
 
     const originalStart = parseISO(lesson.start_at);
     const newEnd = new Date(originalStart);
@@ -100,7 +111,7 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHou
 
     setResizeState(null);
     onResize(lesson, newEnd);
-  }, [resizeState, onResize]);
+  }, [onResize, startHour]);
 
   const cancelResize = useCallback(() => {
     isResizingRef.current = false;
@@ -108,8 +119,10 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHou
   }, []);
 
   // Global listeners during resize
+  // Only attach/detach when resize starts/stops (boolean toggle), not on every position update
+  const isResizeActive = !!resizeState;
   useEffect(() => {
-    if (!resizeState) return;
+    if (!isResizeActive) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       e.preventDefault();
@@ -137,7 +150,7 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHou
       window.removeEventListener('touchend', handleUp);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [resizeState, updateResize, completeResize, cancelResize]);
+  }, [isResizeActive, updateResize, completeResize, cancelResize]);
 
   return {
     resizeState,

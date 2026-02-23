@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { format, parseISO, differenceInMinutes, isSameDay } from 'date-fns';
 import { LessonWithDetails } from './types';
-import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS, getTeacherColour } from './teacherColours';
+import { TeacherWithColour, TeacherColourEntry, getTeacherColour } from './teacherColours';
 import { cn } from '@/lib/utils';
 import { Calendar as CalendarIcon } from 'lucide-react';
 
@@ -79,7 +79,7 @@ export function MobileDayView({
                 <div className="flex-1 border-t border-dashed border-muted-foreground/20" />
                 <span className="text-[11px] text-muted-foreground/60 font-medium whitespace-nowrap">
                   {gapMinutes >= 60
-                    ? `${Math.floor(gapMinutes / 60)}h ${gapMinutes % 60 > 0 ? `${gapMinutes % 60}m` : ''} break`
+                    ? `${Math.floor(gapMinutes / 60)}h${gapMinutes % 60 > 0 ? ` ${gapMinutes % 60}m` : ''} break`
                     : `${gapMinutes}m break`
                   }
                 </span>

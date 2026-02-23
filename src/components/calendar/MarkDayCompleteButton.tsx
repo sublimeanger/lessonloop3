@@ -128,23 +128,24 @@ export function MarkDayCompleteButton({ currentDate, lessons, onComplete }: Mark
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Mark Lessons Complete</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will mark {eligibleLessons.length} past scheduled lesson{eligibleLessons.length > 1 ? 's' : ''} as completed.
-              
-              <div className="mt-3 max-h-48 overflow-y-auto space-y-1.5 text-sm">
-                {eligibleLessons.slice(0, 10).map(lesson => (
-                  <div key={lesson.id} className="flex justify-between items-center py-1 px-2 bg-muted rounded">
-                    <span className="font-medium truncate">{lesson.title}</span>
-                    <span className="text-muted-foreground text-xs whitespace-nowrap ml-2">
-                      {format(new Date(lesson.start_at), 'HH:mm')}
-                    </span>
-                  </div>
-                ))}
-                {eligibleLessons.length > 10 && (
-                  <div className="text-muted-foreground text-xs text-center py-1">
-                    ...and {eligibleLessons.length - 10} more
-                  </div>
-                )}
+            <AlertDialogDescription asChild>
+              <div>
+                <p>This will mark {eligibleLessons.length} past scheduled lesson{eligibleLessons.length > 1 ? 's' : ''} as completed.</p>
+                <div className="mt-3 max-h-48 overflow-y-auto space-y-1.5 text-sm">
+                  {eligibleLessons.slice(0, 10).map(lesson => (
+                    <div key={lesson.id} className="flex justify-between items-center py-1 px-2 bg-muted rounded">
+                      <span className="font-medium truncate">{lesson.title}</span>
+                      <span className="text-muted-foreground text-xs whitespace-nowrap ml-2">
+                        {format(new Date(lesson.start_at), 'HH:mm')}
+                      </span>
+                    </div>
+                  ))}
+                  {eligibleLessons.length > 10 && (
+                    <p className="text-muted-foreground text-xs text-center py-1">
+                      ...and {eligibleLessons.length - 10} more
+                    </p>
+                  )}
+                </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>

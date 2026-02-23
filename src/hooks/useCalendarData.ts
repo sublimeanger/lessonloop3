@@ -124,21 +124,21 @@ async function fetchCalendarLessons(
   );
   const participantsMap = new Map<string, { id: string; lesson_id: string; student: { id: string; first_name: string; last_name: string } | null }[]>();
   (participantsData.data || []).forEach(p => {
-    const existing = participantsMap.get(p.lesson_id) || [];
-    participantsMap.set(p.lesson_id, [...existing, p]);
+    const existing = participantsMap.get(p.lesson_id);
+    if (existing) { existing.push(p); } else { participantsMap.set(p.lesson_id, [p]); }
   });
   const attendanceMap = new Map<string, { lesson_id: string; student_id: string; attendance_status: string }[]>();
   (attendanceData.data || []).forEach(a => {
-    const existing = attendanceMap.get(a.lesson_id) || [];
-    attendanceMap.set(a.lesson_id, [...existing, a]);
+    const existing = attendanceMap.get(a.lesson_id);
+    if (existing) { existing.push(a); } else { attendanceMap.set(a.lesson_id, [a]); }
   });
   const makeupMap = new Map<string, string[]>();
   const makeupDetailsMap = new Map<string, Record<string, { lessonTitle: string; missedDate: string; absenceReason: string }>>();
   interface MakeupRow { booked_lesson_id: string | null; student_id: string; lesson_title: string; missed_lesson_date: string; absence_reason: string }
   ((makeupData.data || []) as MakeupRow[]).forEach((m) => {
     if (m.booked_lesson_id) {
-      const existing = makeupMap.get(m.booked_lesson_id) || [];
-      makeupMap.set(m.booked_lesson_id, [...existing, m.student_id]);
+      const existing = makeupMap.get(m.booked_lesson_id);
+      if (existing) { existing.push(m.student_id); } else { makeupMap.set(m.booked_lesson_id, [m.student_id]); }
       const details = makeupDetailsMap.get(m.booked_lesson_id) || {};
       details[m.student_id] = {
         lessonTitle: m.lesson_title,
@@ -151,10 +151,12 @@ async function fetchCalendarLessons(
 
   const enrichedLessons: LessonWithDetails[] = lessonsData.map((lesson) => ({
     ...lesson,
+    utc_start_at: lesson.start_at,
+    utc_end_at: lesson.end_at,
     start_at: toOrgLocalIso(lesson.start_at, orgTimezone),
     end_at: toOrgLocalIso(lesson.end_at, orgTimezone),
     teacher: teacherMap.get(lesson.teacher_id ?? '') ?? undefined,
-    location: lesson.location ? { name: lesson.location.name } : undefined,
+    location: lesson.location ? { name: lesson.location.name, is_archived: lesson.location.is_archived } : undefined,
     room: lesson.room ? { name: lesson.room.name } : undefined,
     participants: (participantsMap.get(lesson.id) || []) as LessonWithDetails['participants'],
     attendance: (attendanceMap.get(lesson.id) || []) as LessonWithDetails['attendance'],
@@ -211,7 +213,7 @@ export function useCalendarData(
     if (!currentOrg?.id) return;
 
     const channel = supabase
-      .channel('calendar-realtime')
+      .channel(`calendar-realtime-${currentOrg.id}`)
       .on(
         'postgres_changes',
         {

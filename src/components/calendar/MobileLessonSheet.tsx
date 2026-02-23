@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
-import { Clock, User, MapPin, Repeat, Users, Edit2, Check, UserX, Ban } from 'lucide-react';
+import { Clock, User, MapPin, Repeat, Users, Edit2 } from 'lucide-react';
 
 interface MobileLessonSheetProps {
   lesson: LessonWithDetails | null;
@@ -158,40 +158,15 @@ export function MobileLessonSheet({
               Edit Lesson
             </Button>
 
-            {!isCancelled && (
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant="secondary"
-                  className="gap-1.5"
-                  style={{ minHeight: 44 }}
-                  onClick={() => { onClose(); onOpenDetail(lesson); }}
-                >
-                  <Check className="h-4 w-4" />
-                  Complete
-                </Button>
-                <Button
-                  variant="secondary"
-                  className="gap-1.5"
-                  style={{ minHeight: 44 }}
-                  onClick={() => { onClose(); onOpenDetail(lesson); }}
-                >
-                  <UserX className="h-4 w-4" />
-                  Absent
-                </Button>
-              </div>
-            )}
-
-            {!isCancelled && (
-              <Button
-                variant="outline"
-                className="w-full gap-2 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                style={{ minHeight: 44 }}
-                onClick={() => { onClose(); onOpenDetail(lesson); }}
-              >
-                <Ban className="h-4 w-4" />
-                Cancel Lesson
-              </Button>
-            )}
+            <Button
+              variant="secondary"
+              className="w-full gap-2"
+              style={{ minHeight: 44 }}
+              onClick={() => { onClose(); onOpenDetail(lesson); }}
+            >
+              <Users className="h-4 w-4" />
+              Attendance &amp; Details
+            </Button>
           </div>
         </div>
       </DrawerContent>

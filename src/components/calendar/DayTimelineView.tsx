@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { format, parseISO, isSameDay, setHours, setMinutes, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LessonWithDetails } from './types';
-import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS, getTeacherColour } from './teacherColours';
+import { TeacherWithColour, TeacherColourEntry, getTeacherColour } from './teacherColours';
 import { computeOverlapLayout } from './overlapLayout';
 import { useDragLesson } from './useDragLesson';
 import { useResizeLesson } from './useResizeLesson';
@@ -36,6 +36,8 @@ function roundTo15(minutes: number): number {
   return Math.round(minutes / 15) * 15;
 }
 
+const EMPTY_SAVING_SET = new Set<string>();
+
 export function DayTimelineView({
   currentDate,
   lessons,
@@ -46,7 +48,7 @@ export function DayTimelineView({
   onLessonDrop,
   onLessonResize,
   isParent,
-  savingLessonIds = new Set(),
+  savingLessonIds = EMPTY_SAVING_SET,
 }: DayTimelineViewProps) {
   const { currentOrg } = useOrg();
   const orgStartHour = currentOrg?.schedule_start_hour ?? DEFAULT_START_HOUR;
@@ -324,7 +326,7 @@ export function DayTimelineView({
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onLessonClick(lesson);
+                  if (!dragState && !resizeState) onLessonClick(lesson);
                 }}
                 onMouseDown={(e) => {
                   if (!isParent && onLessonDrop) startDragIntent(lesson, e);

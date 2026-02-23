@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { format, parseISO, isSameDay, startOfDay, addDays } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { LessonCard } from './LessonCard';
@@ -48,17 +49,21 @@ interface AgendaViewProps {
 }
 
 export function AgendaView({ currentDate, lessons, onLessonClick, teacherColourMap, groupByTeacher = false }: AgendaViewProps) {
-  const groupedLessons: { date: Date; lessons: LessonWithDetails[] }[] = [];
-  
-  for (let i = 0; i < 14; i++) {
-    const day = addDays(startOfDay(currentDate), i);
-    const dayLessons = lessons.filter(l => isSameDay(parseISO(l.start_at), day));
-    if (dayLessons.length > 0) {
-      groupedLessons.push({ date: day, lessons: dayLessons });
+  const groupedLessons = useMemo(() => {
+    const groups: { date: Date; lessons: LessonWithDetails[] }[] = [];
+    for (let i = 0; i < 14; i++) {
+      const day = addDays(startOfDay(currentDate), i);
+      const dayLessons = lessons
+        .filter(l => isSameDay(parseISO(l.start_at), day))
+        .sort((a, b) => a.start_at.localeCompare(b.start_at));
+      if (dayLessons.length > 0) {
+        groups.push({ date: day, lessons: dayLessons });
+      }
     }
-  }
+    return groups;
+  }, [currentDate, lessons]);
 
-  if (lessons.length === 0) {
+  if (groupedLessons.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <p className="text-lg">No lessons in the next 2 weeks</p>

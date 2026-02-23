@@ -295,7 +295,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
                   {/* Absence reason picker — shown for absent / cancelled_by_student */}
                   {needsAbsenceReason(currentStatus) && (
                     <AbsenceReasonPicker
-                      reason={(absenceReasons[participant.student_id] ?? participant.absence_reason_category as AbsenceReasonValue) || null}
+                      reason={(absenceReasons[participant.student_id] ?? (participant.absence_reason_category as AbsenceReasonValue)) || null}
                       notifiedAt={notifiedDates[participant.student_id] || new Date()}
                       onReasonChange={(r) => handleReasonChange(participant.student_id, r)}
                       onNotifiedAtChange={(d) => handleNotifiedDateChange(participant.student_id, d)}

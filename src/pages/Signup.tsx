@@ -80,7 +80,7 @@ export default function Signup() {
     e.preventDefault();
     const trimmedEmail = email.trim();
     
-    if (!fullName || !trimmedEmail || !password) {
+    if (!fullName.trim() || !trimmedEmail || !password) {
       toast({
         title: 'Missing fields',
         description: 'Please fill in all fields.',
@@ -110,7 +110,7 @@ export default function Signup() {
     }
 
     setIsLoading(true);
-    const { error } = await signUp(trimmedEmail, password, fullName);
+    const { error } = await signUp(trimmedEmail, password, fullName.trim());
     setIsLoading(false);
 
     if (error) {

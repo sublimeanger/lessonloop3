@@ -38,6 +38,7 @@ export function useCalendarActions({
   currentOrg,
   user,
   checkConflicts,
+  isOnline,
   isMobile,
   isDesktop,
   isParent,
@@ -151,6 +152,13 @@ export function useCalendarActions({
   // ─── Drag-to-reschedule handler ────────────────────────────
   const executeLessonMove = useCallback(
     async (lesson: LessonWithDetails, newStart: Date, newEnd: Date, mode: RecurringActionMode | 'single') => {
+      if (!isOnline) {
+        toast({ title: 'You are offline', description: 'Reconnect to reschedule lessons.', variant: 'destructive' });
+        return;
+      }
+      // Use original UTC values for DB queries; fall back to org-local if not available
+      const utcStartAt = lesson.utc_start_at || lesson.start_at;
+      const utcEndAt = lesson.utc_end_at || lesson.end_at;
       const originalStartAt = lesson.start_at;
       const originalEndAt = lesson.end_at;
 
@@ -163,11 +171,13 @@ export function useCalendarActions({
             originalPositions.set(l.id, { start_at: l.start_at, end_at: l.end_at });
           }
         });
-        const offset = newStart.getTime() - new Date(originalStartAt).getTime();
+        // Compute offset using UTC values for correctness across timezones
+        const offset = newStart.getTime() - new Date(utcStartAt).getTime();
         const newDuration = newEnd.getTime() - newStart.getTime();
         setLessons(prev => prev.map(l => {
           if (affectedIds.has(l.id)) {
-            const shiftedStart = new Date(new Date(l.start_at).getTime() + offset);
+            const origUtc = l.utc_start_at || l.start_at;
+            const shiftedStart = new Date(new Date(origUtc).getTime() + offset);
             const shiftedEnd = new Date(shiftedStart.getTime() + newDuration);
             return { ...l, start_at: shiftedStart.toISOString(), end_at: shiftedEnd.toISOString() };
           }
@@ -188,14 +198,14 @@ export function useCalendarActions({
       try {
         if (mode === 'this_and_future' && lesson.recurrence_id) {
           // Fetch all future lessons in the series to apply per-lesson offset
-          const offset = newStart.getTime() - new Date(originalStartAt).getTime();
+          const offset = newStart.getTime() - new Date(utcStartAt).getTime();
           const newDuration = newEnd.getTime() - newStart.getTime();
 
           const { data: futureLessons, error: fetchError } = await supabase
             .from('lessons')
             .select('id, start_at, end_at')
             .eq('recurrence_id', lesson.recurrence_id)
-            .gte('start_at', originalStartAt);
+            .gte('start_at', utcStartAt);
 
           if (fetchError) throw fetchError;
 
@@ -279,7 +289,7 @@ export function useCalendarActions({
         });
       }
     },
-    [refetch, setLessons, lessons, currentOrg, user]
+    [refetch, setLessons, lessons, currentOrg, user, isOnline]
   );
 
   const handleLessonDrop = useCallback(
@@ -327,7 +337,8 @@ export function useCalendarActions({
   // ─── Drag-to-resize handler ────────────────────────────────
   const handleLessonResize = useCallback(
     async (lesson: LessonWithDetails, newEnd: Date) => {
-      const newStart = new Date(lesson.start_at);
+      // Use UTC start for correct timestamp across timezones
+      const newStart = new Date(lesson.utc_start_at || lesson.start_at);
 
       const studentIds = (lesson.participants || []).map((p) => p.student.id);
       const conflicts = await checkConflicts({

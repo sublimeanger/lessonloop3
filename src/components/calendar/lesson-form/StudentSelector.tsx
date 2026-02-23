@@ -75,7 +75,7 @@ export function StudentSelector({
               <span className="text-muted-foreground">Select student{lessonType === 'group' ? 's' : ''}...</span>
             ) : (
               <span className="truncate">
-                {selectedStudents.map(id => students.find(s => s.id === id)?.name).join(', ')}
+                {selectedStudents.map(id => students.find(s => s.id === id)?.name).filter(Boolean).join(', ')}
               </span>
             )}
           </Button>
@@ -105,7 +105,7 @@ export function StudentSelector({
                 <span className="text-muted-foreground">Select student{lessonType === 'group' ? 's' : ''}...</span>
               ) : (
                 <span className="truncate">
-                  {selectedStudents.map(id => students.find(s => s.id === id)?.name).join(', ')}
+                  {selectedStudents.map(id => students.find(s => s.id === id)?.name).filter(Boolean).join(', ')}
                 </span>
               )}
             </Button>

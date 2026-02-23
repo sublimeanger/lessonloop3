@@ -151,11 +151,19 @@ export function QuickCreatePopover({
 
       // Add participant
       if (newLesson) {
-        await supabase.from('lesson_participants').insert({
+        const { error: participantError } = await supabase.from('lesson_participants').insert({
           org_id: currentOrg.id,
           lesson_id: newLesson.id,
           student_id: studentId,
         });
+        if (participantError) {
+          logger.error('Failed to add participant:', participantError);
+          toast({
+            title: 'Lesson created but student not added',
+            description: 'Please edit the lesson to add the student.',
+            variant: 'destructive',
+          });
+        }
       }
 
       toast({

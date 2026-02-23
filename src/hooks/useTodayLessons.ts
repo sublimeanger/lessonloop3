@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { parseISO, isAfter, isBefore, differenceInMinutes, startOfDay, endOfDay } from 'date-fns';
-import { fromZonedTime } from 'date-fns-tz';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 
 export interface TodayLesson {
   id: string;
@@ -35,14 +35,16 @@ export function useTodayLessons() {
   const { user } = useAuth();
   
   return useQuery({
-    queryKey: ['today-lessons', currentOrg?.id, user?.id],
+    queryKey: ['today-lessons', currentOrg?.id, user?.id, currentRole],
     queryFn: async (): Promise<TodayLesson[]> => {
       if (!currentOrg) return [];
       
-      const tz = (currentOrg as any).timezone || 'Europe/London';
+      const tz = currentOrg.timezone || 'Europe/London';
       const now = new Date();
-      const todayStart = fromZonedTime(startOfDay(now), tz).toISOString();
-      const todayEnd = fromZonedTime(endOfDay(now), tz).toISOString();
+      // Determine "today" in the org's timezone, not the browser's
+      const zonedNow = toZonedTime(now, tz);
+      const todayStart = fromZonedTime(startOfDay(zonedNow), tz).toISOString();
+      const todayEnd = fromZonedTime(endOfDay(zonedNow), tz).toISOString();
       
       let query = supabase
           .from('lessons')

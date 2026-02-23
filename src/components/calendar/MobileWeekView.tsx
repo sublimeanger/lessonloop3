@@ -1,8 +1,8 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { format, isSameDay, parseISO, isToday, differenceInMinutes, addMinutes, setHours, setMinutes, startOfDay } from 'date-fns';
+import { format, isSameDay, parseISO, isToday, setHours, setMinutes, startOfDay } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { LessonCard } from './LessonCard';
-import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS, getTeacherColour } from './teacherColours';
+import { TeacherWithColour, TeacherColourEntry, getTeacherColour } from './teacherColours';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Plus } from 'lucide-react';
@@ -46,13 +46,13 @@ export function MobileWeekView({
 }: MobileWeekViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeDotIndex, setActiveDotIndex] = useState(0);
-  const dayRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Long-press drag state
   const [dragLesson, setDragLesson] = useState<LessonWithDetails | null>(null);
   const [dragTargetDayIdx, setDragTargetDayIdx] = useState<number | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  useEffect(() => () => { if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current); }, []);
 
   const handleTouchStart = useCallback((e: React.TouchEvent, lesson: LessonWithDetails) => {
     if (isParent || !onLessonDrop) return;
@@ -168,8 +168,11 @@ export function MobileWeekView({
     container.scrollTo({ left: dayWidth * index, behavior: 'smooth' });
   };
 
-  const now = new Date();
-  const currentTimeLabel = format(now, 'HH:mm');
+  const [currentTimeLabel, setCurrentTimeLabel] = useState(() => format(new Date(), 'HH:mm'));
+  useEffect(() => {
+    const id = setInterval(() => setCurrentTimeLabel(format(new Date(), 'HH:mm')), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   return (
     <div

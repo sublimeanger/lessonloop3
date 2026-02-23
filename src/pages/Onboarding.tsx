@@ -75,8 +75,8 @@ export default function Onboarding() {
       if (!user || !session) return;
       
       // Check if user was explicitly sent here or navigated directly
-      const searchParams = new URLSearchParams(window.location.search);
-      const isNewOrg = searchParams.get('new') === 'true';
+      const urlParams = new URLSearchParams(window.location.search);
+      const isNewOrg = urlParams.get('new') === 'true';
       
       // If profile exists and onboarding is complete, and user didn't explicitly request new org
       // redirect them to dashboard (they probably hit this page accidentally)
@@ -286,6 +286,7 @@ export default function Onboarding() {
 
       await refreshProfile();
       clearOnboardingState();
+      isSubmitting.current = false;
       setStep('success');
     } catch (err) {
       logger.error('[Onboarding] Error:', err);

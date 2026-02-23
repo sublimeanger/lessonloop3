@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { format, parseISO, subDays, differenceInMinutes, differenceInHours, eachWeekOfInterval, addWeeks, isAfter, isBefore, getDay } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { format, parseISO, subDays, addDays, startOfDay, differenceInMinutes, differenceInHours, addWeeks, isAfter, isBefore, getDay } from 'date-fns';
 import { useCalendarSync } from '@/hooks/useCalendarSync';
 import { useQuery } from '@tanstack/react-query';
 import { STALE_STABLE } from '@/config/query-stale-times';
@@ -111,16 +112,43 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
     // Count remaining lessons
     let remaining: number | null = null;
     if (recurrenceRule.end_date && recurrenceRule.days_of_week?.length) {
-      const now = new Date();
+      const now = startOfDay(new Date());
       const end = parseISO(recurrenceRule.end_date);
       const daysSet = new Set(recurrenceRule.days_of_week as number[]);
-      let count = 0;
-      let current = now;
-      while (isBefore(current, end)) {
-        if (daysSet.has(getDay(current))) count++;
-        current = new Date(current.getTime() + 86400000);
+      const intervalWeeks = recurrenceRule.interval_weeks || 1;
+
+      if (intervalWeeks === 1) {
+        // Weekly: count matching day-of-week dates using DST-safe addDays
+        let count = 0;
+        let current = now;
+        while (!isAfter(current, end)) {
+          if (daysSet.has(getDay(current))) count++;
+          current = addDays(current, 1);
+        }
+        remaining = count;
+      } else {
+        // Multi-week interval: walk from series start in interval-week steps
+        const seriesStart = recurrenceRule.start_date
+          ? startOfDay(parseISO(recurrenceRule.start_date))
+          : now;
+        let count = 0;
+        let weekCursor = seriesStart;
+        // Advance to the first recurrence week at or after now
+        while (isBefore(addWeeks(weekCursor, intervalWeeks), now)) {
+          weekCursor = addWeeks(weekCursor, intervalWeeks);
+        }
+        // Count matching days in each recurrence week
+        while (!isAfter(weekCursor, end)) {
+          for (let d = 0; d < 7; d++) {
+            const date = addDays(weekCursor, d);
+            if (daysSet.has(getDay(date)) && !isBefore(date, now) && !isAfter(date, end)) {
+              count++;
+            }
+          }
+          weekCursor = addWeeks(weekCursor, intervalWeeks);
+        }
+        remaining = count;
       }
-      remaining = Math.max(0, Math.ceil(count / (recurrenceRule.interval_weeks || 1)));
     }
 
     let desc = `${freq} on ${days}`;
@@ -225,7 +253,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
   };
 
   const performCancel = async () => {
-    if (!lesson || !user) return;
+    if (!lesson || !user || !currentOrg) return;
     setActionInProgress(true);
     setCancelDialogOpen(false);
 
@@ -246,7 +274,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           .eq('id', lesson.id);
         if (error) throw error;
         cancelledLessonIds = [lesson.id];
-        logAudit(currentOrg!.id, user.id, 'cancel', 'lesson', lesson.id, {
+        logAudit(currentOrg.id, user.id, 'cancel', 'lesson', lesson.id, {
           after: { reason: cancellationReason || null },
         });
         toast({ title: 'Lesson cancelled' });
@@ -266,7 +294,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
            .eq('recurrence_id', lesson.recurrence_id!)
           .gte('start_at', lesson.start_at);
         if (error) throw error;
-        logAudit(currentOrg!.id, user.id, 'cancel', 'lesson', lesson.id, {
+        logAudit(currentOrg.id, user.id, 'cancel', 'lesson', lesson.id, {
           after: { reason: cancellationReason || null, scope: 'this_and_future' },
         });
         toast({ title: 'Series cancelled', description: 'This and all future lessons have been cancelled.' });
@@ -308,7 +336,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
             }
             if (draftItems && draftItems.length > 0) {
               const invoiceIds = [...new Set(draftItems.map(i => i.invoice_id))];
-              logAudit(currentOrg!.id, user.id, 'warning', 'invoice', null, {
+              logAudit(currentOrg.id, user.id, 'warning', 'invoice', null, {
                 after: {
                   message: `${draftItems.length} draft invoice item(s) reference cancelled lesson(s)`,
                   affected_invoice_ids: invoiceIds,
@@ -330,8 +358,8 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
             lessonTitle: lesson.title,
             lessonDate: format(parseISO(lesson.start_at), 'dd/MM/yyyy HH:mm'),
             cancellationReason: cancellationReason || 'No reason provided',
-            orgName: currentOrg!.name,
-            orgId: currentOrg!.id,
+            orgName: currentOrg.name,
+            orgId: currentOrg.id,
           },
         }).catch(err => {
           logger.warn('[cancel-cascade] Failed to send cancellation notification:', err);
@@ -352,7 +380,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
   };
 
   const performDelete = async () => {
-    if (!lesson) return;
+    if (!lesson || !currentOrg || !user) return;
     setActionInProgress(true);
     setConfirmDeleteOpen(false);
 
@@ -366,7 +394,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           .delete()
           .eq('id', lesson.id);
         if (error) throw error;
-        logAudit(currentOrg!.id, user!.id, 'delete', 'lesson', lesson.id, {
+        logAudit(currentOrg.id, user.id, 'delete', 'lesson', lesson.id, {
           before: { title: lesson.title, start_at: lesson.start_at },
         });
         // Fire-and-forget calendar sync
@@ -388,7 +416,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           .eq('recurrence_id', lesson.recurrence_id!)
           .gte('start_at', lesson.start_at);
         if (error) throw error;
-        logAudit(currentOrg!.id, user!.id, 'delete', 'lesson', lesson.id, {
+        logAudit(currentOrg.id, user.id, 'delete', 'lesson', lesson.id, {
           before: { title: lesson.title, start_at: lesson.start_at, scope: 'this_and_future' },
         });
         // Fire-and-forget calendar sync for all deleted lessons
@@ -508,7 +536,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
             <div className="flex items-center gap-3 text-muted-foreground">
               <MapPin className="h-4 w-4 flex-shrink-0" />
               <span className="text-sm font-medium text-foreground">
-                {lesson.location.name}{(lesson.location as any).is_archived && <span className="text-muted-foreground"> (Archived)</span>}
+                {lesson.location.name}{lesson.location.is_archived && <span className="text-muted-foreground"> (Archived)</span>}
                 {lesson.room && ` – ${lesson.room.name}`}
               </span>
             </div>
@@ -569,13 +597,13 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
                 return (
                   <div key={p.id} className="space-y-2">
                     <div className="font-medium text-sm">{p.student.first_name} {p.student.last_name}</div>
-                    <div className="grid grid-cols-3 gap-1">
+                    <div className="flex flex-wrap gap-1">
                       {ATTENDANCE_OPTIONS.map((option) => (
                         <Button
                           key={option.value}
                           size="sm"
                           variant={currentStatus === option.value ? 'default' : 'outline'}
-                          className={currentStatus === option.value ? option.color : ''}
+                          className={cn('text-xs', currentStatus === option.value ? option.color : '')}
                           onClick={() => handleAttendanceChange(p.student.id, option.value)}
                           disabled={savingAttendance === p.student.id}
                         >

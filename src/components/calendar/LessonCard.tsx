@@ -2,7 +2,7 @@ import React from 'react';
 import { format, differenceInMinutes, parseISO } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { cn } from '@/lib/utils';
-import { Repeat, GripHorizontal, RefreshCw } from 'lucide-react';
+import { Repeat, GripHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { TeacherColourEntry, TEACHER_COLOURS } from './teacherColours';
@@ -47,7 +47,7 @@ function formatStudentShort(participants?: LessonWithDetails['participants']): s
  */
 function buildSecondaryLine(lesson: LessonWithDetails): string {
   const teacherName = lesson.teacher?.full_name || lesson.teacher?.email || '';
-  const locationName = lesson.location?.name ? `${lesson.location.name}${(lesson.location as any).is_archived ? ' (Archived)' : ''}` : '';
+  const locationName = lesson.location?.name ? `${lesson.location.name}${lesson.location.is_archived ? ' (Archived)' : ''}` : '';
   
   if (locationName && teacherName) {
     return `${locationName} · w/ ${teacherName}`;

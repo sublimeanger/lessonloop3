@@ -37,10 +37,24 @@ interface OrganisationDetails {
   org_type: string;
 }
 
+/**
+ * Compare a full email against a redacted email from invite-get (e.g. "j***@domain.com").
+ * invite-get redacts emails for security, so we can only compare first char + domain.
+ * The server (invite-accept) does the authoritative email match check.
+ */
+function emailLikelyMatches(fullEmail: string, redactedEmail: string): boolean {
+  const [fullLocal, fullDomain] = fullEmail.toLowerCase().split('@');
+  const [redactedLocal, redactedDomain] = redactedEmail.toLowerCase().split('@');
+  if (!fullDomain || !redactedDomain) return false;
+  if (fullDomain !== redactedDomain) return false;
+  if (fullLocal.charAt(0) !== redactedLocal.charAt(0)) return false;
+  return true;
+}
+
 export default function AcceptInvite() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const { toast } = useToast();
   
   const token = searchParams.get('token');
@@ -125,11 +139,14 @@ export default function AcceptInvite() {
         throw new Error(data.error);
       }
 
-      toast({ 
-        title: 'Welcome!', 
-        description: `You've joined ${organisation?.name || 'the organisation'}` 
+      toast({
+        title: 'Welcome!',
+        description: `You've joined ${organisation?.name || 'the organisation'}`
       });
-      
+
+      // Refresh auth context so org membership is available
+      await refreshProfile();
+
       // Navigate based on role - parents go to portal, staff go to dashboard
       if (data.role === 'parent') {
         navigate('/portal/home');
@@ -155,8 +172,13 @@ export default function AcceptInvite() {
     setPasswordMismatch(false);
     
     const trimmedEmail = signupEmail.trim().toLowerCase();
+    const trimmedName = fullName.trim();
     if (!trimmedEmail) {
       toast({ title: 'Please enter your email address', variant: 'destructive' });
+      return;
+    }
+    if (!trimmedName) {
+      toast({ title: 'Please enter your name', variant: 'destructive' });
       return;
     }
 
@@ -177,7 +199,7 @@ export default function AcceptInvite() {
         email: trimmedEmail,
         password,
         options: {
-          data: { full_name: fullName },
+          data: { full_name: trimmedName },
           emailRedirectTo: window.location.origin,
         },
       });
@@ -222,7 +244,7 @@ export default function AcceptInvite() {
         // Update profile with full name (edge function handles onboarding flag)
         await supabase
           .from('profiles')
-          .update({ full_name: fullName })
+          .update({ full_name: trimmedName })
           .eq('id', authData.user.id);
         
         toast({ 
@@ -288,8 +310,9 @@ export default function AcceptInvite() {
 
   // User is already logged in
   if (user) {
-    // Check if logged-in user email matches invite
-    const emailMatches = user.email?.toLowerCase() === invite.email.toLowerCase();
+    // Check if logged-in user email likely matches invite (invite email is redacted by invite-get)
+    // Server does the authoritative check in invite-accept
+    const emailMatches = user.email ? emailLikelyMatches(user.email, invite.email) : false;
     
     return (
       <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
@@ -429,7 +452,7 @@ export default function AcceptInvite() {
             </p>
             <Button 
               type="submit"
-              disabled={isAccepting || !signupEmail.trim() || !fullName || !password} 
+              disabled={isAccepting || !signupEmail.trim() || !fullName.trim() || !password}
               className="w-full"
             >
               {isAccepting ? (
