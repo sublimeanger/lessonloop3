@@ -553,7 +553,7 @@ async function buildStudentContext(supabase: SupabaseClient, orgId: string, stud
   // Upcoming lessons (next 15) — prioritised
   const { data: upcomingLessons } = await supabase
     .from("lesson_participants")
-    .select("lessons(id, title, start_at, status)")
+    .select("lessons(id, title, start_at, status, notes_shared)")
     .eq("student_id", studentId)
     .gte("lessons.start_at", new Date().toISOString())
     .order("created_at", { ascending: true })
@@ -565,24 +565,33 @@ async function buildStudentContext(supabase: SupabaseClient, orgId: string, stud
     upcoming.forEach((lp: { lessons: Lesson }) => {
       const date = new Date(lp.lessons.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
       context += `\n  - [Lesson:${lp.lessons.id}:${sanitiseForPrompt(lp.lessons.title)}] ${date}`;
+      if ((lp.lessons as any).notes_shared) {
+        context += `\n    Shared notes: ${(lp.lessons as any).notes_shared.slice(0, 300)}`;
+      }
     });
   }
 
-  // Recent completed lessons (last 5)
+  // Recent lessons (last 10)
   const { data: completedLessons } = await supabase
     .from("lesson_participants")
-    .select("lessons(id, title, start_at, status)")
+    .select("lessons(id, title, start_at, status, notes_private, notes_shared)")
     .eq("student_id", studentId)
     .lt("lessons.start_at", new Date().toISOString())
     .order("created_at", { ascending: false })
-    .limit(5);
+    .limit(10);
 
   const completed = (completedLessons || []).filter((lp: { lessons: Lesson | null }) => lp.lessons);
   if (completed.length > 0) {
-    context += `\n\nRecent Completed Lessons (${completed.length}):`;
+    context += `\n\nRecent Lessons (last ${completed.length}):`;
     completed.forEach((lp: { lessons: Lesson }) => {
       const date = new Date(lp.lessons.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
       context += `\n  - [Lesson:${lp.lessons.id}:${sanitiseForPrompt(lp.lessons.title)}] ${date} (${lp.lessons.status})`;
+      if ((lp.lessons as any).notes_shared) {
+        context += `\n    Shared notes: ${(lp.lessons as any).notes_shared.slice(0, 300)}`;
+      }
+      if (userRole !== "teacher" && userRole !== "finance" && (lp.lessons as any).notes_private) {
+        context += `\n    Private notes: ${(lp.lessons as any).notes_private.slice(0, 300)}`;
+      }
     });
   }
 
