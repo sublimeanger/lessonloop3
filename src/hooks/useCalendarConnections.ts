@@ -220,6 +220,81 @@ export function useCalendarConnections() {
     },
   });
 
+  // Generate iCal URL for parent portal feed (scoped to guardian's children)
+  const generateParentICalUrl = useCallback(async (guardianId: string) => {
+    if (!currentOrg || !user) return null;
+
+    // Check for existing parent connection with valid token
+    const { data: existing } = await supabase
+      .from('calendar_connections')
+      .select('ical_token, ical_token_expires_at')
+      .eq('user_id', user.id)
+      .eq('org_id', currentOrg.id)
+      .eq('provider', 'apple')
+      .eq('guardian_id', guardianId)
+      .maybeSingle();
+
+    if (existing?.ical_token && existing.ical_token_expires_at &&
+        new Date(existing.ical_token_expires_at) > new Date()) {
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+      return `${baseUrl}/functions/v1/calendar-ical-feed?token=${existing.ical_token}`;
+    }
+
+    // Create new parent connection (insert, not upsert, since unique index uses COALESCE)
+    const icalToken = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+    const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data, error } = await supabase
+      .from('calendar_connections')
+      .insert({
+        user_id: user.id,
+        org_id: currentOrg.id,
+        provider: 'apple',
+        guardian_id: guardianId,
+        ical_token: icalToken,
+        ical_token_expires_at: expiresAt,
+        sync_enabled: true,
+        sync_status: 'active',
+      })
+      .select('ical_token')
+      .single();
+
+    if (error) {
+      // If conflict (already exists but expired), update instead
+      if (error.code === '23505') {
+        const { data: updated, error: updateError } = await supabase
+          .from('calendar_connections')
+          .update({
+            ical_token: icalToken,
+            ical_token_expires_at: expiresAt,
+            sync_enabled: true,
+            sync_status: 'active',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id)
+          .eq('org_id', currentOrg.id)
+          .eq('provider', 'apple')
+          .eq('guardian_id', guardianId)
+          .select('ical_token')
+          .single();
+
+        if (updateError) {
+          logger.error('Error updating parent iCal connection:', updateError);
+          return null;
+        }
+
+        const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+        return `${baseUrl}/functions/v1/calendar-ical-feed?token=${updated.ical_token}`;
+      }
+
+      logger.error('Error creating parent iCal connection:', error);
+      return null;
+    }
+
+    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+    return `${baseUrl}/functions/v1/calendar-ical-feed?token=${data.ical_token}`;
+  }, [currentOrg, user]);
+
   // Handle OAuth callback params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -331,6 +406,7 @@ export function useCalendarConnections() {
     toggleSync,
     triggerSync,
     generateICalUrl,
+    generateParentICalUrl,
     getICalUrl,
     regenerateICalToken,
     generateParentICalUrl,

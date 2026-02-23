@@ -3,6 +3,18 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
+/** Fire-and-forget calendar sync for lesson mutations (non-critical). */
+function syncLessonToCalendar(lessonId: string, action: 'create' | 'update' | 'delete') {
+  fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/calendar-sync-lesson`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ lesson_id: lessonId, action }),
+  }).catch(() => { /* non-critical */ });
+}
+
 interface ImportRow {
   first_name?: string;
   last_name?: string;
@@ -923,6 +935,7 @@ serve(async (req) => {
                   lesson_id: lesson.id,
                   student_id: student.id,
                 });
+                syncLessonToCalendar(lesson.id, 'create');
                 result.lessonsCreated++;
               }
             }

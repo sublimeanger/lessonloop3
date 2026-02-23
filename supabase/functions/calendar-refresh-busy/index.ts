@@ -42,6 +42,7 @@ async function refreshAccessToken(
 }
 
 async function getValidAccessToken(supabase: any, connection: any): Promise<string | null> {
+  if (!connection.refresh_token) return null;
   const expiresAt = new Date(connection.token_expires_at);
   if (expiresAt.getTime() - Date.now() < 5 * 60 * 1000) {
     return await refreshAccessToken(supabase, connection.id, connection.refresh_token);
