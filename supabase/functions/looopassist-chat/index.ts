@@ -260,7 +260,7 @@ async function buildDataContext(supabase: SupabaseClient, orgId: string, currenc
   // NEW: Fetch teachers for workload display
   const { data: teachers } = await supabase
     .from("teachers")
-    .select("id, display_name, user_id")
+    .select("id, display_name, user_id, instruments, bio")
     .eq("org_id", orgId);
 
   // NEW: Fetch unmarked past lessons (yesterday and before)
@@ -436,6 +436,18 @@ async function buildDataContext(supabase: SupabaseClient, orgId: string, currenc
     }
   }
 
+  // Teacher details summary
+  let teacherDetailSummary = "";
+  if (teachers && teachers.length > 0) {
+    teacherDetailSummary += `\n\nTEACHERS (${teachers.length}):`;
+    teachers.forEach((t: { display_name: string; instruments?: string[] | null }) => {
+      teacherDetailSummary += `\n- ${t.display_name}`;
+      if (t.instruments && t.instruments.length > 0) {
+        teacherDetailSummary += ` — teaches: ${t.instruments.join(", ")}`;
+      }
+    });
+  }
+
   // Financial summary — use RPC totals for accuracy
   const revenueThisMonth = (paidInvoicesThisMonth || []).reduce((sum: number, i: Invoice) => sum + i.total_minor, 0);
 
@@ -451,7 +463,7 @@ async function buildDataContext(supabase: SupabaseClient, orgId: string, currenc
   return {
     summary: invoiceSummary + lessonSummary + studentSummary + guardianSummary + 
              cancellationSummary + performanceSummary + rateCardSummary + paymentSummary + 
-             unmarkedSummary + teacherWorkloadSummary + financialSummary,
+             unmarkedSummary + teacherWorkloadSummary + teacherDetailSummary + financialSummary,
     entities: {
       invoices: overdueInvoices || [],
       lessons: upcomingLessons || [],
@@ -469,6 +481,7 @@ async function buildDataContext(supabase: SupabaseClient, orgId: string, currenc
       paymentSummary,
       unmarkedSummary,
       teacherWorkloadSummary,
+      teacherDetailSummary,
       financialSummary,
     },
   };
@@ -546,6 +559,23 @@ async function buildStudentContext(supabase: SupabaseClient, orgId: string, stud
           context += ` - ${link.guardians.email}`;
         }
         if (link.is_primary_payer && userRole !== "teacher") context += " [PRIMARY PAYER]";
+      }
+    });
+  }
+  // Student-teacher assignments
+  const { data: teacherAssignments } = await supabase
+    .from("student_teacher_assignments")
+    .select("teachers(id, display_name, instruments)")
+    .eq("student_id", studentId);
+
+  if (teacherAssignments && teacherAssignments.length > 0) {
+    context += "\n\nAssigned Teachers:";
+    teacherAssignments.forEach((ta: { teachers: { id: string; display_name: string; instruments?: string[] | null } | null }) => {
+      if (ta.teachers) {
+        context += `\n  - ${ta.teachers.display_name}`;
+        if (ta.teachers.instruments && ta.teachers.instruments.length > 0) {
+          context += ` (${ta.teachers.instruments.join(", ")})`;
+        }
       }
     });
   }
