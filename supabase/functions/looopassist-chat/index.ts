@@ -615,16 +615,14 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
   // Truncate if context exceeds 4000 characters to avoid bloating the prompt
   const MAX_CONTEXT_CHARS = 4000;
   if (context.length > MAX_CONTEXT_CHARS) {
-    const lines = context.split("\n");
-    let truncated = "";
-    let lineCount = 0;
-    for (const line of lines) {
-      if (truncated.length + line.length + 1 > MAX_CONTEXT_CHARS - 80) break;
-      truncated += (lineCount > 0 ? "\n" : "") + line;
-      lineCount++;
+    // Split by double-newline to get sections, truncate at section boundaries
+    const sections = context.split('\n\n');
+    let truncated = '';
+    for (const section of sections) {
+      if (truncated.length + section.length + 2 > MAX_CONTEXT_CHARS - 100) break;
+      truncated += (truncated ? '\n\n' : '') + section;
     }
-    const droppedLines = lines.length - lineCount;
-    truncated += `\n... and ${droppedLines} more context lines truncated for brevity`;
+    truncated += '\n\n[Additional context truncated for brevity]';
     return truncated;
   }
 
