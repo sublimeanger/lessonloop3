@@ -21,6 +21,10 @@ export function ProactiveAlerts({ alerts, onSuggestedAction }: ProactiveAlertsPr
         return AlertTriangle;
       case 'upcoming':
         return Calendar;
+      case 'churn_risk':
+        return AlertCircle;
+      case 'practice_drop':
+        return Clock;
       default:
         return Clock;
     }
@@ -58,6 +62,10 @@ export function ProactiveAlerts({ alerts, onSuggestedAction }: ProactiveAlertsPr
         return 'Show me cancelled lessons this week';
       case 'upcoming':
         return 'What lessons do I have today?';
+      case 'churn_risk':
+        return 'Which students are at risk of leaving? Show me their attendance and invoice status.';
+      case 'practice_drop':
+        return 'Which students haven\'t practised recently? Draft encouragement messages for their parents.';
       default:
         return alert.suggestedAction || '';
     }

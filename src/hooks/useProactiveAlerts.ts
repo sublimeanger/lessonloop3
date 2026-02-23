@@ -6,7 +6,7 @@ import { startOfDay, endOfDay, format } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 
 export interface ProactiveAlert {
-  type: 'overdue' | 'cancellation' | 'upcoming' | 'unmarked' | 'makeup_match' | 'unmarked_reason';
+  type: 'overdue' | 'cancellation' | 'upcoming' | 'unmarked' | 'makeup_match' | 'unmarked_reason' | 'churn_risk' | 'practice_drop';
   severity: 'info' | 'warning' | 'urgent';
   message: string;
   suggestedAction?: string;
@@ -157,6 +157,50 @@ export function useProactiveAlerts() {
           message: `${missingReasonCount} absence${missingReasonCount > 1 ? 's' : ''} missing a reason`,
           suggestedAction: 'Add absence reasons to enable make-up matching',
           count: missingReasonCount,
+        });
+      }
+
+      // Check for churn risk: students with 2+ absences in last 30 days
+      const thirtyDaysAgoUtc = fromZonedTime(startOfDay(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)), tz).toISOString();
+      const { data: frequentAbsences } = await supabase
+        .from('attendance_records')
+        .select('student_id')
+        .eq('org_id', currentOrg.id)
+        .in('attendance_status', ['absent', 'cancelled_by_student'])
+        .gte('recorded_at', thirtyDaysAgoUtc);
+
+      if (frequentAbsences) {
+        const absentCounts = new Map<string, number>();
+        frequentAbsences.forEach(a => {
+          absentCounts.set(a.student_id, (absentCounts.get(a.student_id) || 0) + 1);
+        });
+        const atRiskStudents = Array.from(absentCounts.entries()).filter(([_, count]) => count >= 2);
+        if (atRiskStudents.length > 0) {
+          alerts.push({
+            type: 'churn_risk',
+            severity: 'warning',
+            message: `${atRiskStudents.length} student${atRiskStudents.length > 1 ? 's have' : ' has'} missed 2+ lessons this month`,
+            suggestedAction: 'Which students are at risk of leaving?',
+            count: atRiskStudents.length,
+          });
+        }
+      }
+
+      // Practice engagement drop — students who haven't logged practice in 14+ days
+      const fourteenDaysAgoStr = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const { data: inactiveStreaks, count: inactivePracticeCount } = await supabase
+        .from('practice_streaks')
+        .select('id', { count: 'exact' })
+        .eq('org_id', currentOrg.id)
+        .lt('last_practice_date', fourteenDaysAgoStr);
+
+      if (inactivePracticeCount && inactivePracticeCount > 0) {
+        alerts.push({
+          type: 'practice_drop',
+          severity: 'info',
+          message: `${inactivePracticeCount} student${inactivePracticeCount > 1 ? 's haven\'t' : ' hasn\'t'} practised in 2+ weeks`,
+          suggestedAction: 'Draft practice encouragement messages',
+          count: inactivePracticeCount,
         });
       }
 
