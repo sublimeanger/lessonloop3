@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RegisterRow } from '@/components/register/RegisterRow';
 import { MarkDayCompleteButton } from '@/components/calendar/MarkDayCompleteButton';
 import { useRegisterData } from '@/hooks/useRegisterData';
@@ -14,6 +15,8 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -35,23 +38,50 @@ export default function DailyRegister() {
   
   const storageKey = `register_teacher_filter_${currentOrg?.id}`;
 
-  // P1 Fix: Auto-filter to teacher's own lessons, persist via URL/localStorage
+  // Only teachers get a persisted filter; owners/admins start with null (see all)
   const [teacherFilter, setTeacherFilter] = useState<string | null>(() => {
-    if (!currentOrg?.id) return null;
+    if (currentRole !== 'teacher' || !currentOrg?.id) return null;
     const stored = safeGetItem(storageKey);
     return stored || null;
   });
 
-  // Reset filter when org changes
+  // Reset filter when org or role changes
   useEffect(() => {
     if (!currentOrg?.id) return;
+    if (currentRole !== 'teacher') {
+      setTeacherFilter(null);
+      return;
+    }
     const stored = safeGetItem(storageKey);
     setTeacherFilter(stored || null);
-  }, [currentOrg?.id, storageKey]);
+  }, [currentOrg?.id, currentRole, storageKey]);
+
+  // Clean up stale localStorage for non-teacher roles
+  useEffect(() => {
+    if (currentRole !== 'teacher' && currentOrg?.id) {
+      try { localStorage.removeItem(storageKey); } catch {}
+    }
+  }, [currentRole, currentOrg?.id, storageKey]);
 
   const { data: allLessons, isLoading, refetch } = useRegisterData(selectedDate);
+
+  // Fetch teachers list for the filter dropdown (owners/admins only)
+  const { data: teachers = [] } = useQuery({
+    queryKey: ['register-teachers', currentOrg?.id],
+    queryFn: async () => {
+      if (!currentOrg) return [];
+      const { data } = await supabase
+        .from('teachers')
+        .select('id, display_name')
+        .eq('org_id', currentOrg.id)
+        .eq('status', 'active')
+        .order('display_name');
+      return data || [];
+    },
+    enabled: !!currentOrg?.id && currentRole !== 'teacher',
+  });
   
-  // For teachers, we need to find their teacher_id from the teachers table
+  // For teachers, auto-detect their teacher_id from lessons
   useEffect(() => {
     if (currentRole === 'teacher' && user?.id && !teacherFilter && allLessons) {
       const myLesson = allLessons.find(l => l.teacher_user_id === user.id);
@@ -62,11 +92,10 @@ export default function DailyRegister() {
     }
   }, [currentRole, user?.id, teacherFilter, allLessons, storageKey]);
 
-  // Filter lessons by teacher_id if filter is set (supports both new and legacy lessons)
+  // Filter lessons by teacher_id if filter is set
   const lessons = allLessons?.filter(lesson => 
     !teacherFilter || lesson.teacher_id === teacherFilter || 
-    // Fallback: for legacy lessons without teacher_id, check teacher_user_id matches linked user
-    (!lesson.teacher_id && lesson.teacher_user_id === user?.id && teacherFilter !== null)
+    (!lesson.teacher_id && lesson.teacher_user_id === user?.id && currentRole === 'teacher')
   );
 
   const goToPrevDay = () => setSelectedDate(prev => subDays(prev, 1));
@@ -148,6 +177,26 @@ export default function DailyRegister() {
           <Button variant="ghost" size="sm" onClick={goToToday}>
             Go to Today
           </Button>
+        )}
+
+        {/* Teacher filter for owners/admins */}
+        {currentRole !== 'teacher' && teachers.length > 0 && (
+          <Select
+            value={teacherFilter ?? 'all'}
+            onValueChange={(value) => setTeacherFilter(value === 'all' ? null : value)}
+          >
+            <SelectTrigger className="w-[180px] h-9 text-sm">
+              <SelectValue placeholder="All Teachers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Teachers</SelectItem>
+              {teachers.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.display_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
 
         <div className="flex-1" />
