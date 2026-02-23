@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -18,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Mail, Send } from 'lucide-react';
 import { useSendMessage, useMessageTemplates } from '@/hooks/useMessages';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
@@ -53,6 +54,7 @@ export function ComposeMessageModal({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [linkedStudents, setLinkedStudents] = useState<{ id: string; name: string }[]>([]);
+  const [sendEmail, setSendEmail] = useState(false);
 
   const { currentOrg } = useOrg();
   const { data: templates } = useMessageTemplates();
@@ -67,6 +69,7 @@ export function ComposeMessageModal({
       setBody('');
       setSelectedTemplateId('');
       setSelectedStudentId('');
+      setSendEmail(false);
       if (!preselectedGuardian) {
         setSelectedGuardianId('');
       }
@@ -129,7 +132,6 @@ export function ComposeMessageModal({
           name: `${sg.students.first_name} ${sg.students.last_name}`,
         }));
         setLinkedStudents(students);
-        // Auto-select if only one student and nothing pre-selected
         if (students.length === 1 && !selectedStudentId) {
           setSelectedStudentId(students[0].id);
         }
@@ -153,13 +155,14 @@ export function ComposeMessageModal({
       body: body.trim(),
       related_id: selectedStudentId || studentId,
       message_type: 'manual',
+      send_email: sendEmail,
     });
 
-    // Reset form
     setSubject('');
     setBody('');
     setSelectedTemplateId('');
     setSelectedStudentId('');
+    setSendEmail(false);
     if (!preselectedGuardian) {
       setSelectedGuardianId('');
     }
@@ -268,7 +271,7 @@ export function ComposeMessageModal({
               id="subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="Email subject"
+              placeholder="Message subject"
             />
           </div>
 
@@ -285,6 +288,26 @@ export function ComposeMessageModal({
             />
             <p className="text-xs text-muted-foreground mt-1">Press Ctrl+Enter to send</p>
           </div>
+
+          {/* Email toggle */}
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <Label htmlFor="send-email-toggle" className="text-sm font-medium cursor-pointer">
+                  Also send via email
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Send an email notification in addition to the in-app message
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="send-email-toggle"
+              checked={sendEmail}
+              onCheckedChange={setSendEmail}
+            />
+          </div>
         </div>
 
         <DialogFooter>
@@ -294,14 +317,18 @@ export function ComposeMessageModal({
           <Button
             onClick={handleSend}
             disabled={!hasValidRecipient || !subject.trim() || !body.trim() || sendMessage.isPending || !isOnline}
+            className="gap-2"
           >
             {sendMessage.isPending ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Sending...
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Sending…
               </>
             ) : (
-              'Send Email'
+              <>
+                <Send className="h-4 w-4" />
+                {sendEmail ? 'Send Message & Email' : 'Send Message'}
+              </>
             )}
           </Button>
         </DialogFooter>

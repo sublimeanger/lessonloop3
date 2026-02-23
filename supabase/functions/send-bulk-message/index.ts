@@ -5,7 +5,8 @@ import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 
-const BATCH_SIZE = 50; // Resend recommends max 100/s; 50 parallel is safe
+const BATCH_SIZE = 50;
+const PORTAL_URL = "https://lessonloop3.lovable.app/portal/messages";
 
 interface BulkMessageRequest {
   org_id: string;
@@ -18,6 +19,8 @@ interface BulkMessageRequest {
     status?: 'active' | 'inactive' | 'all';
     has_overdue_invoice?: boolean;
   };
+  /** When false, only creates in-app messages without sending emails. Defaults to true. */
+  send_email?: boolean;
 }
 
 interface Guardian {
@@ -122,6 +125,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const data: BulkMessageRequest = await req.json();
+    const shouldSendEmail = data.send_email !== false;
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -194,6 +198,14 @@ const handler = async (req: Request): Promise<Response> => {
         <div style="white-space: pre-wrap; color: #555; line-height: 1.6;">
           ${escapeHtml(data.body).replace(/\n/g, "<br>")}
         </div>
+        <div style="margin: 32px 0; text-align: center;">
+          <a href="${PORTAL_URL}" style="display: inline-block; padding: 12px 28px; background-color: #4F46E5; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+            Reply in Your Portal
+          </a>
+        </div>
+        <p style="color: #999; font-size: 12px; text-align: center;">
+          To reply to this message, please log in to your parent portal using the button above.
+        </p>
         <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;" />
         <p style="color: #999; font-size: 12px;">
           This message was sent via ${escapeHtml(orgName)} on LessonLoop.
@@ -202,13 +214,62 @@ const handler = async (req: Request): Promise<Response> => {
     `;
     const fromAddress = `${orgName} <notifications@lessonloop.net>`;
 
-    // ---- Parallel batched sending with preference checks ----
+    // ---- Handle in-app only mode ----
+    if (!shouldSendEmail) {
+      const logRows = guardians.map((g) => ({
+        org_id: data.org_id,
+        batch_id: batch.id,
+        channel: "inapp",
+        subject: data.subject,
+        body: data.body,
+        sender_user_id: user.id,
+        recipient_type: "guardian",
+        recipient_id: g.id,
+        recipient_email: g.email,
+        recipient_name: g.full_name,
+        message_type: "bulk",
+        status: "sent",
+        sent_at: new Date().toISOString(),
+        error_message: null,
+      }));
+
+      for (let i = 0; i < logRows.length; i += 500) {
+        await supabase.from("message_log").insert(logRows.slice(i, i + 500));
+      }
+
+      await supabase
+        .from("message_batches")
+        .update({
+          sent_count: guardians.length,
+          failed_count: 0,
+          status: "completed",
+        })
+        .eq("id", batch.id);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          batch_id: batch.id,
+          recipient_count: guardians.length,
+          sent_count: guardians.length,
+          failed_count: 0,
+          skipped_by_preference: 0,
+          errors: [],
+          channel: "inapp",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // ---- Parallel batched email sending with preference checks ----
     const allResults: SendResult[] = [];
     const errorDetails: string[] = [];
     let skippedByPreference = 0;
 
     if (!resendApiKey) {
-      // No API key – mark all as failed
       for (const g of guardians) {
         allResults.push({
           guardianId: g.id,
@@ -218,7 +279,6 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
     } else {
-      // Filter out guardians who opted out of marketing emails
       const eligibleGuardians: Guardian[] = [];
       for (const g of guardians) {
         if (g.user_id) {
@@ -230,11 +290,9 @@ const handler = async (req: Request): Promise<Response> => {
             continue;
           }
         }
-        // No user_id = not registered yet, default to allowing send
         eligibleGuardians.push(g);
       }
 
-      // Process in batches of BATCH_SIZE
       for (let i = 0; i < eligibleGuardians.length; i += BATCH_SIZE) {
         const chunk = eligibleGuardians.slice(i, i + BATCH_SIZE);
 
@@ -261,7 +319,6 @@ const handler = async (req: Request): Promise<Response> => {
           }
         }
 
-        // Small delay between batches to stay under Resend rate limits
         if (i + BATCH_SIZE < eligibleGuardians.length) {
           await new Promise((resolve) => setTimeout(resolve, 200));
         }
@@ -271,7 +328,6 @@ const handler = async (req: Request): Promise<Response> => {
     const sentCount = allResults.filter((r) => r.success).length;
     const failedCount = allResults.filter((r) => !r.success).length;
 
-    // Bulk-insert message log entries
     const logRows = allResults.map((r) => {
       const guardian = guardians.find((g) => g.id === r.guardianId);
       return {
@@ -292,12 +348,10 @@ const handler = async (req: Request): Promise<Response> => {
       };
     });
 
-    // Insert in chunks to avoid hitting Supabase payload limits
     for (let i = 0; i < logRows.length; i += 500) {
       await supabase.from("message_log").insert(logRows.slice(i, i + 500));
     }
 
-    // Update batch record
     await supabase
       .from("message_batches")
       .update({

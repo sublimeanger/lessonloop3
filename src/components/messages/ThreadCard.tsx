@@ -5,12 +5,15 @@ import {
   ChevronRight, 
   Reply,
   Loader2,
-  MessageSquare
+  MessageSquare,
+  Mail
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useReplyToMessage, useThreadMessages, MessageThread } from '@/hooks/useMessageThreads';
@@ -67,6 +70,7 @@ interface ThreadCardProps {
 export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyingTo }: ThreadCardProps) {
   const replyMutation = useReplyToMessage();
   const [replyBody, setReplyBody] = useState('');
+  const [replySendEmail, setReplySendEmail] = useState(false);
   const { toast } = useToast();
 
   const { data: messages, isLoading: messagesLoading } = useThreadMessages(
@@ -98,9 +102,11 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
       recipientId: thread.recipient_id,
       subject: thread.subject,
       body: replyBody.trim(),
+      send_email: replySendEmail,
     });
 
     setReplyBody('');
+    setReplySendEmail(false);
     setReplyingTo(null);
   };
 
@@ -206,6 +212,18 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
                     rows={3}
                     className="rounded-xl resize-none focus-visible:ring-primary/20"
                   />
+                  <div className="flex items-center gap-3 rounded-lg border px-3 py-2">
+                    <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                    <Label htmlFor="reply-email-toggle" className="text-xs cursor-pointer flex-1">
+                      Also send via email
+                    </Label>
+                    <Switch
+                      id="reply-email-toggle"
+                      checked={replySendEmail}
+                      onCheckedChange={setReplySendEmail}
+                      className="scale-90"
+                    />
+                  </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">
                       <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">⌘ Enter</kbd> to send
@@ -217,6 +235,7 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
                         onClick={() => {
                           setReplyingTo(null);
                           setReplyBody('');
+                          setReplySendEmail(false);
                         }}
                       >
                         Cancel
@@ -232,7 +251,7 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
                         ) : (
                           <Reply className="h-4 w-4 mr-1.5" />
                         )}
-                        Send
+                        {replySendEmail ? 'Send & Email' : 'Send'}
                       </Button>
                     </div>
                   </div>

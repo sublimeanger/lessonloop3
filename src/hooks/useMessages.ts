@@ -52,6 +52,8 @@ export interface SendMessageData {
   body: string;
   related_id?: string; // e.g., student_id for context
   message_type?: string;
+  /** When false, only creates in-app message without sending email. Defaults to false. */
+  send_email?: boolean;
 }
 
 // Fetch message templates for the org

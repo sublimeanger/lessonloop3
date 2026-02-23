@@ -32,7 +32,8 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Send, Users, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { Loader2, Send, Users, CheckCircle2, AlertTriangle, XCircle, Mail } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { RecipientFilter } from './RecipientFilter';
 import {
   useBulkMessageFilters,
@@ -61,6 +62,7 @@ export function BulkComposeModal({ open, onOpenChange }: BulkComposeModalProps) 
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [filters, setFilters] = useState<FilterCriteria>({});
   const [sendSummary, setSendSummary] = useState<SendSummary | null>(null);
+  const [sendEmail, setSendEmail] = useState(false);
 
   const { isOnline, guardOffline } = useOnlineStatus();
   const { locations, teachers } = useBulkMessageFilters();
@@ -90,6 +92,7 @@ export function BulkComposeModal({ open, onOpenChange }: BulkComposeModalProps) 
       setSelectedTemplateId('');
       setFilters({});
       setSendSummary(null);
+      setSendEmail(false);
     }
   }, [open]);
 
@@ -105,6 +108,7 @@ export function BulkComposeModal({ open, onOpenChange }: BulkComposeModalProps) 
         subject: subject.trim(),
         body: body.trim(),
         filter_criteria: filters,
+        send_email: sendEmail,
       });
 
       setSendSummary({
@@ -196,7 +200,7 @@ export function BulkComposeModal({ open, onOpenChange }: BulkComposeModalProps) 
             Send Bulk Message
           </DialogTitle>
           <DialogDescription>
-            Send an email to multiple guardians at once. Use filters to target specific groups.
+            Send a message to multiple guardians at once. Use filters to target specific groups.
           </DialogDescription>
         </DialogHeader>
 
@@ -264,6 +268,26 @@ export function BulkComposeModal({ open, onOpenChange }: BulkComposeModalProps) 
               onChange={(e) => setBody(e.target.value)}
               placeholder="Write your message..."
               rows={8}
+            />
+          </div>
+
+          {/* Email toggle */}
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <Label htmlFor="bulk-email-toggle" className="text-sm font-medium cursor-pointer">
+                  Also send via email
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Send an email notification in addition to the in-app message
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="bulk-email-toggle"
+              checked={sendEmail}
+              onCheckedChange={setSendEmail}
             />
           </div>
 

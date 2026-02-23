@@ -16,6 +16,8 @@ interface BulkMessagePayload {
   subject: string;
   body: string;
   filter_criteria: FilterCriteria;
+  /** When false, only creates in-app messages without sending emails. Defaults to false. */
+  send_email?: boolean;
 }
 
 interface Guardian {
