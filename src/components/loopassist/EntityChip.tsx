@@ -58,27 +58,41 @@ export function EntityChip({ type, id, label, className }: EntityChipProps) {
   );
 }
 
+// HTML-escape to prevent XSS when injecting into rehype-raw spans
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Preprocess entity chip patterns into HTML spans for use with rehype-raw
 export function preprocessEntityChips(content: string): string {
   return content
-    .replace(/\[Invoice:(LL-\d{4}-\d{5})\]/g, (_, num) =>
-      `<span data-entity-type="invoice" data-entity-id="${num}" data-entity-label="${num}">${num}</span>`
-    )
-    .replace(/\[Student:([a-f0-9-]{36}):([^\]]+)\]/g, (_, id, name) =>
-      `<span data-entity-type="student" data-entity-id="${id}" data-entity-label="${name}">${name}</span>`
-    )
+    .replace(/\[Invoice:(LL-\d{4}-\d{5})\]/g, (_, num) => {
+      const safe = escapeHtml(num);
+      return `<span data-entity-type="invoice" data-entity-id="${safe}" data-entity-label="${safe}">${safe}</span>`;
+    })
+    .replace(/\[Student:([a-f0-9-]{36}):([^\]]+)\]/g, (_, id, name) => {
+      const safe = escapeHtml(name);
+      return `<span data-entity-type="student" data-entity-id="${id}" data-entity-label="${safe}">${safe}</span>`;
+    })
     .replace(/\[Student:([a-f0-9-]{36})\](?!:)/g, (_, id) =>
       `<span data-entity-type="student" data-entity-id="${id}" data-entity-label="Student">Student</span>`
     )
-    .replace(/\[Lesson:([a-f0-9-]{36}):([^\]]+)\]/g, (_, id, title) =>
-      `<span data-entity-type="lesson" data-entity-id="${id}" data-entity-label="${title}">${title}</span>`
-    )
+    .replace(/\[Lesson:([a-f0-9-]{36}):([^\]]+)\]/g, (_, id, title) => {
+      const safe = escapeHtml(title);
+      return `<span data-entity-type="lesson" data-entity-id="${id}" data-entity-label="${safe}">${safe}</span>`;
+    })
     .replace(/\[Lesson:([a-f0-9-]{36})\](?!:)/g, (_, id) =>
       `<span data-entity-type="lesson" data-entity-id="${id}" data-entity-label="Lesson">Lesson</span>`
     )
-    .replace(/\[Guardian:([a-f0-9-]{36}):([^\]]+)\]/g, (_, id, name) =>
-      `<span data-entity-type="guardian" data-entity-id="${id}" data-entity-label="${name}">${name}</span>`
-    )
+    .replace(/\[Guardian:([a-f0-9-]{36}):([^\]]+)\]/g, (_, id, name) => {
+      const safe = escapeHtml(name);
+      return `<span data-entity-type="guardian" data-entity-id="${id}" data-entity-label="${safe}">${safe}</span>`;
+    })
     .replace(/\[Guardian:([a-f0-9-]{36})\](?!:)/g, (_, id) =>
       `<span data-entity-type="guardian" data-entity-id="${id}" data-entity-label="Guardian">Guardian</span>`
     );
