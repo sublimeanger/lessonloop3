@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
@@ -36,10 +36,12 @@ export interface Conversation {
  * Groups flat message_log rows into conversation threads for the parent portal.
  * A thread is identified by thread_id (or the message's own id if it has no thread_id).
  */
-export function useParentConversations() {
+export function useParentConversations(onNewMessage?: () => void) {
   const { currentOrg } = useOrg();
   const { guardianId } = useGuardianId();
   const queryClient = useQueryClient();
+  const newMessageCallbackRef = useRef(onNewMessage);
+  newMessageCallbackRef.current = onNewMessage;
 
   // Realtime subscription for live updates
   useEffect(() => {
@@ -55,9 +57,13 @@ export function useParentConversations() {
           table: 'message_log',
           filter: `org_id=eq.${currentOrg.id}`,
         },
-        () => {
+        (payload) => {
           queryClient.invalidateQueries({ queryKey: ['parent-conversations'] });
           queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
+          // Notify about new incoming staff message
+          if (payload.eventType === 'INSERT' && payload.new?.message_type !== 'parent_reply') {
+            newMessageCallbackRef.current?.();
+          }
         }
       )
       .subscribe();
