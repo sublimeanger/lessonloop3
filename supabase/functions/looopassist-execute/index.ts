@@ -116,8 +116,23 @@ serve(async (req) => {
 
       try {
         const typedProposal = proposal as ActionProposal;
-        const { action_type, params } = typedProposal.proposal;
+        const { action_type, params, entities } = typedProposal.proposal;
         const orgId = typedProposal.org_id;
+
+        // Validate entity count cap
+        if (entities && entities.length > 50) {
+          throw new Error("Too many entities in proposal (max 50)");
+        }
+
+        // Validate entity ID formats (must be valid UUIDs)
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (entities) {
+          for (const entity of entities) {
+            if (entity.id && !UUID_RE.test(entity.id)) {
+              throw new Error(`Invalid entity ID format: ${entity.id}`);
+            }
+          }
+        }
 
         switch (action_type) {
           case "generate_billing_run": {
