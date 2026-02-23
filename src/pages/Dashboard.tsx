@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useRealtimeInvoices } from '@/hooks/useRealtimeInvoices';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -40,6 +41,7 @@ export default function Dashboard() {
   const { profile } = useAuth();
   const { currentOrg, currentRole, hasOrgs, isLoading: orgLoading, hasInitialised } = useOrg();
   const navigate = useNavigate();
+  useRealtimeInvoices();
   
   const isParent = currentRole === 'parent';
   const isTeacher = currentRole === 'teacher';
