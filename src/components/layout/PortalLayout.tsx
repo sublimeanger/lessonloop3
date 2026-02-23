@@ -1,4 +1,4 @@
-import { ReactNode, Suspense } from 'react';
+import { ReactNode, Suspense, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -9,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { PageTransitionFallback } from '@/components/shared/PageTransitionFallback';
 import { ChildFilterProvider } from '@/contexts/ChildFilterContext';
 import { ChildSwitcher } from '@/components/portal/ChildSwitcher';
+import { ParentLoopAssist, ParentLoopAssistButton } from '@/components/parent-portal/ParentLoopAssist';
 
 interface PortalLayoutProps {
   children: ReactNode;
@@ -17,6 +18,7 @@ interface PortalLayoutProps {
 export function PortalLayout({ children }: PortalLayoutProps) {
   const isMobile = useIsMobile();
   const location = useLocation();
+  const [loopAssistOpen, setLoopAssistOpen] = useState(false);
 
   const contentTransition = (
     <Suspense fallback={<PageTransitionFallback />}>
@@ -45,6 +47,8 @@ export function PortalLayout({ children }: PortalLayoutProps) {
             </div>
           </main>
           <PortalBottomNav />
+          <ParentLoopAssistButton onClick={() => setLoopAssistOpen(true)} />
+          <ParentLoopAssist open={loopAssistOpen} onOpenChange={setLoopAssistOpen} />
         </div>
       </ChildFilterProvider>
     );
@@ -64,6 +68,8 @@ export function PortalLayout({ children }: PortalLayoutProps) {
             </main>
           </div>
         </div>
+        <ParentLoopAssistButton onClick={() => setLoopAssistOpen(true)} />
+        <ParentLoopAssist open={loopAssistOpen} onOpenChange={setLoopAssistOpen} />
       </SidebarProvider>
     </ChildFilterProvider>
   );
