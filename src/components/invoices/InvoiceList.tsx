@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { parseISO, isBefore } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -174,7 +174,7 @@ function InvoiceActions({
   );
 }
 
-function MobileInvoiceCard({
+const MobileInvoiceCard = React.memo(function MobileInvoiceCard({
   invoice,
   currency,
   selected,
@@ -241,7 +241,7 @@ function MobileInvoiceCard({
       </div>
     </div>
   );
-}
+});
 
 export function InvoiceList({
   invoices,
