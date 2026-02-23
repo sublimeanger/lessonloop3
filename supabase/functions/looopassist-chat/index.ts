@@ -790,22 +790,45 @@ serve(async (req) => {
       });
     }
 
+    // Parse body once
+    const body = await req.json();
+    const { context, orgId, lastContextHash } = body;
+    let { messages } = body;
+
+    if (!orgId) {
+      return new Response(JSON.stringify({ error: "Organisation ID required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Verify org membership FIRST (before any org-scoped checks)
+    const { data: membership } = await supabase
+      .from("org_memberships")
+      .select("role")
+      .eq("org_id", orgId)
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .single();
+
+    if (!membership) {
+      return new Response(JSON.stringify({ error: "Access denied to this organisation" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Per-user rate limit
     const rateLimitResult = await checkRateLimit(user.id, "looopassist-chat");
     if (!rateLimitResult.allowed) {
       return rateLimitResponse(corsHeaders, rateLimitResult);
     }
 
-    // Per-org daily cap (cost control)
-    const body_peek = await req.clone().json();
-    const dailyCapResult = await checkLoopAssistDailyCap(body_peek.orgId);
+    // Per-org daily cap (cost control) — now using verified orgId
+    const dailyCapResult = await checkLoopAssistDailyCap(orgId);
     if (!dailyCapResult.allowed) {
       return rateLimitResponse(corsHeaders, dailyCapResult);
     }
-
-    const body = await req.json();
-    const { context, orgId, lastContextHash } = body;
-    let { messages } = body;
 
     // ── Prompt injection defenses ──────────────────────────────
     const INJECTION_PATTERNS = [
@@ -838,17 +861,12 @@ serve(async (req) => {
     const MAX_MESSAGE_LENGTH = 2000;
 
     function sanitiseMessage(content: string): string {
-      // Truncate
       let sanitised = content.slice(0, MAX_MESSAGE_LENGTH);
-      // Normalise Unicode homoglyphs to ASCII equivalents
       sanitised = sanitised.normalize('NFKC');
-      // Strip zero-width and invisible characters
       sanitised = sanitised.replace(/[\u200B-\u200F\u2028-\u202F\uFEFF\u00AD]/g, '');
-      // Strip injection patterns
       for (const pattern of INJECTION_PATTERNS) {
         sanitised = sanitised.replace(pattern, "[filtered]");
       }
-      // Encode characters that could break prompt structure
       sanitised = sanitised
         .replace(/```/g, "'''")
         .replace(/\x00/g, "")
@@ -862,29 +880,6 @@ serve(async (req) => {
         ...m,
         content: m.role === "user" ? sanitiseMessage(m.content) : m.content,
       }));
-    }
-
-    if (!orgId) {
-      return new Response(JSON.stringify({ error: "Organisation ID required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Verify user has access to this org
-    const { data: membership } = await supabase
-      .from("org_memberships")
-      .select("role")
-      .eq("org_id", orgId)
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .single();
-
-    if (!membership) {
-      return new Response(JSON.stringify({ error: "Access denied to this organisation" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
 
     // Fetch org data early so currency_code is available for context builders
