@@ -662,7 +662,7 @@ function MessageBubble({ message, conversationId }: { message: AIMessage; conver
         <MessageFeedback 
           messageId={message.id} 
           conversationId={conversationId}
-          className="mt-1 opacity-0 group-hover:opacity-100 hover:opacity-100"
+          className="mt-1 opacity-0 group-hover:opacity-100 hover:opacity-100 focus-within:opacity-100 md:opacity-0 max-md:opacity-60"
         />
       )}
     </div>
