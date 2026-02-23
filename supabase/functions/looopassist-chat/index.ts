@@ -1168,7 +1168,7 @@ Currency: ${orgData.currency_code}`
         });
       }
       const errorText = await response.text();
-      console.error("Anthropic API error:", response.status, errorText);
+      console.error("Anthropic API error:", response.status);
       return new Response(JSON.stringify({ error: "AI service error" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
