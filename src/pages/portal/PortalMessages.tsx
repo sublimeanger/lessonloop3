@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { PortalErrorState } from '@/components/portal/PortalErrorState';
@@ -235,9 +235,16 @@ export default function PortalMessages() {
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('inbox');
   const [expandedThread, setExpandedThread] = useState<string | null>(null);
+  const [pulseInbox, setPulseInbox] = useState(false);
+
+  const handleNewMessage = useCallback(() => {
+    // Visual pulse on the inbox tab
+    setPulseInbox(true);
+    setTimeout(() => setPulseInbox(false), 2000);
+  }, []);
 
   const { data: requests, isLoading: requestsLoading, isError: requestsError, refetch: refetchRequests } = useMessageRequests();
-  const { conversations, totalUnread, isLoading: conversationsLoading, isError: conversationsError } = useParentConversations();
+  const { conversations, totalUnread, isLoading: conversationsLoading, isError: conversationsError } = useParentConversations(handleNewMessage);
   const { currentOrg } = useOrg();
   const { settings: msgSettings } = useMessagingSettings();
   const canInitiate = msgSettings.parent_can_initiate;
@@ -286,10 +293,13 @@ export default function PortalMessages() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
-          <TabsTrigger value="inbox" className="gap-2">
+          <TabsTrigger value="inbox" className={cn('gap-2', pulseInbox && 'animate-pulse')}>
             Inbox
             {totalUnread > 0 && (
-              <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1 text-xs">
+              <Badge variant="destructive" className={cn(
+                'ml-1 h-5 min-w-5 px-1 text-xs transition-transform',
+                pulseInbox && 'scale-125'
+              )}>
                 {totalUnread}
               </Badge>
             )}
