@@ -4686,6 +4686,10 @@ export type Database = {
         }
         Returns: number
       }
+      teacher_has_thread_access: {
+        Args: { _org_id: string; _teacher_user_id: string; _thread_id: string }
+        Returns: boolean
+      }
       void_invoice: {
         Args: { _invoice_id: string; _org_id: string }
         Returns: undefined
