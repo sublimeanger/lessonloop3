@@ -81,6 +81,7 @@ const PortalProfile = lazy(() => import('@/pages/portal/PortalProfile'));
 
 /** Routes that redirect authenticated users away (login/signup) */
 export const publicAuthRoutes: RouteConfig[] = [
+  { path: '/auth', component: Login, auth: 'public-auth-redirect', label: 'Auth', eager: true },
   { path: '/login', component: Login, auth: 'public-auth-redirect', label: 'Login', eager: true },
   { path: '/signup', component: Signup, auth: 'public-auth-redirect', label: 'Sign Up', eager: true },
   { path: '/forgot-password', component: ForgotPassword, auth: 'public-auth-redirect', label: 'Forgot Password', eager: true },
