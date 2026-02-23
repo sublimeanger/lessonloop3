@@ -21,16 +21,16 @@ Each test case has:
 
 | ID | Priority | Test | Pass Criteria | Result |
 |---|---|---|---|---|
-| SEC-AUTH-01 | P0 | Sign up with valid email + password | Account created, confirmation email sent (no auto-login without verification) | |
-| SEC-AUTH-02 | P0 | Sign in with valid credentials | JWT issued, session stored, user redirected to dashboard | |
-| SEC-AUTH-03 | P0 | Sign in with wrong password | Auth error, no JWT issued, no information leakage about account existence | |
-| SEC-AUTH-04 | P0 | Access authenticated route without session | Redirect to `/auth` login page | |
-| SEC-AUTH-05 | P0 | Attempt to use expired JWT | Request rejected with 401, session auto-refreshes if refresh token valid | |
-| SEC-AUTH-06 | P1 | Attempt brute-force login (30+ attempts in 1 min) | Rate limited by auth provider (429 response) | |
-| SEC-AUTH-07 | P1 | Sign out and attempt to reuse old JWT | Token rejected, session invalidated | |
-| SEC-AUTH-08 | P1 | Password reset flow | Reset email sent, old password invalidated, new password works | |
-| SEC-AUTH-09 | P2 | Check for session fixation | New session token generated after login, old token invalid | |
-| SEC-AUTH-10 | P2 | Check JWT payload for sensitive data | JWT contains only `sub`, `role`, `iss`, `exp` — no PII | |
+| SEC-AUTH-01 | P0 | Sign up with valid email + password | Account created, confirmation email sent (no auto-login without verification) | ⚠️ Code path present (`supabase.auth.signUp`), requires live env verification |
+| SEC-AUTH-02 | P0 | Sign in with valid credentials | JWT issued, session stored, user redirected to dashboard | ⚠️ Logic implemented; blocked from live validation in this environment |
+| SEC-AUTH-03 | P0 | Sign in with wrong password | Auth error, no JWT issued, no information leakage about account existence | ⚠️ Provider behaviour (Supabase) must be verified against production auth config |
+| SEC-AUTH-04 | P0 | Access authenticated route without session | Redirect to `/auth` login page | ✅ RouteGuard default redirect updated to `/auth` |
+| SEC-AUTH-05 | P0 | Attempt to use expired JWT | Request rejected with 401, session auto-refreshes if refresh token valid | ⚠️ Token refresh event path exists; needs integration test with real tokens |
+| SEC-AUTH-06 | P1 | Attempt brute-force login (30+ attempts in 1 min) | Rate limited by auth provider (429 response) | ⚠️ Must be verified at auth provider edge (not reproducible in unit-only context) |
+| SEC-AUTH-07 | P1 | Sign out and attempt to reuse old JWT | Token rejected, session invalidated | ⚠️ Client-side sign-out clears session/token; token reuse requires live backend validation |
+| SEC-AUTH-08 | P1 | Password reset flow | Reset email sent, old password invalidated, new password works | ⚠️ Reset initiation implemented; full flow needs email + live auth test |
+| SEC-AUTH-09 | P2 | Check for session fixation | New session token generated after login, old token invalid | ⚠️ Requires token-level integration verification |
+| SEC-AUTH-10 | P2 | Check JWT payload for sensitive data | JWT contains only `sub`, `role`, `iss`, `exp` — no PII | ⚠️ JWT claim set must be inspected in a live issued token |
 
 ---
 
