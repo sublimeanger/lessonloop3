@@ -4,6 +4,18 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, checkLoopAssistDailyCap, rateLimitResponse } from "../_shared/rate-limit.ts";
 
+/** Sanitise user-generated text before embedding in AI system prompt to prevent prompt injection. */
+function sanitiseForPrompt(text: string | null | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+    .replace(/`/g, "'")
+    .replace(/\[(Student|Lesson|Invoice|Guardian|Action):[^\]]*\]/gi, "")
+    .replace(/^(system|assistant|user|human):\s*/i, "")
+    .slice(0, 100)
+    .trim();
+}
+
 interface Invoice {
   id: string;
   invoice_number: string;
@@ -235,8 +247,8 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
   if (overdueList.length > 0) {
     invoiceSummary += `\n\nOVERDUE INVOICES (${rpcOverdueCount} total, ${fmtCurrency(rpcOverdueTotal)}):`;
     overdueList.slice(0, 10).forEach((inv: Invoice) => {
-      const payer = inv.guardians?.full_name || 
-        (inv.students ? `${inv.students.first_name} ${inv.students.last_name}` : "Unknown");
+      const payer = sanitiseForPrompt(inv.guardians?.full_name) || 
+        (inv.students ? sanitiseForPrompt(`${inv.students.first_name} ${inv.students.last_name}`) : "Unknown");
       invoiceSummary += `\n- [Invoice:${inv.invoice_number}] ${fmtCurrency(inv.total_minor)} due ${inv.due_date} (${payer})`;
     });
     if (rpcOverdueCount > overdueList.length) {
@@ -247,8 +259,8 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
   if (sentList.length > 0) {
     invoiceSummary += `\n\nOUTSTANDING INVOICES (${fmtCurrency(rpcSentTotal)} total):`;
     sentList.slice(0, 10).forEach((inv: Invoice) => {
-      const payer = inv.guardians?.full_name || 
-        (inv.students ? `${inv.students.first_name} ${inv.students.last_name}` : "Unknown");
+      const payer = sanitiseForPrompt(inv.guardians?.full_name) || 
+        (inv.students ? sanitiseForPrompt(`${inv.students.first_name} ${inv.students.last_name}`) : "Unknown");
       invoiceSummary += `\n- [Invoice:${inv.invoice_number}] ${fmtCurrency(inv.total_minor)} due ${inv.due_date} (${payer})`;
     });
     if (sentList.length >= 10) {
@@ -274,9 +286,9 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
       lessons.slice(0, 5).forEach((l) => {
         const time = new Date(l.start_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
         const studentNames = l.lesson_participants?.map(p => 
-          p.students ? `${p.students.first_name} ${p.students.last_name}` : ""
+          p.students ? sanitiseForPrompt(`${p.students.first_name} ${p.students.last_name}`) : ""
         ).filter(Boolean).join(", ") || "No students";
-        lessonSummary += `\n  - [Lesson:${l.id}:${l.title}] ${time} with ${studentNames}`;
+        lessonSummary += `\n  - [Lesson:${l.id}:${sanitiseForPrompt(l.title)}] ${time} with ${studentNames}`;
       });
     });
   }
@@ -286,7 +298,7 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
   if ((students || []).length > 0) {
     studentSummary += `\n\nACTIVE STUDENTS (${students.length}):`;
     students.slice(0, 15).forEach((s: Student) => {
-      studentSummary += `\n- [Student:${s.id}:${s.first_name} ${s.last_name}]`;
+      studentSummary += `\n- [Student:${s.id}:${sanitiseForPrompt(`${s.first_name} ${s.last_name}`)}]`;
     });
     if (students.length > 15) {
       studentSummary += `\n... and ${students.length - 15} more`;
@@ -298,7 +310,7 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
   if ((guardians || []).length > 0) {
     guardianSummary += `\n\nGUARDIANS (${guardians.length}):`;
     guardians.slice(0, 10).forEach((g: Guardian) => {
-      guardianSummary += `\n- [Guardian:${g.id}:${g.full_name}]${g.email ? ` (${g.email})` : ""}`;
+      guardianSummary += `\n- [Guardian:${g.id}:${sanitiseForPrompt(g.full_name)}]${g.email ? ` (${g.email})` : ""}`;
     });
     if (guardians.length > 10) {
       guardianSummary += `\n... and ${guardians.length - 10} more`;
@@ -312,9 +324,9 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
     recentCancellations.slice(0, 5).forEach((l: any) => {
       const date = new Date(l.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
       const studentNames = l.lesson_participants?.map((p: any) => 
-        p.students ? `${p.students.first_name} ${p.students.last_name}` : ""
+        p.students ? sanitiseForPrompt(`${p.students.first_name} ${p.students.last_name}`) : ""
       ).filter(Boolean).join(", ") || "Unknown";
-      cancellationSummary += `\n- ${date}: ${l.title} with ${studentNames}`;
+      cancellationSummary += `\n- ${date}: ${sanitiseForPrompt(l.title)} with ${studentNames}`;
     });
   }
 
@@ -352,7 +364,7 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
     unmarkedSummary += `\n\nUNMARKED PAST LESSONS (${unmarkedLessons.length}):`;
     unmarkedLessons.slice(0, 5).forEach((l: any) => {
       const date = new Date(l.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-      unmarkedSummary += `\n- [Lesson:${l.id}:${l.title}] ${date}`;
+      unmarkedSummary += `\n- [Lesson:${l.id}:${sanitiseForPrompt(l.title)}] ${date}`;
     });
     if (unmarkedLessons.length > 5) {
       unmarkedSummary += `\n... and ${unmarkedLessons.length - 5} more unmarked lessons`;
@@ -425,12 +437,12 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
 
   if (!student) return "";
 
-  let context = `\n\nDEEP STUDENT CONTEXT for [Student:${student.id}:${student.first_name} ${student.last_name}]:`;
+  let context = `\n\nDEEP STUDENT CONTEXT for [Student:${student.id}:${sanitiseForPrompt(`${student.first_name} ${student.last_name}`)}]:`;
   context += `\nStatus: ${student.status}`;
   context += `\nEmail: ${student.email || "Not provided"}`;
   context += `\nPhone: ${student.phone || "Not provided"}`;
   if (student.date_of_birth) context += `\nDOB: ${student.date_of_birth}`;
-  if (student.notes) context += `\nNotes: ${student.notes}`;
+  if (student.notes) context += `\nNotes: ${sanitiseForPrompt(student.notes)}`;
 
   // Guardians — hide contact details from teachers
   const guardianLinks = student.student_guardians || [];
@@ -438,7 +450,7 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
     context += "\n\nGuardians:";
     guardianLinks.forEach((link: any) => {
       if (link.guardians) {
-        context += `\n  - [Guardian:${link.guardians.id}:${link.guardians.full_name}] (${link.relationship})`;
+        context += `\n  - [Guardian:${link.guardians.id}:${sanitiseForPrompt(link.guardians.full_name)}] (${link.relationship})`;
         if (userRole !== "teacher" && link.guardians.email) {
           context += ` - ${link.guardians.email}`;
         }
@@ -461,7 +473,7 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
     context += `\n\nUpcoming Lessons (${upcoming.length}):`;
     upcoming.forEach((lp: any) => {
       const date = new Date(lp.lessons.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-      context += `\n  - [Lesson:${lp.lessons.id}:${lp.lessons.title}] ${date}`;
+      context += `\n  - [Lesson:${lp.lessons.id}:${sanitiseForPrompt(lp.lessons.title)}] ${date}`;
     });
   }
 
@@ -479,7 +491,7 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
     context += `\n\nRecent Completed Lessons (${completed.length}):`;
     completed.forEach((lp: any) => {
       const date = new Date(lp.lessons.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-      context += `\n  - [Lesson:${lp.lessons.id}:${lp.lessons.title}] ${date} (${lp.lessons.status})`;
+      context += `\n  - [Lesson:${lp.lessons.id}:${sanitiseForPrompt(lp.lessons.title)}] ${date} (${lp.lessons.status})`;
     });
   }
 
@@ -891,8 +903,8 @@ serve(async (req) => {
             .eq("id", context.id)
             .single();
           if (invoice) {
-            const payer = invoice.guardians?.full_name || 
-              (invoice.students ? `${invoice.students.first_name} ${invoice.students.last_name}` : "Unknown");
+            const payer = sanitiseForPrompt(invoice.guardians?.full_name) || 
+              (invoice.students ? sanitiseForPrompt(`${invoice.students.first_name} ${invoice.students.last_name}`) : "Unknown");
             const payerId = invoice.payer_guardian_id || invoice.payer_student_id;
             const payerType = invoice.payer_guardian_id ? "Guardian" : "Student";
             pageContextInfo = `\n\nCURRENT PAGE - Invoice: [Invoice:${invoice.invoice_number}]
