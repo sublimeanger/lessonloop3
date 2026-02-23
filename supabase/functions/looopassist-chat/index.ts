@@ -784,6 +784,364 @@ async function buildStudentContext(supabase: SupabaseClient, orgId: string, stud
   return context;
 }
 
+async function executeToolCall(
+  supabase: any,
+  orgId: string,
+  userRole: string,
+  currencyCode: string,
+  toolName: string,
+  toolInput: Record<string, any>
+): Promise<string> {
+  const fmtCurrency = (minor: number) =>
+    new Intl.NumberFormat('en-GB', { style: 'currency', currency: currencyCode }).format(minor / 100);
+
+  switch (toolName) {
+    case "search_students": {
+      let query = supabase
+        .from("students")
+        .select("id, first_name, last_name, email, phone, status, notes")
+        .eq("org_id", orgId);
+
+      if (toolInput.query) {
+        query = query.or(`first_name.ilike.%${toolInput.query}%,last_name.ilike.%${toolInput.query}%`);
+      }
+      if (toolInput.status) {
+        query = query.eq("status", toolInput.status);
+      }
+      query = query.order("last_name").limit(toolInput.limit || 20);
+
+      const { data, error } = await query;
+      if (error) return `Error: ${error.message}`;
+      if (!data || data.length === 0) return "No students found matching those criteria.";
+
+      let result = `Found ${data.length} student(s):\n`;
+      data.forEach((s: any) => {
+        result += `\n- [Student:${s.id}:${s.first_name} ${s.last_name}] — ${s.status}`;
+        if (s.email) result += ` (${s.email})`;
+        if (s.notes && userRole !== "finance") result += `\n  Notes: ${s.notes.slice(0, 200)}`;
+      });
+      return result;
+    }
+
+    case "get_student_detail": {
+      return await buildStudentContext(supabase, orgId, toolInput.student_id, userRole, currencyCode);
+    }
+
+    case "search_lessons": {
+      let query = supabase
+        .from("lessons")
+        .select(`
+          id, title, start_at, end_at, status, notes_shared,
+          ${userRole !== "finance" ? "notes_private," : ""}
+          teacher:teachers!lessons_teacher_id_fkey(id, display_name),
+          lesson_participants(students(id, first_name, last_name))
+        `)
+        .eq("org_id", orgId);
+
+      if (toolInput.start_date) query = query.gte("start_at", `${toolInput.start_date}T00:00:00`);
+      if (toolInput.end_date) query = query.lte("start_at", `${toolInput.end_date}T23:59:59`);
+      if (toolInput.status) query = query.eq("status", toolInput.status);
+      if (toolInput.teacher_id) query = query.eq("teacher_id", toolInput.teacher_id);
+      query = query.order("start_at", { ascending: true }).limit(toolInput.limit || 30);
+
+      const { data, error } = await query;
+      if (error) return `Error: ${error.message}`;
+      if (!data || data.length === 0) return "No lessons found matching those criteria.";
+
+      let result = `Found ${data.length} lesson(s):\n`;
+      data.forEach((l: any) => {
+        const date = new Date(l.start_at).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+        const time = new Date(l.start_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+        const students = l.lesson_participants?.map((p: any) =>
+          p.students ? `${p.students.first_name} ${p.students.last_name}` : ""
+        ).filter(Boolean).join(", ") || "No students";
+        const teacher = l.teacher?.display_name || "Unassigned";
+        result += `\n- [Lesson:${l.id}:${l.title}] ${date} ${time} — ${l.status}`;
+        result += `\n  Teacher: ${teacher} | Students: ${students}`;
+        if (l.notes_shared) result += `\n  Shared notes: ${l.notes_shared.slice(0, 200)}`;
+        if (l.notes_private && userRole !== "teacher" && userRole !== "finance") {
+          result += `\n  Private notes: ${l.notes_private.slice(0, 200)}`;
+        }
+      });
+      return result;
+    }
+
+    case "get_lesson_detail": {
+      const { data, error } = await supabase
+        .from("lessons")
+        .select(`
+          id, title, start_at, end_at, status, notes_shared, notes_private,
+          teacher:teachers!lessons_teacher_id_fkey(id, display_name),
+          lesson_participants(
+            students(id, first_name, last_name)
+          )
+        `)
+        .eq("id", toolInput.lesson_id)
+        .eq("org_id", orgId)
+        .single();
+
+      if (error || !data) return "Lesson not found.";
+
+      // Fetch attendance separately to avoid nested join issues
+      const { data: attendanceData } = await supabase
+        .from("attendance_records")
+        .select("student_id, attendance_status, cancellation_reason, absence_reason_category")
+        .eq("lesson_id", toolInput.lesson_id)
+        .eq("org_id", orgId);
+
+      const attendanceByStudent = new Map<string, any>();
+      (attendanceData || []).forEach((a: any) => { attendanceByStudent.set(a.student_id, a); });
+
+      const date = new Date(data.start_at).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+      const time = new Date(data.start_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+      let result = `[Lesson:${data.id}:${data.title}]\nDate: ${date} at ${time}\nStatus: ${data.status}`;
+      result += `\nTeacher: ${data.teacher?.display_name || "Unassigned"}`;
+      if (data.notes_shared) result += `\nShared notes: ${data.notes_shared}`;
+      if (data.notes_private && userRole !== "teacher" && userRole !== "finance") {
+        result += `\nPrivate notes: ${data.notes_private}`;
+      }
+      if (data.lesson_participants?.length > 0) {
+        result += `\nParticipants:`;
+        data.lesson_participants.forEach((p: any) => {
+          if (p.students) {
+            result += `\n  - [Student:${p.students.id}:${p.students.first_name} ${p.students.last_name}]`;
+            const att = attendanceByStudent.get(p.students.id);
+            if (att) {
+              result += ` — ${att.attendance_status}`;
+              if (att.absence_reason_category) result += ` (${att.absence_reason_category})`;
+              if (att.cancellation_reason) result += `: ${att.cancellation_reason}`;
+            }
+          }
+        });
+      }
+      return result;
+    }
+
+    case "search_invoices": {
+      if (userRole === "teacher") return "You don't have access to invoice data.";
+
+      let query = supabase
+        .from("invoices")
+        .select(`
+          id, invoice_number, status, total_minor, due_date,
+          guardians:payer_guardian_id(id, full_name, email),
+          students:payer_student_id(id, first_name, last_name)
+        `)
+        .eq("org_id", orgId);
+
+      if (toolInput.status) query = query.eq("status", toolInput.status);
+      if (toolInput.start_date) query = query.gte("due_date", toolInput.start_date);
+      if (toolInput.end_date) query = query.lte("due_date", toolInput.end_date);
+      if (toolInput.min_amount) query = query.gte("total_minor", toolInput.min_amount);
+      query = query.order("due_date", { ascending: true }).limit(toolInput.limit || 20);
+
+      const { data, error } = await query;
+      if (error) return `Error: ${error.message}`;
+      if (!data || data.length === 0) return "No invoices found matching those criteria.";
+
+      let result = `Found ${data.length} invoice(s):\n`;
+      data.forEach((inv: any) => {
+        const payer = inv.guardians?.full_name ||
+          (inv.students ? `${inv.students.first_name} ${inv.students.last_name}` : "Unknown");
+        result += `\n- [Invoice:${inv.invoice_number}] ${inv.status} — ${fmtCurrency(inv.total_minor)} due ${inv.due_date} (${payer})`;
+      });
+      return result;
+    }
+
+    case "get_revenue_summary": {
+      if (userRole === "teacher") return "You don't have access to financial data.";
+
+      const { data: paid } = await supabase
+        .from("invoices")
+        .select("total_minor")
+        .eq("org_id", orgId)
+        .eq("status", "paid")
+        .gte("due_date", toolInput.start_date)
+        .lte("due_date", toolInput.end_date);
+
+      const { data: outstanding } = await supabase
+        .from("invoices")
+        .select("total_minor, status")
+        .eq("org_id", orgId)
+        .in("status", ["sent", "overdue"])
+        .gte("due_date", toolInput.start_date)
+        .lte("due_date", toolInput.end_date);
+
+      const paidTotal = (paid || []).reduce((s: number, i: any) => s + i.total_minor, 0);
+      const overdueTotal = (outstanding || []).filter((i: any) => i.status === "overdue").reduce((s: number, i: any) => s + i.total_minor, 0);
+      const sentTotal = (outstanding || []).filter((i: any) => i.status === "sent").reduce((s: number, i: any) => s + i.total_minor, 0);
+
+      return `Revenue Summary (${toolInput.start_date} to ${toolInput.end_date}):\n` +
+        `- Paid: ${fmtCurrency(paidTotal)} (${(paid || []).length} invoices)\n` +
+        `- Outstanding: ${fmtCurrency(sentTotal)} (${(outstanding || []).filter((i: any) => i.status === "sent").length} invoices)\n` +
+        `- Overdue: ${fmtCurrency(overdueTotal)} (${(outstanding || []).filter((i: any) => i.status === "overdue").length} invoices)\n` +
+        `- Total invoiced: ${fmtCurrency(paidTotal + sentTotal + overdueTotal)}`;
+    }
+
+    case "get_teacher_schedule": {
+      const { data, error } = await supabase
+        .from("lessons")
+        .select(`
+          id, title, start_at, end_at, status,
+          lesson_participants(students(id, first_name, last_name))
+        `)
+        .eq("org_id", orgId)
+        .eq("teacher_id", toolInput.teacher_id)
+        .gte("start_at", `${toolInput.start_date}T00:00:00`)
+        .lte("start_at", `${toolInput.end_date}T23:59:59`)
+        .order("start_at", { ascending: true });
+
+      if (error) return `Error: ${error.message}`;
+      if (!data || data.length === 0) return "No lessons found for this teacher in the given period.";
+
+      let result = `${data.length} lesson(s) scheduled:\n`;
+      data.forEach((l: any) => {
+        const date = new Date(l.start_at).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+        const time = new Date(l.start_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+        const students = l.lesson_participants?.map((p: any) =>
+          p.students ? `[Student:${p.students.id}:${p.students.first_name} ${p.students.last_name}]` : ""
+        ).filter(Boolean).join(", ") || "No students";
+        result += `\n- [Lesson:${l.id}:${l.title}] ${date} ${time} (${l.status}) — ${students}`;
+      });
+      return result;
+    }
+
+    case "check_room_availability": {
+      const { data: locations } = await supabase
+        .from("locations")
+        .select("id, name, rooms(id, name, capacity)")
+        .eq("org_id", orgId);
+
+      if (!locations || locations.length === 0) return "No locations configured.";
+
+      const startUtc = `${toolInput.date}T${toolInput.start_time}:00`;
+      const endUtc = `${toolInput.date}T${toolInput.end_time}:00`;
+
+      const { data: busyLessons } = await supabase
+        .from("lessons")
+        .select("id, location_id, room_id")
+        .eq("org_id", orgId)
+        .eq("status", "scheduled")
+        .lt("start_at", endUtc)
+        .gt("end_at", startUtc);
+
+      const busyRoomIds = new Set((busyLessons || []).map((l: any) => l.room_id).filter(Boolean));
+
+      let result = `Room availability for ${toolInput.date} ${toolInput.start_time}-${toolInput.end_time}:\n`;
+      locations.forEach((loc: any) => {
+        result += `\n${loc.name}:`;
+        if (loc.rooms && loc.rooms.length > 0) {
+          loc.rooms.forEach((room: any) => {
+            const available = !busyRoomIds.has(room.id);
+            result += `\n  - ${room.name} (capacity: ${room.capacity || "?"}) — ${available ? "✅ Available" : "❌ Booked"}`;
+          });
+        } else {
+          result += `\n  No rooms configured`;
+        }
+      });
+      return result;
+    }
+
+    case "get_attendance_summary": {
+      let query = supabase
+        .from("attendance_records")
+        .select("attendance_status, recorded_at, cancellation_reason, absence_reason_category, student_id, lesson_id, students(first_name, last_name)")
+        .eq("org_id", orgId);
+
+      if (toolInput.student_id) query = query.eq("student_id", toolInput.student_id);
+      if (toolInput.start_date) query = query.gte("recorded_at", `${toolInput.start_date}T00:00:00`);
+      if (toolInput.end_date) query = query.lte("recorded_at", `${toolInput.end_date}T23:59:59`);
+      query = query.order("recorded_at", { ascending: false }).limit(toolInput.limit || 20);
+
+      const { data, error } = await query;
+      if (error) return `Error: ${error.message}`;
+      if (!data || data.length === 0) return "No attendance records found for that period.";
+
+      const counts: Record<string, number> = {};
+      data.forEach((a: any) => { counts[a.attendance_status] = (counts[a.attendance_status] || 0) + 1; });
+      const total = data.length;
+      const presentCount = counts["present"] || 0;
+      const rate = total > 0 ? Math.round((presentCount / total) * 100) : 0;
+
+      let result = `Attendance Summary (${total} records):\n`;
+      Object.entries(counts).forEach(([status, count]) => {
+        result += `- ${status}: ${count}\n`;
+      });
+      result += `Attendance rate: ${rate}%\n`;
+
+      const absences = data.filter((a: any) => ["absent", "cancelled_by_student", "late"].includes(a.attendance_status));
+      if (absences.length > 0) {
+        result += `\nRecent absences/late:`;
+        absences.slice(0, 10).forEach((a: any) => {
+          const date = a.recorded_at ? new Date(a.recorded_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "?";
+          const name = a.students ? `${a.students.first_name} ${a.students.last_name}` : "Unknown";
+          result += `\n  - ${date}: ${name} — ${a.attendance_status}`;
+          if (a.absence_reason_category) result += ` (${a.absence_reason_category})`;
+        });
+      }
+      return result;
+    }
+
+    case "get_practice_history": {
+      if (userRole === "finance") return "Practice data is not available for your role.";
+
+      const { data: streak } = await supabase
+        .from("practice_streaks")
+        .select("current_streak, longest_streak, last_practice_date")
+        .eq("student_id", toolInput.student_id)
+        .single();
+
+      let logQuery = supabase
+        .from("practice_logs")
+        .select("practice_date, duration_minutes, notes")
+        .eq("student_id", toolInput.student_id)
+        .order("practice_date", { ascending: false })
+        .limit(20);
+
+      if (toolInput.start_date) logQuery = logQuery.gte("practice_date", toolInput.start_date);
+      if (toolInput.end_date) logQuery = logQuery.lte("practice_date", toolInput.end_date);
+
+      const { data: logs } = await logQuery;
+
+      const { data: assignments } = await supabase
+        .from("practice_assignments")
+        .select("title, description, target_minutes_per_day, status, start_date, end_date")
+        .eq("student_id", toolInput.student_id)
+        .eq("status", "active");
+
+      let result = "Practice History:\n";
+      if (streak) {
+        result += `Current streak: ${streak.current_streak} days\n`;
+        result += `Longest streak: ${streak.longest_streak} days\n`;
+        if (streak.last_practice_date) result += `Last practice: ${streak.last_practice_date}\n`;
+      }
+
+      if (logs && logs.length > 0) {
+        const totalMins = logs.reduce((s: number, l: any) => s + l.duration_minutes, 0);
+        result += `\nRecent logs (${logs.length} entries, ${totalMins} mins total):`;
+        logs.slice(0, 10).forEach((l: any) => {
+          result += `\n  - ${l.practice_date}: ${l.duration_minutes} mins`;
+          if (l.notes) result += ` — ${l.notes.slice(0, 150)}`;
+        });
+      } else {
+        result += "\nNo practice logs found for this period.";
+      }
+
+      if (assignments && assignments.length > 0) {
+        result += `\n\nActive Assignments:`;
+        assignments.forEach((a: any) => {
+          result += `\n  - ${a.title} (${a.target_minutes_per_day} mins/day)`;
+          if (a.description) result += `\n    ${a.description.slice(0, 200)}`;
+        });
+      }
+      return result;
+    }
+
+    default:
+      return `Unknown tool: ${toolName}`;
+  }
+}
+
 const SYSTEM_PROMPT = `You are LoopAssist, the AI co-pilot built into LessonLoop. You help music teachers, academy owners, and administrators run their teaching business faster.
 
 Your personality: Efficient, warm, and knowledgeable — like a brilliant office manager who knows every student, every invoice, and every lesson by heart. You're direct but never cold. You celebrate wins ("Nice — 100% attendance this week!") and flag problems early ("Heads up: 3 invoices just passed 30 days overdue").
