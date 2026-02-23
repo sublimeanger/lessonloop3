@@ -14,6 +14,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { ABSENCE_REASON_LABELS, type AbsenceReason } from '@/hooks/useMakeUpPolicies';
 import { format } from 'date-fns';
 
+interface StudentLesson {
+  id: string;
+  title: string;
+  start_at: string;
+  end_at: string;
+  teacher: { id: string; display_name: string } | null;
+  location: { name: string } | null;
+}
+
 const schema = z.object({
   student_id: z.string().min(1, 'Student is required'),
   missed_lesson_id: z.string().min(1, 'Missed lesson is required'),
@@ -77,11 +86,7 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
         .order('lesson(start_at)', { ascending: false })
         .limit(20);
       if (error) throw error;
-      return (data || []).map((row: Record<string, unknown>) => row.lesson).filter(Boolean) as Array<{
-        id: string; title: string; start_at: string; end_at: string;
-        teacher: { id: string; display_name: string } | null;
-        location: { name: string } | null;
-      }>;
+      return (data || []).map((row: Record<string, unknown>) => row.lesson).filter(Boolean) as StudentLesson[];
     },
     enabled: !!currentOrg?.id && !!selectedStudentId && open,
   });
