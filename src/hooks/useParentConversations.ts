@@ -19,6 +19,7 @@ export interface ConversationMessage {
   parent_message_id: string | null;
   sender_name?: string | null;
   sender_role?: 'staff' | 'parent';
+  sender_org_role?: string | null;
 }
 
 export interface Conversation {
@@ -96,20 +97,33 @@ export function useParentConversations() {
   }, [query.data]);
 
   const { data: senderProfiles } = useQuery({
-    queryKey: ['sender-profiles', senderUserIds.join(',')],
+    queryKey: ['sender-profiles', senderUserIds.join(','), currentOrg?.id],
     queryFn: async () => {
-      if (!senderUserIds.length) return {};
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .in('id', senderUserIds);
-      const map: Record<string, string> = {};
-      for (const p of data || []) {
-        map[p.id] = p.full_name || 'Unknown';
+      if (!senderUserIds.length || !currentOrg?.id) return {};
+      // Fetch profiles and org memberships in parallel
+      const [profilesRes, membershipsRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', senderUserIds),
+        supabase
+          .from('org_memberships')
+          .select('user_id, role')
+          .eq('org_id', currentOrg.id)
+          .in('user_id', senderUserIds),
+      ]);
+      const map: Record<string, { name: string; role: string | null }> = {};
+      for (const p of profilesRes.data || []) {
+        map[p.id] = { name: p.full_name || 'Unknown', role: null };
+      }
+      for (const m of membershipsRes.data || []) {
+        if (map[m.user_id]) {
+          map[m.user_id].role = m.role;
+        }
       }
       return map;
     },
-    enabled: senderUserIds.length > 0,
+    enabled: senderUserIds.length > 0 && !!currentOrg?.id,
   });
 
   // Group into conversations
@@ -125,12 +139,14 @@ export function useParentConversations() {
       }
       // Annotate sender role and name
       const isParentSender = msg.message_type === 'parent_reply';
+      const senderInfo = senderProfiles?.[msg.sender_user_id || ''];
       const enriched: ConversationMessage = {
         ...msg,
         sender_role: isParentSender ? 'parent' : 'staff',
         sender_name: isParentSender
           ? 'You'
-          : (senderProfiles?.[msg.sender_user_id || ''] || 'Staff'),
+          : (senderInfo?.name || 'Staff'),
+        sender_org_role: isParentSender ? null : (senderInfo?.role || null),
       };
       threadMap.get(threadId)!.push(enriched);
     }

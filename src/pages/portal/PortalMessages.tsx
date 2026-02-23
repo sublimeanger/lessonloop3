@@ -19,6 +19,7 @@ import { RequestModal } from '@/components/portal/RequestModal';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { cn } from '@/lib/utils';
 import { useMessagingSettings } from '@/hooks/useMessagingSettings';
+import { useOrg } from '@/contexts/OrgContext';
 
 function formatMessageTime(dateStr: string) {
   const d = parseISO(dateStr);
@@ -45,6 +46,11 @@ function MessageBubble({ msg }: { msg: ConversationMessage }) {
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 gap-1">
               <Shield className="h-2.5 w-2.5" />
               {msg.sender_name || 'Staff'}
+              {msg.sender_org_role && (
+                <span className="opacity-70 ml-0.5">
+                  ({msg.sender_org_role === 'owner' ? 'Admin' : msg.sender_org_role.charAt(0).toUpperCase() + msg.sender_org_role.slice(1)})
+                </span>
+              )}
             </Badge>
           )}
           {isParent && (
@@ -232,6 +238,7 @@ export default function PortalMessages() {
 
   const { data: requests, isLoading: requestsLoading, isError: requestsError, refetch: refetchRequests } = useMessageRequests();
   const { conversations, totalUnread, isLoading: conversationsLoading, isError: conversationsError } = useParentConversations();
+  const { currentOrg } = useOrg();
   const { settings: msgSettings } = useMessagingSettings();
   const canInitiate = msgSettings.parent_can_initiate;
   const toggleThread = (threadId: string) => {
@@ -302,7 +309,7 @@ export default function PortalMessages() {
                 <Mail className="h-12 w-12 text-muted-foreground/40" />
                 <h3 className="mt-4 text-lg font-medium">No messages yet</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Messages from your teacher will appear here.
+                  Messages from {currentOrg?.name || 'your organisation'} will appear here.
                 </p>
               </CardContent>
             </Card>
