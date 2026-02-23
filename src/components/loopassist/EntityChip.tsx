@@ -47,11 +47,19 @@ export function EntityChip({ type, id, label, className }: EntityChipProps) {
     <Badge
       variant="secondary"
       className={cn(
-        'cursor-pointer gap-1 border-0 transition-colors',
+        'cursor-pointer gap-1 border-0 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
         config.colorClass,
         className
       )}
       onClick={handleClick}
+      tabIndex={0}
+      role="link"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
     >
       <Icon className="h-3 w-3" />
       {label}
