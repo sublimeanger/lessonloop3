@@ -1,4 +1,5 @@
-import '@/lib/env'; // Validate env vars before anything else
+// Env validation (non-fatal to prevent white screens)
+import '@/lib/env';
 import './lib/sentry'; // Initialise Sentry before anything else
 import { StrictMode } from 'react';
 import { createRoot } from "react-dom/client";
