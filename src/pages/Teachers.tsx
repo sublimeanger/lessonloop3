@@ -25,7 +25,7 @@ import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { useTeachers, useTeacherMutations, useTeacherStudentCounts, Teacher } from '@/hooks/useTeachers';
 import { Progress } from '@/components/ui/progress';
 import { Plus, GraduationCap, Loader2, UserPlus, Lock, Link2, Link2Off, Phone, Trash2, Search, Pencil, RotateCcw } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatDateForOrg } from '@/lib/utils';
 import { InviteMemberDialog } from '@/components/settings/InviteMemberDialog';
 import { PendingInvitesList } from '@/components/settings/PendingInvitesList';
 import { TEACHER_COLOURS } from '@/components/calendar/teacherColours';
@@ -640,7 +640,7 @@ export default function Teachers() {
                         </summary>
                         <ul className="mt-2 space-y-1 text-muted-foreground">
                           {removal.lessons.map(l => (
-                            <li key={l.id}>{l.title} — {new Date(l.start_at).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</li>
+                            <li key={l.id}>{l.title} — {formatDateForOrg(l.start_at, currentOrg?.timezone || 'Europe/London', 'EEE d MMM')}</li>
                           ))}
                         </ul>
                       </details>
