@@ -423,10 +423,12 @@ export function useLoopAssist(externalPageContext?: PageContext) {
   // Delete conversation
   const deleteConversation = useMutation({
     mutationFn: async (conversationId: string) => {
+      if (!currentOrg?.id) throw new Error('No organisation selected');
       const { error } = await supabase
         .from('ai_conversations')
         .delete()
-        .eq('id', conversationId);
+        .eq('id', conversationId)
+        .eq('org_id', currentOrg.id);
       if (error) throw error;
     },
     onSuccess: (_, deletedId) => {
