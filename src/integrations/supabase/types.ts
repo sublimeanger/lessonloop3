@@ -2481,6 +2481,60 @@ export type Database = {
           },
         ]
       }
+      org_messaging_settings: {
+        Row: {
+          auto_assign_to_teacher: boolean
+          created_at: string
+          notify_parent_on_reply: boolean
+          notify_staff_on_new_message: boolean
+          org_id: string
+          parent_can_initiate: boolean
+          parent_can_message_admin: boolean
+          parent_can_message_owner: boolean
+          parent_can_message_teacher: boolean
+          updated_at: string
+        }
+        Insert: {
+          auto_assign_to_teacher?: boolean
+          created_at?: string
+          notify_parent_on_reply?: boolean
+          notify_staff_on_new_message?: boolean
+          org_id: string
+          parent_can_initiate?: boolean
+          parent_can_message_admin?: boolean
+          parent_can_message_owner?: boolean
+          parent_can_message_teacher?: boolean
+          updated_at?: string
+        }
+        Update: {
+          auto_assign_to_teacher?: boolean
+          created_at?: string
+          notify_parent_on_reply?: boolean
+          notify_staff_on_new_message?: boolean
+          org_id?: string
+          parent_can_initiate?: boolean
+          parent_can_message_admin?: boolean
+          parent_can_message_owner?: boolean
+          parent_can_message_teacher?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_messaging_settings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_messaging_settings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organisations: {
         Row: {
           address: string | null
