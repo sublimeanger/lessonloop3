@@ -76,14 +76,7 @@ export function PortalSidebar() {
   return (
     <Sidebar className="border-r border-sidebar-border">
       <SidebarContent className="pt-3">
-        {/* Logo area */}
-        <div className="px-4 pb-2">
-          <div className="flex items-center gap-2">
-            <Logo size="sm" />
-            <LogoWordmark variant="white" className="text-base" />
-          </div>
-        </div>
-        <SidebarSeparator className="bg-sidebar-border mb-1" />
+        {/* Spacer — logo is in Header, matching main dashboard */}
 
         {/* Child filter */}
         <div className="mb-2 px-3">
