@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+import { toastError } from '@/lib/error-handler';
 import { logAudit } from '@/lib/auditLog';
 
 export type StudentStatus = 'active' | 'inactive';
@@ -91,7 +91,7 @@ export function useStudents() {
 }
 
 export function useToggleStudentStatus() {
-  const { toast } = useToast();
+  
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -114,8 +114,8 @@ export function useToggleStudentStatus() {
         });
       }
     },
-    onError: (error: Error) => {
-      toast({ title: 'Error updating status', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toastError(error, 'Error updating status');
     },
   });
 }

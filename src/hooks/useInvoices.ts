@@ -4,6 +4,7 @@ import { logAudit } from '@/lib/auditLog';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { toastError } from '@/lib/error-handler';
 import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -231,8 +232,8 @@ export function useCreateInvoice() {
       queryClient.invalidateQueries({ queryKey: ['available-credits-for-payer'] });
       toast({ title: 'Invoice created' });
     },
-    onError: (error) => {
-      toast({ title: 'Error', description: 'Failed to create invoice: ' + error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toastError(error, 'Failed to create invoice');
     },
   });
 }
@@ -295,8 +296,8 @@ export function useUpdateInvoiceStatus() {
       queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
       queryClient.invalidateQueries({ queryKey: ['available-credits-for-payer'] });
     },
-    onError: (error) => {
-      toast({ title: 'Error', description: 'Failed to update invoice: ' + error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toastError(error, 'Failed to update invoice');
     },
   });
 }
@@ -347,8 +348,8 @@ export function useRecordPayment() {
       queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
       toast({ title: 'Payment recorded' });
     },
-    onError: (error) => {
-      toast({ title: 'Error', description: 'Failed to record payment: ' + error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toastError(error, 'Failed to record payment');
     },
   });
 }
