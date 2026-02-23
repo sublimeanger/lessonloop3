@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { CreditBalanceBadge } from './CreditBalanceBadge';
 import { TeachingDefaultsCard } from './TeachingDefaultsCard';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
-import { Loader2, Mail, Phone, Calendar } from 'lucide-react';
+import { Loader2, Mail, Phone, Calendar, Edit } from 'lucide-react';
 import type { Student } from '@/hooks/useStudentDetailPage';
 
 interface StudentInfoCardProps {
@@ -28,6 +28,7 @@ interface StudentInfoCardProps {
   notes: string;
   setNotes: (v: string) => void;
   handleSave: () => void;
+  handleToggleEdit: () => void;
   fetchStudent: () => void;
 }
 
@@ -43,6 +44,7 @@ export function StudentInfoCard({
   dob, setDob,
   notes, setNotes,
   handleSave,
+  handleToggleEdit,
   fetchStudent,
 }: StudentInfoCardProps) {
   return (
@@ -53,6 +55,48 @@ export function StudentInfoCard({
             <div>
               <CardTitle>Student Information</CardTitle>
               <CardDescription>Personal details and contact information</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <CreditBalanceBadge studentId={student.id} />
+              <Badge variant={student.status === 'active' ? 'default' : 'secondary'}>{student.status}</Badge>
+              {(() => {
+                const checks = [
+                  { label: 'Email', done: !!student.email },
+                  { label: 'Phone', done: !!student.phone },
+                  { label: 'DOB', done: !!student.dob },
+                  { label: 'Location', done: !!student.default_location_id },
+                  { label: 'Teacher', done: !!student.default_teacher_id },
+                  { label: 'Rate card', done: !!student.default_rate_card_id },
+                ];
+                const completed = checks.filter(c => c.done).length;
+                if (completed < checks.length) {
+                  const missing = checks.filter(c => !c.done).map(c => c.label).join(', ');
+                  return (
+                    <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs" title={`Missing: ${missing}`}>
+                      {completed}/{checks.length} complete
+                    </Badge>
+                  );
+                }
+                return null;
+              })()}
+              {isOrgAdmin && (
+                <Button variant="outline" size="sm" onClick={() => {
+                  if (isEditing) {
+                    // Reset form values when cancelling
+                    setFirstName(student.first_name);
+                    setLastName(student.last_name);
+                    setEmail(student.email || '');
+                    setPhone(student.phone || '');
+                    setDob(student.dob || '');
+                    setNotes(student.notes || '');
+                  }
+                  // Toggle via parent
+                  handleToggleEdit();
+                }}>
+                  <Edit className="mr-2 h-3.5 w-3.5" />
+                  {isEditing ? 'Cancel' : 'Edit'}
+                </Button>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <CreditBalanceBadge studentId={student.id} />

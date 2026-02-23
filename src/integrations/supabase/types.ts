@@ -4474,10 +4474,6 @@ export type Database = {
       }
       cleanup_rate_limits: { Args: never; Returns: undefined }
       complete_expired_assignments: { Args: never; Returns: undefined }
-      get_calendar_error_count: {
-        Args: { p_org_id: string }
-        Returns: number
-      }
       confirm_makeup_booking: {
         Args: { _org_id: string; _waitlist_id: string }
         Returns: Json
@@ -4567,21 +4563,6 @@ export type Database = {
       get_org_role: {
         Args: { _org_id: string; _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
-      }
-      get_org_calendar_health: {
-        Args: { p_org_id: string }
-        Returns: {
-          connection_id: string
-          user_id: string
-          teacher_name: string
-          provider: string
-          sync_enabled: boolean
-          sync_status: string
-          last_sync_at: string | null
-          calendar_name: string | null
-          token_expires_at: string | null
-          events_synced: number
-        }[]
       }
       get_org_sync_error_count: { Args: { p_org_id: string }; Returns: number }
       get_parent_dashboard_data: {
