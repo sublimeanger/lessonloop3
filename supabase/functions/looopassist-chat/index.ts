@@ -1056,7 +1056,7 @@ async function executeToolCall(
       if (toolInput.student_id) query = query.eq("student_id", toolInput.student_id);
       if (toolInput.start_date) query = query.gte("recorded_at", `${toolInput.start_date}T00:00:00`);
       if (toolInput.end_date) query = query.lte("recorded_at", `${toolInput.end_date}T23:59:59`);
-      query = query.order("recorded_at", { ascending: false }).limit(toolInput.limit || 20);
+      query = query.order("recorded_at", { ascending: false }).limit(toolInput.limit || 200);
 
       const { data, error } = await query;
       if (error) return `Error: ${error.message}`;
@@ -1084,6 +1084,70 @@ async function executeToolCall(
           if (a.absence_reason_category) result += ` (${a.absence_reason_category})`;
         });
       }
+      return result;
+    }
+
+    case "get_at_risk_students": {
+      const daysBack = toolInput.days || 30;
+      const cutoff = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
+
+      // Get all absences in the period
+      const { data: absences, error } = await supabase
+        .from("attendance_records")
+        .select("student_id, attendance_status, recorded_at, students(first_name, last_name)")
+        .eq("org_id", orgId)
+        .in("attendance_status", ["absent", "cancelled_by_student"])
+        .gte("recorded_at", cutoff)
+        .order("recorded_at", { ascending: false });
+
+      if (error) return `Error: ${error.message}`;
+      if (!absences || absences.length === 0) return "No absences found in the last " + daysBack + " days. No students are currently at risk.";
+
+      // Count per student
+      const studentCounts = new Map<string, { count: number; name: string; dates: string[] }>();
+      absences.forEach((a: any) => {
+        const name = a.students ? `${a.students.first_name} ${a.students.last_name}` : "Unknown";
+        const existing = studentCounts.get(a.student_id) || { count: 0, name, dates: [] };
+        existing.count++;
+        const date = a.recorded_at ? new Date(a.recorded_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "?";
+        existing.dates.push(`${date} (${a.attendance_status})`);
+        studentCounts.set(a.student_id, existing);
+      });
+
+      const atRisk = Array.from(studentCounts.entries())
+        .filter(([_, info]) => info.count >= 2)
+        .sort((a, b) => b[1].count - a[1].count);
+
+      if (atRisk.length === 0) return "No students have 2+ absences in the last " + daysBack + " days. No churn risk detected.";
+
+      // Also check overdue invoices for these students
+      const atRiskIds = atRisk.map(([id]) => id);
+      const { data: overdueInvoices } = await supabase
+        .from("invoices")
+        .select("payer_student_id, total_minor, due_date, invoice_number")
+        .eq("org_id", orgId)
+        .in("payer_student_id", atRiskIds)
+        .eq("status", "overdue");
+
+      const overdueByStudent = new Map<string, any[]>();
+      (overdueInvoices || []).forEach((inv: any) => {
+        const list = overdueByStudent.get(inv.payer_student_id) || [];
+        list.push(inv);
+        overdueByStudent.set(inv.payer_student_id, list);
+      });
+
+      let result = `⚠️ ${atRisk.length} student${atRisk.length > 1 ? "s" : ""} at risk (2+ absences in last ${daysBack} days):\n`;
+      atRisk.forEach(([studentId, info]) => {
+        result += `\n**${info.name}** — ${info.count} absences:\n`;
+        info.dates.forEach(d => { result += `  - ${d}\n`; });
+        const overdue = overdueByStudent.get(studentId);
+        if (overdue && overdue.length > 0) {
+          result += `  💰 ${overdue.length} overdue invoice(s): ${overdue.map(i => `${i.invoice_number} (£${(i.total_minor / 100).toFixed(2)})`).join(", ")}\n`;
+        } else {
+          result += `  ✅ No overdue invoices\n`;
+        }
+      });
+
       return result;
     }
 
@@ -1492,7 +1556,18 @@ const TOOLS = [
         teacher_id: { type: "string", description: "Filter by teacher" },
         start_date: { type: "string", description: "Start date (YYYY-MM-DD)" },
         end_date: { type: "string", description: "End date (YYYY-MM-DD)" },
-        limit: { type: "number", description: "Max detail records. Default: 20" }
+        limit: { type: "number", description: "Max detail records. Default: 200" }
+      },
+      required: []
+    }
+  },
+  {
+    name: "get_at_risk_students",
+    description: "Find students at risk of leaving based on frequent absences (2+ in last N days) and overdue invoices. Use when asked about churn risk, at-risk students, or retention concerns.",
+    input_schema: {
+      type: "object",
+      properties: {
+        days: { type: "number", description: "Look-back period in days. Default: 30" }
       },
       required: []
     }
