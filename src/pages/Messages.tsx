@@ -34,6 +34,7 @@ import { InternalComposeModal } from '@/components/messages/InternalComposeModal
 import type { MessageLogEntry } from '@/hooks/useMessages';
 import { InternalMessageList } from '@/components/messages/InternalMessageList';
 import { ThreadedMessageList } from '@/components/messages/ThreadedMessageList';
+import { MessageFiltersBar, type MessageFilters } from '@/components/messages/MessageFiltersBar';
 import { supabase } from '@/integrations/supabase/client';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
@@ -59,6 +60,7 @@ export default function Messages() {
   const [viewMode, setViewMode] = useState<'list' | 'threaded'>('threaded');
   const [replyTarget, setReplyTarget] = useState<Guardian | null>(null);
   const [replyStudentId, setReplyStudentId] = useState<string | undefined>(undefined);
+  const [messageFilters, setMessageFilters] = useState<MessageFilters>({});
 
   const { data: messages, isLoading, hasMore, loadMore, isFetchingMore } = useMessageLog({
     channel: channelFilter === 'all' ? undefined : channelFilter,
@@ -228,9 +230,16 @@ export default function Messages() {
             </div>
           </div>
 
+          {/* Filters for admins */}
+          {(isOrgAdmin || isOrgOwner) && viewMode === 'threaded' && (
+            <div className="mb-4">
+              <MessageFiltersBar filters={messageFilters} onFiltersChange={setMessageFilters} />
+            </div>
+          )}
+
           {/* Message View */}
           {viewMode === 'threaded' ? (
-            <ThreadedMessageList searchQuery={searchQuery} />
+            <ThreadedMessageList searchQuery={searchQuery} filters={messageFilters} />
           ) : isLoading ? (
             <ListSkeleton count={3} />
           ) : (
