@@ -13,8 +13,10 @@ export interface MakeUpCredit {
   issued_for_lesson_id: string | null;
   issued_at: string;
   expires_at: string | null;
+  expired_at: string | null;
   redeemed_at: string | null;
   redeemed_lesson_id: string | null;
+  applied_to_invoice_id: string | null;
   credit_value_minor: number;
   notes: string | null;
   created_by: string | null;
@@ -79,11 +81,12 @@ export function useMakeUpCredits(studentId?: string) {
     enabled: !!currentOrg?.id,
   });
 
-  // Get available (unredeemed, non-expired) credits for a student
+  // Get available (unredeemed, non-expired, not applied to invoice) credits
   // Matches the logic in the available_credits database view
-  const availableCredits = credits?.filter(c => 
-    !c.redeemed_at && 
-    !(c as any).expired_at &&
+  const availableCredits = credits?.filter(c =>
+    !c.redeemed_at &&
+    !c.expired_at &&
+    !c.applied_to_invoice_id &&
     (!c.expires_at || new Date(c.expires_at) > new Date())
   ) || [];
 

@@ -36,7 +36,10 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
     if (credit.redeemed_at) {
       return { label: 'Redeemed', variant: 'secondary' };
     }
-    if (credit.expires_at && new Date(credit.expires_at) < new Date()) {
+    if (credit.applied_to_invoice_id) {
+      return { label: 'Applied to Invoice', variant: 'secondary' };
+    }
+    if (credit.expired_at || (credit.expires_at && new Date(credit.expires_at) < new Date())) {
       return { label: 'Expired', variant: 'destructive' };
     }
     return { label: 'Available', variant: 'default' };
@@ -164,7 +167,7 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
                       </div>
                     </div>
                     
-                    {!credit.redeemed_at && (
+                    {!credit.redeemed_at && !credit.applied_to_invoice_id && (
                       <Button
                         variant="ghost"
                         size="icon-sm"

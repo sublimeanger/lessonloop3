@@ -218,10 +218,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
       });
     }
 
-    reset();
-    setSelectedLessons(new Set());
-    setSelectedCredits(new Set());
-    onOpenChange(false);
+    handleOpenChange(false);
   };
 
   const toggleLesson = (lessonId: string) => {
@@ -252,8 +249,18 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
     setSelectedCredits(new Set(availableCredits.map((c) => c.id)));
   };
 
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      reset();
+      setSelectedLessons(new Set());
+      setSelectedCredits(new Set());
+      setTab('manual');
+    }
+    onOpenChange(isOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto mx-4 sm:mx-auto">
         <DialogHeader>
           <DialogTitle>Create Invoice</DialogTitle>
@@ -504,6 +511,11 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                     </Badge>
                   </div>
                 )}
+                {totalSelectedCredit > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Credits exceeding the invoice total will be capped at the total amount. Any excess is not deducted.
+                  </p>
+                )}
               </div>
             )}
 
@@ -517,7 +529,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                 Cancel
               </Button>
               <Button

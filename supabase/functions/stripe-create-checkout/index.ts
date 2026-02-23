@@ -145,6 +145,28 @@ serve(async (req) => {
       throw new Error("Nothing to pay");
     }
 
+    // Cap payment at amount due (prevents overpayment for installments that exceed remaining balance)
+    if (paymentAmount > amountDue) {
+      paymentAmount = amountDue;
+      description += " (capped at remaining balance)";
+    }
+
+    // Check for an active pending checkout session to prevent duplicates
+    const { data: pendingSessions } = await supabase
+      .from("stripe_checkout_sessions")
+      .select("id, stripe_session_id, expires_at")
+      .eq("invoice_id", invoiceId)
+      .eq("status", "pending")
+      .gt("expires_at", new Date().toISOString());
+
+    if (pendingSessions && pendingSessions.length > 0) {
+      // Expire old sessions — they'll 404 on Stripe but won't double-charge
+      await supabase
+        .from("stripe_checkout_sessions")
+        .update({ status: "expired" })
+        .in("id", pendingSessions.map((s: any) => s.id));
+    }
+
     // Get payer email
     const payerEmail = (invoice.guardians as any)?.email || 
                        (invoice.students as any)?.email || 
@@ -244,8 +266,11 @@ serve(async (req) => {
       };
     }
 
-    // Create Stripe Checkout Session
-    const session = await stripe.checkout.sessions.create(sessionParams);
+    // Create Stripe Checkout Session with idempotency key
+    const idempotencyKey = `checkout_${invoiceId}_${resolvedInstallmentId || "full"}_${paymentAmount}_${Date.now()}`;
+    const session = await stripe.checkout.sessions.create(sessionParams, {
+      idempotencyKey,
+    });
 
     // Record the session in our database
     const { error: insertError } = await supabase

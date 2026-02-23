@@ -51,7 +51,7 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
   const [confirmOverpay, setConfirmOverpay] = useState(false);
 
   const totalPaid = invoice?.payments?.reduce((sum, p) => sum + p.amount_minor, 0) || 0;
-  const outstandingAmount = invoice ? invoice.total_minor - totalPaid : 0;
+  const outstandingAmount = invoice ? Math.max(0, invoice.total_minor - totalPaid) : 0;
 
   const amountMinor = useMemo(() => {
     const parsed = parseFloat(amount);
