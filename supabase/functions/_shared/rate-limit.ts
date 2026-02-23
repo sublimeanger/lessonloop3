@@ -98,8 +98,8 @@ export async function checkRateLimit(
 
   if (error) {
     console.error("Rate limit check failed:", error);
-    // Fail open — allow request if rate limit check fails
-    return { allowed: true };
+    // Fail closed — deny request if rate limit check fails
+    return { allowed: false, retryAfterSeconds: 30, message: "Service temporarily unavailable. Please try again shortly." };
   }
 
   if (!data) {
@@ -138,7 +138,7 @@ export async function checkLoopAssistDailyCap(
 
   if (error) {
     console.error("LoopAssist daily cap check failed:", error);
-    return { allowed: true }; // fail open
+    return { allowed: false, retryAfterSeconds: 30, message: "Service temporarily unavailable. Please try again shortly." };
   }
 
   const used = count ?? 0;
