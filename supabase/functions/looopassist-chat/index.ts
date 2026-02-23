@@ -1715,7 +1715,7 @@ Todays scheduled lessons: ${todayLessons?.length || 0}`;
       dataContext = filteredSummary;
     }
 
-    const isPro = orgData?.subscription_plan === "pro" || orgData?.subscription_plan === "enterprise";
+    const isPro = orgData?.subscription_plan === "academy" || orgData?.subscription_plan === "agency" || orgData?.subscription_plan === "custom";
     const aiModel = isPro ? "claude-sonnet-4-5-20250929" : "claude-haiku-4-5-20251001";
 
     const orgContext = orgData
