@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import { useCreateMessageRequest, useChildrenWithDetails } from '@/hooks/useParentPortal';
+import { useParentEnquiry } from '@/hooks/useParentEnquiry';
 
 interface RequestModalProps {
   open: boolean;
@@ -52,19 +53,32 @@ export function RequestModal({
     }
   }, [open, defaultType, lessonTitle]);
 
-
   const createRequest = useCreateMessageRequest();
+  const sendEnquiry = useParentEnquiry();
+
+  const isGeneralEnquiry = requestType === 'general';
+  const isPending = isGeneralEnquiry ? sendEnquiry.isPending : createRequest.isPending;
 
   const handleSubmit = async () => {
     if (!subject.trim() || !message.trim()) return;
 
-    await createRequest.mutateAsync({
-      request_type: requestType,
-      subject: subject.trim(),
-      message: message.trim(),
-      student_id: studentId || undefined,
-      lesson_id: lessonId,
-    });
+    if (isGeneralEnquiry) {
+      // General enquiries go through the conversations model
+      await sendEnquiry.mutateAsync({
+        subject: subject.trim(),
+        body: message.trim(),
+        student_id: studentId || undefined,
+      });
+    } else {
+      // Cancellation/reschedule go through message_requests
+      await createRequest.mutateAsync({
+        request_type: requestType,
+        subject: subject.trim(),
+        message: message.trim(),
+        student_id: studentId || undefined,
+        lesson_id: lessonId,
+      });
+    }
 
     // Reset form
     setSubject('');
@@ -77,15 +91,17 @@ export function RequestModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Send a Request</DialogTitle>
+          <DialogTitle>{isGeneralEnquiry ? 'Send a Message' : 'Send a Request'}</DialogTitle>
           <DialogDescription>
-            Submit a request to the admin team. They will respond as soon as possible.
+            {isGeneralEnquiry
+              ? 'Send a message to the academy. They will respond in your inbox.'
+              : 'Submit a request to the admin team. They will respond as soon as possible.'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label>Request Type</Label>
+            <Label>Type</Label>
             <Select value={requestType} onValueChange={(v) => setRequestType(v as 'cancellation' | 'reschedule' | 'general')}>
               <SelectTrigger>
                 <SelectValue />
@@ -123,7 +139,7 @@ export function RequestModal({
               id="subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="Brief summary of your request"
+              placeholder={isGeneralEnquiry ? 'What is your message about?' : 'Brief summary of your request'}
             />
           </div>
 
@@ -133,7 +149,7 @@ export function RequestModal({
               id="message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Please provide details of your request..."
+              placeholder={isGeneralEnquiry ? 'Write your message...' : 'Please provide details of your request...'}
               rows={5}
             />
           </div>
@@ -145,15 +161,15 @@ export function RequestModal({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!subject.trim() || !message.trim() || createRequest.isPending}
+            disabled={!subject.trim() || !message.trim() || isPending}
           >
-            {createRequest.isPending ? (
+            {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Sending...
               </>
             ) : (
-              'Send Request'
+              isGeneralEnquiry ? 'Send Message' : 'Send Request'
             )}
           </Button>
         </DialogFooter>
