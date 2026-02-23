@@ -164,23 +164,34 @@ export function useConfirmMakeUp() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ waitlistId }: { waitlistId: string; lessonId?: string; studentId?: string }) => {
+    mutationFn: async ({ waitlistId, studentName, lessonTitle, lessonDate }: {
+      waitlistId: string;
+      lessonId?: string;
+      studentId?: string;
+      studentName?: string;
+      lessonTitle?: string;
+      lessonDate?: string;
+    }) => {
       if (!currentOrg?.id) throw new Error('No org');
 
-      // Atomic server-side confirm: locks row, validates status, checks duplicates, inserts participant
       const { data, error } = await supabase.rpc('confirm_makeup_booking', {
         _waitlist_id: waitlistId,
         _org_id: currentOrg.id,
       });
 
       if (error) throw error;
-      return data;
+      return { result: data, studentName, lessonTitle, lessonDate };
     },
-    onSuccess: () => {
+    onSuccess: (ctx) => {
       queryClient.invalidateQueries({ queryKey: ['make_up_waitlist'] });
       queryClient.invalidateQueries({ queryKey: ['register'] });
       queryClient.invalidateQueries({ queryKey: ['lesson_participants'] });
-      toast({ title: 'Make-up lesson confirmed' });
+      const parts = [ctx.studentName, ctx.lessonTitle, ctx.lessonDate].filter(Boolean);
+      toast({
+        title: 'Make-up lesson confirmed! 🎉',
+        description: parts.length > 0 ? parts.join(' — ') : undefined,
+        duration: 5000,
+      });
     },
     onError: (error: Error) => {
       toast({ title: 'Error confirming make-up', description: error.message, variant: 'destructive' });

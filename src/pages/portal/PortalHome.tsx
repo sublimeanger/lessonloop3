@@ -144,6 +144,7 @@ export default function PortalHome() {
   };
 
   const handleInlineAccept = async (id: string) => {
+    const entry = activeWaitlist.find((e) => e.id === id);
     try {
       const guardianId = await resolveGuardianId();
       if (!guardianId) {
@@ -162,7 +163,17 @@ export default function PortalHome() {
         toast({ title: 'Unable to accept', description: 'This offer may have expired or already been actioned.', variant: 'destructive' });
         return;
       }
-      toast({ title: 'Make-up accepted! The academy will confirm the booking shortly.' });
+      const matched = entry?.matched_lesson;
+      const lessonInfo = matched
+        ? `${matched.title} — ${formatDateUK(parseISO(matched.start_at), 'EEEE d MMM')} at ${formatTimeUK(parseISO(matched.start_at))}`
+        : '';
+      toast({
+        title: 'Make-up lesson accepted! 🎉',
+        description: lessonInfo
+          ? `${lessonInfo}. The academy will confirm your booking shortly.`
+          : 'The academy will confirm the booking shortly.',
+        duration: 5000,
+      });
       queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_parent'] });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
