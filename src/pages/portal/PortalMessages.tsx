@@ -7,11 +7,13 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare, Loader2, Plus, Clock, CheckCircle, XCircle, AlertCircle, Mail, Pencil } from 'lucide-react';
+import { MessageSquare, Loader2, Plus, Clock, CheckCircle, XCircle, AlertCircle, Mail, Pencil, Reply } from 'lucide-react';
 import { format, parseISO, isToday, isYesterday } from 'date-fns';
 import { useMessageRequests } from '@/hooks/useParentPortal';
 import { useParentMessages } from '@/hooks/useMessages';
+import { useParentReply } from '@/hooks/useParentReply';
 import { RequestModal } from '@/components/portal/RequestModal';
 import { useMarkMessagesAsRead } from '@/hooks/useUnreadMessages';
 import { sanitizeHtml } from '@/lib/sanitize';
@@ -22,6 +24,115 @@ function formatMessageTime(dateStr: string) {
   if (isToday(d)) return format(d, 'HH:mm');
   if (isYesterday(d)) return `Yesterday, ${format(d, 'HH:mm')}`;
   return format(d, 'd MMM, HH:mm');
+}
+
+function InboxMessageCard({ msg }: { msg: any }) {
+  const [showReply, setShowReply] = useState(false);
+  const [replyBody, setReplyBody] = useState('');
+  const replyMutation = useParentReply();
+  const isUnread = !msg.read_at;
+
+  const handleSendReply = async () => {
+    if (!replyBody.trim()) return;
+    await replyMutation.mutateAsync({
+      parentMessageId: msg.id,
+      body: replyBody.trim(),
+    });
+    setReplyBody('');
+    setShowReply(false);
+  };
+
+  return (
+    <div className="flex items-start gap-3">
+      {/* Unread dot */}
+      <div className="pt-3 flex-shrink-0 w-2.5">
+        {isUnread && (
+          <span className="block h-2.5 w-2.5 rounded-full bg-primary" />
+        )}
+      </div>
+
+      {/* Chat bubble + reply */}
+      <div className="flex-1 space-y-2">
+        <div
+          className={cn(
+            'rounded-2xl rounded-tl-sm px-4 py-3 transition-all duration-150',
+            'bg-muted/60 dark:bg-muted/30',
+            isUnread && 'bg-primary/5 dark:bg-primary/10 ring-1 ring-primary/15'
+          )}
+        >
+          <div className="flex items-baseline justify-between gap-3 mb-1">
+            <h4 className={cn('text-sm font-semibold leading-tight', isUnread && 'text-primary')}>
+              {msg.subject}
+            </h4>
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap flex-shrink-0">
+              {formatMessageTime(msg.created_at)}
+            </span>
+          </div>
+          {/<[a-z][\s\S]*>/i.test(msg.body) ? (
+            <div
+              className="text-sm text-muted-foreground prose prose-sm max-w-none dark:prose-invert [&_a]:text-primary [&_a]:underline"
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.body) }}
+            />
+          ) : (
+            <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+              {msg.body}
+            </p>
+          )}
+        </div>
+
+        {/* Reply section */}
+        {showReply ? (
+          <div className="ml-2 space-y-2">
+            <Textarea
+              placeholder="Write your reply…"
+              value={replyBody}
+              onChange={(e) => setReplyBody(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSendReply();
+                }
+              }}
+              rows={3}
+              className="text-sm"
+            />
+            <p className="text-xs text-muted-foreground">Press Ctrl+Enter to send</p>
+            <div className="flex items-center gap-2 justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setShowReply(false); setReplyBody(''); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSendReply}
+                disabled={!replyBody.trim() || replyMutation.isPending}
+              >
+                {replyMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Reply className="h-4 w-4 mr-2" />
+                )}
+                Send Reply
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowReply(true)}
+            className="ml-2 gap-1.5 text-muted-foreground hover:text-foreground"
+          >
+            <Reply className="h-3.5 w-3.5" />
+            Reply
+          </Button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function PortalMessages() {
@@ -81,33 +192,13 @@ export default function PortalMessages() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return (
-          <Badge variant="outline" className="gap-1">
-            <Clock className="h-3 w-3" />
-            Pending
-          </Badge>
-        );
+        return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" />Pending</Badge>;
       case 'approved':
-        return (
-          <Badge variant="default" className="gap-1 bg-success text-success-foreground">
-            <CheckCircle className="h-3 w-3" />
-            Approved
-          </Badge>
-        );
+        return <Badge variant="default" className="gap-1 bg-success text-success-foreground"><CheckCircle className="h-3 w-3" />Approved</Badge>;
       case 'declined':
-        return (
-          <Badge variant="destructive" className="gap-1">
-            <XCircle className="h-3 w-3" />
-            Declined
-          </Badge>
-        );
+        return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" />Declined</Badge>;
       case 'resolved':
-        return (
-          <Badge variant="secondary" className="gap-1">
-            <CheckCircle className="h-3 w-3" />
-            Resolved
-          </Badge>
-        );
+        return <Badge variant="secondary" className="gap-1"><CheckCircle className="h-3 w-3" />Resolved</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -115,14 +206,10 @@ export default function PortalMessages() {
 
   const getTypeBadge = (type: string) => {
     switch (type) {
-      case 'cancellation':
-        return <Badge variant="outline">Cancellation</Badge>;
-      case 'reschedule':
-        return <Badge variant="outline">Reschedule</Badge>;
-      case 'general':
-        return <Badge variant="outline">General</Badge>;
-      default:
-        return <Badge variant="outline">{type}</Badge>;
+      case 'cancellation': return <Badge variant="outline">Cancellation</Badge>;
+      case 'reschedule': return <Badge variant="outline">Reschedule</Badge>;
+      case 'general': return <Badge variant="outline">General</Badge>;
+      default: return <Badge variant="outline">{type}</Badge>;
     }
   };
 
@@ -152,7 +239,7 @@ export default function PortalMessages() {
           <TabsTrigger value="requests">My Requests</TabsTrigger>
         </TabsList>
 
-        {/* Inbox - chat bubble style */}
+        {/* Inbox - chat bubble style with reply */}
         <TabsContent value="inbox">
           {messagesLoading ? (
             <ListSkeleton count={3} />
@@ -169,48 +256,10 @@ export default function PortalMessages() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-2">
-              {messages.map((msg) => {
-                const isUnread = !msg.read_at;
-                return (
-                  <div key={msg.id} className="flex items-start gap-3">
-                    {/* Unread dot */}
-                    <div className="pt-3 flex-shrink-0 w-2.5">
-                      {isUnread && (
-                        <span className="block h-2.5 w-2.5 rounded-full bg-primary" />
-                      )}
-                    </div>
-
-                    {/* Chat bubble */}
-                    <div
-                      className={cn(
-                        'flex-1 rounded-2xl rounded-tl-sm px-4 py-3 transition-all duration-150',
-                        'bg-muted/60 dark:bg-muted/30',
-                        isUnread && 'bg-primary/5 dark:bg-primary/10 ring-1 ring-primary/15'
-                      )}
-                    >
-                      <div className="flex items-baseline justify-between gap-3 mb-1">
-                        <h4 className={cn('text-sm font-semibold leading-tight', isUnread && 'text-primary')}>
-                          {msg.subject}
-                        </h4>
-                        <span className="text-[11px] text-muted-foreground whitespace-nowrap flex-shrink-0">
-                          {formatMessageTime(msg.created_at)}
-                        </span>
-                      </div>
-                      {/<[a-z][\s\S]*>/i.test(msg.body) ? (
-                        <div
-                          className="text-sm text-muted-foreground prose prose-sm max-w-none dark:prose-invert [&_a]:text-primary [&_a]:underline"
-                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.body) }}
-                        />
-                      ) : (
-                        <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-                          {msg.body}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="space-y-4">
+              {messages.map((msg) => (
+                <InboxMessageCard key={msg.id} msg={msg} />
+              ))}
 
               {hasMore && (
                 <div className="flex justify-center pt-2">
