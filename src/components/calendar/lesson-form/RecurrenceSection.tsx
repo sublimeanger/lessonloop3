@@ -20,7 +20,7 @@ interface RecurrenceSectionProps {
   selectedDate: Date;
   closureCheck: {
     hasConflicts: boolean;
-    warningMessage: string;
+    warningMessage: string | null;
     conflicts: { date: Date; reason: string }[];
   };
   lesson?: LessonWithDetails | null;

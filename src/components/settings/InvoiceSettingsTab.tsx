@@ -53,7 +53,7 @@ export function InvoiceSettingsTab() {
         .from('organisations')
         .update({
           vat_enabled: vatRegistered,
-          vat_rate: vatRegistered ? parseFloat(vatRate) : null,
+          vat_rate: vatRegistered ? parseFloat(vatRate) : 0,
           vat_registration_number: vatRegistered ? vatNumber : null,
           default_payment_terms_days: paymentTermsDays,
         })

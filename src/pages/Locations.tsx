@@ -403,7 +403,7 @@ export default function Locations() {
       return;
     }
 
-    const { error } = await supabase.from('locations').delete().eq('id', locationId).eq('org_id', currentOrg.id);
+    const { error } = await supabase.from('locations').delete().eq('id', locationId).eq('org_id', currentOrg!.id);
     if (error) {
       toast({ title: 'Error deleting location', description: error.message, variant: 'destructive' });
     } else {
@@ -413,13 +413,13 @@ export default function Locations() {
         const { data: remaining } = await supabase
           .from('locations')
           .select('id, name')
-          .eq('org_id', currentOrg.id)
+          .eq('org_id', currentOrg!.id)
           .neq('id', locationId)
           .eq('is_archived', false)
           .order('created_at')
           .limit(1);
         if (remaining && remaining.length > 0) {
-          await supabase.from('locations').update({ is_primary: true }).eq('id', remaining[0].id).eq('org_id', currentOrg.id);
+          await supabase.from('locations').update({ is_primary: true }).eq('id', remaining[0].id).eq('org_id', currentOrg!.id);
           toast({ title: 'Location deleted', description: `Primary location auto-assigned to ${remaining[0].name}.` });
         } else {
           toast({ title: 'Location deleted' });
@@ -539,7 +539,7 @@ export default function Locations() {
 
   const confirmDeleteRoom = async () => {
     setDeleteRoomDialog(prev => ({ ...prev, isDeleting: true }));
-    const { error } = await supabase.from('rooms').delete().eq('id', deleteRoomDialog.roomId).eq('org_id', currentOrg.id);
+    const { error } = await supabase.from('rooms').delete().eq('id', deleteRoomDialog.roomId).eq('org_id', currentOrg!.id);
     if (error) {
       toast({ title: 'Error deleting room', description: error.message, variant: 'destructive' });
     } else {
@@ -807,8 +807,8 @@ export default function Locations() {
                               <span className="text-sm font-medium">{room.name}</span>
                               {room.capacity && <span className="text-xs text-muted-foreground ml-1.5">(Cap: {room.capacity})</span>}
                               <div className="text-[11px] mt-0.5">
-                                {(locationStats?.roomBookings?.[room.id] || 0) > 0 ? (
-                                  <span className="text-muted-foreground">{locationStats.roomBookings[room.id]} upcoming</span>
+                                {(locationStats?.roomBookings?.[room.id] ?? 0) > 0 ? (
+                                  <span className="text-muted-foreground">{locationStats?.roomBookings?.[room.id]} upcoming</span>
                                 ) : (
                                   <span className="text-muted-foreground/60">No bookings</span>
                                 )}

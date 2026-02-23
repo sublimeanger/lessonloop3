@@ -53,7 +53,7 @@ export interface RegisterLesson {
   room_name: string | null;
   recurrence_id: string | null;
   teacher_id: string | null;
-  teacher_user_id: string;
+  teacher_user_id: string | null;
   participants: Array<{
     student_id: string;
     student_name: string;

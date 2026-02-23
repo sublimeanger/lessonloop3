@@ -59,7 +59,7 @@ interface LessonFormBodyProps {
   setConflictState: (state: { isChecking: boolean; conflicts: ConflictResult[] }) => void;
   errors: ConflictResult[];
   warnings: ConflictResult[];
-  closureCheck: { hasConflicts: boolean; warningMessage: string; conflicts: { date: Date; reason: string }[] };
+  closureCheck: { hasConflicts: boolean; warningMessage: string | null; conflicts: { date: Date; reason: string }[] };
   handleStudentToggle: (studentId: string) => void;
   handleRecurrenceDayToggle: (day: number) => void;
   studentSelectorRef: RefObject<HTMLButtonElement>;

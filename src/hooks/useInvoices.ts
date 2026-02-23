@@ -208,9 +208,9 @@ export function useCreateInvoice() {
       const { data: result, error } = await supabase.rpc('create_invoice_with_items', {
         _org_id: currentOrg.id,
         _due_date: data.due_date,
-        _payer_guardian_id: data.payer_guardian_id || null,
-        _payer_student_id: data.payer_student_id || null,
-        _notes: data.notes || null,
+        _payer_guardian_id: data.payer_guardian_id ?? undefined,
+        _payer_student_id: data.payer_student_id ?? undefined,
+        _notes: data.notes ?? undefined,
         _credit_ids: data.credit_ids || [],
         _items: JSON.stringify(data.items.map(item => ({
           description: item.description,
@@ -329,7 +329,7 @@ export function useRecordPayment() {
         _amount_minor: data.amount_minor,
         _currency_code: currentOrg.currency_code,
         _method: data.method,
-        _provider_reference: data.provider_reference || null,
+        _provider_reference: data.provider_reference ?? undefined,
       });
 
       if (error) throw error;

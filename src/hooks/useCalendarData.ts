@@ -96,11 +96,11 @@ async function fetchCalendarLessons(
   }
 
   const lessonIds = lessonsData.map(l => l.id);
-  const teacherIds = [...new Set(lessonsData.map(l => l.teacher_id).filter(Boolean))];
+  const teacherIds = [...new Set(lessonsData.map(l => l.teacher_id).filter((id): id is string => id != null))];
 
   const [teacherRecords, participantsData, attendanceData] = await Promise.all([
     teacherIds.length > 0
-      ? supabase.from('teachers').select('id, display_name, email').in('id', teacherIds)
+      ? supabase.from('teachers').select('id, display_name, email').in('id', teacherIds as string[])
       : Promise.resolve({ data: [] }),
     supabase
       .from('lesson_participants')
@@ -131,7 +131,9 @@ async function fetchCalendarLessons(
     ...lesson,
     start_at: toOrgLocalIso(lesson.start_at, orgTimezone),
     end_at: toOrgLocalIso(lesson.end_at, orgTimezone),
-    teacher: teacherMap.get(lesson.teacher_id),
+    teacher: teacherMap.get(lesson.teacher_id ?? '') ?? undefined,
+    location: lesson.location ? { name: lesson.location.name } : undefined,
+    room: lesson.room ? { name: lesson.room.name } : undefined,
     participants: (participantsMap.get(lesson.id) || []) as LessonWithDetails['participants'],
     attendance: (attendanceMap.get(lesson.id) || []) as LessonWithDetails['attendance'],
   }));
