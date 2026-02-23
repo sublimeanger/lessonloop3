@@ -258,6 +258,7 @@ export function useUpdateMessageRequest() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-message-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-requests-count'] });
       // Also invalidate calendar data since lessons may have changed
       if (data.calendarAction) {
         queryClient.invalidateQueries({ queryKey: ['calendar-lessons'] });
