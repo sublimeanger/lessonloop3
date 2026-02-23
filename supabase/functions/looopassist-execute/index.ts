@@ -881,9 +881,9 @@ async function executeCancelLesson(
   // Fetch all rate cards for duration-aware credit calculation
   const { data: rateCards } = await supabase
     .from("rate_cards")
-    .select("id, duration_minutes, rate_amount, is_default")
+    .select("id, duration_mins, rate_amount, is_default")
     .eq("org_id", orgId)
-    .order("duration_minutes", { ascending: true });
+    .order("duration_mins", { ascending: true });
 
   let cancelledCount = 0;
   let creditsIssued = 0;
@@ -915,8 +915,8 @@ async function executeCancelLesson(
       let creditValue = 3000; // fallback
       if (rateCards && rateCards.length > 0) {
         // Find exact match or closest lower duration
-        const matchingCard = rateCards.find((rc: { duration_minutes: number }) => rc.duration_minutes === durationMins) ||
-          rateCards.filter((rc: { duration_minutes: number }) => rc.duration_minutes <= durationMins).pop() ||
+        const matchingCard = rateCards.find((rc: { duration_mins: number }) => rc.duration_mins === durationMins) ||
+          rateCards.filter((rc: { duration_mins: number }) => rc.duration_mins <= durationMins).pop() ||
           rateCards.find((rc: { is_default: boolean }) => rc.is_default) ||
           rateCards[0];
         
