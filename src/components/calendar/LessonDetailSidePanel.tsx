@@ -88,10 +88,8 @@ export function LessonDetailSidePanel({
     <div
       className={cn(
         'shrink-0 border-l bg-background shadow-lg overflow-y-auto transition-all duration-200 ease-out',
-        'w-80 xl:w-96',
-        open ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 w-0 border-0 overflow-hidden'
+        open ? 'w-80 xl:w-96 opacity-100' : 'w-0 opacity-0 border-0 overflow-hidden p-0'
       )}
-      style={{ willChange: 'transform, opacity, width' }}
     >
       {lesson && (
         <div className="p-4 space-y-4 animate-scale-fade">
