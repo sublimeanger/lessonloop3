@@ -63,6 +63,24 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(JSON.stringify({ error: "Not a parent in this organisation" }), { status: 403, headers: jsonHeaders });
     }
 
+    // Check messaging settings
+    const { data: msgSettings } = await supabase
+      .from("org_messaging_settings")
+      .select("parent_can_initiate, notify_staff_on_new_message")
+      .eq("org_id", data.org_id)
+      .maybeSingle();
+
+    // Default to true if no settings row exists
+    const canInitiate = msgSettings?.parent_can_initiate ?? true;
+    if (!canInitiate) {
+      return new Response(
+        JSON.stringify({ error: "Your organisation has disabled parent-initiated messages. You can still reply to messages sent to you." }),
+        { status: 403, headers: jsonHeaders }
+      );
+    }
+
+    const shouldNotifyStaff = msgSettings?.notify_staff_on_new_message ?? true;
+
     // Find org owner/admin to notify
     const { data: adminMembership } = await supabase
       .from("org_memberships")
@@ -126,8 +144,8 @@ const handler = async (req: Request): Promise<Response> => {
     let emailSent = false;
     let errorMessage: string | null = null;
 
-    // Send email notification to staff
-    if (resendApiKey && staffEmail) {
+    // Send email notification to staff (if enabled)
+    if (resendApiKey && staffEmail && shouldNotifyStaff) {
       try {
         const resendResponse = await fetch("https://api.resend.com/emails", {
           method: "POST",

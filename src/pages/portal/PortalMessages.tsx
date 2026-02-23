@@ -18,6 +18,7 @@ import { useMarkMessagesAsRead } from '@/hooks/useUnreadMessages';
 import { RequestModal } from '@/components/portal/RequestModal';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { cn } from '@/lib/utils';
+import { useMessagingSettings } from '@/hooks/useMessagingSettings';
 
 function formatMessageTime(dateStr: string) {
   const d = parseISO(dateStr);
@@ -231,7 +232,8 @@ export default function PortalMessages() {
 
   const { data: requests, isLoading: requestsLoading, isError: requestsError, refetch: refetchRequests } = useMessageRequests();
   const { conversations, totalUnread, isLoading: conversationsLoading, isError: conversationsError } = useParentConversations();
-
+  const { settings: msgSettings } = useMessagingSettings();
+  const canInitiate = msgSettings.parent_can_initiate;
   const toggleThread = (threadId: string) => {
     setExpandedThread(prev => prev === threadId ? null : threadId);
   };
@@ -266,10 +268,12 @@ export default function PortalMessages() {
         title="Messages"
         description="View your messages and requests"
         actions={
-          <Button onClick={() => setRequestModalOpen(true)} className="gap-2 hidden sm:inline-flex">
-            <Plus className="h-4 w-4" />
-            New Message
-          </Button>
+          canInitiate && (
+            <Button onClick={() => setRequestModalOpen(true)} className="gap-2 hidden sm:inline-flex">
+              <Plus className="h-4 w-4" />
+              New Message
+            </Button>
+          )
         }
       />
 
@@ -388,14 +392,16 @@ export default function PortalMessages() {
         </TabsContent>
       </Tabs>
 
-      {/* Mobile FAB for compose */}
-      <button
-        onClick={() => setRequestModalOpen(true)}
-        className="fixed bottom-20 right-4 z-40 sm:hidden h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
-        aria-label="New request"
-      >
-        <Pencil className="h-5 w-5" />
-      </button>
+      {/* Mobile FAB for compose - only if parent can initiate */}
+      {canInitiate && (
+        <button
+          onClick={() => setRequestModalOpen(true)}
+          className="fixed bottom-20 right-4 z-40 sm:hidden h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+          aria-label="New request"
+        >
+          <Pencil className="h-5 w-5" />
+        </button>
+      )}
 
       <RequestModal open={requestModalOpen} onOpenChange={setRequestModalOpen} />
     </PortalLayout>

@@ -62,6 +62,15 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(JSON.stringify({ error: "Not a parent in this organisation" }), { status: 403, headers: jsonHeaders });
     }
 
+    // Check messaging settings for notification preferences
+    const { data: msgSettings } = await supabase
+      .from("org_messaging_settings")
+      .select("notify_staff_on_new_message")
+      .eq("org_id", data.org_id)
+      .maybeSingle();
+
+    const shouldNotifyStaff = msgSettings?.notify_staff_on_new_message ?? true;
+
     // Fetch the original message to get thread context and verify it was sent to this guardian
     const { data: originalMsg, error: msgError } = await supabase
       .from("message_log")
@@ -159,8 +168,8 @@ const handler = async (req: Request): Promise<Response> => {
     let emailSent = false;
     let errorMessage: string | null = null;
 
-    // Send email notification to staff
-    if (resendApiKey && staffEmail) {
+    // Send email notification to staff (if enabled)
+    if (resendApiKey && staffEmail && shouldNotifyStaff) {
       try {
         const resendResponse = await fetch("https://api.resend.com/emails", {
           method: "POST",
