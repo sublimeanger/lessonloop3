@@ -376,6 +376,7 @@ export function useMessageRequests() {
         `)
         .eq('org_id', currentOrg.id)
         .eq('guardian_id', guardianId)
+        .in('request_type', ['cancellation', 'reschedule'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;

@@ -160,7 +160,7 @@ export default function Messages() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
-          <TabsTrigger value="sent">Sent to Parents</TabsTrigger>
+          <TabsTrigger value="sent">Conversations</TabsTrigger>
           {isStaff && (
             <TabsTrigger value="internal" className="gap-2">
               Internal
@@ -173,7 +173,7 @@ export default function Messages() {
           )}
           {canViewRequests && (
             <TabsTrigger value="requests" className="gap-2">
-              Parent Requests
+              Cancellation / Reschedule
               {pendingCount && pendingCount > 0 && (
                 <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1">
                   {pendingCount}
