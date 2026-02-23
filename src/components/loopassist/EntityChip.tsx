@@ -31,6 +31,7 @@ export function EntityChip({ type, id, label, className }: EntityChipProps) {
         navigate(`/students/${id}`);
         break;
       case 'lesson':
+        // TODO: Pass lesson date through entity chip data-date attribute for date-aware navigation (/calendar?date=YYYY-MM-DD)
         navigate('/calendar');
         break;
       case 'guardian':
