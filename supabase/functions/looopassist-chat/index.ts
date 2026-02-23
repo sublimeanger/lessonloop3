@@ -114,7 +114,7 @@ async function buildDataContext(supabase: SupabaseClient, orgId: string, currenc
     .eq("org_id", orgId)
     .in("status", ["overdue", "sent"])
     .order("due_date", { ascending: true })
-    .limit(20);
+    .limit(50);
   if (overdueError) console.error("Failed to fetch overdue invoices:", overdueError.message);
 
   // Fetch upcoming lessons (next 7 days) with teacher from teachers table
@@ -130,7 +130,7 @@ async function buildDataContext(supabase: SupabaseClient, orgId: string, currenc
     .lte("start_at", `${weekFromNowStr}T23:59:59`)
     .eq("status", "scheduled")
     .order("start_at", { ascending: true })
-    .limit(30);
+    .limit(50);
   if (lessonsError) console.error("Failed to fetch upcoming lessons:", lessonsError.message);
 
   // Fetch active students with summary info
@@ -140,7 +140,7 @@ async function buildDataContext(supabase: SupabaseClient, orgId: string, currenc
     .eq("org_id", orgId)
     .eq("status", "active")
     .order("last_name", { ascending: true })
-    .limit(50);
+    .limit(200);
   if (studentsError) console.error("Failed to fetch students:", studentsError.message);
 
   // Fetch primary instruments for all students (for the student list summary)
@@ -190,7 +190,7 @@ async function buildDataContext(supabase: SupabaseClient, orgId: string, currenc
     .select("id, full_name, email")
     .eq("org_id", orgId)
     .order("full_name", { ascending: true })
-    .limit(50);
+    .limit(200);
   if (guardiansError) console.error("Failed to fetch guardians:", guardiansError.message);
 
   // NEW: Fetch recent cancellations (last 7 days)
@@ -347,14 +347,14 @@ async function buildDataContext(supabase: SupabaseClient, orgId: string, currenc
   // Build student summary
   let studentSummary = "";
   if ((students || []).length > 0) {
-    studentSummary += `\n\nACTIVE STUDENTS (${students.length}):`;
-    students.slice(0, 15).forEach((s: Student) => {
+    studentSummary += `\n\nACTIVE STUDENTS (${students.length} total):`;
+    students.slice(0, 30).forEach((s: Student) => {
       const instruments = instrumentsByStudent.get(s.id);
       const instLine = instruments ? ` — Instruments: ${instruments.join(", ")}` : "";
       studentSummary += `\n- [Student:${s.id}:${sanitiseForPrompt(`${s.first_name} ${s.last_name}`)}]${instLine}`;
     });
-    if (students.length > 15) {
-      studentSummary += `\n... and ${students.length - 15} more`;
+    if (students.length > 30) {
+      studentSummary += `\n... and ${students.length - 30} more — ask me about specific students by name`;
     }
   }
 
@@ -366,7 +366,7 @@ async function buildDataContext(supabase: SupabaseClient, orgId: string, currenc
       guardianSummary += `\n- [Guardian:${g.id}:${sanitiseForPrompt(g.full_name)}]${g.email ? ` (${g.email})` : ""}`;
     });
     if (guardians.length > 10) {
-      guardianSummary += `\n... and ${guardians.length - 10} more`;
+      guardianSummary += `\n... and ${guardians.length - 10} more — ask me about specific guardians by name`;
     }
   }
 
@@ -768,7 +768,7 @@ async function buildStudentContext(supabase: SupabaseClient, orgId: string, stud
   }
 
   // Truncate if context exceeds 4000 characters to avoid bloating the prompt
-  const MAX_CONTEXT_CHARS = 4000;
+  const MAX_CONTEXT_CHARS = 6000;
   if (context.length > MAX_CONTEXT_CHARS) {
     // Split by double-newline to get sections, truncate at section boundaries
     const sections = context.split('\n\n');
