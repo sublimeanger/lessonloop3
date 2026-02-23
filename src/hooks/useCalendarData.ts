@@ -99,7 +99,7 @@ async function fetchCalendarLessons(
   const lessonIds = lessonsData.map(l => l.id);
   const teacherIds = [...new Set(lessonsData.map(l => l.teacher_id).filter((id): id is string => id != null))];
 
-  const [teacherRecords, participantsData, attendanceData] = await Promise.all([
+  const [teacherRecords, participantsData, attendanceData, makeupData] = await Promise.all([
     teacherIds.length > 0
       ? supabase.from('teachers').select('id, display_name, email').in('id', teacherIds as string[])
       : Promise.resolve({ data: [] }),
@@ -111,6 +111,11 @@ async function fetchCalendarLessons(
       .from('attendance_records')
       .select('lesson_id, student_id, attendance_status')
       .in('lesson_id', lessonIds),
+    supabase
+      .from('make_up_waitlist')
+      .select('booked_lesson_id, student_id')
+      .in('booked_lesson_id', lessonIds)
+      .eq('status', 'booked'),
   ]);
 
   const teacherData = ('data' in teacherRecords ? teacherRecords.data : teacherRecords) as { id: string; display_name: string | null; email: string | null }[] | null;
@@ -127,6 +132,13 @@ async function fetchCalendarLessons(
     const existing = attendanceMap.get(a.lesson_id) || [];
     attendanceMap.set(a.lesson_id, [...existing, a]);
   });
+  const makeupMap = new Map<string, string[]>();
+  (makeupData.data || []).forEach((m: any) => {
+    if (m.booked_lesson_id) {
+      const existing = makeupMap.get(m.booked_lesson_id) || [];
+      makeupMap.set(m.booked_lesson_id, [...existing, m.student_id]);
+    }
+  });
 
   const enrichedLessons: LessonWithDetails[] = lessonsData.map((lesson) => ({
     ...lesson,
@@ -137,6 +149,7 @@ async function fetchCalendarLessons(
     room: lesson.room ? { name: lesson.room.name } : undefined,
     participants: (participantsMap.get(lesson.id) || []) as LessonWithDetails['participants'],
     attendance: (attendanceMap.get(lesson.id) || []) as LessonWithDetails['attendance'],
+    makeupStudentIds: makeupMap.get(lesson.id) || [],
   }));
 
   return { lessons: enrichedLessons, isCapReached };
