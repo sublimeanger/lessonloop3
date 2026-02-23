@@ -153,7 +153,7 @@ export function usePayroll(startDate: string, endDate: string) {
         teacherMap.set(tid, {
           name: teacherData?.display_name || 'Unknown',
           payRateType: teacherData?.pay_rate_type as 'per_lesson' | 'hourly' | 'percentage' | null,
-          payRateValue: Number(teacherData?.pay_rate_value) || 0,
+          payRateValue: (Number(teacherData?.pay_rate_value) || 0) / 100,
         });
       }
 
