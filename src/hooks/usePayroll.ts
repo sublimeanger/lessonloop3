@@ -29,6 +29,8 @@ export interface PayrollData {
   teachers: TeacherPayrollSummary[];
   totalGrossOwed: number;
   dateRange: { start: string; end: string };
+  /** True when the teachers_with_pay view failed and pay rates could not be loaded */
+  payRatesUnavailable?: boolean;
 }
 
 export function usePayroll(startDate: string, endDate: string) {
@@ -92,7 +94,6 @@ export function usePayroll(startDate: string, endDate: string) {
           }
         }
       }
-      if (lessonsError) throw lessonsError;
 
       // Get unique teacher IDs (prefer teacher_id, fallback to teacher_user_id)
       const teacherIds = [...new Set((lessons || [])
@@ -116,19 +117,20 @@ export function usePayroll(startDate: string, endDate: string) {
         .in('id', teacherIds);
       if (tError) {
         // Fallback to base teachers table if view fails
+        console.error('teachers_with_pay view failed, falling back to base table (pay rates unavailable):', tError.message);
         const { data: fallbackTeachers } = await supabase
           .from('teachers')
           .select('id, display_name')
           .eq('org_id', currentOrg.id)
           .in('id', teacherIds);
-        
-        // Build teacher map without pay data
+
+        // Build teacher map without pay data — will show £0 with warnings
         const teacherMap = new Map<string, {
           name: string;
           payRateType: 'per_lesson' | 'hourly' | 'percentage' | null;
           payRateValue: number;
         }>();
-        
+
         for (const t of fallbackTeachers || []) {
           teacherMap.set(t.id, {
             name: t.display_name,
@@ -136,8 +138,10 @@ export function usePayroll(startDate: string, endDate: string) {
             payRateValue: 0,
           });
         }
-        
-        return calculatePayroll(lessons || [], teacherMap, startDate, endDate, invoiceItemsMap);
+
+        const result = calculatePayroll(lessons || [], teacherMap, startDate, endDate, invoiceItemsMap);
+        result.payRatesUnavailable = true;
+        return result;
       }
 
       // Build teacher map

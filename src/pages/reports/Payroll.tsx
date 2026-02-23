@@ -17,6 +17,7 @@ import { useSortableTable } from '@/hooks/useSortableTable';
 import { useOrg } from '@/contexts/OrgContext';
 import { formatCurrency, formatDateUK } from '@/lib/utils';
 import { useTerms } from '@/hooks/useTerms';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Download, ChevronDown, ChevronRight, Banknote, Clock, Users, FileSpreadsheet, AlertTriangle, Printer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -124,6 +125,16 @@ export default function PayrollReport() {
         </EmptyState>
       ) : (
         <div className={`transition-opacity duration-300 ${isFetching ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
+          {/* Pay rates unavailable warning */}
+          {data.payRatesUnavailable && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Pay rate data could not be loaded. All pay amounts below are shown as £0. Please check your teacher pay rate configuration in Settings.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Summary Cards */}
           <div className="mb-6 grid gap-4 md:grid-cols-3">
             <Card>
