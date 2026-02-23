@@ -485,11 +485,24 @@ function LandingView({
 
 // ─── Typing Indicator ───
 function TypingIndicator() {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setElapsed(e => e + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="flex items-center gap-1 h-5" aria-label="LoopAssist is thinking">
-      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-[typing-bounce_1.4s_ease-in-out_infinite]" />
-      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-[typing-bounce_1.4s_ease-in-out_0.2s_infinite]" />
-      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-[typing-bounce_1.4s_ease-in-out_0.4s_infinite]" />
+    <div className="flex flex-col gap-1" aria-label="LoopAssist is thinking">
+      <div className="flex items-center gap-1 h-5">
+        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-[typing-bounce_1.4s_ease-in-out_infinite]" />
+        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-[typing-bounce_1.4s_ease-in-out_0.2s_infinite]" />
+        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-[typing-bounce_1.4s_ease-in-out_0.4s_infinite]" />
+      </div>
+      {elapsed > 10 && (
+        <p className="text-[10px] text-muted-foreground">
+          {elapsed > 30 ? 'Almost there…' : 'Thinking…'}
+        </p>
+      )}
     </div>
   );
 }
