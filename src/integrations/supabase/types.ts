@@ -4629,6 +4629,10 @@ export type Database = {
         Args: { _student_id: string; _user_id: string }
         Returns: boolean
       }
+      reassign_teacher_conversations_to_owner: {
+        Args: { _org_id: string }
+        Returns: number
+      }
       record_payment_and_update_status: {
         Args: {
           _amount_minor: number
