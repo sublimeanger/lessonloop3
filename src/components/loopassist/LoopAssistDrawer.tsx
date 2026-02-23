@@ -33,7 +33,7 @@ import {
 import { useLoopAssist, AIMessage, AIConversation } from '@/hooks/useLoopAssist';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { useProactiveAlerts, ProactiveAlert } from '@/hooks/useProactiveAlerts';
-import { useLoopAssistFirstRun } from '@/hooks/useLoopAssistFirstRun';
+import { useLoopAssistFirstRun, type ProactiveMessage } from '@/hooks/useLoopAssistFirstRun';
 import { preprocessEntityChips, EntityChip } from './EntityChip';
 import { ActionCard, stripActionBlock, parseActionFromResponse } from './ActionCard';
 import { ResultCard, parseResultFromResponse, stripResultBlock } from './ResultCard';
@@ -381,7 +381,7 @@ function LandingView({
   dismissProactiveMessage,
 }: {
   alerts: ProactiveAlert[];
-  proactiveMessage: { title: string; message: string; suggestedPrompts: string[] } | null;
+  proactiveMessage: ProactiveMessage | null;
   suggestedPrompts: string[];
   conversations: AIConversation[];
   onSendMessage: (msg: string) => void;

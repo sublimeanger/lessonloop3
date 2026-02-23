@@ -25,7 +25,7 @@ export function EntityChip({ type, id, label, className }: EntityChipProps) {
   const handleClick = () => {
     switch (type) {
       case 'invoice':
-        navigate(`/invoices?search=${encodeURIComponent(label)}`);
+        navigate(`/invoices?search=${encodeURIComponent(id)}`);
         break;
       case 'student':
         navigate(`/students/${id}`);
