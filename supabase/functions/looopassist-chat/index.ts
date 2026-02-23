@@ -832,6 +832,8 @@ serve(async (req) => {
       /do\s+anything\s+now/i,
       /jailbreak/i,
       /bypass\s+(?:your\s+)?(?:filters?|rules?|safety)/i,
+      /^human\s*:/im,
+      /^user\s*:/im,
     ];
     const MAX_MESSAGE_LENGTH = 2000;
 
@@ -849,7 +851,9 @@ serve(async (req) => {
       // Encode characters that could break prompt structure
       sanitised = sanitised
         .replace(/```/g, "'''")
-        .replace(/\x00/g, "");
+        .replace(/\x00/g, "")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
       return sanitised;
     }
 
@@ -1036,10 +1040,12 @@ Currency: ${orgData.currency_code}`
         model: "claude-haiku-4-5-20251001",
         max_tokens: 4096,
         system: fullContext,
-        messages: messages.map((m: any) => ({
-          role: m.role === "system" ? "user" : m.role,
-          content: m.content,
-        })),
+        messages: messages
+          .filter((m: any) => m.role && m.content)
+          .map((m: any) => ({
+            role: m.role === 'user' ? 'user' : 'assistant',
+            content: typeof m.content === 'string' ? m.content : String(m.content),
+          })),
         stream: true,
       }),
     });
