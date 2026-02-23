@@ -234,7 +234,18 @@ export function useCreateInvoice() {
       toast({ title: 'Invoice created' });
     },
     onError: (error: unknown) => {
-      toastError(error, 'Failed to create invoice');
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.toLowerCase().includes('credits have already been redeemed') || message.toLowerCase().includes('credit') && message.toLowerCase().includes('redeemed')) {
+        toast({
+          title: 'Credit already used',
+          description: 'One or more of the selected make-up credits has been redeemed since you started. Please refresh and try again.',
+          variant: 'destructive',
+        });
+        queryClient.invalidateQueries({ queryKey: ['available-credits-for-payer'] });
+        queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
+      } else {
+        toastError(error, 'Failed to create invoice');
+      }
     },
   });
 }
