@@ -527,6 +527,15 @@ async function executeSendInvoiceReminders(
 
   if (error) throw error;
 
+  // Fetch org currency for correct formatting
+  const { data: org } = await supabase
+    .from("organisations")
+    .select("currency_code")
+    .eq("id", orgId)
+    .single();
+  const fmtCurrency = (minor: number) =>
+    new Intl.NumberFormat('en-GB', { style: 'currency', currency: org?.currency_code || 'GBP' }).format(minor / 100);
+
   let remindersSent = 0;
   const results: string[] = [];
 
@@ -548,7 +557,7 @@ async function executeSendInvoiceReminders(
       recipient_type: invoice.guardians ? "guardian" : "student",
       recipient_id: invoice.guardians?.id || invoice.students?.id,
       subject: `Payment Reminder: Invoice ${invoice.invoice_number}`,
-      body: `Dear ${recipientName},\n\nThis is a friendly reminder that invoice ${invoice.invoice_number} for £${(invoice.total_minor / 100).toFixed(2)} is outstanding. The due date was ${invoice.due_date}.\n\nPlease arrange payment at your earliest convenience.\n\nThank you.`,
+      body: `Dear ${recipientName},\n\nThis is a friendly reminder that invoice ${invoice.invoice_number} for ${fmtCurrency(invoice.total_minor)} is outstanding. The due date was ${invoice.due_date}.\n\nPlease arrange payment at your earliest convenience.\n\nThank you.`,
       message_type: "invoice_reminder",
       status: "queued",
       related_id: invoice.id,
