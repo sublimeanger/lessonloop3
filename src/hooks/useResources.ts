@@ -1,4 +1,5 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { STALE_SIGNED_URL } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -334,7 +335,7 @@ export function useResourceDownloadUrl(filePath: string) {
       return data.signedUrl;
     },
     enabled: !!filePath,
-    staleTime: 1000 * 60 * 55, // Refresh URL 5 mins before expiry
+    staleTime: STALE_SIGNED_URL,
   });
 }
 

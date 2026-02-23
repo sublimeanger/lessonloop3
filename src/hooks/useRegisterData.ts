@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { STALE_VOLATILE } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -196,7 +197,7 @@ export function useRegisterData(date: Date) {
       });
     },
     enabled: !!currentOrg,
-    staleTime: 30_000,
+    staleTime: STALE_VOLATILE,
   });
 }
 
@@ -463,7 +464,7 @@ export function useBatchAttendanceLessons(date: Date) {
       }));
     },
     enabled: !!currentOrg?.id,
-    staleTime: 30_000,
+    staleTime: STALE_VOLATILE,
   });
 }
 

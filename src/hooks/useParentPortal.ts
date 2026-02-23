@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { STALE_STABLE } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -88,7 +89,7 @@ export function useGuardianInfo() {
       return data;
     },
     enabled: !!user && !!currentOrg,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_STABLE,
   });
 }
 

@@ -947,7 +947,7 @@ function BillingHistoryCard({ orgId }: { orgId: string }) {
       if (error) throw error;
       return (result as { invoices: StripeInvoice[] }).invoices;
     },
-    staleTime: 60_000,
+    // Uses default SEMI_STABLE (2 min)
   });
 
   const formatAmount = (amount: number, currency: string) => {

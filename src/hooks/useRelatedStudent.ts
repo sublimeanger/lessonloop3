@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { STALE_STABLE } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 
 export function useRelatedStudent(studentId: string | null | undefined, orgId: string | null | undefined) {
@@ -18,6 +19,6 @@ export function useRelatedStudent(studentId: string | null | undefined, orgId: s
       return data ? { id: data.id, name: `${data.first_name} ${data.last_name}` } : null;
     },
     enabled: !!studentId && !!orgId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_STABLE,
   });
 }

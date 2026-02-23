@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Calendar, Pencil, Mail, Phone, Music, Briefcase, GraduationCap, FileText, Link2, Link2Off, Trash2, Clock } from 'lucide-react';
 import { Teacher } from '@/hooks/useTeachers';
 import { useQuery } from '@tanstack/react-query';
+import { STALE_VOLATILE } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { TEACHER_COLOURS } from '@/components/calendar/teacherColours';
@@ -66,7 +67,7 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, onRemove
       return { count: data.length, hours: Math.round(totalMinutes / 60 * 10) / 10 };
     },
     enabled: !!teacher && !!currentOrg && open,
-    staleTime: 30_000,
+    staleTime: STALE_VOLATILE,
   });
 
   if (!teacher) return null;

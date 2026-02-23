@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { STALE_VOLATILE } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg, OrgType } from '@/contexts/OrgContext';
 
@@ -55,6 +56,6 @@ export function useOnboardingProgress() {
       };
     },
     enabled: !!currentOrg,
-    staleTime: 30 * 1000,
+    staleTime: STALE_VOLATILE,
   });
 }

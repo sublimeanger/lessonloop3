@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { STALE_STABLE } from '@/config/query-stale-times';
 import { useSearchParams } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -90,7 +91,7 @@ export default function Locations() {
       })) as Location[];
     },
     enabled: !!currentOrg,
-    staleTime: 30_000,
+    staleTime: STALE_STABLE,
   });
   const [expandedLocations, setExpandedLocations] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
@@ -215,7 +216,7 @@ export default function Locations() {
       return { locationStats: stats, roomBookings };
     },
     enabled: !!currentOrg && locationIds.length > 0,
-    staleTime: 60_000,
+    // Uses default SEMI_STABLE (2 min)
   });
 
   // Filtered locations
