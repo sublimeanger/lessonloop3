@@ -823,12 +823,24 @@ serve(async (req) => {
       /repeat\s+(your\s+)?(system\s+)?prompt/i,
       /what\s+are\s+your\s+instructions/i,
       /forget\s+(everything|all)/i,
+      /base64\s+decode/i,
+      /encode.*instructions/i,
+      /translate.*instructions/i,
+      /(?:in|using)\s+(?:french|spanish|german|chinese|japanese|korean|arabic|hindi|russian|portuguese|italian)/i,
+      /\bDAN\b/,
+      /do\s+anything\s+now/i,
+      /jailbreak/i,
+      /bypass\s+(?:your\s+)?(?:filters?|rules?|safety)/i,
     ];
     const MAX_MESSAGE_LENGTH = 2000;
 
     function sanitiseMessage(content: string): string {
       // Truncate
       let sanitised = content.slice(0, MAX_MESSAGE_LENGTH);
+      // Normalise Unicode homoglyphs to ASCII equivalents
+      sanitised = sanitised.normalize('NFKC');
+      // Strip zero-width and invisible characters
+      sanitised = sanitised.replace(/[\u200B-\u200F\u2028-\u202F\uFEFF\u00AD]/g, '');
       // Strip injection patterns
       for (const pattern of INJECTION_PATTERNS) {
         sanitised = sanitised.replace(pattern, "[filtered]");
