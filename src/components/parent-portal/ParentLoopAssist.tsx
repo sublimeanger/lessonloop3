@@ -264,15 +264,4 @@ function MessageBubble({ message }: { message: ParentAIMessage }) {
   );
 }
 
-export function ParentLoopAssistButton({ onClick }: { onClick: () => void }) {
-  return (
-    <Button
-      onClick={onClick}
-      size="icon"
-      className="fixed bottom-20 right-4 z-50 h-12 w-12 rounded-full shadow-lg md:bottom-6"
-    >
-      <Sparkles className="h-5 w-5" />
-      <span className="sr-only">Open LoopAssist</span>
-    </Button>
-  );
-}
+// Removed: ParentLoopAssistButton is no longer needed - LoopAssist opens from the Header

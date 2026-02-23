@@ -1,4 +1,4 @@
-import { ReactNode, Suspense, useState } from 'react';
+import { ReactNode, Suspense, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -9,7 +9,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { PageTransitionFallback } from '@/components/shared/PageTransitionFallback';
 import { ChildFilterProvider } from '@/contexts/ChildFilterContext';
 import { ChildSwitcher } from '@/components/portal/ChildSwitcher';
-import { ParentLoopAssist, ParentLoopAssistButton } from '@/components/parent-portal/ParentLoopAssist';
+import { ParentLoopAssist } from '@/components/parent-portal/ParentLoopAssist';
+import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 
 interface PortalLayoutProps {
   children: ReactNode;
@@ -18,7 +19,7 @@ interface PortalLayoutProps {
 export function PortalLayout({ children }: PortalLayoutProps) {
   const isMobile = useIsMobile();
   const location = useLocation();
-  const [loopAssistOpen, setLoopAssistOpen] = useState(false);
+  const { isOpen, setIsOpen } = useLoopAssistUI();
 
   const contentTransition = (
     <Suspense fallback={<PageTransitionFallback />}>
@@ -47,8 +48,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
             </div>
           </main>
           <PortalBottomNav />
-          <ParentLoopAssistButton onClick={() => setLoopAssistOpen(true)} />
-          <ParentLoopAssist open={loopAssistOpen} onOpenChange={setLoopAssistOpen} />
+          <ParentLoopAssist open={isOpen} onOpenChange={setIsOpen} />
         </div>
       </ChildFilterProvider>
     );
@@ -68,8 +68,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
             </main>
           </div>
         </div>
-        <ParentLoopAssistButton onClick={() => setLoopAssistOpen(true)} />
-        <ParentLoopAssist open={loopAssistOpen} onOpenChange={setLoopAssistOpen} />
+        <ParentLoopAssist open={isOpen} onOpenChange={setIsOpen} />
       </SidebarProvider>
     </ChildFilterProvider>
   );
