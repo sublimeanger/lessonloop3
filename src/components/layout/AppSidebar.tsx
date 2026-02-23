@@ -26,6 +26,8 @@ import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { useProactiveAlerts } from '@/hooks/useProactiveAlerts';
+import { useUnreadInternalCount } from '@/hooks/useInternalMessages';
+import { usePendingRequestsCount } from '@/hooks/useAdminMessageRequests';
 import {
   Sidebar,
   SidebarContent,
@@ -35,6 +37,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuBadge,
   SidebarFooter,
   SidebarSeparator,
   useSidebar,
@@ -195,7 +198,7 @@ function getRoleLabel(role: AppRole | null): string {
   return labels[role];
 }
 
-function SidebarNavItem({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
+function SidebarNavItem({ item, collapsed, badge }: { item: NavItem; collapsed: boolean; badge?: number }) {
   const button = (
     <SidebarMenuButton asChild>
       <NavLink
@@ -218,11 +221,25 @@ function SidebarNavItem({ item, collapsed }: { item: NavItem; collapsed: boolean
             {item.title}
           </TooltipContent>
         </Tooltip>
+        {!!badge && badge > 0 && (
+          <SidebarMenuBadge className="bg-destructive text-destructive-foreground">
+            {badge > 99 ? '99+' : badge}
+          </SidebarMenuBadge>
+        )}
       </SidebarMenuItem>
     );
   }
 
-  return <SidebarMenuItem>{button}</SidebarMenuItem>;
+  return (
+    <SidebarMenuItem>
+      {button}
+      {!!badge && badge > 0 && (
+        <SidebarMenuBadge className="bg-destructive text-destructive-foreground">
+          {badge > 99 ? '99+' : badge}
+        </SidebarMenuBadge>
+      )}
+    </SidebarMenuItem>
+  );
 }
 
 export function AppSidebar() {
@@ -232,6 +249,9 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const { setIsOpen: openLoopAssist } = useLoopAssistUI();
   const { totalActionable, hasCritical } = useProactiveAlerts();
+  const { data: unreadInternal = 0 } = useUnreadInternalCount();
+  const { data: pendingRequests = 0 } = usePendingRequestsCount();
+  const messageBadge = unreadInternal + pendingRequests;
   const collapsed = state === 'collapsed';
   const navGroups = getNavGroups(currentRole);
   const showLoopAssist = currentRole && currentRole !== 'parent';
@@ -271,7 +291,12 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => (
-                  <SidebarNavItem key={item.url} item={item} collapsed={collapsed} />
+                  <SidebarNavItem
+                    key={item.url}
+                    item={item}
+                    collapsed={collapsed}
+                    badge={item.url === '/messages' ? messageBadge : undefined}
+                  />
                 ))}
               </SidebarMenu>
             </SidebarGroupContent>
