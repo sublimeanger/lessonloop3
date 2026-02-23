@@ -94,6 +94,7 @@ export function useUrgentActions() {
             .from('message_requests')
             .select('id', { count: 'exact', head: true })
             .eq('org_id', currentOrg.id)
+            .in('request_type', ['cancellation', 'reschedule'])
             .eq('status', 'pending');
 
           if (requestsCount && requestsCount > 0) {
