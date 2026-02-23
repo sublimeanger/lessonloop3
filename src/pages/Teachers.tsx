@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { logger } from '@/lib/logger';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { teacherSchema, type TeacherFormValues } from '@/lib/schemas';
@@ -327,14 +328,14 @@ export default function Teachers() {
         .delete()
         .eq('teacher_id', teacher.id)
         .eq('org_id', currentOrg.id);
-      if (staError) console.error('Failed to clean up student-teacher assignments:', staError);
+      if (staError) logger.error('Failed to clean up student-teacher assignments:', staError);
 
       // Null out practice assignments for this teacher
       const { error: paError } = await supabase
         .from('practice_assignments')
         .update({ teacher_id: null })
         .eq('teacher_id', teacher.id);
-      if (paError) console.error('Failed to clean up practice assignments:', paError);
+      if (paError) logger.error('Failed to clean up practice assignments:', paError);
 
       // Clear default_teacher_id on students
       const { error: sdError } = await supabase
@@ -342,7 +343,7 @@ export default function Teachers() {
         .update({ default_teacher_id: null })
         .eq('default_teacher_id', teacher.id)
         .eq('org_id', currentOrg.id);
-      if (sdError) console.error('Failed to clear default teacher on students:', sdError);
+      if (sdError) logger.error('Failed to clear default teacher on students:', sdError);
 
       await deleteTeacher.mutateAsync(teacher.id);
 

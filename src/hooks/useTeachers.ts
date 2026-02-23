@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
@@ -149,7 +150,7 @@ export function useTeacherMutations() {
           .update({ status: 'disabled' as any })
           .eq('org_id', currentOrg.id)
           .eq('user_id', teacher.user_id);
-        if (memberError) console.error('Failed to disable membership:', memberError);
+        if (memberError) logger.error('Failed to disable membership:', memberError);
       }
     },
     onSuccess: () => {
@@ -189,7 +190,7 @@ export function useTeacherMutations() {
           .update({ status: 'active' as any })
           .eq('org_id', currentOrg.id)
           .eq('user_id', teacher.user_id);
-        if (memberError) console.error('Failed to re-enable membership:', memberError);
+        if (memberError) logger.error('Failed to re-enable membership:', memberError);
       }
     },
     onSuccess: () => {
