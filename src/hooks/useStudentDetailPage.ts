@@ -528,7 +528,7 @@ export function useStudentDetailPage() {
 
     try {
       if (existingInviteId) {
-        await supabase.from('invites').delete().eq('id', existingInviteId);
+        await supabase.from('invites').delete().eq('id', existingInviteId).eq('org_id', currentOrg.id);
       }
 
       const { data: invite, error: inviteError } = await supabase

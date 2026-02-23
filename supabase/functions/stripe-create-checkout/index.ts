@@ -70,6 +70,15 @@ serve(async (req) => {
       throw new Error("Invoice not found");
     }
 
+    // Verify caller is authorized to pay this invoice
+    const { data: isAuthorized } = await supabase.rpc('is_invoice_payer', {
+      _user_id: user.id,
+      _invoice_id: invoiceId,
+    });
+    if (!isAuthorized) {
+      throw new Error("You are not authorized to pay this invoice");
+    }
+
     // Check invoice is payable
     if (!["sent", "overdue"].includes(invoice.status)) {
       throw new Error(`Invoice cannot be paid (status: ${invoice.status})`);
@@ -112,8 +121,8 @@ serve(async (req) => {
       resolvedInstallmentId = installment.id;
 
     } else if (payRemaining && invoice.payment_plan_enabled) {
-      // Pay remaining balance for payment plan invoice
-      paymentAmount = invoice.total_minor - (invoice.paid_minor || 0);
+      // Pay remaining balance for payment plan invoice (use fresh calculation, not cached paid_minor)
+      paymentAmount = amountDue;
       description = `${invoice.invoice_number} — Remaining balance`;
 
     } else if (invoice.payment_plan_enabled) {

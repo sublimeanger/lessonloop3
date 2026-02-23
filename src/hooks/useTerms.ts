@@ -105,11 +105,13 @@ export function useUpdateTerm() {
 
 export function useDeleteTerm() {
   const queryClient = useQueryClient();
+  const { currentOrg } = useOrg();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('terms').delete().eq('id', id);
+      if (!currentOrg?.id) throw new Error('No organisation selected');
+      const { error } = await supabase.from('terms').delete().eq('id', id).eq('org_id', currentOrg.id);
       if (error) throw error;
     },
     onSuccess: () => {

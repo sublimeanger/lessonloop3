@@ -189,10 +189,12 @@ export function useCalendarConnections() {
   // Toggle sync enabled
   const toggleSync = useMutation({
     mutationFn: async ({ connectionId, enabled }: { connectionId: string; enabled: boolean }) => {
+      if (!user?.id) throw new Error('Not authenticated');
       const { error } = await supabase
         .from('calendar_connections')
         .update({ sync_enabled: enabled, updated_at: new Date().toISOString() })
-        .eq('id', connectionId);
+        .eq('id', connectionId)
+        .eq('user_id', user.id);
 
       if (error) throw error;
     },

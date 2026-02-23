@@ -79,15 +79,18 @@ export function useUpdateCategory() {
 }
 
 export function useDeleteCategory() {
+  const { currentOrg } = useOrg();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!currentOrg?.id) throw new Error('No organisation selected');
       const { error } = await supabase
         .from('resource_categories')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('org_id', currentOrg.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -113,7 +116,8 @@ export function useAssignCategories() {
       const { error: delError } = await supabase
         .from('resource_category_assignments')
         .delete()
-        .eq('resource_id', resourceId);
+        .eq('resource_id', resourceId)
+        .eq('org_id', currentOrg.id);
       if (delError) throw delError;
 
       // Insert new assignments

@@ -1,6 +1,15 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
+async function hmacSign(data: string, secret: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 Deno.serve(async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
@@ -41,6 +50,22 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Verify user is a member of this org
+    const { data: membership } = await supabase
+      .from('org_memberships')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('org_id', org_id)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (!membership) {
+      return new Response(JSON.stringify({ error: 'Not a member of this organisation' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Get Google OAuth credentials
     const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
     const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET');
@@ -56,13 +81,16 @@ Deno.serve(async (req) => {
     }
 
     // Generate state token (include user and org info for callback)
-    const stateData = {
+    const statePayload = {
       user_id: user.id,
       org_id,
       redirect_uri: redirect_uri || `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/settings`,
       nonce: crypto.randomUUID(),
     };
-    const state = btoa(JSON.stringify(stateData));
+    const payloadStr = JSON.stringify(statePayload);
+    const hmacSecret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const sig = await hmacSign(payloadStr, hmacSecret);
+    const state = btoa(JSON.stringify({ payload: statePayload, sig }));
 
     // Build Google OAuth URL
     const scopes = [
