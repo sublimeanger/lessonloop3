@@ -9,13 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare, Loader2, Plus, Clock, CheckCircle, XCircle, AlertCircle, Mail, Pencil, Reply } from 'lucide-react';
+import { MessageSquare, Loader2, Plus, Clock, CheckCircle, XCircle, AlertCircle, Mail, Pencil, Reply, ChevronDown, ChevronRight, User, Shield } from 'lucide-react';
 import { format, parseISO, isToday, isYesterday } from 'date-fns';
 import { useMessageRequests } from '@/hooks/useParentPortal';
-import { useParentMessages } from '@/hooks/useMessages';
+import { useParentConversations, type Conversation, type ConversationMessage } from '@/hooks/useParentConversations';
 import { useParentReply } from '@/hooks/useParentReply';
-import { RequestModal } from '@/components/portal/RequestModal';
 import { useMarkMessagesAsRead } from '@/hooks/useUnreadMessages';
+import { RequestModal } from '@/components/portal/RequestModal';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { cn } from '@/lib/utils';
 
@@ -26,63 +26,169 @@ function formatMessageTime(dateStr: string) {
   return format(d, 'd MMM, HH:mm');
 }
 
-function InboxMessageCard({ msg }: { msg: any }) {
-  const [showReply, setShowReply] = useState(false);
-  const [replyBody, setReplyBody] = useState('');
-  const replyMutation = useParentReply();
-  const isUnread = !msg.read_at;
+function formatConversationDate(dateStr: string) {
+  const d = parseISO(dateStr);
+  if (isToday(d)) return format(d, 'HH:mm');
+  if (isYesterday(d)) return 'Yesterday';
+  return format(d, 'd MMM');
+}
 
-  const handleSendReply = async () => {
-    if (!replyBody.trim()) return;
-    await replyMutation.mutateAsync({
-      parentMessageId: msg.id,
-      body: replyBody.trim(),
-    });
-    setReplyBody('');
-    setShowReply(false);
-  };
+function MessageBubble({ msg }: { msg: ConversationMessage }) {
+  const isParent = msg.sender_role === 'parent';
 
   return (
-    <div className="flex items-start gap-3">
-      {/* Unread dot */}
-      <div className="pt-3 flex-shrink-0 w-2.5">
-        {isUnread && (
-          <span className="block h-2.5 w-2.5 rounded-full bg-primary" />
-        )}
-      </div>
-
-      {/* Chat bubble + reply */}
-      <div className="flex-1 space-y-2">
+    <div className={cn('flex', isParent ? 'justify-end' : 'justify-start')}>
+      <div className={cn('max-w-[80%] space-y-1')}>
+        <div className="flex items-center gap-2 mb-0.5">
+          {!isParent && (
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 gap-1">
+              <Shield className="h-2.5 w-2.5" />
+              {msg.sender_name || 'Staff'}
+            </Badge>
+          )}
+          {isParent && (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-1 ml-auto">
+              <User className="h-2.5 w-2.5" />
+              You
+            </Badge>
+          )}
+          <span className="text-[10px] text-muted-foreground">
+            {formatMessageTime(msg.created_at)}
+          </span>
+        </div>
         <div
           className={cn(
-            'rounded-2xl rounded-tl-sm px-4 py-3 transition-all duration-150',
-            'bg-muted/60 dark:bg-muted/30',
-            isUnread && 'bg-primary/5 dark:bg-primary/10 ring-1 ring-primary/15'
+            'rounded-2xl px-4 py-3 text-sm',
+            isParent
+              ? 'bg-primary text-primary-foreground rounded-br-sm'
+              : 'bg-muted/60 dark:bg-muted/30 rounded-bl-sm'
           )}
         >
-          <div className="flex items-baseline justify-between gap-3 mb-1">
-            <h4 className={cn('text-sm font-semibold leading-tight', isUnread && 'text-primary')}>
-              {msg.subject}
-            </h4>
-            <span className="text-[11px] text-muted-foreground whitespace-nowrap flex-shrink-0">
-              {formatMessageTime(msg.created_at)}
-            </span>
-          </div>
           {/<[a-z][\s\S]*>/i.test(msg.body) ? (
             <div
-              className="text-sm text-muted-foreground prose prose-sm max-w-none dark:prose-invert [&_a]:text-primary [&_a]:underline"
+              className={cn(
+                'prose prose-sm max-w-none',
+                isParent ? 'prose-invert [&_a]:text-primary-foreground' : 'dark:prose-invert [&_a]:text-primary'
+              )}
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.body) }}
             />
           ) : (
-            <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-              {msg.body}
-            </p>
+            <p className="whitespace-pre-wrap">{msg.body}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConversationCard({
+  conversation,
+  isExpanded,
+  onToggle,
+}: {
+  conversation: Conversation;
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
+  const [replyBody, setReplyBody] = useState('');
+  const replyMutation = useParentReply();
+  const markAsRead = useMarkMessagesAsRead();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Mark unread messages as read when expanded
+  useEffect(() => {
+    if (!isExpanded || conversation.unreadCount === 0) return;
+    const unreadIds = conversation.messages
+      .filter(m => !m.read_at && m.sender_role === 'staff' && m.status === 'sent')
+      .map(m => m.id);
+    if (unreadIds.length > 0) {
+      const timer = setTimeout(() => markAsRead.mutate(unreadIds), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [isExpanded, conversation.messages, conversation.unreadCount]);
+
+  // Scroll to bottom when expanded
+  useEffect(() => {
+    if (isExpanded) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [isExpanded, conversation.messages.length]);
+
+  const handleSendReply = async () => {
+    if (!replyBody.trim()) return;
+    // Find the last staff message to reply to (or the first message in thread)
+    const staffMessages = conversation.messages.filter(m => m.sender_role === 'staff');
+    const lastStaffMsg = staffMessages[staffMessages.length - 1] || conversation.messages[0];
+
+    await replyMutation.mutateAsync({
+      parentMessageId: lastStaffMsg.id,
+      body: replyBody.trim(),
+    });
+    setReplyBody('');
+  };
+
+  const hasUnread = conversation.unreadCount > 0;
+
+  return (
+    <Card className={cn(
+      'transition-all duration-150',
+      hasUnread && !isExpanded && 'ring-1 ring-primary/20 bg-primary/[0.02]'
+    )}>
+      {/* Conversation header - clickable */}
+      <button
+        onClick={onToggle}
+        className="w-full text-left p-4 flex items-start gap-3 hover:bg-muted/30 transition-colors rounded-t-lg"
+      >
+        <div className="pt-0.5 flex-shrink-0">
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           )}
         </div>
 
-        {/* Reply section */}
-        {showReply ? (
-          <div className="ml-2 space-y-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline justify-between gap-2">
+            <h4 className={cn(
+              'text-sm font-medium truncate',
+              hasUnread && 'font-semibold text-primary'
+            )}>
+              {conversation.subject}
+            </h4>
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap flex-shrink-0">
+              {formatConversationDate(conversation.lastMessageAt)}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground truncate mt-0.5">
+            {conversation.lastSenderRole === 'parent' ? 'You: ' : ''}
+            {conversation.lastMessagePreview.replace(/<[^>]*>/g, '')}
+          </p>
+        </div>
+
+        {hasUnread && (
+          <Badge variant="destructive" className="h-5 min-w-5 px-1 text-xs flex-shrink-0">
+            {conversation.unreadCount}
+          </Badge>
+        )}
+
+        <Badge variant="outline" className="text-[10px] flex-shrink-0">
+          {conversation.messages.length}
+        </Badge>
+      </button>
+
+      {/* Expanded conversation */}
+      {isExpanded && (
+        <CardContent className="pt-0 pb-4 px-4 border-t">
+          {/* Messages timeline */}
+          <div className="space-y-3 py-4 max-h-96 overflow-y-auto">
+            {conversation.messages.map((msg) => (
+              <MessageBubble key={msg.id} msg={msg} />
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Reply area */}
+          <div className="border-t pt-3 space-y-2">
             <Textarea
               placeholder="Write your reply…"
               value={replyBody}
@@ -93,18 +199,11 @@ function InboxMessageCard({ msg }: { msg: any }) {
                   handleSendReply();
                 }
               }}
-              rows={3}
+              rows={2}
               className="text-sm"
             />
-            <p className="text-xs text-muted-foreground">Press Ctrl+Enter to send</p>
-            <div className="flex items-center gap-2 justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => { setShowReply(false); setReplyBody(''); }}
-              >
-                Cancel
-              </Button>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] text-muted-foreground">Ctrl+Enter to send</p>
               <Button
                 size="sm"
                 onClick={handleSendReply}
@@ -119,75 +218,23 @@ function InboxMessageCard({ msg }: { msg: any }) {
               </Button>
             </div>
           </div>
-        ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowReply(true)}
-            className="ml-2 gap-1.5 text-muted-foreground hover:text-foreground"
-          >
-            <Reply className="h-3.5 w-3.5" />
-            Reply
-          </Button>
-        )}
-      </div>
-    </div>
+        </CardContent>
+      )}
+    </Card>
   );
 }
 
 export default function PortalMessages() {
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('inbox');
-  const queryClient = useQueryClient();
+  const [expandedThread, setExpandedThread] = useState<string | null>(null);
 
   const { data: requests, isLoading: requestsLoading, isError: requestsError, refetch: refetchRequests } = useMessageRequests();
-  const { data: messages, isLoading: messagesLoading, isError: messagesError, hasMore, loadMore, isFetchingMore } = useParentMessages();
-  const markAsRead = useMarkMessagesAsRead();
+  const { conversations, totalUnread, isLoading: conversationsLoading, isError: conversationsError } = useParentConversations();
 
-  const lastMarkedKey = useRef('');
-
-  useEffect(() => {
-    if (activeTab !== 'inbox' || !messages?.length) return;
-
-    const unreadIds = messages
-      .filter(m => !m.read_at && m.status === 'sent')
-      .map(m => m.id);
-
-    if (unreadIds.length === 0) return;
-
-    const key = unreadIds.join(',');
-    if (key === lastMarkedKey.current) return;
-
-    const now = new Date().toISOString();
-    queryClient.setQueriesData(
-      { queryKey: ['parent-messages'], exact: false },
-      (old: any) => {
-        if (!old?.pages) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page: any) => ({
-            ...page,
-            data: page.data.map((msg: any) =>
-              unreadIds.includes(msg.id) ? { ...msg, read_at: now } : msg
-            ),
-          })),
-        };
-      }
-    );
-
-    queryClient.setQueriesData(
-      { queryKey: ['unread-messages-count'], exact: false },
-      () => 0
-    );
-
-    const timer = setTimeout(() => {
-      lastMarkedKey.current = key;
-      markAsRead.mutate(unreadIds);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [activeTab, messages]);
-
-  const unreadCount = messages?.filter(m => !m.read_at && m.status === 'sent').length || 0;
+  const toggleThread = (threadId: string) => {
+    setExpandedThread(prev => prev === threadId ? null : threadId);
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -226,26 +273,26 @@ export default function PortalMessages() {
         }
       />
 
-      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); lastMarkedKey.current = ''; }} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="inbox" className="gap-2">
             Inbox
-            {unreadCount > 0 && (
+            {totalUnread > 0 && (
               <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1 text-xs">
-                {unreadCount}
+                {totalUnread}
               </Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="requests">My Requests</TabsTrigger>
         </TabsList>
 
-        {/* Inbox - chat bubble style with reply */}
+        {/* Inbox - conversation threads */}
         <TabsContent value="inbox">
-          {messagesLoading ? (
+          {conversationsLoading ? (
             <ListSkeleton count={3} />
-          ) : messagesError ? (
+          ) : conversationsError ? (
             <PortalErrorState />
-          ) : !messages || messages.length === 0 ? (
+          ) : conversations.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Mail className="h-12 w-12 text-muted-foreground/40" />
@@ -256,24 +303,15 @@ export default function PortalMessages() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4">
-              {messages.map((msg) => (
-                <InboxMessageCard key={msg.id} msg={msg} />
+            <div className="space-y-3">
+              {conversations.map((conv) => (
+                <ConversationCard
+                  key={conv.threadId}
+                  conversation={conv}
+                  isExpanded={expandedThread === conv.threadId}
+                  onToggle={() => toggleThread(conv.threadId)}
+                />
               ))}
-
-              {hasMore && (
-                <div className="flex justify-center pt-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => loadMore()}
-                    disabled={isFetchingMore}
-                    className="gap-2"
-                  >
-                    {isFetchingMore && <Loader2 className="h-4 w-4 animate-spin" />}
-                    {isFetchingMore ? 'Loading…' : 'Load more messages'}
-                  </Button>
-                </div>
-              )}
             </div>
           )}
         </TabsContent>
