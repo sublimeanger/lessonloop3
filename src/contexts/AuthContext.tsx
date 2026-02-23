@@ -306,7 +306,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
     setRoles([]);
     
-    await supabase.auth.signOut({ scope: 'global' });
+    await supabase.auth.signOut({ scope: 'local' });
     
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     if (projectId) {

@@ -55,7 +55,7 @@ export function RouteGuard({
   allowedRoles,
   redirectTo = '/login',
 }: RouteGuardProps) {
-  const { user, profile, isLoading, isInitialised, signOut } = useAuth();
+  const { user, profile, isInitialised, signOut } = useAuth();
   const { currentRole, hasInitialised: orgInitialised } = useOrg();
   const location = useLocation();
   const navigate = useNavigate();
@@ -135,7 +135,7 @@ export function RouteGuard({
 
 // Public route wrapper - redirects authenticated users
 export function PublicRoute({ children }: { children: ReactNode }) {
-  const { user, profile, isLoading, isInitialised } = useAuth();
+  const { user, profile, isInitialised } = useAuth();
   const { currentRole, hasInitialised: orgInitialised } = useOrg();
   const location = useLocation();
 

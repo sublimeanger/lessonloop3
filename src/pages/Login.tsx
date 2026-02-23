@@ -202,9 +202,9 @@ export default function Login() {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
-                   value={password}
-                   onChange={(e) => { setPassword(e.target.value); setLoginFailed(false); }}
-                   aria-invalid={loginFailed}
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setLoginFailed(false); }}
+                  aria-invalid={loginFailed}
                   disabled={isLoading}
                   autoComplete="current-password"
                   className="pr-10"
