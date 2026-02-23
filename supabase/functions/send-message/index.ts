@@ -17,7 +17,11 @@ interface SendMessageRequest {
   message_type?: string;
   thread_id?: string;
   parent_message_id?: string;
+  /** When false, only creates in-app message without sending email. Defaults to true for backward compat. */
+  send_email?: boolean;
 }
+
+const PORTAL_URL = "https://lessonloop3.lovable.app/portal/messages";
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight
@@ -64,6 +68,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     const data: SendMessageRequest = await req.json();
 
+    // Default send_email to true for backward compatibility
+    const shouldSendEmail = data.send_email !== false;
+
     // Validate required fields
     if (!data.org_id || !data.recipient_email || !data.subject || !data.body) {
       throw new Error("Missing required fields");
@@ -102,7 +109,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from("message_log")
       .insert({
         org_id: data.org_id,
-        channel: "email",
+        channel: shouldSendEmail ? "email" : "inapp",
         subject: data.subject,
         body: data.body,
         sender_user_id: senderId,
@@ -112,7 +119,8 @@ const handler = async (req: Request): Promise<Response> => {
         recipient_name: data.recipient_name,
         related_id: data.related_id || null,
         message_type: data.message_type || "manual",
-        status: "pending",
+        status: shouldSendEmail ? "pending" : "sent",
+        sent_at: shouldSendEmail ? null : new Date().toISOString(),
         thread_id: data.thread_id || null,
         parent_message_id: data.parent_message_id || null,
       })
@@ -122,6 +130,22 @@ const handler = async (req: Request): Promise<Response> => {
     if (logError) {
       console.error("Error creating message log:", logError);
       throw new Error("Failed to create message log");
+    }
+
+    // If not sending email, return immediately with success
+    if (!shouldSendEmail) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message_id: messageLog.id,
+          email_sent: false,
+          channel: "inapp",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
     }
 
     let emailSent = false;
@@ -146,6 +170,14 @@ const handler = async (req: Request): Promise<Response> => {
                 <div style="white-space: pre-wrap; color: #555; line-height: 1.6;">
                   ${escapeHtml(data.body).replace(/\n/g, "<br>")}
                 </div>
+                <div style="margin: 32px 0; text-align: center;">
+                  <a href="${PORTAL_URL}" style="display: inline-block; padding: 12px 28px; background-color: #4F46E5; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+                    Reply in Your Portal
+                  </a>
+                </div>
+                <p style="color: #999; font-size: 12px; text-align: center;">
+                  To reply to this message, please log in to your parent portal using the button above.
+                </p>
                 <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;" />
                 <p style="color: #999; font-size: 12px;">
                   This message was sent via ${escapeHtml(orgName)} on LessonLoop.

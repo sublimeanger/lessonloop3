@@ -267,6 +267,7 @@ export function useReplyToMessage() {
       recipientId,
       subject,
       body,
+      send_email: sendEmail,
     }: {
       parentMessageId: string;
       threadId: string;
@@ -276,6 +277,7 @@ export function useReplyToMessage() {
       recipientId: string | null;
       subject: string;
       body: string;
+      send_email?: boolean;
     }) => {
       if (!currentOrg || !user) throw new Error('Not authenticated');
 
@@ -292,6 +294,7 @@ export function useReplyToMessage() {
           message_type: 'reply',
           thread_id: threadId,
           parent_message_id: parentMessageId,
+          send_email: sendEmail ?? false,
         },
       });
 
