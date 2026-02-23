@@ -1,6 +1,6 @@
 import { ReactNode, Suspense, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+// framer-motion removed from this file — using CSS animation instead
 import { PageTransitionFallback } from '@/components/shared/PageTransitionFallback';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Header } from './Header';
@@ -51,13 +51,9 @@ function AppLayoutInner({ children }: AppLayoutProps) {
           <AutoBreadcrumbs />
           <SectionErrorBoundary name="Page" key={location.pathname}>
             <Suspense fallback={<PageTransitionFallback />}>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.15, ease: 'easeOut' }}
-              >
+              <div className="animate-page-enter">
                 {children}
-              </motion.div>
+              </div>
             </Suspense>
           </SectionErrorBoundary>
         </main>
