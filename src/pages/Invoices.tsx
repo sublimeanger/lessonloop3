@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useRealtimeInvoices } from '@/hooks/useRealtimeInvoices';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ import {
 export default function Invoices() {
   const { currentRole, currentOrg } = useOrg();
   const { toast } = useToast();
+  useRealtimeInvoices();
   const isParent = currentRole === 'parent';
   const [filters, setFilters] = useState<InvoiceFilters>({});
   const [currentPage, setCurrentPage] = useState(1);
