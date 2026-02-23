@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 
 /**
  * Hook for parents to send general enquiries as conversations (via message_log).
- * This replaces the old message_requests flow for "general" type requests.
+ * Uses the unified send-parent-message edge function.
  */
 export function useParentEnquiry() {
   const { currentOrg } = useOrg();
@@ -18,7 +18,7 @@ export function useParentEnquiry() {
     mutationFn: async ({ subject, body, student_id }: { subject: string; body: string; student_id?: string }) => {
       if (!currentOrg || !user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase.functions.invoke('send-parent-enquiry', {
+      const { data, error } = await supabase.functions.invoke('send-parent-message', {
         body: {
           org_id: currentOrg.id,
           subject,
