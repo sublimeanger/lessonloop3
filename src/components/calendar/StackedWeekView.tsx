@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { startOfWeek, addDays, format, isToday, isWeekend, parseISO } from 'date-fns';
 import { LessonWithDetails } from './types';
-import { TeacherWithColour, getTeacherColour, TEACHER_COLOURS, TeacherColourEntry } from './teacherColours';
+import { TeacherWithColour, getTeacherColour, TeacherColourEntry } from './teacherColours';
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -85,8 +85,10 @@ export function StackedWeekView({
   isParent,
   compact = false,
 }: StackedWeekViewProps) {
-  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const days = useMemo(() => {
+    const ws = startOfWeek(currentDate, { weekStartsOn: 1 });
+    return Array.from({ length: 7 }, (_, i) => addDays(ws, i));
+  }, [currentDate]);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
   // Group lessons by day
@@ -185,9 +187,9 @@ export function StackedWeekView({
               )}
               onClick={(e) => {
                 if (e.target === e.currentTarget && !isParent) {
-                  const noon = new Date(day);
-                  noon.setHours(9, 0, 0, 0);
-                  onDayClick(noon);
+                  const slotDate = new Date(day);
+                  slotDate.setHours(9, 0, 0, 0);
+                  onDayClick(slotDate);
                 }
               }}
             >

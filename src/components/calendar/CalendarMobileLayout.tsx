@@ -100,7 +100,12 @@ export function CalendarMobileLayout({
       )}
 
       <SectionErrorBoundary name="Calendar">
-        {isLoading ? <CalendarSkeleton /> : (
+        {isLoading ? <CalendarSkeleton /> : lessons.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <p className="text-lg">No lessons today</p>
+            {!isParent && <p className="text-sm mt-1">Tap + to create a lesson</p>}
+          </div>
+        ) : (
           <MobileDayView currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap} onLessonClick={actions.handleLessonClick} savingLessonIds={actions.savingLessonIds} />
         )}
       </SectionErrorBoundary>
@@ -112,7 +117,7 @@ export function CalendarMobileLayout({
             d.setHours(9, 0, 0, 0);
             actions.openNewLessonModal(d);
           }}
-          className="fixed right-6 bottom-6 z-40 h-14 w-14 rounded-full bg-foreground text-background shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+          className="fixed right-6 bottom-6 z-40 h-14 w-14 rounded-full bg-foreground text-background shadow-lg flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="New Lesson"
           disabled={!isOnline}
         >

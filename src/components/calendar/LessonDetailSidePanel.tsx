@@ -146,7 +146,7 @@ export function LessonDetailSidePanel({
               <div className="flex items-center gap-3">
                 <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className="text-sm text-foreground">
-                  {lesson.location.name}{(lesson.location as any).is_archived && <span className="text-muted-foreground"> (Archived)</span>}
+                  {lesson.location.name}{lesson.location.is_archived && <span className="text-muted-foreground"> (Archived)</span>}
                   {lesson.room && <span className="text-muted-foreground"> · {lesson.room.name}</span>}
                 </span>
               </div>

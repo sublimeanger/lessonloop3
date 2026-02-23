@@ -119,13 +119,13 @@ export function CalendarDesktopLayout({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1 shrink-0">
             <Button variant="outline" size="sm" onClick={goToToday} className="shrink-0 h-8 px-2.5 text-xs sm:text-sm sm:px-3">Today</Button>
-            <Button variant="ghost" size="icon" onClick={navigatePrev} className="h-8 w-8"><ChevronLeft className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="icon" onClick={navigateNext} className="h-8 w-8"><ChevronRight className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={navigatePrev} className="h-8 w-8" aria-label="Previous"><ChevronLeft className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={navigateNext} className="h-8 w-8" aria-label="Next"><ChevronRight className="h-4 w-4" /></Button>
           </div>
 
           <div className="flex items-center gap-1 shrink-0">
             {!isParent && <MarkDayCompleteButton currentDate={currentDate} lessons={lessons} onComplete={refetch} />}
-            <ToggleGroup type="single" value={view} onValueChange={(v) => v && setView(v as CalendarView)} data-tour="calendar-view-toggle">
+            <ToggleGroup type="single" value={view} onValueChange={(v) => { if (v && ['day', 'stacked', 'week', 'agenda'].includes(v)) setView(v as CalendarView); }} data-tour="calendar-view-toggle">
               <ToggleGroupItem value="day" aria-label="Day view" className="h-8 w-8 p-0"><Calendar className="h-3.5 w-3.5" /></ToggleGroupItem>
               <ToggleGroupItem value="stacked" aria-label="Stacked view" className="h-8 w-8 p-0"><Columns3 className="h-3.5 w-3.5" /></ToggleGroupItem>
               <ToggleGroupItem value="week" aria-label="Time grid view" className="h-8 w-8 p-0"><LayoutGrid className="h-3.5 w-3.5" /></ToggleGroupItem>

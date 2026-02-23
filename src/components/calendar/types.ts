@@ -26,6 +26,10 @@ export interface Lesson {
 }
 
 export interface LessonWithDetails extends Lesson {
+  /** Original UTC start_at from the database (for DB queries / offset calculations). */
+  utc_start_at?: string;
+  /** Original UTC end_at from the database (for DB queries / offset calculations). */
+  utc_end_at?: string;
   is_series_exception?: boolean;
   teacher?: {
     full_name: string | null;
@@ -33,6 +37,7 @@ export interface LessonWithDetails extends Lesson {
   } | null;
   location?: {
     name: string;
+    is_archived?: boolean;
   };
   room?: {
     name: string;

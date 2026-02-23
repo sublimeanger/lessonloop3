@@ -491,7 +491,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
             <div className="flex items-center gap-3 text-muted-foreground">
               <MapPin className="h-4 w-4 flex-shrink-0" />
               <span className="text-sm font-medium text-foreground">
-                {lesson.location.name}{(lesson.location as any).is_archived && <span className="text-muted-foreground"> (Archived)</span>}
+                {lesson.location.name}{lesson.location.is_archived && <span className="text-muted-foreground"> (Archived)</span>}
                 {lesson.room && ` – ${lesson.room.name}`}
               </span>
             </div>

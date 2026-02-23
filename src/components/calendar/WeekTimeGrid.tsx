@@ -19,7 +19,7 @@ import { LessonWithDetails } from './types';
 import { LessonCard } from './LessonCard';
 import { computeOverlapLayout } from './overlapLayout';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { TeacherWithColour, TeacherColourEntry, TEACHER_COLOURS, getTeacherColour } from './teacherColours';
+import { TeacherWithColour, TeacherColourEntry, getTeacherColour } from './teacherColours';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -187,7 +187,7 @@ export function WeekTimeGrid({
   });
 
   const getClosureForDay = (day: Date) =>
-    closures.find((c) => isSameDay(c.date, day));
+    closures?.find((c) => isSameDay(c.date, day));
 
   // ─── Auto-scroll to current time on mount ─────────────────
   useEffect(() => {
@@ -277,7 +277,7 @@ export function WeekTimeGrid({
     isSlotDraggingRef.current = false;
     setSlotDragStart(null);
     setSlotDragEnd(null);
-  }, [isSlotDragging, slotDragStart, slotDragEnd, onSlotDrag]);
+  }, [isSlotDragging, slotDragStart, slotDragEnd, onSlotDrag, START_HOUR, END_HOUR]);
 
   const handleSlotClick = (e: React.MouseEvent) => {
     if (wasSlotDragging.current) { wasSlotDragging.current = false; return; }
@@ -549,9 +549,7 @@ export function WeekTimeGrid({
                         >
                           <LessonCard
                             lesson={lesson}
-                            onClick={() => {
-                              if (!isLessonDragging && !isResizing) onLessonClick(lesson);
-                            }}
+                            onClick={undefined}
                             teacherColour={resolveColour(teacherColourMap, lesson.teacher_id)}
                             showResizeHandle={!isParent && !!onLessonResize}
                             onResizeStart={(e) => startResize(lesson, e)}

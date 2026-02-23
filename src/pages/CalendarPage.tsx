@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { safeGetItem, safeSetItem } from '@/lib/storage';
 import { useSearchParams } from 'react-router-dom';
-import { format, addWeeks, subWeeks, parseISO } from 'date-fns';
+import { format, addWeeks, subWeeks, addDays, subDays, parseISO } from 'date-fns';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCalendarData, useTeachersAndLocations } from '@/hooks/useCalendarData';
@@ -36,7 +36,7 @@ export default function CalendarPage() {
 
   const [currentDate, setCurrentDateRaw] = useState(() => {
     const dateParam = searchParams.get('date');
-    return dateParam ? new Date(dateParam) : new Date();
+    return dateParam ? parseISO(dateParam) : new Date();
   });
   const [view, setViewRaw] = useState<CalendarView>(() => {
     const v = searchParams.get('view');
@@ -108,8 +108,8 @@ export default function CalendarPage() {
   const teacherColourMap = useMemo(() => buildTeacherColourMap(teachers), [teachers]);
   const teachersWithColours = useMemo(() => Array.from(teacherColourMap.values()), [teacherColourMap]);
 
-  const navigatePrev = () => setCurrentDate(subWeeks(currentDate, 1));
-  const navigateNext = () => setCurrentDate(addWeeks(currentDate, 1));
+  const navigatePrev = () => setCurrentDate(view === 'day' ? subDays(currentDate, 1) : subWeeks(currentDate, 1));
+  const navigateNext = () => setCurrentDate(view === 'day' ? addDays(currentDate, 1) : addWeeks(currentDate, 1));
   const goToToday = () => setCurrentDate(new Date());
 
   useEffect(() => {
