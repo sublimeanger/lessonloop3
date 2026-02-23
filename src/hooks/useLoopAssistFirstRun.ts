@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const STORAGE_KEY = 'loopassist_first_run_orgs';
 
-interface ProactiveMessage {
+export interface ProactiveMessage {
   title: string;
   message: string;
   suggestedPrompts: string[];
