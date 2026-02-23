@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Mail, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,6 @@ export function ThreadedMessageList({ searchQuery }: ThreadedMessageListProps) {
     });
   };
 
-  // Use server-side results for 3+ char queries, client-side filter for shorter
   const filteredThreads = useMemo(() => {
     if (isServerSearch) return searchResults;
     if (!threads) return [];
@@ -59,7 +58,16 @@ export function ThreadedMessageList({ searchQuery }: ThreadedMessageListProps) {
     return (
       <div className="space-y-4">
         {[1, 2, 3].map(i => (
-          <Skeleton key={i} className="h-20 w-full" />
+          <div key={i} className="rounded-2xl border bg-card p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-9 w-9 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-2/3 rounded-lg" />
+                <Skeleton className="h-3 w-1/3 rounded-lg" />
+              </div>
+              <Skeleton className="h-3 w-12 rounded-lg" />
+            </div>
+          </div>
         ))}
       </div>
     );
@@ -67,13 +75,18 @@ export function ThreadedMessageList({ searchQuery }: ThreadedMessageListProps) {
 
   if (!filteredThreads.length) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-          <Mail className="h-12 w-12 text-muted-foreground/50 mb-4" />
-          <p className="text-muted-foreground">
+      <Card className="rounded-2xl">
+        <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-5">
+            <Mail className="h-8 w-8 text-muted-foreground/50" />
+          </div>
+          <p className="text-muted-foreground font-medium mb-1">
+            {searchQuery?.trim() ? 'No threads match your search' : 'No conversations yet'}
+          </p>
+          <p className="text-sm text-muted-foreground/70">
             {searchQuery?.trim()
-              ? 'No threads match your search.'
-              : 'No message threads yet. Send a message to start a conversation.'}
+              ? 'Try adjusting your search terms.'
+              : 'Send a message to start a conversation.'}
           </p>
         </CardContent>
       </Card>
@@ -81,7 +94,7 @@ export function ThreadedMessageList({ searchQuery }: ThreadedMessageListProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {filteredThreads.map(thread => (
         <ThreadCard
           key={thread.thread_id}
@@ -99,6 +112,7 @@ export function ThreadedMessageList({ searchQuery }: ThreadedMessageListProps) {
             size="sm"
             onClick={() => fetchNextPage()}
             disabled={isFetchingNextPage}
+            className="rounded-full px-6"
           >
             {isFetchingNextPage ? (
               <>

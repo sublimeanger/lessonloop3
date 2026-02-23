@@ -1,17 +1,17 @@
 import { useState } from 'react';
-import { format, isToday, isYesterday } from 'date-fns';
+import { formatDistanceToNowStrict, isToday, isYesterday, format } from 'date-fns';
 import { 
-  MessageSquare, 
   ChevronDown, 
   ChevronRight, 
   Reply,
-  User,
-  Loader2 
+  Loader2,
+  MessageSquare
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useReplyToMessage, useThreadMessages, MessageThread } from '@/hooks/useMessageThreads';
 import { useRelatedStudent } from '@/hooks/useRelatedStudent';
@@ -22,6 +22,20 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+
+function getInitials(name: string | null): string {
+  if (!name) return '?';
+  return name.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+}
+
+function relativeTime(dateStr: string): string {
+  const d = new Date(dateStr);
+  if (isToday(d)) {
+    return formatDistanceToNowStrict(d, { addSuffix: false }).replace(' seconds', 's').replace(' second', 's').replace(' minutes', 'm').replace(' minute', 'm').replace(' hours', 'h').replace(' hour', 'h');
+  }
+  if (isYesterday(d)) return 'Yesterday';
+  return format(d, 'd MMM');
+}
 
 /** Check if a guardian recipient is still active */
 function useRecipientActive(recipientType: string | null, recipientId: string | null, orgId: string | undefined) {
@@ -55,7 +69,6 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
   const [replyBody, setReplyBody] = useState('');
   const { toast } = useToast();
 
-  // Lazy-load full message bodies only when expanded
   const { data: messages, isLoading: messagesLoading } = useThreadMessages(
     thread.thread_id,
     isExpanded
@@ -92,41 +105,46 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
   };
 
   return (
-    <Card className="overflow-hidden">
+    <Card className={`overflow-hidden rounded-2xl transition-all duration-150 hover:shadow-elevated active:scale-[0.995] ${thread.has_unread ? 'border-l-4 border-l-primary' : ''}`}>
       <Collapsible open={isExpanded} onOpenChange={onToggle}>
         <CollapsibleTrigger asChild>
-          <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/50 transition-colors">
-            <div className="flex-shrink-0">
-              {isExpanded ? (
-                <ChevronDown className="h-5 w-5 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              )}
+          <div className="flex items-center gap-3 p-3 sm:p-4 cursor-pointer hover:bg-muted/40 transition-colors">
+            {/* Chevron */}
+            <div className="flex-shrink-0 text-muted-foreground">
+              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             </div>
-            <div className="flex-shrink-0">
-              <MessageSquare className="h-5 w-5 text-primary" />
-            </div>
+
+            {/* Avatar */}
+            <Avatar className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0">
+              <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                {getInitials(thread.recipient_name)}
+              </AvatarFallback>
+            </Avatar>
+
+            {/* Content */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className="font-medium truncate">{thread.subject}</span>
+              <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                {thread.has_unread && (
+                  <span className="h-2 w-2 rounded-full bg-primary flex-shrink-0" />
+                )}
+                <span className="font-semibold text-sm sm:text-base truncate">{thread.subject}</span>
                 {thread.message_count > 1 && (
-                  <Badge variant="secondary" className="text-xs">
-                    {thread.message_count} messages
+                  <Badge variant="secondary" className="rounded-full text-xs px-2 py-0 h-5 font-medium">
+                    {thread.message_count}
                   </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-                <User className="h-3 w-3 flex-shrink-0" />
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
                 <span className="truncate">
                   {thread.recipient_name || thread.recipient_email}
                 </span>
                 {isRecipientInactive && (
-                  <Badge variant="outline" className="text-muted-foreground text-xs">
+                  <Badge variant="outline" className="text-muted-foreground text-[10px] px-1.5 py-0 h-4 rounded-full">
                     Inactive
                   </Badge>
                 )}
                 {relatedStudent && (
-                  <span onClick={(e) => e.stopPropagation()}>
+                  <span onClick={(e) => e.stopPropagation()} className="hidden sm:inline-flex">
                     <EntityChip
                       type="student"
                       id={relatedStudent.id}
@@ -135,8 +153,8 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
                     />
                   </span>
                 )}
-                <span className="text-xs ml-auto flex-shrink-0">
-                  {format(new Date(thread.latest_message_at), 'dd MMM yyyy, HH:mm')}
+                <span className="text-xs ml-auto flex-shrink-0 tabular-nums">
+                  {relativeTime(thread.latest_message_at)}
                 </span>
               </div>
             </div>
@@ -145,12 +163,12 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
 
         <CollapsibleContent>
           <div className="border-t">
-            {/* Thread messages — lazy loaded */}
-            <div className="divide-y">
+            {/* Messages area with inset styling */}
+            <div className="mx-2 sm:mx-3 my-2 sm:my-3 bg-muted/20 rounded-xl overflow-hidden">
               {messagesLoading ? (
                 <div className="p-4 space-y-3">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-4 w-3/4 rounded-lg" />
+                  <Skeleton className="h-16 w-full rounded-xl" />
                 </div>
               ) : (
                 messages?.map((msg, idx) => {
@@ -163,10 +181,10 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
                   return (
                     <div key={msg.id}>
                       {showSeparator && (
-                        <div className="flex items-center gap-2 px-4 py-2">
-                          <div className="flex-1 h-px bg-border" />
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">{dateLabel}</span>
-                          <div className="flex-1 h-px bg-border" />
+                        <div className="flex justify-center py-3">
+                          <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-xs font-medium">
+                            {dateLabel}
+                          </span>
                         </div>
                       )}
                       <ThreadMessageItem message={msg} />
@@ -177,40 +195,46 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
             </div>
 
             {/* Reply section */}
-            <div className="p-3 sm:p-4 bg-background border-t">
+            <div className="p-3 sm:p-4 border-t bg-background">
               {replyingTo === thread.thread_id ? (
                 <div className="space-y-3">
                   <Textarea
-                    placeholder="Write your reply..."
+                    placeholder="Write your reply…"
                     value={replyBody}
                     onChange={(e) => setReplyBody(e.target.value)}
                     onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleSendReply(); } }}
                     rows={3}
+                    className="rounded-xl resize-none focus-visible:ring-primary/20"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">Press Ctrl+Enter to send</p>
-                  <div className="flex items-center gap-2 justify-end">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setReplyingTo(null);
-                        setReplyBody('');
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      size="sm"
-                      onClick={handleSendReply}
-                      disabled={!replyBody.trim() || replyMutation.isPending}
-                    >
-                      {replyMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Reply className="h-4 w-4 mr-2" />
-                      )}
-                      Send Reply
-                    </Button>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">⌘ Enter</kbd> to send
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          setReplyingTo(null);
+                          setReplyBody('');
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        size="sm"
+                        onClick={handleSendReply}
+                        disabled={!replyBody.trim() || replyMutation.isPending}
+                        className="rounded-full px-4"
+                      >
+                        {replyMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                        ) : (
+                          <Reply className="h-4 w-4 mr-1.5" />
+                        )}
+                        Send
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -218,7 +242,7 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
                   variant="outline" 
                   size="sm"
                   onClick={() => setReplyingTo(thread.thread_id)}
-                  className="gap-2"
+                  className="gap-2 rounded-full"
                 >
                   <Reply className="h-4 w-4" />
                   Reply
