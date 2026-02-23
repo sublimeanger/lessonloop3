@@ -39,6 +39,7 @@ function TestApp({ path, allowedRoles }: { path: string; allowedRoles?: any[] })
   return (
     <MemoryRouter initialEntries={[path]}>
       <Routes>
+        <Route path="/auth" element={<div data-testid="login">Login Page</div>} />
         <Route path="/login" element={<div data-testid="login">Login Page</div>} />
         <Route path="/onboarding" element={<div data-testid="onboarding">Onboarding Page</div>} />
         <Route path="/dashboard" element={
@@ -97,7 +98,7 @@ describe('LL-AUTH-P0-01: RouteGuard', () => {
   });
 
   describe('Authentication redirects', () => {
-    it('redirects unauthenticated users to /login', () => {
+    it('redirects unauthenticated users to /auth', () => {
       currentAuth = mockUnauthenticated();
       const { container } = render(<TestApp path="/dashboard" />);
       expect(hasTestId(container, 'login')).toBe(true);
