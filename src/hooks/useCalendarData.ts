@@ -113,7 +113,7 @@ async function fetchCalendarLessons(
       .in('lesson_id', lessonIds),
     supabase
       .from('make_up_waitlist')
-      .select('booked_lesson_id, student_id')
+      .select('booked_lesson_id, student_id, lesson_title, missed_lesson_date, absence_reason')
       .in('booked_lesson_id', lessonIds)
       .eq('status', 'booked'),
   ]);
@@ -133,10 +133,19 @@ async function fetchCalendarLessons(
     attendanceMap.set(a.lesson_id, [...existing, a]);
   });
   const makeupMap = new Map<string, string[]>();
-  (makeupData.data || []).forEach((m: any) => {
+  const makeupDetailsMap = new Map<string, Record<string, { lessonTitle: string; missedDate: string; absenceReason: string }>>();
+  interface MakeupRow { booked_lesson_id: string | null; student_id: string; lesson_title: string; missed_lesson_date: string; absence_reason: string }
+  ((makeupData.data || []) as MakeupRow[]).forEach((m) => {
     if (m.booked_lesson_id) {
       const existing = makeupMap.get(m.booked_lesson_id) || [];
       makeupMap.set(m.booked_lesson_id, [...existing, m.student_id]);
+      const details = makeupDetailsMap.get(m.booked_lesson_id) || {};
+      details[m.student_id] = {
+        lessonTitle: m.lesson_title,
+        missedDate: m.missed_lesson_date,
+        absenceReason: m.absence_reason,
+      };
+      makeupDetailsMap.set(m.booked_lesson_id, details);
     }
   });
 
@@ -150,6 +159,7 @@ async function fetchCalendarLessons(
     participants: (participantsMap.get(lesson.id) || []) as LessonWithDetails['participants'],
     attendance: (attendanceMap.get(lesson.id) || []) as LessonWithDetails['attendance'],
     makeupStudentIds: makeupMap.get(lesson.id) || [],
+    makeupDetails: makeupDetailsMap.get(lesson.id) || {},
   }));
 
   return { lessons: enrichedLessons, isCapReached };
