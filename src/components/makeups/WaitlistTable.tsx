@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search } from 'lucide-react';
-import { useOfferMakeUp, useDismissMatch, useFindMatches, type WaitlistEntry } from '@/hooks/useMakeUpWaitlist';
+import { useOfferMakeUp, useDismissMatch, useFindMatches, type WaitlistEntry, type WaitlistMatchResult } from '@/hooks/useMakeUpWaitlist';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useState } from 'react';
 
@@ -49,7 +49,7 @@ export function WaitlistTable({
   const offerMutation = useOfferMakeUp();
   const dismissMutation = useDismissMatch();
   const findMatches = useFindMatches();
-  const [matchResults, setMatchResults] = useState<Record<string, any[]>>({});
+  const [matchResults, setMatchResults] = useState<Record<string, WaitlistMatchResult[]>>({});
 
   const handleFindMatch = async (entry: WaitlistEntry) => {
     const result = await findMatches.mutateAsync({
@@ -81,7 +81,7 @@ export function WaitlistTable({
                 <p className="text-xs text-muted-foreground">No matches found yet. Click "Find Match" again or check later.</p>
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {matchResults[entry.id]?.map((m: any) => (
+                  {matchResults[entry.id]?.map((m: WaitlistMatchResult) => (
                     <div key={m.waitlist_id} className="p-2 rounded border border-border text-xs">
                       <p className="font-medium">{m.student_name}</p>
                       <p className="text-muted-foreground">
