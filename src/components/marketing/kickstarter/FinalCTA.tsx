@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CountdownTimer } from "./CountdownTimer";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import { ChevronRight } from "lucide-react";
 
 export function FinalCTA() {
@@ -21,23 +21,23 @@ export function FinalCTA() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    if (honeypot) { toast.success("You're in! We'll notify you when we launch."); return; }
-    if (isDisposableDomain(email)) { toast.error("Please use a real email address."); return; }
+    if (honeypot) { toast({ title: "You're in! We'll notify you when we launch." }); return; }
+    if (isDisposableDomain(email)) { toast({ title: "Please use a real email address.", variant: "destructive" }); return; }
     setLoading(true);
     try {
       const { error } = await supabase.from("kickstarter_signups" as any).insert({ email });
       if (error) {
         if (error.code === "23505") {
-          toast.info("You're already on the list!");
+          toast({ title: "You're already on the list!" });
         } else {
           throw error;
         }
       } else {
-        toast.success("You're in! We'll notify you when we launch.");
+        toast({ title: "You're in! We'll notify you when we launch." });
         setEmail("");
       }
     } catch {
-      toast.error("Something went wrong. Please try again.");
+      toast({ title: "Something went wrong. Please try again.", variant: "destructive" });
     } finally {
       setLoading(false);
     }

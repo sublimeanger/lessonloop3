@@ -32,7 +32,7 @@ import { ProactiveWelcome } from './ProactiveWelcome';
 import { LoopAssistIntroModal, useLoopAssistIntro } from './LoopAssistIntroModal';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 
 interface LoopAssistDrawerProps {
   open: boolean;
@@ -99,7 +99,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
       await sendMessage(content);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to get response';
-      toast.error(errorMsg);
+      toast({ title: errorMsg, variant: 'destructive' });
       setFailedMessage({ content, id: Date.now().toString() });
     }
   }, [sendMessage]);

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Play, Pause, Square, Timer, Music, RotateCcw, Zap, CheckCircle } from 'lucide-react';
 import { useLogPractice, useParentPracticeAssignments } from '@/hooks/usePractice';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { safeGetItem, safeSetItem, safeRemoveItem } from '@/lib/storage';
 import { useAuth } from '@/contexts/AuthContext';
@@ -171,7 +171,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
 
   const handleStart = () => {
     if (!selectedStudentId) {
-      toast.error('Please select a student first');
+      toast({ title: 'Please select a student first', variant: 'destructive' });
       return;
     }
     persistRunning();
@@ -201,7 +201,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
     const durationMinutes = Math.max(1, Math.round(elapsedSeconds / 60));
 
     if (elapsedSeconds < 60) {
-      toast.error('Practice must be at least 1 minute');
+      toast({ title: 'Practice must be at least 1 minute', variant: 'destructive' });
       return;
     }
 
@@ -218,7 +218,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
       await checkMilestone(selectedStudentId);
 
       storageClear(STORAGE_KEYS);
-      toast.success(`Practice logged: ${durationMinutes} minutes`);
+      toast({ title: `Practice logged: ${durationMinutes} minutes` });
       setElapsedSeconds(0);
       startedAtRef.current = null;
       setNotes('');
@@ -226,7 +226,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
     } catch (error: unknown) {
       setIsRunning(true);
       persistRunning();
-      toast.error(error instanceof Error ? error.message : 'Failed to log practice — your session is preserved.');
+      toast({ title: error instanceof Error ? error.message : 'Failed to log practice — your session is preserved.', variant: 'destructive' });
     }
   };
 
@@ -242,15 +242,15 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
   const handleQuickLog = async () => {
     const duration = quickDuration || parseInt(customDuration);
     if (!duration || duration < 1) {
-      toast.error('Please select or enter a duration');
+      toast({ title: 'Please select or enter a duration', variant: 'destructive' });
       return;
     }
     if (duration > 720) {
-      toast.error('Duration cannot exceed 12 hours');
+      toast({ title: 'Duration cannot exceed 12 hours', variant: 'destructive' });
       return;
     }
     if (!selectedStudentId) {
-      toast.error('Please select a student');
+      toast({ title: 'Please select a student', variant: 'destructive' });
       return;
     }
 
@@ -265,13 +265,13 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
 
       await checkMilestone(selectedStudentId);
 
-      toast.success(`Practice logged: ${duration} minutes`);
+      toast({ title: `Practice logged: ${duration} minutes` });
       setQuickDuration(null);
       setCustomDuration('');
       setQuickNotes('');
       onComplete?.();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : 'Failed to log practice');
+      toast({ title: error instanceof Error ? error.message : 'Failed to log practice', variant: 'destructive' });
     }
   };
 
