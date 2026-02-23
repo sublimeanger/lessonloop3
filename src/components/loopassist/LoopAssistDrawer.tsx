@@ -8,6 +8,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
+
+const entityChipSchema = {
+  ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames || []), 'span'],
+  attributes: {
+    ...defaultSchema.attributes,
+    span: ['data-entity-type', 'data-entity-id', 'data-entity-label', 'className'],
+  },
+};
 import {
   MessageSquare,
   Plus,
@@ -646,7 +656,7 @@ function MessageBubble({ message, conversationId }: { message: AIMessage; conver
         ) : (
           <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:mb-1 [&_p:last-child]:mb-0 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0 [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-sm [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_h1]:mb-1 [&_h2]:mb-1 [&_h3]:mb-1 [&_pre]:bg-background/50 [&_pre]:text-xs [&_pre]:p-2 [&_pre]:rounded">
             <ReactMarkdown
-              rehypePlugins={[rehypeRaw]}
+              rehypePlugins={[rehypeRaw, [rehypeSanitize, entityChipSchema]]}
               components={{
                 p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
                 strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
