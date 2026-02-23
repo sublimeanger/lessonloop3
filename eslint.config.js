@@ -25,4 +25,11 @@ export default tseslint.config(
       "no-console": ["warn", { allow: ["warn", "error"] }],
     },
   },
+  // Supabase edge functions run in Deno — console.log is the standard logging mechanism
+  {
+    files: ["supabase/functions/**/*.ts"],
+    rules: {
+      "no-console": "off",
+    },
+  },
 );

@@ -461,7 +461,7 @@ export default function AcceptInvite() {
               <Link
                 to="/login"
                 state={{ from: { pathname: '/accept-invite', search: `?token=${token}` } }}
-                onClick={() => { try { sessionStorage.setItem('lessonloop_invite_return', `/accept-invite?token=${token}`); } catch {} }}
+                onClick={() => { try { sessionStorage.setItem('lessonloop_invite_return', `/accept-invite?token=${token}`); } catch { /* storage unavailable */ } }}
                 className="text-primary hover:underline"
               >
                 Sign in

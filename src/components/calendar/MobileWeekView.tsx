@@ -60,7 +60,7 @@ export function MobileWeekView({
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
     longPressTimerRef.current = setTimeout(() => {
-      try { navigator.vibrate?.(50); } catch {}
+      try { navigator.vibrate?.(50); } catch { /* vibrate unsupported */ }
       setDragLesson(lesson);
     }, 300);
   }, [isParent, onLessonDrop]);

@@ -34,6 +34,7 @@ export function sanitizeFileName(rawName: string): string {
   const lastSlash = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));
   if (lastSlash >= 0) name = name.substring(lastSlash + 1);
   // Remove null bytes and control characters (U+0000–U+001F, U+007F)
+  // eslint-disable-next-line no-control-regex
   name = name.replace(/[\x00-\x1f\x7f]/g, '');
   // Remove characters problematic in file systems / HTML contexts
   name = name.replace(/[<>"'`|*?]/g, '_');

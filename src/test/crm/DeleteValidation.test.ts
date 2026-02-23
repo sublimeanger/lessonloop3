@@ -64,8 +64,7 @@ beforeEach(() => {
 // Student deletion
 // ---------------------------------------------------------------------------
 describe('LL-CRM-P1-02 checkStudentDeletion', () => {
-  it('blocks when future lessons exist', async () => {
-    // First call: lesson_participants check
+  it('warns when future lessons exist (soft-delete allows deletion)', async () => {
     mockSelectResponse
       .mockReturnValueOnce({ data: [{ id: 'lp1' }], error: null, count: 3 }) // future lessons
       .mockReturnValueOnce({ data: [], error: null, count: 0 })  // unpaid invoices
@@ -73,14 +72,14 @@ describe('LL-CRM-P1-02 checkStudentDeletion', () => {
 
     const result = await validation.checkStudentDeletion('student-1');
 
-    expect(result.canDelete).toBe(false);
-    expect(result.blocks).toHaveLength(1);
-    expect(result.blocks[0].entityType).toBe('lessons');
-    expect(result.blocks[0].count).toBe(3);
-    expect(result.blocks[0].reason).toContain('upcoming lesson');
+    expect(result.canDelete).toBe(true);
+    expect(result.blocks).toHaveLength(0);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toContain('upcoming lesson');
+    expect(result.warnings[0]).toContain('3');
   });
 
-  it('blocks when unpaid invoices exist', async () => {
+  it('warns when unpaid invoices exist (soft-delete allows deletion)', async () => {
     mockSelectResponse
       .mockReturnValueOnce({ data: [], error: null, count: 0 })  // no future lessons
       .mockReturnValueOnce({ data: [{ id: 'inv1' }], error: null, count: 2 }) // unpaid invoices
@@ -88,10 +87,10 @@ describe('LL-CRM-P1-02 checkStudentDeletion', () => {
 
     const result = await validation.checkStudentDeletion('student-1');
 
-    expect(result.canDelete).toBe(false);
-    expect(result.blocks).toHaveLength(1);
-    expect(result.blocks[0].entityType).toBe('invoices');
-    expect(result.blocks[0].count).toBe(2);
+    expect(result.canDelete).toBe(true);
+    expect(result.blocks).toHaveLength(0);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toContain('unpaid invoice');
   });
 
   it('warns about unredeemed credits but allows deletion', async () => {
@@ -122,7 +121,7 @@ describe('LL-CRM-P1-02 checkStudentDeletion', () => {
     expect(result.warnings).toHaveLength(0);
   });
 
-  it('returns multiple blocks when lessons AND invoices exist', async () => {
+  it('warns about both lessons and invoices when both exist', async () => {
     mockSelectResponse
       .mockReturnValueOnce({ data: [{ id: 'l1' }], error: null, count: 1 }) // 1 lesson
       .mockReturnValueOnce({ data: [{ id: 'i1' }], error: null, count: 1 }) // 1 invoice
@@ -130,10 +129,11 @@ describe('LL-CRM-P1-02 checkStudentDeletion', () => {
 
     const result = await validation.checkStudentDeletion('student-1');
 
-    expect(result.canDelete).toBe(false);
-    expect(result.blocks).toHaveLength(2);
-    expect(result.blocks.map(b => b.entityType)).toContain('lessons');
-    expect(result.blocks.map(b => b.entityType)).toContain('invoices');
+    expect(result.canDelete).toBe(true);
+    expect(result.blocks).toHaveLength(0);
+    expect(result.warnings).toHaveLength(2);
+    expect(result.warnings[0]).toContain('upcoming lesson');
+    expect(result.warnings[1]).toContain('unpaid invoice');
   });
 });
 
@@ -183,15 +183,8 @@ describe('LL-CRM-P1-02 checkGuardianDeletion', () => {
 // ---------------------------------------------------------------------------
 describe('LL-CRM-P1-02 checkTeacherRemoval', () => {
   it('blocks when teacher has upcoming lessons', async () => {
-    // teacher lookup
-    mockSingleResponse.mockReturnValueOnce({
-      data: { id: 't1', user_id: 'u1' },
-      error: null,
-    });
-
     mockSelectResponse
-      .mockReturnValueOnce({ data: [], error: null, count: 5 })  // 5 lessons by teacher_id
-      .mockReturnValueOnce({ data: [], error: null, count: 0 })  // 0 legacy lessons
+      .mockReturnValueOnce({ data: [], error: null, count: 5 })  // 5 upcoming lessons
       .mockReturnValueOnce({ data: [], error: null, count: 0 }); // 0 assignments
 
     const result = await validation.checkTeacherRemoval('t1');
@@ -202,14 +195,8 @@ describe('LL-CRM-P1-02 checkTeacherRemoval', () => {
   });
 
   it('allows removal when no dependencies and warns about unassigned students', async () => {
-    mockSingleResponse.mockReturnValueOnce({
-      data: { id: 't1', user_id: 'u1' },
-      error: null,
-    });
-
     mockSelectResponse
-      .mockReturnValueOnce({ data: [], error: null, count: 0 })  // no lessons by id
-      .mockReturnValueOnce({ data: [], error: null, count: 0 })  // no legacy lessons
+      .mockReturnValueOnce({ data: [], error: null, count: 0 })  // no upcoming lessons
       .mockReturnValueOnce({ data: [], error: null, count: 3 }); // 3 student assignments
 
     const result = await validation.checkTeacherRemoval('t1');
@@ -225,7 +212,8 @@ describe('LL-CRM-P1-02 checkTeacherRemoval', () => {
 describe('LL-CRM-P1-02 checkLocationDeletion', () => {
   it('blocks when location has scheduled lessons', async () => {
     mockSelectResponse
-      .mockReturnValueOnce({ data: [], error: null, count: 7 }); // 7 future lessons
+      .mockReturnValueOnce({ data: [], error: null, count: 7 }) // 7 future lessons at location
+      .mockReturnValueOnce({ data: [], error: null });           // no rooms at location
 
     mockSingleResponse.mockReturnValueOnce({
       data: { is_primary: false },
@@ -241,7 +229,8 @@ describe('LL-CRM-P1-02 checkLocationDeletion', () => {
 
   it('warns when deleting primary location', async () => {
     mockSelectResponse
-      .mockReturnValueOnce({ data: [], error: null, count: 0 }); // no lessons
+      .mockReturnValueOnce({ data: [], error: null, count: 0 }) // no lessons
+      .mockReturnValueOnce({ data: [], error: null });           // no rooms
 
     mockSingleResponse.mockReturnValueOnce({
       data: { is_primary: true },

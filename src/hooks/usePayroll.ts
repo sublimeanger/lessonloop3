@@ -75,7 +75,7 @@ export function usePayroll(startDate: string, endDate: string) {
 
       // Fetch invoice line items for percentage-rate revenue lookups
       const lessonIds = (lessons || []).map(l => l.id);
-      let invoiceItemsMap = new Map<string, number>();
+      const invoiceItemsMap = new Map<string, number>();
       if (lessonIds.length > 0) {
         const { data: invoiceItems } = await supabase
           .from('invoice_items')

@@ -59,7 +59,7 @@ export default function DailyRegister() {
   // Clean up stale localStorage for non-teacher roles
   useEffect(() => {
     if (currentRole !== 'teacher' && currentOrg?.id) {
-      try { localStorage.removeItem(storageKey); } catch {}
+      try { localStorage.removeItem(storageKey); } catch { /* storage unavailable */ }
     }
   }, [currentRole, currentOrg?.id, storageKey]);
 

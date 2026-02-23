@@ -462,7 +462,7 @@ async function executeGenerateBillingRun(
 
   // ── Duplicate protection: skip already-invoiced lessons ──
   const lessonIds = (lessons || []).map((l: BasicLesson) => l.id);
-  let alreadyInvoicedIds = new Set<string>();
+  const alreadyInvoicedIds = new Set<string>();
 
   if (lessonIds.length > 0) {
     // Query in batches of 100 to avoid query-string limits

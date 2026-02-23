@@ -8,6 +8,7 @@ import { checkRateLimit, checkLoopAssistDailyCap, rateLimitResponse } from "../_
 function sanitiseForPrompt(text: string | null | undefined): string {
   if (!text) return "";
   return text
+    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
     .replace(/`/g, "'")
     .replace(/\[(Student|Lesson|Invoice|Guardian|Action):[^\]]*\]/gi, "")
@@ -1578,6 +1579,7 @@ serve(async (req) => {
       }
       sanitised = sanitised
         .replace(/```/g, "'''")
+        // eslint-disable-next-line no-control-regex
         .replace(/\x00/g, "")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
@@ -1798,7 +1800,7 @@ AI tier: ${isPro ? "Pro (Sonnet)" : "Standard (Haiku)"}`
     }
 
     // Tool use loop — Claude may call tools multiple times
-    let anthropicMessages = [...initialMessages];
+    const anthropicMessages = [...initialMessages];
     let currentResponse = await response.json();
     const MAX_TOOL_ROUNDS = 5;
     let toolRound = 0;

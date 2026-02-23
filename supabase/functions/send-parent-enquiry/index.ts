@@ -92,7 +92,7 @@ const handler = async (req: Request): Promise<Response> => {
       .limit(1)
       .single();
 
-    let staffUserId = adminMembership?.user_id || null;
+    const staffUserId = adminMembership?.user_id || null;
     let staffEmail: string | null = null;
     let staffName: string | null = null;
 

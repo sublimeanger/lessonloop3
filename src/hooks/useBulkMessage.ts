@@ -123,7 +123,7 @@ export function useRecipientPreview(filters: FilterCriteria) {
 
       const guardianIds = [...new Set(studentGuardians.map(sg => sg.guardian_id))];
 
-      let guardianQuery = supabase
+      const guardianQuery = supabase
         .from('guardians')
         .select('id, full_name, email')
         .in('id', guardianIds)
