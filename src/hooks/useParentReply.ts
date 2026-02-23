@@ -4,6 +4,10 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
+/**
+ * Hook for parents to reply to existing conversations.
+ * Uses the unified send-parent-message edge function.
+ */
 export function useParentReply() {
   const { currentOrg } = useOrg();
   const { user } = useAuth();
@@ -14,7 +18,7 @@ export function useParentReply() {
     mutationFn: async ({ parentMessageId, body }: { parentMessageId: string; body: string }) => {
       if (!currentOrg || !user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase.functions.invoke('send-parent-reply', {
+      const { data, error } = await supabase.functions.invoke('send-parent-message', {
         body: {
           org_id: currentOrg.id,
           parent_message_id: parentMessageId,
