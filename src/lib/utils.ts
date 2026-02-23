@@ -32,6 +32,30 @@ export function formatTimeUK(date: Date | string, timezone?: string): string {
 }
 
 /**
+ * Format a date in an org's timezone (defaults to dd/MM/yyyy).
+ */
+export function formatDateForOrg(date: Date | string, timezone: string, formatStr = 'dd/MM/yyyy'): string {
+  const d = typeof date === 'string' ? parseISO(date) : date;
+  return formatInTimeZone(d, timezone, formatStr);
+}
+
+/**
+ * Format a time in an org's timezone (HH:mm).
+ */
+export function formatTimeForOrg(date: Date | string, timezone: string): string {
+  const d = typeof date === 'string' ? parseISO(date) : date;
+  return formatInTimeZone(d, timezone, 'HH:mm');
+}
+
+/**
+ * Format date + time in an org's timezone (dd/MM/yyyy HH:mm).
+ */
+export function formatDateTimeForOrg(date: Date | string, timezone: string): string {
+  const d = typeof date === 'string' ? parseISO(date) : date;
+  return formatInTimeZone(d, timezone, 'dd/MM/yyyy HH:mm');
+}
+
+/**
  * Format currency with proper locale
  */
 export function formatCurrency(
