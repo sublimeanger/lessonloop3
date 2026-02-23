@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Loader2, LogOut, Save, Bell } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -177,8 +178,26 @@ export default function PortalProfile() {
       <PageHeader title="Profile" description="Manage your details and preferences" />
 
       <div className="max-w-lg space-y-6">
+        {/* Profile Header */}
+        <Card className="rounded-2xl overflow-hidden">
+          <div className="bg-gradient-afternoon h-16" />
+          <CardContent className="p-5 -mt-8">
+            <div className="flex items-end gap-4">
+              <Avatar className="h-14 w-14 border-4 border-card shadow-md">
+                <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
+                  {(profile?.full_name || 'P').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="pb-0.5">
+                <h2 className="text-lg font-bold">{profile?.full_name || 'Parent'}</h2>
+                <p className="text-xs text-muted-foreground">{currentOrg?.name || 'Parent Portal'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Contact Details */}
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-lg">Contact Details</CardTitle>
           </CardHeader>
@@ -228,7 +247,7 @@ export default function PortalProfile() {
         </Card>
 
         {/* Notification Preferences */}
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Bell className="h-4 w-4" />
@@ -283,7 +302,7 @@ export default function PortalProfile() {
         </Card>
 
         {/* Sign Out */}
-        <Card>
+        <Card className="rounded-2xl">
           <CardContent className="pt-6">
             <Button
               variant="outline"

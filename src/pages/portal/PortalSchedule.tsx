@@ -240,9 +240,13 @@ export default function PortalSchedule() {
   const LessonCard = ({ lesson, isPast }: { lesson: Lesson; isPast?: boolean }) => {
     const isCancelled = lesson.status === 'cancelled';
 
+    const accentColor = isCancelled ? 'bg-destructive' : isPast ? 'bg-muted-foreground/30' : 'bg-success';
+    
     return (
-      <Card className={cn('overflow-hidden', isCancelled && 'opacity-60')}>
-        <CardContent className="p-4">
+      <Card className={cn('overflow-hidden rounded-2xl shadow-card hover:shadow-elevated transition-all duration-150 relative', isCancelled && 'opacity-60')}>
+        {/* Left accent bar */}
+        <div className={cn('absolute inset-y-0 left-0 w-1 rounded-l-2xl', accentColor)} />
+        <CardContent className="p-4 pl-5">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
@@ -445,9 +449,10 @@ export default function PortalSchedule() {
         <div className="space-y-8">
           {/* This Week */}
           <div>
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
               This Week
+              <span className="flex-1 h-px bg-border ml-3" />
             </h2>
             {thisWeekLessons.length > 0 ? (
               <div className="space-y-3">
@@ -467,7 +472,7 @@ export default function PortalSchedule() {
           {/* Future weeks */}
           {futureWeekGroups.map((group) => (
             <div key={group.label}>
-              <h2 className="text-base font-semibold mb-3 text-muted-foreground">{group.label}</h2>
+              <h2 className="text-base font-bold mb-3 text-muted-foreground flex items-center gap-2">{group.label}<span className="flex-1 h-px bg-border ml-2" /></h2>
               <div className="space-y-3">
                 {group.lessons.map((lesson) => (
                   <LessonCard key={lesson.id} lesson={lesson} isPast={false} />

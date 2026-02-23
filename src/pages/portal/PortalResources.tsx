@@ -158,7 +158,7 @@ export default function PortalResources() {
               ).filter(Boolean);
 
               return (
-                <Card key={resource.id}>
+                <Card key={resource.id} className="rounded-2xl shadow-card hover:shadow-elevated transition-all duration-150">
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
                       <button

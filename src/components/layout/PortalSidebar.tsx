@@ -15,19 +15,23 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
 import { ChildSwitcher } from '@/components/portal/ChildSwitcher';
 import { usePortalFeatures } from '@/hooks/usePortalFeatures';
+import { Logo, LogoWordmark } from '@/components/brand/Logo';
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuBadge,
   SidebarFooter,
+  SidebarSeparator,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
 
 const allPortalNav = [
   { title: 'Home', url: '/portal/home', icon: Home, key: 'always' as const },
@@ -47,14 +51,6 @@ function getInitials(name: string | null | undefined): string {
     .join('')
     .toUpperCase()
     .slice(0, 2);
-}
-
-// Generate a soft colour from a name for student avatars
-function nameToSoftColour(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 55%, 88%)`;
 }
 
 export function PortalSidebar() {
@@ -78,38 +74,43 @@ export function PortalSidebar() {
   };
 
   return (
-    <Sidebar className="border-r bg-white dark:bg-card">
-      <SidebarContent className="pt-5 px-3">
-        {/* Org / school branding */}
-        <div className="mb-4 px-2">
-          <span className="text-sm font-semibold text-foreground tracking-tight">
-            {currentOrg?.name || 'Parent Portal'}
-          </span>
+    <Sidebar className="border-r border-sidebar-border">
+      <SidebarContent className="pt-3">
+        {/* Logo area */}
+        <div className="px-4 pb-2">
+          <div className="flex items-center gap-2">
+            <Logo size="sm" />
+            <LogoWordmark variant="white" className="text-base" />
+          </div>
         </div>
+        <SidebarSeparator className="bg-sidebar-border mb-1" />
 
         {/* Child filter */}
-        <div className="mb-3 px-2">
+        <div className="mb-2 px-3">
           <ChildSwitcher className="w-full" />
         </div>
 
         {/* Navigation */}
-        <SidebarGroup>
+        <SidebarGroup className="py-1">
+          <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/60 px-4 mb-0.5">
+            Portal
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {portalNav.map((item) => {
                 const isMessages = item.url === '/portal/messages';
                 const showBadge = isMessages && unreadCount && unreadCount > 0;
-                
+
                 return (
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton asChild>
                       <NavLink
                         to={item.url}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-                        activeClassName="bg-primary/10 text-primary font-medium"
+                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                       >
-                        <item.icon className="h-4 w-4 shrink-0" />
-                        <span className="flex-1">{item.title}</span>
+                        <item.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.5} />
+                        <span className="text-sm font-medium">{item.title}</span>
                       </NavLink>
                     </SidebarMenuButton>
                     {showBadge && (
@@ -125,23 +126,26 @@ export function PortalSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t p-4">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-9 w-9">
-            <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+      <SidebarFooter className="border-t border-sidebar-border p-2">
+        <div className="flex items-center gap-3 px-1">
+          <Avatar className="h-8 w-8 shrink-0">
+            <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs font-semibold">
               {getInitials(profile?.full_name)}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 overflow-hidden">
-            <div className="truncate text-sm font-medium">
+            <div className="truncate text-sm font-medium text-sidebar-foreground">
               {profile?.full_name || 'Parent'}
+            </div>
+            <div className="truncate text-[11px] text-sidebar-foreground/60">
+              {currentOrg?.name || 'Parent Portal'}
             </div>
           </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={handleSignOut}
-            className="h-8 w-8 shrink-0"
+            className="h-7 w-7 shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
             title="Sign out"
           >
             <LogOut className="h-4 w-4" />

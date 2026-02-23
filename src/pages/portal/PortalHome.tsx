@@ -35,6 +35,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { parseISO, formatDistanceToNowStrict, isBefore, isToday, isTomorrow, isAfter, addMinutes } from 'date-fns';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 function relativeDayLabel(dateStr: string, timezone?: string): string {
   const d = parseISO(dateStr);
@@ -241,14 +242,26 @@ export default function PortalHome() {
     <PortalLayout>
       <div className="space-y-6">
         {profile?.id && <PortalWelcomeDialog userId={profile.id} academyName={currentOrg?.name || 'your academy'} />}
-        {/* 1. Greeting */}
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            Hi {firstName}! 👋
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Here's what's happening with your family's lessons.
-          </p>
+        {/* 1. Hero Greeting */}
+        <div className={cn(
+          'rounded-2xl p-6 md:p-8 text-white relative overflow-hidden',
+          new Date().getHours() < 12 ? 'bg-gradient-morning' :
+          new Date().getHours() < 17 ? 'bg-gradient-afternoon' : 'bg-gradient-evening'
+        )}>
+          <div className="relative z-10">
+            <p className="text-xs font-medium uppercase tracking-widest text-white/60 mb-1">
+              {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening'}
+            </p>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+              Hi {firstName}! 👋
+            </h1>
+            <p className="text-white/70 mt-1 text-sm">
+              Here's what's happening with your family's lessons.
+            </p>
+          </div>
+          {/* Decorative circles */}
+          <div className="absolute -top-8 -right-8 h-32 w-32 rounded-full bg-white/5" />
+          <div className="absolute -bottom-12 -right-4 h-40 w-40 rounded-full bg-white/[0.03]" />
         </div>
 
         {isLoading ? (
@@ -305,7 +318,7 @@ export default function PortalHome() {
           <>
             {/* 2. Next Lesson Hero Card */}
             {nextLesson && (
-              <Card className="overflow-hidden rounded-2xl border-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-md" role="region" aria-label="Next lesson">
+              <Card className="overflow-hidden rounded-2xl border-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-card hover:shadow-elevated transition-all duration-150" role="region" aria-label="Next lesson">
                 <CardContent className="p-5 md:p-6">
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1.5 min-w-0">
@@ -359,10 +372,13 @@ export default function PortalHome() {
                   {children.map((child) => (
                     <Card
                       key={child.id}
-                      className="cursor-pointer transition-all hover:shadow-md hover:border-primary/20 min-w-[220px] snap-start sm:min-w-0"
+                      data-interactive
+                      className="min-w-[220px] snap-start sm:min-w-0 rounded-2xl overflow-hidden"
                       onClick={() => navigate(`/portal/schedule?student=${child.id}`)}
                     >
-                      <CardContent className="p-4">
+                      <CardContent className="p-4 relative">
+                        {/* Left accent stripe */}
+                        <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary to-teal-dark rounded-l-2xl" />
                         <div className="flex items-start justify-between gap-3">
                           <div className="space-y-2 min-w-0 flex-1">
                             <div className="flex items-center gap-2.5">
@@ -582,7 +598,7 @@ export default function PortalHome() {
             {/* 4. Outstanding Balance */}
             {hasOutstanding && (
               <Link to="/portal/invoices" className="block" aria-label="View invoices">
-                <Card className="border-warning/30 bg-warning/5 transition-all hover:shadow-md hover:border-warning/50" role="region" aria-label={`${formatCurrencyMinor(summary!.outstandingBalance, currencyCode)} outstanding`}>
+                <Card data-interactive className="border-warning/30 bg-warning/5 rounded-2xl" role="region" aria-label={`${formatCurrencyMinor(summary!.outstandingBalance, currencyCode)} outstanding`}>
                   <CardContent className="p-4 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-warning/10 shrink-0">
@@ -620,7 +636,7 @@ export default function PortalHome() {
                   </Link>
                 </div>
                 <Link to="/portal/messages" aria-label={`${unreadCount} unread message${unreadCount !== 1 ? 's' : ''}`}>
-                  <Card className="transition-all hover:shadow-md" role="region" aria-label="Unread messages">
+                  <Card data-interactive className="rounded-2xl" role="region" aria-label="Unread messages">
                     <CardContent className="p-4 flex items-center gap-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
                         <MessageSquare className="h-4 w-4 text-primary" />
@@ -652,7 +668,7 @@ export default function PortalHome() {
               </Button>
             </div>
             <Link to="/portal/resources" className="block">
-              <Card className="transition-all hover:shadow-md">
+              <Card data-interactive className="rounded-2xl">
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
                     <FolderOpen className="h-4 w-4 text-primary" />

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Home, Calendar, Music, CreditCard, MessageSquare, User, FolderOpen } from 'lucide-react';
+import { Home, Calendar, Music, CreditCard, MessageSquare, FolderOpen } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
 import { usePortalFeatures } from '@/hooks/usePortalFeatures';
@@ -27,8 +27,12 @@ export function PortalBottomNav() {
   }), [practiceEnabled, resourcesEnabled, invoicesEnabled]);
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-50 border-t bg-white dark:bg-card pb-[env(safe-area-inset-bottom)]" role="navigation" aria-label="Portal navigation">
-      <div className="flex items-stretch justify-around h-14">
+    <nav
+      className="fixed bottom-0 inset-x-0 z-50 bg-background/80 backdrop-blur-lg shadow-[0_-1px_8px_0_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom)]"
+      role="navigation"
+      aria-label="Portal navigation"
+    >
+      <div className="flex items-stretch justify-around h-16">
         {tabs.map((tab) => {
           const isMessages = tab.path === '/portal/messages';
           const badge = isMessages && unreadCount && unreadCount > 0 ? unreadCount : null;
@@ -40,7 +44,7 @@ export function PortalBottomNav() {
               aria-label={badge ? `${tab.label}, ${badge} unread` : tab.label}
               className={({ isActive }) =>
                 cn(
-                  'flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors',
+                  'flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors relative',
                   isActive ? 'text-primary' : 'text-muted-foreground',
                 )
               }
@@ -59,6 +63,10 @@ export function PortalBottomNav() {
                     )}
                   </div>
                   <span>{tab.label}</span>
+                  {/* Active indicator bar */}
+                  {isActive && (
+                    <span className="absolute bottom-1 h-1 w-5 rounded-full bg-primary" />
+                  )}
                 </>
               )}
             </NavLink>
