@@ -433,6 +433,7 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
       student_guardians(*, guardians(*))
     `)
     .eq("id", studentId)
+    .eq("org_id", orgId)
     .single();
 
   if (!student) return "";
@@ -913,6 +914,7 @@ serve(async (req) => {
               students:payer_student_id(id, first_name, last_name, email)
             `)
             .eq("id", context.id)
+            .eq("org_id", orgId)
             .single();
           if (invoice) {
             const payer = sanitiseForPrompt(invoice.guardians?.full_name) || 
