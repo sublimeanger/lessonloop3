@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.stripe-billing-history]
 verify_jwt = false
+
+[functions.calendar-refresh-busy]
+verify_jwt = false
