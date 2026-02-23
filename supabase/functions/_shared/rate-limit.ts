@@ -10,6 +10,7 @@ export interface RateLimitConfig {
 export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   // AI / LoopAssist — tight to control costs
   "looopassist-chat":      { maxRequests: 20,  windowMinutes: 1 },
+  "looopassist-execute":   { maxRequests: 10,  windowMinutes: 1 },
 
   // Messaging — anti-spam
   "send-message":          { maxRequests: 50,  windowMinutes: 60 },
