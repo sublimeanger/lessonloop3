@@ -39,7 +39,7 @@ export function useTodayLessons() {
     queryFn: async (): Promise<TodayLesson[]> => {
       if (!currentOrg) return [];
       
-      const tz = (currentOrg as any).timezone || 'Europe/London';
+      const tz = currentOrg.timezone || 'Europe/London';
       const now = new Date();
       const todayStart = fromZonedTime(startOfDay(now), tz).toISOString();
       const todayEnd = fromZonedTime(endOfDay(now), tz).toISOString();

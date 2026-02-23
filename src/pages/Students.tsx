@@ -79,7 +79,7 @@ function StudentCard({
 }) {
   const navigate = useNavigate();
   const fullName = `${student.first_name} ${student.last_name}`;
-  const initials = `${student.first_name[0]}${student.last_name[0]}`;
+  const initials = `${student.first_name?.[0] ?? ''}${student.last_name?.[0] ?? ''}`;
   const avatarColor = nameToColor(fullName);
 
   return (
