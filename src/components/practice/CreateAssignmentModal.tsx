@@ -22,7 +22,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { activeStudentsQuery } from '@/lib/studentQuery';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
+import { useStudentInstruments } from '@/hooks/useStudentInstruments';
+import { useGradeLevels, getGradesForBoard } from '@/hooks/useInstruments';
 
 interface CreateAssignmentModalProps {
   open: boolean;
@@ -52,8 +54,26 @@ export function CreateAssignmentModal({
   const [targetDays, setTargetDays] = useState('5');
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState('');
+  const [gradeLevelId, setGradeLevelId] = useState('');
 
   const createAssignment = useCreateAssignment();
+  const { data: studentInstruments } = useStudentInstruments(studentId || undefined);
+  const { data: allGradeLevels } = useGradeLevels();
+
+  // Build grade options from the student's instruments' exam boards
+  const gradeOptions = (() => {
+    if (!studentInstruments || !allGradeLevels) return allGradeLevels || [];
+    const boardIds = new Set(
+      studentInstruments
+        .map((si) => si.exam_board_id)
+        .filter(Boolean) as string[],
+    );
+    if (boardIds.size === 0) return allGradeLevels.filter((g) => g.exam_board_id === null);
+    // Show universal + all boards the student uses
+    return allGradeLevels.filter(
+      (g) => g.exam_board_id === null || boardIds.has(g.exam_board_id),
+    );
+  })();
 
   useEffect(() => {
     if (open && currentOrg?.id) {
@@ -119,6 +139,7 @@ export function CreateAssignmentModal({
         target_days_per_week: parseInt(targetDays) || 5,
         start_date: startDate,
         end_date: endDate || undefined,
+        grade_level_id: gradeLevelId && gradeLevelId !== 'none' ? gradeLevelId : undefined,
       });
       
       toast({ title: 'Practice assignment created' });
@@ -137,6 +158,7 @@ export function CreateAssignmentModal({
     setTargetDays('5');
     setStartDate(format(new Date(), 'yyyy-MM-dd'));
     setEndDate('');
+    setGradeLevelId('');
   };
 
   return (
@@ -183,6 +205,26 @@ export function CreateAssignmentModal({
               rows={3}
             />
           </div>
+
+          {/* Grade level (optional) */}
+          {studentId && gradeOptions.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="gradeLevel">Grade Level</Label>
+              <Select value={gradeLevelId} onValueChange={setGradeLevelId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Optional — tag with grade level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No grade level</SelectItem>
+                  {gradeOptions.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.name}{g.is_diploma ? ' (Diploma)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">

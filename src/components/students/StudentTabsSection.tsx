@@ -9,6 +9,7 @@ import { MakeUpCreditsPanel } from './MakeUpCreditsPanel';
 import { StudentPracticePanel } from './StudentPracticePanel';
 import { StudentLessonNotes } from './StudentLessonNotes';
 import { StudentInfoCard } from './StudentInfoCard';
+import { InstrumentGradeSelector } from './InstrumentGradeSelector';
 import { GuardiansCard } from './GuardiansCard';
 import { MessageList } from '@/components/messages/MessageList';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
@@ -29,6 +30,10 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
     <Tabs defaultValue="overview" className="space-y-6">
       <TabsList className="flex w-full overflow-x-auto scrollbar-hide gap-1 h-auto pb-1 justify-start">
         <TabsTrigger value="overview" className="shrink-0">Overview</TabsTrigger>
+        <TabsTrigger value="instruments" className="gap-1.5 shrink-0">
+          <Music className="h-3.5 w-3.5" />
+          Instruments
+        </TabsTrigger>
         <TabsTrigger value="teachers" className="shrink-0">Teachers</TabsTrigger>
         <TabsTrigger value="guardians" className="shrink-0">Guardians</TabsTrigger>
         <TabsTrigger value="lessons" className="shrink-0">Lessons</TabsTrigger>
@@ -57,6 +62,10 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
           handleSave={hook.handleSave}
           fetchStudent={hook.fetchStudent}
         />
+      </TabsContent>
+
+      <TabsContent value="instruments">
+        <InstrumentGradeSelector studentId={student.id} />
       </TabsContent>
 
       <TabsContent value="teachers">

@@ -359,6 +359,7 @@ export function useCreateAssignment() {
       target_days_per_week?: number;
       start_date?: string;
       end_date?: string;
+      grade_level_id?: string;
     }) => {
       // Teachers can only create assignments for their assigned students
       if (!isAdmin && user && currentOrg) {
@@ -389,7 +390,8 @@ export function useCreateAssignment() {
         target_days_per_week: data.target_days_per_week || 5,
         start_date: data.start_date || format(new Date(), 'yyyy-MM-dd'),
         end_date: data.end_date || null,
-      });
+        grade_level_id: data.grade_level_id || null,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {

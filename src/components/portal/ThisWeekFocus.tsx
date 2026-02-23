@@ -8,12 +8,15 @@ import { useParentPracticeAssignments, useWeeklyProgress } from '@/hooks/usePrac
 import { useChildrenStreaks } from '@/hooks/usePracticeStreaks';
 import { StreakBadge } from '@/components/practice/StreakBadge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useParentChildInstruments } from '@/hooks/useParentInstruments';
+import { getInstrumentCategoryIcon } from '@/hooks/useInstruments';
 
 export function ThisWeekFocus() {
   const { data: assignments = [], isLoading: assignmentsLoading } = useParentPracticeAssignments();
   const studentIds = [...new Set(assignments.map(a => a.student_id))];
   const { data: progress = [], isLoading: progressLoading } = useWeeklyProgress(studentIds);
   const { data: streaks = [] } = useChildrenStreaks();
+  const { data: childInstruments } = useParentChildInstruments();
 
   const isLoading = assignmentsLoading || progressLoading;
 
@@ -81,8 +84,18 @@ export function ThisWeekFocus() {
             <div key={studentId} className="space-y-3">
               {/* Student Header */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium">{studentName}</span>
+                  {/* Primary instrument badge */}
+                  {childInstruments?.[studentId]?.[0] && (
+                    <span className="text-xs text-muted-foreground">
+                      {getInstrumentCategoryIcon(childInstruments[studentId][0].instrument_category)}{' '}
+                      {childInstruments[studentId][0].instrument_name}
+                      {childInstruments[studentId][0].grade_short_name
+                        ? ` ${childInstruments[studentId][0].grade_short_name}`
+                        : ''}
+                    </span>
+                  )}
                   {streak && streak.current_streak > 0 && (
                     <StreakBadge 
                       currentStreak={streak.current_streak} 
