@@ -10,6 +10,7 @@ export interface RateLimitConfig {
 export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   // AI / LoopAssist — tight to control costs
   "looopassist-chat":      { maxRequests: 20,  windowMinutes: 1 },
+  "looopassist-execute":   { maxRequests: 10,  windowMinutes: 1 },
 
   // Messaging — anti-spam
   "send-message":          { maxRequests: 50,  windowMinutes: 60 },
@@ -98,8 +99,8 @@ export async function checkRateLimit(
 
   if (error) {
     console.error("Rate limit check failed:", error);
-    // Fail open — allow request if rate limit check fails
-    return { allowed: true };
+    // Fail closed — deny request if rate limit check fails
+    return { allowed: false, retryAfterSeconds: 30, message: "Service temporarily unavailable. Please try again shortly." };
   }
 
   if (!data) {
@@ -138,7 +139,7 @@ export async function checkLoopAssistDailyCap(
 
   if (error) {
     console.error("LoopAssist daily cap check failed:", error);
-    return { allowed: true }; // fail open
+    return { allowed: false, retryAfterSeconds: 30, message: "Service temporarily unavailable. Please try again shortly." };
   }
 
   const used = count ?? 0;

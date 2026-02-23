@@ -82,7 +82,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
-  const [contextHash, setContextHash] = useState<string | null>(null);
+  const contextHashRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pageContext = externalPageContext || { type: 'general' as const };
@@ -158,7 +158,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     },
     onSuccess: (data) => {
       setCurrentConversationId(data.id);
-      setContextHash(null);
+      contextHashRef.current = null;
       queryClient.invalidateQueries({ queryKey: ['ai-conversations'] });
     },
   });
@@ -229,7 +229,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
           messages: historyMessages,
           context: pageContext,
           orgId: currentOrg.id,
-          lastContextHash: contextHash,
+          lastContextHash: contextHashRef.current,
         }),
         signal: abortController.signal,
       });
@@ -241,7 +241,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
 
       const newContextHash = response.headers.get('X-Context-Hash');
       if (newContextHash) {
-        setContextHash(newContextHash);
+        contextHashRef.current = newContextHash;
       }
 
       if (!response.body) throw new Error('No response body');
@@ -287,6 +287,24 @@ export function useLoopAssist(externalPageContext?: PageContext) {
         }
       }
 
+      // Process any remaining data in the buffer after stream ends
+      if (textBuffer.trim()) {
+        const remainingLines = textBuffer.split('\n');
+        for (const line of remainingLines) {
+          const trimmed = line.replace(/\r$/, '');
+          if (!trimmed.startsWith('data: ')) continue;
+          const jsonStr = trimmed.slice(6).trim();
+          if (jsonStr === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            if (parsed.text) {
+              assistantContent += parsed.text;
+              setStreamingContent(assistantContent);
+            }
+          } catch { /* ignore final partial */ }
+        }
+      }
+
       if (assistantContent) {
         await supabase.from('ai_messages').insert({
           conversation_id: conversationId,
@@ -297,7 +315,16 @@ export function useLoopAssist(externalPageContext?: PageContext) {
         });
 
         const actionData = parseActionFromResponse(assistantContent);
-        if (actionData) {
+        const VALID_ACTION_TYPES = [
+          'generate_billing_run', 'send_invoice_reminders', 'reschedule_lessons',
+          'draft_email', 'mark_attendance', 'cancel_lesson', 'complete_lessons',
+          'send_progress_report',
+        ];
+        if (actionData && VALID_ACTION_TYPES.includes(actionData.action_type)) {
+          // Cap entities to prevent abuse
+          if (actionData.entities && actionData.entities.length > 50) {
+            actionData.entities = actionData.entities.slice(0, 50);
+          }
           await supabase.from('ai_action_proposals').insert([{
             org_id: currentOrg.id,
             user_id: user.id,
@@ -350,7 +377,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
       setIsStreaming(false);
       setStreamingContent('');
     }
-  }, [currentOrg?.id, user?.id, session?.access_token, currentConversationId, messages, pageContext, queryClient, createConversation, contextHash, toast]);
+  }, [currentOrg?.id, user?.id, session?.access_token, currentConversationId, messages, pageContext, queryClient, createConversation, toast]);
 
   // Execute or cancel proposal
   const handleProposal = useMutation({
@@ -376,32 +403,17 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     onSuccess: (data, variables) => {
       if (variables.action === 'confirm') {
         toast({ title: data.result?.message || 'Action executed successfully' });
-        
-        if (currentConversationId && currentOrg?.id && user?.id) {
-          const resultMessage = typeof data.result?.message === 'string' 
-            ? data.result.message 
-            : 'Action completed successfully';
-          
-          supabase.from('ai_messages').insert({
-            conversation_id: currentConversationId,
-            org_id: currentOrg.id,
-            user_id: user.id,
-            role: 'assistant',
-            content: `✅ Action Executed\n\n${resultMessage}`,
-          }).then(() => {
-            queryClient.invalidateQueries({ queryKey: ['ai-messages', currentConversationId] });
-            setTimeout(() => {
-              const messagesContainer = document.querySelector('[data-loop-assist-messages]');
-              if (messagesContainer) {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-              }
-            }, 100);
-          });
-        }
       } else {
         toast({ title: 'Action cancelled' });
       }
       queryClient.invalidateQueries({ queryKey: ['ai-proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-messages', currentConversationId] });
+      setTimeout(() => {
+        const messagesContainer = document.querySelector('[data-loop-assist-messages]');
+        if (messagesContainer) {
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+      }, 500);
     },
     onError: (error) => {
       toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to process action', variant: 'destructive' });
@@ -411,10 +423,12 @@ export function useLoopAssist(externalPageContext?: PageContext) {
   // Delete conversation
   const deleteConversation = useMutation({
     mutationFn: async (conversationId: string) => {
+      if (!currentOrg?.id) throw new Error('No organisation selected');
       const { error } = await supabase
         .from('ai_conversations')
         .delete()
-        .eq('id', conversationId);
+        .eq('id', conversationId)
+        .eq('org_id', currentOrg.id);
       if (error) throw error;
     },
     onSuccess: (_, deletedId) => {

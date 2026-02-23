@@ -1581,6 +1581,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           credit_value_minor: number
+          expired_at: string | null
           expires_at: string | null
           id: string
           issued_at: string
@@ -1597,6 +1598,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           credit_value_minor?: number
+          expired_at?: string | null
           expires_at?: string | null
           id?: string
           issued_at?: string
@@ -1613,6 +1615,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           credit_value_minor?: number
+          expired_at?: string | null
           expires_at?: string | null
           id?: string
           issued_at?: string
@@ -1809,6 +1812,13 @@ export type Database = {
             columns: ["booked_lesson_id"]
             isOneToOne: false
             referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_waitlist_credit_id_fkey"
+            columns: ["credit_id"]
+            isOneToOne: false
+            referencedRelation: "available_credits"
             referencedColumns: ["id"]
           },
           {
@@ -2295,6 +2305,7 @@ export type Database = {
           country_code: string
           created_at: string
           created_by: string
+          credit_expiry_days: number | null
           currency_code: string
           default_lesson_length_mins: number
           default_payment_terms_days: number | null
@@ -2308,6 +2319,7 @@ export type Database = {
           invoice_from_postcode: string | null
           logo_url: string | null
           make_up_waitlist_expiry_weeks: number | null
+          max_credits_per_term: number | null
           max_students: number
           max_teachers: number
           name: string
@@ -2348,6 +2360,7 @@ export type Database = {
           country_code?: string
           created_at?: string
           created_by: string
+          credit_expiry_days?: number | null
           currency_code?: string
           default_lesson_length_mins?: number
           default_payment_terms_days?: number | null
@@ -2361,6 +2374,7 @@ export type Database = {
           invoice_from_postcode?: string | null
           logo_url?: string | null
           make_up_waitlist_expiry_weeks?: number | null
+          max_credits_per_term?: number | null
           max_students?: number
           max_teachers?: number
           name: string
@@ -2401,6 +2415,7 @@ export type Database = {
           country_code?: string
           created_at?: string
           created_by?: string
+          credit_expiry_days?: number | null
           currency_code?: string
           default_lesson_length_mins?: number
           default_payment_terms_days?: number | null
@@ -2414,6 +2429,7 @@ export type Database = {
           invoice_from_postcode?: string | null
           logo_url?: string | null
           make_up_waitlist_expiry_weeks?: number | null
+          max_credits_per_term?: number | null
           max_students?: number
           max_teachers?: number
           name?: string
@@ -3791,6 +3807,106 @@ export type Database = {
       }
     }
     Views: {
+      available_credits: {
+        Row: {
+          applied_to_invoice_id: string | null
+          created_at: string | null
+          created_by: string | null
+          credit_status: string | null
+          credit_value_minor: number | null
+          expired_at: string | null
+          expires_at: string | null
+          id: string | null
+          issued_at: string | null
+          issued_for_lesson_id: string | null
+          notes: string | null
+          org_id: string | null
+          redeemed_at: string | null
+          redeemed_lesson_id: string | null
+          student_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          applied_to_invoice_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          credit_status?: never
+          credit_value_minor?: number | null
+          expired_at?: string | null
+          expires_at?: string | null
+          id?: string | null
+          issued_at?: string | null
+          issued_for_lesson_id?: string | null
+          notes?: string | null
+          org_id?: string | null
+          redeemed_at?: string | null
+          redeemed_lesson_id?: string | null
+          student_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          applied_to_invoice_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          credit_status?: never
+          credit_value_minor?: number | null
+          expired_at?: string | null
+          expires_at?: string | null
+          id?: string | null
+          issued_at?: string | null
+          issued_for_lesson_id?: string | null
+          notes?: string | null
+          org_id?: string | null
+          redeemed_at?: string | null
+          redeemed_lesson_id?: string | null
+          student_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "make_up_credits_applied_to_invoice_id_fkey"
+            columns: ["applied_to_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_credits_issued_for_lesson_id_fkey"
+            columns: ["issued_for_lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_credits_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_credits_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_credits_redeemed_lesson_id_fkey"
+            columns: ["redeemed_lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "make_up_credits_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parent_org_info: {
         Row: {
           bank_account_name: string | null

@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { STALE_VOLATILE } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,7 +24,7 @@ export interface ThreadListingMessage {
   parent_message_id: string | null;
   channel: string;
   message_type: string;
-  sender_profile?: { full_name: string; email: string } | null;
+  sender_profile?: { full_name: string | null; email: string | null } | null;
 }
 
 /** Full message with body — loaded when a thread is expanded */
@@ -154,7 +155,7 @@ export function useMessageThreads() {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: !!currentOrg,
-    staleTime: 30_000,
+    staleTime: STALE_VOLATILE,
   });
 
   // Merge all pages into threads
@@ -198,7 +199,7 @@ export function useThreadMessages(threadId: string | null, enabled: boolean) {
 
       // Attach sender profiles
       const senderIds = [...new Set(messages.map(m => m.sender_user_id).filter(Boolean))];
-      let profileMap = new Map<string, { full_name: string; email: string }>();
+      let profileMap = new Map<string, { full_name: string | null; email: string | null }>();
       if (senderIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
@@ -213,7 +214,7 @@ export function useThreadMessages(threadId: string | null, enabled: boolean) {
       }));
     },
     enabled: !!currentOrg && !!threadId && enabled,
-    staleTime: 30_000,
+    staleTime: STALE_VOLATILE,
   });
 }
 
@@ -244,7 +245,7 @@ export function useSearchMessageThreads(query: string) {
       return groupMessagesIntoThreads(messages || []);
     },
     enabled,
-    staleTime: 30_000,
+    staleTime: STALE_VOLATILE,
   });
 
   return { threads: data || [], isLoading, isSearching: enabled };

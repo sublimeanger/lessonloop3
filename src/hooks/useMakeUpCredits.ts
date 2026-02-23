@@ -80,8 +80,10 @@ export function useMakeUpCredits(studentId?: string) {
   });
 
   // Get available (unredeemed, non-expired) credits for a student
+  // Matches the logic in the available_credits database view
   const availableCredits = credits?.filter(c => 
     !c.redeemed_at && 
+    !(c as any).expired_at &&
     (!c.expires_at || new Date(c.expires_at) > new Date())
   ) || [];
 

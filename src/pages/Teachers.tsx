@@ -1,4 +1,9 @@
 import { useState, useMemo } from 'react';
+import { logger } from '@/lib/logger';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { teacherSchema, type TeacherFormValues } from '@/lib/schemas';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from '@/components/ui/form';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -21,7 +26,7 @@ import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { useTeachers, useTeacherMutations, useTeacherStudentCounts, Teacher } from '@/hooks/useTeachers';
 import { Progress } from '@/components/ui/progress';
 import { Plus, GraduationCap, Loader2, UserPlus, Lock, Link2, Link2Off, Phone, Trash2, Search, Pencil, RotateCcw } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatDateForOrg } from '@/lib/utils';
 import { InviteMemberDialog } from '@/components/settings/InviteMemberDialog';
 import { PendingInvitesList } from '@/components/settings/PendingInvitesList';
 import { TEACHER_COLOURS } from '@/components/calendar/teacherColours';
@@ -46,57 +51,59 @@ function getTeacherColourIndex(teachers: Teacher[], teacherId: string): number {
 }
 
 // Shared form fields for create/edit
-function TeacherFormFields({
-  name, setName,
-  email, setEmail,
-  phone, setPhone,
-  instruments, setInstruments,
-  employmentType, setEmploymentType,
-  bio, setBio,
-}: {
-  name: string; setName: (v: string) => void;
-  email: string; setEmail: (v: string) => void;
-  phone: string; setPhone: (v: string) => void;
-  instruments: string; setInstruments: (v: string) => void;
-  employmentType: string; setEmploymentType: (v: string) => void;
-  bio: string; setBio: (v: string) => void;
-}) {
+function TeacherFormFields() {
   return (
     <div className="space-y-4 py-4">
-      <div className="space-y-2">
-        <Label htmlFor="name">Display Name *</Label>
-        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Amy Brown" />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="teacherEmail">Email (optional)</Label>
-        <Input id="teacherEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="amy@example.com" />
-        <p className="text-xs text-muted-foreground">If provided, the account will be linked when they accept an invitation with this email.</p>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="phone">Phone (optional)</Label>
-        <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07123 456789" />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="instruments">Instruments (optional)</Label>
-        <Input id="instruments" value={instruments} onChange={(e) => setInstruments(e.target.value)} placeholder="Piano, Guitar, Violin" />
-        <p className="text-xs text-muted-foreground">Comma-separated list of instruments.</p>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="employmentType">Employment Type</Label>
-        <Select value={employmentType} onValueChange={setEmploymentType}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="contractor">Contractor</SelectItem>
-            <SelectItem value="employee">Employee</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="bio">Bio (optional)</Label>
-        <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="A short bio about the teacher..." rows={3} />
-      </div>
+      <FormField name="display_name" render={({ field }) => (
+        <FormItem>
+          <FormLabel>Display Name *</FormLabel>
+          <FormControl><Input {...field} placeholder="Amy Brown" /></FormControl>
+          <FormMessage />
+        </FormItem>
+      )} />
+      <FormField name="email" render={({ field }) => (
+        <FormItem>
+          <FormLabel>Email (optional)</FormLabel>
+          <FormControl><Input type="email" {...field} placeholder="amy@example.com" /></FormControl>
+          <FormDescription>If provided, the account will be linked when they accept an invitation with this email.</FormDescription>
+          <FormMessage />
+        </FormItem>
+      )} />
+      <FormField name="phone" render={({ field }) => (
+        <FormItem>
+          <FormLabel>Phone (optional)</FormLabel>
+          <FormControl><Input {...field} placeholder="07123 456789" /></FormControl>
+          <FormMessage />
+        </FormItem>
+      )} />
+      <FormField name="instruments" render={({ field }) => (
+        <FormItem>
+          <FormLabel>Instruments (optional)</FormLabel>
+          <FormControl><Input {...field} placeholder="Piano, Guitar, Violin" /></FormControl>
+          <FormDescription>Comma-separated list of instruments.</FormDescription>
+          <FormMessage />
+        </FormItem>
+      )} />
+      <FormField name="employment_type" render={({ field }) => (
+        <FormItem>
+          <FormLabel>Employment Type</FormLabel>
+          <Select value={field.value} onValueChange={field.onChange}>
+            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+            <SelectContent>
+              <SelectItem value="contractor">Contractor</SelectItem>
+              <SelectItem value="employee">Employee</SelectItem>
+            </SelectContent>
+          </Select>
+          <FormMessage />
+        </FormItem>
+      )} />
+      <FormField name="bio" render={({ field }) => (
+        <FormItem>
+          <FormLabel>Bio (optional)</FormLabel>
+          <FormControl><Textarea {...field} placeholder="A short bio about the teacher..." rows={3} /></FormControl>
+          <FormMessage />
+        </FormItem>
+      )} />
     </div>
   );
 }
@@ -129,22 +136,18 @@ export default function Teachers() {
   const [inviteRefreshKey, setInviteRefreshKey] = useState(0);
   
   // Create teacher form
-  const [newTeacherName, setNewTeacherName] = useState('');
-  const [newTeacherEmail, setNewTeacherEmail] = useState('');
-  const [newTeacherPhone, setNewTeacherPhone] = useState('');
-  const [newTeacherInstruments, setNewTeacherInstruments] = useState('');
-  const [newTeacherEmploymentType, setNewTeacherEmploymentType] = useState('contractor');
-  const [newTeacherBio, setNewTeacherBio] = useState('');
+  const createForm = useForm<TeacherFormValues>({
+    resolver: zodResolver(teacherSchema),
+    defaultValues: { display_name: '', email: '', phone: '', instruments: '', employment_type: 'contractor', bio: '' },
+  });
 
   // Edit teacher state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editTeacher, setEditTeacher] = useState<Teacher | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editEmail, setEditEmail] = useState('');
-  const [editPhone, setEditPhone] = useState('');
-  const [editInstruments, setEditInstruments] = useState('');
-  const [editEmploymentType, setEditEmploymentType] = useState('contractor');
-  const [editBio, setEditBio] = useState('');
+  const editForm = useForm<TeacherFormValues>({
+    resolver: zodResolver(teacherSchema),
+    defaultValues: { display_name: '', email: '', phone: '', instruments: '', employment_type: 'contractor', bio: '' },
+  });
   const [isEditing, setIsEditing] = useState(false);
 
   // Quick view state
@@ -186,24 +189,10 @@ export default function Teachers() {
   ];
 
   const resetCreateForm = () => {
-    setNewTeacherName('');
-    setNewTeacherEmail('');
-    setNewTeacherPhone('');
-    setNewTeacherInstruments('');
-    setNewTeacherEmploymentType('contractor');
-    setNewTeacherBio('');
+    createForm.reset();
   };
 
-  const handleCreateTeacher = async () => {
-    if (!newTeacherName.trim()) {
-      toast({ title: 'Name required', variant: 'destructive' });
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (newTeacherEmail.trim() && !emailRegex.test(newTeacherEmail.trim())) {
-      toast({ title: 'Invalid email', description: 'Please enter a valid email address.', variant: 'destructive' });
-      return;
-    }
+  const handleCreateTeacher = async (values: TeacherFormValues) => {
     if (!canAddTeacher) {
       toast({ title: 'Teacher limit reached', variant: 'destructive' });
       return;
@@ -211,12 +200,12 @@ export default function Teachers() {
     setIsSaving(true);
     try {
       await createTeacher.mutateAsync({
-        display_name: newTeacherName.trim(),
-        email: newTeacherEmail.trim() || undefined,
-        phone: newTeacherPhone.trim() || undefined,
-        instruments: newTeacherInstruments.trim() ? newTeacherInstruments.split(',').map(s => s.trim()).filter(Boolean) : undefined,
-        employment_type: newTeacherEmploymentType as 'contractor' | 'employee',
-        bio: newTeacherBio.trim() || undefined,
+        display_name: values.display_name,
+        email: values.email || undefined,
+        phone: values.phone || undefined,
+        instruments: values.instruments ? values.instruments.split(',').map(s => s.trim()).filter(Boolean) : undefined,
+        employment_type: values.employment_type,
+        bio: values.bio || undefined,
       });
       setIsCreateDialogOpen(false);
       resetCreateForm();
@@ -229,35 +218,29 @@ export default function Teachers() {
 
   const openEditDialog = (teacher: Teacher) => {
     setEditTeacher(teacher);
-    setEditName(teacher.display_name);
-    setEditEmail(teacher.email || '');
-    setEditPhone(teacher.phone || '');
-    setEditInstruments(teacher.instruments?.join(', ') || '');
-    setEditEmploymentType(teacher.employment_type || 'contractor');
-    setEditBio(teacher.bio || '');
+    editForm.reset({
+      display_name: teacher.display_name,
+      email: teacher.email || '',
+      phone: teacher.phone || '',
+      instruments: teacher.instruments?.join(', ') || '',
+      employment_type: (teacher.employment_type as 'contractor' | 'employee') || 'contractor',
+      bio: teacher.bio || '',
+    });
     setEditDialogOpen(true);
   };
 
-  const handleEditTeacher = async () => {
-    if (!editTeacher || !editName.trim()) {
-      toast({ title: 'Name required', variant: 'destructive' });
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (editEmail.trim() && !emailRegex.test(editEmail.trim())) {
-      toast({ title: 'Invalid email', description: 'Please enter a valid email address.', variant: 'destructive' });
-      return;
-    }
+  const handleEditTeacher = async (values: TeacherFormValues) => {
+    if (!editTeacher) return;
     setIsEditing(true);
     try {
       await updateTeacher.mutateAsync({
         id: editTeacher.id,
-        display_name: editName.trim(),
-        email: editEmail.trim() || null,
-        phone: editPhone.trim() || null,
-        instruments: editInstruments.trim() ? editInstruments.split(',').map(s => s.trim()).filter(Boolean) : [],
-        employment_type: editEmploymentType as 'contractor' | 'employee',
-        bio: editBio.trim() || null,
+        display_name: values.display_name,
+        email: values.email || null,
+        phone: values.phone || null,
+        instruments: values.instruments ? values.instruments.split(',').map(s => s.trim()).filter(Boolean) : [],
+        employment_type: values.employment_type,
+        bio: values.bio || null,
       });
       setEditDialogOpen(false);
     } catch {
@@ -345,14 +328,14 @@ export default function Teachers() {
         .delete()
         .eq('teacher_id', teacher.id)
         .eq('org_id', currentOrg.id);
-      if (staError) console.error('Failed to clean up student-teacher assignments:', staError);
+      if (staError) logger.error('Failed to clean up student-teacher assignments:', staError);
 
       // Null out practice assignments for this teacher
       const { error: paError } = await supabase
         .from('practice_assignments')
         .update({ teacher_id: null })
         .eq('teacher_id', teacher.id);
-      if (paError) console.error('Failed to clean up practice assignments:', paError);
+      if (paError) logger.error('Failed to clean up practice assignments:', paError);
 
       // Clear default_teacher_id on students
       const { error: sdError } = await supabase
@@ -360,7 +343,7 @@ export default function Teachers() {
         .update({ default_teacher_id: null })
         .eq('default_teacher_id', teacher.id)
         .eq('org_id', currentOrg.id);
-      if (sdError) console.error('Failed to clear default teacher on students:', sdError);
+      if (sdError) logger.error('Failed to clear default teacher on students:', sdError);
 
       await deleteTeacher.mutateAsync(teacher.id);
 
@@ -535,20 +518,17 @@ export default function Teachers() {
               Create a teacher record without login access. They can be linked to an account later via invitation.
             </DialogDescription>
           </DialogHeader>
-          <TeacherFormFields
-            name={newTeacherName} setName={setNewTeacherName}
-            email={newTeacherEmail} setEmail={setNewTeacherEmail}
-            phone={newTeacherPhone} setPhone={setNewTeacherPhone}
-            instruments={newTeacherInstruments} setInstruments={setNewTeacherInstruments}
-            employmentType={newTeacherEmploymentType} setEmploymentType={setNewTeacherEmploymentType}
-            bio={newTeacherBio} setBio={setNewTeacherBio}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateTeacher} disabled={isSaving || !newTeacherName.trim()}>
-              {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</> : 'Add Teacher'}
-            </Button>
-          </DialogFooter>
+          <Form {...createForm}>
+            <form onSubmit={createForm.handleSubmit(handleCreateTeacher)}>
+              <TeacherFormFields />
+              <DialogFooter>
+                <Button variant="outline" type="button" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</> : 'Add Teacher'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
@@ -561,20 +541,17 @@ export default function Teachers() {
               Update {editTeacher?.display_name}'s details.
             </DialogDescription>
           </DialogHeader>
-          <TeacherFormFields
-            name={editName} setName={setEditName}
-            email={editEmail} setEmail={setEditEmail}
-            phone={editPhone} setPhone={setEditPhone}
-            instruments={editInstruments} setInstruments={setEditInstruments}
-            employmentType={editEmploymentType} setEmploymentType={setEditEmploymentType}
-            bio={editBio} setBio={setEditBio}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleEditTeacher} disabled={isEditing || !editName.trim()}>
-              {isEditing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
-            </Button>
-          </DialogFooter>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(handleEditTeacher)}>
+              <TeacherFormFields />
+              <DialogFooter>
+                <Button variant="outline" type="button" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={isEditing}>
+                  {isEditing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
@@ -664,7 +641,7 @@ export default function Teachers() {
                         </summary>
                         <ul className="mt-2 space-y-1 text-muted-foreground">
                           {removal.lessons.map(l => (
-                            <li key={l.id}>{l.title} — {new Date(l.start_at).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</li>
+                            <li key={l.id}>{l.title} — {formatDateForOrg(l.start_at, currentOrg?.timezone || 'Europe/London', 'EEE d MMM')}</li>
                           ))}
                         </ul>
                       </details>

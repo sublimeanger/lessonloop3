@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { format, parseISO, subDays, differenceInMinutes, differenceInHours, eachWeekOfInterval, addWeeks, isAfter, isBefore, getDay } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
+import { STALE_STABLE } from '@/config/query-stale-times';
 import { LessonWithDetails, AttendanceStatus } from './types';
 import { RecurringActionDialog, RecurringActionMode } from './RecurringActionDialog';
 import { useOrg } from '@/contexts/OrgContext';
@@ -21,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban, Gift, AlertTriangle, CalendarClock, StopCircle, Repeat } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface LessonDetailPanelProps {
   lesson: LessonWithDetails | null;
@@ -94,7 +96,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
       return data;
     },
     enabled: !!lesson?.recurrence_id,
-    staleTime: 5 * 60_000,
+    staleTime: STALE_STABLE,
   });
 
   const recurrenceDescription = useMemo(() => {
@@ -251,7 +253,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         const { data: futureLessons } = await supabase
           .from('lessons')
           .select('id')
-          .eq('recurrence_id', lesson.recurrence_id)
+           .eq('recurrence_id', lesson.recurrence_id!)
           .gte('start_at', lesson.start_at)
           .neq('status', 'cancelled');
         cancelledLessonIds = (futureLessons || []).map(l => l.id);
@@ -259,7 +261,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         const { error } = await supabase
           .from('lessons')
           .update(cancelData)
-          .eq('recurrence_id', lesson.recurrence_id)
+           .eq('recurrence_id', lesson.recurrence_id!)
           .gte('start_at', lesson.start_at);
         if (error) throw error;
         logAudit(currentOrg!.id, user.id, 'cancel', 'lesson', lesson.id, {
@@ -368,7 +370,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         const { error } = await supabase
           .from('lessons')
           .delete()
-          .eq('recurrence_id', lesson.recurrence_id)
+          .eq('recurrence_id', lesson.recurrence_id!)
           .gte('start_at', lesson.start_at);
         if (error) throw error;
         logAudit(currentOrg!.id, user!.id, 'delete', 'lesson', lesson.id, {
@@ -510,6 +512,26 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
               {lesson.participants?.map((p, i) => (
                 <span key={p.id} className="text-foreground">
                   {p.student.first_name} {p.student.last_name}
+                  {lesson.makeupStudentIds?.includes(p.student.id) && (() => {
+                    const detail = lesson.makeupDetails?.[p.student.id];
+                    const tooltipText = detail
+                      ? `Make-up for ${detail.lessonTitle} on ${detail.missedDate} (${detail.absenceReason.replace(/_/g, ' ')})`
+                      : 'Make-up student';
+                    return (
+                      <TooltipProvider delayDuration={200}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="ml-1 text-[9px] px-1 py-0 h-4 border-amber-500/50 text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-900/30 cursor-help">
+                              Make-up
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="text-xs max-w-64">
+                            {tooltipText}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  })()}
                   {i < (lesson.participants?.length || 0) - 1 && ', '}
                 </span>
               ))}

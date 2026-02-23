@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { logAudit } from '@/lib/auditLog';
 import { Check, ChevronLeft, ChevronRight, Loader2, User, Users, GraduationCap } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { isValidEmail, isValidPhone } from '@/lib/validation';
+import { studentSchema, newGuardianSchema } from '@/lib/schemas';
 import { stripHtml } from '@/lib/sanitize';
 import { StudentInfoStep, StudentInfoData } from './wizard/StudentInfoStep';
 import { GuardianStep, GuardianData } from './wizard/GuardianStep';
@@ -102,16 +102,10 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
   }, [open]);
   
   const validateStep1 = (): boolean => {
-    if (!studentData.firstName.trim() || !studentData.lastName.trim()) {
-      toast({ title: 'Name required', description: 'Please enter first and last name.', variant: 'destructive' });
-      return false;
-    }
-    if (studentData.email.trim() && !isValidEmail(studentData.email.trim())) {
-      toast({ title: 'Invalid email', description: 'Please enter a valid email address.', variant: 'destructive' });
-      return false;
-    }
-    if (studentData.phone.trim() && !isValidPhone(studentData.phone.trim())) {
-      toast({ title: 'Invalid phone', description: 'Please enter a valid phone number.', variant: 'destructive' });
+    const result = studentSchema.safeParse(studentData);
+    if (!result.success) {
+      const firstError = result.error.errors[0];
+      toast({ title: 'Validation error', description: firstError.message, variant: 'destructive' });
       return false;
     }
     return true;
@@ -123,9 +117,17 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
         toast({ title: 'Select guardian', description: 'Please select an existing guardian.', variant: 'destructive' });
         return false;
       }
-      if (guardianData.mode === 'new' && !guardianData.newGuardianName.trim()) {
-        toast({ title: 'Name required', description: 'Please enter the guardian name.', variant: 'destructive' });
-        return false;
+      if (guardianData.mode === 'new') {
+        const result = newGuardianSchema.safeParse({
+          full_name: guardianData.newGuardianName,
+          email: guardianData.newGuardianEmail,
+          phone: guardianData.newGuardianPhone,
+        });
+        if (!result.success) {
+          const firstError = result.error.errors[0];
+          toast({ title: 'Validation error', description: firstError.message, variant: 'destructive' });
+          return false;
+        }
       }
     }
     return true;

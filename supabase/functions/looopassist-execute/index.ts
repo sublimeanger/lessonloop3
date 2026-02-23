@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
 interface ActionProposal {
   id: string;
@@ -45,6 +46,12 @@ serve(async (req) => {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Rate limit execute requests
+    const rateLimitResult = await checkRateLimit(user.id, "looopassist-execute");
+    if (!rateLimitResult.allowed) {
+      return rateLimitResponse(corsHeaders, rateLimitResult);
     }
 
     const { proposalId, action } = await req.json();
@@ -116,8 +123,23 @@ serve(async (req) => {
 
       try {
         const typedProposal = proposal as ActionProposal;
-        const { action_type, params } = typedProposal.proposal;
+        const { action_type, params, entities } = typedProposal.proposal;
         const orgId = typedProposal.org_id;
+
+        // Validate entity count cap
+        if (entities && entities.length > 50) {
+          throw new Error("Too many entities in proposal (max 50)");
+        }
+
+        // Validate entity ID formats (must be valid UUIDs)
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (entities) {
+          for (const entity of entities) {
+            if (entity.id && !UUID_RE.test(entity.id)) {
+              throw new Error(`Invalid entity ID format: ${entity.id}`);
+            }
+          }
+        }
 
         switch (action_type) {
           case "generate_billing_run": {
@@ -193,7 +215,25 @@ serve(async (req) => {
         ? `✓ ${result.message}${resultBlock}`
         : `✗ ${result.message || result.error}`;
 
-      // Write result as assistant message in the conversation
+      // Update proposal status FIRST to prevent re-execution
+      const { error: statusError } = await supabase
+        .from("ai_action_proposals")
+        .update({
+          status: newStatus,
+          result,
+          executed_at: new Date().toISOString(),
+        })
+        .eq("id", proposalId)
+        .eq("status", "proposed"); // Only update if still "proposed"
+
+      if (statusError) {
+        console.error("Failed to update proposal status:", statusError);
+        return new Response(JSON.stringify({ error: "Failed to record action result" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      // Then insert result message (best effort)
       if (typedForBlock.conversation_id) {
         await supabase.from("ai_messages").insert({
           conversation_id: typedForBlock.conversation_id,
@@ -203,16 +243,6 @@ serve(async (req) => {
           content: resultMessage,
         });
       }
-
-      // Update proposal status
-      await supabase
-        .from("ai_action_proposals")
-        .update({
-          status: newStatus,
-          result,
-          executed_at: new Date().toISOString(),
-        })
-        .eq("id", proposalId);
 
       return new Response(JSON.stringify({ success: newStatus === "executed", result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -504,6 +534,15 @@ async function executeSendInvoiceReminders(
 
   if (error) throw error;
 
+  // Fetch org currency for correct formatting
+  const { data: org } = await supabase
+    .from("organisations")
+    .select("currency_code")
+    .eq("id", orgId)
+    .single();
+  const fmtCurrency = (minor: number) =>
+    new Intl.NumberFormat('en-GB', { style: 'currency', currency: org?.currency_code || 'GBP' }).format(minor / 100);
+
   let remindersSent = 0;
   const results: string[] = [];
 
@@ -525,7 +564,7 @@ async function executeSendInvoiceReminders(
       recipient_type: invoice.guardians ? "guardian" : "student",
       recipient_id: invoice.guardians?.id || invoice.students?.id,
       subject: `Payment Reminder: Invoice ${invoice.invoice_number}`,
-      body: `Dear ${recipientName},\n\nThis is a friendly reminder that invoice ${invoice.invoice_number} for £${(invoice.total_minor / 100).toFixed(2)} is outstanding. The due date was ${invoice.due_date}.\n\nPlease arrange payment at your earliest convenience.\n\nThank you.`,
+      body: `Dear ${recipientName},\n\nThis is a friendly reminder that invoice ${invoice.invoice_number} for ${fmtCurrency(invoice.total_minor)} is outstanding. The due date was ${invoice.due_date}.\n\nPlease arrange payment at your earliest convenience.\n\nThank you.`,
       message_type: "invoice_reminder",
       status: "queued",
       related_id: invoice.id,

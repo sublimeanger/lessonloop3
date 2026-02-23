@@ -45,7 +45,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, formatLimit, TRIAL_DAYS, DB_PLAN_MAP, PLAN_DISPLAY_NAMES } from '@/lib/pricing-config';
 
@@ -234,11 +234,11 @@ export function BillingTab() {
     const connectParam = searchParams.get('connect');
     if (connectParam === 'return') {
       refreshStatus();
-      toast.success('Stripe account setup updated');
+      toast({ title: 'Stripe account setup updated' });
       searchParams.delete('connect');
       setSearchParams(searchParams, { replace: true });
     } else if (connectParam === 'refresh') {
-      toast.info('Please complete your Stripe account setup');
+      toast({ title: 'Please complete your Stripe account setup' });
       searchParams.delete('connect');
       setSearchParams(searchParams, { replace: true });
     }
@@ -273,7 +273,7 @@ export function BillingTab() {
         refreshOrganisations();
         queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
         const planName = data?.subscription_plan ? (PLAN_DISPLAY_NAMES[data.subscription_plan] || data.subscription_plan) : 'your plan';
-        toast.success(`Subscription activated! Welcome to LessonLoop ${planName}.`);
+        toast({ title: `Subscription activated! Welcome to LessonLoop ${planName}.` });
       }
     }, 2000);
 
@@ -794,9 +794,9 @@ function PaymentPreferencesCard({ orgId, isConnected }: { orgId?: string; isConn
 
     setIsSaving(false);
     if (error) {
-      toast.error('Failed to save payment preferences');
+      toast({ title: 'Failed to save payment preferences', variant: 'destructive' });
     } else {
-      toast.success('Payment preferences saved');
+      toast({ title: 'Payment preferences saved' });
     }
   };
 
@@ -947,7 +947,7 @@ function BillingHistoryCard({ orgId }: { orgId: string }) {
       if (error) throw error;
       return (result as { invoices: StripeInvoice[] }).invoices;
     },
-    staleTime: 60_000,
+    // Uses default SEMI_STABLE (2 min)
   });
 
   const formatAmount = (amount: number, currency: string) => {

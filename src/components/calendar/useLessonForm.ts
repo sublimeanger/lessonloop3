@@ -410,7 +410,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
                 room_id: roomId,
                 title,
               })
-              .eq('recurrence_id', lesson.recurrence_id)
+             .eq('recurrence_id', lesson.recurrence_id!)
               .gt('start_at', lesson.start_at);
 
             if (batchError) throw batchError;

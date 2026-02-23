@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { STALE_VOLATILE } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useToast } from '@/hooks/use-toast';
@@ -155,7 +156,7 @@ export function useRecipientPreview(filters: FilterCriteria) {
       };
     },
     enabled: !!currentOrg,
-    staleTime: 30_000,
+    staleTime: STALE_VOLATILE,
   });
 }
 

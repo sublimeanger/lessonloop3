@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -83,11 +83,11 @@ export default function Contact() {
       }
 
       setIsSuccess(true);
-      toast.success("Message sent! We'll get back to you soon.");
+      toast({ title: "Message sent! We'll get back to you soon." });
       setFormData({ firstName: "", lastName: "", email: "", subject: "", message: "" });
     } catch (error: any) {
       logger.error('Contact form error:', error);
-      toast.error(error.message || "Failed to send message. Please try again.");
+      toast({ title: error.message || "Failed to send message. Please try again.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }

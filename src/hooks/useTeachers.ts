@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
-import { useToast } from '@/hooks/use-toast';
+import { toastError } from '@/lib/error-handler';
 
 export interface Teacher {
   id: string;
@@ -67,7 +68,6 @@ export function useTeachers() {
 export function useTeacherMutations() {
   const { currentOrg } = useOrg();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   const createTeacher = useMutation({
     mutationFn: async (data: CreateTeacherData) => {
@@ -97,14 +97,9 @@ export function useTeacherMutations() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
-      toast({ title: 'Teacher created successfully' });
     },
-    onError: (error: Error) => {
-      toast({ 
-        title: 'Failed to create teacher', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+    onError: (error: unknown) => {
+      toastError(error, 'Failed to create teacher');
     },
   });
 
@@ -121,14 +116,9 @@ export function useTeacherMutations() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
-      toast({ title: 'Teacher updated' });
     },
-    onError: (error: Error) => {
-      toast({ 
-        title: 'Failed to update teacher', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+    onError: (error: unknown) => {
+      toastError(error, 'Failed to update teacher');
     },
   });
 
@@ -160,21 +150,16 @@ export function useTeacherMutations() {
           .update({ status: 'disabled' as any })
           .eq('org_id', currentOrg.id)
           .eq('user_id', teacher.user_id);
-        if (memberError) console.error('Failed to disable membership:', memberError);
+        if (memberError) logger.error('Failed to disable membership:', memberError);
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
       queryClient.invalidateQueries({ queryKey: ['org-members'] });
-      toast({ title: 'Teacher removed' });
     },
-    onError: (error: Error) => {
-      toast({ 
-        title: 'Failed to remove teacher', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+    onError: (error: unknown) => {
+      toastError(error, 'Failed to remove teacher');
     },
   });
 
@@ -205,21 +190,16 @@ export function useTeacherMutations() {
           .update({ status: 'active' as any })
           .eq('org_id', currentOrg.id)
           .eq('user_id', teacher.user_id);
-        if (memberError) console.error('Failed to re-enable membership:', memberError);
+        if (memberError) logger.error('Failed to re-enable membership:', memberError);
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
       queryClient.invalidateQueries({ queryKey: ['org-members'] });
-      toast({ title: 'Teacher reactivated' });
     },
-    onError: (error: Error) => {
-      toast({ 
-        title: 'Failed to reactivate teacher', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+    onError: (error: unknown) => {
+      toastError(error, 'Failed to reactivate teacher');
     },
   });
 

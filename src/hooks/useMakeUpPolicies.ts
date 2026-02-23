@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useToast } from '@/hooks/use-toast';
@@ -73,7 +74,7 @@ export function useMakeUpPolicies() {
       seeded.current = true;
       supabase.rpc('seed_make_up_policies', { _org_id: currentOrg.id }).then(({ error }) => {
         if (error) {
-          console.error('Failed to seed make-up policies:', error);
+          toast({ title: 'Failed to initialise make-up policies', description: 'Please refresh the page to try again.', variant: 'destructive' });
         } else {
           refetch();
         }

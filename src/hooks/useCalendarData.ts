@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { STALE_VOLATILE, STALE_STABLE, GC_DEFAULT } from '@/config/query-stale-times';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
@@ -96,11 +97,11 @@ async function fetchCalendarLessons(
   }
 
   const lessonIds = lessonsData.map(l => l.id);
-  const teacherIds = [...new Set(lessonsData.map(l => l.teacher_id).filter(Boolean))];
+  const teacherIds = [...new Set(lessonsData.map(l => l.teacher_id).filter((id): id is string => id != null))];
 
-  const [teacherRecords, participantsData, attendanceData] = await Promise.all([
+  const [teacherRecords, participantsData, attendanceData, makeupData] = await Promise.all([
     teacherIds.length > 0
-      ? supabase.from('teachers').select('id, display_name, email').in('id', teacherIds)
+      ? supabase.from('teachers').select('id, display_name, email').in('id', teacherIds as string[])
       : Promise.resolve({ data: [] }),
     supabase
       .from('lesson_participants')
@@ -110,6 +111,11 @@ async function fetchCalendarLessons(
       .from('attendance_records')
       .select('lesson_id, student_id, attendance_status')
       .in('lesson_id', lessonIds),
+    supabase
+      .from('make_up_waitlist')
+      .select('booked_lesson_id, student_id, lesson_title, missed_lesson_date, absence_reason')
+      .in('booked_lesson_id', lessonIds)
+      .eq('status', 'booked'),
   ]);
 
   const teacherData = ('data' in teacherRecords ? teacherRecords.data : teacherRecords) as { id: string; display_name: string | null; email: string | null }[] | null;
@@ -126,14 +132,34 @@ async function fetchCalendarLessons(
     const existing = attendanceMap.get(a.lesson_id) || [];
     attendanceMap.set(a.lesson_id, [...existing, a]);
   });
+  const makeupMap = new Map<string, string[]>();
+  const makeupDetailsMap = new Map<string, Record<string, { lessonTitle: string; missedDate: string; absenceReason: string }>>();
+  interface MakeupRow { booked_lesson_id: string | null; student_id: string; lesson_title: string; missed_lesson_date: string; absence_reason: string }
+  ((makeupData.data || []) as MakeupRow[]).forEach((m) => {
+    if (m.booked_lesson_id) {
+      const existing = makeupMap.get(m.booked_lesson_id) || [];
+      makeupMap.set(m.booked_lesson_id, [...existing, m.student_id]);
+      const details = makeupDetailsMap.get(m.booked_lesson_id) || {};
+      details[m.student_id] = {
+        lessonTitle: m.lesson_title,
+        missedDate: m.missed_lesson_date,
+        absenceReason: m.absence_reason,
+      };
+      makeupDetailsMap.set(m.booked_lesson_id, details);
+    }
+  });
 
   const enrichedLessons: LessonWithDetails[] = lessonsData.map((lesson) => ({
     ...lesson,
     start_at: toOrgLocalIso(lesson.start_at, orgTimezone),
     end_at: toOrgLocalIso(lesson.end_at, orgTimezone),
-    teacher: teacherMap.get(lesson.teacher_id),
+    teacher: teacherMap.get(lesson.teacher_id ?? '') ?? undefined,
+    location: lesson.location ? { name: lesson.location.name } : undefined,
+    room: lesson.room ? { name: lesson.room.name } : undefined,
     participants: (participantsMap.get(lesson.id) || []) as LessonWithDetails['participants'],
     attendance: (attendanceMap.get(lesson.id) || []) as LessonWithDetails['attendance'],
+    makeupStudentIds: makeupMap.get(lesson.id) || [],
+    makeupDetails: makeupDetailsMap.get(lesson.id) || {},
   }));
 
   return { lessons: enrichedLessons, isCapReached };
@@ -174,8 +200,8 @@ export function useCalendarData(
       filters
     ),
     enabled: !!currentOrg,
-    staleTime: 30_000,
-    gcTime: 5 * 60 * 1000,
+    staleTime: STALE_VOLATILE,
+    gcTime: GC_DEFAULT,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });
@@ -292,8 +318,8 @@ export function useTeachersAndLocations() {
       };
     },
     enabled: !!currentOrg,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: STALE_STABLE,
+    gcTime: GC_DEFAULT,
   });
 
   return {
@@ -329,7 +355,7 @@ export function useClosureDates(startDate: Date, endDate: Date) {
       return (data || []).map((c) => ({ date: parseISO(c.date), reason: c.reason }));
     },
     enabled: !!currentOrg,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_STABLE,
   });
 
   return { data, isLoading };

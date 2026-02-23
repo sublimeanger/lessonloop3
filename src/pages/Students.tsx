@@ -356,7 +356,7 @@ function StudentsOverdueBanner() {
       return new Set(data?.map(d => d.payer_student_id)).size;
     },
     enabled: !!currentOrg,
-    staleTime: 60_000,
+    // Uses default SEMI_STABLE (2 min)
   });
 
   if (overdueStudentCount === 0) return null;

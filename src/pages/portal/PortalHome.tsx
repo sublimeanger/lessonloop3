@@ -62,32 +62,52 @@ export default function PortalHome() {
 
     const handleMakeupAction = async () => {
       try {
+        // Resolve guardian_id for the current user
+        const { data: guardian, error: gErr } = await supabase
+          .from('guardians')
+          .select('id')
+          .eq('user_id', (await supabase.auth.getUser()).data.user?.id ?? '')
+          .is('deleted_at', null)
+          .maybeSingle();
+        if (gErr) throw gErr;
+        if (!guardian) {
+          toast({ title: 'Guardian record not found', description: 'Please contact the academy.', variant: 'destructive' });
+          return;
+        }
+
         if (action === 'accept') {
-          const { error } = await supabase
+          const { data, error } = await supabase
             .from('make_up_waitlist')
             .update({ status: 'accepted', responded_at: new Date().toISOString() })
-            .eq('id', id);
+            .eq('id', id)
+            .eq('guardian_id', guardian.id)
+            .eq('status', 'offered')
+            .select('id');
           if (error) throw error;
+          if (!data?.length) {
+            toast({ title: 'Unable to accept', description: 'This offer may have expired or already been actioned.', variant: 'destructive' });
+            return;
+          }
           toast({ title: 'Make-up accepted! The academy will confirm the booking shortly.' });
         } else if (action === 'decline') {
-          // Mark as declined first
-          const { error: declineErr } = await supabase
-            .from('make_up_waitlist')
-            .update({ status: 'declined', responded_at: new Date().toISOString() })
-            .eq('id', id);
-          if (declineErr) throw declineErr;
-
-          // Reset to waiting so the system can re-match
-          const { error: resetErr } = await supabase
+          const { data, error: declineErr } = await supabase
             .from('make_up_waitlist')
             .update({
               status: 'waiting',
+              responded_at: new Date().toISOString(),
               matched_lesson_id: null,
               matched_at: null,
               offered_at: null,
             })
-            .eq('id', id);
-          if (resetErr) throw resetErr;
+            .eq('id', id)
+            .eq('guardian_id', guardian.id)
+            .eq('status', 'offered')
+            .select('id');
+          if (declineErr) throw declineErr;
+          if (!data?.length) {
+            toast({ title: 'Unable to decline', description: 'This offer may have expired or already been actioned.', variant: 'destructive' });
+            return;
+          }
           toast({ title: "Slot declined. We'll keep looking for another available time." });
         }
       } catch (err: unknown) {
@@ -95,7 +115,6 @@ export default function PortalHome() {
         logger.error('Make-up action error:', err);
         toast({ title: 'Something went wrong', description: message, variant: 'destructive' });
       } finally {
-        // Clean URL params
         setSearchParams({}, { replace: true });
         queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_parent'] });
       }
@@ -116,14 +135,48 @@ export default function PortalHome() {
     ['waiting', 'matched', 'offered', 'accepted', 'booked'].includes(e.status)
   );
 
+  const resolveGuardianId = async (): Promise<string | null> => {
+    const { data: guardian, error } = await supabase
+      .from('guardians')
+      .select('id')
+      .eq('user_id', (await supabase.auth.getUser()).data.user?.id ?? '')
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (error || !guardian) return null;
+    return guardian.id;
+  };
+
   const handleInlineAccept = async (id: string) => {
+    const entry = activeWaitlist.find((e) => e.id === id);
     try {
-      const { error } = await supabase
+      const guardianId = await resolveGuardianId();
+      if (!guardianId) {
+        toast({ title: 'Guardian record not found', description: 'Please contact the academy.', variant: 'destructive' });
+        return;
+      }
+      const { data, error } = await supabase
         .from('make_up_waitlist')
         .update({ status: 'accepted', responded_at: new Date().toISOString() })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('guardian_id', guardianId)
+        .eq('status', 'offered')
+        .select('id');
       if (error) throw error;
-      toast({ title: 'Make-up accepted! The academy will confirm the booking shortly.' });
+      if (!data?.length) {
+        toast({ title: 'Unable to accept', description: 'This offer may have expired or already been actioned.', variant: 'destructive' });
+        return;
+      }
+      const matched = entry?.matched_lesson;
+      const lessonInfo = matched
+        ? `${matched.title} — ${formatDateUK(parseISO(matched.start_at), 'EEEE d MMM')} at ${formatTimeUK(parseISO(matched.start_at))}`
+        : '';
+      toast({
+        title: 'Make-up lesson accepted! 🎉',
+        description: lessonInfo
+          ? `${lessonInfo}. The academy will confirm your booking shortly.`
+          : 'The academy will confirm the booking shortly.',
+        duration: 5000,
+      });
       queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_parent'] });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -133,17 +186,25 @@ export default function PortalHome() {
 
   const handleInlineDecline = async (id: string) => {
     try {
-      const { error: declineErr } = await supabase
+      const guardianId = await resolveGuardianId();
+      if (!guardianId) {
+        toast({ title: 'Guardian record not found', description: 'Please contact the academy.', variant: 'destructive' });
+        return;
+      }
+      const { data, error: declineErr } = await supabase
         .from('make_up_waitlist')
-        .update({ status: 'declined', responded_at: new Date().toISOString() })
-        .eq('id', id);
+        .update({
+          status: 'waiting',
+          responded_at: new Date().toISOString(),
+          matched_lesson_id: null,
+          matched_at: null,
+          offered_at: null,
+        })
+        .eq('id', id)
+        .eq('guardian_id', guardianId)
+        .eq('status', 'offered')
+        .select('id');
       if (declineErr) throw declineErr;
-
-      const { error: resetErr } = await supabase
-        .from('make_up_waitlist')
-        .update({ status: 'waiting', matched_lesson_id: null, matched_at: null, offered_at: null })
-        .eq('id', id);
-      if (resetErr) throw resetErr;
 
       toast({ title: "Slot declined. We'll keep looking for another available time." });
       queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_parent'] });
@@ -358,7 +419,70 @@ export default function PortalHome() {
               </div>
             )}
 
-            {/* 3.5 Make-Up Lessons */}
+            {/* 3.5 Available Make-Up Credits */}
+            {parentCredits && parentCredits.length > 0 && (() => {
+              const totalValue = parentCredits.reduce((sum, c) => sum + c.credit_value_minor, 0);
+              const now = new Date();
+              const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+              const expiringSoon = parentCredits.filter(
+                (c) => c.expires_at && isBefore(parseISO(c.expires_at), sevenDaysFromNow) && isAfter(parseISO(c.expires_at), now)
+              );
+
+              return (
+                <Card className="border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 shrink-0">
+                          <Gift className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                            {parentCredits.length} make-up credit{parentCredits.length !== 1 ? 's' : ''} — {formatCurrencyMinor(totalValue, currencyCode)} available
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {expiringSoon.length > 0 && (
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                        <Clock className="h-3 w-3" />
+                        {expiringSoon.length} credit{expiringSoon.length !== 1 ? 's' : ''} expires{' '}
+                        {formatDateUK(parseISO(expiringSoon[0].expires_at!), 'd MMM')}
+                      </div>
+                    )}
+
+                    {parentCredits.length > 1 && (
+                      <div className="space-y-2">
+                        {parentCredits.map((credit) => (
+                          <div key={credit.id} className="flex items-center justify-between text-sm border-t border-emerald-200/60 dark:border-emerald-800/60 pt-2 first:border-t-0 first:pt-0">
+                            <div className="min-w-0">
+                              <p className="font-medium text-emerald-900 dark:text-emerald-100">
+                                {formatCurrencyMinor(credit.credit_value_minor, currencyCode)}
+                                {credit.student && (
+                                  <span className="text-emerald-700/70 dark:text-emerald-300/70 font-normal"> — {credit.student.first_name}</span>
+                                )}
+                              </p>
+                              {credit.expires_at && (
+                                <p className="text-xs text-emerald-700/60 dark:text-emerald-400/60">
+                                  Expires {formatDateUK(parseISO(credit.expires_at), 'd MMM yyyy')}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <p className="text-xs text-emerald-700/60 dark:text-emerald-400/60">
+                      Credits are automatically applied when your academy creates your next invoice.
+                    </p>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
+            {/* 3.6 Make-Up Lessons */}
             {activeWaitlist.length > 0 && (
               <div className="space-y-3">
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -452,53 +576,6 @@ export default function PortalHome() {
                     );
                   })}
                 </div>
-              </div>
-            )}
-
-            {/* 3.6 Available Make-Up Credits */}
-            {parentCredits && parentCredits.length > 0 && (
-              <div className="space-y-3">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                  🎁 Available Credits
-                </h2>
-                <Card>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Gift className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-semibold">
-                          {formatCurrencyMinor(
-                            parentCredits.reduce((sum, c) => sum + c.credit_value_minor, 0),
-                            currencyCode
-                          )} total credit
-                        </span>
-                      </div>
-                      <Badge variant="secondary">{parentCredits.length} available</Badge>
-                    </div>
-                    <div className="space-y-2">
-                      {parentCredits.map((credit) => (
-                        <div key={credit.id} className="flex items-center justify-between text-sm border-t pt-2 first:border-t-0 first:pt-0">
-                          <div className="min-w-0">
-                            <p className="font-medium">
-                              {formatCurrencyMinor(credit.credit_value_minor, currencyCode)}
-                              {credit.student && (
-                                <span className="text-muted-foreground font-normal"> — {credit.student.first_name}</span>
-                              )}
-                            </p>
-                            {credit.expires_at && (
-                              <p className="text-xs text-muted-foreground">
-                                Expires {formatDateUK(parseISO(credit.expires_at), 'd MMM yyyy')}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Credits are automatically applied when your next invoice is generated.
-                    </p>
-                  </CardContent>
-                </Card>
               </div>
             )}
 

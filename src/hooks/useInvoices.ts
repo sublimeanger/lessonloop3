@@ -1,9 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { STALE_VOLATILE } from '@/config/query-stale-times';
 import { logger } from '@/lib/logger';
 import { logAudit } from '@/lib/auditLog';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { toastError } from '@/lib/error-handler';
 import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -85,7 +87,7 @@ export function useInvoices(filters: InvoiceFilters = {}) {
       return { data: (data || []) as InvoiceWithDetails[], totalCount: count ?? 0 };
     },
     enabled: !!currentOrg?.id,
-    staleTime: 30_000,
+    staleTime: STALE_VOLATILE,
   });
 }
 
@@ -179,7 +181,7 @@ export function useInvoiceStats() {
       };
     },
     enabled: !!currentOrg?.id,
-    staleTime: 60_000,
+    // Uses default SEMI_STABLE (2 min)
   });
 }
 
@@ -208,9 +210,9 @@ export function useCreateInvoice() {
       const { data: result, error } = await supabase.rpc('create_invoice_with_items', {
         _org_id: currentOrg.id,
         _due_date: data.due_date,
-        _payer_guardian_id: data.payer_guardian_id || null,
-        _payer_student_id: data.payer_student_id || null,
-        _notes: data.notes || null,
+        _payer_guardian_id: data.payer_guardian_id ?? undefined,
+        _payer_student_id: data.payer_student_id ?? undefined,
+        _notes: data.notes ?? undefined,
         _credit_ids: data.credit_ids || [],
         _items: JSON.stringify(data.items.map(item => ({
           description: item.description,
@@ -231,8 +233,19 @@ export function useCreateInvoice() {
       queryClient.invalidateQueries({ queryKey: ['available-credits-for-payer'] });
       toast({ title: 'Invoice created' });
     },
-    onError: (error) => {
-      toast({ title: 'Error', description: 'Failed to create invoice: ' + error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.toLowerCase().includes('credits have already been redeemed') || message.toLowerCase().includes('credit') && message.toLowerCase().includes('redeemed')) {
+        toast({
+          title: 'Credit already used',
+          description: 'One or more of the selected make-up credits has been redeemed since you started. Please refresh and try again.',
+          variant: 'destructive',
+        });
+        queryClient.invalidateQueries({ queryKey: ['available-credits-for-payer'] });
+        queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
+      } else {
+        toastError(error, 'Failed to create invoice');
+      }
     },
   });
 }
@@ -295,8 +308,8 @@ export function useUpdateInvoiceStatus() {
       queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
       queryClient.invalidateQueries({ queryKey: ['available-credits-for-payer'] });
     },
-    onError: (error) => {
-      toast({ title: 'Error', description: 'Failed to update invoice: ' + error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toastError(error, 'Failed to update invoice');
     },
   });
 }
@@ -329,7 +342,7 @@ export function useRecordPayment() {
         _amount_minor: data.amount_minor,
         _currency_code: currentOrg.currency_code,
         _method: data.method,
-        _provider_reference: data.provider_reference || null,
+        _provider_reference: data.provider_reference ?? undefined,
       });
 
       if (error) throw error;
@@ -347,8 +360,8 @@ export function useRecordPayment() {
       queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
       toast({ title: 'Payment recorded' });
     },
-    onError: (error) => {
-      toast({ title: 'Error', description: 'Failed to record payment: ' + error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toastError(error, 'Failed to record payment');
     },
   });
 }

@@ -1,7 +1,8 @@
+import React from 'react';
 import { format, differenceInMinutes, parseISO } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { cn } from '@/lib/utils';
-import { Repeat, GripHorizontal } from 'lucide-react';
+import { Repeat, GripHorizontal, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { TeacherColourEntry, TEACHER_COLOURS } from './teacherColours';
@@ -60,13 +61,14 @@ function buildSecondaryLine(lesson: LessonWithDetails): string {
   return '';
 }
 
-export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColour, showResizeHandle, onResizeStart, compact, isSaving }: LessonCardProps) {
+export const LessonCard = React.memo(function LessonCard({ lesson, onClick, variant = 'calendar', teacherColour, showResizeHandle, onResizeStart, compact, isSaving }: LessonCardProps) {
   const startTime = parseISO(lesson.start_at);
   const endTime = parseISO(lesson.end_at);
   const duration = differenceInMinutes(endTime, startTime);
   const isRecurring = !!lesson.recurrence_id;
   const isEditedException = isRecurring && !!lesson.is_series_exception;
   const isCancelled = lesson.status === 'cancelled';
+  const hasMakeup = (lesson.makeupStudentIds?.length ?? 0) > 0;
   const colour = teacherColour ?? TEACHER_COLOURS[0];
 
   const studentDisplay = formatStudentNames(lesson.participants);
@@ -106,6 +108,9 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
             <span className="text-[8px] font-medium text-warning bg-warning/20 px-0.5 rounded shrink-0">
               Edited
             </span>
+          )}
+          {hasMakeup && (
+            <span className="text-[8px] font-medium text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/40 px-0.5 rounded shrink-0">MU</span>
           )}
         </div>
       );
@@ -195,6 +200,11 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
                 Edited
               </Badge>
             )}
+            {hasMakeup && (
+              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-amber-500/50 text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-900/30">
+                Make-up
+              </Badge>
+            )}
           </div>
           <div className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">
             {secondaryLine}
@@ -234,6 +244,9 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
             {isEditedException && !compact && (
               <span className="text-[8px] font-medium text-warning bg-warning/20 px-0.5 rounded shrink-0">Ed.</span>
             )}
+            {hasMakeup && !compact && (
+              <span className="text-[8px] font-medium text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/40 px-0.5 rounded shrink-0">MU</span>
+            )}
             <span className="truncate">{compactStudentName}</span>
           </div>
           {!compact && duration >= 30 && (
@@ -268,4 +281,4 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
       </TooltipContent>
     </Tooltip>
   );
-}
+});

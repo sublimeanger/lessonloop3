@@ -31,12 +31,10 @@ export function useAvailableCreditsForPayer(
     queryFn: async () => {
       if (!currentOrg?.id || !payerId) return [];
 
-      const now = new Date().toISOString();
-
       if (payerType === 'student') {
         // For adult students paying for themselves, get their own credits
         const { data, error } = await supabase
-          .from('make_up_credits')
+          .from('available_credits' as any)
           .select(`
             id,
             student_id,
@@ -47,12 +45,11 @@ export function useAvailableCreditsForPayer(
           `)
           .eq('org_id', currentOrg.id)
           .eq('student_id', payerId)
-          .is('redeemed_at', null)
-          .or(`expires_at.is.null,expires_at.gt.${now}`)
+          .eq('credit_status', 'available')
           .order('expires_at', { ascending: true, nullsFirst: false });
 
         if (error) throw error;
-        return (data || []) as AvailableCredit[];
+        return (data || []) as unknown as AvailableCredit[];
       }
 
       // For guardians, get credits for all their linked students
@@ -67,7 +64,7 @@ export function useAvailableCreditsForPayer(
       const studentIds = studentLinks.map((l) => l.student_id);
 
       const { data, error } = await supabase
-        .from('make_up_credits')
+        .from('available_credits' as any)
         .select(`
           id,
           student_id,
@@ -78,12 +75,11 @@ export function useAvailableCreditsForPayer(
         `)
         .eq('org_id', currentOrg.id)
         .in('student_id', studentIds)
-        .is('redeemed_at', null)
-        .or(`expires_at.is.null,expires_at.gt.${now}`)
+        .eq('credit_status', 'available')
         .order('expires_at', { ascending: true, nullsFirst: false });
 
       if (error) throw error;
-      return (data || []) as AvailableCredit[];
+      return (data || []) as unknown as AvailableCredit[];
     },
     enabled: !!currentOrg?.id && !!payerId,
   });

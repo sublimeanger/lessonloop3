@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { STALE_SIGNED_URL, GC_SIGNED_URL } from '@/config/query-stale-times';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -78,8 +79,8 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
       return data.signedUrl;
     },
     enabled: isImage,
-    staleTime: 55 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
+    staleTime: STALE_SIGNED_URL,
+    gcTime: GC_SIGNED_URL,
   });
 
   const handleDownload = async () => {

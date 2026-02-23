@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { STALE_STABLE } from '@/config/query-stale-times';
 import {
   Dialog,
   DialogContent,
@@ -80,7 +81,7 @@ export function ResourceDetailModal({
       return data;
     },
     enabled: !!resource?.uploaded_by && open,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_STABLE,
   });
 
   // Fetch share details with student names

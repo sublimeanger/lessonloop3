@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 
 interface MessageFeedbackProps {
   messageId: string;
@@ -48,9 +48,9 @@ export function MessageFeedback({ messageId, conversationId, className }: Messag
       }
       
       if (newFeedback === 'helpful') {
-        toast.success('Thanks for your feedback!', { duration: 2000 });
+        toast({ title: 'Thanks for your feedback!' });
       } else {
-        toast('Feedback recorded. We will work on improving.', { duration: 2000 });
+        toast({ title: 'Feedback recorded. We will work on improving.' });
       }
     } catch (error) {
       logger.error('Failed to submit feedback:', error);

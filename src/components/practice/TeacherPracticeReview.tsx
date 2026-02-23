@@ -17,7 +17,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { usePracticeLogs, useAddPracticeFeedback, PracticeLog } from '@/hooks/usePractice';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 
 export function TeacherPracticeReview() {
   const [activeTab, setActiveTab] = useState('pending');
@@ -32,16 +32,16 @@ export function TeacherPracticeReview() {
   const handleSubmitFeedback = async (logId: string) => {
     const feedback = feedbackText[logId]?.trim();
     if (!feedback) {
-      toast.error('Please enter feedback');
+      toast({ title: 'Please enter feedback', variant: 'destructive' });
       return;
     }
 
     try {
       await addFeedback.mutateAsync({ logId, feedback });
-      toast.success('Feedback sent!');
+      toast({ title: 'Feedback sent!' });
       setFeedbackText(prev => ({ ...prev, [logId]: '' }));
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : 'Failed to send feedback');
+      toast({ title: error instanceof Error ? error.message : 'Failed to send feedback', variant: 'destructive' });
     }
   };
 

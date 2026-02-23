@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, useCallback, useMemo, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth, AppRole } from './AuthContext';
 import { Sentry } from '@/lib/sentry';
@@ -95,7 +95,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   const mountedRef = useRef(true);
   const fetchInProgressRef = useRef(false);
 
-  const fetchOrganisations = async () => {
+  const fetchOrganisations = useCallback(async () => {
     if (fetchInProgressRef.current) return;
     fetchInProgressRef.current = true;
     if (!user) {
@@ -105,13 +105,13 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       setCurrentRole(null);
       setIsLoading(false);
       setHasInitialised(true);
+      fetchInProgressRef.current = false;
       return;
     }
 
     try {
       setIsLoading(true);
       
-      // Fetch memberships with organisation details
       const { data: membershipData, error: membershipError } = await supabase
         .from('org_memberships')
         .select(`
@@ -127,6 +127,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         logger.error('Error fetching memberships:', membershipError);
         setIsLoading(false);
         setHasInitialised(true);
+        fetchInProgressRef.current = false;
         return;
       }
 
@@ -142,7 +143,6 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         .map((m) => m.organisation as Organisation);
       setOrganisations(orgs);
 
-      // Set current org based on profile.current_org_id or first available
       const currentOrgId = profile?.current_org_id;
       let selectedOrg: Organisation | null = null;
       let selectedRole: AppRole | null = null;
@@ -155,13 +155,11 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Fallback to first org if current_org_id not set or not found
       if (!selectedOrg && typedMemberships.length > 0) {
         const firstMembership = typedMemberships[0];
         selectedOrg = firstMembership.organisation || null;
         selectedRole = firstMembership.role;
         
-        // Update profile with this org (fire and forget)
         if (selectedOrg) {
           supabase
             .from('profiles')
@@ -174,7 +172,6 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       setCurrentOrgState(selectedOrg);
       setCurrentRole(selectedRole);
 
-      // Tag Sentry events with the active org
       if (selectedOrg) {
         Sentry.setTag('org_id', selectedOrg.id);
       }
@@ -187,12 +184,11 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         setHasInitialised(true);
       }
     }
-  };
+  }, [user, profile?.current_org_id]);
 
   useEffect(() => {
     mountedRef.current = true;
     
-    // Only fetch orgs once auth is initialised
     if (authInitialised) {
       fetchOrganisations();
     }
@@ -200,9 +196,9 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     return () => {
       mountedRef.current = false;
     };
-  }, [user?.id, authInitialised]);
+  }, [user?.id, authInitialised, fetchOrganisations]);
 
-  const setCurrentOrg = async (orgId: string) => {
+  const setCurrentOrg = useCallback(async (orgId: string) => {
     const membership = memberships.find((m) => m.org_id === orgId);
     if (!membership) return;
 
@@ -210,16 +206,15 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     setCurrentOrgState(org);
     setCurrentRole(membership.role);
 
-    // Update profile
     if (user) {
       await supabase
         .from('profiles')
         .update({ current_org_id: orgId })
         .eq('id', user.id);
     }
-  };
+  }, [memberships, user]);
 
-  const createOrganisation = async (data: CreateOrgData) => {
+  const createOrganisation = useCallback(async (data: CreateOrgData) => {
     if (!user) return { org: null, error: new Error('Not authenticated') };
 
     const { data: org, error } = await supabase
@@ -239,21 +234,20 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       return { org: null, error: error as unknown as Error };
     }
 
-    // Refresh organisations to include the new one
     await fetchOrganisations();
     
     return { org: org as Organisation, error: null };
-  };
+  }, [user, fetchOrganisations]);
 
-  const refreshOrganisations = async () => {
+  const refreshOrganisations = useCallback(async () => {
     await fetchOrganisations();
-  };
+  }, [fetchOrganisations]);
 
-  const isOrgAdmin = currentRole === 'owner' || currentRole === 'admin';
-  const isOrgOwner = currentRole === 'owner';
-  const hasOrgs = organisations.length > 0;
+  const isOrgAdmin = useMemo(() => currentRole === 'owner' || currentRole === 'admin', [currentRole]);
+  const isOrgOwner = useMemo(() => currentRole === 'owner', [currentRole]);
+  const hasOrgs = useMemo(() => organisations.length > 0, [organisations]);
 
-  const value: OrgContextType = {
+  const value = useMemo<OrgContextType>(() => ({
     currentOrg,
     currentRole,
     organisations,
@@ -266,7 +260,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     refreshOrganisations,
     isOrgAdmin,
     isOrgOwner,
-  };
+  }), [currentOrg, currentRole, organisations, memberships, isLoading, hasInitialised, hasOrgs, setCurrentOrg, createOrganisation, refreshOrganisations, isOrgAdmin, isOrgOwner]);
 
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>;
 }

@@ -1,6 +1,6 @@
 import { ReactNode, Suspense, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+// framer-motion removed from this file — using CSS animation instead
 import { PageTransitionFallback } from '@/components/shared/PageTransitionFallback';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Header } from './Header';
@@ -12,6 +12,8 @@ import { TourTrigger } from '@/components/tours/TourTrigger';
 import { useOrg } from '@/contexts/OrgContext';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { KeyboardShortcutsDialog, CommandPalette } from '@/components/shared/KeyboardShortcuts';
+import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
+import { AutoBreadcrumbs } from '@/components/shared/AutoBreadcrumbs';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -46,16 +48,14 @@ function AppLayoutInner({ children }: AppLayoutProps) {
       <div className="flex flex-1">
         <AppSidebar />
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
-          <Suspense fallback={<PageTransitionFallback />}>
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.15, ease: 'easeOut' }}
-            >
-              {children}
-            </motion.div>
-          </Suspense>
+          <AutoBreadcrumbs />
+          <SectionErrorBoundary name="Page" key={location.pathname}>
+            <Suspense fallback={<PageTransitionFallback />}>
+              <div className="animate-page-enter">
+                {children}
+              </div>
+            </Suspense>
+          </SectionErrorBoundary>
         </main>
       </div>
       {showLoopAssist && (

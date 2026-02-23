@@ -158,11 +158,11 @@ export function useDeleteValidation() {
       .eq('org_id', currentOrg.id)
       .gte('start_at', now)
       .neq('status', 'cancelled');
-    if (totalLessonCount > 0) {
+    if (totalLessonCount != null && totalLessonCount > 0) {
       blocks.push({
         reason: `Teacher has ${totalLessonCount} upcoming lesson${totalLessonCount > 1 ? 's' : ''} scheduled`,
         entityType: 'lessons',
-        count: totalLessonCount,
+        count: totalLessonCount as number,
         details: 'Reassign these lessons to another teacher before removing.',
       });
     }

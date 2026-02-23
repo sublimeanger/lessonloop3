@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, useCallback, useMemo, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Sentry } from '@/lib/sentry';
@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const initialisedRef = useRef(false); // Track init state for timeout closure
   const profileIdRef = useRef<string | null>(null); // Track profile id for closure access
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (user) {
       const [profileData, rolesData] = await Promise.all([
         fetchProfile(user.id),
@@ -125,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRoles(rolesData);
       }
     }
-  };
+  }, [user]);
 
   // Keep profileIdRef in sync with profile state
   useEffect(() => {
@@ -133,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [profile]);
 
   // Self-healing: ensure profile exists via edge function if missing
-  const ensureProfileExists = async (accessToken: string): Promise<boolean> => {
+  const ensureProfileExists = useCallback(async (accessToken: string): Promise<boolean> => {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const response = await fetch(`${supabaseUrl}/functions/v1/profile-ensure`, {
@@ -155,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logger.warn('[Auth] Profile ensure failed:', err);
       return false;
     }
-  };
+  }, []);
 
   // Retry profile fetch if missing after init, with self-healing
   useEffect(() => {
@@ -174,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const retryTimer = setTimeout(recoverProfile, 500);
       return () => clearTimeout(retryTimer);
     }
-  }, [isInitialised, user, profile, session]);
+  }, [isInitialised, user, profile, session, ensureProfileExists, refreshProfile]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -190,8 +190,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 4000);
 
     // Set up auth state listener FIRST
-    // CRITICAL: This listener handles ONGOING auth changes AFTER initial load
-    // It should NOT set isLoading to prevent UI flashing on tab switches
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mountedRef.current) return;
       
@@ -201,11 +199,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newSession?.user ?? null);
 
       if (newSession?.user) {
-        // Skip profile refetch on token refresh or if already initialised
-        // This prevents UI churn when returning to an inactive tab
         if (event === 'TOKEN_REFRESHED') {
           logger.debug('Token refreshed - skipping profile refetch');
-          // Still mark as initialised if we weren't already
           if (!initialisedRef.current && mountedRef.current) {
             setIsLoading(false);
             setIsInitialised(true);
@@ -214,20 +209,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // If we're already initialised with this user's data, skip refetch
-        // This handles SIGNED_IN re-emission on tab focus
         if (initialisedRef.current && profileIdRef.current === newSession.user.id) {
           logger.debug('Already initialised with same user - skipping refetch');
           return;
         }
         
-        // Prevent duplicate fetches from INITIAL_SESSION + getSession race
         if (fetchingRef.current) {
           return;
         }
         fetchingRef.current = true;
         
-        // Fetch profile and roles in parallel (fire-and-forget style for ongoing changes)
         const [profileData, rolesData] = await Promise.all([
           fetchProfile(newSession.user.id),
           fetchRoles(newSession.user.id),
@@ -239,8 +230,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsLoading(false);
           setIsInitialised(true);
           initialisedRef.current = true;
-
-          // Set Sentry user context on sign-in
           Sentry.setUser({ id: newSession.user.id, email: newSession.user.email });
         }
         fetchingRef.current = false;
@@ -251,8 +240,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsLoading(false);
           setIsInitialised(true);
           initialisedRef.current = true;
-
-          // Clear Sentry user context on sign-out
           Sentry.setUser(null);
         }
       }
@@ -269,14 +256,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (!mountedRef.current) return;
         
-        // If no session and no auth state change triggered yet, mark as initialised
         if (!initialSession) {
           setIsLoading(false);
           setIsInitialised(true);
           initialisedRef.current = true;
         }
-        // If there IS a session, the onAuthStateChange will handle it
-        
       } catch (err) {
         logger.error('Auth init error:', err);
         if (mountedRef.current) {
@@ -296,7 +280,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signUp = async (email: string, password: string, fullName?: string) => {
+  const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
     const cleanEmail = email.trim().toLowerCase();
     const { error } = await supabase.auth.signUp({
       email: cleanEmail,
@@ -306,44 +290,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
     return { error: error as Error | null };
-  };
+  }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     const cleanEmail = email.trim().toLowerCase();
     const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
     return { error: error as Error | null };
-  };
+  }, []);
 
-
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     setIsLoading(true);
     
-    // Clear all local state first
     setUser(null);
     setSession(null);
     setProfile(null);
     setRoles([]);
     
-    // Sign out from Supabase with global scope to clear all sessions
     await supabase.auth.signOut({ scope: 'global' });
     
-    // Explicitly clear localStorage auth tokens
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     if (projectId) {
       safeRemoveItem(`sb-${projectId}-auth-token`);
     }
     
     setIsLoading(false);
-  };
+  }, []);
 
-  const resetPassword = async (email: string) => {
+  const resetPassword = useCallback(async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     return { error: error as Error | null };
-  };
+  }, []);
 
-  const updateProfile = async (updates: Partial<Profile>, skipRefresh = false) => {
+  const updateProfile = useCallback(async (updates: Partial<Profile>, skipRefresh = false) => {
     if (!user) return { error: new Error('No user logged in') };
 
     const { error } = await supabase
@@ -355,14 +335,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await refreshProfile();
     }
     return { error: error as Error | null };
-  };
+  }, [user, refreshProfile]);
 
-  const hasRole = (role: AppRole) => roles.includes(role);
-  const isOwnerOrAdmin = hasRole('owner') || hasRole('admin');
-  const isTeacher = hasRole('teacher');
-  const isParent = hasRole('parent');
+  const hasRole = useCallback((role: AppRole) => roles.includes(role), [roles]);
+  const isOwnerOrAdmin = useMemo(() => roles.includes('owner') || roles.includes('admin'), [roles]);
+  const isTeacher = useMemo(() => roles.includes('teacher'), [roles]);
+  const isParent = useMemo(() => roles.includes('parent'), [roles]);
 
-  const value: AuthContextType = {
+  const value = useMemo<AuthContextType>(() => ({
     user,
     session,
     profile,
@@ -379,7 +359,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isOwnerOrAdmin,
     isTeacher,
     isParent,
-  };
+  }), [user, session, profile, roles, isLoading, isInitialised, signUp, signIn, signOut, resetPassword, updateProfile, refreshProfile, hasRole, isOwnerOrAdmin, isTeacher, isParent]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

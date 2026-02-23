@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { STALE_STABLE } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
@@ -60,7 +61,7 @@ export function useOrgMembers() {
       return members;
     },
     enabled: !!currentOrg,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_STABLE,
   });
 
   // TODO: Enforce via RLS policy or DB trigger for production hardening
