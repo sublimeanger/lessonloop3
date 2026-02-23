@@ -60,6 +60,13 @@ export default function Messages() {
   const [replyTarget, setReplyTarget] = useState<Guardian | null>(null);
   const [replyStudentId, setReplyStudentId] = useState<string | undefined>(undefined);
 
+  // Clear search & channel filter when switching tabs so stale filters don't persist invisibly
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setSearchQuery('');
+    setChannelFilter('all');
+  };
+
   const { data: messages, isLoading, hasMore, loadMore, isFetchingMore } = useMessageLog({
     channel: channelFilter === 'all' ? undefined : channelFilter,
   });
@@ -158,7 +165,7 @@ export default function Messages() {
         }
       />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList>
           <TabsTrigger value="sent">Conversations</TabsTrigger>
           {isStaff && (
@@ -199,7 +206,12 @@ export default function Messages() {
               <ToggleGroup 
                 type="single" 
                 value={viewMode} 
-                onValueChange={(v) => v && setViewMode(v as 'list' | 'threaded')}
+                onValueChange={(v) => {
+                  if (!v) return;
+                  setViewMode(v as 'list' | 'threaded');
+                  // Reset channel filter when switching to threaded (where it's not visible)
+                  if (v === 'threaded') setChannelFilter('all');
+                }}
                 className="border rounded-md"
               >
                 <ToggleGroupItem value="threaded" aria-label="Threaded view" className="gap-2 px-3">

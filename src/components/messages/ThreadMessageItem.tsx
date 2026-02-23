@@ -32,7 +32,7 @@ export const ThreadMessageItem = React.memo(function ThreadMessageItem({ message
           />
         )}
         <span className="text-xs ml-auto">
-          {format(new Date(message.created_at), 'dd MMM yyyy, HH:mm')}
+          {format(new Date(message.created_at), 'd MMM yyyy, HH:mm')}
         </span>
       </div>
       {/<[a-z][\s\S]*>/i.test(message.body) ? (

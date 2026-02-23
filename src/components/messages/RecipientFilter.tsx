@@ -1,6 +1,7 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { MapPin, User, AlertCircle } from 'lucide-react';
 import type { FilterCriteria } from '@/hooks/useBulkMessage';
 
@@ -82,23 +83,18 @@ export function RecipientFilter({
       {/* Student Status */}
       <div className="space-y-2">
         <Label className="text-xs text-muted-foreground">Student Status</Label>
-        <div className="flex flex-wrap gap-2 sm:gap-4">
+        <ToggleGroup
+          type="single"
+          value={filters.status || 'active'}
+          onValueChange={(v) => v && handleStatusChange(v as 'active' | 'inactive' | 'all')}
+          className="justify-start"
+        >
           {(['active', 'inactive', 'all'] as const).map((status) => (
-            <label key={status} className="flex items-center gap-2 cursor-pointer">
-              <Checkbox
-                checked={
-                  status === 'all'
-                    ? filters.status === 'all'
-                    : status === 'active'
-                    ? !filters.status || filters.status === 'active'
-                    : filters.status === 'inactive'
-                }
-                onCheckedChange={() => handleStatusChange(status)}
-              />
-              <span className="text-sm capitalize">{status}</span>
-            </label>
+            <ToggleGroupItem key={status} value={status} className="capitalize text-sm px-3">
+              {status}
+            </ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
       </div>
 
       {/* Locations */}

@@ -244,10 +244,10 @@ export function MessageRequestsList({ className }: MessageRequestsListProps) {
                     </div>
                   )}
                   {request.lesson && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span>{request.lesson.title}</span>
-                      <span className="text-muted-foreground">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <span className="truncate">{request.lesson.title}</span>
+                      <span className="text-muted-foreground whitespace-nowrap">
                         ({format(parseISO(request.lesson.start_at), 'd MMM, HH:mm')})
                       </span>
                       <Button
@@ -278,7 +278,7 @@ export function MessageRequestsList({ className }: MessageRequestsListProps) {
 
                 {/* Actions for pending requests */}
                 {request.status === 'pending' && (
-                  <div className="flex gap-2 pt-2">
+                  <div className="flex flex-wrap gap-2 pt-2">
                     {request.request_type === 'cancellation' || request.request_type === 'reschedule' ? (
                       <>
                         <Button 

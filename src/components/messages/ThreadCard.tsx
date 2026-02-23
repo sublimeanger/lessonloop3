@@ -107,17 +107,20 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
               <MessageSquare className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <div className="flex items-center gap-2 mb-1">
                 <span className="font-medium truncate">{thread.subject}</span>
                 {thread.message_count > 1 && (
-                  <Badge variant="secondary" className="text-xs">
-                    {thread.message_count} messages
+                  <Badge variant="secondary" className="text-xs flex-shrink-0">
+                    {thread.message_count}
                   </Badge>
                 )}
+                <span className="text-xs text-muted-foreground ml-auto flex-shrink-0 hidden sm:inline">
+                  {format(new Date(thread.latest_message_at), 'd MMM yyyy, HH:mm')}
+                </span>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                 <User className="h-3 w-3 flex-shrink-0" />
-                <span className="truncate">
+                <span className="truncate max-w-[150px] sm:max-w-none">
                   {thread.recipient_name || thread.recipient_email}
                 </span>
                 {isRecipientInactive && (
@@ -135,8 +138,8 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
                     />
                   </span>
                 )}
-                <span className="text-xs ml-auto flex-shrink-0">
-                  {format(new Date(thread.latest_message_at), 'dd MMM yyyy, HH:mm')}
+                <span className="text-xs ml-auto flex-shrink-0 sm:hidden">
+                  {format(new Date(thread.latest_message_at), 'd MMM, HH:mm')}
                 </span>
               </div>
             </div>

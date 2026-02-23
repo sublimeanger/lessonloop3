@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { Mail, Loader2 } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Mail, Loader2, Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -82,6 +82,22 @@ export function ThreadedMessageList({ searchQuery }: ThreadedMessageListProps) {
 
   return (
     <div className="space-y-3">
+      {/* Search feedback bar */}
+      {searchQuery?.trim() && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground px-1">
+          <Search className="h-3.5 w-3.5" />
+          {isServerSearch && searchLoading ? (
+            <span className="flex items-center gap-1.5">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Searching…
+            </span>
+          ) : (
+            <span>
+              {filteredThreads.length} thread{filteredThreads.length !== 1 ? 's' : ''} matching "{searchQuery.trim()}"
+            </span>
+          )}
+        </div>
+      )}
       {filteredThreads.map(thread => (
         <ThreadCard
           key={thread.thread_id}

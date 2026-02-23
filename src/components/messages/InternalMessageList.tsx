@@ -139,7 +139,7 @@ export function InternalMessageList({ view }: InternalMessageListProps) {
                       {contactRole}
                     </Badge>
                     <span className="text-xs">
-                      {format(new Date(msg.created_at), 'dd MMM yyyy, HH:mm')}
+                      {format(new Date(msg.created_at), 'd MMM yyyy, HH:mm')}
                     </span>
                   </div>
                 </div>
