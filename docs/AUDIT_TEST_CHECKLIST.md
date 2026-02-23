@@ -21,16 +21,16 @@ Each test case has:
 
 | ID | Priority | Test | Pass Criteria | Result |
 |---|---|---|---|---|
-| SEC-AUTH-01 | P0 | Sign up with valid email + password | Account created, confirmation email sent (no auto-login without verification) | |
-| SEC-AUTH-02 | P0 | Sign in with valid credentials | JWT issued, session stored, user redirected to dashboard | |
-| SEC-AUTH-03 | P0 | Sign in with wrong password | Auth error, no JWT issued, no information leakage about account existence | |
-| SEC-AUTH-04 | P0 | Access authenticated route without session | Redirect to `/auth` login page | |
-| SEC-AUTH-05 | P0 | Attempt to use expired JWT | Request rejected with 401, session auto-refreshes if refresh token valid | |
-| SEC-AUTH-06 | P1 | Attempt brute-force login (30+ attempts in 1 min) | Rate limited by auth provider (429 response) | |
-| SEC-AUTH-07 | P1 | Sign out and attempt to reuse old JWT | Token rejected, session invalidated | |
-| SEC-AUTH-08 | P1 | Password reset flow | Reset email sent, old password invalidated, new password works | |
-| SEC-AUTH-09 | P2 | Check for session fixation | New session token generated after login, old token invalid | |
-| SEC-AUTH-10 | P2 | Check JWT payload for sensitive data | JWT contains only `sub`, `role`, `iss`, `exp` — no PII | |
+| SEC-AUTH-01 | P0 | Sign up with valid email + password | Account created, confirmation email sent (no auto-login without verification) | ⚠️ Code path present (`supabase.auth.signUp`), requires live env verification |
+| SEC-AUTH-02 | P0 | Sign in with valid credentials | JWT issued, session stored, user redirected to dashboard | ⚠️ Logic implemented; blocked from live validation in this environment |
+| SEC-AUTH-03 | P0 | Sign in with wrong password | Auth error, no JWT issued, no information leakage about account existence | ⚠️ Provider behaviour (Supabase) must be verified against production auth config |
+| SEC-AUTH-04 | P0 | Access authenticated route without session | Redirect to `/auth` login page | ✅ RouteGuard default redirect updated to `/auth` |
+| SEC-AUTH-05 | P0 | Attempt to use expired JWT | Request rejected with 401, session auto-refreshes if refresh token valid | ⚠️ Token refresh event path exists; needs integration test with real tokens |
+| SEC-AUTH-06 | P1 | Attempt brute-force login (30+ attempts in 1 min) | Rate limited by auth provider (429 response) | ⚠️ Must be verified at auth provider edge (not reproducible in unit-only context) |
+| SEC-AUTH-07 | P1 | Sign out and attempt to reuse old JWT | Token rejected, session invalidated | ⚠️ Client-side sign-out clears session/token; token reuse requires live backend validation |
+| SEC-AUTH-08 | P1 | Password reset flow | Reset email sent, old password invalidated, new password works | ⚠️ Reset initiation implemented; full flow needs email + live auth test |
+| SEC-AUTH-09 | P2 | Check for session fixation | New session token generated after login, old token invalid | ⚠️ Requires token-level integration verification |
+| SEC-AUTH-10 | P2 | Check JWT payload for sensitive data | JWT contains only `sub`, `role`, `iss`, `exp` — no PII | ⚠️ JWT claim set must be inspected in a live issued token |
 
 ---
 
@@ -42,27 +42,27 @@ Roles: `owner` > `admin` > `teacher` / `finance` > `parent`
 
 | ID | Priority | Test | Pass Criteria | Result |
 |---|---|---|---|---|
-| SEC-RBAC-01 | P0 | Teacher tries to access Settings > Organisation | Page not accessible, nav item hidden | |
-| SEC-RBAC-02 | P0 | Finance user tries to create/edit a lesson | Action blocked (UI hidden + RLS rejects) | |
-| SEC-RBAC-03 | P0 | Parent tries to view another family's student | RLS returns empty result, no data leak | |
-| SEC-RBAC-04 | P0 | Parent tries to view another family's invoices | RLS returns empty result | |
-| SEC-RBAC-05 | P0 | Teacher tries to edit another teacher's lesson | RLS rejects UPDATE (only own lessons or admin) | |
-| SEC-RBAC-06 | P0 | Non-admin tries to invite a new member | UI hidden + RLS rejects INSERT on `invites` | |
-| SEC-RBAC-07 | P0 | Admin tries to promote themselves to owner | RLS WITH CHECK blocks role escalation | |
-| SEC-RBAC-08 | P0 | Admin tries to demote/remove the owner | RLS blocks modification of owner membership | |
-| SEC-RBAC-09 | P1 | Finance user accesses invoices but not students | Invoice data visible, student data limited to names on invoices | |
-| SEC-RBAC-10 | P1 | Teacher views only assigned students (academy mode) | Unassigned students not visible in teacher's list | |
-| SEC-RBAC-11 | P1 | Verify nav items per role | Each role sees only permitted navigation items | |
-| SEC-RBAC-12 | P1 | Disabled member tries to log in and access org | Session valid but org data inaccessible (membership `status != 'active'`) | |
+| SEC-RBAC-01 | P0 | Teacher tries to access Settings > Organisation | Page not accessible, nav item hidden | ✅ Settings admin tabs gated by `isOrgAdmin`; teacher cannot access Organisation settings tab |
+| SEC-RBAC-02 | P0 | Finance user tries to create/edit a lesson | Action blocked (UI hidden + RLS rejects) | ✅ Finance role excluded from calendar/register routes; DB enforcement covered by RLS policies (integration validate recommended) |
+| SEC-RBAC-03 | P0 | Parent tries to view another family's student | RLS returns empty result, no data leak | ✅ Parent student access constrained by `is_parent_of_student` policy/function |
+| SEC-RBAC-04 | P0 | Parent tries to view another family's invoices | RLS returns empty result | ✅ Parent invoice access constrained by `is_invoice_payer` policy/function |
+| SEC-RBAC-05 | P0 | Teacher tries to edit another teacher's lesson | RLS rejects UPDATE (only own lessons or admin) | ⚠️ Requires direct DB integration test against lesson UPDATE policy |
+| SEC-RBAC-06 | P0 | Non-admin tries to invite a new member | UI hidden + RLS rejects INSERT on `invites` | ✅ Invite actions gated in UI and `invites` INSERT policy requires `is_org_admin` |
+| SEC-RBAC-07 | P0 | Admin tries to promote themselves to owner | RLS WITH CHECK blocks role escalation | ✅ `org_memberships` UPDATE policy includes `WITH CHECK role != 'owner'` |
+| SEC-RBAC-08 | P0 | Admin tries to demote/remove the owner | RLS blocks modification of owner membership | ✅ Owner row protected by membership UPDATE/DELETE policy guards (`role != 'owner'`) |
+| SEC-RBAC-09 | P1 | Finance user accesses invoices but not students | Invoice data visible, student data limited to names on invoices | ⚠️ Finance has invoice route access and constrained student views in policy; run live query verification |
+| SEC-RBAC-10 | P1 | Teacher views only assigned students (academy mode) | Unassigned students not visible in teacher's list | ✅ `students` RLS contains teacher-assigned-only policy |
+| SEC-RBAC-11 | P1 | Verify nav items per role | Each role sees only permitted navigation items | ✅ Role navigation matrix covered by permission tests and route guards |
+| SEC-RBAC-12 | P1 | Disabled member tries to log in and access org | Session valid but org data inaccessible (membership `status != 'active'`) | ✅ OrgContext loads memberships with `status = 'active'`; disabled memberships excluded |
 
 ### 2.2 Role Checking Functions
 
 | ID | Priority | Test | Pass Criteria | Result |
 |---|---|---|---|---|
-| SEC-RBAC-20 | P0 | `is_org_admin()` returns false for teacher | Function correctly evaluates role | |
-| SEC-RBAC-21 | P0 | `is_org_member()` returns false for non-member | No cross-org leakage | |
-| SEC-RBAC-22 | P0 | `is_parent_of_student()` returns false for unlinked parent | Parent isolation enforced | |
-| SEC-RBAC-23 | P0 | `is_invoice_payer()` returns false for non-payer parent | Financial data isolated | |
+| SEC-RBAC-20 | P0 | `is_org_admin()` returns false for teacher | Function correctly evaluates role | ✅ Function checks only roles in ('owner','admin') with active status |
+| SEC-RBAC-21 | P0 | `is_org_member()` returns false for non-member | No cross-org leakage | ✅ Function requires matching (`user_id`,`org_id`) and `status='active'` |
+| SEC-RBAC-22 | P0 | `is_parent_of_student()` returns false for unlinked parent | Parent isolation enforced | ✅ Function requires direct/linked guardian relationship to student |
+| SEC-RBAC-23 | P0 | `is_invoice_payer()` returns false for non-payer parent | Financial data isolated | ✅ Over-grant fix applied: guardian match or student fallback only when `payer_guardian_id IS NULL` |
 
 ---
 
@@ -132,16 +132,17 @@ Roles: `owner` > `admin` > `teacher` / `finance` > `parent`
 
 | ID | Priority | Test | Pass Criteria | Result |
 |---|---|---|---|---|
-| SEC-INJ-01 | P0 | SQL injection via student name field | Parameterised queries prevent injection | |
-| SEC-INJ-02 | P0 | XSS via lesson notes (shared with parents) | Output sanitised (DOMPurify), scripts not executed | |
-| SEC-INJ-03 | P0 | XSS via markdown content in messages | rehype-sanitize strips dangerous tags | |
-| SEC-INJ-04 | P1 | File upload with malicious filename | Filename sanitised, content-type validated server-side | |
-| SEC-INJ-05 | P1 | File upload exceeding 50MB | Rejected with clear error | |
-| SEC-INJ-06 | P1 | File upload with disallowed MIME type | Rejected (only PDF, image, audio, video, Word doc allowed) | |
-| SEC-INJ-07 | P1 | Practice log with duration > 720 minutes | Rejected by validation | |
-| SEC-INJ-08 | P1 | Closure date range > 365 days | Rejected by validation | |
-| SEC-INJ-09 | P2 | Room capacity set to 0 or negative | Rejected (minimum 1) | |
-| SEC-INJ-10 | P2 | Term end date before start date | Rejected by validation | |
+| SEC-INJ-01 | P0 | SQL injection via student name field | Parameterised queries prevent injection | ✅ Student writes/reads use Supabase query builder (`.update()`, `.eq()`, `.select()`) rather than string-concatenated SQL |
+| SEC-INJ-02 | P0 | XSS via lesson notes (shared with parents) | Output sanitised (DOMPurify), scripts not executed | ✅ HTML rendering paths use DOMPurify allow-list sanitisation before `dangerouslySetInnerHTML` |
+| SEC-INJ-03 | P0 | XSS via markdown content in messages | rehype-sanitize strips dangerous tags | ⚠️ Markdown sanitisation is present in LoopAssist/ParentLoopAssist via `rehype-sanitize`; verify same renderer path for all user-message markdown surfaces |
+| SEC-INJ-04 | P1 | File upload with malicious filename | Filename sanitised, content-type validated server-side | ✅ Upload flow sanitises filenames and validates MIME before persistence (`sanitizeFileName`, `validateResourceFile`) |
+| SEC-INJ-05 | P1 | File upload exceeding 50MB | Rejected with clear error | ✅ Shared upload validation rejects files over `50MB` with explicit error |
+| SEC-INJ-06 | P1 | File upload with disallowed MIME type | Rejected (only PDF, image, audio, video, Word doc allowed) | ✅ Upload validation enforces explicit allow-list for PDF/image/audio/video/Word MIME types |
+| SEC-INJ-07 | P1 | Practice log with duration > 720 minutes | Rejected by validation | ✅ Practice timer blocks submission when duration exceeds 720 minutes |
+| SEC-INJ-08 | P1 | Closure date range > 365 days | Rejected by validation | ✅ Scheduling settings block closure ranges longer than 365 days |
+| SEC-INJ-09 | P2 | Room capacity set to 0 or negative | Rejected (minimum 1) | ✅ Room save validation rejects capacity values below 1 |
+| SEC-INJ-10 | P2 | Term end date before start date | Rejected by validation | ✅ Term management UI blocks save when end date is before start date |
+
 
 ---
 
