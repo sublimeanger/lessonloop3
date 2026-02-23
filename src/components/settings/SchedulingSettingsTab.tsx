@@ -244,11 +244,57 @@ function ParentReschedulePolicySetting() {
 function MakeUpPolicySettings() {
   const { policies, isLoading, updatePolicy } = useMakeUpPolicies();
   const { expiryWeeks, updateExpiry } = useWaitlistExpiry();
+  const { currentOrg, refreshOrganisations } = useOrg();
+  const { toast } = useToast();
   const [localExpiry, setLocalExpiry] = useState(expiryWeeks);
+  const [localMaxCredits, setLocalMaxCredits] = useState<string>(
+    (currentOrg as any)?.max_credits_per_term != null ? String((currentOrg as any).max_credits_per_term) : ''
+  );
+  const [localExpiryDays, setLocalExpiryDays] = useState(
+    (currentOrg as any)?.credit_expiry_days ?? 90
+  );
+  const [isSavingCredits, setIsSavingCredits] = useState(false);
 
   useEffect(() => {
     setLocalExpiry(expiryWeeks);
   }, [expiryWeeks]);
+
+  useEffect(() => {
+    setLocalMaxCredits(
+      (currentOrg as any)?.max_credits_per_term != null ? String((currentOrg as any).max_credits_per_term) : ''
+    );
+    setLocalExpiryDays((currentOrg as any)?.credit_expiry_days ?? 90);
+  }, [(currentOrg as any)?.max_credits_per_term, (currentOrg as any)?.credit_expiry_days]);
+
+  const handleSaveCreditSettings = async () => {
+    if (!currentOrg) return;
+    setIsSavingCredits(true);
+    const maxVal = localMaxCredits.trim() === '' ? null : parseInt(localMaxCredits);
+    if (maxVal !== null && (isNaN(maxVal) || maxVal < 1)) {
+      toast({ title: 'Max credits must be a positive number or blank for unlimited', variant: 'destructive' });
+      setIsSavingCredits(false);
+      return;
+    }
+    const { error } = await supabase
+      .from('organisations')
+      .update({
+        max_credits_per_term: maxVal,
+        credit_expiry_days: localExpiryDays,
+      } as any)
+      .eq('id', currentOrg.id);
+    setIsSavingCredits(false);
+    if (error) {
+      toast({ title: 'Error saving credit settings', variant: 'destructive' });
+    } else {
+      toast({ title: 'Credit settings updated' });
+      refreshOrganisations();
+    }
+  };
+
+  const hasCreditsChanged =
+    (localMaxCredits.trim() === '' ? null : parseInt(localMaxCredits)) !==
+      ((currentOrg as any)?.max_credits_per_term ?? null) ||
+    localExpiryDays !== ((currentOrg as any)?.credit_expiry_days ?? 90);
 
   if (isLoading) {
     return (
@@ -353,6 +399,57 @@ function MakeUpPolicySettings() {
               Save
             </Button>
           </div>
+        </div>
+
+        <Separator />
+
+        {/* Credit cap & expiry */}
+        <div className="space-y-4">
+          <div className="font-medium">Credit limits</div>
+          <div className="text-sm text-muted-foreground">
+            Control how many make-up credits can be auto-issued per student per term
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 mt-2">
+            <div className="space-y-1">
+              <Label htmlFor="max-credits" className="text-sm">Max credits per term</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="max-credits"
+                  type="number"
+                  min={1}
+                  max={100}
+                  placeholder="Unlimited"
+                  value={localMaxCredits}
+                  onChange={(e) => setLocalMaxCredits(e.target.value)}
+                  className="w-28"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Leave blank for unlimited</p>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="credit-expiry" className="text-sm">Credit expiry</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="credit-expiry"
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={localExpiryDays}
+                  onChange={(e) => setLocalExpiryDays(parseInt(e.target.value) || 90)}
+                  className="w-20"
+                />
+                <span className="text-sm text-muted-foreground">days</span>
+              </div>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleSaveCreditSettings}
+            disabled={!hasCreditsChanged || isSavingCredits}
+          >
+            {isSavingCredits ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+          </Button>
         </div>
       </CardContent>
     </Card>

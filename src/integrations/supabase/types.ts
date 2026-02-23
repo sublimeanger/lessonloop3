@@ -2298,6 +2298,7 @@ export type Database = {
           country_code: string
           created_at: string
           created_by: string
+          credit_expiry_days: number | null
           currency_code: string
           default_lesson_length_mins: number
           default_payment_terms_days: number | null
@@ -2311,6 +2312,7 @@ export type Database = {
           invoice_from_postcode: string | null
           logo_url: string | null
           make_up_waitlist_expiry_weeks: number | null
+          max_credits_per_term: number | null
           max_students: number
           max_teachers: number
           name: string
@@ -2351,6 +2353,7 @@ export type Database = {
           country_code?: string
           created_at?: string
           created_by: string
+          credit_expiry_days?: number | null
           currency_code?: string
           default_lesson_length_mins?: number
           default_payment_terms_days?: number | null
@@ -2364,6 +2367,7 @@ export type Database = {
           invoice_from_postcode?: string | null
           logo_url?: string | null
           make_up_waitlist_expiry_weeks?: number | null
+          max_credits_per_term?: number | null
           max_students?: number
           max_teachers?: number
           name: string
@@ -2404,6 +2408,7 @@ export type Database = {
           country_code?: string
           created_at?: string
           created_by?: string
+          credit_expiry_days?: number | null
           currency_code?: string
           default_lesson_length_mins?: number
           default_payment_terms_days?: number | null
@@ -2417,6 +2422,7 @@ export type Database = {
           invoice_from_postcode?: string | null
           logo_url?: string | null
           make_up_waitlist_expiry_weeks?: number | null
+          max_credits_per_term?: number | null
           max_students?: number
           max_teachers?: number
           name?: string
