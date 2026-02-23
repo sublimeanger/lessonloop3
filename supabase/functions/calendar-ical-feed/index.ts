@@ -282,7 +282,7 @@ Deno.serve(async (req) => {
     // Look up the calendar connection by iCal token
     const { data: connection, error: connectionError } = await supabase
       .from('calendar_connections')
-      .select('id, user_id, org_id, sync_enabled, ical_token_expires_at')
+      .select('id, user_id, org_id, sync_enabled, ical_token_expires_at, guardian_id')
       .eq('ical_token', token)
       .eq('provider', 'apple')
       .single();
@@ -327,28 +327,92 @@ Deno.serve(async (req) => {
     const endDate = new Date();
     endDate.setMonth(endDate.getMonth() + 6);
 
-    // Include ALL statuses (including cancelled) so cancellations propagate
-    const { data: lessons, error: lessonsError } = await supabase
-      .from('lessons')
-      .select(`
-        id,
-        title,
-        start_at,
-        end_at,
-        status,
-        notes_shared,
-        updated_at,
-        location:locations(name, address_line_1, city, postcode),
-        room:rooms(name),
-        participants:lesson_participants(
-          student:students(first_name, last_name)
-        )
-      `)
-      .eq('org_id', connection.org_id)
-      .eq('teacher_user_id', connection.user_id)
-      .gte('start_at', startDate.toISOString())
-      .lte('start_at', endDate.toISOString())
-      .order('start_at', { ascending: true });
+    const lessonSelect = `
+      id, title, start_at, end_at, status, notes_shared, updated_at,
+      location:locations(name, address_line_1, city, postcode),
+      room:rooms(name),
+      participants:lesson_participants(
+        student:students(first_name, last_name)
+      )
+    `;
+
+    let lessons: any[] | null = null;
+    let lessonsError: any = null;
+    let calendarName = `${orgName} Lessons`;
+
+    if (connection.guardian_id) {
+      // ─── Parent feed: scope to guardian's children ───
+      const { data: studentLinks } = await supabase
+        .from('student_guardians')
+        .select('student_id')
+        .eq('guardian_id', connection.guardian_id)
+        .eq('org_id', connection.org_id);
+
+      const studentIds = (studentLinks || []).map((s: any) => s.student_id);
+
+      if (studentIds.length === 0) {
+        // No children — return empty calendar
+        const emptyIcal = [
+          'BEGIN:VCALENDAR', 'VERSION:2.0',
+          'PRODID:-//LessonLoop//Calendar Feed//EN',
+          'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+          `X-WR-CALNAME:Music Lessons`, `X-WR-TIMEZONE:${timezone}`,
+          'REFRESH-INTERVAL;VALUE=DURATION:PT1H', 'X-PUBLISHED-TTL:PT1H',
+          'END:VCALENDAR',
+        ].join('\r\n');
+        return new Response(emptyIcal, {
+          headers: { ...corsHeaders, 'Content-Type': 'text/calendar; charset=utf-8', 'Cache-Control': 'no-cache, no-store, must-revalidate' },
+        });
+      }
+
+      // Get lesson IDs for these students within date range
+      const { data: participantRecords } = await supabase
+        .from('lesson_participants')
+        .select('lesson_id')
+        .in('student_id', studentIds)
+        .eq('org_id', connection.org_id);
+
+      const lessonIds = [...new Set((participantRecords || []).map((p: any) => p.lesson_id))];
+
+      if (lessonIds.length === 0) {
+        lessons = [];
+      } else {
+        const result = await supabase
+          .from('lessons')
+          .select(lessonSelect)
+          .in('id', lessonIds)
+          .eq('org_id', connection.org_id)
+          .gte('start_at', startDate.toISOString())
+          .lte('start_at', endDate.toISOString())
+          .order('start_at', { ascending: true });
+        lessons = result.data;
+        lessonsError = result.error;
+      }
+
+      // Build child names for calendar title
+      const { data: children } = await supabase
+        .from('students')
+        .select('first_name')
+        .in('id', studentIds);
+      if (children && children.length > 0) {
+        const names = children.map((c: any) => c.first_name);
+        calendarName = names.length <= 3
+          ? `${names.join(' & ')}'s Music Lessons`
+          : `${names.slice(0, 2).join(', ')} + ${names.length - 2} more — Lessons`;
+      }
+    } else {
+      // ─── Teacher feed: scope to teacher's own lessons ───
+      const result = await supabase
+        .from('lessons')
+        .select(lessonSelect)
+        .eq('org_id', connection.org_id)
+        .eq('teacher_user_id', connection.user_id)
+        .gte('start_at', startDate.toISOString())
+        .lte('start_at', endDate.toISOString())
+        .order('start_at', { ascending: true });
+      lessons = result.data;
+      lessonsError = result.error;
+    }
 
     if (lessonsError) {
       console.error('Error fetching lessons:', lessonsError);
@@ -378,7 +442,7 @@ Deno.serve(async (req) => {
       'PRODID:-//LessonLoop//Calendar Feed//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
-      `X-WR-CALNAME:${orgName} Lessons`,
+      `X-WR-CALNAME:${calendarName}`,
       `X-WR-TIMEZONE:${timezone}`,
       'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
       'X-PUBLISHED-TTL:PT1H',

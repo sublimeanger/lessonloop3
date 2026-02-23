@@ -549,6 +549,7 @@ export type Database = {
           calendar_id: string | null
           calendar_name: string | null
           created_at: string
+          guardian_id: string | null
           ical_token: string | null
           ical_token_expires_at: string | null
           id: string
@@ -567,6 +568,7 @@ export type Database = {
           calendar_id?: string | null
           calendar_name?: string | null
           created_at?: string
+          guardian_id?: string | null
           ical_token?: string | null
           ical_token_expires_at?: string | null
           id?: string
@@ -585,6 +587,7 @@ export type Database = {
           calendar_id?: string | null
           calendar_name?: string | null
           created_at?: string
+          guardian_id?: string | null
           ical_token?: string | null
           ical_token_expires_at?: string | null
           id?: string
@@ -599,6 +602,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "calendar_connections_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "calendar_connections_org_id_fkey"
             columns: ["org_id"]
