@@ -1586,7 +1586,7 @@ serve(async (req) => {
     // Fetch org data early so currency_code is available for context builders
     const { data: orgData } = await supabase
       .from("organisations")
-      .select("name, org_type, currency_code")
+      .select("name, org_type, currency_code, subscription_plan")
       .eq("id", orgId)
       .single();
 
@@ -1707,10 +1707,14 @@ Todays scheduled lessons: ${todayLessons?.length || 0}`;
       dataContext = filteredSummary;
     }
 
+    const isPro = orgData?.subscription_plan === "pro" || orgData?.subscription_plan === "enterprise";
+    const aiModel = isPro ? "claude-sonnet-4-5-20250929" : "claude-haiku-4-5-20251001";
+
     const orgContext = orgData
       ? `\n\nORGANISATION: ${orgData.name} (${orgData.org_type})
 Your role: ${userRole}
-Currency: ${orgData.currency_code}`
+Currency: ${orgData.currency_code}
+AI tier: ${isPro ? "Pro (Sonnet)" : "Standard (Haiku)"}`
       : "";
 
     // Add current datetime context
@@ -1742,7 +1746,7 @@ Currency: ${orgData.currency_code}`
       method: "POST",
       headers: anthropicHeaders,
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: aiModel,
         max_tokens: 4096,
         system: fullContext,
         messages: initialMessages,
@@ -1808,7 +1812,7 @@ Currency: ${orgData.currency_code}`
         method: "POST",
         headers: anthropicHeaders,
         body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
+          model: aiModel,
           max_tokens: 4096,
           system: fullContext,
           messages: anthropicMessages,
