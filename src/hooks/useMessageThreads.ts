@@ -23,7 +23,7 @@ export interface ThreadListingMessage {
   parent_message_id: string | null;
   channel: string;
   message_type: string;
-  sender_profile?: { full_name: string; email: string } | null;
+  sender_profile?: { full_name: string | null; email: string | null } | null;
 }
 
 /** Full message with body — loaded when a thread is expanded */
@@ -198,7 +198,7 @@ export function useThreadMessages(threadId: string | null, enabled: boolean) {
 
       // Attach sender profiles
       const senderIds = [...new Set(messages.map(m => m.sender_user_id).filter(Boolean))];
-      let profileMap = new Map<string, { full_name: string; email: string }>();
+      let profileMap = new Map<string, { full_name: string | null; email: string | null }>();
       if (senderIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')

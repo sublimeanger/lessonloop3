@@ -52,7 +52,7 @@ export function useGenerateInstallments() {
         _org_id: currentOrg.id,
         _count: params.count,
         _frequency: params.frequency,
-        _start_date: params.startDate || null,
+        _start_date: params.startDate ?? undefined,
         _custom_schedule: params.customSchedule
           ? JSON.stringify(params.customSchedule)
           : null,
