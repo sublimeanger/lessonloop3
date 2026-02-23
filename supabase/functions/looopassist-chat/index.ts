@@ -642,8 +642,11 @@ async function buildStudentContext(supabase: SupabaseClient, orgId: string, stud
     if (practiceLogs && practiceLogs.length > 0) {
       const totalMins = practiceLogs.reduce((sum: number, p: { duration_minutes: number }) => sum + p.duration_minutes, 0);
       context += `\n\nRecent Practice (last 7 entries, ${totalMins} mins total):`;
-      practiceLogs.slice(0, 3).forEach((p: { practice_date: string; duration_minutes: number }) => {
+      practiceLogs.slice(0, 5).forEach((p: { practice_date: string; duration_minutes: number; notes?: string | null }) => {
         context += `\n  - ${p.practice_date}: ${p.duration_minutes} mins`;
+        if (p.notes) {
+          context += ` — ${p.notes.slice(0, 150)}`;
+        }
       });
     }
   }
@@ -698,15 +701,21 @@ async function buildStudentContext(supabase: SupabaseClient, orgId: string, stud
   if (userRole !== "finance") {
     const { data: assignments } = await supabase
       .from("practice_assignments")
-      .select("title, status, start_date, end_date")
+      .select("title, description, status, start_date, end_date, target_minutes_per_day")
       .eq("student_id", studentId)
       .eq("status", "active")
       .limit(5);
 
     if (assignments && assignments.length > 0) {
       context += `\n\nActive Practice Assignments:`;
-      assignments.forEach((a: { title: string }) => {
+      assignments.forEach((a: { title: string; description?: string | null; target_minutes_per_day?: number | null }) => {
         context += `\n  - ${a.title}`;
+        if (a.target_minutes_per_day) {
+          context += ` (target: ${a.target_minutes_per_day} mins/day)`;
+        }
+        if (a.description) {
+          context += `\n    ${a.description.slice(0, 200)}`;
+        }
       });
     }
   }
