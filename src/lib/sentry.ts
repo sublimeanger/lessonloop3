@@ -1,8 +1,9 @@
 import * as Sentry from '@sentry/react';
+import { SENTRY_DSN } from '@/lib/env';
 
-if (import.meta.env.VITE_SENTRY_DSN) {
+if (SENTRY_DSN) {
   Sentry.init({
-    dsn: import.meta.env.VITE_SENTRY_DSN,
+    dsn: SENTRY_DSN,
     environment: import.meta.env.MODE,
     tracesSampleRate: 0.1,
     replaysSessionSampleRate: 0.1,
