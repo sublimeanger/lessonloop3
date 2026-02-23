@@ -31,7 +31,6 @@ import { RescheduleSlotPicker } from '@/components/portal/RescheduleSlotPicker';
 import { useToast } from '@/hooks/use-toast';
 import { useCalendarConnections } from '@/hooks/useCalendarConnections';
 import { downloadICSFile, generateGoogleCalendarUrl } from '@/lib/calendarExport';
-import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 // --- Types ---
