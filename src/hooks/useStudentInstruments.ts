@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { recordGradeChange } from '@/hooks/useGradeChangeHistory';
 
 export interface StudentInstrumentRow {
   id: string;
@@ -108,6 +110,7 @@ export function useAddStudentInstrument() {
 
 export function useUpdateStudentInstrument() {
   const { currentOrg } = useOrg();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -125,6 +128,17 @@ export function useUpdateStudentInstrument() {
       is_primary?: boolean;
       notes?: string | null;
     }) => {
+      // If grade is being changed, fetch the old value for history
+      let oldGradeId: string | null = null;
+      if (updates.current_grade_id !== undefined) {
+        const { data: existing } = await (supabase as any)
+          .from('student_instruments')
+          .select('current_grade_id')
+          .eq('id', id)
+          .single();
+        oldGradeId = existing?.current_grade_id || null;
+      }
+
       // If marking as primary, un-primary the others first
       if (updates.is_primary) {
         await (supabase as any)
@@ -142,10 +156,29 @@ export function useUpdateStudentInstrument() {
         .eq('org_id', currentOrg!.id);
 
       if (error) throw error;
+
+      // Record grade change history if grade actually changed
+      if (
+        updates.current_grade_id !== undefined &&
+        updates.current_grade_id !== oldGradeId &&
+        updates.current_grade_id !== null &&
+        user
+      ) {
+        await recordGradeChange({
+          orgId: currentOrg!.id,
+          studentId: student_id,
+          studentInstrumentId: id,
+          oldGradeId,
+          newGradeId: updates.current_grade_id,
+          changedBy: user.id,
+        });
+      }
+
       return { id, student_id };
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['student-instruments', variables.student_id] });
+      queryClient.invalidateQueries({ queryKey: ['grade-change-history'] });
       queryClient.invalidateQueries({ queryKey: ['students'] });
     },
     onError: (error: Error) => {

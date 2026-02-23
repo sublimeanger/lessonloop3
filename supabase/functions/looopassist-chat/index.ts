@@ -127,6 +127,47 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
     .order("last_name", { ascending: true })
     .limit(50);
 
+  // Fetch primary instruments for all students (for the student list summary)
+  const studentIds = (students || []).map((s: Student) => s.id);
+  const { data: studentInstruments } = studentIds.length > 0
+    ? await supabase
+        .from("student_instruments")
+        .select(`
+          student_id,
+          is_primary,
+          instrument:instruments(name, category),
+          exam_board:exam_boards(short_name),
+          current_grade:grade_levels!student_instruments_current_grade_id_fkey(name, short_name),
+          target_grade:grade_levels!student_instruments_target_grade_id_fkey(name, short_name)
+        `)
+        .eq("org_id", orgId)
+        .in("student_id", studentIds)
+    : { data: [] };
+
+  // Build a map: student_id -> instrument summary string
+  const instrumentsByStudent = new Map<string, string[]>();
+  for (const si of (studentInstruments || []) as any[]) {
+    const inst = si.instrument as { name: string; category: string } | null;
+    if (!inst) continue;
+    const board = si.exam_board as { short_name: string } | null;
+    const grade = si.current_grade as { name: string; short_name: string } | null;
+    const target = si.target_grade as { name: string; short_name: string } | null;
+
+    let desc = inst.name;
+    if (board && grade) {
+      desc += ` (${board.short_name} ${grade.name}`;
+      if (target) desc += `, working towards ${target.name}`;
+      desc += ")";
+    } else if (grade) {
+      desc += ` (${grade.name})`;
+    }
+    if (si.is_primary) desc += " [Primary]";
+
+    const arr = instrumentsByStudent.get(si.student_id) || [];
+    arr.push(desc);
+    instrumentsByStudent.set(si.student_id, arr);
+  }
+
   // Fetch guardians
   const { data: guardians } = await supabase
     .from("guardians")
@@ -286,7 +327,9 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
   if ((students || []).length > 0) {
     studentSummary += `\n\nACTIVE STUDENTS (${students.length}):`;
     students.slice(0, 15).forEach((s: Student) => {
-      studentSummary += `\n- [Student:${s.id}:${s.first_name} ${s.last_name}]`;
+      const instruments = instrumentsByStudent.get(s.id);
+      const instLine = instruments ? ` — Instruments: ${instruments.join(", ")}` : "";
+      studentSummary += `\n- [Student:${s.id}:${s.first_name} ${s.last_name}]${instLine}`;
     });
     if (students.length > 15) {
       studentSummary += `\n... and ${students.length - 15} more`;
@@ -431,6 +474,43 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
   context += `\nPhone: ${student.phone || "Not provided"}`;
   if (student.date_of_birth) context += `\nDOB: ${student.date_of_birth}`;
   if (student.notes) context += `\nNotes: ${student.notes}`;
+
+  // Instruments & grades
+  const { data: instruments } = await supabase
+    .from("student_instruments")
+    .select(`
+      is_primary, notes,
+      instrument:instruments(name, category),
+      exam_board:exam_boards(short_name),
+      current_grade:grade_levels!student_instruments_current_grade_id_fkey(name, short_name),
+      target_grade:grade_levels!student_instruments_target_grade_id_fkey(name, short_name)
+    `)
+    .eq("student_id", studentId)
+    .eq("org_id", orgId)
+    .order("is_primary", { ascending: false });
+
+  if (instruments && instruments.length > 0) {
+    context += "\n\nInstruments:";
+    for (const si of instruments as any[]) {
+      const inst = si.instrument as { name: string; category: string } | null;
+      if (!inst) continue;
+      const board = si.exam_board as { short_name: string } | null;
+      const grade = si.current_grade as { name: string } | null;
+      const target = si.target_grade as { name: string } | null;
+      let line = `  - ${inst.name}`;
+      if (si.is_primary) line += " [Primary]";
+      if (board && grade) {
+        line += ` — ${board.short_name} ${grade.name}`;
+        if (target) line += `, working towards ${target.name}`;
+      } else if (grade) {
+        line += ` — ${grade.name}`;
+      }
+      if (si.notes) line += ` (Notes: ${si.notes})`;
+      context += `\n${line}`;
+    }
+  } else {
+    context += "\n\nInstruments: Not recorded";
+  }
 
   // Guardians — hide contact details from teachers
   const guardianLinks = student.student_guardians || [];
@@ -623,6 +703,13 @@ const SYSTEM_PROMPT = `You are LoopAssist, the AI co-pilot built into LessonLoop
 Your personality: Efficient, warm, and knowledgeable — like a brilliant office manager who knows every student, every invoice, and every lesson by heart. You're direct but never cold. You celebrate wins ("Nice — 100% attendance this week!") and flag problems early ("Heads up: 3 invoices just passed 30 days overdue").
 
 You speak in UK English. You know music education. You understand that a cancelled lesson isn't just a scheduling change — it affects income, student progress, and parent relationships.
+
+Each student's instruments, exam board, and current/target grades are included in their context. When suggesting lesson content, repertoire, or practice focus, tailor your suggestions to:
+- The student's instrument(s)
+- Their current grade level and what they're working towards
+- The exam board's expectations at that level (e.g., ABRSM Grade 5 requires scales in contrary motion, Trinity Grade 5 has different requirements)
+
+If no instrument or grade is recorded for a student, suggest the teacher adds this information via the student profile for better-tailored suggestions.
 
 SCOPE & BOUNDARIES:
 You can ONLY help with things inside LessonLoop. If someone asks about topics outside your scope (general knowledge, coding help, personal advice), politely say you're built specifically for LessonLoop and suggest they use a general assistant for that.

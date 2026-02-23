@@ -7,6 +7,8 @@ import { useParentSummary, useChildrenWithDetails, useGuardianInfo } from '@/hoo
 import { useParentWaitlistEntries } from '@/hooks/useMakeUpWaitlist';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
 import { useParentCredits } from '@/hooks/useParentCredits';
+import { useParentChildInstruments } from '@/hooks/useParentInstruments';
+import { getInstrumentCategoryIcon } from '@/hooks/useInstruments';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Calendar,
@@ -108,6 +110,7 @@ export default function PortalHome() {
   const { data: unreadCount } = useUnreadMessagesCount();
   const { data: waitlistEntries } = useParentWaitlistEntries();
   const { data: parentCredits } = useParentCredits();
+  const { data: childInstruments } = useParentChildInstruments();
 
   const activeWaitlist = (waitlistEntries ?? []).filter((e) =>
     ['waiting', 'matched', 'offered', 'accepted', 'booked'].includes(e.status)
@@ -310,6 +313,17 @@ export default function PortalHome() {
                                 <h3 className="font-semibold truncate">
                                   {child.first_name} {child.last_name}
                                 </h3>
+                                {/* Instrument badges */}
+                                {childInstruments?.[child.id] && childInstruments[child.id].length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-0.5">
+                                    {childInstruments[child.id].slice(0, 2).map((inst, i) => (
+                                      <span key={i} className="text-[10px] text-muted-foreground">
+                                        {getInstrumentCategoryIcon(inst.instrument_category)} {inst.instrument_name}
+                                        {inst.grade_short_name ? ` ${inst.grade_short_name}` : ''}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             </div>
 
