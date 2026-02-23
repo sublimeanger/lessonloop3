@@ -95,9 +95,34 @@ export function useParentLoopAssist() {
               assistantContent += parsed.text;
               setStreamingContent(assistantContent);
             }
-          } catch {
-            // ignore parse errors on partial chunks
+            if (parsed.error) {
+              throw new Error(parsed.error);
+            }
+          } catch (e) {
+            if (e instanceof SyntaxError) {
+              textBuffer = line + '\n' + textBuffer;
+              break;
+            }
+            throw e;
           }
+        }
+      }
+
+      // Process any remaining data in the buffer after stream ends
+      if (textBuffer.trim()) {
+        const remainingLines = textBuffer.split('\n');
+        for (const rl of remainingLines) {
+          const trimmed = rl.replace(/\r$/, '');
+          if (!trimmed.startsWith('data: ')) continue;
+          const jsonStr = trimmed.slice(6).trim();
+          if (jsonStr === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            if (parsed.text) {
+              assistantContent += parsed.text;
+              setStreamingContent(assistantContent);
+            }
+          } catch { /* ignore final partial */ }
         }
       }
 
