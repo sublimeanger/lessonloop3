@@ -408,6 +408,8 @@ export function useLoopAssist(externalPageContext?: PageContext) {
       }
       queryClient.invalidateQueries({ queryKey: ['ai-proposals'] });
       queryClient.invalidateQueries({ queryKey: ['ai-messages', currentConversationId] });
+      // Refresh proactive alerts so banners update after actions (e.g. bulk complete)
+      queryClient.invalidateQueries({ queryKey: ['proactive-alerts'] });
       setTimeout(() => {
         const messagesContainer = document.querySelector('[data-loop-assist-messages]');
         if (messagesContainer) {
