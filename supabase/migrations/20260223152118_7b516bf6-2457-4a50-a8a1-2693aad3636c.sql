@@ -1,0 +1,2 @@
+ALTER TABLE public.message_log DROP CONSTRAINT message_log_recipient_type_check;
+ALTER TABLE public.message_log ADD CONSTRAINT message_log_recipient_type_check CHECK (recipient_type = ANY (ARRAY['guardian'::text, 'student'::text, 'teacher'::text, 'parent'::text, 'staff'::text]));
