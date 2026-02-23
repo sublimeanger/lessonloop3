@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
@@ -65,6 +66,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     handleProposal,
     handleProposalLoading,
     deleteConversation,
+    messagesLoading,
   } = useLoopAssist(pageContext);
 
   const [input, setInput] = useState('');
@@ -131,6 +133,13 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     setView('chat');
     setFailedMessage(null);
   };
+
+  // Listen for new conversation shortcut event (Cmd+Shift+J)
+  useEffect(() => {
+    const handler = () => handleNewConversation();
+    window.addEventListener('loopassist-new-conversation', handler);
+    return () => window.removeEventListener('loopassist-new-conversation', handler);
+  }, []);
 
   const handleSelectConversation = (id: string) => {
     setCurrentConversationId(id);
@@ -227,7 +236,19 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
             {/* Messages */}
             <ScrollArea className="flex-1 px-4">
               <div className="space-y-4 py-4">
-                {messages.length === 0 && !isStreaming && (
+                {messagesLoading && (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
+                        <div className="max-w-[85%] space-y-2">
+                          <Skeleton className="h-4 w-48" />
+                          <Skeleton className="h-4 w-32" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!messagesLoading && messages.length === 0 && !isStreaming && (
                   <div className="text-center text-muted-foreground">
                     <Sparkles className="mx-auto mb-2 h-8 w-8 text-primary/50" />
                     <p className="text-sm">Start a new conversation</p>
