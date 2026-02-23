@@ -628,7 +628,7 @@ async function buildStudentContext(supabase: SupabaseClient, orgId: string, stud
   // Attendance records
   const { data: attendance } = await supabase
     .from("attendance_records")
-    .select("attendance_status, recorded_at, cancellation_reason")
+    .select("attendance_status, recorded_at, cancellation_reason, absence_reason_category")
     .eq("student_id", studentId)
     .order("recorded_at", { ascending: false })
     .limit(20);
@@ -642,6 +642,23 @@ async function buildStudentContext(supabase: SupabaseClient, orgId: string, stud
     Object.entries(statusCounts).forEach(([status, count]) => {
       context += `\n  - ${status}: ${count}`;
     });
+
+    const absences = attendance.filter((a: any) =>
+      ['absent', 'cancelled_by_student', 'late'].includes(a.attendance_status)
+    );
+    if (absences.length > 0) {
+      context += `\n  Recent absences/late:`;
+      absences.slice(0, 5).forEach((a: any) => {
+        const date = a.recorded_at ? new Date(a.recorded_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "Unknown date";
+        context += `\n    - ${date}: ${a.attendance_status}`;
+        if (a.absence_reason_category) {
+          context += ` (${a.absence_reason_category})`;
+        }
+        if (a.cancellation_reason) {
+          context += ` — ${a.cancellation_reason.slice(0, 100)}`;
+        }
+      });
+    }
   }
 
   // Practice streaks — hidden from finance role
