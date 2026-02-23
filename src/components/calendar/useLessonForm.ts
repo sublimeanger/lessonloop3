@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { logger } from '@/lib/logger';
-import { format, addMinutes, addDays, setHours, setMinutes, startOfDay, parseISO, eachDayOfInterval } from 'date-fns';
+import { format, addMinutes, addDays, addWeeks, setHours, setMinutes, startOfDay, parseISO, eachDayOfInterval } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
