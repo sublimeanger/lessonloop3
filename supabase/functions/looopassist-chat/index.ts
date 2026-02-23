@@ -1829,24 +1829,43 @@ AI tier: ${isPro ? "Pro (Sonnet)" : "Standard (Haiku)"}`
       anthropicMessages.push({ role: "assistant", content: currentResponse.content });
       anthropicMessages.push({ role: "user", content: toolResults });
 
-      // Call Claude again with tool results
-      const nextResponse = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: anthropicHeaders,
-        body: JSON.stringify({
-          model: aiModel,
-          max_tokens: 4096,
-          system: fullContext,
-          messages: anthropicMessages,
-          tools: TOOLS,
-          stream: false,
-        }),
-      });
+      // Call Claude again with tool results (retry on 429 with backoff)
+      let nextResponse: Response | null = null;
+      const MAX_RETRIES = 2;
+      for (let retry = 0; retry <= MAX_RETRIES; retry++) {
+        nextResponse = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: anthropicHeaders,
+          body: JSON.stringify({
+            model: aiModel,
+            max_tokens: 4096,
+            system: fullContext,
+            messages: anthropicMessages,
+            tools: TOOLS,
+            stream: false,
+          }),
+        });
 
-      if (!nextResponse.ok) {
+        if (nextResponse.ok) break;
+
+        if ((nextResponse.status === 429 || nextResponse.status === 529) && retry < MAX_RETRIES) {
+          const delay = (retry + 1) * 2000; // 2s, 4s
+          console.log(`Anthropic rate-limited (${nextResponse.status}), retrying in ${delay}ms (attempt ${retry + 1}/${MAX_RETRIES})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+
         console.error("Anthropic follow-up error:", nextResponse.status);
+        // Return a helpful fallback instead of empty response
+        currentResponse = {
+          stop_reason: "end_turn",
+          content: [{ type: "text", text: "I found the data you asked about but ran into a temporary issue generating my full response. Please try asking again in a moment — the information is all here, I just need a second attempt to put it together for you." }],
+        };
+        nextResponse = null;
         break;
       }
+
+      if (!nextResponse) break;
       currentResponse = await nextResponse.json();
     }
 
