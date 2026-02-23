@@ -57,15 +57,18 @@ export function useCreateCategory() {
 }
 
 export function useUpdateCategory() {
+  const { currentOrg } = useOrg();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ id, name, color }: { id: string; name: string; color?: string | null }) => {
+      if (!currentOrg?.id) throw new Error('No organisation selected');
       const { error } = await supabase
         .from('resource_categories')
         .update({ name, color: color ?? null })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('org_id', currentOrg.id);
       if (error) throw error;
     },
     onSuccess: () => {

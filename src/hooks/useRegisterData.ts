@@ -330,7 +330,8 @@ export function useMarkLessonComplete() {
       const { error } = await supabase
         .from('lessons')
         .update({ status: 'completed' })
-        .eq('id', lessonId);
+        .eq('id', lessonId)
+        .eq('org_id', currentOrg.id);
 
       if (error) throw error;
 
@@ -525,12 +526,13 @@ export function useSaveBatchAttendance(dateKey: string) {
         })
         .map(l => l.id);
 
-      if (fullyAttendedIds.length > 0) {
+      if (fullyAttendedIds.length > 0 && currentOrg?.id) {
         await supabase
           .from('lessons')
           .update({ status: 'completed' })
           .in('id', fullyAttendedIds)
-          .eq('status', 'scheduled');
+          .eq('status', 'scheduled')
+          .eq('org_id', currentOrg.id);
       }
 
       return { count: upserts.length };

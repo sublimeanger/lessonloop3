@@ -87,10 +87,12 @@ export function useMakeUpPolicies() {
       const update: Record<string, unknown> = {};
       if (params.eligibility !== undefined) update.eligibility = params.eligibility;
       if (params.releases_slot !== undefined) update.releases_slot = params.releases_slot;
+      if (!currentOrg?.id) throw new Error('No organisation selected');
       const { error } = await supabase
         .from('make_up_policies')
         .update(update)
-        .eq('id', params.id);
+        .eq('id', params.id)
+        .eq('org_id', currentOrg.id);
       if (error) throw error;
     },
     onSuccess: () => {

@@ -340,7 +340,8 @@ export function useLoopAssist(externalPageContext?: PageContext) {
           await supabase
             .from('ai_conversations')
             .update({ title })
-            .eq('id', conversationId);
+            .eq('id', conversationId)
+            .eq('org_id', currentOrg.id);
         }
       }
 

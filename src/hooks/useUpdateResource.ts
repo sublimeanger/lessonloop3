@@ -1,8 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useOrg } from '@/contexts/OrgContext';
 import { useToast } from '@/hooks/use-toast';
 
 export function useUpdateResource() {
+  const { currentOrg } = useOrg();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -16,10 +18,12 @@ export function useUpdateResource() {
       title: string;
       description: string | null;
     }) => {
+      if (!currentOrg?.id) throw new Error('No organisation selected');
       const { data, error } = await supabase
         .from('resources')
         .update({ title, description })
         .eq('id', id)
+        .eq('org_id', currentOrg.id)
         .select()
         .single();
 
