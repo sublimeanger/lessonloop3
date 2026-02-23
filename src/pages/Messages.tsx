@@ -50,12 +50,18 @@ export default function Messages() {
   const canViewRequests = isOrgAdmin || isOrgOwner;
   const isStaff = ['owner', 'admin', 'teacher'].includes(currentRole || '');
   
+  // Read initial tab from URL query param (e.g. /messages?tab=requests)
+  const initialTab = (() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tab') || 'sent';
+  })();
+
   const [composeOpen, setComposeOpen] = useState(false);
   const [bulkComposeOpen, setBulkComposeOpen] = useState(false);
   const [internalComposeOpen, setInternalComposeOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [channelFilter, setChannelFilter] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState('sent');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [internalView, setInternalView] = useState<'inbox' | 'sent'>('inbox');
   const [viewMode, setViewMode] = useState<'list' | 'threaded'>('threaded');
   const [replyTarget, setReplyTarget] = useState<Guardian | null>(null);
