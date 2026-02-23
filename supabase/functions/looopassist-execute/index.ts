@@ -301,7 +301,8 @@ serve(async (req) => {
               const { error: updateError } = await supabase
                 .from("lessons")
                 .update({ status: "completed" })
-                .eq("id", lesson.id);
+                .eq("id", lesson.id)
+                .eq("org_id", orgId);
               if (!updateError) {
                 completedCount++;
                 completeEntities.push({ type: "lesson", id: lesson.id, label: lesson.title, detail: "Marked complete" });
@@ -820,7 +821,8 @@ async function executeRescheduleLessons(
         start_at: newStartAt.toISOString(),
         end_at: newEndAt.toISOString(),
       })
-      .eq("id", lesson.id);
+      .eq("id", lesson.id)
+      .eq("org_id", orgId);
 
     if (updateError) {
       results.push(`${lesson.title}: Failed - ${updateError.message}`);
@@ -1063,7 +1065,8 @@ async function executeCancelLesson(
     const { error: updateError } = await supabase
       .from("lessons")
       .update({ status: "cancelled" })
-      .eq("id", lesson.id);
+      .eq("id", lesson.id)
+      .eq("org_id", orgId);
 
     if (updateError) {
       results.push(`${lesson.title}: Failed - ${updateError.message}`);
@@ -1171,7 +1174,8 @@ async function executeCompleteLessons(
     const { error: updateError } = await supabase
       .from("lessons")
       .update({ status: "completed" })
-      .eq("id", lesson.id);
+      .eq("id", lesson.id)
+      .eq("org_id", orgId);
 
     if (updateError) {
       results.push(`${lesson.title}: Failed - ${updateError.message}`);
