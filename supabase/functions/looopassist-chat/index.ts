@@ -92,7 +92,8 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
   const monthStartStr = monthStart.toISOString().split("T")[0];
 
   // Fetch accurate financial totals via RPC (avoids row-limit issues)
-  const { data: invoiceStatsRaw } = await supabase.rpc("get_invoice_stats", { _org_id: orgId });
+  const { data: invoiceStatsRaw, error: statsError } = await supabase.rpc("get_invoice_stats", { _org_id: orgId });
+  if (statsError) console.error("Failed to fetch invoice stats:", statsError.message);
   const invoiceStats = invoiceStatsRaw as {
     total_outstanding: number;
     overdue: number;
@@ -103,7 +104,7 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
   } | null;
 
   // Fetch sample overdue and outstanding invoices for citations (limited list is fine here)
-  const { data: overdueInvoices } = await supabase
+  const { data: overdueInvoices, error: overdueError } = await supabase
     .from("invoices")
     .select(`
       id, invoice_number, status, total_minor, due_date, payer_guardian_id, payer_student_id,
@@ -114,9 +115,10 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
     .in("status", ["overdue", "sent"])
     .order("due_date", { ascending: true })
     .limit(20);
+  if (overdueError) console.error("Failed to fetch overdue invoices:", overdueError.message);
 
   // Fetch upcoming lessons (next 7 days) with teacher from teachers table
-  const { data: upcomingLessons } = await supabase
+  const { data: upcomingLessons, error: lessonsError } = await supabase
     .from("lessons")
     .select(`
       id, title, start_at, end_at, status, teacher_id, teacher_user_id,
@@ -129,26 +131,29 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
     .eq("status", "scheduled")
     .order("start_at", { ascending: true })
     .limit(30);
+  if (lessonsError) console.error("Failed to fetch upcoming lessons:", lessonsError.message);
 
   // Fetch active students with summary info
-  const { data: students } = await supabase
+  const { data: students, error: studentsError } = await supabase
     .from("students")
     .select("id, first_name, last_name, email, phone, status")
     .eq("org_id", orgId)
     .eq("status", "active")
     .order("last_name", { ascending: true })
     .limit(50);
+  if (studentsError) console.error("Failed to fetch students:", studentsError.message);
 
   // Fetch guardians
-  const { data: guardians } = await supabase
+  const { data: guardians, error: guardiansError } = await supabase
     .from("guardians")
     .select("id, full_name, email")
     .eq("org_id", orgId)
     .order("full_name", { ascending: true })
     .limit(50);
+  if (guardiansError) console.error("Failed to fetch guardians:", guardiansError.message);
 
   // NEW: Fetch recent cancellations (last 7 days)
-  const { data: recentCancellations } = await supabase
+  const { data: recentCancellations, error: cancellationsError } = await supabase
     .from("lessons")
     .select(`
       id, title, start_at, status,
@@ -159,14 +164,16 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
     .gte("start_at", `${weekAgoStr}T00:00:00`)
     .order("start_at", { ascending: false })
     .limit(10);
+  if (cancellationsError) console.error("Failed to fetch cancellations:", cancellationsError.message);
 
   // NEW: Fetch attendance summary (this month)
-  const { data: monthlyLessons } = await supabase
+  const { data: monthlyLessons, error: monthlyError } = await supabase
     .from("lessons")
     .select("id, status")
     .eq("org_id", orgId)
     .gte("start_at", `${monthStartStr}T00:00:00`)
     .lte("start_at", `${todayStr}T23:59:59`);
+  if (monthlyError) console.error("Failed to fetch monthly lessons:", monthlyError.message);
 
   const completedCount = (monthlyLessons || []).filter((l: Lesson) => l.status === "completed").length;
   const cancelledCount = (monthlyLessons || []).filter((l: Lesson) => l.status === "cancelled").length;
@@ -174,30 +181,33 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
   const completionRate = totalMonthly > 0 ? Math.round((completedCount / totalMonthly) * 100) : 0;
 
   // NEW: Fetch rate cards
-  const { data: rateCards } = await supabase
+  const { data: rateCards, error: rateCardsError } = await supabase
     .from("rate_cards")
     .select("name, rate_amount, duration_mins, is_default")
     .eq("org_id", orgId)
     .order("is_default", { ascending: false })
     .limit(5);
+  if (rateCardsError) console.error("Failed to fetch rate cards:", rateCardsError.message);
 
   // NEW: Fetch recent payments (last 7 days)
-  const { data: recentPayments } = await supabase
+  const { data: recentPayments, error: paymentsError } = await supabase
     .from("payments")
     .select("amount_minor, method, paid_at")
     .eq("org_id", orgId)
     .gte("paid_at", `${weekAgoStr}T00:00:00`)
     .order("paid_at", { ascending: false })
     .limit(20);
+  if (paymentsError) console.error("Failed to fetch recent payments:", paymentsError.message);
 
   // NEW: Fetch teacher workload using teacher_id (supports unlinked teachers)
-  const { data: teacherLessons } = await supabase
+  const { data: teacherLessons, error: teacherLessonsError } = await supabase
     .from("lessons")
     .select("teacher_id, teacher_user_id")
     .eq("org_id", orgId)
     .eq("status", "scheduled")
     .gte("start_at", `${todayStr}T00:00:00`)
     .lte("start_at", `${weekFromNowStr}T23:59:59`);
+  if (teacherLessonsError) console.error("Failed to fetch teacher lessons:", teacherLessonsError.message);
 
   const teacherCounts = new Map<string, number>();
   (teacherLessons || []).forEach((l: { teacher_id: string | null; teacher_user_id: string }) => {
