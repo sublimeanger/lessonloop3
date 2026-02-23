@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -6,13 +6,14 @@ export function useStripePayment() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const initiatePayment = async (
+  const initiatePayment = useCallback(async (
     invoiceId: string,
     options?: {
       installmentId?: string;
       payRemaining?: boolean;
     }
   ) => {
+    if (isLoading) return; // Prevent double-clicks
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('stripe-create-checkout', {
@@ -29,8 +30,11 @@ export function useStripePayment() {
         throw new Error(error.message || 'Failed to create checkout session');
       }
 
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
       if (data?.url) {
-        // Redirect to Stripe Checkout
         window.location.href = data.url;
       } else {
         throw new Error('No checkout URL returned');
@@ -44,7 +48,7 @@ export function useStripePayment() {
       });
       setIsLoading(false);
     }
-  };
+  }, [isLoading, toast]);
 
   return {
     initiatePayment,

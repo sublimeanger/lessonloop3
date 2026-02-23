@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format, parseISO, differenceInDays, startOfToday } from 'date-fns';
 import { CheckCircle2, Clock, AlertCircle, Loader2, Pencil, Trash2, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -61,9 +61,12 @@ export function InstallmentTimeline({ invoice, onEditPlan, onRecordPayment }: In
   const totalPaid = invoice.paid_minor || 0;
   const progressPercent = invoice.total_minor > 0 ? Math.round((totalPaid / invoice.total_minor) * 100) : 0;
 
-  const paidCount = installments?.filter(i => i.status === 'paid').length || 0;
-  const totalCount = installments?.length || 0;
-  const hasAnyPaid = paidCount > 0;
+  const { paidCount, totalCount, hasAnyPaid, nextPendingId } = useMemo(() => {
+    const paid = installments?.filter(i => i.status === 'paid').length || 0;
+    const total = installments?.length || 0;
+    const nextPending = installments?.find(i => i.status === 'pending' || i.status === 'overdue');
+    return { paidCount: paid, totalCount: total, hasAnyPaid: paid > 0, nextPendingId: nextPending?.id };
+  }, [installments]);
 
   const handleRemove = () => {
     removeMutation.mutate(invoice.id, {
@@ -130,11 +133,14 @@ export function InstallmentTimeline({ invoice, onEditPlan, onRecordPayment }: In
                         {getStepLabel(inst)}
                       </p>
                     </div>
-                    {inst.status === 'overdue' && (
+                    {(inst.status === 'overdue' || (inst.status === 'pending' && inst.id === nextPendingId)) && (
                       <Button
                         size="sm"
                         variant="outline"
-                        className="flex-shrink-0 gap-1 text-xs h-7 print:hidden"
+                        className={cn(
+                          'flex-shrink-0 gap-1 text-xs h-7 print:hidden',
+                          inst.status === 'overdue' && 'border-destructive/30 text-destructive hover:bg-destructive/10',
+                        )}
                         onClick={() => onRecordPayment(inst.amount_minor)}
                       >
                         <CreditCard className="h-3 w-3" />

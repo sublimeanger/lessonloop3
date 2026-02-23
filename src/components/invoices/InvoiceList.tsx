@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { parseISO, isBefore } from 'date-fns';
+import { parseISO, isBefore, startOfToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -25,7 +25,7 @@ type SortDirection = 'asc' | 'desc';
 const STATUS_ORDER: Record<string, number> = { overdue: 0, sent: 1, draft: 2, paid: 3, void: 4 };
 
 function getEffectiveStatus(status: InvoiceStatus, dueDate: string): string {
-  if (status === 'sent' && isBefore(parseISO(dueDate), new Date())) return 'overdue';
+  if (status === 'sent' && isBefore(parseISO(dueDate), startOfToday())) return 'overdue';
   return status;
 }
 
@@ -83,7 +83,7 @@ interface InvoiceListProps {
 }
 
 function StatusBadge({ status, dueDate }: { status: InvoiceStatus; dueDate: string }) {
-  const isOverdue = status === 'sent' && isBefore(parseISO(dueDate), new Date());
+  const isOverdue = status === 'sent' && isBefore(parseISO(dueDate), startOfToday());
   const effectiveStatus = isOverdue ? 'overdue' : status;
 
   const config: Record<string, { label: string; className: string; dot?: string }> = {

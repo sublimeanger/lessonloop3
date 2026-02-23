@@ -235,10 +235,11 @@ export function useCreateInvoice() {
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
-      if (message.toLowerCase().includes('credits have already been redeemed') || message.toLowerCase().includes('credit') && message.toLowerCase().includes('redeemed')) {
+      const lower = message.toLowerCase();
+      if (lower.includes('credit') && (lower.includes('redeemed') || lower.includes('already') || lower.includes('expired'))) {
         toast({
-          title: 'Credit already used',
-          description: 'One or more of the selected make-up credits has been redeemed since you started. Please refresh and try again.',
+          title: 'Credit no longer available',
+          description: 'One or more of the selected make-up credits has been redeemed or expired since you started. Please refresh and try again.',
           variant: 'destructive',
         });
         queryClient.invalidateQueries({ queryKey: ['available-credits-for-payer'] });
@@ -250,7 +251,7 @@ export function useCreateInvoice() {
   });
 }
 
-const ALLOWED_TRANSITIONS: Record<string, InvoiceStatus[]> = {
+const ALLOWED_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
   draft: ['sent', 'void'],
   sent: ['paid', 'overdue', 'void'],
   overdue: ['paid', 'sent', 'void'],
@@ -259,7 +260,7 @@ const ALLOWED_TRANSITIONS: Record<string, InvoiceStatus[]> = {
 };
 
 export function isValidStatusTransition(from: InvoiceStatus, to: InvoiceStatus): boolean {
-  if (from === to) return true;
+  if (from === to) return false; // no-op transitions are not valid
   return (ALLOWED_TRANSITIONS[from] ?? []).includes(to);
 }
 
@@ -358,6 +359,8 @@ export function useRecordPayment() {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice'] });
       queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['installments'] });
+      queryClient.invalidateQueries({ queryKey: ['active-payment-plans'] });
       toast({ title: 'Payment recorded' });
     },
     onError: (error: unknown) => {

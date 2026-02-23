@@ -64,6 +64,7 @@ export function useGenerateInstallments() {
       queryClient.invalidateQueries({ queryKey: ['installments', variables.invoiceId] });
       queryClient.invalidateQueries({ queryKey: ['invoice', variables.invoiceId] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['active-payment-plans'] });
       toast({ title: 'Payment plan created', description: `${variables.count} installments generated.` });
     },
     onError: (error) => {
@@ -75,28 +76,34 @@ export function useGenerateInstallments() {
 /** Remove payment plan — deletes pending/overdue installments and resets invoice flags */
 export function useRemovePaymentPlan() {
   const queryClient = useQueryClient();
+  const { currentOrg } = useOrg();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (invoiceId: string) => {
+      if (!currentOrg?.id) throw new Error('No organisation selected');
+
       // Only delete pending/overdue installments (preserve paid records)
       const { error: deleteError } = await supabase
         .from('invoice_installments')
         .delete()
         .eq('invoice_id', invoiceId)
+        .eq('org_id', currentOrg.id)
         .in('status', ['pending', 'overdue']);
       if (deleteError) throw deleteError;
 
       const { error: updateError } = await supabase
         .from('invoices')
         .update({ payment_plan_enabled: false, installment_count: null })
-        .eq('id', invoiceId);
+        .eq('id', invoiceId)
+        .eq('org_id', currentOrg.id);
       if (updateError) throw updateError;
     },
     onSuccess: (_, invoiceId) => {
       queryClient.invalidateQueries({ queryKey: ['installments', invoiceId] });
       queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['active-payment-plans'] });
       toast({ title: 'Payment plan removed' });
     },
     onError: (error) => {

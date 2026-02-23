@@ -1,5 +1,5 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { parseISO, isBefore } from 'date-fns';
+import { parseISO, isBefore, startOfToday } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { useOrgPaymentPreferences } from '@/hooks/useOrgPaymentPreferences';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -36,9 +36,8 @@ import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
 type InvoiceStatus = Database['public']['Enums']['invoice_status'];
 
 function getStatusBadge(status: InvoiceStatus, dueDate: string) {
-  const today = new Date();
   const due = parseISO(dueDate);
-  const isOverdue = status === 'sent' && isBefore(due, today);
+  const isOverdue = status === 'sent' && isBefore(due, startOfToday());
 
   if (isOverdue) {
     return <Badge variant="destructive">Overdue</Badge>;
@@ -150,7 +149,12 @@ export default function InvoiceDetail() {
   const amountDue = invoice.total_minor - totalPaid;
 
   const handleVoidConfirm = async () => {
-    await updateStatus.mutateAsync({ id: invoice.id, status: 'void', orgId: currentOrg?.id });
+    await updateStatus.mutateAsync({
+      id: invoice.id,
+      status: 'void',
+      currentStatus: invoice.status,
+      orgId: currentOrg?.id,
+    });
     setVoidConfirmOpen(false);
   };
 
@@ -510,6 +514,9 @@ export default function InvoiceDetail() {
             <AlertDialogTitle>Void Invoice</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to void invoice {invoice.invoice_number}? This action cannot be undone.
+              {invoice.credit_applied_minor > 0 && (
+                <> Any applied make-up credits ({formatCurrencyMinor(invoice.credit_applied_minor, currency)}) will be restored to the student's balance.</>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

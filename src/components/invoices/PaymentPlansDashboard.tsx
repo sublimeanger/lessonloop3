@@ -13,7 +13,7 @@ import { SortableTableHead } from '@/components/reports/SortableTableHead';
 import { useSortableTable } from '@/hooks/useSortableTable';
 import { useActivePaymentPlans, type Installment } from '@/hooks/useInvoiceInstallments';
 import { formatCurrencyMinor } from '@/lib/utils';
-import { differenceInDays, parseISO, formatDistanceToNowStrict } from 'date-fns';
+import { differenceInDays, parseISO, formatDistanceToNowStrict, startOfToday } from 'date-fns';
 import { AlertTriangle, CheckCircle2, Clock, Eye, Send, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LoadingState } from '@/components/shared/LoadingState';
@@ -38,12 +38,15 @@ interface PlanRow {
 }
 
 function getPlanHealth(installments: Installment[]): PlanHealth {
-  const hasOverdue = installments.some((i: Installment) => i.status === 'overdue');
+  const today = startOfToday();
+  const hasOverdue = installments.some((i: Installment) =>
+    i.status === 'overdue' || (i.status === 'pending' && differenceInDays(today, parseISO(i.due_date)) > 0)
+  );
   if (hasOverdue) return 'overdue';
 
   const nextPending = installments.find((i: Installment) => i.status === 'pending');
   if (nextPending) {
-    const daysUntilDue = differenceInDays(parseISO(nextPending.due_date), new Date());
+    const daysUntilDue = differenceInDays(parseISO(nextPending.due_date), today);
     if (daysUntilDue <= 3) return 'attention';
   }
 
@@ -51,9 +54,9 @@ function getPlanHealth(installments: Installment[]): PlanHealth {
 }
 
 function getMaxOverdueDays(installments: Installment[]): number {
-  const today = new Date();
+  const today = startOfToday();
   return installments
-    .filter((i: Installment) => i.status === 'overdue')
+    .filter((i: Installment) => i.status === 'overdue' || (i.status === 'pending' && differenceInDays(today, parseISO(i.due_date)) > 0))
     .reduce((max: number, i: Installment) => {
       const days = differenceInDays(today, parseISO(i.due_date));
       return Math.max(max, days);

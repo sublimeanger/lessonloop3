@@ -71,22 +71,31 @@ export function WaitlistTable({
                 onClick={() => handleFindMatch(entry)}
                 disabled={findMatches.isPending}
               >
-                <Search className="h-3 w-3 mr-1" />
+                {findMatches.isPending ? (
+                  <span className="h-3 w-3 mr-1 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <Search className="h-3 w-3 mr-1" />
+                )}
                 Find Match
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80" align="end">
               <p className="text-sm font-medium mb-2">Match Results</p>
-              {(matchResults[entry.id]?.length ?? 0) === 0 ? (
-                <p className="text-xs text-muted-foreground">No matches found yet. Click "Find Match" again or check later.</p>
+              {matchResults[entry.id] === undefined ? (
+                <p className="text-xs text-muted-foreground">Searching for available matches...</p>
+              ) : matchResults[entry.id].length === 0 ? (
+                <p className="text-xs text-muted-foreground">No matches found. Try again later when new slots open up.</p>
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {matchResults[entry.id]?.map((m: WaitlistMatchResult) => (
+                  {matchResults[entry.id].map((m: WaitlistMatchResult) => (
                     <div key={m.waitlist_id} className="p-2 rounded border border-border text-xs">
                       <p className="font-medium">{m.student_name}</p>
                       <p className="text-muted-foreground">
-                        {m.missed_lesson_title} — {m.match_quality}
+                        {m.missed_lesson_title}
                       </p>
+                      <Badge variant="outline" className="text-[10px] mt-1 capitalize">
+                        {m.match_quality.replace(/_/g, ' ')}
+                      </Badge>
                     </div>
                   ))}
                 </div>

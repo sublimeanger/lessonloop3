@@ -90,16 +90,21 @@ export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSet
 
   // Custom mode validation
   const customTotal = customRows.reduce((sum, r) => sum + r.amount_minor, 0);
+  const customDatesAscending = customRows.every((r, i) =>
+    i === 0 || r.due_date > customRows[i - 1].due_date
+  );
   const customValid = customRows.length >= 2 &&
     customRows.length <= 12 &&
     customRows.every(r => r.amount_minor >= 100 && isBefore(today, parseISO(r.due_date))) &&
+    customDatesAscending &&
     customTotal === remaining;
 
   // Validation for equal mode
-  const equalValid = previewInstallments.length >= 2 &&
+  const equalValid = remaining >= 200 &&
+    previewInstallments.length >= 2 &&
     previewInstallments.every(p => p.amount_minor >= 100 && isBefore(today, parseISO(p.due_date)));
 
-  const canSubmit = mode === 'equal' ? equalValid : customValid;
+  const canSubmit = remaining >= 200 && (mode === 'equal' ? equalValid : customValid);
 
   const initCustomRows = () => {
     const perInstallment = Math.floor(remaining / 3);
@@ -445,6 +450,11 @@ export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSet
               {customTotal !== remaining && (
                 <p className="text-sm text-destructive">
                   Amounts must sum to {formatCurrencyMinor(remaining, currency)} (difference: {formatCurrencyMinor(Math.abs(customTotal - remaining), currency)})
+                </p>
+              )}
+              {!customDatesAscending && (
+                <p className="text-sm text-destructive">
+                  Due dates must be in ascending order.
                 </p>
               )}
             </div>
