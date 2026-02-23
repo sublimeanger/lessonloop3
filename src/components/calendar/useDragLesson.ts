@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { parseISO, differenceInMinutes, setHours, setMinutes, startOfDay, addDays } from 'date-fns';
+import { parseISO, differenceInMinutes, setHours, setMinutes, startOfDay } from 'date-fns';
 import { LessonWithDetails } from './types';
 
 import { HOUR_HEIGHT } from './calendarConstants';
@@ -24,10 +24,12 @@ interface UseDragLessonOptions {
   scrollViewportRef: React.RefObject<HTMLDivElement | null>;
   startHour?: number;
   endHour?: number;
+  /** Pixels per hour — defaults to HOUR_HEIGHT (60). DayTimelineView passes 72. */
+  hourHeight?: number;
 }
 
-function getTimeFromY(y: number, startHour: number, endHour: number): { hour: number; minute: number } {
-  const totalMinutes = (y / HOUR_HEIGHT) * 60 + startHour * 60;
+function getTimeFromY(y: number, startHour: number, endHour: number, hh: number): { hour: number; minute: number } {
+  const totalMinutes = (y / hh) * 60 + startHour * 60;
   let hour = Math.floor(totalMinutes / 60);
   let minute = Math.round((totalMinutes % 60) / 15) * 15;
   if (minute >= 60) {
@@ -35,25 +37,34 @@ function getTimeFromY(y: number, startHour: number, endHour: number): { hour: nu
     minute = 0;
   }
   hour = Math.min(Math.max(hour, startHour), endHour);
-  // Clamp minute to 0 when at the boundary hour to prevent times like endHour:15
   if (hour >= endHour) {
     minute = 0;
   }
   return { hour, minute };
 }
 
-function snapToGrid(y: number): number {
-  const quarterHeight = HOUR_HEIGHT / 4; // 15-minute intervals
+function snapToGrid(y: number, hh: number): number {
+  const quarterHeight = hh / 4; // 15-minute intervals
   return Math.round(y / quarterHeight) * quarterHeight;
 }
 
-export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef, startHour = 7, endHour = 21 }: UseDragLessonOptions) {
+export function useDragLesson({
+  days,
+  onDrop,
+  gridRef,
+  scrollViewportRef,
+  startHour = 7,
+  endHour = 21,
+  hourHeight = HOUR_HEIGHT,
+}: UseDragLessonOptions) {
   const [dragState, setDragState] = useState<DragLessonState | null>(null);
   const dragStateRef = useRef<DragLessonState | null>(null);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startMousePos = useRef<{ x: number; y: number } | null>(null);
   const pendingLesson = useRef<LessonWithDetails | null>(null);
   const isDraggingRef = useRef(false);
+  /** Offset from the top of the lesson card to where the user grabbed */
+  const grabOffsetY = useRef(0);
 
   // Keep ref in sync with state
   dragStateRef.current = dragState;
@@ -73,7 +84,17 @@ export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef, startH
 
         const lessonStart = parseISO(lesson.start_at);
         const startMinutes = lessonStart.getHours() * 60 + lessonStart.getMinutes();
-        const top = ((startMinutes - startHour * 60) / 60) * HOUR_HEIGHT;
+        const top = ((startMinutes - startHour * 60) / 60) * hourHeight;
+
+        // Compute grab offset: where the user clicked relative to the lesson's top in the grid
+        const rect = gridRef.current.getBoundingClientRect();
+        const viewport = scrollViewportRef.current?.querySelector(
+          '[data-radix-scroll-area-viewport]'
+        );
+        const scrollTop = viewport ? viewport.scrollTop : 0;
+        const mouseY = (startMousePos.current?.y ?? clientY);
+        const gridY = mouseY - rect.top + scrollTop;
+        grabOffsetY.current = gridY - top;
 
         // Find which day column the lesson is in
         const dayIndex = days.findIndex(
@@ -95,7 +116,7 @@ export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef, startH
         }
       }, 150);
     },
-    [days, gridRef, startHour]
+    [days, gridRef, scrollViewportRef, startHour, hourHeight]
   );
 
   /** Cancel the hold timer if we release early (click, not drag) */
@@ -122,7 +143,9 @@ export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef, startH
       const y = clientY - rect.top + scrollTop;
       const x = clientX - rect.left;
 
-      const snappedY = snapToGrid(Math.max(0, y));
+      // Subtract the grab offset so the card stays under the cursor
+      const adjustedY = y - grabOffsetY.current;
+      const snappedY = snapToGrid(Math.max(0, adjustedY), hourHeight);
       const colWidth = rect.width / days.length;
       const colIndex = Math.min(Math.max(0, Math.floor(x / colWidth)), days.length - 1);
 
@@ -132,7 +155,7 @@ export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef, startH
           : null
       );
     },
-    [days, gridRef, scrollViewportRef]
+    [days, gridRef, scrollViewportRef, hourHeight]
   );
 
   /** Complete the drag — compute new times and call onDrop */
@@ -150,7 +173,7 @@ export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef, startH
     }
 
     // Compute new start time
-    const { hour, minute } = getTimeFromY(currentTop, startHour, endHour);
+    const { hour, minute } = getTimeFromY(currentTop, startHour, endHour, hourHeight);
     const newDay = days[currentDayIndex];
     const newStart = setMinutes(setHours(startOfDay(newDay), hour), minute);
 
@@ -162,7 +185,7 @@ export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef, startH
 
     setDragState(null);
     onDrop(lesson, newStart, newEnd);
-  }, [days, onDrop, startHour, endHour]);
+  }, [days, onDrop, startHour, endHour, hourHeight]);
 
   /** Cancel drag without saving */
   const cancelDrag = useCallback(() => {
@@ -172,7 +195,6 @@ export function useDragLesson({ days, onDrop, gridRef, scrollViewportRef, startH
   }, [cancelDragIntent]);
 
   // Global mouse/touch move and up listeners during drag
-  // Only attach/detach when drag starts/stops (boolean toggle), not on every position update
   const isDragActive = !!dragState;
   useEffect(() => {
     if (!isDragActive) return;

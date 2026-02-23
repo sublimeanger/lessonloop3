@@ -539,6 +539,14 @@ export function WeekTimeGrid({
                           onMouseUp={() => {
                             if (!isLessonDragging) cancelDragIntent();
                           }}
+                          onTouchStart={(e) => {
+                            if (!isParent && onLessonDrop) {
+                              startDragIntent(lesson, e);
+                            }
+                          }}
+                          onTouchEnd={() => {
+                            if (!isLessonDragging) cancelDragIntent();
+                          }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
                               e.preventDefault();

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { format, parseISO, isSameDay, setHours, setMinutes, startOfDay } from 'date-fns';
+import { format, parseISO, isSameDay, setHours, setMinutes, startOfDay, differenceInMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LessonWithDetails } from './types';
 import { TeacherWithColour, TeacherColourEntry, getTeacherColour } from './teacherColours';
@@ -90,22 +90,24 @@ export function DayTimelineView({
   );
 
   // Drag-to-reschedule
-  const { dragState, startDragIntent, cancelDragIntent } = useDragLesson({
+  const { dragState, isDragging: isLessonDragging, startDragIntent, cancelDragIntent } = useDragLesson({
     days: [currentDate],
     onDrop: (lesson, newStart, newEnd) => onLessonDrop?.(lesson, newStart, newEnd),
     gridRef,
     scrollViewportRef,
     startHour,
     endHour,
+    hourHeight: DAY_HOUR_HEIGHT,
   });
 
   // Resize
-  const { resizeState, startResize } = useResizeLesson({
+  const { resizeState, isResizing, startResize } = useResizeLesson({
     onResize: (lesson, newEnd) => onLessonResize?.(lesson, newEnd),
     gridRef,
     scrollViewportRef,
     startHour,
     endHour,
+    hourHeight: DAY_HOUR_HEIGHT,
   });
 
   // Drag-to-create state
@@ -244,7 +246,7 @@ export function DayTimelineView({
         {/* Main grid area */}
         <div
           ref={gridRef}
-          className="relative flex-1 cursor-crosshair"
+          className={cn('relative flex-1', isLessonDragging || isResizing ? 'cursor-grabbing' : 'cursor-crosshair')}
           style={{ height: gridHeight }}
           onMouseDown={handleGridMouseDown}
         >
@@ -284,11 +286,10 @@ export function DayTimelineView({
             const colorHex = teacherColour.hex;
             const isCancelled = lesson.status === 'cancelled';
             const isSaving = savingLessonIds.has(lesson.id);
-            const isDragging = dragState?.lesson.id === lesson.id;
-            const isResizing = resizeState?.lesson.id === lesson.id;
+            const isDragGhost = dragState?.lesson.id === lesson.id;
+            const isBeingResized = resizeState?.lesson.id === lesson.id;
 
-            const top = isDragging ? dragState!.currentTop : pos.top;
-            const height = isResizing
+            const height = isBeingResized
               ? resizeState!.currentBottom - resizeState!.top
               : pos.height;
 
@@ -314,10 +315,12 @@ export function DayTimelineView({
                   'hover:shadow-card-hover hover:scale-[1.005]',
                   isCancelled && 'opacity-40',
                   isSaving && 'animate-pulse',
-                  (isDragging || isResizing) && 'z-40 shadow-float opacity-80',
+                  isDragGhost && 'opacity-30',
+                  !isDragGhost && !isParent && 'cursor-grab',
+                  isBeingResized && 'z-40 shadow-float opacity-80',
                 )}
                 style={{
-                  top,
+                  top: pos.top,
                   height: Math.max(height, 28),
                   left: `calc(${left} + 2px)`,
                   width,
@@ -326,12 +329,20 @@ export function DayTimelineView({
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (!dragState && !resizeState) onLessonClick(lesson);
+                  if (!isLessonDragging && !isResizing) onLessonClick(lesson);
                 }}
                 onMouseDown={(e) => {
                   if (!isParent && onLessonDrop) startDragIntent(lesson, e);
                 }}
-                onMouseUp={() => cancelDragIntent()}
+                onMouseUp={() => {
+                  if (!isLessonDragging) cancelDragIntent();
+                }}
+                onTouchStart={(e) => {
+                  if (!isParent && onLessonDrop) startDragIntent(lesson, e);
+                }}
+                onTouchEnd={() => {
+                  if (!isLessonDragging) cancelDragIntent();
+                }}
               >
                 {/* Hover ring */}
                 <div
@@ -365,11 +376,52 @@ export function DayTimelineView({
                   <div
                     className="absolute bottom-0 left-0 right-0 h-2 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity"
                     onMouseDown={(e) => startResize(lesson, e)}
+                    onTouchStart={(e) => startResize(lesson, e)}
                   />
                 )}
               </div>
             );
           })}
+
+          {/* Drag ghost — floating copy that follows the cursor */}
+          {dragState && (() => {
+            const lesson = dragState.lesson;
+            const teacherColour = resolveColour(teacherColourMap, lesson.teacher_id);
+            const colorHex = teacherColour.hex;
+            const students = lesson.participants
+              ?.map((p) => `${p.student.first_name} ${p.student.last_name}`)
+              .join(', ');
+            const dur = differenceInMinutes(parseISO(lesson.end_at), parseISO(lesson.start_at));
+            const ghostHeight = (dur / 60) * DAY_HOUR_HEIGHT;
+            const ghostTop = dragState.currentTop;
+            const totalMinutes = (ghostTop / DAY_HOUR_HEIGHT) * 60 + startHour * 60;
+            const displayHour = Math.floor(totalMinutes / 60);
+            const displayMinute = Math.round((totalMinutes % 60) / 15) * 15;
+            const timeLabel = `${displayHour.toString().padStart(2, '0')}:${(displayMinute >= 60 ? 0 : displayMinute).toString().padStart(2, '0')}`;
+
+            return (
+              <div
+                className="absolute z-[20] left-2 right-2 pointer-events-none"
+                style={{ top: ghostTop, height: ghostHeight }}
+              >
+                <div
+                  className="h-full w-full rounded-md px-2 py-1.5 shadow-lg ring-2 ring-primary/50 opacity-80 overflow-hidden"
+                  style={{
+                    borderLeft: `3px solid ${colorHex}`,
+                    backgroundColor: `${colorHex}20`,
+                  }}
+                >
+                  <p className="text-body-strong truncate leading-tight">
+                    {students || lesson.title}
+                  </p>
+                </div>
+                {/* Time tooltip */}
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-[10px] tabular-nums px-1.5 py-0.5 rounded shadow">
+                  {timeLabel}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </ScrollArea>
