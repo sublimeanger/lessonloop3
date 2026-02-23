@@ -25,7 +25,7 @@ export default function PayrollReport() {
   const { currentOrg, currentRole } = useOrg();
   const { toast } = useToast();
   const { data: terms } = useTerms();
-  const isAdmin = currentRole === 'owner' || currentRole === 'admin';
+  const isAdmin = currentRole === 'owner' || currentRole === 'admin' || currentRole === 'finance';
   
   // Default to last month
   const lastMonth = subMonths(new Date(), 1);
