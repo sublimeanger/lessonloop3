@@ -1271,7 +1271,7 @@ When proposing an action, respond with normal text PLUS a JSON block in this exa
 
 \`\`\`action
 {
-  "action_type": "generate_billing_run" | "send_invoice_reminders" | "reschedule_lessons" | "draft_email" | "mark_attendance" | "cancel_lesson" | "complete_lessons" | "send_progress_report",
+  "action_type": "generate_billing_run" | "send_invoice_reminders" | "reschedule_lessons" | "draft_email" | "mark_attendance" | "cancel_lesson" | "complete_lessons" | "send_progress_report" | "bulk_complete_lessons" | "send_bulk_reminders",
   "description": "Human-readable description of what will happen",
   "entities": [
     {"type": "invoice", "id": "...", "label": "..."},

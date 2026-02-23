@@ -318,7 +318,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
         const VALID_ACTION_TYPES = [
           'generate_billing_run', 'send_invoice_reminders', 'reschedule_lessons',
           'draft_email', 'mark_attendance', 'cancel_lesson', 'complete_lessons',
-          'send_progress_report',
+          'send_progress_report', 'bulk_complete_lessons', 'send_bulk_reminders',
         ];
         if (actionData && VALID_ACTION_TYPES.includes(actionData.action_type)) {
           // Cap entities to prevent abuse

@@ -39,7 +39,9 @@ export interface ActionProposalData {
     | 'mark_attendance'
     | 'cancel_lesson'
     | 'complete_lessons'
-    | 'send_progress_report';
+    | 'send_progress_report'
+    | 'bulk_complete_lessons'
+    | 'send_bulk_reminders';
   description: string;
   entities: ActionEntity[];
   params: Record<string, unknown>;
@@ -56,37 +58,43 @@ interface ActionCardProps {
 const ACTION_ICONS: Record<string, typeof FileText> = {
   generate_billing_run: Receipt,
   send_invoice_reminders: Mail,
+  send_bulk_reminders: Mail,
   reschedule_lessons: Calendar,
   draft_email: FileText,
   mark_attendance: ClipboardCheck,
   cancel_lesson: Ban,
   complete_lessons: CheckCircle2,
+  bulk_complete_lessons: CheckCircle2,
   send_progress_report: FileText,
 };
 
 const ACTION_LABELS: Record<string, string> = {
   generate_billing_run: 'Generate Billing Run',
   send_invoice_reminders: 'Send Invoice Reminders',
+  send_bulk_reminders: 'Send All Overdue Reminders',
   reschedule_lessons: 'Reschedule Lessons',
   draft_email: 'Draft Email',
   mark_attendance: 'Mark Attendance',
   cancel_lesson: 'Cancel Lesson',
   complete_lessons: 'Mark Lessons Complete',
+  bulk_complete_lessons: 'Mark All Past Lessons Complete',
   send_progress_report: 'Send Progress Report',
 };
 
 const ACTION_ROLE_PERMISSIONS: Record<string, AppRole[]> = {
   generate_billing_run: ['owner', 'admin', 'finance'],
   send_invoice_reminders: ['owner', 'admin', 'finance'],
+  send_bulk_reminders: ['owner', 'admin', 'finance'],
   reschedule_lessons: ['owner', 'admin', 'teacher'],
   draft_email: ['owner', 'admin', 'teacher'],
   mark_attendance: ['owner', 'admin', 'teacher'],
   cancel_lesson: ['owner', 'admin'],
   complete_lessons: ['owner', 'admin', 'teacher'],
+  bulk_complete_lessons: ['owner', 'admin', 'teacher'],
   send_progress_report: ['owner', 'admin', 'teacher'],
 };
 
-const DESTRUCTIVE_ACTIONS = new Set(['cancel_lesson', 'generate_billing_run']);
+const DESTRUCTIVE_ACTIONS = new Set(['cancel_lesson', 'generate_billing_run', 'bulk_complete_lessons']);
 
 const ENTITY_COLORS: Record<string, string> = {
   invoice: 'bg-success/10 text-success hover:bg-success/20 dark:bg-success/20 dark:text-success dark:hover:bg-success/30',
@@ -128,6 +136,15 @@ function getPreviewText(proposal: ActionProposalData): string | null {
     case 'send_invoice_reminders': {
       const invoiceCount = typeof params.invoice_count === 'number' ? params.invoice_count : entities.filter(e => e.type === 'invoice').length;
       return `This will send reminders for ${invoiceCount} overdue invoice${invoiceCount !== 1 ? 's' : ''}`;
+    }
+    case 'send_bulk_reminders': {
+      const invoiceCount = entities.filter(e => e.type === 'invoice').length;
+      return `This will send reminders for ${invoiceCount > 0 ? invoiceCount : 'all'} overdue invoice${invoiceCount !== 1 ? 's' : ''}`;
+    }
+    case 'bulk_complete_lessons': {
+      const lessonCount = entities.filter(e => e.type === 'lesson').length;
+      const beforeDate = typeof params.before_date === 'string' ? safeFormatDate(params.before_date) : 'today';
+      return `This will mark ${lessonCount > 0 ? lessonCount : 'all'} past lesson${lessonCount !== 1 ? 's' : ''} before ${beforeDate} as completed`;
     }
     default:
       return null;
