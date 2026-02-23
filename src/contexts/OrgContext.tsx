@@ -45,6 +45,8 @@ export interface Organisation {
   max_teachers: number;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
+  // Music settings (GRADE-003)
+  default_exam_board_id: string | null;
 }
 
 export interface OrgMembership {

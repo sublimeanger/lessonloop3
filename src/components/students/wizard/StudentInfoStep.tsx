@@ -5,10 +5,12 @@ import {
   Select, SelectContent, SelectGroup, SelectItem, SelectLabel,
   SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { useOrg } from '@/contexts/OrgContext';
 import {
   useInstruments, useExamBoards, useGradeLevels,
   getGradesForBoard, groupInstrumentsByCategory, getInstrumentCategoryIcon,
 } from '@/hooks/useInstruments';
+import { useEffect, useRef } from 'react';
 
 export interface StudentInfoData {
   firstName: string;
@@ -28,13 +30,27 @@ interface StudentInfoStepProps {
 }
 
 export function StudentInfoStep({ data, onChange }: StudentInfoStepProps) {
+  const { currentOrg } = useOrg();
   const { data: instruments } = useInstruments();
   const { data: examBoards } = useExamBoards();
   const { data: gradeLevels } = useGradeLevels();
+  const defaultApplied = useRef(false);
 
   const update = (field: keyof StudentInfoData, value: string) => {
     onChange({ ...data, [field]: value });
   };
+
+  // Pre-fill default exam board on first render if not already set
+  useEffect(() => {
+    if (
+      !defaultApplied.current &&
+      currentOrg?.default_exam_board_id &&
+      !data.examBoardId
+    ) {
+      defaultApplied.current = true;
+      onChange({ ...data, examBoardId: currentOrg.default_exam_board_id });
+    }
+  }, [currentOrg?.default_exam_board_id]);
 
   const grouped = groupInstrumentsByCategory(instruments || []);
   const availableGrades = getGradesForBoard(

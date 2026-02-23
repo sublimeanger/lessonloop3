@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { Music, Plus, Trash2, Loader2 } from 'lucide-react';
+import { useOrg } from '@/contexts/OrgContext';
 import {
   useInstruments, useExamBoards, useGradeLevels,
   getGradesForBoard, groupInstrumentsByCategory, getInstrumentCategoryIcon,
@@ -31,6 +32,7 @@ interface InstrumentGradeSelectorProps {
 }
 
 export function InstrumentGradeSelector({ studentId, readOnly = false }: InstrumentGradeSelectorProps) {
+  const { currentOrg } = useOrg();
   const { data: studentInstruments, isLoading } = useStudentInstruments(studentId);
   const { data: instruments } = useInstruments();
   const { data: examBoards } = useExamBoards();
@@ -121,7 +123,17 @@ export function InstrumentGradeSelector({ studentId, readOnly = false }: Instrum
             </div>
           </div>
           {!readOnly && !showAddForm && (
-            <Button onClick={() => setShowAddForm(true)} size="sm" className="gap-2">
+            <Button
+              onClick={() => {
+                // Pre-fill org's default exam board when opening the form
+                if (currentOrg?.default_exam_board_id) {
+                  setSelectedExamBoardId(currentOrg.default_exam_board_id);
+                }
+                setShowAddForm(true);
+              }}
+              size="sm"
+              className="gap-2"
+            >
               <Plus className="h-4 w-4" />
               Add Instrument
             </Button>
