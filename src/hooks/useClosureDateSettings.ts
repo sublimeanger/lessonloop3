@@ -91,7 +91,8 @@ export function useClosureDateSettings() {
 
   const deleteClosureMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('closure_dates').delete().eq('id', id);
+      if (!currentOrg?.id) throw new Error('No organisation selected');
+      const { error } = await supabase.from('closure_dates').delete().eq('id', id).eq('org_id', currentOrg.id);
       if (error) throw error;
     },
     onSuccess: () => invalidate(),

@@ -78,10 +78,12 @@ export function useCreateTerm() {
 
 export function useUpdateTerm() {
   const queryClient = useQueryClient();
+  const { currentOrg } = useOrg();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (data: { id: string; name: string; start_date: string; end_date: string }) => {
+      if (!currentOrg?.id) throw new Error('No organisation selected');
       const { error } = await supabase
         .from('terms')
         .update({
@@ -89,7 +91,8 @@ export function useUpdateTerm() {
           start_date: data.start_date,
           end_date: data.end_date,
         })
-        .eq('id', data.id);
+        .eq('id', data.id)
+        .eq('org_id', currentOrg.id);
 
       if (error) throw error;
     },
@@ -105,11 +108,13 @@ export function useUpdateTerm() {
 
 export function useDeleteTerm() {
   const queryClient = useQueryClient();
+  const { currentOrg } = useOrg();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('terms').delete().eq('id', id);
+      if (!currentOrg?.id) throw new Error('No organisation selected');
+      const { error } = await supabase.from('terms').delete().eq('id', id).eq('org_id', currentOrg.id);
       if (error) throw error;
     },
     onSuccess: () => {

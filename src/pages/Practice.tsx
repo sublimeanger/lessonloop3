@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TeacherPracticeReview } from '@/components/practice/TeacherPracticeReview';
 import { CreateAssignmentModal } from '@/components/practice/CreateAssignmentModal';
 import { usePracticeAssignments, usePracticeLogs, useWeeklyProgress } from '@/hooks/usePractice';
-import { Plus, Music, Target, Users, TrendingUp, Circle } from 'lucide-react';
+import { Plus, Music, Target, Users, TrendingUp, Circle, Loader2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -228,7 +228,9 @@ export default function Practice() {
             </CardHeader>
             <CardContent>
               {loadingAssignments ? (
-                <p className="text-muted-foreground text-center py-4">Loading...</p>
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
               ) : assignments.filter(a => a.status === 'active').length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center py-12">
                   <Music className="h-12 w-12 text-muted-foreground/30" />

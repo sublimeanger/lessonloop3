@@ -123,12 +123,11 @@ const handler = async (req: Request): Promise<Response> => {
         return new Response(JSON.stringify({ error: "Original message not found" }), { status: 404, headers: jsonHeaders });
       }
 
-      // Verify the parent is the recipient of this message (or it's in their thread)
-      if (originalMsg.recipient_id !== guardian.id && originalMsg.recipient_type !== "guardian") {
-        // Check if the parent sent this message (thread continuity)
-        if (originalMsg.sender_user_id !== user.id) {
-          return new Response(JSON.stringify({ error: "You cannot reply to this message" }), { status: 403, headers: jsonHeaders });
-        }
+      // Verify the parent is either the recipient or the original sender of this thread
+      const isRecipient = originalMsg.recipient_id === guardian.id && originalMsg.recipient_type === "guardian";
+      const isOriginalSender = originalMsg.sender_user_id === user.id;
+      if (!isRecipient && !isOriginalSender) {
+        return new Response(JSON.stringify({ error: "You cannot reply to this message" }), { status: 403, headers: jsonHeaders });
       }
 
       threadId = originalMsg.thread_id || originalMsg.id;

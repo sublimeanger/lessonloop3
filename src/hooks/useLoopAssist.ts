@@ -161,6 +161,9 @@ export function useLoopAssist(externalPageContext?: PageContext) {
       contextHashRef.current = null;
       queryClient.invalidateQueries({ queryKey: ['ai-conversations'] });
     },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to create conversation', variant: 'destructive' });
+    },
   });
 
   // Send message with streaming
@@ -340,7 +343,8 @@ export function useLoopAssist(externalPageContext?: PageContext) {
           await supabase
             .from('ai_conversations')
             .update({ title })
-            .eq('id', conversationId);
+            .eq('id', conversationId)
+            .eq('org_id', currentOrg.id);
         }
       }
 
@@ -436,6 +440,9 @@ export function useLoopAssist(externalPageContext?: PageContext) {
         setCurrentConversationId(null);
       }
       queryClient.invalidateQueries({ queryKey: ['ai-conversations'] });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to delete conversation', variant: 'destructive' });
     },
   });
 

@@ -214,16 +214,19 @@ export function useUploadResource() {
 }
 
 export function useDeleteResource() {
+  const { currentOrg } = useOrg();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (resource: Resource) => {
+      if (!currentOrg?.id) throw new Error('No organisation selected');
       // Delete DB record first (cascade deletes shares)
       const { error } = await supabase
         .from('resources')
         .delete()
-        .eq('id', resource.id);
+        .eq('id', resource.id)
+        .eq('org_id', currentOrg.id);
       if (error) throw error;
 
       // Then clean up storage (best-effort — orphaned files are harmless)
