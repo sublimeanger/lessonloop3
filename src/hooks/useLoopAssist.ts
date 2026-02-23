@@ -303,6 +303,10 @@ export function useLoopAssist(externalPageContext?: PageContext) {
           'send_progress_report',
         ];
         if (actionData && VALID_ACTION_TYPES.includes(actionData.action_type)) {
+          // Cap entities to prevent abuse
+          if (actionData.entities && actionData.entities.length > 50) {
+            actionData.entities = actionData.entities.slice(0, 50);
+          }
           await supabase.from('ai_action_proposals').insert([{
             org_id: currentOrg.id,
             user_id: user.id,
