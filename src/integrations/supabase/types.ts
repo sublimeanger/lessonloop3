@@ -1581,6 +1581,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           credit_value_minor: number
+          expired_at: string | null
           expires_at: string | null
           id: string
           issued_at: string
@@ -1597,6 +1598,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           credit_value_minor?: number
+          expired_at?: string | null
           expires_at?: string | null
           id?: string
           issued_at?: string
@@ -1613,6 +1615,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           credit_value_minor?: number
+          expired_at?: string | null
           expires_at?: string | null
           id?: string
           issued_at?: string

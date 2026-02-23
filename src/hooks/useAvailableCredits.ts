@@ -48,6 +48,7 @@ export function useAvailableCreditsForPayer(
           .eq('org_id', currentOrg.id)
           .eq('student_id', payerId)
           .is('redeemed_at', null)
+          .is('expired_at' as any, null)
           .or(`expires_at.is.null,expires_at.gt.${now}`)
           .order('expires_at', { ascending: true, nullsFirst: false });
 
@@ -79,6 +80,7 @@ export function useAvailableCreditsForPayer(
         .eq('org_id', currentOrg.id)
         .in('student_id', studentIds)
         .is('redeemed_at', null)
+        .is('expired_at' as any, null)
         .or(`expires_at.is.null,expires_at.gt.${now}`)
         .order('expires_at', { ascending: true, nullsFirst: false });
 
