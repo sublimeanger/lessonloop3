@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { STALE_VOLATILE } from '@/config/query-stale-times';
 import { useToast } from '@/hooks/use-toast';
 
 interface ConnectStatus {
@@ -40,7 +41,7 @@ export function useStripeConnect() {
       return res.data as ConnectStatus;
     },
     enabled: !!org?.id,
-    staleTime: 30_000,
+    staleTime: STALE_VOLATILE,
   });
 
   const startOnboarding = useCallback(async () => {

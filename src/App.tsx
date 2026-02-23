@@ -50,7 +50,9 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000,
+      // Default: SEMI_STABLE tier (2 min). See src/config/query-stale-times.ts for all tiers.
+      staleTime: 2 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
       retry: 3,
     },
     mutations: {

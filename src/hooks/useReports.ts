@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { STALE_REPORT, STALE_STABLE, GC_REPORT } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 import { activeStudentsQuery } from '@/lib/studentQuery';
 import { useOrg } from '@/contexts/OrgContext';
@@ -114,8 +115,8 @@ export function useRevenueReport(startDate: string, endDate: string) {
       return { months, totalRevenue, averageMonthly, previousPeriodRevenue, growthPercent };
     },
     enabled: !!currentOrg && !!startDate && !!endDate,
-    staleTime: 10 * 60 * 1000, // 10 min — expensive aggregation
-    gcTime: 15 * 60 * 1000,
+    staleTime: STALE_REPORT,
+    gcTime: GC_REPORT,
   });
 }
 
@@ -233,8 +234,8 @@ export function useAgeingReport(issueDateFrom?: string, issueDateTo?: string) {
       return { buckets, totalOutstanding, totalOverdue, truncated };
     },
     enabled: !!currentOrg,
-    staleTime: 10 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
+    staleTime: STALE_REPORT,
+    gcTime: GC_REPORT,
   });
 }
 
@@ -397,8 +398,8 @@ export function useLessonsDeliveredReport(startDate: string, endDate: string) {
       return { byTeacher, byLocation, totalCompleted, totalCancelled, totalMinutes, warnings };
     },
     enabled: !!currentOrg && !!startDate && !!endDate,
-    staleTime: 10 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
+    staleTime: STALE_REPORT,
+    gcTime: GC_REPORT,
   });
 }
 
@@ -522,8 +523,8 @@ export function useCancellationReport(startDate: string, endDate: string) {
       return { totalScheduled, totalCompleted, totalCancelled, cancellationRate, byReason, byTeacher, warnings };
     },
     enabled: !!currentOrg && !!startDate && !!endDate,
-    staleTime: 10 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
+    staleTime: STALE_REPORT,
+    gcTime: GC_REPORT,
   });
 }
 
@@ -643,9 +644,9 @@ export function useDashboardStats() {
       };
     },
     enabled: !!currentOrg,
-    staleTime: 10 * 60 * 1000,
-    refetchInterval: 5 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
+    staleTime: STALE_REPORT,
+    refetchInterval: STALE_STABLE,
+    gcTime: GC_REPORT,
   });
 }
 

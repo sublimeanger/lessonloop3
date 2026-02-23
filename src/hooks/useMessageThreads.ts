@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { STALE_VOLATILE } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -154,7 +155,7 @@ export function useMessageThreads() {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: !!currentOrg,
-    staleTime: 30_000,
+    staleTime: STALE_VOLATILE,
   });
 
   // Merge all pages into threads
@@ -213,7 +214,7 @@ export function useThreadMessages(threadId: string | null, enabled: boolean) {
       }));
     },
     enabled: !!currentOrg && !!threadId && enabled,
-    staleTime: 30_000,
+    staleTime: STALE_VOLATILE,
   });
 }
 
@@ -244,7 +245,7 @@ export function useSearchMessageThreads(query: string) {
       return groupMessagesIntoThreads(messages || []);
     },
     enabled,
-    staleTime: 30_000,
+    staleTime: STALE_VOLATILE,
   });
 
   return { threads: data || [], isLoading, isSearching: enabled };

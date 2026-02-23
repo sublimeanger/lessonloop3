@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { STALE_VOLATILE } from '@/config/query-stale-times';
 import { logger } from '@/lib/logger';
 import { logAudit } from '@/lib/auditLog';
 import { supabase } from '@/integrations/supabase/client';
@@ -86,7 +87,7 @@ export function useInvoices(filters: InvoiceFilters = {}) {
       return { data: (data || []) as InvoiceWithDetails[], totalCount: count ?? 0 };
     },
     enabled: !!currentOrg?.id,
-    staleTime: 30_000,
+    staleTime: STALE_VOLATILE,
   });
 }
 
@@ -180,7 +181,7 @@ export function useInvoiceStats() {
       };
     },
     enabled: !!currentOrg?.id,
-    staleTime: 60_000,
+    // Uses default SEMI_STABLE (2 min)
   });
 }
 

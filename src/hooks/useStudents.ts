@@ -86,7 +86,7 @@ export function useStudents() {
     queryKey: ['students', currentOrg?.id, currentRole, user?.id],
     queryFn: () => fetchStudentsForRole(currentOrg!.id, currentRole, user?.id),
     enabled: !!currentOrg,
-    staleTime: 30_000,
+    // Uses default SEMI_STABLE (2 min)
   });
 }
 

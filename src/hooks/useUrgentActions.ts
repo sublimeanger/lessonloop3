@@ -162,7 +162,7 @@ export function useUrgentActions() {
       }
     },
     enabled: !!currentOrg && !!user,
-    staleTime: 60_000,
+    // Uses default SEMI_STABLE (2 min)
     refetchInterval: 120_000,
   });
 

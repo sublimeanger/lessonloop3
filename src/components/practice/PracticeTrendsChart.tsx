@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { STALE_STABLE } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,7 +31,7 @@ export function PracticeTrendsChart({ studentId, targetMinutesPerWeek }: Practic
       return data || [];
     },
     enabled: !!studentId && !!currentOrg?.id,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_STABLE,
   });
 
   const chartData = useMemo(() => {

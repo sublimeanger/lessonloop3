@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { format, parseISO, subDays, differenceInMinutes, differenceInHours, eachWeekOfInterval, addWeeks, isAfter, isBefore, getDay } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
+import { STALE_STABLE } from '@/config/query-stale-times';
 import { LessonWithDetails, AttendanceStatus } from './types';
 import { RecurringActionDialog, RecurringActionMode } from './RecurringActionDialog';
 import { useOrg } from '@/contexts/OrgContext';
@@ -94,7 +95,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
       return data;
     },
     enabled: !!lesson?.recurrence_id,
-    staleTime: 5 * 60_000,
+    staleTime: STALE_STABLE,
   });
 
   const recurrenceDescription = useMemo(() => {

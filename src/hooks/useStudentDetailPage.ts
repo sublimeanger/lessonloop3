@@ -79,7 +79,7 @@ export function useStudentDetailPage() {
       return data as unknown as Student;
     },
     enabled: !!id && !!currentOrg,
-    staleTime: 30_000,
+    // Uses default SEMI_STABLE (2 min)
   });
 
   const student = studentQuery.data ?? null;
@@ -119,7 +119,7 @@ export function useStudentDetailPage() {
       };
     },
     enabled: !!id && !!currentOrg,
-    staleTime: 30_000,
+    // Uses default SEMI_STABLE (2 min)
   });
 
   const guardians = guardiansQuery.data?.guardians ?? [];

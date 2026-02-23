@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { STALE_VOLATILE } from '@/config/query-stale-times';
 import { logger } from '@/lib/logger';
 import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -58,7 +59,7 @@ export function PendingInvitesList({ roleFilter, onReinvite }: PendingInvitesLis
       return (data || []) as Invite[];
     },
     enabled: !!currentOrg,
-    staleTime: 30 * 1000,
+    staleTime: STALE_VOLATILE,
   });
 
   const handleCancel = async (inviteId: string) => {

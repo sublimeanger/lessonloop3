@@ -2,6 +2,7 @@
 // Server-side enforcement via RLS/triggers is required before production.
 // See: https://github.com/sublimeanger/lessonloop3/issues/XXX
 import { useQuery } from '@tanstack/react-query';
+import { STALE_STABLE, GC_DEFAULT } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 import { activeStudentsQuery } from '@/lib/studentQuery';
 import { useOrg } from '@/contexts/OrgContext';
@@ -64,8 +65,8 @@ export function useUsageCounts(): UsageStatus {
       };
     },
     enabled: !!currentOrg,
-    staleTime: 5 * 60_000, // 5 minutes — counts rarely change mid-session
-    gcTime: 10 * 60_000,   // Keep cached for 10 minutes
+    staleTime: STALE_STABLE,
+    gcTime: GC_DEFAULT,
   });
 
   const studentCount = counts?.students || 0;

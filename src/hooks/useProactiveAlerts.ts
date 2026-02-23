@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { STALE_VOLATILE } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { startOfDay, endOfDay, format } from 'date-fns';
@@ -163,7 +164,7 @@ export function useProactiveAlerts() {
     },
     enabled: !!currentOrg?.id,
     refetchInterval: 60000, // Refresh every minute
-    staleTime: 30000,
+    staleTime: STALE_VOLATILE,
   });
 
   const criticalCount = alerts.filter(a => a.severity === 'urgent').length;

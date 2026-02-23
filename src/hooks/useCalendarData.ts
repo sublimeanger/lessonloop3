@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { STALE_VOLATILE, STALE_STABLE, GC_DEFAULT } from '@/config/query-stale-times';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
@@ -176,8 +177,8 @@ export function useCalendarData(
       filters
     ),
     enabled: !!currentOrg,
-    staleTime: 30_000,
-    gcTime: 5 * 60 * 1000,
+    staleTime: STALE_VOLATILE,
+    gcTime: GC_DEFAULT,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });
@@ -294,8 +295,8 @@ export function useTeachersAndLocations() {
       };
     },
     enabled: !!currentOrg,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: STALE_STABLE,
+    gcTime: GC_DEFAULT,
   });
 
   return {
@@ -331,7 +332,7 @@ export function useClosureDates(startDate: Date, endDate: Date) {
       return (data || []).map((c) => ({ date: parseISO(c.date), reason: c.reason }));
     },
     enabled: !!currentOrg,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_STABLE,
   });
 
   return { data, isLoading };

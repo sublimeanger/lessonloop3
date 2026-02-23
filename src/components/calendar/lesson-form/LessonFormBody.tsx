@@ -115,7 +115,7 @@ export function LessonFormBody({
       return [...new Set(data.map(l => l.location_id).filter(Boolean))] as string[];
     },
     enabled: !!selectedTeacherId && !!currentOrg,
-    staleTime: 60_000,
+    // Uses default SEMI_STABLE (2 min)
   });
 
   const { recentLocations, otherLocations } = useMemo(() => {

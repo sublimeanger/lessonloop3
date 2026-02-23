@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { STALE_VOLATILE } from '@/config/query-stale-times';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
@@ -135,7 +136,7 @@ export function useTodayLessons() {
     },
     enabled: !!currentOrg,
     retry: 1,
-    staleTime: 30000,
+    staleTime: STALE_VOLATILE,
     refetchInterval: 60000,
   });
 }
