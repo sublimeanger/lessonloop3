@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { logger } from '@/lib/logger';
-import { format, addMinutes, setHours, setMinutes, startOfDay, parseISO, addWeeks, isSameDay, eachDayOfInterval } from 'date-fns';
+import { format, addMinutes, setHours, setMinutes, startOfDay, parseISO, addWeeks, eachDayOfInterval } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -86,18 +86,19 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
     if (!open) return;
 
     if (lesson) {
-      const start = parseISO(lesson.start_at);
-      const end = parseISO(lesson.end_at);
-      const zonedStart = toZonedTime(start, orgTimezone);
+      // lesson.start_at/end_at are org-local ISO (no TZ indicator from toOrgLocalIso)
+      // parseISO interprets them as browser-local, preserving wall-clock values
+      const orgLocalStart = parseISO(lesson.start_at);
+      const orgLocalEnd = parseISO(lesson.end_at);
       setLessonType(lesson.lesson_type);
       const lessonTeacherId = lesson.teacher_id || teachers.find(t => t.userId === lesson.teacher_user_id)?.id || '';
       setTeacherId(lessonTeacherId);
-      setSelectedStudents(lesson.participants?.map(p => p.student.id) || []);
+      setSelectedStudents(lesson.participants?.map(p => p.student?.id).filter((id): id is string => !!id) || []);
       setLocationId(lesson.location_id);
       setRoomId(lesson.room_id);
-      setSelectedDate(zonedStart);
-      setStartTime(format(zonedStart, 'HH:mm'));
-      setDurationMins(Math.round((end.getTime() - start.getTime()) / 60000));
+      setSelectedDate(orgLocalStart);
+      setStartTime(format(orgLocalStart, 'HH:mm'));
+      setDurationMins(Math.round((orgLocalEnd.getTime() - orgLocalStart.getTime()) / 60000));
       setNotesPrivate(lesson.notes_private || '');
       setNotesShared(lesson.notes_shared || '');
       setStatus(lesson.status);
@@ -310,7 +311,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
   };
 
   const handleSaveWithMode = async (editMode: RecurringEditMode | null) => {
-    if (!currentOrg || !user) return;
+    if (!currentOrg || !user || isSaving) return;
 
     if (!teacherId) {
       toast({ title: 'Please select a teacher', variant: 'destructive' });
@@ -354,11 +355,13 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
         let lessonIdsToUpdate: string[] = [lesson.id];
 
         if (editMode === 'this_and_future' && lesson.recurrence_id) {
+          // Use UTC for DB queries (lesson.start_at is org-local after toOrgLocalIso)
+          const utcStartAt = lesson.utc_start_at || lesson.start_at;
           const { data: futureLessons } = await supabase
             .from('lessons')
             .select('id, start_at')
             .eq('recurrence_id', lesson.recurrence_id)
-            .gte('start_at', lesson.start_at)
+            .gte('start_at', utcStartAt)
             .order('start_at', { ascending: true });
 
           if (futureLessons) {
@@ -411,7 +414,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
                 title,
               })
              .eq('recurrence_id', lesson.recurrence_id!)
-              .gt('start_at', lesson.start_at);
+              .gt('start_at', utcStartAt);
 
             if (batchError) throw batchError;
 
@@ -419,7 +422,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
               setSavingProgress('Shifting future lesson times…');
               await supabase.rpc('shift_recurring_lesson_times', {
                 p_recurrence_id: lesson.recurrence_id!,
-                p_after_start_at: lesson.start_at,
+                p_after_start_at: utcStartAt,
                 p_offset_ms: timeOffsetMs,
                 p_new_duration_ms: newDuration,
                 p_exclude_lesson_id: lesson.id,
@@ -541,14 +544,17 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
             .lte('date', seriesEnd);
 
           if (closureDates && closureDates.length > 0) {
+            const closureDateSet = new Set(
+              closureDates
+                .filter(cd => cd.applies_to_all_locations || !locationId || cd.location_id === locationId)
+                .map(cd => cd.date) // 'yyyy-MM-dd' strings
+            );
             const beforeCount = lessonsToCreate.length;
             const filtered = lessonsToCreate.filter(lessonDate => {
+              // Compare org-local date string to avoid timezone mismatch
               const zonedDate = toZonedTime(lessonDate, orgTimezone);
-              return !closureDates.some(cd => {
-                const closureDate = parseISO(cd.date);
-                if (!isSameDay(zonedDate, closureDate)) return false;
-                return cd.applies_to_all_locations || !locationId || cd.location_id === locationId;
-              });
+              const dateStr = format(zonedDate, 'yyyy-MM-dd');
+              return !closureDateSet.has(dateStr);
             });
             skippedCount = beforeCount - filtered.length;
             lessonsToCreate.length = 0;

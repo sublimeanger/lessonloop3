@@ -55,6 +55,7 @@ export function RecurringActionDialog({ open, onClose, onSelect, action }: Recur
 
         <div className="flex flex-col gap-3 px-6 py-5">
           <button
+            type="button"
             className="group flex items-start gap-4 rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-primary/40 hover:bg-accent/50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => onSelect('this_only')}
           >
@@ -70,6 +71,7 @@ export function RecurringActionDialog({ open, onClose, onSelect, action }: Recur
           </button>
 
           <button
+            type="button"
             className="group flex items-start gap-4 rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-destructive/40 hover:bg-destructive/5 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => onSelect('this_and_future')}
           >

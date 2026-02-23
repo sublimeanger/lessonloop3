@@ -195,7 +195,7 @@ export function LessonDetailSidePanel({
                         <div className="font-medium text-sm text-foreground">
                           {p.student.first_name} {p.student.last_name}
                         </div>
-                        <div className="grid grid-cols-3 gap-1">
+                        <div className="flex flex-wrap gap-1">
                           {ATTENDANCE_OPTIONS.map((option) => (
                             <Button
                               key={option.value}
