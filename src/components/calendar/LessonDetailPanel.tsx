@@ -511,6 +511,11 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
               {lesson.participants?.map((p, i) => (
                 <span key={p.id} className="text-foreground">
                   {p.student.first_name} {p.student.last_name}
+                  {lesson.makeupStudentIds?.includes(p.student.id) && (
+                    <Badge variant="outline" className="ml-1 text-[9px] px-1 py-0 h-4 border-amber-500/50 text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-900/30">
+                      Make-up
+                    </Badge>
+                  )}
                   {i < (lesson.participants?.length || 0) - 1 && ', '}
                 </span>
               ))}

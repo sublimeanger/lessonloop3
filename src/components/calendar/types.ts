@@ -49,6 +49,8 @@ export interface LessonWithDetails extends Lesson {
     student_id: string;
     attendance_status: AttendanceStatus;
   }[];
+  /** Student IDs that are make-up bookings for this lesson */
+  makeupStudentIds?: string[];
 }
 
 export interface LessonFormData {
