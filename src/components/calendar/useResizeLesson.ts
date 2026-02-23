@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { parseISO, differenceInMinutes } from 'date-fns';
+import { parseISO } from 'date-fns';
 import { LessonWithDetails } from './types';
 
 import { HOUR_HEIGHT } from './calendarConstants';
@@ -21,14 +21,23 @@ interface UseResizeLessonOptions {
   scrollViewportRef: React.RefObject<HTMLDivElement | null>;
   startHour?: number;
   endHour?: number;
+  /** Pixels per hour — defaults to HOUR_HEIGHT (60). DayTimelineView passes 72. */
+  hourHeight?: number;
 }
 
-function snapToGrid(y: number): number {
-  const quarterHeight = HOUR_HEIGHT / 4;
+function snapToGrid(y: number, hh: number): number {
+  const quarterHeight = hh / 4;
   return Math.round(y / quarterHeight) * quarterHeight;
 }
 
-export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHour = 7, endHour = 21 }: UseResizeLessonOptions) {
+export function useResizeLesson({
+  onResize,
+  gridRef,
+  scrollViewportRef,
+  startHour = 7,
+  endHour = 21,
+  hourHeight = HOUR_HEIGHT,
+}: UseResizeLessonOptions) {
   const [resizeState, setResizeState] = useState<ResizeState | null>(null);
   const resizeStateRef = useRef<ResizeState | null>(null);
   const isResizingRef = useRef(false);
@@ -46,8 +55,8 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHou
       const startMinutes = start.getHours() * 60 + start.getMinutes();
       const endMinutes = end.getHours() * 60 + end.getMinutes();
 
-      const top = ((startMinutes - startHour * 60) / 60) * HOUR_HEIGHT;
-      const bottom = ((endMinutes - startHour * 60) / 60) * HOUR_HEIGHT;
+      const top = ((startMinutes - startHour * 60) / 60) * hourHeight;
+      const bottom = ((endMinutes - startHour * 60) / 60) * hourHeight;
 
       isResizingRef.current = true;
       setResizeState({
@@ -57,7 +66,7 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHou
         top,
       });
     },
-    [startHour]
+    [startHour, hourHeight]
   );
 
   const updateResize = useCallback(
@@ -72,14 +81,14 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHou
       const scrollTop = viewport ? viewport.scrollTop : 0;
       const y = clientY - rect.top + scrollTop;
 
-      // Enforce minimum duration (15 minutes = HOUR_HEIGHT/4)
-      const minBottom = current.top + (MIN_DURATION / 60) * HOUR_HEIGHT;
-      const maxBottom = (endHour - startHour) * HOUR_HEIGHT;
-      const snapped = snapToGrid(Math.min(Math.max(y, minBottom), maxBottom));
+      // Enforce minimum duration (15 minutes = hourHeight/4)
+      const minBottom = current.top + (MIN_DURATION / 60) * hourHeight;
+      const maxBottom = (endHour - startHour) * hourHeight;
+      const snapped = snapToGrid(Math.min(Math.max(y, minBottom), maxBottom), hourHeight);
 
       setResizeState((prev) => (prev ? { ...prev, currentBottom: snapped } : null));
     },
-    [gridRef, scrollViewportRef, startHour, endHour]
+    [gridRef, scrollViewportRef, startHour, endHour, hourHeight]
   );
 
   const completeResize = useCallback(() => {
@@ -95,11 +104,10 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHou
     }
 
     // Compute new end time from currentBottom
-    const endMinutesFromGridTop = (currentBottom / HOUR_HEIGHT) * 60;
+    const endMinutesFromGridTop = (currentBottom / hourHeight) * 60;
     const totalEndMinutes = endMinutesFromGridTop + startHour * 60;
     let endHr = Math.floor(totalEndMinutes / 60);
     let endMinute = Math.round(totalEndMinutes % 60);
-    // Clamp minute overflow (e.g. 60 → next hour)
     if (endMinute >= 60) {
       endHr += 1;
       endMinute = 0;
@@ -111,7 +119,7 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHou
 
     setResizeState(null);
     onResize(lesson, newEnd);
-  }, [onResize, startHour]);
+  }, [onResize, startHour, hourHeight]);
 
   const cancelResize = useCallback(() => {
     isResizingRef.current = false;
@@ -119,7 +127,6 @@ export function useResizeLesson({ onResize, gridRef, scrollViewportRef, startHou
   }, []);
 
   // Global listeners during resize
-  // Only attach/detach when resize starts/stops (boolean toggle), not on every position update
   const isResizeActive = !!resizeState;
   useEffect(() => {
     if (!isResizeActive) return;
