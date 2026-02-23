@@ -1,94 +1,86 @@
 
 
-# Messages Page -- World-Class Design Upgrade
+## Advanced Message Filtering for Admins
 
-## Problems Identified
+### Overview
+Add a rich filter bar to the Conversations tab so org admins can quickly narrow correspondence by guardian, student, teacher (sender), channel, and date range. The filters sit between the search/view toggle row and the thread list, using a collapsible panel pattern consistent with the existing `InvoiceFiltersBar` and `RecipientFilter` components.
 
-From the screenshot:
-- Thread cards are flat with no visual hierarchy -- subjects, recipients, and dates all blend together
-- Expanded messages use a uniform `bg-muted/30` background with no sender differentiation
-- Date separators are barely visible thin lines
-- No avatars or initials to quickly identify senders vs recipients
-- Reply section is utilitarian with no visual polish
-- Status badges ("Sent") are small and easy to miss
-- The overall feel is data-dense without enough breathing room or visual anchoring
+### What Changes
 
-## Design Approach
+**1. New Component: `MessageFiltersBar`** (`src/components/messages/MessageFiltersBar.tsx`)
+- Collapsible filter panel toggled by the existing Filter icon area
+- Filter chips/controls for:
+  - **Guardian** -- searchable combobox (Command-based) populated from guardians table
+  - **Student** -- searchable combobox populated from students table
+  - **Teacher / Sender** -- searchable combobox populated from org staff (teachers + admins)
+  - **Channel** -- pill toggle: All | Email | In-App
+  - **Date range** -- "From" and "To" date pickers
+- Active filter count badge on the filter toggle button
+- "Clear all" button when any filter is active
+- Only visible to admin/owner roles
 
-Upgrade the three key components (`ThreadCard`, `ThreadMessageItem`, `ThreadedMessageList`) plus the parent Messages page tab bar and filters on the main Messages page, following existing brand patterns (rounded-2xl, shadow-card, hover:shadow-elevated, active:scale effects).
+**2. New Hook: `useFilteredMessageThreads`** (extend `src/hooks/useMessageThreads.ts`)
+- Add a new query function that accepts filter parameters and builds the Supabase query dynamically:
+  - `guardian_id` -- filters by `recipient_id` where `recipient_type = 'guardian'`
+  - `student_id` -- filters by `related_id` (the linked student on message_log)
+  - `sender_user_id` -- filters by `sender_user_id` (for teacher/staff filtering)
+  - `channel` -- filters by `channel` column (`email` or `inapp`)
+  - `date_from` / `date_to` -- filters by `created_at` range
+- Reuse existing `groupMessagesIntoThreads` for thread grouping
+- Falls back to unfiltered `useMessageThreads` when no filters are active
 
----
+**3. Update `ThreadedMessageList`** (`src/components/messages/ThreadedMessageList.tsx`)
+- Accept filter state as props
+- Pass filters to the new filtered query hook
+- Show active filter summary/tags above results
 
-## Changes
+**4. Update `Messages` page** (`src/pages/Messages.tsx`)
+- Add filter state management (`useState` for each filter dimension)
+- Render `MessageFiltersBar` between the search row and thread list (Conversations tab only)
+- Pass filter state down to `ThreadedMessageList`
 
-### 1. `ThreadCard.tsx` -- Premium thread card design
+**5. Data sources for filter dropdowns**
+- Guardians: reuse existing guardians query (already fetched for compose)
+- Students: use `useStudents` hook
+- Teachers/Staff: use `useOrgMembers` hook filtered to staff roles
 
-**Collapsed state:**
-- Add a coloured left accent bar (4px primary border-left) on threads with recent activity
-- Add an avatar circle with recipient initials (consistent with sidebar pattern)
-- Make subject bolder (font-semibold) with slightly larger text
-- Message count badge gets pill style (rounded-full) with better contrast
-- Timestamp uses relative format ("2h ago", "Yesterday") for quick scanning
-- Card gets `rounded-2xl shadow-card hover:shadow-elevated active:scale-[0.995]` treatment
-- Unread indicator: subtle primary ring + dot indicator next to subject
+### Technical Details
 
-**Expanded state:**
-- Messages area gets a subtle inset background (`bg-muted/20 rounded-xl` container)
-- Reply section gets a cleaner layout with better spacing
-- Add keyboard shortcut hint styled as a subtle kbd element
+**Filter State Shape:**
+```text
+interface MessageFilters {
+  guardian_id?: string;
+  student_id?: string;
+  sender_user_id?: string;
+  channel?: 'email' | 'inapp';
+  date_from?: string;    // ISO date
+  date_to?: string;      // ISO date
+}
+```
 
-### 2. `ThreadMessageItem.tsx` -- Chat-style message bubbles
+**Query Building (in useMessageThreads.ts):**
+```text
+When filters are active, build a separate useInfiniteQuery with:
+  - .eq('recipient_id', guardian_id)        if guardian_id set
+  - .eq('related_id', student_id)           if student_id set
+  - .eq('sender_user_id', sender_user_id)   if sender set
+  - .eq('channel', channel)                 if channel set
+  - .gte('created_at', date_from)           if date_from set
+  - .lte('created_at', date_to)             if date_to set
+```
 
-Replace the flat layout with differentiated message styling:
-- **Outgoing messages (sent by current user/staff):** Right-aligned with `bg-primary/10` background, rounded-2xl with `rounded-br-sm` tail
-- **Incoming messages (from recipient):** Left-aligned with `bg-muted/50` background, rounded-2xl with `rounded-bl-sm` tail
-- Add sender initials avatar circle (32px) on the left/right side
-- Sender name + arrow + recipient becomes a compact header line
-- Timestamp moves to a subtle bottom-right position within the bubble
-- Status badge integrates inline with a small icon (check mark for sent, X for failed)
-- Remove the redundant "Sent" badge text, use a subtle checkmark icon instead
+**Combobox Pattern:**
+Uses the existing `Command` component (cmdk) inside a `Popover` for searchable dropdowns -- same pattern as other entity selectors in the app.
 
-### 3. `ThreadedMessageList.tsx` -- List polish
+**Responsive Design:**
+- On desktop: filters render inline as a horizontal bar with popovers
+- On mobile: filters collapse into a "Filters" button that opens a sheet/drawer with stacked controls
 
-- Loading skeleton: Use rounded-2xl card-shaped skeletons instead of plain rectangles
-- Empty state: Larger illustration area, warmer copy, and a CTA button to compose
-- Thread spacing: Increase gap from `space-y-3` to `space-y-4`
-- "Load more" button: Match premium button style
-
-### 4. `Messages.tsx` (admin page) -- Filter bar and tab polish
-
-- Tabs: Style with pill design (rounded-full) matching parent portal
-- Search input: Add subtle shadow and rounded-xl corners
-- View toggle (Threads/List): Better visual distinction for active state
-- Overall spacing improvements
-
-### 5. Date separators (inside ThreadCard)
-
-- Replace thin lines with a styled pill-shaped date chip centred in the timeline
-- Date chip: `bg-muted rounded-full px-3 py-1 text-xs font-medium` with no horizontal lines
-
----
-
-## Technical Details
-
-### Files to modify:
-1. **`src/components/messages/ThreadCard.tsx`** -- Card container, collapsed header, expanded content, reply section
-2. **`src/components/messages/ThreadMessageItem.tsx`** -- Message bubble layout with sender differentiation
-3. **`src/components/messages/ThreadedMessageList.tsx`** -- Loading/empty states, spacing
-4. **`src/pages/Messages.tsx`** -- Tab and filter bar styling
-5. **`src/hooks/useMessageThreads.ts`** -- Add `sender_id` to `ThreadMessage` interface if not already present (needed to differentiate outgoing vs incoming)
-
-### New utility needed:
-- `getInitials(name: string)` helper -- already exists in AppSidebar, will extract or inline
-
-### Mobile considerations (390px):
-- Thread cards: Full-width with tighter padding (p-3 vs p-4)
-- Message bubbles: Max-width 85% on mobile for readability
-- Reply section: Full-width textarea, send button stacks below on small screens
-- Avatar circles: 28px on mobile vs 32px on desktop
-- Timestamps: Abbreviate further on mobile ("2h" vs "2 hours ago")
-
-### No functionality changes:
-- All hooks, mutations, and data flow remain identical
-- Only visual/layout changes to existing components
+### Files to Create/Modify
+| File | Action |
+|------|--------|
+| `src/components/messages/MessageFiltersBar.tsx` | Create -- filter bar component |
+| `src/hooks/useMessageThreads.ts` | Modify -- add filtered query hook |
+| `src/components/messages/ThreadedMessageList.tsx` | Modify -- accept and pass filter props |
+| `src/pages/Messages.tsx` | Modify -- add filter state and render filter bar |
 
