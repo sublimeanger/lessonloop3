@@ -13,6 +13,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { KeyboardShortcutsDialog, CommandPalette } from '@/components/shared/KeyboardShortcuts';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
+import { AutoBreadcrumbs } from '@/components/shared/AutoBreadcrumbs';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -47,6 +48,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
       <div className="flex flex-1">
         <AppSidebar />
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
+          <AutoBreadcrumbs />
           <SectionErrorBoundary name="Page" key={location.pathname}>
             <Suspense fallback={<PageTransitionFallback />}>
               <motion.div
