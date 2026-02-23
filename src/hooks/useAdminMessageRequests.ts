@@ -41,7 +41,7 @@ export function useAdminMessageRequests(options?: { status?: string }) {
           lesson:lessons(id, title, start_at, end_at, teacher_id, location_id)
         `)
         .eq('org_id', currentOrg.id)
-        .in('request_type', ['cancellation', 'reschedule'])
+        .in('request_type', ['cancellation', 'reschedule', 'general'])
         .order('created_at', { ascending: false });
 
       if (options?.status && options.status !== 'all') {
@@ -290,7 +290,7 @@ export function usePendingRequestsCount() {
         .from('message_requests')
         .select('id', { count: 'exact', head: true })
         .eq('org_id', currentOrg.id)
-        .in('request_type', ['cancellation', 'reschedule'])
+        .in('request_type', ['cancellation', 'reschedule', 'general'])
         .eq('status', 'pending');
 
       if (error) throw error;
