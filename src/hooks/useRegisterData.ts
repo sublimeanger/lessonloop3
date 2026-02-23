@@ -103,11 +103,11 @@ export function useRegisterData(date: Date) {
             )
           ),
           attendance_records (
-72:             student_id,
-73:             attendance_status,
-74:             cancellation_reason,
-75:             absence_reason_category
-76:           )
+            student_id,
+            attendance_status,
+            cancellation_reason,
+            absence_reason_category
+          )
         `)
         .eq('org_id', currentOrg.id)
         .gte('start_at', dayStart)
