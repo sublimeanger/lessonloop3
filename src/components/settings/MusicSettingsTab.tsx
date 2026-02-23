@@ -59,9 +59,11 @@ export function MusicSettingsTab() {
 
   const handleSetDefaultBoard = async (boardId: string) => {
     if (!currentOrg) return;
+    const value = boardId === 'none' ? null : boardId;
+    // Skip if unchanged
+    if (value === (currentDefaultBoard || null)) return;
     setSavingDefault(true);
     try {
-      const value = boardId === 'none' ? null : boardId;
       const { error } = await (supabase as any)
         .from('organisations')
         .update({ default_exam_board_id: value })

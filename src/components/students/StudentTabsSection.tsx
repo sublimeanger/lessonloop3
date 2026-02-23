@@ -27,7 +27,7 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
   const fullName = hook.fullName;
 
   return (
-    <Tabs defaultValue="overview" className="space-y-6">
+    <Tabs defaultValue="overview" className="space-y-6" onValueChange={() => hook.setIsEditing(false)}>
       <TabsList className="flex w-full overflow-x-auto scrollbar-hide gap-1 h-auto pb-1 justify-start">
         <TabsTrigger value="overview" className="shrink-0">Overview</TabsTrigger>
         <TabsTrigger value="instruments" className="gap-1.5 shrink-0">
@@ -60,6 +60,7 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
           dob={hook.dob} setDob={hook.setDob}
           notes={hook.notes} setNotes={hook.setNotes}
           handleSave={hook.handleSave}
+          handleToggleEdit={() => hook.setIsEditing(!hook.isEditing)}
           fetchStudent={hook.fetchStudent}
         />
       </TabsContent>

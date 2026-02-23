@@ -99,9 +99,11 @@ function ScrollableTabBar({ initialTab, isOrgAdmin }: { initialTab: string; isOr
 function AvailabilityTabWithSelector({ isOrgAdmin }: { isOrgAdmin: boolean }) {
   const { data: teachers = [] } = useTeachers();
   const activeTeachers = teachers.filter(t => t.status === 'active');
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('__self__');
 
-  const selectedTeacher = activeTeachers.find(t => t.id === selectedTeacherId);
+  const selectedTeacher = selectedTeacherId === '__self__'
+    ? undefined
+    : activeTeachers.find(t => t.id === selectedTeacherId);
 
   if (!isOrgAdmin || activeTeachers.length === 0) {
     return <TeacherAvailabilityTab />;
@@ -116,7 +118,7 @@ function AvailabilityTabWithSelector({ isOrgAdmin }: { isOrgAdmin: boolean }) {
             <SelectValue placeholder="My availability" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">My availability</SelectItem>
+            <SelectItem value="__self__">My availability</SelectItem>
             {activeTeachers.map(t => (
               <SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>
             ))}

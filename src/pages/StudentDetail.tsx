@@ -6,7 +6,7 @@ import { DetailSkeleton } from '@/components/shared/LoadingState';
 import { ComposeMessageModal } from '@/components/messages/ComposeMessageModal';
 import { StudentTabsSection } from '@/components/students/StudentTabsSection';
 import { useStudentDetailPage } from '@/hooks/useStudentDetailPage';
-import { Edit, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 
 export default function StudentDetail() {
   const hook = useStudentDetailPage();
@@ -30,10 +30,6 @@ export default function StudentDetail() {
         ]}
         actions={hook.isOrgAdmin ? (
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => hook.setIsEditing(!hook.isEditing)}>
-              <Edit className="mr-2 h-4 w-4" />
-              {hook.isEditing ? 'Cancel' : 'Edit'}
-            </Button>
             <Button variant="destructive" size="icon" onClick={hook.handleDeleteClick}>
               <Trash2 className="h-4 w-4" />
             </Button>

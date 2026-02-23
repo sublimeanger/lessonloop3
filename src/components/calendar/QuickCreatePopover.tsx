@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useTeachersAndLocations } from '@/hooks/useCalendarData';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { supabase } from '@/integrations/supabase/client';
+import { useCalendarSync } from '@/hooks/useCalendarSync';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,7 @@ export function QuickCreatePopover({
   const { toast } = useToast();
   const { teachers, students } = useTeachersAndLocations();
   const { checkConflicts } = useConflictDetection();
+  const { syncLesson } = useCalendarSync();
 
   const [studentId, setStudentId] = useState('');
   const [teacherId, setTeacherId] = useState('');
@@ -164,6 +166,11 @@ export function QuickCreatePopover({
             variant: 'destructive',
           });
         }
+      }
+
+      // Fire-and-forget calendar sync
+      if (newLesson) {
+        syncLesson(newLesson.id, 'create');
       }
 
       toast({
