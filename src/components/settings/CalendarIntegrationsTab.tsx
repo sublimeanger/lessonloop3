@@ -143,16 +143,27 @@ export function CalendarIntegrationsTab() {
                       <Label className="text-sm text-muted-foreground">Calendar</Label>
                       <p className="font-medium">{googleConnection.calendar_name || 'Primary Calendar'}</p>
                     </div>
-                    <div>
+                     <div>
                       <Label className="text-sm text-muted-foreground">Last Synced</Label>
-                      <p className="font-medium">
-                        {googleConnection.last_sync_at 
-                          ? formatDistanceToNow(new Date(googleConnection.last_sync_at), { addSuffix: true })
-                          : 'Never'}
-                        {googleConnection.last_sync_at && 
-                          (Date.now() - new Date(googleConnection.last_sync_at).getTime() > 2 * 60 * 60 * 1000) && 
-                          ' ⚠️'}
-                      </p>
+                      {(() => {
+                        const isStale = googleConnection.last_sync_at &&
+                          (Date.now() - new Date(googleConnection.last_sync_at).getTime() > 2 * 60 * 60 * 1000);
+                        return (
+                          <div className="flex items-center gap-1.5">
+                            <p className={`font-medium ${isStale ? 'text-warning' : ''}`}>
+                              {googleConnection.last_sync_at
+                                ? formatDistanceToNow(new Date(googleConnection.last_sync_at), { addSuffix: true })
+                                : 'Never'}
+                            </p>
+                            {isStale && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning">
+                                <AlertCircle className="h-3 w-3" />
+                                Stale
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
 
