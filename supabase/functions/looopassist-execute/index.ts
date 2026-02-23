@@ -208,7 +208,25 @@ serve(async (req) => {
         ? `✓ ${result.message}${resultBlock}`
         : `✗ ${result.message || result.error}`;
 
-      // Write result as assistant message in the conversation
+      // Update proposal status FIRST to prevent re-execution
+      const { error: statusError } = await supabase
+        .from("ai_action_proposals")
+        .update({
+          status: newStatus,
+          result,
+          executed_at: new Date().toISOString(),
+        })
+        .eq("id", proposalId)
+        .eq("status", "proposed"); // Only update if still "proposed"
+
+      if (statusError) {
+        console.error("Failed to update proposal status:", statusError);
+        return new Response(JSON.stringify({ error: "Failed to record action result" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      // Then insert result message (best effort)
       if (typedForBlock.conversation_id) {
         await supabase.from("ai_messages").insert({
           conversation_id: typedForBlock.conversation_id,
@@ -218,16 +236,6 @@ serve(async (req) => {
           content: resultMessage,
         });
       }
-
-      // Update proposal status
-      await supabase
-        .from("ai_action_proposals")
-        .update({
-          status: newStatus,
-          result,
-          executed_at: new Date().toISOString(),
-        })
-        .eq("id", proposalId);
 
       return new Response(JSON.stringify({ success: newStatus === "executed", result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
