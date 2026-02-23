@@ -92,7 +92,7 @@ export function PortalSidebar() {
             <SidebarMenu>
               {portalNav.map((item) => {
                 const isMessages = item.url === '/portal/messages';
-                const showBadge = isMessages && unreadCount && unreadCount > 0;
+                const showBadge = isMessages && !!unreadCount && unreadCount > 0;
 
                 return (
                   <SidebarMenuItem key={item.url}>
