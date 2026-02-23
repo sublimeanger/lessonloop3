@@ -164,22 +164,22 @@ export default function Messages() {
           {isStaff && (
             <TabsTrigger value="internal" className="gap-2 rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 text-sm">
               Internal
-              {unreadInternalCount && unreadInternalCount > 0 && (
+              {unreadInternalCount != null && unreadInternalCount > 0 ? (
                 <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1 rounded-full">
                   {unreadInternalCount}
                 </Badge>
-              )}
+              ) : null}
             </TabsTrigger>
           )}
           {canViewRequests && (
             <TabsTrigger value="requests" className="gap-2 rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 text-sm">
               <span className="hidden sm:inline">Cancellation / Reschedule</span>
               <span className="sm:hidden">Requests</span>
-              {pendingCount && pendingCount > 0 && (
+              {pendingCount != null && pendingCount > 0 ? (
                 <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1 rounded-full">
                   {pendingCount}
                 </Badge>
-              )}
+              ) : null}
             </TabsTrigger>
           )}
         </TabsList>
