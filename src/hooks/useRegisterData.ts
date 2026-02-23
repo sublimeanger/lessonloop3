@@ -475,6 +475,7 @@ export function useSaveBatchAttendance(dateKey: string) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { syncLessons } = useCalendarSync();
 
   return useMutation({
     mutationFn: async ({ attendance, lessons, absenceReasons, notifiedDates }: {
@@ -529,6 +530,9 @@ export function useSaveBatchAttendance(dateKey: string) {
           .update({ status: 'completed' })
           .in('id', fullyAttendedIds)
           .eq('status', 'scheduled');
+
+        // Fire-and-forget calendar sync for auto-completed lessons
+        syncLessons(fullyAttendedIds, 'update');
       }
 
       return { count: upserts.length };
