@@ -289,40 +289,23 @@ export function CalendarDaySkeleton() {
 
 export function AppShellSkeleton() {
   return (
-    <div className="flex min-h-screen w-full bg-background">
-      <div className="hidden md:flex w-60 flex-col border-r bg-sidebar p-4 gap-6">
-        <div className="flex items-center gap-2 px-2">
-          <Shimmer className="h-7 w-7 rounded-lg" />
-          <Shimmer className="h-5 w-24" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-5 animate-fade-in">
+        <img
+          src="/favicon.svg"
+          alt=""
+          className="h-12 w-12 animate-logo-breathe"
+          aria-hidden="true"
+        />
+        <span className="text-xl font-semibold tracking-tight">
+          <span className="text-ink">Lesson</span>
+          <span className="text-teal">Loop</span>
+        </span>
+        {/* Slim progress bar */}
+        <div className="w-32 h-0.5 rounded-full bg-muted overflow-hidden">
+          <div className="h-full w-1/3 bg-primary/60 rounded-full animate-slide-bar" />
         </div>
-        <div className="space-y-1">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3 px-3 py-2">
-              <Shimmer className="h-4 w-4 rounded-lg" />
-              <Shimmer className="h-4" style={{ width: `${60 + Math.random() * 40}%` }} />
-            </div>
-          ))}
-        </div>
-        <div className="mt-auto flex items-center gap-3 border-t pt-4">
-          <Shimmer className="h-9 w-9 rounded-full" />
-          <div className="flex-1 space-y-1">
-            <Shimmer className="h-4 w-20" />
-            <Shimmer className="h-3 w-12" />
-          </div>
-        </div>
-      </div>
-      <div className="flex flex-1 flex-col">
-        <div className="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-background px-4">
-          <div className="flex items-center gap-3">
-            <Shimmer className="h-7 w-7 rounded-lg md:hidden" />
-            <Shimmer className="h-6 w-6 rounded-lg" />
-            <Shimmer className="h-5 w-24 hidden sm:block" />
-          </div>
-          <Shimmer className="h-8 w-24 rounded-lg" />
-        </div>
-        <main className="flex-1 p-4 md:p-6 lg:p-8">
-          <DashboardSkeleton />
-        </main>
+        <span className="sr-only">Loading...</span>
       </div>
     </div>
   );
