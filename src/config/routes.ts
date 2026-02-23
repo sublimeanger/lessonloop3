@@ -107,7 +107,7 @@ export const portalRoutes: RouteConfig[] = [
 
 /** Main app routes (staff roles) */
 export const appRoutes: RouteConfig[] = [
-  { path: '/dashboard', component: Dashboard, auth: 'protected', label: 'Dashboard' },
+  { path: '/dashboard', component: Dashboard, auth: 'protected', allowedRoles: ['owner', 'admin', 'teacher', 'finance'], label: 'Dashboard' },
   { path: '/register', component: DailyRegister, auth: 'protected', allowedRoles: ['owner', 'admin', 'teacher'], label: 'Register' },
   { path: '/calendar', component: CalendarPage, auth: 'protected', allowedRoles: ['owner', 'admin', 'teacher'], label: 'Calendar' },
   { path: '/batch-attendance', component: BatchAttendance, auth: 'protected', allowedRoles: ['owner', 'admin', 'teacher'], label: 'Batch Attendance' },

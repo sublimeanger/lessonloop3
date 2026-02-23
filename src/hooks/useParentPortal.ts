@@ -252,7 +252,7 @@ export function useParentLessons(options?: { studentId?: string; status?: string
       }).filter(Boolean))] as string[];
 
       // Fetch attendance records for these lessons and students
-      let attendanceMap = new Map<string, string>(); // key: lessonId-studentId, value: status
+      const attendanceMap = new Map<string, string>(); // key: lessonId-studentId, value: status
       if (lessonIds.length > 0) {
         const { data: attendanceRecords } = await supabase
           .from('attendance_records')

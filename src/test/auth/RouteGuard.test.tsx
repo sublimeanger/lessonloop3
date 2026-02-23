@@ -35,7 +35,7 @@ vi.mock('@/integrations/supabase/client', () => ({
   supabase: {},
 }));
 
-function TestApp({ path, allowedRoles }: { path: string; allowedRoles?: any[] }) {
+function TestApp({ path }: { path: string }) {
   return (
     <MemoryRouter initialEntries={[path]}>
       <Routes>
@@ -43,7 +43,7 @@ function TestApp({ path, allowedRoles }: { path: string; allowedRoles?: any[] })
         <Route path="/login" element={<div data-testid="login">Login Page</div>} />
         <Route path="/onboarding" element={<div data-testid="onboarding">Onboarding Page</div>} />
         <Route path="/dashboard" element={
-          <RouteGuard allowedRoles={allowedRoles}>
+          <RouteGuard allowedRoles={['owner', 'admin', 'teacher', 'finance']}>
             <div data-testid="dashboard">Dashboard Page</div>
           </RouteGuard>
         } />

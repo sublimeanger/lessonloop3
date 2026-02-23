@@ -40,6 +40,23 @@ export default defineConfig(({ mode }) => ({
       manifest: false, // Using public/manifest.json
     }),
   ].filter(Boolean),
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-charts': ['recharts'],
+          'vendor-pdf': ['jspdf'],
+          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-popover', '@radix-ui/react-select', '@radix-ui/react-tooltip'],
+          'vendor-query': ['@tanstack/react-query'],
+          'vendor-motion': ['framer-motion'],
+          'vendor-canvas': ['html2canvas'],
+          'vendor-utils': ['date-fns', 'zod'],
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

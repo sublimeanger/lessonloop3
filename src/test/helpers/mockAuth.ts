@@ -18,7 +18,7 @@ interface MockProfile {
 }
 
 interface MockAuthValue {
-  user: { id: string; email: string } | null;
+  user: { id: string; email: string; email_confirmed_at: string | null } | null;
   session: { access_token: string } | null;
   profile: MockProfile | null;
   roles: AppRole[];
@@ -58,7 +58,7 @@ function createBaseProfile(overrides: Partial<MockProfile> = {}): MockProfile {
 function createMockAuth(roles: AppRole[], profileOverrides: Partial<MockProfile> = {}): MockAuthValue {
   const currentRoles = roles;
   return {
-    user: { id: TEST_USER_ID, email: 'test@example.com' },
+    user: { id: TEST_USER_ID, email: 'test@example.com', email_confirmed_at: '2025-01-01T00:00:00Z' },
     session: { access_token: 'mock-token' },
     profile: createBaseProfile(profileOverrides),
     roles: currentRoles,

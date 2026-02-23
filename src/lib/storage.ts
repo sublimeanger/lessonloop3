@@ -17,5 +17,5 @@ export function safeSetItem(key: string, value: string): void {
 export function safeRemoveItem(key: string): void {
   try {
     localStorage.removeItem(key);
-  } catch {}
+  } catch { /* storage unavailable */ }
 }

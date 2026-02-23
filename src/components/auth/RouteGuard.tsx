@@ -161,7 +161,7 @@ export function PublicRoute({ children }: { children: ReactNode }) {
   // SEC: Only allow relative paths starting with /accept-invite to prevent open-redirect
   const inviteReturn = (() => { try { return sessionStorage.getItem('lessonloop_invite_return'); } catch { return null; } })();
   if (inviteReturn && inviteReturn.startsWith('/accept-invite')) {
-    try { sessionStorage.removeItem('lessonloop_invite_return'); } catch {}
+    try { sessionStorage.removeItem('lessonloop_invite_return'); } catch { /* storage unavailable */ }
     return <Navigate to={inviteReturn} replace />;
   }
 

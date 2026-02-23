@@ -120,7 +120,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
     setConfig((c) => {
       let startDate = c.startDate;
       let endDate = c.endDate;
-      let termId = '';
+      const termId = '';
       let billingMode = c.billingMode;
 
       if (type === 'monthly') {

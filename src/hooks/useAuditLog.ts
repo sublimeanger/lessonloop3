@@ -69,7 +69,7 @@ export function useAuditLog(options: UseAuditLogOptions = {}) {
       // Fetch actor names
       const actorIds = [...new Set((data || []).filter(e => e.actor_user_id).map(e => e.actor_user_id!))];
       
-      let actorMap = new Map<string, string>();
+      const actorMap = new Map<string, string>();
       if (actorIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')

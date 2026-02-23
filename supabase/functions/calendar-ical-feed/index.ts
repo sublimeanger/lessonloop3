@@ -190,7 +190,7 @@ function nthWeekdayOfMonth(year: number, month: number, weekday: number, n: numb
     // Last occurrence
     const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
     const last = new Date(Date.UTC(year, month - 1, lastDay));
-    let day = lastDay - ((last.getUTCDay() - weekday + 7) % 7);
+    const day = lastDay - ((last.getUTCDay() - weekday + 7) % 7);
     return day;
   }
 }

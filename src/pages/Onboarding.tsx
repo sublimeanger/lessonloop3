@@ -21,13 +21,13 @@ type Step = 'profile' | 'plan' | 'loading' | 'success' | 'error';
 const STORAGE_KEY = 'lessonloop-onboarding-state';
 interface SavedState { fullName: string; orgName: string; orgType: OrgType; selectedPlan: SubscriptionPlan; step: Step; }
 function saveOnboardingState(state: SavedState) {
-  try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+  try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* storage unavailable */ }
 }
 function loadOnboardingState(): SavedState | null {
   try { const s = sessionStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : null; } catch { return null; }
 }
 function clearOnboardingState() {
-  try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+  try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* storage unavailable */ }
 }
 
 const ORG_TYPES = [

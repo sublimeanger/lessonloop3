@@ -87,7 +87,8 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body: OnboardingRequest = await req.json();
-    let { org_name, org_type, full_name, phone, subscription_plan } = body;
+    const { org_type, phone, subscription_plan } = body;
+    let { org_name, full_name } = body;
 
     if (!org_name || !org_type || !full_name) {
       return new Response(
@@ -97,6 +98,7 @@ Deno.serve(async (req) => {
     }
 
     // Sanitise: strip control characters and trim
+    // eslint-disable-next-line no-control-regex
     const stripControl = (s: string) => s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim();
     full_name = stripControl(full_name);
     org_name = stripControl(org_name);

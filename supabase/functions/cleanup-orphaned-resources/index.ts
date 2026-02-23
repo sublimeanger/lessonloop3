@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
 
     if (folderError) throw folderError;
 
-    let orphanedFiles: string[] = [];
+    const orphanedFiles: string[] = [];
 
     // 3. For each org folder, list files and check against DB
     for (const folder of orgFolders || []) {
