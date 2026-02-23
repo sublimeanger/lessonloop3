@@ -4,10 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { LogoHorizontal } from '@/components/brand/Logo';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Lock, CheckCircle, XCircle } from 'lucide-react';
+import { Eye, EyeOff, Lock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { PasswordStrengthIndicator, PASSWORD_MIN_LENGTH } from '@/components/auth/PasswordStrengthIndicator';
 
 export default function ResetPassword() {
@@ -49,7 +49,7 @@ export default function ResetPassword() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (password !== confirmPassword) {
       setPasswordMismatch(true);
       toast({ title: 'Passwords don\'t match', description: 'Please make sure your passwords match.', variant: 'destructive' });
@@ -73,7 +73,7 @@ export default function ResetPassword() {
 
       setIsSuccess(true);
       toast({ title: 'Password updated', description: 'Your password has been successfully reset.' });
-      
+
       setTimeout(() => {
         navigate('/dashboard');
       }, 2000);
@@ -87,16 +87,21 @@ export default function ResetPassword() {
 
   if (sessionError) {
     return (
-      <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
-        <Card className="w-full max-w-md shadow-elevated">
-          <CardContent className="pt-6 text-center">
+      <div className="flex min-h-[100dvh] items-center justify-center gradient-hero-light p-4 sm:p-6">
+        <Card className="w-full max-w-md shadow-elevated animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4">
+              <LogoHorizontal size="lg" />
+            </div>
+          </CardHeader>
+          <CardContent className="text-center">
             <XCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-foreground mb-2">Reset link expired</h2>
-            <p className="text-muted-foreground mb-4">
+            <p className="text-muted-foreground mb-6">
               This password reset link is no longer valid. Please request a new one.
             </p>
             <Button
-              className="w-full gradient-accent shadow-glow-teal hover:opacity-90 transition-opacity"
+              className="w-full h-11 gradient-accent shadow-glow-teal hover:opacity-90 transition-opacity"
               onClick={() => navigate('/forgot-password')}
             >
               Request new reset link
@@ -109,13 +114,18 @@ export default function ResetPassword() {
 
   if (isSuccess) {
     return (
-      <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
-        <Card className="w-full max-w-md shadow-elevated">
-          <CardContent className="pt-6 text-center">
+      <div className="flex min-h-[100dvh] items-center justify-center gradient-hero-light p-4 sm:p-6">
+        <Card className="w-full max-w-md shadow-elevated animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4">
+              <LogoHorizontal size="lg" />
+            </div>
+          </CardHeader>
+          <CardContent className="text-center">
             <CheckCircle className="w-16 h-16 text-success mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-foreground mb-2">Password Updated!</h2>
-            <p className="text-muted-foreground mb-4">
-              Your password has been successfully reset. Redirecting to your dashboard...
+            <h2 className="text-2xl font-bold text-foreground mb-2">Password updated</h2>
+            <p className="text-muted-foreground">
+              Your password has been successfully reset. Redirecting to your dashboard…
             </p>
           </CardContent>
         </Card>
@@ -124,23 +134,23 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
-      <Card className="w-full max-w-md shadow-elevated">
+    <div className="flex min-h-[100dvh] items-center justify-center gradient-hero-light p-4 sm:p-6">
+      <Card className="w-full max-w-md shadow-elevated animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <LogoHorizontal size="lg" />
           </div>
-          <CardTitle className="text-2xl">Set New Password</CardTitle>
+          <CardTitle className="text-2xl">Set new password</CardTitle>
           <CardDescription>
             Enter your new password below
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="password">New Password</Label>
+              <Label htmlFor="password">New password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
                   id="password"
                   autoFocus
@@ -150,15 +160,17 @@ export default function ResetPassword() {
                   onChange={(e) => setPassword(e.target.value)}
                   onFocus={() => setPasswordFocused(true)}
                   onBlur={() => setPasswordFocused(false)}
-                  className="pl-10 pr-10"
+                  className="pl-10 pr-10 h-11"
                   required
                   minLength={PASSWORD_MIN_LENGTH}
+                  autoComplete="new-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm p-0.5"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  tabIndex={0}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -167,9 +179,9 @@ export default function ResetPassword() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">Confirm password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
                   id="confirmPassword"
                   type={showPassword ? 'text' : 'password'}
@@ -177,18 +189,31 @@ export default function ResetPassword() {
                   value={confirmPassword}
                   onChange={(e) => { setConfirmPassword(e.target.value); setPasswordMismatch(false); }}
                   aria-invalid={passwordMismatch}
-                  className="pl-10"
+                  className="pl-10 h-11"
                   required
                   minLength={PASSWORD_MIN_LENGTH}
+                  autoComplete="new-password"
                 />
               </div>
             </div>
-
-            <Button type="submit" className="w-full gradient-accent shadow-glow-teal hover:opacity-90 transition-opacity" disabled={isLoading}>
-              {isLoading ? 'Updating...' : 'Update Password'}
+          </CardContent>
+          <CardFooter>
+            <Button
+              type="submit"
+              className="w-full h-11 gradient-accent shadow-glow-teal hover:opacity-90 transition-opacity"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating…
+                </>
+              ) : (
+                'Update password'
+              )}
             </Button>
-          </form>
-        </CardContent>
+          </CardFooter>
+        </form>
       </Card>
     </div>
   );

@@ -32,6 +32,8 @@ export default function Signup() {
   const [isResending, setIsResending] = useState(false);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
 
+  const anyLoading = isLoading || isGoogleLoading || isAppleLoading;
+
   useEffect(() => {
     if (cooldownSeconds <= 0) return;
     const timer = setInterval(() => {
@@ -46,11 +48,11 @@ export default function Signup() {
       redirect_uri: `${window.location.origin}/login`,
     });
     setIsGoogleLoading(false);
-    
+
     if (error) {
       toast({
         title: 'Google sign up failed',
-        description: error.message?.includes('popup') 
+        description: error.message?.includes('popup')
           ? 'Please allow popups for this site and try again'
           : error.message,
         variant: 'destructive',
@@ -64,11 +66,11 @@ export default function Signup() {
       redirect_uri: `${window.location.origin}/login`,
     });
     setIsAppleLoading(false);
-    
+
     if (error) {
       toast({
         title: 'Apple sign up failed',
-        description: error.message?.includes('popup') 
+        description: error.message?.includes('popup')
           ? 'Please allow popups for this site and try again'
           : error.message,
         variant: 'destructive',
@@ -79,7 +81,7 @@ export default function Signup() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedEmail = email.trim();
-    
+
     if (!fullName.trim() || !trimmedEmail || !password) {
       toast({
         title: 'Missing fields',
@@ -138,8 +140,8 @@ export default function Signup() {
 
   if (signupComplete) {
     return (
-      <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
-        <Card className="w-full max-w-md shadow-elevated">
+      <div className="flex min-h-[100dvh] items-center justify-center gradient-hero-light p-4 sm:p-6">
+        <Card className="w-full max-w-md shadow-elevated animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4">
               <LogoHorizontal size="lg" />
@@ -155,7 +157,7 @@ export default function Signup() {
           <CardFooter className="flex flex-col gap-4">
             <Button
               variant="outline"
-              className="w-full"
+              className="w-full h-11"
               onClick={handleResendVerification}
               disabled={isResending || cooldownSeconds > 0}
             >
@@ -175,23 +177,25 @@ export default function Signup() {
       </div>
     );
   }
+
   return (
-    <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
-      <Card className="w-full max-w-md shadow-elevated">
-        <CardHeader className="text-center">
+    <div className="flex min-h-[100dvh] items-center justify-center gradient-hero-light p-4 sm:p-6">
+      <Card className="w-full max-w-md shadow-elevated animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
+        <CardHeader className="text-center pb-4">
           <div className="mx-auto mb-4">
             <LogoHorizontal size="lg" />
           </div>
           <CardTitle className="text-2xl">Create your account</CardTitle>
           <CardDescription>Start managing your music lessons today</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+
+        <CardContent className="space-y-3 pb-3">
           <Button
             type="button"
             variant="outline"
-            className="w-full"
+            className="w-full h-11"
             onClick={handleGoogleSignup}
-            disabled={isLoading || isGoogleLoading || isAppleLoading}
+            disabled={anyLoading}
           >
             {isGoogleLoading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -200,13 +204,13 @@ export default function Signup() {
             )}
             Continue with Google
           </Button>
-          
+
           <Button
             type="button"
             variant="outline"
-            className="w-full"
+            className="w-full h-11"
             onClick={handleAppleSignup}
-            disabled={isLoading || isGoogleLoading || isAppleLoading}
+            disabled={anyLoading}
           >
             {isAppleLoading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -215,8 +219,8 @@ export default function Signup() {
             )}
             Continue with Apple
           </Button>
-          
-          <div className="relative">
+
+          <div className="relative py-1">
             <div className="absolute inset-0 flex items-center">
               <Separator className="w-full" />
             </div>
@@ -225,7 +229,7 @@ export default function Signup() {
             </div>
           </div>
         </CardContent>
-        
+
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4 pt-0">
             <div className="space-y-2">
@@ -239,6 +243,7 @@ export default function Signup() {
                 onChange={(e) => setFullName(e.target.value)}
                 disabled={isLoading}
                 autoComplete="name"
+                className="h-11"
               />
             </div>
             <div className="space-y-2">
@@ -251,6 +256,7 @@ export default function Signup() {
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
                 autoComplete="email"
+                className="h-11"
               />
             </div>
             <div className="space-y-2">
@@ -266,13 +272,14 @@ export default function Signup() {
                   onBlur={() => setPasswordFocused(false)}
                   disabled={isLoading}
                   autoComplete="new-password"
-                  className="pr-10"
+                  className="pr-10 h-11"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm p-0.5"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  tabIndex={0}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -291,13 +298,14 @@ export default function Signup() {
                   aria-invalid={passwordMismatch}
                   disabled={isLoading}
                   autoComplete="new-password"
-                  className="pr-10"
+                  className="pr-10 h-11"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm p-0.5"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  tabIndex={0}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -311,11 +319,15 @@ export default function Signup() {
             </p>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full gradient-accent shadow-glow-teal hover:opacity-90 transition-opacity" disabled={isLoading || isGoogleLoading || isAppleLoading}>
+            <Button
+              type="submit"
+              className="w-full h-11 gradient-accent shadow-glow-teal hover:opacity-90 transition-opacity"
+              disabled={anyLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating account...
+                  Creating account…
                 </>
               ) : (
                 'Create account'

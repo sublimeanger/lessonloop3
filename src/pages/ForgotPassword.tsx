@@ -28,7 +28,7 @@ export default function ForgotPassword() {
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
       setEmailInvalid(true);
@@ -59,27 +59,30 @@ export default function ForgotPassword() {
 
   if (emailSent) {
     return (
-      <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
-        <Card className="w-full max-w-md shadow-elevated">
+      <div className="flex min-h-[100dvh] items-center justify-center gradient-hero-light p-4 sm:p-6">
+        <Card className="w-full max-w-md shadow-elevated animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
           <CardHeader className="text-center">
+            <div className="mx-auto mb-4">
+              <LogoHorizontal size="lg" />
+            </div>
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-success/10">
               <CheckCircle2 className="h-6 w-6 text-success" />
             </div>
             <CardTitle className="text-2xl">Check your email</CardTitle>
             <CardDescription>
-              We've sent a password reset link to <strong>{email}</strong>
+              We've sent a password reset link to <span className="font-medium text-foreground">{email}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center text-sm text-muted-foreground">
             <p>
-              Click the link in the email to reset your password. 
+              Click the link in the email to reset your password.
               If you don't see it, check your spam folder.
             </p>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button
               variant="outline"
-              className="w-full"
+              className="w-full h-11"
               onClick={async () => {
                 setIsLoading(true);
                 const { error } = await resetPassword(email.trim());
@@ -91,7 +94,13 @@ export default function ForgotPassword() {
               }}
               disabled={isLoading || cooldownSeconds > 0}
             >
-              {cooldownSeconds > 0 ? `Resend in ${cooldownSeconds}s` : 'Resend reset email'}
+              {isLoading ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending…</>
+              ) : cooldownSeconds > 0 ? (
+                `Resend in ${cooldownSeconds}s`
+              ) : (
+                'Resend reset email'
+              )}
             </Button>
             <Link to="/login" className="w-full">
               <Button variant="ghost" className="w-full gap-2">
@@ -106,8 +115,8 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
-      <Card className="w-full max-w-md shadow-elevated">
+    <div className="flex min-h-[100dvh] items-center justify-center gradient-hero-light p-4 sm:p-6">
+      <Card className="w-full max-w-md shadow-elevated animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
             <LogoHorizontal size="lg" />
@@ -131,23 +140,28 @@ export default function ForgotPassword() {
                 aria-invalid={emailInvalid}
                 disabled={isLoading}
                 autoComplete="email"
+                className="h-11"
               />
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full gradient-accent shadow-glow-teal hover:opacity-90 transition-opacity" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full h-11 gradient-accent shadow-glow-teal hover:opacity-90 transition-opacity"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending...
+                  Sending…
                 </>
               ) : (
                 'Send reset link'
               )}
             </Button>
-            <Link 
-              to="/login" 
-              className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+            <Link
+              to="/login"
+              className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to sign in

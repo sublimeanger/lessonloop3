@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react';
 import { logger } from '@/lib/logger';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import { DetailSkeleton } from '@/components/shared/LoadingState';
+import { Loader2, CheckCircle, XCircle, Music, Eye, EyeOff } from 'lucide-react';
+import { PasswordStrengthIndicator, PASSWORD_MIN_LENGTH } from '@/components/auth/PasswordStrengthIndicator';
 
 async function waitForProfile(userId: string): Promise<boolean> {
   for (let i = 0; i < 10; i++) {
@@ -15,15 +24,6 @@ async function waitForProfile(userId: string): Promise<boolean> {
   }
   return false;
 }
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { DetailSkeleton } from '@/components/shared/LoadingState';
-import { Loader2, CheckCircle, XCircle, Music, Eye, EyeOff } from 'lucide-react';
-import { PasswordStrengthIndicator, PASSWORD_MIN_LENGTH } from '@/components/auth/PasswordStrengthIndicator';
 
 interface InviteDetails {
   email: string;
@@ -56,9 +56,9 @@ export default function AcceptInvite() {
   const navigate = useNavigate();
   const { user, profile, refreshProfile } = useAuth();
   const { toast } = useToast();
-  
+
   const token = searchParams.get('token');
-  
+
   const [invite, setInvite] = useState<InviteDetails | null>(null);
   const [organisation, setOrganisation] = useState<OrganisationDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,7 +66,7 @@ export default function AcceptInvite() {
   const [expiredOrgName, setExpiredOrgName] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // For new user signup
   const [signupEmail, setSignupEmail] = useState('');
   const [fullName, setFullName] = useState('');
@@ -85,7 +85,7 @@ export default function AcceptInvite() {
 
   const fetchInvite = async () => {
     if (!token) return;
-    
+
     try {
       const response = await supabase.functions.invoke('invite-get', {
         body: { token },
@@ -98,10 +98,9 @@ export default function AcceptInvite() {
       }
 
       const data = response.data;
-      
+
       if (data.error) {
         setError(data.error);
-        // Capture org name from expired invite responses
         if (data.organisation?.name) {
           setExpiredOrgName(data.organisation.name);
         }
@@ -121,9 +120,9 @@ export default function AcceptInvite() {
 
   const acceptInvite = async () => {
     if (!invite || !token) return;
-    
+
     setIsAccepting(true);
-    
+
     try {
       const response = await supabase.functions.invoke('invite-accept', {
         body: { token },
@@ -134,7 +133,7 @@ export default function AcceptInvite() {
       }
 
       const data = response.data;
-      
+
       if (data.error) {
         throw new Error(data.error);
       }
@@ -144,10 +143,8 @@ export default function AcceptInvite() {
         description: `You've joined ${organisation?.name || 'the organisation'}`
       });
 
-      // Refresh auth context so org membership is available
       await refreshProfile();
 
-      // Navigate based on role - parents go to portal, staff go to dashboard
       if (data.role === 'parent') {
         navigate('/portal/home');
       } else {
@@ -163,14 +160,14 @@ export default function AcceptInvite() {
 
   const signUpAndAccept = async () => {
     if (!invite || !token) return;
-    
+
     if (password !== confirmPassword) {
       setPasswordMismatch(true);
       toast({ title: 'Passwords do not match', variant: 'destructive' });
       return;
     }
     setPasswordMismatch(false);
-    
+
     const trimmedEmail = signupEmail.trim().toLowerCase();
     const trimmedName = fullName.trim();
     if (!trimmedEmail) {
@@ -190,11 +187,10 @@ export default function AcceptInvite() {
       });
       return;
     }
-    
+
     setIsAccepting(true);
-    
+
     try {
-      // Sign up the new user
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: trimmedEmail,
         password,
@@ -203,13 +199,12 @@ export default function AcceptInvite() {
           emailRedirectTo: window.location.origin,
         },
       });
-      
+
       if (signUpError) throw signUpError;
-      
+
       if (authData.user) {
-        // Poll for profile to exist (created by DB trigger)
         const profileReady = await waitForProfile(authData.user.id);
-        
+
         if (!profileReady) {
           toast({
             title: 'Account created',
@@ -218,15 +213,13 @@ export default function AcceptInvite() {
           navigate('/login');
           return;
         }
-        
-        // Now accept the invite using the edge function
+
         const response = await supabase.functions.invoke('invite-accept', {
           body: { token },
         });
 
         const data = response.data;
 
-        // Check for email mismatch from edge function (403)
         if (response.error || data?.error) {
           const errMsg = data?.error || response.error?.message || 'Failed to accept invitation';
           if (typeof errMsg === 'string' && errMsg.toLowerCase().includes('email')) {
@@ -241,18 +234,16 @@ export default function AcceptInvite() {
           throw new Error(errMsg);
         }
 
-        // Update profile with full name (edge function handles onboarding flag)
         await supabase
           .from('profiles')
           .update({ full_name: trimmedName })
           .eq('id', authData.user.id);
-        
-        toast({ 
-          title: 'Account created!', 
-          description: `Welcome to ${organisation?.name || 'the organisation'}` 
+
+        toast({
+          title: 'Account created!',
+          description: `Welcome to ${organisation?.name || 'the organisation'}`
         });
-        
-        // Navigate based on role - parents go to portal, staff go to dashboard
+
         if (data.role === 'parent') {
           navigate('/portal/home');
         } else {
@@ -269,8 +260,8 @@ export default function AcceptInvite() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center gradient-hero-light">
-        <div className="w-full max-w-md px-4">
+      <div className="flex min-h-[100dvh] items-center justify-center gradient-hero-light p-4">
+        <div className="w-full max-w-md">
           <DetailSkeleton />
         </div>
       </div>
@@ -280,20 +271,20 @@ export default function AcceptInvite() {
   if (error) {
     const isExpired = error.toLowerCase().includes('expired');
     return (
-      <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
-        <Card className="w-full max-w-md">
+      <div className="flex min-h-[100dvh] items-center justify-center gradient-hero-light p-4 sm:p-6">
+        <Card className="w-full max-w-md shadow-elevated animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
           <CardContent className="flex flex-col items-center py-12">
             <XCircle className="h-12 w-12 text-destructive" />
             <h2 className="mt-4 text-lg font-semibold">
-              {isExpired ? 'Invitation Expired' : 'Invalid Invitation'}
+              {isExpired ? 'Invitation expired' : 'Invalid invitation'}
             </h2>
             <p className="mt-2 text-center text-muted-foreground">
               {isExpired
                 ? `This invitation link has expired.${expiredOrgName ? ` Please contact ${expiredOrgName} and ask them to send a new invitation.` : ' Please contact your academy administrator and ask them to send a new invitation.'}`
                 : error}
             </p>
-            <Button asChild className="mt-6">
-              <Link to="/login">Go to Login</Link>
+            <Button asChild className="mt-6 h-11">
+              <Link to="/login">Go to sign in</Link>
             </Button>
             {isExpired && (
               <p className="mt-4 text-center text-xs text-muted-foreground">
@@ -310,13 +301,11 @@ export default function AcceptInvite() {
 
   // User is already logged in
   if (user) {
-    // Check if logged-in user email likely matches invite (invite email is redacted by invite-get)
-    // Server does the authoritative check in invite-accept
     const emailMatches = user.email ? emailLikelyMatches(user.email, invite.email) : false;
-    
+
     return (
-      <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
-        <Card className="w-full max-w-md">
+      <div className="flex min-h-[100dvh] items-center justify-center gradient-hero-light p-4 sm:p-6">
+        <Card className="w-full max-w-md shadow-elevated animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               <Music className="h-6 w-6 text-primary" />
@@ -333,22 +322,22 @@ export default function AcceptInvite() {
                 <p className="mt-2">Please log out and sign in with the invited email, or ask for a new invitation.</p>
               </div>
             )}
-            <Button 
-              onClick={acceptInvite} 
-              disabled={isAccepting || !emailMatches} 
-              className="w-full"
+            <Button
+              onClick={acceptInvite}
+              disabled={isAccepting || !emailMatches}
+              className="w-full h-11"
             >
               {isAccepting ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Joining...</>
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Joining…</>
               ) : (
-                <><CheckCircle className="mr-2 h-4 w-4" /> Accept Invitation</>
+                <><CheckCircle className="mr-2 h-4 w-4" /> Accept invitation</>
               )}
             </Button>
             {!emailMatches && (
-              <Button 
-                variant="outline" 
-                onClick={() => supabase.auth.signOut().then(() => window.location.reload())} 
-                className="w-full"
+              <Button
+                variant="outline"
+                onClick={() => supabase.auth.signOut().then(() => window.location.reload())}
+                className="w-full h-11"
               >
                 Log out and use correct email
               </Button>
@@ -361,8 +350,8 @@ export default function AcceptInvite() {
 
   // New user signup form
   return (
-    <div className="flex min-h-screen items-center justify-center gradient-hero-light p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-[100dvh] items-center justify-center gradient-hero-light p-4 sm:p-6">
+      <Card className="w-full max-w-md shadow-elevated animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Music className="h-6 w-6 text-primary" />
@@ -383,19 +372,21 @@ export default function AcceptInvite() {
                 onChange={(e) => setSignupEmail(e.target.value)}
                 placeholder="Enter your email address"
                 autoComplete="email"
+                className="h-11"
               />
               <p className="text-xs text-muted-foreground">
                 This invite was sent to <strong>{invite.email}</strong>. Please use the matching email address.
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
+              <Label htmlFor="fullName">Full name</Label>
               <Input
                 id="fullName"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Enter your full name"
                 autoComplete="name"
+                className="h-11"
               />
             </div>
             <div className="space-y-2">
@@ -408,13 +399,14 @@ export default function AcceptInvite() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Create a password"
                   autoComplete="new-password"
-                  className="pr-10"
+                  className="pr-10 h-11"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm p-0.5"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  tabIndex={0}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -422,7 +414,7 @@ export default function AcceptInvite() {
               <PasswordStrengthIndicator password={password} visible={password.length > 0} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">Confirm password</Label>
               <div className="relative">
                 <Input
                   id="confirmPassword"
@@ -432,13 +424,14 @@ export default function AcceptInvite() {
                   aria-invalid={passwordMismatch}
                   placeholder="Confirm your password"
                   autoComplete="new-password"
-                  className="pr-10"
+                  className="pr-10 h-11"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm p-0.5"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  tabIndex={0}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -450,24 +443,31 @@ export default function AcceptInvite() {
               and{' '}
               <Link to="/privacy" className="font-medium text-primary hover:underline">Privacy Policy</Link>.
             </p>
-            <Button 
+          </CardContent>
+          <CardFooter className="flex flex-col gap-4">
+            <Button
               type="submit"
               disabled={isAccepting || !signupEmail.trim() || !fullName.trim() || !password}
-              className="w-full"
+              className="w-full h-11 gradient-accent shadow-glow-teal hover:opacity-90 transition-opacity"
             >
               {isAccepting ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating account...</>
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating account…</>
               ) : (
-                'Create Account & Join'
+                'Create account & join'
               )}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
               Already have an account?{' '}
-              <Link to="/login" state={{ from: { pathname: '/accept-invite', search: `?token=${token}` } }} onClick={() => { try { sessionStorage.setItem('lessonloop_invite_return', `/accept-invite?token=${token}`); } catch {} }} className="text-primary hover:underline">
-                Log in
+              <Link
+                to="/login"
+                state={{ from: { pathname: '/accept-invite', search: `?token=${token}` } }}
+                onClick={() => { try { sessionStorage.setItem('lessonloop_invite_return', `/accept-invite?token=${token}`); } catch {} }}
+                className="text-primary hover:underline"
+              >
+                Sign in
               </Link>
             </p>
-          </CardContent>
+          </CardFooter>
         </form>
       </Card>
     </div>
