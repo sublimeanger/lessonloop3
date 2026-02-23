@@ -284,7 +284,6 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           .from('lessons')
           .select('id')
            .eq('recurrence_id', lesson.recurrence_id!)
-          .eq('org_id', currentOrg.id)
           .gte('start_at', lesson.start_at)
           .neq('status', 'cancelled');
         cancelledLessonIds = (futureLessons || []).map(l => l.id);
@@ -293,7 +292,6 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           .from('lessons')
           .update(cancelData)
            .eq('recurrence_id', lesson.recurrence_id!)
-          .eq('org_id', currentOrg.id)
           .gte('start_at', lesson.start_at);
         if (error) throw error;
         logAudit(currentOrg.id, user.id, 'cancel', 'lesson', lesson.id, {
@@ -408,7 +406,6 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           .from('lessons')
           .select('id')
           .eq('recurrence_id', lesson.recurrence_id!)
-          .eq('org_id', currentOrg.id)
           .gte('start_at', lesson.start_at);
 
         const deletedIds = (futureLessons || []).map(l => l.id);
@@ -417,7 +414,6 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           .from('lessons')
           .delete()
           .eq('recurrence_id', lesson.recurrence_id!)
-          .eq('org_id', currentOrg.id)
           .gte('start_at', lesson.start_at);
         if (error) throw error;
         logAudit(currentOrg.id, user.id, 'delete', 'lesson', lesson.id, {

@@ -148,7 +148,6 @@ export function useRegisterData(date: Date) {
         const { data: locations } = await supabase
           .from('locations')
           .select('id, name')
-          .eq('org_id', currentOrg.id)
           .in('id', locationIds);
         locationMap = new Map((locations || []).map(l => [l.id, l.name]));
       }
@@ -157,7 +156,6 @@ export function useRegisterData(date: Date) {
         const { data: rooms } = await supabase
           .from('rooms')
           .select('id, name')
-          .eq('org_id', currentOrg.id)
           .in('id', roomIds);
         roomMap = new Map((rooms || []).map(r => [r.id, r.name]));
       }
@@ -232,7 +230,6 @@ export function useUpdateAttendance() {
         .from('lessons')
         .select('teacher_user_id')
         .eq('id', lessonId)
-        .eq('org_id', currentOrg.id)
         .single();
 
       if (!lesson) throw new Error('Lesson not found');
@@ -332,8 +329,7 @@ export function useMarkLessonComplete() {
       const { error } = await supabase
         .from('lessons')
         .update({ status: 'completed' })
-        .eq('id', lessonId)
-        .eq('org_id', currentOrg.id);
+        .eq('id', lessonId);
 
       if (error) throw error;
 
@@ -527,13 +523,12 @@ export function useSaveBatchAttendance(dateKey: string) {
         })
         .map(l => l.id);
 
-      if (fullyAttendedIds.length > 0 && currentOrg?.id) {
+      if (fullyAttendedIds.length > 0) {
         await supabase
           .from('lessons')
           .update({ status: 'completed' })
           .in('id', fullyAttendedIds)
-          .eq('status', 'scheduled')
-          .eq('org_id', currentOrg.id);
+          .eq('status', 'scheduled');
       }
 
       return { count: upserts.length };

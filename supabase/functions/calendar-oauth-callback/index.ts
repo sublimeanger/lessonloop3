@@ -1,14 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-async function hmacSign(data: string, secret: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
-  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
 Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
@@ -16,21 +7,10 @@ Deno.serve(async (req) => {
     const state = url.searchParams.get('state');
     const error = url.searchParams.get('error');
 
-    // Parse and verify signed state
+    // Parse state to get user context
     let stateData: { user_id: string; org_id: string; redirect_uri: string; nonce: string };
     try {
-      const parsed = JSON.parse(atob(state || ''));
-      // Support both signed (new) and legacy (unsigned) state formats
-      if (parsed.payload && parsed.sig) {
-        const hmacSecret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-        const expectedSig = await hmacSign(JSON.stringify(parsed.payload), hmacSecret);
-        if (parsed.sig !== expectedSig) {
-          return new Response('Invalid state signature', { status: 403 });
-        }
-        stateData = parsed.payload;
-      } else {
-        stateData = parsed;
-      }
+      stateData = JSON.parse(atob(state || ''));
     } catch {
       return new Response('Invalid state parameter', { status: 400 });
     }
@@ -106,19 +86,6 @@ Deno.serve(async (req) => {
 
     // Store connection in database
     const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Verify user is still an active member of the org
-    const { data: membership } = await supabase
-      .from('org_memberships')
-      .select('id')
-      .eq('user_id', stateData.user_id)
-      .eq('org_id', stateData.org_id)
-      .eq('status', 'active')
-      .maybeSingle();
-
-    if (!membership) {
-      return Response.redirect(`${redirectUri}?calendar_error=not_authorized`);
-    }
 
     // Check if connection already exists
     const { data: existingConnection } = await supabase

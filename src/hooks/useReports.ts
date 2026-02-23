@@ -10,13 +10,12 @@ import { sanitiseCSVCell, currencySymbol } from '@/lib/utils';
 
 // Helper: resolve teacher_id for the current user (returns null if not a teacher)
 async function resolveTeacherId(orgId: string, userId: string): Promise<string | null> {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from('teachers')
     .select('id')
     .eq('org_id', orgId)
     .eq('user_id', userId)
     .maybeSingle();
-  if (error) throw error;
   return data?.id ?? null;
 }
 
@@ -458,11 +457,10 @@ export function useCancellationReport(startDate: string, endDate: string) {
 
       // Fetch attendance records for cancellation reasons
       const lessonIds = (lessons || []).filter(l => l.status === 'cancelled').map(l => l.id);
-      const { data: attendance } = lessonIds.length > 0
+      const { data: attendance } = lessonIds.length > 0 
         ? await supabase
             .from('attendance_records')
             .select('lesson_id, attendance_status, cancellation_reason')
-            .eq('org_id', currentOrg.id)
             .in('lesson_id', lessonIds)
             .limit(10000)
         : { data: [] };
@@ -670,7 +668,7 @@ export function exportAgeingToCSV(data: AgeingData, orgName: string, currencyCod
   const rows = [`Invoice Number,Payer,Due Date,Days Overdue,Amount (${sym}),Bucket`];
   for (const bucket of data.buckets) {
     for (const inv of bucket.invoices) {
-      rows.push(`"${sanitiseCSVCell(inv.invoiceNumber)}","${sanitiseCSVCell(inv.payerName)}",${inv.dueDate},${inv.daysOverdue},${(inv.totalMinor / 100).toFixed(2)},"${sanitiseCSVCell(bucket.label)}"`);
+      rows.push(`${inv.invoiceNumber},"${sanitiseCSVCell(inv.payerName)}",${inv.dueDate},${inv.daysOverdue},${(inv.totalMinor / 100).toFixed(2)},${bucket.label}`);
     }
   }
   rows.push('');

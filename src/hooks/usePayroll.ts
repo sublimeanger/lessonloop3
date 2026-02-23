@@ -29,8 +29,6 @@ export interface PayrollData {
   teachers: TeacherPayrollSummary[];
   totalGrossOwed: number;
   dateRange: { start: string; end: string };
-  /** True when the teachers_with_pay view failed and pay rates could not be loaded */
-  payRatesUnavailable?: boolean;
 }
 
 export function usePayroll(startDate: string, endDate: string) {
@@ -94,6 +92,7 @@ export function usePayroll(startDate: string, endDate: string) {
           }
         }
       }
+      if (lessonsError) throw lessonsError;
 
       // Get unique teacher IDs (prefer teacher_id, fallback to teacher_user_id)
       const teacherIds = [...new Set((lessons || [])
@@ -117,20 +116,19 @@ export function usePayroll(startDate: string, endDate: string) {
         .in('id', teacherIds);
       if (tError) {
         // Fallback to base teachers table if view fails
-        console.error('teachers_with_pay view failed, falling back to base table (pay rates unavailable):', tError.message);
         const { data: fallbackTeachers } = await supabase
           .from('teachers')
           .select('id, display_name')
           .eq('org_id', currentOrg.id)
           .in('id', teacherIds);
-
-        // Build teacher map without pay data — will show £0 with warnings
+        
+        // Build teacher map without pay data
         const teacherMap = new Map<string, {
           name: string;
           payRateType: 'per_lesson' | 'hourly' | 'percentage' | null;
           payRateValue: number;
         }>();
-
+        
         for (const t of fallbackTeachers || []) {
           teacherMap.set(t.id, {
             name: t.display_name,
@@ -138,10 +136,8 @@ export function usePayroll(startDate: string, endDate: string) {
             payRateValue: 0,
           });
         }
-
-        const result = calculatePayroll(lessons || [], teacherMap, startDate, endDate, invoiceItemsMap);
-        result.payRatesUnavailable = true;
-        return result;
+        
+        return calculatePayroll(lessons || [], teacherMap, startDate, endDate, invoiceItemsMap);
       }
 
       // Build teacher map
@@ -196,7 +192,7 @@ function calculatePayroll(
     for (const lesson of teacherLessons) {
       const start = new Date(lesson.start_at);
       const end = new Date(lesson.end_at);
-      const durationMins = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+      const durationMins = Math.round((end.getTime() - start.getTime()) / 60000);
       totalMinutes += durationMins;
 
       let calculatedPay = 0;
@@ -206,12 +202,12 @@ function calculatePayroll(
           calculatedPay = teacherInfo.payRateValue;
           break;
         case 'hourly':
-          calculatedPay = Math.round((durationMins / 60) * teacherInfo.payRateValue * 100) / 100;
+          calculatedPay = (durationMins / 60) * teacherInfo.payRateValue;
           break;
         case 'percentage': {
           const lessonRevenue = invoiceItemsMap.get(lesson.id);
           if (lessonRevenue !== undefined) {
-            calculatedPay = Math.round((teacherInfo.payRateValue / 100) * (lessonRevenue / 100) * 100) / 100;
+            calculatedPay = (teacherInfo.payRateValue / 100) * (lessonRevenue / 100);
           } else {
             calculatedPay = 0;
             hasWarning = true;

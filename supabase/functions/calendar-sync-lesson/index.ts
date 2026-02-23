@@ -59,14 +59,11 @@ async function getValidAccessToken(
   connection: any
 ): Promise<string | null> {
   // Check if token is expired or about to expire (within 5 minutes)
-  if (!connection.token_expires_at) {
-    return await refreshAccessToken(supabase, connection.id, connection.refresh_token);
-  }
   const expiresAt = new Date(connection.token_expires_at);
   const now = new Date();
   const bufferMs = 5 * 60 * 1000; // 5 minutes
 
-  if (isNaN(expiresAt.getTime()) || expiresAt.getTime() - now.getTime() < bufferMs) {
+  if (expiresAt.getTime() - now.getTime() < bufferMs) {
     // Token needs refresh
     return await refreshAccessToken(supabase, connection.id, connection.refresh_token);
   }

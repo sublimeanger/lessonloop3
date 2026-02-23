@@ -120,7 +120,6 @@ export function useInvoice(id: string | undefined) {
           linked_lesson:lessons(id, title, start_at)
         `)
         .eq('invoice_id', id)
-        .eq('org_id', currentOrg.id)
         .order('created_at', { ascending: true });
 
       if (itemsError) throw itemsError;
@@ -129,7 +128,6 @@ export function useInvoice(id: string | undefined) {
         .from('payments')
         .select('*')
         .eq('invoice_id', id)
-        .eq('org_id', currentOrg.id)
         .order('paid_at', { ascending: false });
 
       if (paymentsError) throw paymentsError;
@@ -290,12 +288,10 @@ export function useUpdateInvoiceStatus() {
         return { id, status, currentStatus };
       }
 
-      if (!currentOrg?.id) throw new Error('No organisation selected');
       const { error } = await supabase
         .from('invoices')
         .update({ status })
-        .eq('id', id)
-        .eq('org_id', currentOrg.id);
+        .eq('id', id);
 
       if (error) throw error;
       return { id, status, currentStatus };

@@ -38,7 +38,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Rate limit
-    const rateLimitResult = await checkRateLimit(user.id, "send-parent-enquiry");
+    const rateLimitResult = await checkRateLimit(user.id, "send-parent-reply");
     if (!rateLimitResult.allowed) {
       return rateLimitResponse(corsHeaders, rateLimitResult);
     }

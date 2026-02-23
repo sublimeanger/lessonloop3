@@ -64,6 +64,7 @@ export function useOrgMembers() {
     staleTime: STALE_STABLE,
   });
 
+  // TODO: Enforce via RLS policy or DB trigger for production hardening
   const changeRoleMutation = useMutation({
     mutationFn: async ({ memberId, newRole }: { memberId: string; newRole: AppRole }) => {
       if (!ASSIGNABLE_ROLES.includes(newRole)) {
@@ -78,12 +79,10 @@ export function useOrgMembers() {
       if (target?.user_id === user?.id) throw new Error('Cannot change your own role');
       if (target?.role === 'owner') throw new Error('Cannot modify the owner role');
 
-      if (!currentOrg?.id) throw new Error('No organisation selected');
       const { error } = await supabase
         .from('org_memberships')
         .update({ role: newRole })
-        .eq('id', memberId)
-        .eq('org_id', currentOrg.id);
+        .eq('id', memberId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -97,13 +96,11 @@ export function useOrgMembers() {
 
   const disableMemberMutation = useMutation({
     mutationFn: async ({ memberId }: { memberId: string; memberName: string }) => {
-      if (!currentOrg?.id) throw new Error('No organisation selected');
       // Validate target before disabling
       const { data: target } = await supabase
         .from('org_memberships')
         .select('role, user_id')
         .eq('id', memberId)
-        .eq('org_id', currentOrg.id)
         .single();
       if (target?.user_id === user?.id) throw new Error('Cannot disable yourself');
       if (target?.role === 'owner') throw new Error('Cannot disable the owner');
@@ -111,8 +108,7 @@ export function useOrgMembers() {
       const { error } = await supabase
         .from('org_memberships')
         .update({ status: 'disabled' })
-        .eq('id', memberId)
-        .eq('org_id', currentOrg.id);
+        .eq('id', memberId);
       if (error) throw error;
     },
     onSuccess: (_data, variables) => {

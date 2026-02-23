@@ -134,8 +134,7 @@ export function useDeleteRateCard() {
       const { count: studentCount } = await supabase
         .from('students')
         .select('id', { count: 'exact', head: true })
-        .eq('default_rate_card_id', id)
-        .eq('org_id', currentOrg.id);
+        .eq('default_rate_card_id', id);
 
       if ((studentCount ?? 0) > 0) {
         toast({

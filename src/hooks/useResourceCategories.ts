@@ -57,18 +57,15 @@ export function useCreateCategory() {
 }
 
 export function useUpdateCategory() {
-  const { currentOrg } = useOrg();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ id, name, color }: { id: string; name: string; color?: string | null }) => {
-      if (!currentOrg?.id) throw new Error('No organisation selected');
       const { error } = await supabase
         .from('resource_categories')
         .update({ name, color: color ?? null })
-        .eq('id', id)
-        .eq('org_id', currentOrg.id);
+        .eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -82,18 +79,15 @@ export function useUpdateCategory() {
 }
 
 export function useDeleteCategory() {
-  const { currentOrg } = useOrg();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      if (!currentOrg?.id) throw new Error('No organisation selected');
       const { error } = await supabase
         .from('resource_categories')
         .delete()
-        .eq('id', id)
-        .eq('org_id', currentOrg.id);
+        .eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -119,8 +113,7 @@ export function useAssignCategories() {
       const { error: delError } = await supabase
         .from('resource_category_assignments')
         .delete()
-        .eq('resource_id', resourceId)
-        .eq('org_id', currentOrg.id);
+        .eq('resource_id', resourceId);
       if (delError) throw delError;
 
       // Insert new assignments

@@ -159,17 +159,13 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         const firstMembership = typedMemberships[0];
         selectedOrg = firstMembership.organisation || null;
         selectedRole = firstMembership.role;
-
+        
         if (selectedOrg) {
-          // Await the profile update so current_org_id is persisted before rendering
-          try {
-            await supabase
-              .from('profiles')
-              .update({ current_org_id: selectedOrg.id })
-              .eq('id', user.id);
-          } catch (err) {
-            logger.error('Failed to persist current_org_id:', err);
-          }
+          supabase
+            .from('profiles')
+            .update({ current_org_id: selectedOrg.id })
+            .eq('id', user.id)
+            .then(() => {});
         }
       }
 

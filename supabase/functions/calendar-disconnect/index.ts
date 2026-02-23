@@ -1,41 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
-async function getValidAccessToken(connection: any): Promise<string | null> {
-  if (!connection.access_token) return null;
-
-  // If no expiry recorded, assume expired and try to refresh
-  if (!connection.token_expires_at) {
-    return connection.access_token; // Best-effort with existing token
-  }
-
-  const expiresAt = new Date(connection.token_expires_at);
-  const bufferMs = 5 * 60 * 1000;
-
-  if (isNaN(expiresAt.getTime()) || expiresAt.getTime() - Date.now() < bufferMs) {
-    const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
-    const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET');
-    if (!clientId || !clientSecret || !connection.refresh_token) return connection.access_token;
-
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: connection.refresh_token,
-        grant_type: 'refresh_token',
-      }),
-    });
-
-    if (!response.ok) return connection.access_token;
-    const tokens = await response.json();
-    return tokens.access_token;
-  }
-
-  return connection.access_token;
-}
-
 Deno.serve(async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
@@ -94,13 +59,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get a valid (possibly refreshed) access token for Google API calls
-    const validToken = connection.provider === 'google'
-      ? await getValidAccessToken(connection)
-      : null;
-
     // Optionally delete events from Google Calendar
-    if (delete_events && connection.provider === 'google' && validToken) {
+    if (delete_events && connection.provider === 'google' && connection.access_token) {
       const { data: mappings } = await supabase
         .from('calendar_event_mappings')
         .select('external_event_id')
@@ -116,7 +76,7 @@ Deno.serve(async (req) => {
             try {
               await fetch(`${baseUrl}/${mapping.external_event_id}`, {
                 method: 'DELETE',
-                headers: { Authorization: `Bearer ${validToken}` },
+                headers: { Authorization: `Bearer ${connection.access_token}` },
               });
             } catch (e) {
               console.error('Error deleting event:', e);
@@ -128,9 +88,9 @@ Deno.serve(async (req) => {
     }
 
     // Revoke Google token if applicable
-    if (connection.provider === 'google' && validToken) {
+    if (connection.provider === 'google' && connection.access_token) {
       try {
-        await fetch(`https://oauth2.googleapis.com/revoke?token=${validToken}`, {
+        await fetch(`https://oauth2.googleapis.com/revoke?token=${connection.access_token}`, {
           method: 'POST',
         });
       } catch (e) {

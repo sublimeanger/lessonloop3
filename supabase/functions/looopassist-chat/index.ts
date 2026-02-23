@@ -1811,7 +1811,7 @@ AI tier: ${isPro ? "Pro (Sonnet)" : "Standard (Haiku)"}`
       const toolResults: any[] = [];
 
       for (const toolUse of toolUseBlocks) {
-        console.log(`Tool call [${toolRound}]: ${toolUse.name}`);
+        console.log(`Tool call [${toolRound}]: ${toolUse.name}`, JSON.stringify(toolUse.input));
         const result = await executeToolCall(
           supabase, orgId, userRole, currencyCode,
           toolUse.name, toolUse.input

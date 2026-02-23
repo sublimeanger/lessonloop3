@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { Loader2, Plus, UserPlus, Send, Copy, Pencil } from 'lucide-react';
-import { isValidEmail, isValidPhone } from '@/lib/validation';
 import type { Guardian, StudentGuardian, RelationshipType, GuardianInviteStatus } from '@/hooks/useStudentDetailPage';
 
 interface GuardiansCardProps {
@@ -200,17 +199,14 @@ export function GuardiansCard({
                 <div className="space-y-2">
                   <Label>Full name *</Label>
                   <Input value={newGuardianName} onChange={(e) => setNewGuardianName(e.target.value)} placeholder="Sarah Wilson" />
-                  {!newGuardianName.trim() && <p className="text-xs text-destructive">Full name is required</p>}
                 </div>
                 <div className="space-y-2">
                   <Label>Email</Label>
                   <Input type="email" value={newGuardianEmail} onChange={(e) => setNewGuardianEmail(e.target.value)} placeholder="sarah@example.com" />
-                  {newGuardianEmail.trim() && !isValidEmail(newGuardianEmail.trim()) && <p className="text-xs text-destructive">Invalid email format</p>}
                 </div>
                 <div className="space-y-2">
                   <Label>Phone</Label>
                   <Input type="tel" value={newGuardianPhone} onChange={(e) => setNewGuardianPhone(e.target.value)} placeholder="+44 7700 900000" />
-                  {newGuardianPhone.trim() && !isValidPhone(newGuardianPhone.trim()) && <p className="text-xs text-destructive">Invalid phone format</p>}
                 </div>
               </>
             ) : (
@@ -254,7 +250,7 @@ export function GuardiansCard({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setIsGuardianDialogOpen(false); resetGuardianForm(); }}>Cancel</Button>
-            <Button onClick={handleAddGuardian} disabled={isSaving || (isNewGuardian && (!newGuardianName.trim() || (!!newGuardianEmail.trim() && !isValidEmail(newGuardianEmail.trim())) || (!!newGuardianPhone.trim() && !isValidPhone(newGuardianPhone.trim()))))}>
+            <Button onClick={handleAddGuardian} disabled={isSaving}>
               {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Adding...</> : 'Add Guardian'}
             </Button>
           </DialogFooter>
@@ -275,7 +271,6 @@ export function GuardiansCard({
                 value={editGuardianDialog.fullName}
                 onChange={(e) => setEditGuardianDialog(prev => ({ ...prev, fullName: e.target.value }))}
               />
-              {!editGuardianDialog.fullName.trim() && <p className="text-xs text-destructive">Full name is required</p>}
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
@@ -284,7 +279,6 @@ export function GuardiansCard({
                 value={editGuardianDialog.email}
                 onChange={(e) => setEditGuardianDialog(prev => ({ ...prev, email: e.target.value }))}
               />
-              {editGuardianDialog.email.trim() && !isValidEmail(editGuardianDialog.email.trim()) && <p className="text-xs text-destructive">Invalid email format</p>}
             </div>
             <div className="space-y-2">
               <Label>Phone</Label>
@@ -293,12 +287,11 @@ export function GuardiansCard({
                 value={editGuardianDialog.phone}
                 onChange={(e) => setEditGuardianDialog(prev => ({ ...prev, phone: e.target.value }))}
               />
-              {editGuardianDialog.phone.trim() && !isValidPhone(editGuardianDialog.phone.trim()) && <p className="text-xs text-destructive">Invalid phone format</p>}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditGuardianDialog(prev => ({ ...prev, open: false }))}>Cancel</Button>
-            <Button onClick={handleSaveGuardianEdit} disabled={isEditGuardianSaving || !editGuardianDialog.fullName.trim() || (!!editGuardianDialog.email.trim() && !isValidEmail(editGuardianDialog.email.trim())) || (!!editGuardianDialog.phone.trim() && !isValidPhone(editGuardianDialog.phone.trim()))}>
+            <Button onClick={handleSaveGuardianEdit} disabled={isEditGuardianSaving || !editGuardianDialog.fullName.trim()}>
               {isEditGuardianSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
             </Button>
           </DialogFooter>

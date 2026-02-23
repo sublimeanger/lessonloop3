@@ -8,7 +8,6 @@ import { CreditBalanceBadge } from './CreditBalanceBadge';
 import { TeachingDefaultsCard } from './TeachingDefaultsCard';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { Loader2, Mail, Phone, Calendar } from 'lucide-react';
-import { isValidEmail, isValidPhone } from '@/lib/validation';
 import type { Student } from '@/hooks/useStudentDetailPage';
 
 interface StudentInfoCardProps {
@@ -86,26 +85,22 @@ export function StudentInfoCard({
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-firstName">First name *</Label>
+                  <Label htmlFor="edit-firstName">First name</Label>
                   <Input id="edit-firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-                  {!firstName.trim() && <p className="text-xs text-destructive">First name is required</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-lastName">Last name *</Label>
+                  <Label htmlFor="edit-lastName">Last name</Label>
                   <Input id="edit-lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} />
-                  {!lastName.trim() && <p className="text-xs text-destructive">Last name is required</p>}
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-email">Email</Label>
                   <Input id="edit-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                  {email.trim() && !isValidEmail(email.trim()) && <p className="text-xs text-destructive">Invalid email format</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-phone">Phone</Label>
                   <Input id="edit-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-                  {phone.trim() && !isValidPhone(phone.trim()) && <p className="text-xs text-destructive">Invalid phone format</p>}
                 </div>
               </div>
               <div className="space-y-2">
@@ -116,7 +111,7 @@ export function StudentInfoCard({
                 <Label htmlFor="edit-notes">Notes</Label>
                 <Textarea id="edit-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
               </div>
-              <Button onClick={handleSave} disabled={isSaving || !firstName.trim() || !lastName.trim() || (!!email.trim() && !isValidEmail(email.trim())) || (!!phone.trim() && !isValidPhone(phone.trim()))}>
+              <Button onClick={handleSave} disabled={isSaving}>
                 {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
               </Button>
             </div>

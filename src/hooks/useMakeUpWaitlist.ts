@@ -97,18 +97,15 @@ export function useWaitlist(filters?: WaitlistFilters) {
 // ── useOfferMakeUp ──────────────────────────────────────────────────────
 
 export function useOfferMakeUp() {
-  const { currentOrg } = useOrg();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (waitlistId: string) => {
-      if (!currentOrg?.id) throw new Error('No organisation selected');
       const { data, error } = await supabase
         .from('make_up_waitlist')
         .update({ status: 'offered', offered_at: new Date().toISOString() })
         .eq('id', waitlistId)
-        .eq('org_id', currentOrg.id)
         .select()
         .single();
 
@@ -134,18 +131,15 @@ export function useOfferMakeUp() {
 // ── useDismissMatch ─────────────────────────────────────────────────────
 
 export function useDismissMatch() {
-  const { currentOrg } = useOrg();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (waitlistId: string) => {
-      if (!currentOrg?.id) throw new Error('No organisation selected');
       const { data, error } = await supabase
         .from('make_up_waitlist')
         .update({ status: 'waiting', matched_lesson_id: null, matched_at: null })
         .eq('id', waitlistId)
-        .eq('org_id', currentOrg.id)
         .select()
         .single();
 

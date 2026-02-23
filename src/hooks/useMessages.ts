@@ -376,17 +376,14 @@ export function useCreateMessageTemplate() {
 
 export function useDeleteMessageTemplate() {
   const queryClient = useQueryClient();
-  const { currentOrg } = useOrg();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (templateId: string) => {
-      if (!currentOrg?.id) throw new Error('No organisation selected');
       const { error } = await supabase
         .from('message_templates')
         .delete()
-        .eq('id', templateId)
-        .eq('org_id', currentOrg.id);
+        .eq('id', templateId);
 
       if (error) throw error;
     },

@@ -223,8 +223,7 @@ export function useCalendarActions({
                     start_at: shiftedStart.toISOString(),
                     end_at: shiftedEnd.toISOString(),
                   })
-                  .eq('id', fl.id)
-                  .eq('org_id', currentOrg!.id);
+                  .eq('id', fl.id);
               });
               const results = await Promise.all(updates);
               const failed = results.find(r => r.error);
@@ -242,8 +241,7 @@ export function useCalendarActions({
           const { error } = await supabase
             .from('lessons')
             .update(updatePayload)
-            .eq('id', lesson.id)
-            .eq('org_id', currentOrg!.id);
+            .eq('id', lesson.id);
 
           if (error) throw error;
         }

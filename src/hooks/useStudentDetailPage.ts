@@ -508,11 +508,6 @@ export function useStudentDetailPage() {
           .update({ deleted_at: new Date().toISOString() })
           .eq('id', guardianId)
           .eq('org_id', currentOrg!.id);
-        if (currentOrg && user) {
-          logAudit(currentOrg.id, user.id, 'guardian.deleted', 'guardian', guardianId, {
-            before: { full_name: guardianDeleteDialog.guardianName, reason: 'orphaned' },
-          });
-        }
         toast({ title: 'Guardian removed', description: 'Guardian record archived (no remaining student links).' });
       } else {
         toast({ title: 'Guardian unlinked' });
@@ -533,7 +528,7 @@ export function useStudentDetailPage() {
 
     try {
       if (existingInviteId) {
-        await supabase.from('invites').delete().eq('id', existingInviteId).eq('org_id', currentOrg.id);
+        await supabase.from('invites').delete().eq('id', existingInviteId);
       }
 
       const { data: invite, error: inviteError } = await supabase
