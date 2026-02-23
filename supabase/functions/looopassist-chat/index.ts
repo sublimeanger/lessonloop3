@@ -1,6 +1,6 @@
 // Note: Function name has legacy typo "looopassist" — keep for backward compatibility
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, checkLoopAssistDailyCap, rateLimitResponse } from "../_shared/rate-limit.ts";
 
@@ -75,7 +75,7 @@ interface Payment {
 }
 
 // Build comprehensive context for Q&A
-async function buildDataContext(supabase: any, orgId: string, currencyCode: string = 'GBP'): Promise<{
+async function buildDataContext(supabase: SupabaseClient, orgId: string, currencyCode: string = 'GBP'): Promise<{
   summary: string;
   entities: { invoices: Invoice[]; lessons: Lesson[]; students: Student[]; guardians: Guardian[] };
   sections: Record<string, string>;
@@ -374,9 +374,9 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
   let cancellationSummary = "";
   if ((recentCancellations || []).length > 0) {
     cancellationSummary += `\n\nRECENT CANCELLATIONS (last 7 days): ${recentCancellations.length}`;
-    recentCancellations.slice(0, 5).forEach((l: any) => {
+    recentCancellations.slice(0, 5).forEach((l: Lesson) => {
       const date = new Date(l.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-      const studentNames = l.lesson_participants?.map((p: any) => 
+      const studentNames = l.lesson_participants?.map((p: { students: { first_name: string; last_name: string } | null }) => 
         p.students ? sanitiseForPrompt(`${p.students.first_name} ${p.students.last_name}`) : ""
       ).filter(Boolean).join(", ") || "Unknown";
       cancellationSummary += `\n- ${date}: ${sanitiseForPrompt(l.title)} with ${studentNames}`;
@@ -415,7 +415,7 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
   let unmarkedSummary = "";
   if ((unmarkedLessons || []).length > 0) {
     unmarkedSummary += `\n\nUNMARKED PAST LESSONS (${unmarkedLessons.length}):`;
-    unmarkedLessons.slice(0, 5).forEach((l: any) => {
+    unmarkedLessons.slice(0, 5).forEach((l: Lesson) => {
       const date = new Date(l.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
       unmarkedSummary += `\n- [Lesson:${l.id}:${sanitiseForPrompt(l.title)}] ${date}`;
     });
@@ -428,8 +428,8 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
   let teacherWorkloadSummary = "";
   if (teachers && teachers.length > 0 && teacherCounts.size > 0) {
     teacherWorkloadSummary += `\n\nTEACHER WORKLOAD (next 7 days):`;
-    const teacherMap = new Map(teachers.map((t: any) => [t.id, t.display_name]));
-    const userMap = new Map(teachers.filter((t: any) => t.user_id).map((t: any) => [t.user_id, t.display_name]));
+    const teacherMap = new Map(teachers.map((t: { id: string; display_name: string; user_id: string | null }) => [t.id, t.display_name]));
+    const userMap = new Map(teachers.filter((t: { user_id: string | null }) => t.user_id).map((t: { id: string; display_name: string; user_id: string | null }) => [t.user_id, t.display_name]));
     for (const [key, count] of teacherCounts) {
       const name = teacherMap.get(key) || userMap.get(key) || "Unknown";
       teacherWorkloadSummary += `\n- ${name}: ${count} lessons`;
@@ -437,7 +437,7 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
   }
 
   // Financial summary — use RPC totals for accuracy
-  const revenueThisMonth = (paidInvoicesThisMonth || []).reduce((sum: number, i: any) => sum + i.total_minor, 0);
+  const revenueThisMonth = (paidInvoicesThisMonth || []).reduce((sum: number, i: Invoice) => sum + i.total_minor, 0);
 
   let financialSummary = `\n\nFINANCIAL SUMMARY:`;
   financialSummary += `\n- Revenue this month: ${fmtCurrency(revenueThisMonth)}`;
@@ -475,7 +475,7 @@ async function buildDataContext(supabase: any, orgId: string, currencyCode: stri
 }
 
 // Build deep student context when viewing a specific student
-async function buildStudentContext(supabase: any, orgId: string, studentId: string, userRole?: string, currencyCode: string = 'GBP'): Promise<string> {
+async function buildStudentContext(supabase: SupabaseClient, orgId: string, studentId: string, userRole?: string, currencyCode: string = 'GBP'): Promise<string> {
   const fmtCurrency = (minor: number) =>
     new Intl.NumberFormat('en-GB', { style: 'currency', currency: currencyCode }).format(minor / 100);
   // Fetch student with all related data
@@ -539,7 +539,7 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
   const guardianLinks = student.student_guardians || [];
   if (guardianLinks.length > 0 && userRole !== "finance") {
     context += "\n\nGuardians:";
-    guardianLinks.forEach((link: any) => {
+    guardianLinks.forEach((link: { guardians: Guardian | null; relationship: string }) => {
       if (link.guardians) {
         context += `\n  - [Guardian:${link.guardians.id}:${sanitiseForPrompt(link.guardians.full_name)}] (${link.relationship})`;
         if (userRole !== "teacher" && link.guardians.email) {
@@ -559,10 +559,10 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
     .order("created_at", { ascending: true })
     .limit(15);
 
-  const upcoming = (upcomingLessons || []).filter((lp: any) => lp.lessons);
+  const upcoming = (upcomingLessons || []).filter((lp: { lessons: Lesson | null }) => lp.lessons);
   if (upcoming.length > 0) {
     context += `\n\nUpcoming Lessons (${upcoming.length}):`;
-    upcoming.forEach((lp: any) => {
+    upcoming.forEach((lp: { lessons: Lesson }) => {
       const date = new Date(lp.lessons.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
       context += `\n  - [Lesson:${lp.lessons.id}:${sanitiseForPrompt(lp.lessons.title)}] ${date}`;
     });
@@ -577,10 +577,10 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
     .order("created_at", { ascending: false })
     .limit(5);
 
-  const completed = (completedLessons || []).filter((lp: any) => lp.lessons);
+  const completed = (completedLessons || []).filter((lp: { lessons: Lesson | null }) => lp.lessons);
   if (completed.length > 0) {
     context += `\n\nRecent Completed Lessons (${completed.length}):`;
-    completed.forEach((lp: any) => {
+    completed.forEach((lp: { lessons: Lesson }) => {
       const date = new Date(lp.lessons.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
       context += `\n  - [Lesson:${lp.lessons.id}:${sanitiseForPrompt(lp.lessons.title)}] ${date} (${lp.lessons.status})`;
     });
@@ -633,7 +633,7 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
     if (practiceLogs && practiceLogs.length > 0) {
       const totalMins = practiceLogs.reduce((sum: number, p: { duration_minutes: number }) => sum + p.duration_minutes, 0);
       context += `\n\nRecent Practice (last 7 entries, ${totalMins} mins total):`;
-      practiceLogs.slice(0, 3).forEach((p: any) => {
+      practiceLogs.slice(0, 3).forEach((p: { practice_date: string; duration_minutes: number }) => {
         context += `\n  - ${p.practice_date}: ${p.duration_minutes} mins`;
       });
     }
@@ -641,7 +641,7 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
 
   // Invoices — hidden from teacher role
   if (userRole !== "teacher") {
-    const guardianIds = guardianLinks.map((link: any) => link.guardians?.id).filter(Boolean);
+    const guardianIds = guardianLinks.map((link: { guardians: Guardian | null }) => link.guardians?.id).filter(Boolean);
     const payerFilter = guardianIds.length > 0
       ? `payer_student_id.eq.${studentId},payer_guardian_id.in.(${guardianIds.join(',')})`
       : `payer_student_id.eq.${studentId}`;
@@ -696,7 +696,7 @@ async function buildStudentContext(supabase: any, orgId: string, studentId: stri
 
     if (assignments && assignments.length > 0) {
       context += `\n\nActive Practice Assignments:`;
-      assignments.forEach((a: any) => {
+      assignments.forEach((a: { title: string }) => {
         context += `\n  - ${a.title}`;
       });
     }
@@ -1144,8 +1144,8 @@ Currency: ${orgData.currency_code}`
         max_tokens: 4096,
         system: fullContext,
         messages: messages
-          .filter((m: any) => m.role && m.content)
-          .map((m: any) => ({
+          .filter((m: { role: string; content: string }) => m.role && m.content)
+          .map((m: { role: string; content: string }) => ({
             role: m.role === 'user' ? 'user' : 'assistant',
             content: typeof m.content === 'string' ? m.content : String(m.content),
           })),

@@ -360,7 +360,7 @@ function LandingView({
   dismissProactiveMessage: () => void;
 }) {
   const [input, setInput] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 100);
@@ -373,7 +373,7 @@ function LandingView({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -410,14 +410,20 @@ function LandingView({
             </div>
 
             {/* Quick input */}
-            <div className="flex gap-2" data-tour="loopassist-input">
-              <Input
+            <div className="flex gap-2 items-end" data-tour="loopassist-input">
+              <Textarea
                 ref={inputRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  const el = e.target;
+                  el.style.height = 'auto';
+                  el.style.height = Math.min(el.scrollHeight, 96) + 'px';
+                }}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask LoopAssist..."
-                className="flex-1 text-sm"
+                rows={1}
+                className="flex-1 min-h-[36px] max-h-[96px] resize-none py-2 text-sm"
               />
               <Button onClick={handleSend} disabled={!input.trim()} size="icon" className="shrink-0">
                 <Send className="h-4 w-4" />

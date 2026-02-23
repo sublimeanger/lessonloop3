@@ -1,6 +1,6 @@
 // Note: Function name has legacy typo "looopassist" — keep for backward compatibility
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
@@ -16,6 +16,26 @@ interface ActionProposal {
     params: Record<string, unknown>;
   };
   status: string;
+}
+
+interface BasicLesson {
+  id: string;
+  title: string;
+  start_at: string;
+  end_at?: string;
+  status?: string;
+  notes_shared?: string | null;
+  lesson_participants?: Array<{ students: { id: string; first_name: string; last_name: string } | null }>;
+}
+
+interface BasicInvoice {
+  id: string;
+  invoice_number: string;
+  status: string;
+  total_minor: number;
+  due_date: string;
+  guardians?: { id: string; full_name: string; email: string | null } | null;
+  students?: { id: string; first_name: string; last_name: string; email: string | null } | null;
 }
 
 serve(async (req) => {
@@ -274,7 +294,7 @@ serve(async (req) => {
 
 // Tool 1: Generate Billing Run
 async function executeGenerateBillingRun(
-  supabase: any,
+  supabase: SupabaseClient,
   orgId: string,
   userId: string,
   params: Record<string, unknown>
@@ -340,7 +360,7 @@ async function executeGenerateBillingRun(
   if (lessonsError) throw lessonsError;
 
   // ── Duplicate protection: skip already-invoiced lessons ──
-  const lessonIds = (lessons || []).map((l: any) => l.id);
+  const lessonIds = (lessons || []).map((l: BasicLesson) => l.id);
   let alreadyInvoicedIds = new Set<string>();
 
   if (lessonIds.length > 0) {
@@ -357,7 +377,7 @@ async function executeGenerateBillingRun(
     }
   }
 
-  const uninvoicedLessons = (lessons || []).filter((l: any) => !alreadyInvoicedIds.has(l.id));
+  const uninvoicedLessons = (lessons || []).filter((l: BasicLesson) => !alreadyInvoicedIds.has(l.id));
   const skippedCount = (lessons?.length || 0) - uninvoicedLessons.length;
 
   const { data: org } = await supabase
@@ -373,7 +393,7 @@ async function executeGenerateBillingRun(
    *   2. Rate card matching lesson duration
    *   3. Org default rate card
    */
-  function resolveRate(lesson: any, student: any): number {
+  function resolveRate(lesson: BasicLesson, student: { default_rate_card_id?: string | null }): number {
     // 1. Student-specific rate card
     if (student?.default_rate_card_id) {
       const studentRate = rateById.get(student.default_rate_card_id);
@@ -392,7 +412,7 @@ async function executeGenerateBillingRun(
   }
 
   // Group lessons by payer
-  const payerMap = new Map<string, { type: 'guardian' | 'student'; id: string; name: string; lessons: { lesson: any; student: any; rate: number }[] }>();
+  const payerMap = new Map<string, { type: 'guardian' | 'student'; id: string; name: string; lessons: { lesson: BasicLesson; student: Record<string, unknown>; rate: number }[] }>();
 
   for (const lesson of uninvoicedLessons) {
     for (const participant of lesson.lesson_participants || []) {
@@ -400,7 +420,7 @@ async function executeGenerateBillingRun(
       if (!student) continue;
 
       const rate = resolveRate(lesson, student);
-      const primaryGuardian = student.student_guardians?.find((sg: any) => sg.is_primary_payer);
+      const primaryGuardian = student.student_guardians?.find((sg: { is_primary_payer: boolean }) => sg.is_primary_payer);
 
       let payerKey: string;
       let payerInfo: { type: 'guardian' | 'student'; id: string; name: string };
@@ -510,7 +530,7 @@ async function executeGenerateBillingRun(
 
 // Tool 2: Send Invoice Reminders
 async function executeSendInvoiceReminders(
-  supabase: any,
+  supabase: SupabaseClient,
   orgId: string,
   userId: string,
   params: Record<string, unknown>
@@ -576,11 +596,11 @@ async function executeSendInvoiceReminders(
 
   // Build entities for structured result
   const entities = (invoices || [])
-    .filter((inv: any) => {
+    .filter((inv: BasicInvoice) => {
       const email = inv.guardians?.email || inv.students?.email;
       return !!email;
     })
-    .map((inv: any) => ({
+    .map((inv: BasicInvoice) => ({
       type: 'invoice' as const,
       id: inv.invoice_number,
       label: inv.invoice_number,
@@ -597,7 +617,7 @@ async function executeSendInvoiceReminders(
 
 // Tool 3: Reschedule Lessons
 async function executeRescheduleLessons(
-  supabase: any,
+  supabase: SupabaseClient,
   orgId: string,
   userId: string,
   params: Record<string, unknown>
@@ -662,7 +682,7 @@ async function executeRescheduleLessons(
     }
   }
 
-  const entities = (lessons || []).map((l: any) => ({
+  const entities = (lessons || []).map((l: BasicLesson) => ({
     type: 'lesson' as const,
     id: l.id,
     label: l.title,
@@ -679,7 +699,7 @@ async function executeRescheduleLessons(
 
 // Tool 4: Draft Email
 async function executeDraftEmail(
-  supabase: any,
+  supabase: SupabaseClient,
   orgId: string,
   userId: string,
   params: Record<string, unknown>
@@ -743,7 +763,7 @@ async function executeDraftEmail(
 
 // Tool 5: Mark Attendance
 async function executeMarkAttendance(
-  supabase: any,
+  supabase: SupabaseClient,
   orgId: string,
   userId: string,
   params: Record<string, unknown>
@@ -820,7 +840,7 @@ async function executeMarkAttendance(
     after: { records, results },
   });
 
-  const entities = (records || []).map((r: any) => {
+  const entities = (records || []).map((r: { lesson_id: string; student_id: string; attendance_status: string }) => {
     const participant = (lessons || []).length > 0 ? null : null; // already logged in results
     return {
       type: 'student' as const,
@@ -851,7 +871,7 @@ async function executeMarkAttendance(
 
 // Tool 6: Cancel Lesson
 async function executeCancelLesson(
-  supabase: any,
+  supabase: SupabaseClient,
   orgId: string,
   userId: string,
   params: Record<string, unknown>
@@ -956,7 +976,7 @@ async function executeCancelLesson(
     message += ` and issued ${creditsIssued} make-up credit(s)`;
   }
 
-  const entities = (lessons || []).map((l: any) => ({
+  const entities = (lessons || []).map((l: BasicLesson) => ({
     type: 'lesson' as const,
     id: l.id,
     label: l.title,
@@ -974,7 +994,7 @@ async function executeCancelLesson(
 
 // Tool 7: Complete Lessons
 async function executeCompleteLessons(
-  supabase: any,
+  supabase: SupabaseClient,
   orgId: string,
   userId: string,
   params: Record<string, unknown>
@@ -1021,7 +1041,7 @@ async function executeCompleteLessons(
     after: { lesson_ids: lessonIds, results },
   });
 
-  const entities = (lessons || []).map((l: any) => ({
+  const entities = (lessons || []).map((l: BasicLesson) => ({
     type: 'lesson' as const,
     id: l.id,
     label: l.title,
@@ -1038,7 +1058,7 @@ async function executeCompleteLessons(
 
 // Tool 8: Send Progress Report
 async function executeSendProgressReport(
-  supabase: any,
+  supabase: SupabaseClient,
   orgId: string,
   userId: string,
   params: Record<string, unknown>
@@ -1087,8 +1107,8 @@ async function executeSendProgressReport(
     .eq("student_id", studentId)
     .gte("created_at", startDate.toISOString());
 
-  const lessons = lessonParticipants?.map((lp: any) => lp.lessons).filter(Boolean) || [];
-  const completedLessons = lessons.filter((l: any) => l.status === "completed");
+  const lessons = lessonParticipants?.map((lp: { lessons: BasicLesson | null }) => lp.lessons).filter(Boolean) || [];
+  const completedLessons = lessons.filter((l: BasicLesson) => l.status === "completed");
 
   // Fetch attendance
   const { data: attendance } = await supabase
@@ -1097,7 +1117,7 @@ async function executeSendProgressReport(
     .eq("student_id", studentId)
     .gte("recorded_at", startDate.toISOString());
 
-  const presentCount = (attendance || []).filter((a: any) => a.attendance_status === "present").length;
+  const presentCount = (attendance || []).filter((a: { attendance_status: string }) => a.attendance_status === "present").length;
   const attendanceRate = attendance?.length ? Math.round((presentCount / attendance.length) * 100) : 0;
 
   // Fetch practice stats
@@ -1113,7 +1133,7 @@ async function executeSendProgressReport(
     .eq("student_id", studentId)
     .gte("practice_date", startDate.toISOString().split("T")[0]);
 
-  const totalPracticeMinutes = (practiceLogs || []).reduce((sum: number, p: any) => sum + p.duration_minutes, 0);
+  const totalPracticeMinutes = (practiceLogs || []).reduce((sum: number, p: { duration_minutes: number }) => sum + p.duration_minutes, 0);
 
   // Build report content
   const periodLabel = period === "week" ? "this week" : period === "term" ? "this term" : "this month";
@@ -1135,7 +1155,7 @@ async function executeSendProgressReport(
   
   if (completedLessons.length > 0) {
     reportBody += `\nRECENT LESSON NOTES\n`;
-    completedLessons.slice(0, 3).forEach((l: any) => {
+    completedLessons.slice(0, 3).forEach((l: BasicLesson) => {
       if (l.notes_shared) {
         const date = new Date(l.start_at).toLocaleDateString("en-GB");
         reportBody += `${date} - ${l.title}: ${l.notes_shared}\n`;
