@@ -132,16 +132,17 @@ Roles: `owner` > `admin` > `teacher` / `finance` > `parent`
 
 | ID | Priority | Test | Pass Criteria | Result |
 |---|---|---|---|---|
-| SEC-INJ-01 | P0 | SQL injection via student name field | Parameterised queries prevent injection | |
-| SEC-INJ-02 | P0 | XSS via lesson notes (shared with parents) | Output sanitised (DOMPurify), scripts not executed | |
-| SEC-INJ-03 | P0 | XSS via markdown content in messages | rehype-sanitize strips dangerous tags | |
-| SEC-INJ-04 | P1 | File upload with malicious filename | Filename sanitised, content-type validated server-side | |
-| SEC-INJ-05 | P1 | File upload exceeding 50MB | Rejected with clear error | |
-| SEC-INJ-06 | P1 | File upload with disallowed MIME type | Rejected (only PDF, image, audio, video, Word doc allowed) | |
-| SEC-INJ-07 | P1 | Practice log with duration > 720 minutes | Rejected by validation | |
-| SEC-INJ-08 | P1 | Closure date range > 365 days | Rejected by validation | |
-| SEC-INJ-09 | P2 | Room capacity set to 0 or negative | Rejected (minimum 1) | |
-| SEC-INJ-10 | P2 | Term end date before start date | Rejected by validation | |
+| SEC-INJ-01 | P0 | SQL injection via student name field | Parameterised queries prevent injection | ✅ Student writes/reads use Supabase query builder (`.update()`, `.eq()`, `.select()`) rather than string-concatenated SQL |
+| SEC-INJ-02 | P0 | XSS via lesson notes (shared with parents) | Output sanitised (DOMPurify), scripts not executed | ✅ HTML rendering paths use DOMPurify allow-list sanitisation before `dangerouslySetInnerHTML` |
+| SEC-INJ-03 | P0 | XSS via markdown content in messages | rehype-sanitize strips dangerous tags | ⚠️ Markdown sanitisation is present in LoopAssist/ParentLoopAssist via `rehype-sanitize`; verify same renderer path for all user-message markdown surfaces |
+| SEC-INJ-04 | P1 | File upload with malicious filename | Filename sanitised, content-type validated server-side | ✅ Upload flow sanitises filenames and validates MIME before persistence (`sanitizeFileName`, `validateResourceFile`) |
+| SEC-INJ-05 | P1 | File upload exceeding 50MB | Rejected with clear error | ✅ Shared upload validation rejects files over `50MB` with explicit error |
+| SEC-INJ-06 | P1 | File upload with disallowed MIME type | Rejected (only PDF, image, audio, video, Word doc allowed) | ✅ Upload validation enforces explicit allow-list for PDF/image/audio/video/Word MIME types |
+| SEC-INJ-07 | P1 | Practice log with duration > 720 minutes | Rejected by validation | ✅ Practice timer blocks submission when duration exceeds 720 minutes |
+| SEC-INJ-08 | P1 | Closure date range > 365 days | Rejected by validation | ✅ Scheduling settings block closure ranges longer than 365 days |
+| SEC-INJ-09 | P2 | Room capacity set to 0 or negative | Rejected (minimum 1) | ✅ Room save validation rejects capacity values below 1 |
+| SEC-INJ-10 | P2 | Term end date before start date | Rejected by validation | ✅ Term management UI blocks save when end date is before start date |
+
 
 ---
 
@@ -149,19 +150,20 @@ Roles: `owner` > `admin` > `teacher` / `finance` > `parent`
 
 | ID | Priority | Test | Pass Criteria | Result |
 |---|---|---|---|---|
-| FIN-INT-01 | P0 | Invoice total = Σ(line items) + VAT − credits | Calculation matches to the penny (minor units) | |
-| FIN-INT-02 | P0 | Payment amount exceeding invoice total | Rejected by `record_payment_and_update_status` (>1% tolerance) | |
-| FIN-INT-03 | P0 | Invoice status transition: `paid` → any other | Blocked by `enforce_invoice_status_transition` trigger | |
-| FIN-INT-04 | P0 | Invoice status transition: `void` → any other | Blocked (terminal state) | |
-| FIN-INT-05 | P0 | Invoice status transition: `draft` → `paid` (skipping `sent`) | Blocked (invalid transition) | |
-| FIN-INT-06 | P0 | Double-payment on fully paid invoice | Rejected by function | |
-| FIN-INT-07 | P0 | Make-up credit double-redemption | Rejected by `FOR UPDATE` lock + redeemed_at check | |
-| FIN-INT-08 | P0 | Void invoice with credits applied | Credits restored to available pool | |
-| FIN-INT-09 | P1 | Invoice number uniqueness per org per year | Sequence function prevents duplicates | |
-| FIN-INT-10 | P1 | VAT calculation at 20% standard UK rate | `£100 subtotal → £20 VAT → £120 total` | |
-| FIN-INT-11 | P1 | Currency defaults to GBP | New orgs default to `GBP` | |
-| FIN-INT-12 | P1 | Payment plan installments sum to invoice total | Last instalment absorbs rounding difference | |
-| FIN-INT-13 | P2 | Billing run deduplication | Same lesson not billed twice across runs | |
+| FIN-INT-01 | P0 | Invoice total = Σ(line items) + VAT − credits | Calculation matches to the penny (minor units) | ✅ Invoice creation function computes subtotal/tax/credit offset in minor units and persists `total_minor = subtotal + tax - credit` (floored at 0) |
+| FIN-INT-02 | P0 | Payment amount exceeding invoice total | Rejected by `record_payment_and_update_status` (>1% tolerance) | ✅ Payment RPC blocks overpayment when existing+new exceeds `invoice.total_minor * 1.01` |
+| FIN-INT-03 | P0 | Invoice status transition: `paid` → any other | Blocked by `enforce_invoice_status_transition` trigger | ✅ Trigger function treats `paid` as terminal and raises on transition |
+| FIN-INT-04 | P0 | Invoice status transition: `void` → any other | Blocked (terminal state) | ✅ Trigger function treats `void` as terminal and raises on transition |
+| FIN-INT-05 | P0 | Invoice status transition: `draft` → `paid` (skipping `sent`) | Blocked (invalid transition) | ✅ Trigger allows `draft` only to `sent`/`void`, so `draft` → `paid` is rejected |
+| FIN-INT-06 | P0 | Double-payment on fully paid invoice | Rejected by function | ✅ Payment RPC rejects writes when invoice status is already `paid`/`void` |
+| FIN-INT-07 | P0 | Make-up credit double-redemption | Rejected by `FOR UPDATE` lock + redeemed_at check | ⚠️ Related financial functions use row locks and duplicate guards, but explicit double-redeem integration proof for this exact path still required |
+| FIN-INT-08 | P0 | Void invoice with credits applied | Credits restored to available pool | ✅ `void_invoice` restores linked credits (`redeemed_at/applied_to_invoice_id` reset) when credit was applied |
+| FIN-INT-09 | P1 | Invoice number uniqueness per org per year | Sequence function prevents duplicates | ⚠️ Referenced as system function/documented behavior; requires direct function-level verification in live DB |
+| FIN-INT-10 | P1 | VAT calculation at 20% standard UK rate | `£100 subtotal → £20 VAT → £120 total` | ✅ Invoice computation applies VAT via `ROUND(subtotal * vat_rate / 100.0)` and stores `tax_minor`/`total_minor` |
+| FIN-INT-11 | P1 | Currency defaults to GBP | New orgs default to `GBP` | ✅ Schema defaults include `currency_code = 'GBP'` for core financial entities |
+| FIN-INT-12 | P1 | Payment plan installments sum to invoice total | Last instalment absorbs rounding difference | ✅ Installment generator computes equal splits and assigns remainder to last installment (`_last_amount`) |
+| FIN-INT-13 | P2 | Billing run deduplication | Same lesson not billed twice across runs | ⚠️ Dedup behavior is referenced in docs/tests, but needs explicit run-level integration verification at scale |
+
 
 ---
 
