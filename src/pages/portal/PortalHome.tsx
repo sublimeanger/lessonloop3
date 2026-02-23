@@ -60,31 +60,53 @@ export default function PortalHome() {
 
     const handleMakeupAction = async () => {
       try {
+        // Resolve guardian_id for the current user
+        const { data: guardian, error: gErr } = await supabase
+          .from('guardians')
+          .select('id')
+          .eq('user_id', (await supabase.auth.getUser()).data.user?.id ?? '')
+          .is('deleted_at', null)
+          .maybeSingle();
+        if (gErr) throw gErr;
+        if (!guardian) {
+          toast({ title: 'Guardian record not found', description: 'Please contact the academy.', variant: 'destructive' });
+          return;
+        }
+
         if (action === 'accept') {
-          const { error } = await supabase
+          const { data, error } = await supabase
             .from('make_up_waitlist')
             .update({ status: 'accepted', responded_at: new Date().toISOString() })
-            .eq('id', id);
+            .eq('id', id)
+            .eq('guardian_id', guardian.id)
+            .eq('status', 'offered')
+            .select('id');
           if (error) throw error;
+          if (!data?.length) {
+            toast({ title: 'Unable to accept', description: 'This offer may have expired or already been actioned.', variant: 'destructive' });
+            return;
+          }
           toast({ title: 'Make-up accepted! The academy will confirm the booking shortly.' });
         } else if (action === 'decline') {
-          // Mark as declined first
-          const { error: declineErr } = await supabase
+          const { data, error: declineErr } = await supabase
             .from('make_up_waitlist')
             .update({ status: 'declined', responded_at: new Date().toISOString() })
-            .eq('id', id);
+            .eq('id', id)
+            .eq('guardian_id', guardian.id)
+            .eq('status', 'offered')
+            .select('id');
           if (declineErr) throw declineErr;
+          if (!data?.length) {
+            toast({ title: 'Unable to decline', description: 'This offer may have expired or already been actioned.', variant: 'destructive' });
+            return;
+          }
 
           // Reset to waiting so the system can re-match
           const { error: resetErr } = await supabase
             .from('make_up_waitlist')
-            .update({
-              status: 'waiting',
-              matched_lesson_id: null,
-              matched_at: null,
-              offered_at: null,
-            })
-            .eq('id', id);
+            .update({ status: 'waiting', matched_lesson_id: null, matched_at: null, offered_at: null })
+            .eq('id', id)
+            .eq('guardian_id', guardian.id);
           if (resetErr) throw resetErr;
           toast({ title: "Slot declined. We'll keep looking for another available time." });
         }
@@ -93,7 +115,6 @@ export default function PortalHome() {
         logger.error('Make-up action error:', err);
         toast({ title: 'Something went wrong', description: message, variant: 'destructive' });
       } finally {
-        // Clean URL params
         setSearchParams({}, { replace: true });
         queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_parent'] });
       }
@@ -113,13 +134,36 @@ export default function PortalHome() {
     ['waiting', 'matched', 'offered', 'accepted', 'booked'].includes(e.status)
   );
 
+  const resolveGuardianId = async (): Promise<string | null> => {
+    const { data: guardian, error } = await supabase
+      .from('guardians')
+      .select('id')
+      .eq('user_id', (await supabase.auth.getUser()).data.user?.id ?? '')
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (error || !guardian) return null;
+    return guardian.id;
+  };
+
   const handleInlineAccept = async (id: string) => {
     try {
-      const { error } = await supabase
+      const guardianId = await resolveGuardianId();
+      if (!guardianId) {
+        toast({ title: 'Guardian record not found', description: 'Please contact the academy.', variant: 'destructive' });
+        return;
+      }
+      const { data, error } = await supabase
         .from('make_up_waitlist')
         .update({ status: 'accepted', responded_at: new Date().toISOString() })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('guardian_id', guardianId)
+        .eq('status', 'offered')
+        .select('id');
       if (error) throw error;
+      if (!data?.length) {
+        toast({ title: 'Unable to accept', description: 'This offer may have expired or already been actioned.', variant: 'destructive' });
+        return;
+      }
       toast({ title: 'Make-up accepted! The academy will confirm the booking shortly.' });
       queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_parent'] });
     } catch (err: unknown) {
@@ -130,16 +174,29 @@ export default function PortalHome() {
 
   const handleInlineDecline = async (id: string) => {
     try {
-      const { error: declineErr } = await supabase
+      const guardianId = await resolveGuardianId();
+      if (!guardianId) {
+        toast({ title: 'Guardian record not found', description: 'Please contact the academy.', variant: 'destructive' });
+        return;
+      }
+      const { data, error: declineErr } = await supabase
         .from('make_up_waitlist')
         .update({ status: 'declined', responded_at: new Date().toISOString() })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('guardian_id', guardianId)
+        .eq('status', 'offered')
+        .select('id');
       if (declineErr) throw declineErr;
+      if (!data?.length) {
+        toast({ title: 'Unable to decline', description: 'This offer may have expired or already been actioned.', variant: 'destructive' });
+        return;
+      }
 
       const { error: resetErr } = await supabase
         .from('make_up_waitlist')
         .update({ status: 'waiting', matched_lesson_id: null, matched_at: null, offered_at: null })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('guardian_id', guardianId);
       if (resetErr) throw resetErr;
 
       toast({ title: "Slot declined. We'll keep looking for another available time." });
