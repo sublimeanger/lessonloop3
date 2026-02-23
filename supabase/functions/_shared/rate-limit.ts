@@ -11,9 +11,13 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   // AI / LoopAssist — tight to control costs
   "looopassist-chat":      { maxRequests: 20,  windowMinutes: 1 },
   "looopassist-execute":   { maxRequests: 10,  windowMinutes: 1 },
+  "parent-loopassist-chat": { maxRequests: 10, windowMinutes: 60 },
 
   // Messaging — anti-spam
   "send-message":          { maxRequests: 50,  windowMinutes: 60 },
+  "send-parent-reply":     { maxRequests: 20,  windowMinutes: 60 },
+  "send-parent-enquiry":   { maxRequests: 10,  windowMinutes: 60 },
+  "send-parent-message":   { maxRequests: 20,  windowMinutes: 60 },
   "send-bulk-message":     { maxRequests: 50,  windowMinutes: 60 },
   "send-invite-email":     { maxRequests: 30,  windowMinutes: 60 },
   "send-invoice-email":    { maxRequests: 50,  windowMinutes: 60 },

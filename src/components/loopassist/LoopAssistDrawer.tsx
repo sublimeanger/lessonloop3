@@ -4,9 +4,20 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
+
+const entityChipSchema = {
+  ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames || []), 'span'],
+  attributes: {
+    ...defaultSchema.attributes,
+    span: ['data-entity-type', 'data-entity-id', 'data-entity-label', 'className'],
+  },
+};
 import {
   MessageSquare,
   Plus,
@@ -22,7 +33,7 @@ import {
 import { useLoopAssist, AIMessage, AIConversation } from '@/hooks/useLoopAssist';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { useProactiveAlerts, ProactiveAlert } from '@/hooks/useProactiveAlerts';
-import { useLoopAssistFirstRun } from '@/hooks/useLoopAssistFirstRun';
+import { useLoopAssistFirstRun, type ProactiveMessage } from '@/hooks/useLoopAssistFirstRun';
 import { preprocessEntityChips, EntityChip } from './EntityChip';
 import { ActionCard, stripActionBlock, parseActionFromResponse } from './ActionCard';
 import { ResultCard, parseResultFromResponse, stripResultBlock } from './ResultCard';
@@ -65,6 +76,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     handleProposal,
     handleProposalLoading,
     deleteConversation,
+    messagesLoading,
   } = useLoopAssist(pageContext);
 
   const [input, setInput] = useState('');
@@ -123,9 +135,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     setInput(e.target.value);
     const el = e.target;
     el.style.height = 'auto';
-    const lineHeight = 20;
-    const maxHeight = lineHeight * 4 + 16;
-    el.style.height = Math.min(el.scrollHeight, maxHeight) + 'px';
+    el.style.height = Math.min(el.scrollHeight, 96) + 'px'; // 96px max (~4 lines)
   };
 
   const handleNewConversation = () => {
@@ -133,6 +143,13 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     setView('chat');
     setFailedMessage(null);
   };
+
+  // Listen for new conversation shortcut event (Cmd+Shift+J)
+  useEffect(() => {
+    const handler = () => handleNewConversation();
+    window.addEventListener('loopassist-new-conversation', handler);
+    return () => window.removeEventListener('loopassist-new-conversation', handler);
+  }, []);
 
   const handleSelectConversation = (id: string) => {
     setCurrentConversationId(id);
@@ -229,7 +246,19 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
             {/* Messages */}
             <ScrollArea className="flex-1 px-4">
               <div className="space-y-4 py-4">
-                {messages.length === 0 && !isStreaming && (
+                {messagesLoading && (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
+                        <div className="max-w-[85%] space-y-2">
+                          <Skeleton className="h-4 w-48" />
+                          <Skeleton className="h-4 w-32" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!messagesLoading && messages.length === 0 && !isStreaming && (
                   <div className="text-center text-muted-foreground">
                     <Sparkles className="mx-auto mb-2 h-8 w-8 text-primary/50" />
                     <p className="text-sm">Start a new conversation</p>
@@ -352,7 +381,7 @@ function LandingView({
   dismissProactiveMessage,
 }: {
   alerts: ProactiveAlert[];
-  proactiveMessage: any;
+  proactiveMessage: ProactiveMessage | null;
   suggestedPrompts: string[];
   conversations: AIConversation[];
   onSendMessage: (msg: string) => void;
@@ -362,7 +391,7 @@ function LandingView({
   dismissProactiveMessage: () => void;
 }) {
   const [input, setInput] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 100);
@@ -375,7 +404,7 @@ function LandingView({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -412,14 +441,20 @@ function LandingView({
             </div>
 
             {/* Quick input */}
-            <div className="flex gap-2" data-tour="loopassist-input">
-              <Input
+            <div className="flex gap-2 items-end" data-tour="loopassist-input">
+              <Textarea
                 ref={inputRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  const el = e.target;
+                  el.style.height = 'auto';
+                  el.style.height = Math.min(el.scrollHeight, 96) + 'px';
+                }}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask LoopAssist..."
-                className="flex-1 text-sm"
+                rows={1}
+                className="flex-1 min-h-[36px] max-h-[96px] resize-none py-2 text-sm"
               />
               <Button onClick={handleSend} disabled={!input.trim()} size="icon" className="shrink-0">
                 <Send className="h-4 w-4" />
@@ -521,6 +556,7 @@ function ConversationList({
 }) {
   const [searchQuery, setSearchQuery] = useState('');
 
+  // TODO: Add full-text search via Supabase for message content search
   const filteredConversations = searchQuery.trim()
     ? conversations.filter(conv =>
         conv.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -620,7 +656,7 @@ function MessageBubble({ message, conversationId }: { message: AIMessage; conver
         ) : (
           <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:mb-1 [&_p:last-child]:mb-0 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0 [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-sm [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_h1]:mb-1 [&_h2]:mb-1 [&_h3]:mb-1 [&_pre]:bg-background/50 [&_pre]:text-xs [&_pre]:p-2 [&_pre]:rounded">
             <ReactMarkdown
-              rehypePlugins={[rehypeRaw]}
+              rehypePlugins={[rehypeRaw, [rehypeSanitize, entityChipSchema]]}
               components={{
                 p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
                 strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
@@ -662,7 +698,7 @@ function MessageBubble({ message, conversationId }: { message: AIMessage; conver
         <MessageFeedback 
           messageId={message.id} 
           conversationId={conversationId}
-          className="mt-1 opacity-0 group-hover:opacity-100 hover:opacity-100"
+          className="mt-1 opacity-0 group-hover:opacity-100 hover:opacity-100 focus-within:opacity-100 md:opacity-0 max-md:opacity-60"
         />
       )}
     </div>

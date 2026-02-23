@@ -126,7 +126,7 @@ export function CreateAssignmentModal({
     e.preventDefault();
     
     if (!studentId || !title.trim()) {
-      toast({ title: 'Please fill in required fields', variant: 'destructive' });
+      toast.error('Please fill in required fields');
       return;
     }
 
@@ -142,11 +142,11 @@ export function CreateAssignmentModal({
         grade_level_id: gradeLevelId && gradeLevelId !== 'none' ? gradeLevelId : undefined,
       });
       
-      toast({ title: 'Practice assignment created' });
+      toast.success('Practice assignment created');
       onOpenChange(false);
       resetForm();
     } catch (error: unknown) {
-      toast({ title: error instanceof Error ? error.message : 'Failed to create assignment', variant: 'destructive' });
+      toast.error(error instanceof Error ? error.message : 'Failed to create assignment');
     }
   };
 

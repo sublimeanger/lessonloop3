@@ -3,6 +3,7 @@ import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useToast } from '@/hooks/use-toast';
+import { useCalendarSync } from '@/hooks/useCalendarSync';
 
 export interface AdminMessageRequest {
   id: string;
@@ -40,6 +41,7 @@ export function useAdminMessageRequests(options?: { status?: string }) {
           lesson:lessons(id, title, start_at, end_at, teacher_id, location_id)
         `)
         .eq('org_id', currentOrg.id)
+        .in('request_type', ['cancellation', 'reschedule'])
         .order('created_at', { ascending: false });
 
       if (options?.status && options.status !== 'all') {
@@ -71,6 +73,7 @@ export interface UpdateRequestPayload {
 export function useUpdateMessageRequest() {
   const { currentOrg } = useOrg();
   const queryClient = useQueryClient();
+  const { syncLesson } = useCalendarSync();
   const { toast } = useToast();
 
   return useMutation({
@@ -149,6 +152,8 @@ export function useUpdateMessageRequest() {
 
           if (lessonError) throw new Error(`Failed to reschedule lesson: ${lessonError.message}`);
           calendarAction = 'rescheduled';
+          // Fire-and-forget calendar sync
+          syncLesson(lessonId, 'update');
         } else if (requestType === 'cancellation') {
           // Actually cancel the lesson on the calendar
           const { data: sessionData } = await supabase.auth.getSession();
@@ -165,6 +170,8 @@ export function useUpdateMessageRequest() {
 
           if (lessonError) throw new Error(`Failed to cancel lesson: ${lessonError.message}`);
           calendarAction = 'cancelled';
+          // Fire-and-forget calendar sync
+          syncLesson(lessonId, 'update');
         }
       }
 
@@ -186,7 +193,8 @@ export function useUpdateMessageRequest() {
 
       if (error) throw error;
 
-      // Send email notification to guardian
+      // Create a conversation message so the parent sees the update in their inbox.
+      // This replaces the old standalone email via send-message.
       const guardian = request.guardians as { email: string | null; full_name: string } | null;
       if (guardian?.email && (status === 'approved' || status === 'declined' || status === 'resolved')) {
         const statusLabel = status === 'approved' 
@@ -203,15 +211,32 @@ export function useUpdateMessageRequest() {
         }
 
         const fullBody = adminResponse 
-          ? `${statusMessage}\n\nResponse from your teacher:\n${adminResponse}\n\nView details in your parent portal.`
-          : `${statusMessage}\n\nView details in your parent portal.`;
+          ? `${statusMessage}\n\nResponse from your teacher:\n${adminResponse}`
+          : statusMessage;
 
         try {
           const { data: sessionData } = await supabase.auth.getSession();
+          const senderId = sessionData.session?.user.id;
+
+          // Check if there's already a conversation thread for this request
+          // (e.g. if the parent's original general enquiry created a message_log entry)
+          const { data: existingThread } = await supabase
+            .from('message_log')
+            .select('id, thread_id')
+            .eq('org_id', currentOrg.id)
+            .eq('related_id', requestId)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+          const threadId = existingThread?.thread_id || existingThread?.id || null;
+
+          // Insert conversation message via send-message edge function
+          // This creates the message_log entry AND sends the email notification
           await supabase.functions.invoke('send-message', {
             body: {
               org_id: currentOrg.id,
-              sender_user_id: sessionData.session?.user.id,
+              sender_user_id: senderId,
               recipient_type: 'guardian',
               recipient_id: request.guardian_id,
               recipient_email: guardian.email,
@@ -220,10 +245,12 @@ export function useUpdateMessageRequest() {
               body: fullBody,
               related_id: requestId,
               message_type: 'request_update',
+              thread_id: threadId,
+              parent_message_id: existingThread?.id || null,
             },
           });
         } catch (emailError) {
-          logger.error('Error sending notification email:', emailError);
+          logger.error('Error sending conversation message:', emailError);
         }
       }
 
@@ -262,6 +289,7 @@ export function usePendingRequestsCount() {
         .from('message_requests')
         .select('id', { count: 'exact', head: true })
         .eq('org_id', currentOrg.id)
+        .in('request_type', ['cancellation', 'reschedule'])
         .eq('status', 'pending');
 
       if (error) throw error;

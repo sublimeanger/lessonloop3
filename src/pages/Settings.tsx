@@ -18,7 +18,9 @@ import { TeacherAvailabilityTab } from '@/components/settings/TeacherAvailabilit
 import { BillingTab } from '@/components/settings/BillingTab';
 import { HelpToursTab } from '@/components/settings/HelpToursTab';
 import { CalendarIntegrationsTab } from '@/components/settings/CalendarIntegrationsTab';
+import { LoopAssistPreferencesTab } from '@/components/settings/LoopAssistPreferencesTab';
 import { MusicSettingsTab } from '@/components/settings/MusicSettingsTab';
+import { MessagingSettingsTab } from '@/components/settings/MessagingSettingsTab';
 import { useOrg } from '@/contexts/OrgContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTeachers } from '@/hooks/useTeachers';
@@ -63,9 +65,11 @@ function MobileTabBar({ initialTab, isOrgAdmin }: { initialTab: string; isOrgAdm
       {isOrgAdmin && <TabsTrigger value="privacy">Privacy &amp; GDPR</TabsTrigger>}
       {isOrgAdmin && <TabsTrigger value="rate-cards">Rate Cards</TabsTrigger>}
       {isOrgAdmin && <TabsTrigger value="music">Music</TabsTrigger>}
+      {isOrgAdmin && <TabsTrigger value="messaging">Messaging</TabsTrigger>}
       <TabsTrigger value="availability">Availability</TabsTrigger>
       <TabsTrigger value="calendar">Calendar Sync</TabsTrigger>
       {isOrgAdmin && <TabsTrigger value="billing">Billing</TabsTrigger>}
+      {isOrgAdmin && <TabsTrigger value="looopassist">LoopAssist AI</TabsTrigger>}
       <TabsTrigger value="notifications">Notifications</TabsTrigger>
       <TabsTrigger value="help-tours">Help &amp; Tours</TabsTrigger>
     </>
@@ -135,7 +139,7 @@ export default function Settings() {
   usePageMeta('Settings — LessonLoop', 'Manage your account, organisation, and subscription settings');
   const [searchParams, setSearchParams] = useSearchParams();
   const { isOrgAdmin } = useOrg();
-  const adminTabs = ['members', 'scheduling', 'audit', 'privacy', 'rate-cards', 'music', 'billing'];
+  const adminTabs = ['members', 'scheduling', 'audit', 'privacy', 'rate-cards', 'music', 'messaging', 'billing', 'looopassist'];
   const rawTab = searchParams.get('tab') || 'profile';
   const activeTab = (!isOrgAdmin && adminTabs.includes(rawTab)) ? 'profile' : rawTab;
 
@@ -167,6 +171,7 @@ export default function Settings() {
         {isOrgAdmin && <TabsContent value="privacy"><PrivacyTab /></TabsContent>}
         {isOrgAdmin && <TabsContent value="rate-cards"><RateCardsTab /></TabsContent>}
         {isOrgAdmin && <TabsContent value="music"><MusicSettingsTab /></TabsContent>}
+        {isOrgAdmin && <TabsContent value="messaging"><MessagingSettingsTab /></TabsContent>}
 
         <TabsContent value="availability">
           <AvailabilityTabWithSelector isOrgAdmin={isOrgAdmin} />
@@ -181,6 +186,8 @@ export default function Settings() {
             </div>
           </TabsContent>
         )}
+
+        {isOrgAdmin && <TabsContent value="looopassist"><LoopAssistPreferencesTab /></TabsContent>}
 
         <TabsContent value="notifications"><NotificationsTab /></TabsContent>
         <TabsContent value="help-tours"><HelpToursTab /></TabsContent>

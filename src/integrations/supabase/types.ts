@@ -760,6 +760,33 @@ export type Database = {
           },
         ]
       }
+      exam_boards: {
+        Row: {
+          country_code: string
+          created_at: string
+          id: string
+          name: string
+          short_name: string
+          sort_order: number
+        }
+        Insert: {
+          country_code?: string
+          created_at?: string
+          id?: string
+          name: string
+          short_name: string
+          sort_order?: number
+        }
+        Update: {
+          country_code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          short_name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       external_busy_blocks: {
         Row: {
           connection_id: string
@@ -818,6 +845,126 @@ export type Database = {
           },
         ]
       }
+      grade_change_history: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          id: string
+          new_grade_id: string
+          old_grade_id: string | null
+          org_id: string
+          reason: string | null
+          student_id: string
+          student_instrument_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          id?: string
+          new_grade_id: string
+          old_grade_id?: string | null
+          org_id: string
+          reason?: string | null
+          student_id: string
+          student_instrument_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          id?: string
+          new_grade_id?: string
+          old_grade_id?: string | null
+          org_id?: string
+          reason?: string | null
+          student_id?: string
+          student_instrument_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grade_change_history_new_grade_id_fkey"
+            columns: ["new_grade_id"]
+            isOneToOne: false
+            referencedRelation: "grade_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grade_change_history_old_grade_id_fkey"
+            columns: ["old_grade_id"]
+            isOneToOne: false
+            referencedRelation: "grade_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grade_change_history_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grade_change_history_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grade_change_history_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grade_change_history_student_instrument_id_fkey"
+            columns: ["student_instrument_id"]
+            isOneToOne: false
+            referencedRelation: "student_instruments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grade_levels: {
+        Row: {
+          created_at: string
+          description: string | null
+          exam_board_id: string | null
+          id: string
+          is_diploma: boolean
+          name: string
+          short_name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          exam_board_id?: string | null
+          id?: string
+          is_diploma?: boolean
+          name: string
+          short_name: string
+          sort_order: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          exam_board_id?: string | null
+          id?: string
+          is_diploma?: boolean
+          name?: string
+          short_name?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grade_levels_exam_board_id_fkey"
+            columns: ["exam_board_id"]
+            isOneToOne: false
+            referencedRelation: "exam_boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guardians: {
         Row: {
           created_at: string
@@ -862,6 +1009,51 @@ export type Database = {
           },
           {
             foreignKeyName: "guardians_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instruments: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          is_custom: boolean
+          name: string
+          org_id: string | null
+          sort_order: number
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          is_custom?: boolean
+          name: string
+          org_id?: string | null
+          sort_order?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          is_custom?: boolean
+          name?: string
+          org_id?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instruments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instruments_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "parent_org_info"
@@ -2289,9 +2481,64 @@ export type Database = {
           },
         ]
       }
+      org_messaging_settings: {
+        Row: {
+          auto_assign_to_teacher: boolean
+          created_at: string
+          notify_parent_on_reply: boolean
+          notify_staff_on_new_message: boolean
+          org_id: string
+          parent_can_initiate: boolean
+          parent_can_message_admin: boolean
+          parent_can_message_owner: boolean
+          parent_can_message_teacher: boolean
+          updated_at: string
+        }
+        Insert: {
+          auto_assign_to_teacher?: boolean
+          created_at?: string
+          notify_parent_on_reply?: boolean
+          notify_staff_on_new_message?: boolean
+          org_id: string
+          parent_can_initiate?: boolean
+          parent_can_message_admin?: boolean
+          parent_can_message_owner?: boolean
+          parent_can_message_teacher?: boolean
+          updated_at?: string
+        }
+        Update: {
+          auto_assign_to_teacher?: boolean
+          created_at?: string
+          notify_parent_on_reply?: boolean
+          notify_staff_on_new_message?: boolean
+          org_id?: string
+          parent_can_initiate?: boolean
+          parent_can_message_admin?: boolean
+          parent_can_message_owner?: boolean
+          parent_can_message_teacher?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_messaging_settings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_messaging_settings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organisations: {
         Row: {
           address: string | null
+          ai_preferences: Json | null
           auto_pause_lessons_after_days: number | null
           bank_account_name: string | null
           bank_account_number: string | null
@@ -2307,6 +2554,7 @@ export type Database = {
           created_by: string
           credit_expiry_days: number | null
           currency_code: string
+          default_exam_board_id: string | null
           default_lesson_length_mins: number
           default_payment_terms_days: number | null
           id: string
@@ -2347,6 +2595,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          ai_preferences?: Json | null
           auto_pause_lessons_after_days?: number | null
           bank_account_name?: string | null
           bank_account_number?: string | null
@@ -2362,6 +2611,7 @@ export type Database = {
           created_by: string
           credit_expiry_days?: number | null
           currency_code?: string
+          default_exam_board_id?: string | null
           default_lesson_length_mins?: number
           default_payment_terms_days?: number | null
           id?: string
@@ -2402,6 +2652,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          ai_preferences?: Json | null
           auto_pause_lessons_after_days?: number | null
           bank_account_name?: string | null
           bank_account_number?: string | null
@@ -2417,6 +2668,7 @@ export type Database = {
           created_by?: string
           credit_expiry_days?: number | null
           currency_code?: string
+          default_exam_board_id?: string | null
           default_lesson_length_mins?: number
           default_payment_terms_days?: number | null
           id?: string
@@ -2455,7 +2707,15 @@ export type Database = {
           vat_rate?: number
           vat_registration_number?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "organisations_default_exam_board_id_fkey"
+            columns: ["default_exam_board_id"]
+            isOneToOne: false
+            referencedRelation: "exam_boards"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {
@@ -2526,6 +2786,7 @@ export type Database = {
           created_at: string
           description: string | null
           end_date: string | null
+          grade_level_id: string | null
           id: string
           org_id: string
           start_date: string
@@ -2542,6 +2803,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_date?: string | null
+          grade_level_id?: string | null
           id?: string
           org_id: string
           start_date?: string
@@ -2558,6 +2820,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_date?: string | null
+          grade_level_id?: string | null
           id?: string
           org_id?: string
           start_date?: string
@@ -2571,6 +2834,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "practice_assignments_grade_level_id_fkey"
+            columns: ["grade_level_id"]
+            isOneToOne: false
+            referencedRelation: "grade_levels"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "practice_assignments_org_id_fkey"
             columns: ["org_id"]
@@ -3348,6 +3618,101 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_instruments: {
+        Row: {
+          created_at: string
+          current_grade_id: string | null
+          exam_board_id: string | null
+          id: string
+          instrument_id: string
+          is_primary: boolean
+          notes: string | null
+          org_id: string
+          started_at: string | null
+          student_id: string
+          target_grade_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_grade_id?: string | null
+          exam_board_id?: string | null
+          id?: string
+          instrument_id: string
+          is_primary?: boolean
+          notes?: string | null
+          org_id: string
+          started_at?: string | null
+          student_id: string
+          target_grade_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_grade_id?: string | null
+          exam_board_id?: string | null
+          id?: string
+          instrument_id?: string
+          is_primary?: boolean
+          notes?: string | null
+          org_id?: string
+          started_at?: string | null
+          student_id?: string
+          target_grade_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_instruments_current_grade_id_fkey"
+            columns: ["current_grade_id"]
+            isOneToOne: false
+            referencedRelation: "grade_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_instruments_exam_board_id_fkey"
+            columns: ["exam_board_id"]
+            isOneToOne: false
+            referencedRelation: "exam_boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_instruments_instrument_id_fkey"
+            columns: ["instrument_id"]
+            isOneToOne: false
+            referencedRelation: "instruments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_instruments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_instruments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_instruments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_instruments_target_grade_id_fkey"
+            columns: ["target_grade_id"]
+            isOneToOne: false
+            referencedRelation: "grade_levels"
             referencedColumns: ["id"]
           },
         ]
@@ -4263,6 +4628,10 @@ export type Database = {
       is_parent_of_student: {
         Args: { _student_id: string; _user_id: string }
         Returns: boolean
+      }
+      reassign_teacher_conversations_to_owner: {
+        Args: { _org_id: string }
+        Returns: number
       }
       record_payment_and_update_status: {
         Args: {

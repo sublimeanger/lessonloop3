@@ -1,8 +1,20 @@
 // Note: Function name has legacy typo "looopassist" — keep for backward compatibility
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+
+/** Fire-and-forget calendar sync for lesson mutations (non-critical). */
+function syncLessonToCalendar(lessonId: string, action: 'create' | 'update' | 'delete') {
+  fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/calendar-sync-lesson`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ lesson_id: lessonId, action }),
+  }).catch(() => { /* Non-critical — don't fail the action */ });
+}
 
 interface ActionProposal {
   id: string;
@@ -16,6 +28,26 @@ interface ActionProposal {
     params: Record<string, unknown>;
   };
   status: string;
+}
+
+interface BasicLesson {
+  id: string;
+  title: string;
+  start_at: string;
+  end_at?: string;
+  status?: string;
+  notes_shared?: string | null;
+  lesson_participants?: Array<{ students: { id: string; first_name: string; last_name: string } | null }>;
+}
+
+interface BasicInvoice {
+  id: string;
+  invoice_number: string;
+  status: string;
+  total_minor: number;
+  due_date: string;
+  guardians?: { id: string; full_name: string; email: string | null } | null;
+  students?: { id: string; first_name: string; last_name: string; email: string | null } | null;
 }
 
 serve(async (req) => {
@@ -89,6 +121,8 @@ serve(async (req) => {
         cancel_lesson: ['owner', 'admin'],
         complete_lessons: ['owner', 'admin', 'teacher'],
         send_progress_report: ['owner', 'admin', 'teacher'],
+        send_bulk_reminders: ['owner', 'admin', 'finance'],
+        bulk_complete_lessons: ['owner', 'admin', 'teacher'],
       };
 
       const { data: membership, error: membershipError } = await supabase
@@ -182,6 +216,93 @@ serve(async (req) => {
             break;
           }
 
+          case "send_bulk_reminders": {
+            const { data: overdueInvoices } = await supabase
+              .from("invoices")
+              .select(`
+                id, invoice_number, total_minor, due_date,
+                guardians:payer_guardian_id(id, full_name, email),
+                students:payer_student_id(id, first_name, last_name, email)
+              `)
+              .eq("org_id", orgId)
+              .eq("status", "overdue")
+              .limit(50);
+
+            let sentCount = 0;
+            const bulkEntities: any[] = [];
+
+            for (const inv of overdueInvoices || []) {
+              const email = inv.guardians?.email || inv.students?.email;
+              const name = inv.guardians?.full_name || (inv.students ? `${inv.students.first_name} ${inv.students.last_name}` : "Customer");
+              if (!email) continue;
+
+              await supabase.from("message_log").insert({
+                org_id: orgId,
+                sender_user_id: user.id,
+                recipient_email: email,
+                recipient_name: name,
+                recipient_type: inv.guardians ? "guardian" : "student",
+                recipient_id: inv.guardians?.id || inv.students?.id,
+                subject: `Payment Reminder: Invoice ${inv.invoice_number}`,
+                body: `Dear ${name},\n\nThis is a friendly reminder that invoice ${inv.invoice_number} for £${(inv.total_minor / 100).toFixed(2)} is outstanding. The due date was ${inv.due_date}.\n\nPlease arrange payment at your earliest convenience.\n\nThank you.`,
+                message_type: "invoice_reminder",
+                status: "queued",
+                related_id: inv.id,
+              });
+              sentCount++;
+              bulkEntities.push({ type: "invoice", id: inv.id, label: inv.invoice_number, detail: `→ ${email}` });
+            }
+
+            result = {
+              message: `Queued ${sentCount} payment reminder(s) for all overdue invoices — review in Messages`,
+              reminders_sent: sentCount,
+              entities: bulkEntities,
+            };
+            break;
+          }
+
+          case "bulk_complete_lessons": {
+            const cutoffDate = params.before_date as string || new Date().toISOString().split("T")[0];
+            const { data: pastLessons } = await supabase
+              .from("lessons")
+              .select("id, title")
+              .eq("org_id", orgId)
+              .eq("status", "scheduled")
+              .lt("start_at", `${cutoffDate}T00:00:00`)
+              .limit(100);
+
+            let completedCount = 0;
+            const completeEntities: any[] = [];
+
+            for (const lesson of pastLessons || []) {
+              const { error: updateError } = await supabase
+                .from("lessons")
+                .update({ status: "completed" })
+                .eq("id", lesson.id);
+              if (!updateError) {
+                completedCount++;
+                completeEntities.push({ type: "lesson", id: lesson.id, label: lesson.title, detail: "Marked complete" });
+                syncLessonToCalendar(lesson.id, 'update');
+              }
+            }
+
+            await supabase.from("audit_log").insert({
+              org_id: orgId,
+              actor_user_id: user.id,
+              entity_type: "lesson",
+              entity_id: "bulk",
+              action: "bulk_complete_lessons",
+              after: { count: completedCount, before_date: cutoffDate },
+            });
+
+            result = {
+              message: `Marked ${completedCount} past lesson(s) as completed`,
+              completed_count: completedCount,
+              entities: completeEntities,
+            };
+            break;
+          }
+
           default:
             result = { message: `Action type '${action_type}' acknowledged but not implemented` };
         }
@@ -192,7 +313,7 @@ serve(async (req) => {
       }
 
       // Append messaging note for actions that involve messages
-      const MESSAGING_ACTIONS = ["send_invoice_reminders", "draft_email", "send_progress_report"];
+      const MESSAGING_ACTIONS = ["send_invoice_reminders", "draft_email", "send_progress_report", "send_bulk_reminders"];
       const typedForNote = proposal as ActionProposal;
       if (newStatus === "executed" && MESSAGING_ACTIONS.includes(typedForNote.proposal.action_type)) {
         const msg = result.message as string || "";
@@ -274,7 +395,7 @@ serve(async (req) => {
 
 // Tool 1: Generate Billing Run
 async function executeGenerateBillingRun(
-  supabase: any,
+  supabase: SupabaseClient,
   orgId: string,
   userId: string,
   params: Record<string, unknown>
@@ -340,7 +461,7 @@ async function executeGenerateBillingRun(
   if (lessonsError) throw lessonsError;
 
   // ── Duplicate protection: skip already-invoiced lessons ──
-  const lessonIds = (lessons || []).map((l: any) => l.id);
+  const lessonIds = (lessons || []).map((l: BasicLesson) => l.id);
   let alreadyInvoicedIds = new Set<string>();
 
   if (lessonIds.length > 0) {
@@ -357,7 +478,7 @@ async function executeGenerateBillingRun(
     }
   }
 
-  const uninvoicedLessons = (lessons || []).filter((l: any) => !alreadyInvoicedIds.has(l.id));
+  const uninvoicedLessons = (lessons || []).filter((l: BasicLesson) => !alreadyInvoicedIds.has(l.id));
   const skippedCount = (lessons?.length || 0) - uninvoicedLessons.length;
 
   const { data: org } = await supabase
@@ -373,7 +494,7 @@ async function executeGenerateBillingRun(
    *   2. Rate card matching lesson duration
    *   3. Org default rate card
    */
-  function resolveRate(lesson: any, student: any): number {
+  function resolveRate(lesson: BasicLesson, student: { default_rate_card_id?: string | null }): number {
     // 1. Student-specific rate card
     if (student?.default_rate_card_id) {
       const studentRate = rateById.get(student.default_rate_card_id);
@@ -392,7 +513,7 @@ async function executeGenerateBillingRun(
   }
 
   // Group lessons by payer
-  const payerMap = new Map<string, { type: 'guardian' | 'student'; id: string; name: string; lessons: { lesson: any; student: any; rate: number }[] }>();
+  const payerMap = new Map<string, { type: 'guardian' | 'student'; id: string; name: string; lessons: { lesson: BasicLesson; student: Record<string, unknown>; rate: number }[] }>();
 
   for (const lesson of uninvoicedLessons) {
     for (const participant of lesson.lesson_participants || []) {
@@ -400,7 +521,7 @@ async function executeGenerateBillingRun(
       if (!student) continue;
 
       const rate = resolveRate(lesson, student);
-      const primaryGuardian = student.student_guardians?.find((sg: any) => sg.is_primary_payer);
+      const primaryGuardian = student.student_guardians?.find((sg: { is_primary_payer: boolean }) => sg.is_primary_payer);
 
       let payerKey: string;
       let payerInfo: { type: 'guardian' | 'student'; id: string; name: string };
@@ -510,7 +631,7 @@ async function executeGenerateBillingRun(
 
 // Tool 2: Send Invoice Reminders
 async function executeSendInvoiceReminders(
-  supabase: any,
+  supabase: SupabaseClient,
   orgId: string,
   userId: string,
   params: Record<string, unknown>
@@ -576,11 +697,11 @@ async function executeSendInvoiceReminders(
 
   // Build entities for structured result
   const entities = (invoices || [])
-    .filter((inv: any) => {
+    .filter((inv: BasicInvoice) => {
       const email = inv.guardians?.email || inv.students?.email;
       return !!email;
     })
-    .map((inv: any) => ({
+    .map((inv: BasicInvoice) => ({
       type: 'invoice' as const,
       id: inv.invoice_number,
       label: inv.invoice_number,
@@ -597,7 +718,7 @@ async function executeSendInvoiceReminders(
 
 // Tool 3: Reschedule Lessons
 async function executeRescheduleLessons(
-  supabase: any,
+  supabase: SupabaseClient,
   orgId: string,
   userId: string,
   params: Record<string, unknown>
@@ -659,10 +780,11 @@ async function executeRescheduleLessons(
     } else {
       lessonsUpdated++;
       results.push(`${lesson.title}: Moved to ${newStartAt.toLocaleString('en-GB')}`);
+      syncLessonToCalendar(lesson.id, 'update');
     }
   }
 
-  const entities = (lessons || []).map((l: any) => ({
+  const entities = (lessons || []).map((l: BasicLesson) => ({
     type: 'lesson' as const,
     id: l.id,
     label: l.title,
@@ -679,7 +801,7 @@ async function executeRescheduleLessons(
 
 // Tool 4: Draft Email
 async function executeDraftEmail(
-  supabase: any,
+  supabase: SupabaseClient,
   orgId: string,
   userId: string,
   params: Record<string, unknown>
@@ -743,7 +865,7 @@ async function executeDraftEmail(
 
 // Tool 5: Mark Attendance
 async function executeMarkAttendance(
-  supabase: any,
+  supabase: SupabaseClient,
   orgId: string,
   userId: string,
   params: Record<string, unknown>
@@ -820,7 +942,7 @@ async function executeMarkAttendance(
     after: { records, results },
   });
 
-  const entities = (records || []).map((r: any) => {
+  const entities = (records || []).map((r: { lesson_id: string; student_id: string; attendance_status: string }) => {
     const participant = (lessons || []).length > 0 ? null : null; // already logged in results
     return {
       type: 'student' as const,
@@ -851,7 +973,7 @@ async function executeMarkAttendance(
 
 // Tool 6: Cancel Lesson
 async function executeCancelLesson(
-  supabase: any,
+  supabase: SupabaseClient,
   orgId: string,
   userId: string,
   params: Record<string, unknown>
@@ -881,9 +1003,9 @@ async function executeCancelLesson(
   // Fetch all rate cards for duration-aware credit calculation
   const { data: rateCards } = await supabase
     .from("rate_cards")
-    .select("id, duration_minutes, rate_amount, is_default")
+    .select("id, duration_mins, rate_amount, is_default")
     .eq("org_id", orgId)
-    .order("duration_minutes", { ascending: true });
+    .order("duration_mins", { ascending: true });
 
   let cancelledCount = 0;
   let creditsIssued = 0;
@@ -903,6 +1025,7 @@ async function executeCancelLesson(
 
     cancelledCount++;
     results.push(`${lesson.title}: Cancelled`);
+    syncLessonToCalendar(lesson.id, 'update');
 
     // Issue make-up credits if requested - now with duration-aware pricing
     if (issueCredit && lesson.lesson_participants) {
@@ -915,8 +1038,8 @@ async function executeCancelLesson(
       let creditValue = 3000; // fallback
       if (rateCards && rateCards.length > 0) {
         // Find exact match or closest lower duration
-        const matchingCard = rateCards.find((rc: { duration_minutes: number }) => rc.duration_minutes === durationMins) ||
-          rateCards.filter((rc: { duration_minutes: number }) => rc.duration_minutes <= durationMins).pop() ||
+        const matchingCard = rateCards.find((rc: { duration_mins: number }) => rc.duration_mins === durationMins) ||
+          rateCards.filter((rc: { duration_mins: number }) => rc.duration_mins <= durationMins).pop() ||
           rateCards.find((rc: { is_default: boolean }) => rc.is_default) ||
           rateCards[0];
         
@@ -956,7 +1079,7 @@ async function executeCancelLesson(
     message += ` and issued ${creditsIssued} make-up credit(s)`;
   }
 
-  const entities = (lessons || []).map((l: any) => ({
+  const entities = (lessons || []).map((l: BasicLesson) => ({
     type: 'lesson' as const,
     id: l.id,
     label: l.title,
@@ -974,7 +1097,7 @@ async function executeCancelLesson(
 
 // Tool 7: Complete Lessons
 async function executeCompleteLessons(
-  supabase: any,
+  supabase: SupabaseClient,
   orgId: string,
   userId: string,
   params: Record<string, unknown>
@@ -1008,6 +1131,7 @@ async function executeCompleteLessons(
     } else {
       completedCount++;
       results.push(`${lesson.title}: Completed`);
+      syncLessonToCalendar(lesson.id, 'update');
     }
   }
 
@@ -1021,7 +1145,7 @@ async function executeCompleteLessons(
     after: { lesson_ids: lessonIds, results },
   });
 
-  const entities = (lessons || []).map((l: any) => ({
+  const entities = (lessons || []).map((l: BasicLesson) => ({
     type: 'lesson' as const,
     id: l.id,
     label: l.title,
@@ -1038,7 +1162,7 @@ async function executeCompleteLessons(
 
 // Tool 8: Send Progress Report
 async function executeSendProgressReport(
-  supabase: any,
+  supabase: SupabaseClient,
   orgId: string,
   userId: string,
   params: Record<string, unknown>
@@ -1087,8 +1211,8 @@ async function executeSendProgressReport(
     .eq("student_id", studentId)
     .gte("created_at", startDate.toISOString());
 
-  const lessons = lessonParticipants?.map((lp: any) => lp.lessons).filter(Boolean) || [];
-  const completedLessons = lessons.filter((l: any) => l.status === "completed");
+  const lessons = lessonParticipants?.map((lp: { lessons: BasicLesson | null }) => lp.lessons).filter(Boolean) || [];
+  const completedLessons = lessons.filter((l: BasicLesson) => l.status === "completed");
 
   // Fetch attendance
   const { data: attendance } = await supabase
@@ -1097,7 +1221,7 @@ async function executeSendProgressReport(
     .eq("student_id", studentId)
     .gte("recorded_at", startDate.toISOString());
 
-  const presentCount = (attendance || []).filter((a: any) => a.attendance_status === "present").length;
+  const presentCount = (attendance || []).filter((a: { attendance_status: string }) => a.attendance_status === "present").length;
   const attendanceRate = attendance?.length ? Math.round((presentCount / attendance.length) * 100) : 0;
 
   // Fetch practice stats
@@ -1113,7 +1237,7 @@ async function executeSendProgressReport(
     .eq("student_id", studentId)
     .gte("practice_date", startDate.toISOString().split("T")[0]);
 
-  const totalPracticeMinutes = (practiceLogs || []).reduce((sum: number, p: any) => sum + p.duration_minutes, 0);
+  const totalPracticeMinutes = (practiceLogs || []).reduce((sum: number, p: { duration_minutes: number }) => sum + p.duration_minutes, 0);
 
   // Build report content
   const periodLabel = period === "week" ? "this week" : period === "term" ? "this term" : "this month";
@@ -1135,7 +1259,7 @@ async function executeSendProgressReport(
   
   if (completedLessons.length > 0) {
     reportBody += `\nRECENT LESSON NOTES\n`;
-    completedLessons.slice(0, 3).forEach((l: any) => {
+    completedLessons.slice(0, 3).forEach((l: BasicLesson) => {
       if (l.notes_shared) {
         const date = new Date(l.start_at).toLocaleDateString("en-GB");
         reportBody += `${date} - ${l.title}: ${l.notes_shared}\n`;

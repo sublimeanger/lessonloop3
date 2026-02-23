@@ -9,6 +9,7 @@ import { useTeachersAndLocations } from '@/hooks/useCalendarData';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { useNotesNotification } from '@/hooks/useNotesNotification';
 import { useClosurePatternCheck } from '@/hooks/useClosurePatternCheck';
+import { useCalendarSync } from '@/hooks/useCalendarSync';
 import { supabase } from '@/integrations/supabase/client';
 import { logAudit } from '@/lib/auditLog';
 import { LessonWithDetails, ConflictResult, LessonStatus, LessonType } from './types';
@@ -31,6 +32,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
   const { teachers, locations, rooms, students } = useTeachersAndLocations();
   const { checkConflicts } = useConflictDetection();
   const { sendNotesNotification } = useNotesNotification();
+  const { syncLesson, syncLessons } = useCalendarSync();
   const { isOnline, guardOffline } = useOnlineStatus();
 
   const [isSaving, setIsSaving] = useState(false);
@@ -481,6 +483,9 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
           after: { title: generateTitle(), start_at: startAtUtc.toISOString(), teacher_id: teacherId, status },
         });
 
+        // Fire-and-forget calendar sync for updated lessons
+        syncLessons(lessonIdsToUpdate, 'update');
+
         toast({
           title: updatedCount > 1
             ? `${updatedCount} lessons updated`
@@ -633,6 +638,9 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
             logAudit(currentOrg.id, user.id, 'create', 'lesson', insertedLessons[0].id, {
               after: { title, start_at: startAtUtc.toISOString(), teacher_id: teacherId, count: insertedLessons.length },
             });
+
+            // Fire-and-forget calendar sync for all newly created lessons
+            syncLessons(insertedLessons.map(l => l.id), 'create');
           }
         } catch (batchError: any) {
           const msg = batchError.message || '';

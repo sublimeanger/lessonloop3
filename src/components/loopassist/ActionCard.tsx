@@ -183,6 +183,8 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
     }
   };
 
+  const actionLabel = ACTION_LABELS[proposal.action_type] || 'action';
+
   const confirmButton = awaitingSecondConfirm ? (
     <Button
       size="sm"
@@ -190,6 +192,7 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
       onClick={handleConfirm}
       disabled={isLoading || isConfirming}
       className="flex-1"
+      aria-label={`Confirm ${actionLabel}`}
     >
       {isConfirming ? (
         <Loader2 className="mr-1 h-4 w-4 animate-spin" />
@@ -205,6 +208,7 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
       disabled={isLoading || isConfirming || !hasPermission}
       className="flex-1"
       variant={isDestructive ? 'destructive' : 'default'}
+      aria-label={`Confirm ${actionLabel}`}
     >
       {isConfirming ? (
         <Loader2 className="mr-1 h-4 w-4 animate-spin" />
@@ -315,6 +319,7 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
           variant="outline"
           onClick={awaitingSecondConfirm ? handleCancelSecondStep : () => onCancel(proposalId)}
           disabled={isLoading || isConfirming}
+          aria-label={awaitingSecondConfirm ? 'Go back to review action' : `Cancel ${actionLabel}`}
         >
           <XCircle className="mr-1 h-4 w-4" />
           {awaitingSecondConfirm ? 'Go Back' : 'Cancel'}

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { format, parseISO, subDays, addDays, startOfDay, differenceInMinutes, differenceInHours, addWeeks, isAfter, isBefore, getDay } from 'date-fns';
+import { useCalendarSync } from '@/hooks/useCalendarSync';
 import { useQuery } from '@tanstack/react-query';
 import { STALE_STABLE } from '@/config/query-stale-times';
 import { LessonWithDetails, AttendanceStatus } from './types';
@@ -45,6 +46,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
   const { currentOrg } = useOrg();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { syncLesson, syncLessons } = useCalendarSync();
   const { createCredit, checkCreditEligibility } = useMakeUpCredits();
   const { data: rateCards } = useRateCards();
   const updateAttendance = useUpdateAttendance();
@@ -364,6 +366,9 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         });
       }
 
+      // Fire-and-forget calendar sync for cancelled lessons
+      syncLessons(cancelledLessonIds, 'update');
+
       setCancellationReason('');
       onUpdated();
       onClose();
@@ -392,9 +397,19 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         logAudit(currentOrg.id, user.id, 'delete', 'lesson', lesson.id, {
           before: { title: lesson.title, start_at: lesson.start_at },
         });
+        // Fire-and-forget calendar sync
+        syncLesson(lesson.id, 'delete');
         toast({ title: 'Lesson deleted' });
       } else {
         // Delete this and all future lessons in series
+        const { data: futureLessons } = await supabase
+          .from('lessons')
+          .select('id')
+          .eq('recurrence_id', lesson.recurrence_id!)
+          .gte('start_at', lesson.start_at);
+
+        const deletedIds = (futureLessons || []).map(l => l.id);
+
         const { error } = await supabase
           .from('lessons')
           .delete()
@@ -404,6 +419,8 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         logAudit(currentOrg.id, user.id, 'delete', 'lesson', lesson.id, {
           before: { title: lesson.title, start_at: lesson.start_at, scope: 'this_and_future' },
         });
+        // Fire-and-forget calendar sync for all deleted lessons
+        syncLessons(deletedIds, 'delete');
         toast({ title: 'Series deleted', description: 'This and all future lessons have been deleted.' });
       }
       onUpdated();

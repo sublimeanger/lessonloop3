@@ -191,6 +191,14 @@ export function useKeyboardShortcuts() {
       return;
     }
 
+    // Handle Cmd+Shift+J — open with new conversation
+    if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key === 'j') {
+      event.preventDefault();
+      setLoopAssistOpen(true);
+      window.dispatchEvent(new CustomEvent('loopassist-new-conversation'));
+      return;
+    }
+
     // Handle Cmd+J
     if ((event.metaKey || event.ctrlKey) && event.key === 'j') {
       event.preventDefault();
