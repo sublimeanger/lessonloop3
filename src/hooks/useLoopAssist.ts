@@ -297,7 +297,12 @@ export function useLoopAssist(externalPageContext?: PageContext) {
         });
 
         const actionData = parseActionFromResponse(assistantContent);
-        if (actionData) {
+        const VALID_ACTION_TYPES = [
+          'generate_billing_run', 'send_invoice_reminders', 'reschedule_lessons',
+          'draft_email', 'mark_attendance', 'cancel_lesson', 'complete_lessons',
+          'send_progress_report',
+        ];
+        if (actionData && VALID_ACTION_TYPES.includes(actionData.action_type)) {
           await supabase.from('ai_action_proposals').insert([{
             org_id: currentOrg.id,
             user_id: user.id,
