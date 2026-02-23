@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import type { MessageFilters } from '@/components/messages/MessageFiltersBar';
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { STALE_VOLATILE } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
@@ -93,12 +94,19 @@ function groupMessagesIntoThreads(messages: ThreadListingMessage[]): MessageThre
   );
 }
 
+function hasActiveFilters(filters?: MessageFilters): boolean {
+  if (!filters) return false;
+  return !!(filters.guardian_id || filters.student_id || filters.sender_user_id || filters.channel || filters.date_from || filters.date_to);
+}
+
 /**
  * Fetches thread listing data with cursor-based pagination.
+ * Accepts optional filters for admin filtering.
  */
-export function useMessageThreads() {
+export function useMessageThreads(filters?: MessageFilters) {
   const { currentOrg } = useOrg();
   const queryClient = useQueryClient();
+  const filtersActive = hasActiveFilters(filters);
 
   // Realtime subscription for instant message updates
   useEffect(() => {
@@ -128,7 +136,7 @@ export function useMessageThreads() {
   }, [currentOrg?.id, queryClient]);
 
   const infiniteQuery = useInfiniteQuery({
-    queryKey: ['message-threads', currentOrg?.id],
+    queryKey: ['message-threads', currentOrg?.id, filters],
     queryFn: async ({ pageParam }: { pageParam: string | undefined }) => {
       if (!currentOrg) return { messages: [] as ThreadListingMessage[], nextCursor: undefined };
 
@@ -138,6 +146,26 @@ export function useMessageThreads() {
         .eq('org_id', currentOrg.id)
         .order('created_at', { ascending: false })
         .limit(PAGE_SIZE);
+
+      // Apply filters
+      if (filters?.guardian_id) {
+        query = query.eq('recipient_id', filters.guardian_id);
+      }
+      if (filters?.student_id) {
+        query = query.eq('related_id', filters.student_id);
+      }
+      if (filters?.sender_user_id) {
+        query = query.eq('sender_user_id', filters.sender_user_id);
+      }
+      if (filters?.channel) {
+        query = query.eq('channel', filters.channel);
+      }
+      if (filters?.date_from) {
+        query = query.gte('created_at', filters.date_from);
+      }
+      if (filters?.date_to) {
+        query = query.lte('created_at', filters.date_to + 'T23:59:59.999Z');
+      }
 
       if (pageParam) {
         query = query.lt('created_at', pageParam);

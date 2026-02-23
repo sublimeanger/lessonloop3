@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMessageThreads, useSearchMessageThreads } from '@/hooks/useMessageThreads';
 import { ThreadCard } from './ThreadCard';
+import type { MessageFilters } from './MessageFiltersBar';
 
 function useDebouncedValue(value: string, delay: number) {
   const [debounced, setDebounced] = useState(value);
@@ -17,10 +18,11 @@ function useDebouncedValue(value: string, delay: number) {
 
 interface ThreadedMessageListProps {
   searchQuery?: string;
+  filters?: MessageFilters;
 }
 
-export function ThreadedMessageList({ searchQuery }: ThreadedMessageListProps) {
-  const { threads, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useMessageThreads();
+export function ThreadedMessageList({ searchQuery, filters }: ThreadedMessageListProps) {
+  const { threads, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useMessageThreads(filters);
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
