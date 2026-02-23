@@ -6,3 +6,4 @@ export { FirstRunExperience } from './FirstRunExperience';
 export { UrgentActionsBar, UrgentActionsBadge } from './UrgentActionsBar';
 export { LoopAssistWidget } from './LoopAssistWidget';
 export { LoopAssistAlerts } from './LoopAssistAlerts';
+export { CalendarSyncBanner } from './CalendarSyncBanner';

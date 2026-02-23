@@ -22,6 +22,7 @@ import {
   UrgentActionsBar,
   LoopAssistWidget,
   LoopAssistAlerts,
+  CalendarSyncBanner,
 } from '@/components/dashboard';
 import { 
   Calendar, Users, Receipt, Clock, TrendingUp, PoundSterling,
@@ -160,6 +161,10 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
         </motion.div>
 
         <motion.div variants={itemVariants}>
+          <CalendarSyncBanner />
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="Upgrade Banner">
             <UpgradeBanner />
           </SectionErrorBoundary>
@@ -259,6 +264,10 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
           <SectionErrorBoundary name="LoopAssist Alerts">
             <LoopAssistAlerts />
           </SectionErrorBoundary>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <CalendarSyncBanner />
         </motion.div>
 
         <motion.div variants={itemVariants}>

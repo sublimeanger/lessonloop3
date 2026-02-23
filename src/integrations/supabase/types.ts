@@ -4545,10 +4545,26 @@ export type Database = {
         Returns: string[]
       }
       get_invoice_stats: { Args: { _org_id: string }; Returns: Json }
+      get_org_calendar_health: {
+        Args: { p_org_id: string }
+        Returns: {
+          calendar_name: string
+          connection_id: string
+          events_synced: number
+          last_sync_at: string
+          provider: string
+          sync_enabled: boolean
+          sync_status: string
+          teacher_name: string
+          token_expires_at: string
+          user_id: string
+        }[]
+      }
       get_org_role: {
         Args: { _org_id: string; _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_org_sync_error_count: { Args: { p_org_id: string }; Returns: number }
       get_parent_dashboard_data: {
         Args: { _org_id: string; _user_id: string }
         Returns: Json
