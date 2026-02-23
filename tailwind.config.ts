@@ -174,7 +174,7 @@ export default {
         "slide-down": "slide-down 0.25s ease-out",
         "scale-fade": "scale-fade 0.2s ease-out",
         "page-enter": "fade-in 0.15s ease-out",
-    },
+      },
   },
   plugins: [require("tailwindcss-animate")],
 } satisfies Config;
