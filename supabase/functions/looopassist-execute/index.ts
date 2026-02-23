@@ -89,13 +89,30 @@ serve(async (req) => {
     const { proposalId, action } = await req.json();
 
     if (action === "confirm") {
-      // Get the proposal
+      // Get the proposal — verify both user_id AND org_id to prevent cross-org execution
       const { data: proposal, error: fetchError } = await supabase
         .from("ai_action_proposals")
         .select("*")
         .eq("id", proposalId)
         .eq("user_id", user.id)
         .single();
+
+      // Verify the proposal's org matches the user's active membership
+      if (proposal) {
+        const { data: orgCheck } = await supabase
+          .from("org_memberships")
+          .select("org_id")
+          .eq("user_id", user.id)
+          .eq("org_id", proposal.org_id)
+          .eq("status", "active")
+          .single();
+        if (!orgCheck) {
+          return new Response(JSON.stringify({ error: "Proposal does not belong to your active organisation" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
 
       if (fetchError || !proposal) {
         return new Response(JSON.stringify({ error: "Proposal not found" }), {
@@ -262,7 +279,13 @@ serve(async (req) => {
           }
 
           case "bulk_complete_lessons": {
-            const cutoffDate = params.before_date as string || new Date().toISOString().split("T")[0];
+            const rawCutoffDate = params.before_date as string || new Date().toISOString().split("T")[0];
+            // Validate date is reasonable (not before 2020, not in the future)
+            const cutoffParsed = new Date(rawCutoffDate);
+            if (isNaN(cutoffParsed.getTime()) || cutoffParsed < new Date("2020-01-01") || cutoffParsed > new Date()) {
+              throw new Error("Invalid before_date: must be a valid date between 2020-01-01 and today");
+            }
+            const cutoffDate = rawCutoffDate;
             const { data: pastLessons } = await supabase
               .from("lessons")
               .select("id, title")
@@ -369,6 +392,30 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     } else if (action === "cancel") {
+      // Verify user membership for the proposal's org before cancelling
+      const { data: cancelProposal } = await supabase
+        .from("ai_action_proposals")
+        .select("org_id")
+        .eq("id", proposalId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (cancelProposal) {
+        const { data: cancelOrgCheck } = await supabase
+          .from("org_memberships")
+          .select("org_id")
+          .eq("user_id", user.id)
+          .eq("org_id", cancelProposal.org_id)
+          .eq("status", "active")
+          .single();
+        if (!cancelOrgCheck) {
+          return new Response(JSON.stringify({ error: "Proposal does not belong to your active organisation" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
       await supabase
         .from("ai_action_proposals")
         .update({ status: "cancelled" })
