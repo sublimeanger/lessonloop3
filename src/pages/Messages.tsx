@@ -159,23 +159,24 @@ export default function Messages() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="sent">Conversations</TabsTrigger>
+        <TabsList className="bg-muted/50 rounded-full p-1 h-auto">
+          <TabsTrigger value="sent" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 text-sm">Conversations</TabsTrigger>
           {isStaff && (
-            <TabsTrigger value="internal" className="gap-2">
+            <TabsTrigger value="internal" className="gap-2 rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 text-sm">
               Internal
               {unreadInternalCount && unreadInternalCount > 0 && (
-                <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1">
+                <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1 rounded-full">
                   {unreadInternalCount}
                 </Badge>
               )}
             </TabsTrigger>
           )}
           {canViewRequests && (
-            <TabsTrigger value="requests" className="gap-2">
-              Cancellation / Reschedule
+            <TabsTrigger value="requests" className="gap-2 rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-1.5 text-sm">
+              <span className="hidden sm:inline">Cancellation / Reschedule</span>
+              <span className="sm:hidden">Requests</span>
               {pendingCount && pendingCount > 0 && (
-                <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1">
+                <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1 rounded-full">
                   {pendingCount}
                 </Badge>
               )}
@@ -185,14 +186,14 @@ export default function Messages() {
 
         <TabsContent value="sent">
           {/* Filters and View Toggle */}
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center mb-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search messages..."
+                placeholder="Search messages…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-9 rounded-xl shadow-sm"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -200,20 +201,20 @@ export default function Messages() {
                 type="single" 
                 value={viewMode} 
                 onValueChange={(v) => v && setViewMode(v as 'list' | 'threaded')}
-                className="border rounded-md"
+                className="border rounded-full p-0.5"
               >
-                <ToggleGroupItem value="threaded" aria-label="Threaded view" className="gap-2 px-3">
+                <ToggleGroupItem value="threaded" aria-label="Threaded view" className="gap-2 px-3 rounded-full data-[state=on]:bg-background data-[state=on]:shadow-sm">
                   <GitBranch className="h-4 w-4" />
-                  <span className="hidden sm:inline">Threads</span>
+                  <span className="hidden sm:inline text-sm">Threads</span>
                 </ToggleGroupItem>
-                <ToggleGroupItem value="list" aria-label="List view" className="gap-2 px-3">
+                <ToggleGroupItem value="list" aria-label="List view" className="gap-2 px-3 rounded-full data-[state=on]:bg-background data-[state=on]:shadow-sm">
                   <List className="h-4 w-4" />
-                  <span className="hidden sm:inline">List</span>
+                  <span className="hidden sm:inline text-sm">List</span>
                 </ToggleGroupItem>
               </ToggleGroup>
               {viewMode === 'list' && (
                 <Select value={channelFilter} onValueChange={setChannelFilter}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-40 rounded-xl">
                     <Filter className="h-4 w-4 mr-2" />
                     <SelectValue />
                   </SelectTrigger>
