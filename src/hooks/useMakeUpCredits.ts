@@ -149,10 +149,12 @@ export function useMakeUpCredits(studentId?: string) {
   // Delete a credit (admin only)
   const deleteCredit = useMutation({
     mutationFn: async (creditId: string) => {
+      if (!currentOrg?.id) throw new Error('No organisation selected');
       const { error } = await supabase
         .from('make_up_credits')
         .delete()
-        .eq('id', creditId);
+        .eq('id', creditId)
+        .eq('org_id', currentOrg.id);
 
       if (error) throw error;
     },
