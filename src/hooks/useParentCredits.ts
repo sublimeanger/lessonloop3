@@ -50,10 +50,9 @@ export function useParentCredits() {
       if (!links?.length) return [];
 
       const studentIds = links.map((l) => l.student_id);
-      const now = new Date().toISOString();
 
       const { data, error } = await supabase
-        .from('make_up_credits')
+        .from('available_credits' as any)
         .select(`
           id, student_id, credit_value_minor, expires_at,
           redeemed_at, applied_to_invoice_id, notes, issued_at,
@@ -61,12 +60,11 @@ export function useParentCredits() {
         `)
         .eq('org_id', currentOrg.id)
         .in('student_id', studentIds)
-        .is('redeemed_at', null)
-        .or(`expires_at.is.null,expires_at.gt.${now}`)
+        .eq('credit_status', 'available')
         .order('expires_at', { ascending: true, nullsFirst: false });
 
       if (error) throw error;
-      return (data || []) as ParentCredit[];
+      return (data || []) as unknown as ParentCredit[];
     },
     enabled: !!currentOrg?.id && !!user?.id,
   });
