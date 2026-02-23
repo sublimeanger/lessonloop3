@@ -20,6 +20,7 @@ export function Header() {
   const { totalActionable, hasCritical } = useProactiveAlerts();
   const hasMultipleOrgs = organisations.length > 1;
   const isStaff = currentRole && ['owner', 'admin', 'teacher', 'finance'].includes(currentRole);
+  const isParent = currentRole === 'parent';
 
   return (
     <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-background px-4">
