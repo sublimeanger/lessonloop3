@@ -53,3 +53,27 @@ verify_jwt = false
 
 [functions.calendar-refresh-busy]
 verify_jwt = false
+
+[functions.calendar-ical-feed]
+verify_jwt = false
+
+[functions.invite-get]
+verify_jwt = false
+
+[functions.notify-makeup-match]
+verify_jwt = false
+
+[functions.streak-notification]
+verify_jwt = false
+
+[functions.cleanup-orphaned-resources]
+verify_jwt = false
+
+[functions.credit-expiry]
+verify_jwt = false
+
+[functions.credit-expiry-warning]
+verify_jwt = false
+
+[functions.overdue-reminders]
+verify_jwt = false
