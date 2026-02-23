@@ -973,12 +973,17 @@ Todays scheduled lessons: ${todayLessons?.length || 0}`;
     if (userRole === "teacher") {
       filteredSummary = sections.lessonSummary + sections.studentSummary +
         sections.cancellationSummary + sections.performanceSummary + sections.unmarkedSummary;
+      // Hide emails in BOTH contexts for teachers
+      filteredSummary = filteredSummary.replace(/\b[\w.-]+@[\w.-]+\.\w+\b/g, "[email hidden]");
       pageContextInfo = pageContextInfo.replace(/\b[\w.-]+@[\w.-]+\.\w+\b/g, "[email hidden]");
     } else if (userRole === "finance") {
       filteredSummary = sections.invoiceSummary + sections.studentSummary +
         sections.guardianSummary + sections.performanceSummary +
         sections.rateCardSummary + sections.paymentSummary;
+      // Strip emails from finance context — they need names for billing but not contact details
+      filteredSummary = filteredSummary.replace(/\b[\w.-]+@[\w.-]+\.\w+\b/g, "[email hidden]");
       pageContextInfo = pageContextInfo
+        .replace(/\b[\w.-]+@[\w.-]+\.\w+\b/g, "[email hidden]")
         .replace(/Notes:.*$/gm, "Notes: [hidden]")
         .replace(/Practice Stats:[\s\S]*?(?=\n\n|$)/, "")
         .replace(/Recent Practice[\s\S]*?(?=\n\n|$)/, "")
