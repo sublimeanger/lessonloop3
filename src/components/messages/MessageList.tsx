@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,7 @@ interface MessageListProps {
   isFetchingMore?: boolean;
 }
 
-function MessageCard({ message, onReply }: { message: MessageLogEntry; onReply?: (msg: MessageLogEntry) => void }) {
+const MessageCard = React.memo(function MessageCard({ message, onReply }: { message: MessageLogEntry; onReply?: (msg: MessageLogEntry) => void }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { currentOrg } = useOrg();
   const { data: relatedStudent } = useRelatedStudent(message.related_id, currentOrg?.id);
@@ -168,7 +168,7 @@ function MessageCard({ message, onReply }: { message: MessageLogEntry; onReply?:
       </Collapsible>
     </Card>
   );
-}
+});
 
 export function MessageList({ messages, isLoading, emptyMessage = 'No messages yet', onReply, hasMore, onLoadMore, isFetchingMore }: MessageListProps) {
   if (isLoading) {

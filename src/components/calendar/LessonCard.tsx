@@ -1,3 +1,4 @@
+import React from 'react';
 import { format, differenceInMinutes, parseISO } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { cn } from '@/lib/utils';
@@ -60,7 +61,7 @@ function buildSecondaryLine(lesson: LessonWithDetails): string {
   return '';
 }
 
-export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColour, showResizeHandle, onResizeStart, compact, isSaving }: LessonCardProps) {
+export const LessonCard = React.memo(function LessonCard({ lesson, onClick, variant = 'calendar', teacherColour, showResizeHandle, onResizeStart, compact, isSaving }: LessonCardProps) {
   const startTime = parseISO(lesson.start_at);
   const endTime = parseISO(lesson.end_at);
   const duration = differenceInMinutes(endTime, startTime);
@@ -268,4 +269,4 @@ export function LessonCard({ lesson, onClick, variant = 'calendar', teacherColou
       </TooltipContent>
     </Tooltip>
   );
-}
+});

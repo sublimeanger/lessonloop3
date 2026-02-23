@@ -1,3 +1,4 @@
+import React from 'react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { ThreadMessage } from '@/hooks/useMessageThreads';
@@ -10,7 +11,7 @@ interface ThreadMessageItemProps {
   message: ThreadMessage;
 }
 
-export function ThreadMessageItem({ message }: ThreadMessageItemProps) {
+export const ThreadMessageItem = React.memo(function ThreadMessageItem({ message }: ThreadMessageItemProps) {
   const { currentOrg } = useOrg();
   const { data: relatedStudent } = useRelatedStudent(message.related_id, currentOrg?.id);
 
@@ -50,4 +51,4 @@ export function ThreadMessageItem({ message }: ThreadMessageItemProps) {
       )}
     </div>
   );
-}
+});
