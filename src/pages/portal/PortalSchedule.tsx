@@ -5,9 +5,10 @@ import { useSearchParams } from 'react-router-dom';
 import { useChildFilter } from '@/contexts/ChildFilterContext';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,15 +21,18 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar, Clock, MapPin, User, CheckCircle, XCircle, AlertCircle, FileText, CalendarClock, CalendarPlus, ChevronDown, History, MoreVertical } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, CheckCircle, XCircle, AlertCircle, FileText, CalendarClock, CalendarPlus, ChevronDown, History, MoreVertical, Copy, Rss } from 'lucide-react';
 import { parseISO, isAfter, isBefore, startOfToday, differenceInHours, startOfWeek, endOfWeek, addWeeks, isSameWeek } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { useParentLessons, useCreateMessageRequest } from '@/hooks/useParentPortal';
 import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { RequestModal } from '@/components/portal/RequestModal';
 import { RescheduleSlotPicker } from '@/components/portal/RescheduleSlotPicker';
 import { useToast } from '@/hooks/use-toast';
 import { downloadICSFile, generateGoogleCalendarUrl } from '@/lib/calendarExport';
+import { useCalendarConnections } from '@/hooks/useCalendarConnections';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
 // --- Types ---
@@ -45,6 +49,9 @@ export default function PortalSchedule() {
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<{ id: string; title: string } | null>(null);
   const [pastOpen, setPastOpen] = useState(false);
+  const [calSyncOpen, setCalSyncOpen] = useState(false);
+  const [icalUrl, setIcalUrl] = useState<string | null>(null);
+  const [isGeneratingUrl, setIsGeneratingUrl] = useState(false);
 
   // Reschedule slot picker state
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
@@ -57,8 +64,10 @@ export default function PortalSchedule() {
   } | null>(null);
 
   const { currentOrg } = useOrg();
+  const { user } = useAuth();
   const tz = (currentOrg as any)?.timezone || 'Europe/London';
   const { toast } = useToast();
+  const { generateParentICalUrl } = useCalendarConnections();
 
   // Fetch ALL lessons (no status filter — cancelled shown inline)
   const { data: lessons, isLoading, isError, refetch } = useParentLessons({
@@ -81,6 +90,61 @@ export default function PortalSchedule() {
   }) => {
     setRescheduleLesson(lesson);
     setRescheduleModalOpen(true);
+  };
+
+  const resolveGuardianId = async (): Promise<string | null> => {
+    if (!user || !currentOrg) return null;
+    const { data } = await supabase
+      .from('guardians')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('org_id', currentOrg.id)
+      .maybeSingle();
+    return data?.id || null;
+  };
+
+  const handleGenerateICalUrl = async () => {
+    setIsGeneratingUrl(true);
+    try {
+      const guardianId = await resolveGuardianId();
+      if (!guardianId) {
+        toast({ title: 'Guardian record not found', variant: 'destructive' });
+        return;
+      }
+      const url = await generateParentICalUrl(guardianId);
+      if (url) {
+        setIcalUrl(url);
+        // Open webcal:// for native calendar subscription
+        const webcalUrl = url.replace(/^https?:\/\//, 'webcal://');
+        window.open(webcalUrl, '_self');
+      } else {
+        toast({ title: 'Failed to generate feed URL', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Error generating calendar link', variant: 'destructive' });
+    } finally {
+      setIsGeneratingUrl(false);
+    }
+  };
+
+  const handleCopyICalUrl = async () => {
+    if (!icalUrl) {
+      // Generate first
+      const guardianId = await resolveGuardianId();
+      if (!guardianId) {
+        toast({ title: 'Guardian record not found', variant: 'destructive' });
+        return;
+      }
+      const url = await generateParentICalUrl(guardianId);
+      if (url) {
+        setIcalUrl(url);
+        await navigator.clipboard.writeText(url);
+        toast({ title: 'Feed URL copied to clipboard' });
+      }
+    } else {
+      await navigator.clipboard.writeText(icalUrl);
+      toast({ title: 'Feed URL copied to clipboard' });
+    }
   };
 
   const isWithinNoticeWindow = (startAt: string): boolean => {
@@ -350,6 +414,47 @@ export default function PortalSchedule() {
   return (
     <PortalLayout>
       <PageHeader title="Schedule" description="View your children's lesson schedule" />
+
+      {/* Calendar Subscribe Card */}
+      <Card className="mb-6">
+        <CardHeader
+          className="cursor-pointer py-3 px-4"
+          onClick={() => setCalSyncOpen(!calSyncOpen)}
+        >
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Rss className="h-4 w-4" />
+            Subscribe to Calendar Feed
+            <Badge variant="secondary" className="ml-auto text-[10px]">New</Badge>
+            <ChevronDown className={cn('h-4 w-4 transition-transform', calSyncOpen && 'rotate-180')} />
+          </CardTitle>
+        </CardHeader>
+        {calSyncOpen && (
+          <CardContent className="space-y-3 pt-0">
+            <p className="text-sm text-muted-foreground">
+              Get your children's lesson schedule in your phone's calendar app.
+              Lessons update automatically — no need to check the portal.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={handleGenerateICalUrl} disabled={isGeneratingUrl}>
+                <CalendarPlus className="h-4 w-4 mr-2" />
+                Apple Calendar / iCal
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleCopyICalUrl}>
+                <Copy className="h-4 w-4 mr-2" />
+                Copy Feed URL
+              </Button>
+            </div>
+            {icalUrl && (
+              <div className="mt-2">
+                <Input value={icalUrl} readOnly className="text-xs font-mono" />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Paste this URL in any calendar app → "Subscribe to calendar" / "Add by URL"
+                </p>
+              </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
 
       {isLoading ? (
         <ListSkeleton count={4} />
