@@ -1709,24 +1709,29 @@ Currency: ${orgData.currency_code}`
       throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
+    const anthropicHeaders = {
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    };
+
+    const initialMessages = messages
+      .filter((m: { role: string; content: string }) => m.role && m.content)
+      .map((m: { role: string; content: string }) => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: typeof m.content === 'string' ? m.content : String(m.content),
+      }));
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
+      headers: anthropicHeaders,
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 4096,
         system: fullContext,
-        messages: messages
-          .filter((m: { role: string; content: string }) => m.role && m.content)
-          .map((m: { role: string; content: string }) => ({
-            role: m.role === 'user' ? 'user' : 'assistant',
-            content: typeof m.content === 'string' ? m.content : String(m.content),
-          })),
-        stream: true,
+        messages: initialMessages,
+        tools: TOOLS,
+        stream: false,
       }),
     });
 
@@ -1745,43 +1750,85 @@ Currency: ${orgData.currency_code}`
         });
       }
       const errorText = await response.text();
-      console.error("Anthropic API error:", response.status);
+      console.error("Anthropic API error:", response.status, errorText);
       return new Response(JSON.stringify({ error: "AI service error" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Transform Anthropic SSE stream into simplified format for frontend
-    const transform = new TransformStream({
-      transform(chunk, controller) {
-        const text = new TextDecoder().decode(chunk);
-        const lines = text.split('\n');
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') continue;
-          try {
-            const parsed = JSON.parse(jsonStr);
-            if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
-              controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ text: parsed.delta.text })}\n\n`));
-            }
-            if (parsed.type === 'message_stop') {
-              controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
-            }
-            if (parsed.type === 'error') {
-              console.error("Anthropic stream error:", parsed.error);
-              controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ error: parsed.error?.message || "AI error" })}\n\n`));
-              controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
-            }
-          } catch {
-            // Skip non-JSON lines (event: type lines, comments, etc.)
-          }
+    // Tool use loop — Claude may call tools multiple times
+    let anthropicMessages = [...initialMessages];
+    let currentResponse = await response.json();
+    const MAX_TOOL_ROUNDS = 5;
+    let toolRound = 0;
+
+    while (currentResponse.stop_reason === "tool_use" && toolRound < MAX_TOOL_ROUNDS) {
+      toolRound++;
+
+      // Extract tool use blocks
+      const toolUseBlocks = currentResponse.content.filter((b: any) => b.type === "tool_use");
+      const toolResults: any[] = [];
+
+      for (const toolUse of toolUseBlocks) {
+        console.log(`Tool call [${toolRound}]: ${toolUse.name}`, JSON.stringify(toolUse.input));
+        const result = await executeToolCall(
+          supabase, orgId, userRole, currencyCode,
+          toolUse.name, toolUse.input
+        );
+        toolResults.push({
+          type: "tool_result",
+          tool_use_id: toolUse.id,
+          content: result,
+        });
+      }
+
+      // Add assistant message (with tool calls) and tool results to messages
+      anthropicMessages.push({ role: "assistant", content: currentResponse.content });
+      anthropicMessages.push({ role: "user", content: toolResults });
+
+      // Call Claude again with tool results
+      const nextResponse = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: anthropicHeaders,
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 4096,
+          system: fullContext,
+          messages: anthropicMessages,
+          tools: TOOLS,
+          stream: false,
+        }),
+      });
+
+      if (!nextResponse.ok) {
+        console.error("Anthropic follow-up error:", nextResponse.status);
+        break;
+      }
+      currentResponse = await nextResponse.json();
+    }
+
+    // Extract final text response
+    const textBlocks = currentResponse.content
+      ?.filter((b: any) => b.type === "text")
+      ?.map((b: any) => b.text)
+      ?.join("") || "";
+
+    // Stream the final text to the client using SSE format
+    const sseEncoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        const chunkSize = 20;
+        for (let i = 0; i < textBlocks.length; i += chunkSize) {
+          const chunk = textBlocks.slice(i, i + chunkSize);
+          controller.enqueue(sseEncoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`));
         }
+        controller.enqueue(sseEncoder.encode("data: [DONE]\n\n"));
+        controller.close();
       },
     });
 
-    return new Response(response.body!.pipeThrough(transform), {
+    return new Response(stream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream", "X-Context-Hash": contextHash },
     });
   } catch (e) {
