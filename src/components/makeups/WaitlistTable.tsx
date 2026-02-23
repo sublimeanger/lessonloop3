@@ -151,46 +151,77 @@ export function WaitlistTable({
             No waitlist entries found.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Missed Lesson</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Waiting</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entries.map((entry) => {
-                  const studentName = entry.student
-                    ? `${entry.student.first_name} ${entry.student.last_name}`
-                    : '—';
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Missed Lesson</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Waiting</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {entries.map((entry) => {
+                    const studentName = entry.student
+                      ? `${entry.student.first_name} ${entry.student.last_name}`
+                      : '—';
 
-                  return (
-                    <TableRow key={entry.id}>
-                      <TableCell className="font-medium">{studentName}</TableCell>
-                      <TableCell className="text-sm">{entry.lesson_title}</TableCell>
-                      <TableCell className="text-sm">{formatDate(entry.missed_lesson_date)}</TableCell>
-                      <TableCell className="text-sm capitalize">{entry.absence_reason.replace(/_/g, ' ')}</TableCell>
-                      <TableCell>
-                        <Badge variant={statusVariant[entry.status] ?? 'outline'} className="text-xs capitalize">
-                          {entry.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {waitingSince(entry.created_at)}
-                      </TableCell>
-                      <TableCell className="text-right">{renderAction(entry)}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                    return (
+                      <TableRow key={entry.id}>
+                        <TableCell className="font-medium">{studentName}</TableCell>
+                        <TableCell className="text-sm">{entry.lesson_title}</TableCell>
+                        <TableCell className="text-sm">{formatDate(entry.missed_lesson_date)}</TableCell>
+                        <TableCell className="text-sm capitalize">{entry.absence_reason.replace(/_/g, ' ')}</TableCell>
+                        <TableCell>
+                          <Badge variant={statusVariant[entry.status] ?? 'outline'} className="text-xs capitalize">
+                            {entry.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {waitingSince(entry.created_at)}
+                        </TableCell>
+                        <TableCell className="text-right">{renderAction(entry)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile card layout */}
+            <div className="md:hidden divide-y divide-border">
+              {entries.map((entry) => {
+                const studentName = entry.student
+                  ? `${entry.student.first_name} ${entry.student.last_name}`
+                  : '—';
+
+                return (
+                  <div key={entry.id} className="p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-medium text-sm">{studentName}</p>
+                      <Badge variant={statusVariant[entry.status] ?? 'outline'} className="text-xs capitalize shrink-0">
+                        {entry.status}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {entry.lesson_title} · {formatDate(entry.missed_lesson_date)}
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="text-xs capitalize">{entry.absence_reason.replace(/_/g, ' ')}</Badge>
+                      <span className="text-xs text-muted-foreground">Waiting {waitingSince(entry.created_at)}</span>
+                    </div>
+                    <div className="pt-1">{renderAction(entry)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
