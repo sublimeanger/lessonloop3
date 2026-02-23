@@ -52,6 +52,9 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
     phone: '',
     dob: '',
     notes: '',
+    instrumentId: '',
+    examBoardId: '',
+    currentGradeId: '',
   });
   
   const [guardianData, setGuardianData] = useState<GuardianData>({
@@ -81,7 +84,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
         setCurrentStep(1);
         setDuplicateWarning({ show: false, matches: [] });
         setSkipDuplicateCheck(false);
-        setStudentData({ firstName: '', lastName: '', email: '', phone: '', dob: '', notes: '' });
+        setStudentData({ firstName: '', lastName: '', email: '', phone: '', dob: '', notes: '', instrumentId: '', examBoardId: '', currentGradeId: '' });
         setGuardianData({
           addGuardian: false,
           mode: 'existing',
@@ -192,7 +195,24 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
         .single();
       
       if (studentError) throw studentError;
-      
+
+      // 1b. Create student_instruments record if instrument selected
+      if (studentData.instrumentId && studentData.instrumentId !== 'none') {
+        const { error: instrError } = await (supabase as any)
+          .from('student_instruments')
+          .insert({
+            student_id: createdStudent.id,
+            org_id: currentOrg.id,
+            instrument_id: studentData.instrumentId,
+            exam_board_id: studentData.examBoardId && studentData.examBoardId !== 'none' ? studentData.examBoardId : null,
+            current_grade_id: studentData.currentGradeId && studentData.currentGradeId !== 'none' ? studentData.currentGradeId : null,
+            is_primary: true,
+          });
+        if (instrError) {
+          logger.error('Student instrument creation failed:', instrError);
+        }
+      }
+
       let guardianInfo: CreatedData['guardian'] = undefined;
       
       // 2. Handle guardian if requested
@@ -307,7 +327,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
   
   const handleAddAnother = () => {
     setCurrentStep(1);
-    setStudentData({ firstName: '', lastName: '', email: '', phone: '', dob: '', notes: '' });
+    setStudentData({ firstName: '', lastName: '', email: '', phone: '', dob: '', notes: '', instrumentId: '', examBoardId: '', currentGradeId: '' });
     setGuardianData({
       addGuardian: false,
       mode: 'existing',

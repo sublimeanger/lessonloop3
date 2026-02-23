@@ -15,6 +15,10 @@ import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { StudentWizard } from '@/components/students/StudentWizard';
 import { useStudents, useToggleStudentStatus } from '@/hooks/useStudents';
 import type { StudentListItem, StudentStatus } from '@/hooks/useStudents';
+import { usePrimaryInstruments } from '@/hooks/usePrimaryInstruments';
+import type { PrimaryInstrumentInfo } from '@/hooks/usePrimaryInstruments';
+import { getInstrumentCategoryIcon } from '@/hooks/useInstruments';
+import { Badge } from '@/components/ui/badge';
 import { Plus, Search, Users, Upload, Lock, Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
@@ -66,10 +70,12 @@ function StudentCard({
   student,
   isAdmin,
   onToggleStatus,
+  primaryInstrument,
 }: {
   student: StudentListItem;
   isAdmin: boolean;
   onToggleStatus: (s: StudentListItem) => void;
+  primaryInstrument?: PrimaryInstrumentInfo;
 }) {
   const navigate = useNavigate();
   const fullName = `${student.first_name} ${student.last_name}`;
@@ -116,6 +122,13 @@ function StudentCard({
           </span>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+          {primaryInstrument && (
+            <Badge variant="secondary" className="text-[10px] py-0 px-1.5 font-normal gap-1">
+              {getInstrumentCategoryIcon(primaryInstrument.instrument_category)} {primaryInstrument.instrument_name}
+              {primaryInstrument.grade_short_name && ` · ${primaryInstrument.grade_short_name}`}
+              {primaryInstrument.exam_board_short_name && ` (${primaryInstrument.exam_board_short_name})`}
+            </Badge>
+          )}
           {student.email && <span className="truncate">{student.email}</span>}
           {student.phone && <span className="hidden sm:inline">{student.phone}</span>}
           {student.guardian_count === 0 && <span className="text-xs text-amber-600 font-medium">No guardian</span>}
@@ -148,6 +161,7 @@ export default function Students() {
   const queryClient = useQueryClient();
   const { limits, canAddStudent } = useUsageCounts();
   const { data: students = [], isLoading } = useStudents();
+  const { data: primaryInstrumentMap = {} } = usePrimaryInstruments();
   const toggleMutation = useToggleStudentStatus();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -288,6 +302,7 @@ export default function Students() {
               student={student}
               isAdmin={isAdmin}
               onToggleStatus={toggleStatus}
+              primaryInstrument={primaryInstrumentMap[student.id]}
             />
           ))}
         </div>

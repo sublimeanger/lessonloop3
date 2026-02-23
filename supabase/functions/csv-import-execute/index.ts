@@ -463,9 +463,20 @@ serve(async (req) => {
       });
     }
 
-    // PRE-PROCESS: Build caches for teachers, locations, and rate cards
+    // PRE-PROCESS: Build caches for instruments, teachers, locations, and rate cards
     // This prevents creating duplicates during import
-    
+
+    // Fetch instruments for matching CSV instrument values
+    const { data: allInstruments } = await supabase
+      .from("instruments")
+      .select("id, name")
+      .or(`org_id.is.null,org_id.eq.${orgId}`);
+
+    const instrumentByName = new Map<string, string>();
+    allInstruments?.forEach((i: any) => {
+      instrumentByName.set(i.name.toLowerCase().trim(), i.id);
+    });
+
     // Fetch existing teachers from the NEW teachers table
     const { data: existingTeachers } = await supabase
       .from("teachers")
@@ -707,13 +718,6 @@ serve(async (req) => {
           if (parsedDob) studentData.dob = parsedDob;
         }
         if (row.notes) studentData.notes = row.notes.trim();
-        if (row.instrument) {
-          // Add instrument to notes if not already a notes field
-          const instrumentNote = `Instrument: ${row.instrument.trim()}`;
-          studentData.notes = studentData.notes 
-            ? `${instrumentNote}\n${studentData.notes}` 
-            : instrumentNote;
-        }
         
         // Set teaching defaults (use new teacher_id column for teachers table)
         if (resolvedLocationId) studentData.default_location_id = resolvedLocationId;
@@ -731,6 +735,37 @@ serve(async (req) => {
         }
 
         result.studentsCreated++;
+
+        // 1b. Link instrument if provided in CSV
+        if (row.instrument?.trim()) {
+          const instrumentName = row.instrument.trim().toLowerCase();
+          let instrumentId = instrumentByName.get(instrumentName);
+
+          // Fuzzy match: try partial matches (e.g., "piano" matches "Piano")
+          if (!instrumentId) {
+            for (const [name, id] of instrumentByName.entries()) {
+              if (name.includes(instrumentName) || instrumentName.includes(name)) {
+                instrumentId = id;
+                break;
+              }
+            }
+          }
+
+          if (instrumentId) {
+            const { error: instrError } = await supabase
+              .from("student_instruments")
+              .insert({
+                student_id: student.id,
+                org_id: orgId,
+                instrument_id: instrumentId,
+                is_primary: true,
+              });
+            if (instrError) {
+              console.log(`Instrument link warning for ${studentName}:`, instrError.message);
+            }
+          }
+          // If no match found, silently skip — don't fail the import
+        }
 
         // 2. Create guardian if provided
         let guardianId: string | null = null;
