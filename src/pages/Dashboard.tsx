@@ -11,7 +11,6 @@ import { OnboardingChecklist } from '@/components/shared/OnboardingChecklist';
 import { GridSkeleton } from '@/components/shared/LoadingState';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { UpgradeBanner } from '@/components/subscription';
-import { CalendarSyncBanner } from '@/components/shared/CalendarSyncBanner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -143,8 +142,6 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
           </SectionErrorBoundary>
         </motion.div>
 
-        <CalendarSyncBanner />
-
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="First Run Experience">
             <FirstRunExperience />
@@ -250,8 +247,6 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
             />
           </SectionErrorBoundary>
         </motion.div>
-
-        <CalendarSyncBanner />
 
         <motion.div variants={itemVariants}>
           <SectionErrorBoundary name="First Run Experience">
