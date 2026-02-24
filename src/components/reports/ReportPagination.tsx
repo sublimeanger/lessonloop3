@@ -36,12 +36,12 @@ export function ReportPagination({
   }
 
   return (
-    <div className="mt-4 flex items-center justify-between">
+    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm text-muted-foreground">
         Showing {Math.min((currentPage - 1) * pageSize + 1, totalItems)}–{Math.min(currentPage * pageSize, totalItems)} of {totalItems}
       </p>
       <Pagination>
-        <PaginationContent>
+        <PaginationContent className="flex-wrap justify-start sm:justify-end">
           <PaginationItem>
             <PaginationPrevious
               onClick={() => currentPage > 1 && onPageChange(currentPage - 1)}
@@ -50,11 +50,11 @@ export function ReportPagination({
           </PaginationItem>
           {pages.map((page, i) =>
             page === 'ellipsis' ? (
-              <PaginationItem key={`e-${i}`}>
+              <PaginationItem key={`e-${i}`} className="hidden sm:inline-flex">
                 <PaginationEllipsis />
               </PaginationItem>
             ) : (
-              <PaginationItem key={page}>
+              <PaginationItem key={page} className="hidden sm:inline-flex">
                 <PaginationLink
                   isActive={page === currentPage}
                   onClick={() => onPageChange(page)}
@@ -65,6 +65,11 @@ export function ReportPagination({
               </PaginationItem>
             )
           )}
+          <PaginationItem className="sm:hidden">
+            <PaginationLink isActive>
+              {currentPage} / {totalPages}
+            </PaginationLink>
+          </PaginationItem>
           <PaginationItem>
             <PaginationNext
               onClick={() => currentPage < totalPages && onPageChange(currentPage + 1)}
