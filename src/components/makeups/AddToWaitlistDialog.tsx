@@ -136,7 +136,7 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="h-screen w-screen max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-w-md sm:rounded-lg sm:border sm:p-6">
         <DialogHeader>
           <DialogTitle>Add to Waitlist</DialogTitle>
         </DialogHeader>
@@ -144,7 +144,7 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
           <div className="space-y-1.5">
             <Label>Student</Label>
             <Select onValueChange={handleStudentChange} value={watch('student_id')}>
-              <SelectTrigger>
+              <SelectTrigger className="min-h-11 sm:min-h-9">
                 <SelectValue placeholder="Select student" />
               </SelectTrigger>
               <SelectContent>
@@ -165,7 +165,7 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
                 <p className="text-sm text-muted-foreground">Loading lessons…</p>
               ) : studentLessons && studentLessons.length > 0 ? (
                 <Select onValueChange={(v) => setValue('missed_lesson_id', v)} value={watch('missed_lesson_id')}>
-                  <SelectTrigger>
+                  <SelectTrigger className="min-h-11 sm:min-h-9">
                     <SelectValue placeholder="Select missed lesson" />
                   </SelectTrigger>
                   <SelectContent>
@@ -200,7 +200,7 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
           <div className="space-y-1.5">
             <Label>Absence Reason</Label>
             <Select onValueChange={(v) => setValue('absence_reason', v)} value={watch('absence_reason')}>
-              <SelectTrigger>
+              <SelectTrigger className="min-h-11 sm:min-h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -218,9 +218,9 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
             <Textarea {...register('notes')} placeholder="Admin notes…" rows={2} />
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting || !selectedLesson}>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button type="button" variant="outline" className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" className="min-h-11 w-full sm:min-h-9 sm:w-auto" disabled={isSubmitting || !selectedLesson}>
               {isSubmitting ? 'Adding…' : 'Add to Waitlist'}
             </Button>
           </DialogFooter>

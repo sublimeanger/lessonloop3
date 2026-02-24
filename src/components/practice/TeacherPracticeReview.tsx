@@ -50,7 +50,7 @@ export function TeacherPracticeReview() {
       key={log.id} 
       className="border rounded-lg p-4 bg-card"
     >
-      <div className="flex items-start justify-between mb-2">
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-muted-foreground" />
@@ -112,9 +112,10 @@ export function TeacherPracticeReview() {
           />
           <Button 
             size="sm" 
+            className="min-h-11 gap-1 sm:min-h-9" 
             onClick={() => handleSubmitFeedback(log.id)}
             disabled={addFeedback.isPending}
-            className="gap-1"
+
           >
             <Send className="h-4 w-4" />
             Send Feedback
@@ -143,7 +144,7 @@ export function TeacherPracticeReview() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5" />
           Practice Review
@@ -154,7 +155,7 @@ export function TeacherPracticeReview() {
       </CardHeader>
       <CardContent className="p-0">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="px-6">
+          <div className="px-4 sm:px-6">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="pending" className="gap-2">
                 Pending Review
@@ -169,8 +170,8 @@ export function TeacherPracticeReview() {
           </div>
           
           <TabsContent value="pending" className="mt-0">
-            <ScrollArea className="h-[500px]">
-              <div className="p-6 space-y-4">
+            <ScrollArea className="h-[420px] sm:h-[500px]">
+              <div className="space-y-4 p-4 sm:p-6">
                 {isLoading ? (
                   <p className="text-center text-muted-foreground py-8">Loading...</p>
                 ) : pendingLogs.length === 0 ? (
@@ -186,8 +187,8 @@ export function TeacherPracticeReview() {
           </TabsContent>
           
           <TabsContent value="all" className="mt-0">
-            <ScrollArea className="h-[500px]">
-              <div className="p-6 space-y-4">
+            <ScrollArea className="h-[420px] sm:h-[500px]">
+              <div className="space-y-4 p-4 sm:p-6">
                 {isLoading ? (
                   <p className="text-center text-muted-foreground py-8">Loading...</p>
                 ) : allLogs.length === 0 ? (

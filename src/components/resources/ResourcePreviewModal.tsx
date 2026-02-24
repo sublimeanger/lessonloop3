@@ -76,10 +76,10 @@ export function ResourcePreviewModal({
 
   const dialogSize =
     previewType === 'pdf'
-      ? 'sm:max-w-[900px] h-[85vh]'
+      ? 'h-screen w-screen max-w-none rounded-none border-0 p-3 sm:h-[85vh] sm:max-w-[900px] sm:rounded-lg sm:border sm:p-6'
       : previewType === 'image'
-        ? 'sm:max-w-[90vw] max-h-[90vh]'
-        : 'sm:max-w-[450px]';
+        ? 'h-screen w-screen max-w-none rounded-none border-0 p-3 sm:max-h-[90vh] sm:max-w-[90vw] sm:rounded-lg sm:border sm:p-6'
+        : 'h-screen w-screen max-w-none rounded-none border-0 p-3 sm:max-w-[450px] sm:rounded-lg sm:border sm:p-6';
 
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
@@ -97,13 +97,13 @@ export function ResourcePreviewModal({
             <img
               src={signedUrl}
               alt={title}
-              className="max-w-full max-h-[75vh] object-contain rounded-md"
+              className="max-h-[calc(100vh-11rem)] max-w-full rounded-md object-contain sm:max-h-[75vh]"
             />
           ) : previewType === 'pdf' && signedUrl ? (
             <iframe
               src={signedUrl}
               title={title}
-              className="w-full h-full rounded-md border"
+              className="h-full w-full rounded-md border"
             />
           ) : (
             <div className="text-center space-y-3 py-8">
@@ -111,7 +111,7 @@ export function ResourcePreviewModal({
               <p className="text-sm text-muted-foreground">
                 Preview not available for this file type.
               </p>
-              <Button variant="outline" onClick={handleDownload} disabled={!signedUrl}>
+              <Button className="min-h-11 sm:min-h-9" variant="outline" onClick={handleDownload} disabled={!signedUrl}>
                 <Download className="h-4 w-4 mr-2" />
                 Download to view
               </Button>
@@ -120,8 +120,8 @@ export function ResourcePreviewModal({
         </div>
 
         {previewType !== 'none' && signedUrl && (
-          <div className="shrink-0 flex justify-end pt-2 border-t">
-            <Button variant="outline" size="sm" onClick={handleDownload}>
+          <div className="shrink-0 flex justify-end border-t pt-2">
+            <Button variant="outline" size="sm" className="min-h-11 sm:min-h-9" onClick={handleDownload}>
               <Download className="h-4 w-4 mr-2" />
               Download
             </Button>

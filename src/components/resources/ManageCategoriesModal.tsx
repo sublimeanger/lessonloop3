@@ -59,14 +59,14 @@ export function ManageCategoriesModal({ open, onOpenChange }: ManageCategoriesMo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px]">
+      <DialogContent className="h-screen w-screen max-w-none overflow-y-auto rounded-none border-0 p-4 sm:max-h-[90vh] sm:max-w-[420px] sm:rounded-lg sm:border sm:p-6">
         <DialogHeader>
           <DialogTitle>Manage Categories</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Add new */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Input
               placeholder="New category name…"
               value={newName}
@@ -88,7 +88,7 @@ export function ManageCategoriesModal({ open, onOpenChange }: ManageCategoriesMo
             </div>
             <Button
               size="icon"
-              className="shrink-0"
+              className="h-11 w-11 shrink-0 sm:h-9 sm:w-9"
               onClick={handleCreate}
               disabled={!newName.trim() || createMutation.isPending}
             >
@@ -152,7 +152,7 @@ export function ManageCategoriesModal({ open, onOpenChange }: ManageCategoriesMo
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-11 w-11 opacity-100 transition-opacity sm:h-7 sm:w-7 sm:opacity-0 sm:group-hover:opacity-100"
                         onClick={() => startEdit(cat)}
                       >
                         <Pencil className="h-3 w-3" />
@@ -160,7 +160,7 @@ export function ManageCategoriesModal({ open, onOpenChange }: ManageCategoriesMo
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                        className="h-11 w-11 opacity-100 transition-opacity text-destructive hover:text-destructive sm:h-7 sm:w-7 sm:opacity-0 sm:group-hover:opacity-100"
                         onClick={() => deleteMutation.mutate(cat.id)}
                         disabled={deleteMutation.isPending}
                       >

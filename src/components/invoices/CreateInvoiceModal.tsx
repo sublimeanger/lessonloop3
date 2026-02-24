@@ -261,7 +261,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto mx-4 sm:mx-auto">
+      <DialogContent className="h-screen w-screen max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-lg sm:border sm:p-6">
         <DialogHeader>
           <DialogTitle>Create Invoice</DialogTitle>
           <DialogDescription>
@@ -345,7 +345,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
 
                 <div className="space-y-2">
                   {fields.map((field, index) => (
-                    <div key={field.id} className="flex gap-2">
+                    <div key={field.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
                       <Input
                         placeholder="Description"
                         {...register(`items.${index}.description`, { required: true })}
@@ -359,7 +359,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                           valueAsNumber: true,
                           min: 1,
                         })}
-                        className="w-20"
+                        className="w-full sm:w-20"
                       />
                       <Input
                         type="number"
@@ -370,13 +370,14 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                           valueAsNumber: true,
                           min: 0.01,
                         })}
-                        className="w-24"
+                        className="w-full sm:w-24"
                       />
                       {fields.length > 1 && (
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
+                          className="h-11 w-11 sm:h-10 sm:w-10"
                           onClick={() => remove(index)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -528,11 +529,12 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
               />
             </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+            <DialogFooter className="flex-col gap-2 sm:flex-row">
+              <Button type="button" variant="outline" className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={() => handleOpenChange(false)}>
                 Cancel
               </Button>
               <Button
+                className="min-h-11 w-full sm:min-h-9 sm:w-auto"
                 type="submit"
                 disabled={
                   createInvoice.isPending ||

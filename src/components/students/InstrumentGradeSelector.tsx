@@ -272,7 +272,7 @@ export function InstrumentGradeSelector({ studentId, readOnly = false }: Instrum
                 </Label>
               </div>
 
-              <div className="flex gap-2 justify-end">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button variant="outline" onClick={resetForm}>
                   Cancel
                 </Button>
@@ -317,7 +317,7 @@ export function InstrumentGradeSelector({ studentId, readOnly = false }: Instrum
               {removeMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
-              Remove
+              Delete instrument
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -346,7 +346,7 @@ function InstrumentRow({
             {categoryIcon} {item.instrument?.name}
           </span>
           {item.is_primary && (
-            <Badge variant="default" className="text-xs">
+            <Badge variant="success" className="text-xs">
               Primary
             </Badge>
           )}

@@ -19,6 +19,7 @@ import { usePrimaryInstruments } from '@/hooks/usePrimaryInstruments';
 import type { PrimaryInstrumentInfo } from '@/hooks/usePrimaryInstruments';
 import { getInstrumentCategoryIcon } from '@/hooks/useInstruments';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Search, Users, Upload, Lock, Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
@@ -47,13 +48,14 @@ function StatusPills({
   counts: { all: number; active: number; inactive: number };
 }) {
   return (
-    <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-0.5">
+    <div className="flex w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted/50 p-0.5 sm:w-auto" role="tablist" aria-label="Student status filters">
       {STATUS_FILTERS.map((s) => (
         <button
           key={s}
           onClick={() => onChange(s)}
+          type="button"
           className={cn(
-            'rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-all',
+            'min-h-11 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-all',
             value === s
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground',
@@ -63,6 +65,50 @@ function StatusPills({
         </button>
       ))}
     </div>
+  );
+}
+
+function StudentTableRow({
+  student,
+  isAdmin,
+  onToggleStatus,
+  primaryInstrument,
+}: {
+  student: StudentListItem;
+  isAdmin: boolean;
+  onToggleStatus: (s: StudentListItem) => void;
+  primaryInstrument?: PrimaryInstrumentInfo;
+}) {
+  const navigate = useNavigate();
+  const fullName = `${student.first_name} ${student.last_name}`;
+
+  return (
+    <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/students/${student.id}`)}>
+      <TableCell className="font-medium">{fullName}</TableCell>
+      <TableCell>{primaryInstrument ? `${primaryInstrument.instrument_name}${primaryInstrument.grade_short_name ? ` · ${primaryInstrument.grade_short_name}` : ''}` : '—'}</TableCell>
+      <TableCell>{student.email || '—'}</TableCell>
+      <TableCell>{student.phone || '—'}</TableCell>
+      <TableCell>
+        <Badge variant={student.status === 'active' ? 'success' : 'secondary'} className="capitalize">
+          {student.status}
+        </Badge>
+      </TableCell>
+      <TableCell>{student.guardian_count}</TableCell>
+      {isAdmin && (
+        <TableCell className="text-right">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleStatus(student);
+            }}
+          >
+            {student.status === 'active' ? 'Deactivate' : 'Activate'}
+          </Button>
+        </TableCell>
+      )}
+    </TableRow>
   );
 }
 
@@ -116,14 +162,14 @@ function StudentCard({
                 student.status === 'active' ? 'bg-success' : 'bg-muted-foreground/40',
               )}
             />
-            <span className="text-[10px] font-medium text-muted-foreground capitalize hidden sm:inline">
+            <span className="text-micro text-muted-foreground capitalize hidden sm:inline">
               {student.status}
             </span>
           </span>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
           {primaryInstrument && (
-            <Badge variant="secondary" className="text-[10px] py-0 px-1.5 font-normal gap-1">
+            <Badge variant="secondary" className="text-micro py-0 px-1.5 font-normal gap-1">
               {getInstrumentCategoryIcon(primaryInstrument.instrument_category)} {primaryInstrument.instrument_name}
               {primaryInstrument.grade_short_name && ` · ${primaryInstrument.grade_short_name}`}
               {primaryInstrument.exam_board_short_name && ` (${primaryInstrument.exam_board_short_name})`}
@@ -131,7 +177,7 @@ function StudentCard({
           )}
           {student.email && <span className="truncate">{student.email}</span>}
           {student.phone && <span className="hidden sm:inline">{student.phone}</span>}
-          {student.guardian_count === 0 && <span className="text-xs text-amber-600 font-medium">No guardian</span>}
+          {student.guardian_count === 0 && <span className="text-xs text-warning font-medium">No guardian</span>}
         </div>
       </div>
 
@@ -247,7 +293,7 @@ export default function Students() {
 
       <StudentsOverdueBanner />
 
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" data-tour="student-filters">
+      <div className="mb-4 flex flex-col gap-3" data-tour="student-filters">
         <div className="relative w-full sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
@@ -267,9 +313,9 @@ export default function Students() {
             </button>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-            <SelectTrigger className="w-[140px] h-9 text-xs">
+            <SelectTrigger className="h-11 w-full text-xs sm:h-9 sm:w-[160px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -295,16 +341,45 @@ export default function Students() {
           onSecondaryAction={searchQuery ? undefined : () => navigate('/students/import')}
         />
       ) : (
-        <div className="space-y-2" role="list" aria-label="Students list" data-tour="student-list">
-          {filteredStudents.map((student) => (
-            <StudentCard
-              key={student.id}
-              student={student}
-              isAdmin={isAdmin}
-              onToggleStatus={toggleStatus}
-              primaryInstrument={primaryInstrumentMap[student.id]}
-            />
-          ))}
+        <div data-tour="student-list">
+          <div className="hidden overflow-x-auto rounded-xl border bg-card md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Instrument</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Guardians</TableHead>
+                  {isAdmin && <TableHead className="text-right">Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredStudents.map((student) => (
+                  <StudentTableRow
+                    key={student.id}
+                    student={student}
+                    isAdmin={isAdmin}
+                    onToggleStatus={toggleStatus}
+                    primaryInstrument={primaryInstrumentMap[student.id]}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="space-y-2 md:hidden" role="list" aria-label="Students list">
+            {filteredStudents.map((student) => (
+              <StudentCard
+                key={student.id}
+                student={student}
+                isAdmin={isAdmin}
+                onToggleStatus={toggleStatus}
+                primaryInstrument={primaryInstrumentMap[student.id]}
+              />
+            ))}
+          </div>
         </div>
       )}
 

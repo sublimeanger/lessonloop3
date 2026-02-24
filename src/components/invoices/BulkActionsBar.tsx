@@ -23,8 +23,8 @@ export function BulkActionsBar({
   if (selectedCount === 0) return null;
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border bg-muted/50 px-4 py-3">
-      <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-3 rounded-lg border bg-muted/50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium">
           {selectedCount} invoice{selectedCount !== 1 ? 's' : ''} selected
         </span>
@@ -33,14 +33,14 @@ export function BulkActionsBar({
           Clear
         </Button>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
         {draftCount > 0 && (
           <Button
             size="sm"
             variant="default"
             onClick={onBulkSend}
             disabled={isSending}
-            className="gap-1.5"
+            className="min-h-11 gap-1.5 sm:min-h-9"
           >
             <Send className="h-3.5 w-3.5" />
             Send {draftCount} Draft{draftCount !== 1 ? 's' : ''}
@@ -51,7 +51,7 @@ export function BulkActionsBar({
             size="sm"
             variant="destructive"
             onClick={onBulkVoid}
-            className="gap-1.5"
+            className="min-h-11 gap-1.5 sm:min-h-9"
           >
             <XCircle className="h-3.5 w-3.5" />
             Void {voidableCount}

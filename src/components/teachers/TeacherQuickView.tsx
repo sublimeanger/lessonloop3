@@ -81,7 +81,7 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, onRemove
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto">
+      <SheetContent className="h-[100dvh] w-full overflow-y-auto sm:h-auto sm:w-[640px] sm:max-w-[640px]">
         <SheetHeader className="pb-4">
           <div className="flex items-center gap-3">
             <div
@@ -94,17 +94,17 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, onRemove
               <SheetTitle className="text-left truncate">{teacher.display_name}</SheetTitle>
               <div className="flex items-center gap-2 mt-1">
                 {teacher.isLinked ? (
-                  <Badge variant="outline" className="text-[10px] gap-1">
+                  <Badge variant="outline" className="text-micro gap-1">
                     <Link2 className="h-3 w-3" />
                     Linked
                   </Badge>
                 ) : (
-                  <Badge variant="secondary" className="text-[10px] gap-1">
+                  <Badge variant="secondary" className="text-micro gap-1">
                     <Link2Off className="h-3 w-3" />
                     Unlinked
                   </Badge>
                 )}
-                <Badge variant={teacher.status === 'active' ? 'default' : 'destructive'} className="text-[10px]">
+                <Badge variant={teacher.status === 'active' ? 'success' : 'destructive'} className="text-micro">
                   {teacher.status === 'active' ? 'Active' : 'Inactive'}
                 </Badge>
               </div>
@@ -113,11 +113,11 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, onRemove
         </SheetHeader>
 
         {/* Actions */}
-        <div className="flex gap-2 mb-4">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row">
           <Button
             variant="outline"
             size="sm"
-            className="gap-1.5 flex-1"
+            className="min-h-11 flex-1 gap-1.5 sm:min-h-9"
             onClick={() => {
               onOpenChange(false);
               navigate(`/calendar?teacher=${teacher.id}`);
@@ -128,7 +128,7 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, onRemove
           </Button>
           <Button
             size="sm"
-            className="gap-1.5 flex-1"
+            className="min-h-11 flex-1 gap-1.5 sm:min-h-9"
             onClick={() => {
               onOpenChange(false);
               onEdit(teacher);
@@ -143,7 +143,7 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, onRemove
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5 w-full text-destructive hover:text-destructive"
+              className="min-h-11 w-full gap-1.5 text-destructive hover:text-destructive sm:min-h-9"
               onClick={() => {
                 onOpenChange(false);
                 onRemove(teacher);
@@ -235,7 +235,7 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, onRemove
               {assignedStudents.map((s) => (
                 <div
                   key={s.id}
-                  className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm cursor-pointer hover:bg-accent transition-colors"
+                  className="flex min-h-11 items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors hover:bg-accent"
                   onClick={() => {
                     onOpenChange(false);
                     navigate(`/students/${s.id}`);
@@ -243,7 +243,7 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, onRemove
                 >
                   <span>{s.name}</span>
                   {s.isPrimary && (
-                    <Badge variant="outline" className="text-[10px]">Primary</Badge>
+                    <Badge variant="outline" className="text-micro">Primary</Badge>
                   )}
                 </div>
               ))}

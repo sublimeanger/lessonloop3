@@ -154,7 +154,7 @@ export function PaymentPlansDashboard() {
   return (
     <div className="space-y-4">
       {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
         <StatCard label="Active Plans" value={stats.total} onClick={() => setStatusFilter('all')} active={statusFilter === 'all'} />
         <StatCard label="On Track" value={stats.onTrack} variant="success" onClick={() => setStatusFilter('on_track')} active={statusFilter === 'on_track'} />
         <StatCard label="Attention" value={stats.attention} variant="warning" onClick={() => setStatusFilter('attention')} active={statusFilter === 'attention'} />
@@ -162,12 +162,12 @@ export function PaymentPlansDashboard() {
       </div>
 
       {/* Filter bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
           {sorted.length} plan{sorted.length !== 1 ? 's' : ''}
         </p>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as 'all' | PlanHealth)}>
-          <SelectTrigger className="w-[160px] h-8 text-xs">
+          <SelectTrigger className="h-11 w-full text-xs sm:h-8 sm:w-[160px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
