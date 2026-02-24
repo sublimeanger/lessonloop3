@@ -217,8 +217,8 @@ async function buildDataContext(supabase: SupabaseClient, orgId: string, currenc
     .lte("start_at", `${todayStr}T23:59:59`);
   if (monthlyError) console.error("Failed to fetch monthly lessons:", monthlyError.message);
 
-  const completedCount = (monthlyLessons || []).filter((l: Lesson) => l.status === "completed").length;
-  const cancelledCount = (monthlyLessons || []).filter((l: Lesson) => l.status === "cancelled").length;
+  const completedCount = (monthlyLessons || []).filter((l: any) => l.status === "completed").length;
+  const cancelledCount = (monthlyLessons || []).filter((l: any) => l.status === "cancelled").length;
   const totalMonthly = monthlyLessons?.length || 0;
   const completionRate = totalMonthly > 0 ? Math.round((completedCount / totalMonthly) * 100) : 0;
 
@@ -286,8 +286,8 @@ async function buildDataContext(supabase: SupabaseClient, orgId: string, currenc
 
   // Build invoice summary with citations
   let invoiceSummary = "";
-  const overdueList = (overdueInvoices || []).filter((i: Invoice) => i.status === "overdue");
-  const sentList = (overdueInvoices || []).filter((i: Invoice) => i.status === "sent");
+  const overdueList = (overdueInvoices || []).filter((i: any) => i.status === "overdue");
+  const sentList = (overdueInvoices || []).filter((i: any) => i.status === "sent");
 
   // Use RPC totals for accurate counts (the fetched list is limited to 20 for citations)
   const rpcOverdueTotal = invoiceStats?.overdue ?? 0;
@@ -720,10 +720,10 @@ async function buildStudentContext(supabase: SupabaseClient, orgId: string, stud
         const priority: Record<string, number> = { overdue: 0, sent: 1, draft: 2, paid: 3, cancelled: 4 };
         return (priority[a.status] ?? 5) - (priority[b.status] ?? 5);
       });
-      const overdueCount = sorted.filter((i: Invoice) => i.status === "overdue").length;
-      const outstandingCount = sorted.filter((i: Invoice) => i.status === "sent").length;
+      const overdueCount = sorted.filter((i: any) => i.status === "overdue").length;
+      const outstandingCount = sorted.filter((i: any) => i.status === "sent").length;
       context += `\n\nInvoices (${sorted.length} shown, ${overdueCount} overdue, ${outstandingCount} outstanding):`;
-      sorted.slice(0, 5).forEach((inv: Invoice) => {
+      sorted.slice(0, 5).forEach((inv: any) => {
         context += `\n  - [Invoice:${inv.invoice_number}] ${inv.status} ${fmtCurrency(inv.total_minor)}`;
       });
       if (sorted.length > 5) {
