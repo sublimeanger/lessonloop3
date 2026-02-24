@@ -55,7 +55,7 @@ function StatusPills({
           onClick={() => onChange(s)}
           type="button"
           className={cn(
-            'min-h-11 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-all',
+            'min-h-11 flex-1 sm:flex-initial whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-all text-center',
             value === s
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground',
@@ -140,10 +140,10 @@ function StudentCard({
       tabIndex={0}
       role="link"
       aria-label={`View ${fullName}`}
-      className="flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="flex items-center gap-3 rounded-xl border bg-card p-3 sm:p-4 shadow-sm transition-all hover:shadow-md cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
       <div
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
+        className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
         style={{ backgroundColor: avatarColor }}
         aria-hidden="true"
       >
@@ -167,18 +167,18 @@ function StudentCard({
             </span>
           </span>
         </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground mt-0.5">
           {primaryInstrument && (
-            <Badge variant="secondary" className="text-micro py-0 px-1.5 font-normal gap-1">
+            <Badge variant="secondary" className="text-micro py-0 px-1.5 font-normal gap-1 max-w-full">
               {getInstrumentCategoryIcon(primaryInstrument.instrument_category)} {primaryInstrument.instrument_name}
               {primaryInstrument.grade_short_name && ` · ${primaryInstrument.grade_short_name}`}
               {primaryInstrument.exam_board_short_name && ` (${primaryInstrument.exam_board_short_name})`}
             </Badge>
           )}
-          {student.email && <span className="truncate">{student.email}</span>}
+          {student.email && <span className="truncate max-w-[180px] sm:max-w-none">{student.email}</span>}
           {student.phone && <span className="hidden sm:inline">{student.phone}</span>}
-          {student.guardian_count === 0 && <span className="text-xs text-warning font-medium">No guardian</span>}
         </div>
+        {student.guardian_count === 0 && <div className="text-xs text-warning font-medium mt-0.5">No guardian</div>}
       </div>
 
       {isAdmin && (
@@ -313,9 +313,9 @@ export default function Students() {
             </button>
           )}
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-2">
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-            <SelectTrigger className="h-11 w-full text-xs sm:h-9 sm:w-[160px]">
+            <SelectTrigger className="h-9 w-[140px] text-xs sm:w-[160px] shrink-0">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -346,13 +346,13 @@ export default function Students() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Instrument</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Guardians</TableHead>
-                  {isAdmin && <TableHead className="text-right">Actions</TableHead>}
+                  <TableHead className="whitespace-nowrap">Name</TableHead>
+                  <TableHead className="whitespace-nowrap">Instrument</TableHead>
+                  <TableHead className="whitespace-nowrap">Email</TableHead>
+                  <TableHead className="whitespace-nowrap">Phone</TableHead>
+                  <TableHead className="whitespace-nowrap">Status</TableHead>
+                  <TableHead className="whitespace-nowrap">Guardians</TableHead>
+                  {isAdmin && <TableHead className="whitespace-nowrap text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>

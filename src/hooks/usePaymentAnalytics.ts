@@ -64,7 +64,7 @@ export function usePaymentAnalytics() {
         // All sent/paid invoices for collection rate + avg days calculation
         supabase
           .from('invoices')
-          .select('id, status, total_minor, paid_minor, sent_at, due_date')
+          .select('id, status, total_minor, paid_minor, issue_date, due_date')
           .eq('org_id', orgId)
           .in('status', ['sent', 'overdue', 'paid'])
           .gte('created_at', twelveMonthsAgoStr)
@@ -98,7 +98,7 @@ export function usePaymentAnalytics() {
 
       // Average days to payment
       const paidWithDates = invoices.filter(
-        (inv) => inv.status === 'paid' && inv.sent_at
+        (inv: any) => inv.status === 'paid' && inv.issue_date
       );
       let avgDaysToPayment = 0;
       if (paidWithDates.length > 0) {
@@ -113,9 +113,9 @@ export function usePaymentAnalytics() {
         let totalDays = 0;
         let counted = 0;
         for (const inv of paidWithDates) {
-          const paidAt = invoicePayments.get(inv.id);
-          if (paidAt && inv.sent_at) {
-            const days = differenceInDays(parseISO(paidAt), parseISO(inv.sent_at));
+          const paidAt = invoicePayments.get((inv as any).id);
+          if (paidAt && (inv as any).issue_date) {
+            const days = differenceInDays(parseISO(paidAt), parseISO((inv as any).issue_date));
             if (days >= 0) {
               totalDays += days;
               counted++;
