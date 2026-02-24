@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { CalendarFilters } from './types';
-import { TeacherWithColour } from './teacherColours';
+import { TeacherWithColour, TeacherColourEntry } from './teacherColours';
 import { cn } from '@/lib/utils';
 import { LessonWithDetails } from './types';
 import { format, parseISO } from 'date-fns';
@@ -55,7 +55,7 @@ export function CalendarFiltersBar({
 
   const totalCount = counts.total;
 
-  const teacherList = teachersWithColours || teachers.map(t => ({ ...t, userId: null, colour: undefined as string | undefined }));
+  const teacherList = teachersWithColours || teachers.map(t => ({ ...t, userId: null, colour: undefined as TeacherColourEntry | undefined }));
 
   return (
     <div
