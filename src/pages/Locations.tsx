@@ -693,88 +693,96 @@ export default function Locations() {
             >
               <div className="rounded-xl border bg-card shadow-sm transition-all hover:shadow-md">
                 {/* Location header */}
-                <div className="flex items-center gap-4 p-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-lg shrink-0">
-                    {LOCATION_TYPE_ICONS[location.location_type]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className={cn('font-semibold truncate', location.is_archived && 'text-muted-foreground')}>{location.name}</span>
-                      {location.is_archived && <Badge variant="secondary" className="text-[10px] shrink-0">Archived</Badge>}
-                      {location.is_primary && !location.is_archived && <Badge className="text-[10px] shrink-0">Primary</Badge>}
-                      <Badge variant="outline" className="capitalize text-[10px] shrink-0">{location.location_type}</Badge>
+                <div className="p-4">
+                  {/* Top row: icon + name + badges */}
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-lg shrink-0">
+                      {LOCATION_TYPE_ICONS[location.location_type]}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className={cn('font-semibold text-sm', location.is_archived && 'text-muted-foreground')}>{location.name}</span>
+                        {location.is_archived && <Badge variant="secondary" className="text-[10px] shrink-0">Archived</Badge>}
+                        {location.is_primary && !location.is_archived && <Badge className="text-[10px] shrink-0">Primary</Badge>}
+                        <Badge variant="outline" className="capitalize text-[10px] shrink-0">{location.location_type}</Badge>
+                      </div>
+                      {/* Address */}
                       {(location.address_line_1 || location.city) && (
-                        <>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                          <MapPin className="h-3 w-3 shrink-0 text-muted-foreground/60" />
                           <span className="truncate">
                             {[location.address_line_1, location.city, location.postcode].filter(Boolean).join(', ')}
                           </span>
-                          <a
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location.address_line_1, location.city, location.postcode].filter(Boolean).join(', '))}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex min-h-11 items-center gap-1 px-1 text-xs text-muted-foreground transition-colors hover:text-foreground shrink-0"
+                        </div>
+                      )}
+                      {/* Usage stats */}
+                      {locationStats?.locationStats && locationStats.locationStats[location.id] && (
+                        <div className="text-[11px] mt-1">
+                          {locationStats.locationStats[location.id].lessonCount > 0 ? (
+                            <span className="text-muted-foreground">
+                              {locationStats.locationStats[location.id].lessonCount} lesson{locationStats.locationStats[location.id].lessonCount !== 1 ? 's' : ''} this week
+                              {locationStats.locationStats[location.id].teacherCount > 0 && ` · ${locationStats.locationStats[location.id].teacherCount} teacher${locationStats.locationStats[location.id].teacherCount !== 1 ? 's' : ''}`}
+                            </span>
+                          ) : (
+                            <span className="text-warning">No upcoming lessons</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bottom action bar */}
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+                    <div className="flex items-center gap-0.5">
+                      {(location.address_line_1 || location.city) && (
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location.address_line_1, location.city, location.postcode].filter(Boolean).join(', '))}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex h-9 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:text-foreground hover:bg-muted"
+                        >
+                          <MapPin className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Directions</span>
+                        </a>
+                      )}
+                      {isOrgAdmin && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9"
+                            aria-label={location.is_primary ? 'Primary location' : `Set ${location.name} as primary location`}
+                            title={location.is_primary ? 'Primary location' : 'Set as primary'}
+                            onClick={(e) => { e.stopPropagation(); handleSetPrimary(location.id); }}
                           >
-                            <MapPin className="h-3 w-3" />
-                            Directions
-                          </a>
+                            <Star className={cn('h-4 w-4', location.is_primary && 'fill-primary text-primary')} />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-9 w-9" aria-label={`Edit ${location.name}`} onClick={() => openLocationDialog(location)} disabled={location.is_archived}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9"
+                            aria-label={location.is_archived ? `Restore ${location.name}` : `Archive ${location.name}`}
+                            title={location.is_archived ? 'Restore location' : 'Archive location'}
+                            onClick={() => handleArchiveLocation(location)}
+                          >
+                            {location.is_archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                          </Button>
+                          {location.is_archived && (
+                            <Button variant="ghost" size="icon" className="h-9 w-9" aria-label={`Delete ${location.name}`} onClick={() => initiateDeleteLocation(location)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </>
                       )}
                     </div>
-                    {/* Usage stats */}
-                    {locationStats?.locationStats && locationStats.locationStats[location.id] && (
-                      <div className="flex items-center gap-2 text-[11px] mt-0.5">
-                        {locationStats.locationStats[location.id].lessonCount > 0 ? (
-                          <span className="text-muted-foreground">
-                            {locationStats.locationStats[location.id].lessonCount} lesson{locationStats.locationStats[location.id].lessonCount !== 1 ? 's' : ''} this week
-                            {locationStats.locationStats[location.id].teacherCount > 0 && ` · ${locationStats.locationStats[location.id].teacherCount} teacher${locationStats.locationStats[location.id].teacherCount !== 1 ? 's' : ''}`}
-                          </span>
-                        ) : (
-                          <span className="text-amber-600 dark:text-amber-400">No upcoming lessons</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {isOrgAdmin && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-11 w-11 sm:h-8 sm:w-8"
-                          aria-label={location.is_primary ? 'Primary location' : `Set ${location.name} as primary location`}
-                          title={location.is_primary ? 'Primary location' : 'Set as primary'}
-                          onClick={(e) => { e.stopPropagation(); handleSetPrimary(location.id); }}
-                        >
-                          <Star className={cn('h-4 w-4', location.is_primary && 'fill-primary text-primary')} />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-8 sm:w-8" aria-label={`Edit ${location.name}`} onClick={() => openLocationDialog(location)} disabled={location.is_archived}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-11 w-11 sm:h-8 sm:w-8"
-                          aria-label={location.is_archived ? `Restore ${location.name}` : `Archive ${location.name}`}
-                          title={location.is_archived ? 'Restore location' : 'Archive location'}
-                          onClick={() => handleArchiveLocation(location)}
-                        >
-                          {location.is_archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                        </Button>
-                        {location.is_archived && (
-                          <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-8 sm:w-8" aria-label={`Delete ${location.name}`} onClick={() => initiateDeleteLocation(location)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </>
-                    )}
                     <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="sm" className="min-h-11 gap-1.5 text-xs sm:min-h-8">
+                      <Button variant="ghost" size="sm" className="h-9 gap-1.5 text-xs">
                         <DoorOpen className="h-4 w-4" />
-                        <span className="hidden sm:inline">{location.rooms?.length || 0} Room{(location.rooms?.length || 0) !== 1 ? 's' : ''}</span>
-                        <span className="sm:hidden">{location.rooms?.length || 0}</span>
+                        {location.rooms?.length || 0} Room{(location.rooms?.length || 0) !== 1 ? 's' : ''}
                         <ChevronDown className={cn('h-3 w-3 transition-transform', expandedLocations.has(location.id) && 'rotate-180')} />
                       </Button>
                     </CollapsibleTrigger>
@@ -805,13 +813,16 @@ export default function Locations() {
                         )}
                       </div>
                     ) : (
-                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                         {location.rooms.map((room) => (
-                          <div key={room.id} className="flex items-center justify-between rounded-lg border bg-muted/30 p-2.5">
+                          <div key={room.id} className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
                             <div className="min-w-0">
-                              <span className="text-sm font-medium">{room.name}</span>
-                              {room.capacity && <span className="text-xs text-muted-foreground ml-1.5">(Cap: {room.capacity})</span>}
-                              <div className="text-[11px] mt-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <DoorOpen className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+                                <span className="text-sm font-medium truncate">{room.name}</span>
+                                {room.capacity && <span className="text-xs text-muted-foreground shrink-0">· {room.capacity} cap</span>}
+                              </div>
+                              <div className="text-[11px] mt-0.5 ml-5">
                                 {(locationStats?.roomBookings?.[room.id] ?? 0) > 0 ? (
                                   <span className="text-muted-foreground">{locationStats?.roomBookings?.[room.id]} upcoming</span>
                                 ) : (
@@ -821,11 +832,11 @@ export default function Locations() {
                             </div>
                             {isOrgAdmin && (
                               <div className="flex gap-0.5 shrink-0">
-                                <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-8 sm:w-8" aria-label={`Edit room ${room.name}`} onClick={() => openRoomDialog(location.id, room)}>
-                                  <Edit className="h-3 w-3" />
+                                <Button variant="ghost" size="icon" className="h-9 w-9" aria-label={`Edit room ${room.name}`} onClick={() => openRoomDialog(location.id, room)}>
+                                  <Edit className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-8 sm:w-8" aria-label={`Delete room ${room.name}`} onClick={() => initiateDeleteRoom(room)}>
-                                  <Trash2 className="h-3 w-3" />
+                                <Button variant="ghost" size="icon" className="h-9 w-9" aria-label={`Delete room ${room.name}`} onClick={() => initiateDeleteRoom(room)}>
+                                  <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
                             )}
