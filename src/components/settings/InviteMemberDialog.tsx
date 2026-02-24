@@ -116,7 +116,7 @@ export function InviteMemberDialog({ open, onOpenChange, onInviteSent }: InviteM
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg sm:border sm:p-6">
         <DialogHeader>
           <DialogTitle>Invite Team Member</DialogTitle>
           <DialogDescription>
@@ -149,7 +149,7 @@ export function InviteMemberDialog({ open, onOpenChange, onInviteSent }: InviteM
             <p className="text-xs text-muted-foreground">{roleDescriptions[role]}</p>
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

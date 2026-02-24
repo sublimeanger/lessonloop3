@@ -1012,14 +1012,14 @@ function BillingHistoryCard({ orgId }: { orgId: string }) {
                 {getStatusBadge(inv.status)}
                 <div className="flex gap-1">
                   {inv.hosted_url && (
-                    <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                    <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-8 sm:w-8" asChild>
                       <a href={inv.hosted_url} target="_blank" rel="noopener noreferrer" title="View invoice">
                         <ExternalLink className="h-3.5 w-3.5" />
                       </a>
                     </Button>
                   )}
                   {inv.pdf_url && (
-                    <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                    <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-8 sm:w-8" asChild>
                       <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer" title="Download PDF">
                         <FileText className="h-3.5 w-3.5" />
                       </a>
@@ -1155,7 +1155,7 @@ function CancellationFlowCard({
       </div>
 
       <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-md sm:rounded-lg sm:border sm:p-6">
           {step === 1 && (
             <>
               <DialogHeader>
@@ -1172,7 +1172,7 @@ function CancellationFlowCard({
                   </label>
                 ))}
               </RadioGroup>
-              <DialogFooter className="gap-2 sm:gap-0">
+              <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button variant="outline" onClick={reset}>Never mind</Button>
                 <Button onClick={handleNext} disabled={!reason}>Continue</Button>
               </DialogFooter>
@@ -1188,7 +1188,7 @@ function CancellationFlowCard({
               <div className="py-4">
                 {retentionContent()}
               </div>
-              <DialogFooter className="gap-2 sm:gap-0">
+              <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
                 <Button variant="destructive" onClick={handleNext}>Continue to cancel</Button>
               </DialogFooter>
@@ -1211,7 +1211,7 @@ function CancellationFlowCard({
                   </p>
                 </div>
               </div>
-              <DialogFooter className="gap-2 sm:gap-0">
+              <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button variant="outline" onClick={reset}>Keep My Plan</Button>
                 <Button
                   variant="destructive"

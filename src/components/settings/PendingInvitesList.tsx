@@ -134,7 +134,7 @@ export function PendingInvitesList({ roleFilter, onReinvite }: PendingInvitesLis
         return (
           <div
             key={invite.id}
-            className="flex items-center gap-4 rounded-lg border border-dashed bg-muted/30 p-4"
+            className="flex flex-col gap-3 rounded-lg border border-dashed bg-muted/30 p-4 sm:flex-row sm:items-center sm:gap-4"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
               <UserPlus className="h-5 w-5" />
@@ -156,12 +156,13 @@ export function PendingInvitesList({ roleFilter, onReinvite }: PendingInvitesLis
               </p>
             </div>
             {isOrgAdmin && (
-              <div className="flex items-center gap-1">
+              <div className="flex w-full flex-wrap items-center gap-1 sm:w-auto sm:flex-nowrap">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-11 w-11 sm:h-8 sm:w-8"
                   title={expired ? "Invite expired" : "Copy invite link"}
+                  aria-label={expired ? `Invite to ${invite.email} expired` : `Copy invite link for ${invite.email}`}
                   onClick={() => handleCopyLink(invite)}
                   disabled={expired}
                 >
@@ -170,8 +171,9 @@ export function PendingInvitesList({ roleFilter, onReinvite }: PendingInvitesLis
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-11 w-11 sm:h-8 sm:w-8"
                   title={expired ? "Re-invite" : "Resend invite"}
+                  aria-label={expired ? `Re-invite ${invite.email}` : `Resend invite to ${invite.email}`}
                   onClick={() => expired ? handleReinvite(invite) : handleResend(invite)}
                   disabled={resendingId === invite.id || cancellingId === invite.id}
                 >
@@ -184,8 +186,9 @@ export function PendingInvitesList({ roleFilter, onReinvite }: PendingInvitesLis
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-destructive hover:text-destructive"
+                  className="h-11 w-11 text-destructive hover:text-destructive sm:h-8 sm:w-8"
                   title="Cancel invite"
+                  aria-label={`Cancel invite for ${invite.email}`}
                   onClick={() => handleCancel(invite.id)}
                   disabled={cancellingId === invite.id}
                 >

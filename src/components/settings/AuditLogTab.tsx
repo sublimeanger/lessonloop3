@@ -74,11 +74,11 @@ export default function AuditLogTab() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <Label>Entity Type</Label>
               <Select value={entityType} onValueChange={setEntityType}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="h-11 w-full">
                   <SelectValue placeholder="All Entities" />
                 </SelectTrigger>
                 <SelectContent>
@@ -93,7 +93,7 @@ export default function AuditLogTab() {
             <div className="space-y-2">
               <Label>Action</Label>
               <Select value={action} onValueChange={setAction}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="h-11 w-full">
                   <SelectValue placeholder="All Actions" />
                 </SelectTrigger>
                 <SelectContent>
@@ -111,7 +111,7 @@ export default function AuditLogTab() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-[150px]"
+                className="h-11 w-full"
               />
             </div>
             <div className="space-y-2">
@@ -120,7 +120,7 @@ export default function AuditLogTab() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-[150px]"
+                className="h-11 w-full"
               />
             </div>
           </div>
@@ -141,7 +141,8 @@ export default function AuditLogTab() {
       ) : (
         <Card>
           <CardContent className="pt-6">
-            <Table>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[760px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Date & Time</TableHead>
@@ -179,6 +180,8 @@ export default function AuditLogTab() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="h-11 w-11 p-0 sm:h-9 sm:w-9"
+                        aria-label={`View audit entry for ${entry.actor_name}`}
                         onClick={() => setSelectedEntry(entry)}
                       >
                         <Eye className="h-4 w-4" />
@@ -187,7 +190,8 @@ export default function AuditLogTab() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+              </Table>
+            </div>
             {logs && logs.length >= 200 && (
               <p className="text-sm text-muted-foreground text-center mt-4">
                 Showing the first 200 results. Narrow your date range or filters to see more.
@@ -199,7 +203,7 @@ export default function AuditLogTab() {
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedEntry} onOpenChange={() => setSelectedEntry(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-h-[85vh] sm:max-w-2xl sm:rounded-lg sm:border sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -211,7 +215,7 @@ export default function AuditLogTab() {
           </DialogHeader>
           {selectedEntry && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
                 <div>
                   <p className="text-muted-foreground">Date & Time</p>
                   <p className="font-medium flex items-center gap-2">

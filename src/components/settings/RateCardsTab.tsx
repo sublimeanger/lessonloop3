@@ -138,14 +138,14 @@ export function RateCardsTab() {
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
           <div>
             <CardTitle>Rate Cards</CardTitle>
             <CardDescription>
               Define pricing tiers for lessons by duration
             </CardDescription>
           </div>
-          <Button onClick={handleOpenCreate}>
+          <Button onClick={handleOpenCreate} className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Add Rate Card
           </Button>
@@ -160,7 +160,8 @@ export function RateCardsTab() {
               onAction={handleOpenCreate}
             />
           ) : (
-            <Table>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[640px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
@@ -186,6 +187,8 @@ export function RateCardsTab() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-11 w-11 sm:h-9 sm:w-9"
+                          aria-label={`Edit rate card ${card.name}`}
                           onClick={() => handleOpenEdit(card)}
                         >
                           <Pencil className="h-4 w-4" />
@@ -193,6 +196,8 @@ export function RateCardsTab() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-11 w-11 sm:h-9 sm:w-9"
+                          aria-label={`Delete rate card ${card.name}`}
                           onClick={() => setDeleteId(card.id)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -202,14 +207,15 @@ export function RateCardsTab() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-md sm:rounded-lg sm:border sm:p-6">
           <DialogHeader>
             <DialogTitle>{editingCard ? 'Edit Rate Card' : 'New Rate Card'}</DialogTitle>
             <DialogDescription>
@@ -278,7 +284,7 @@ export function RateCardsTab() {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancel
             </Button>
@@ -287,7 +293,7 @@ export function RateCardsTab() {
               disabled={isSaving || !formData.name || formData.rate_amount <= 0}
             >
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editingCard ? 'Save Changes' : 'Create Rate Card'}
+              {editingCard ? 'Save changes' : 'Create Rate Card'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -183,7 +183,7 @@ export function CalendarIntegrationsTab() {
                     />
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <Button
                       variant="outline"
                       size="sm"
@@ -285,7 +285,7 @@ export function CalendarIntegrationsTab() {
 
                   <div className="space-y-2">
                     <Label>Your iCal Feed URL</Label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row">
                       <Input 
                         value={existingIcalUrl || icalUrl || ''} 
                         readOnly 
@@ -294,6 +294,8 @@ export function CalendarIntegrationsTab() {
                       <Button
                         variant="outline"
                         size="icon"
+                        className="h-11 w-11 sm:h-10 sm:w-10"
+                        aria-label="Copy iCal URL"
                         onClick={() => handleCopyUrl(existingIcalUrl || icalUrl || '')}
                       >
                         <Copy className="h-4 w-4" />
@@ -304,7 +306,7 @@ export function CalendarIntegrationsTab() {
                     </p>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <Button
                       variant="outline"
                       size="sm"

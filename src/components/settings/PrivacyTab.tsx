@@ -140,7 +140,8 @@ export function PrivacyTab() {
             {isLoading ? (
               <LoadingState message="Loading candidates..." />
             ) : candidates?.students && candidates.students.length > 0 ? (
-              <Table>
+              <div className="overflow-x-auto">
+                <Table className="min-w-[760px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
@@ -165,6 +166,7 @@ export function PrivacyTab() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="min-h-11 sm:min-h-9"
                           onClick={() => setDeleteDialog({
                             open: true,
                             entityType: 'student',
@@ -179,6 +181,7 @@ export function PrivacyTab() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="min-h-11 sm:min-h-9"
                           onClick={() => setDeleteDialog({
                             open: true,
                             entityType: 'student',
@@ -194,7 +197,8 @@ export function PrivacyTab() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+                </Table>
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">No inactive students available for deletion.</p>
             )}
@@ -207,7 +211,8 @@ export function PrivacyTab() {
             {isLoading ? (
               <LoadingState message="Loading candidates..." />
             ) : candidates?.guardians && candidates.guardians.length > 0 ? (
-              <Table>
+              <div className="overflow-x-auto">
+                <Table className="min-w-[760px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
@@ -232,6 +237,7 @@ export function PrivacyTab() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="min-h-11 sm:min-h-9"
                           onClick={() => setDeleteDialog({
                             open: true,
                             entityType: 'guardian',
@@ -246,6 +252,7 @@ export function PrivacyTab() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="min-h-11 sm:min-h-9"
                           onClick={() => setDeleteDialog({
                             open: true,
                             entityType: 'guardian',
@@ -261,7 +268,8 @@ export function PrivacyTab() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+                </Table>
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">No guardians available for deletion.</p>
             )}
