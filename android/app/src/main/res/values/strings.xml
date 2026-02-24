@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LessonLoop</string>
+    <string name="title_activity_main">LessonLoop</string>
+    <string name="package_name">com.lessonloop.app</string>
+    <string name="custom_url_scheme">com.lessonloop.app</string>
+</resources>

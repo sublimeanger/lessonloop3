@@ -32,3 +32,12 @@ dist-ssr
 vite.config.ts.timestamp-*
 tsconfig.app.tsbuildinfo
 tsconfig.node.tsbuildinfo
+
+# Capacitor
+android/app/build/
+android/.gradle/
+android/build/
+android/local.properties
+
+# Generated icons
+play-store-icon.png
