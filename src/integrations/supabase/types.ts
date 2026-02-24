@@ -1575,6 +1575,76 @@ export type Database = {
         }
         Relationships: []
       }
+      lesson_notes: {
+        Row: {
+          id: string
+          lesson_id: string
+          student_id: string | null
+          teacher_id: string
+          org_id: string
+          content_covered: string | null
+          homework: string | null
+          focus_areas: string | null
+          engagement_rating: number | null
+          teacher_private_notes: string | null
+          parent_visible: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          lesson_id: string
+          student_id?: string | null
+          teacher_id: string
+          org_id: string
+          content_covered?: string | null
+          homework?: string | null
+          focus_areas?: string | null
+          engagement_rating?: number | null
+          teacher_private_notes?: string | null
+          parent_visible?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          lesson_id?: string
+          student_id?: string | null
+          teacher_id?: string
+          org_id?: string
+          content_covered?: string | null
+          homework?: string | null
+          focus_areas?: string | null
+          engagement_rating?: number | null
+          teacher_private_notes?: string | null
+          parent_visible?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_notes_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_notes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_notes_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lesson_participants: {
         Row: {
           created_at: string
@@ -1645,6 +1715,7 @@ export type Database = {
           notes_shared: string | null
           online_meeting_url: string | null
           org_id: string
+          recap_url: string | null
           recurrence_id: string | null
           room_id: string | null
           start_at: string
@@ -1670,6 +1741,7 @@ export type Database = {
           notes_shared?: string | null
           online_meeting_url?: string | null
           org_id: string
+          recap_url?: string | null
           recurrence_id?: string | null
           room_id?: string | null
           start_at: string
@@ -1695,6 +1767,7 @@ export type Database = {
           notes_shared?: string | null
           online_meeting_url?: string | null
           org_id?: string
+          recap_url?: string | null
           recurrence_id?: string | null
           room_id?: string | null
           start_at?: string
@@ -3258,6 +3331,72 @@ export type Database = {
           window_start?: string
         }
         Relationships: []
+      }
+      recurring_invoice_templates: {
+        Row: {
+          id: string
+          org_id: string
+          name: string
+          frequency: string
+          billing_mode: string
+          auto_send: boolean
+          next_run_date: string
+          last_run_at: string | null
+          last_run_status: string | null
+          last_run_invoice_count: number
+          active: boolean
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          name: string
+          frequency: string
+          billing_mode?: string
+          auto_send?: boolean
+          next_run_date: string
+          last_run_at?: string | null
+          last_run_status?: string | null
+          last_run_invoice_count?: number
+          active?: boolean
+          created_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          name?: string
+          frequency?: string
+          billing_mode?: string
+          auto_send?: boolean
+          next_run_date?: string
+          last_run_at?: string | null
+          last_run_status?: string | null
+          last_run_invoice_count?: number
+          active?: boolean
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_invoice_templates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_invoice_templates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       recurrence_rules: {
         Row: {

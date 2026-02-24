@@ -26,7 +26,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { useTeachers, useTeacherMutations, useTeacherStudentCounts, Teacher } from '@/hooks/useTeachers';
 import { Progress } from '@/components/ui/progress';
-import { Plus, GraduationCap, Loader2, UserPlus, Lock, Link2, Link2Off, Phone, Trash2, Search, Pencil, RotateCcw, Music } from 'lucide-react';
+import { Plus, GraduationCap, Loader2, UserPlus, Lock, Link2, Link2Off, Phone, Trash2, Search, Pencil, RotateCcw, Music, Download } from 'lucide-react';
+import { useDataExport } from '@/hooks/useDataExport';
 import { cn, formatDateForOrg } from '@/lib/utils';
 import { InviteMemberDialog } from '@/components/settings/InviteMemberDialog';
 import { PendingInvitesList } from '@/components/settings/PendingInvitesList';
@@ -117,6 +118,7 @@ export default function Teachers() {
   const { limits, canAddTeacher, usage } = useUsageCounts();
   
   const { data: teachers = [], isLoading, refetch } = useTeachers();
+  const { exportTeachers } = useDataExport();
   const { createTeacher, updateTeacher, deleteTeacher, reactivateTeacher } = useTeacherMutations();
   const { data: studentCounts = {} } = useTeacherStudentCounts();
   const { checkTeacherRemoval } = useDeleteValidation();
@@ -404,10 +406,20 @@ export default function Teachers() {
         actions={
           isOrgAdmin && (
             <div className="flex flex-wrap gap-2">
-              <Button 
+              <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsCreateDialogOpen(true)} 
+                onClick={exportTeachers}
+                className="gap-1.5 min-h-11 sm:min-h-9"
+                disabled={isLoading || teachers.length === 0}
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCreateDialogOpen(true)}
                 className="gap-1.5 min-h-11 sm:min-h-9"
                 disabled={!canAddTeacher}
               >

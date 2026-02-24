@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
-import { Clock, User, MapPin, Repeat, Users, Edit2 } from 'lucide-react';
+import { Clock, User, MapPin, Repeat, Users, Edit2, Video, ExternalLink } from 'lucide-react';
 
 interface MobileLessonSheetProps {
   lesson: LessonWithDetails | null;
@@ -142,6 +142,24 @@ export function MobileLessonSheet({
                   {lesson.notes_private}
                 </div>
               )}
+            </>
+          )}
+
+          {/* Recap Link */}
+          {lesson.recap_url && (
+            <>
+              <Separator />
+              <a
+                href={lesson.recap_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 rounded-lg border bg-muted/50 p-3 text-sm font-medium text-primary hover:bg-muted transition-colors"
+                style={{ minHeight: 44 }}
+              >
+                <Video className="h-4 w-4 shrink-0" />
+                <span className="flex-1">Watch Recap</span>
+                <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              </a>
             </>
           )}
 

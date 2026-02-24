@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { CalendarIcon, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { DURATION_OPTIONS, TIME_OPTIONS } from './constants';
@@ -44,6 +45,8 @@ interface LessonFormBodyProps {
   setNotesPrivate: (notes: string) => void;
   notesShared: string;
   setNotesShared: (notes: string) => void;
+  recapUrl: string;
+  setRecapUrl: (url: string) => void;
   status: LessonStatus;
   setStatus: (status: LessonStatus) => void;
   isRecurring: boolean;
@@ -81,6 +84,7 @@ export function LessonFormBody({
   durationMins, setDurationMins,
   notesPrivate, setNotesPrivate,
   notesShared, setNotesShared,
+  recapUrl, setRecapUrl,
   status, setStatus,
   isRecurring, setIsRecurring,
   recurrenceDays,
@@ -352,6 +356,24 @@ export function LessonFormBody({
           rows={2}
           className="min-h-[44px]"
         />
+      </div>
+
+      {/* Recap Link */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-1.5">
+          <Video className="h-3.5 w-3.5 text-muted-foreground" />
+          Lesson Recording / Recap Link
+        </Label>
+        <Input
+          type="url"
+          value={recapUrl}
+          onChange={(e) => setRecapUrl(e.target.value)}
+          placeholder="https://youtube.com/watch?v=..."
+          className="min-h-[44px]"
+        />
+        <p className="text-xs text-muted-foreground">
+          Attach a recording link for students to review after the lesson.
+        </p>
       </div>
 
       {/* Status (edit mode only) */}

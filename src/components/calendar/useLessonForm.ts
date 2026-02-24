@@ -57,6 +57,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
   const [durationMins, setDurationMins] = useState(60);
   const [notesPrivate, setNotesPrivate] = useState('');
   const [notesShared, setNotesShared] = useState('');
+  const [recapUrl, setRecapUrl] = useState('');
   const [status, setStatus] = useState<LessonStatus>('scheduled');
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]);
@@ -103,6 +104,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
       setDurationMins(Math.round((orgLocalEnd.getTime() - orgLocalStart.getTime()) / 60000));
       setNotesPrivate(lesson.notes_private || '');
       setNotesShared(lesson.notes_shared || '');
+      setRecapUrl(lesson.recap_url || '');
       setStatus(lesson.status);
       setIsRecurring(!!lesson.recurrence_id);
     } else {
@@ -114,6 +116,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
       setRoomId(null);
       setNotesPrivate('');
       setNotesShared('');
+      setRecapUrl('');
       setStatus('scheduled');
       setIsRecurring(false);
       setRecurrenceDays([]);
@@ -395,6 +398,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
               title,
               notes_private: notesPrivate || null,
               notes_shared: notesShared || null,
+              recap_url: recapUrl || null,
               status,
               recurrence_id: editMode === 'this_only' ? null : lesson.recurrence_id,
             })
@@ -591,6 +595,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
           title,
           notes_private: notesPrivate || null,
           notes_shared: notesShared || null,
+          recap_url: recapUrl || null,
           status: 'scheduled' as const,
           created_by: user.id,
           recurrence_id: recurrenceId,
@@ -709,6 +714,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
     durationMins, setDurationMins,
     notesPrivate, setNotesPrivate,
     notesShared, setNotesShared,
+    recapUrl, setRecapUrl,
     status, setStatus,
     isRecurring, setIsRecurring,
     recurrenceDays,

@@ -14,6 +14,7 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { KeyboardShortcutsDialog, CommandPalette } from '@/components/shared/KeyboardShortcuts';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { AutoBreadcrumbs } from '@/components/shared/AutoBreadcrumbs';
+import { TeacherFAB } from '@/components/shared/TeacherFAB';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -61,6 +62,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
       {showLoopAssist && (
         <LoopAssistDrawer open={isOpen} onOpenChange={setIsOpen} />
       )}
+      <TeacherFAB />
       <TrialExpiredModal />
       <TourTrigger />
       
