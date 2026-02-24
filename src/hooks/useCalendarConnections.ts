@@ -188,11 +188,28 @@ export function useCalendarConnections() {
       if (error) {
         // Extract actual error message from the edge function response body
         let errorMessage = 'Could not connect to Zoom';
-        try {
-          const errorBody = await rawResponse?.json();
-          errorMessage = errorBody?.message || errorBody?.error || errorMessage;
-        } catch {
-          // Body may already be consumed or not JSON
+        if (rawResponse) {
+          try {
+            const errorBody = await rawResponse.json();
+            errorMessage = errorBody?.message || errorBody?.error || errorMessage;
+          } catch {
+            try {
+              const text = await rawResponse.text();
+              if (text) errorMessage = `Server error (${rawResponse.status}): ${text.slice(0, 200)}`;
+            } catch {
+              errorMessage = `Server error (${rawResponse.status})`;
+            }
+          }
+        } else {
+          // No response object means network/fetch failure or function not found
+          const errMsg = error?.message || String(error);
+          if (errMsg.includes('FunctionsFetchError') || errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
+            errorMessage = 'Could not reach Zoom integration service. Please check that the edge function is deployed.';
+          } else if (errMsg.includes('FunctionsRelayError')) {
+            errorMessage = 'Zoom integration service failed to respond. The edge function may not be deployed.';
+          } else {
+            errorMessage = errMsg !== 'Edge Function returned a non-2xx status code' ? errMsg : errorMessage;
+          }
         }
         throw new Error(errorMessage);
       }
