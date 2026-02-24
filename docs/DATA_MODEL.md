@@ -31,7 +31,8 @@ erDiagram
     students ||--o{ invoice_items : "billed for"
     students ||--o{ student_teacher_assignments : "assigned to"
     
-    teacher_profiles ||--o{ student_teacher_assignments : "teaches"
+    organisations ||--o{ teachers : "employs"
+    teachers ||--o{ student_teacher_assignments : "teaches"
     
     guardians ||--o{ student_guardians : "linked to"
     guardians ||--o{ invoices : "pays"
@@ -53,7 +54,7 @@ erDiagram
     ai_conversations ||--o{ ai_messages : "contains"
     ai_conversations ||--o{ ai_action_proposals : "generates"
     
-    teacher_profiles }o--|| profiles : "extends"
+    teachers }o--o| profiles : "optionally linked"
     availability_blocks }o--|| profiles : "for teacher"
     availability_templates }o--|| profiles : "for user"
     time_off_blocks }o--|| profiles : "for teacher"
@@ -544,27 +545,36 @@ Pending AI action proposals.
 
 ---
 
-### 2.9 Teacher Table
+### 2.9 Teacher Tables
 
-#### `teacher_profiles`
-Extended profile data for teachers.
+#### `teachers`
+Teaching staff records, decoupled from auth. A teacher can exist without a login account (`user_id` is nullable), supporting contractors and placeholder records.
+
+**Key distinction**: `org_memberships.role = 'teacher'` controls *access permissions*, while a `teachers` record represents *who delivers lessons*. These are separate concerns — an admin doesn't need a teacher record, and a contractor teacher may not need login access.
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
 | `id` | uuid | No | `gen_random_uuid()` | Primary key |
-| `org_id` | uuid | No | - | Organization FK |
-| `user_id` | uuid | No | - | User FK |
-| `display_name` | text | Yes | - | Public display name |
+| `org_id` | uuid | No | - | Organization FK (CASCADE delete) |
+| `user_id` | uuid | Yes | - | Linked user (SET NULL on delete) |
+| `display_name` | text | No | - | Public display name |
+| `email` | text | Yes | - | Email address |
+| `phone` | text | Yes | - | Phone number |
 | `bio` | text | Yes | - | Biography |
 | `instruments` | text[] | No | `'{}'` | Instruments taught |
-| `teaching_address` | text | Yes | - | Teaching location |
 | `default_lesson_length_mins` | integer | No | `60` | Default duration |
 | `employment_type` | employment_type | No | `'contractor'` | Employment type |
-| `pay_rate_type` | pay_rate_type | Yes | `'per_lesson'` | Pay calculation |
-| `pay_rate_value` | numeric | Yes | `0` | Pay rate |
+| `pay_rate_type` | pay_rate_type | Yes | - | Pay calculation |
+| `pay_rate_value` | numeric | Yes | - | Pay rate |
 | `payroll_notes` | text | Yes | - | Payroll notes |
+| `status` | student_status | No | `'active'` | Active/Inactive |
 | `created_at` | timestamptz | No | `now()` | Creation timestamp |
 | `updated_at` | timestamptz | No | `now()` | Last update |
+
+**Unique constraint**: `(org_id, email)`
+
+#### `teacher_profiles` *(deprecated)*
+Legacy table replaced by `teachers`. Still exists in the database but no longer written to by application code. Will be removed in a future migration.
 
 ---
 

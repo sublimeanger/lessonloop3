@@ -147,20 +147,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Also maintain legacy teacher_profiles for backward compatibility during transition
-      const { error: teacherProfileError } = await supabaseAdmin
-        .from("teacher_profiles")
-        .upsert({
-          org_id: invite.org_id,
-          user_id: user.id,
-          display_name: displayName,
-          pay_rate_type: null,
-          pay_rate_value: 0,
-        }, { onConflict: "org_id,user_id" });
-
-      if (teacherProfileError) {
-        console.error("Error creating teacher profile:", teacherProfileError?.message || "unknown error");
-      }
     }
 
     // If this is a parent invite, create/link guardian record
