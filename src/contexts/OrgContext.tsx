@@ -106,6 +106,22 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   const mountedRef = useRef(true);
   const fetchInProgressRef = useRef(false);
 
+  // Track user transitions to prevent "No Organisation Found" flash on login.
+  // When user changes (e.g. null → logged-in), OrgContext still has stale state
+  // from the previous no-user fetch (hasInitialised=true, empty orgs). Without
+  // this reset, Dashboard renders "No Organisation Found" for one frame before
+  // the useEffect fires to fetch orgs for the new user.
+  // This uses React's "setState during render" pattern to update synchronously
+  // before the DOM is committed, preventing the flash entirely.
+  const [prevUserId, setPrevUserId] = useState<string | undefined>(undefined);
+  const currentUserId = user?.id;
+
+  if (currentUserId !== prevUserId) {
+    setPrevUserId(currentUserId);
+    setHasInitialised(false);
+    setIsLoading(true);
+  }
+
   const fetchOrganisations = useCallback(async () => {
     if (fetchInProgressRef.current) return;
     fetchInProgressRef.current = true;
