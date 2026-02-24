@@ -5,7 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { useToast } from '@/hooks/use-toast';
-import { parseActionFromResponse, ActionProposalData } from '@/components/loopassist/ActionCard';
+import { parseActionsFromResponse, ActionProposalData } from '@/components/loopassist/ActionCard';
+import { VALID_ACTION_TYPES } from '@/lib/action-registry';
 
 export type ActionType =
   | 'create_invoice'
@@ -61,6 +62,20 @@ const EXECUTE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/looopassi
 
 const QUESTION_WORDS = /^(who|what|when|where|how|why|show|list|send|mark|generate|draft|create|find|get|check|tell|give|which|are|is|do|can|will|should)\b/i;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function validateProposal(action: ActionProposalData): boolean {
+  if (!action.action_type || !action.description) return false;
+  if (!VALID_ACTION_TYPES.includes(action.action_type)) return false;
+  // Validate entity IDs are proper UUIDs
+  if (action.entities) {
+    for (const entity of action.entities) {
+      if (entity.id && !UUID_RE.test(entity.id)) return false;
+    }
+  }
+  return true;
+}
+
 function generateSmartTitle(content: string): string {
   const trimmed = content.trim();
   if (QUESTION_WORDS.test(trimmed)) {
@@ -82,6 +97,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
+  const [toolStatus, setToolStatus] = useState<string | null>(null);
   const contextHashRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -212,9 +228,24 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
+    // Progressive timeout: abort after 90s, but show feedback at 15s and 45s
+    const progressTimers: ReturnType<typeof setTimeout>[] = [];
+    progressTimers.push(setTimeout(() => {
+      if (!abortController.signal.aborted) {
+        setStreamingContent(prev => prev || '_Still working on it..._');
+      }
+    }, 15000));
+    progressTimers.push(setTimeout(() => {
+      if (!abortController.signal.aborted) {
+        setStreamingContent(prev => {
+          if (prev && !prev.includes('Complex query')) return prev;
+          return '_Complex query — hang tight..._';
+        });
+      }
+    }, 45000));
     timeoutRef.current = setTimeout(() => {
       abortController.abort();
-    }, 45000);
+    }, 90000);
 
     let assistantContent = '';
 
@@ -270,7 +301,12 @@ export function useLoopAssist(externalPageContext?: PageContext) {
 
           try {
             const parsed = JSON.parse(jsonStr);
+            if (parsed.status === 'thinking') {
+              setToolStatus(parsed.detail || 'Thinking…');
+              continue;
+            }
             if (parsed.text) {
+              setToolStatus(null);
               assistantContent += parsed.text;
               setStreamingContent(assistantContent);
             }
@@ -314,24 +350,24 @@ export function useLoopAssist(externalPageContext?: PageContext) {
           content: assistantContent,
         });
 
-        const actionData = parseActionFromResponse(assistantContent);
-        const VALID_ACTION_TYPES = [
-          'generate_billing_run', 'send_invoice_reminders', 'reschedule_lessons',
-          'draft_email', 'mark_attendance', 'cancel_lesson', 'complete_lessons',
-          'send_progress_report', 'bulk_complete_lessons', 'send_bulk_reminders',
-        ];
-        if (actionData && VALID_ACTION_TYPES.includes(actionData.action_type)) {
-          // Cap entities to prevent abuse
-          if (actionData.entities && actionData.entities.length > 50) {
-            actionData.entities = actionData.entities.slice(0, 50);
-          }
-          await supabase.from('ai_action_proposals').insert([{
-            org_id: currentOrg.id,
-            user_id: user.id,
-            conversation_id: conversationId,
-            proposal: JSON.parse(JSON.stringify(actionData)),
-            status: 'proposed',
-          }]);
+        const allActions = parseActionsFromResponse(assistantContent);
+        const validActions = allActions.filter(validateProposal);
+
+        if (validActions.length > 0) {
+          const proposals = validActions.map(actionData => {
+            // Cap entities per proposal to prevent abuse
+            if (actionData.entities && actionData.entities.length > 50) {
+              actionData.entities = actionData.entities.slice(0, 50);
+            }
+            return {
+              org_id: currentOrg.id,
+              user_id: user.id,
+              conversation_id: conversationId,
+              proposal: JSON.parse(JSON.stringify(actionData)),
+              status: 'proposed',
+            };
+          });
+          await supabase.from('ai_action_proposals').insert(proposals);
           queryClient.invalidateQueries({ queryKey: ['ai-proposals'] });
         }
 
@@ -349,13 +385,38 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     } catch (error) {
       if (assistantContent && conversationId && currentOrg?.id && user?.id) {
         try {
+          // Try to salvage any action proposals from partial content
+          const partialActions = parseActionsFromResponse(assistantContent);
+          const validPartialActions = partialActions.filter(validateProposal);
+          const hasPartialActions = validPartialActions.length > 0;
+
           await supabase.from('ai_messages').insert({
             conversation_id: conversationId,
             org_id: currentOrg.id,
             user_id: user.id,
             role: 'assistant',
-            content: assistantContent + '\n\n_[Response interrupted — please try again]_',
+            content: assistantContent + (hasPartialActions
+              ? '\n\n_[Response interrupted — some actions were proposed before the interruption]_'
+              : '\n\n_[Response interrupted — please try again]_'),
           });
+
+          if (hasPartialActions) {
+            const proposals = validPartialActions.map(actionData => {
+              if (actionData.entities && actionData.entities.length > 50) {
+                actionData.entities = actionData.entities.slice(0, 50);
+              }
+              return {
+                org_id: currentOrg.id,
+                user_id: user.id,
+                conversation_id: conversationId,
+                proposal: JSON.parse(JSON.stringify(actionData)),
+                status: 'proposed',
+              };
+            });
+            await supabase.from('ai_action_proposals').insert(proposals);
+            queryClient.invalidateQueries({ queryKey: ['ai-proposals'] });
+          }
+
           queryClient.invalidateQueries({ queryKey: ['ai-messages', conversationId] });
         } catch {
           // Ignore save error — best effort
@@ -373,9 +434,11 @@ export function useLoopAssist(externalPageContext?: PageContext) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
+      progressTimers.forEach(t => clearTimeout(t));
       abortControllerRef.current = null;
       setIsStreaming(false);
       setStreamingContent('');
+      setToolStatus(null);
     }
   }, [currentOrg?.id, user?.id, session?.access_token, currentConversationId, messages, pageContext, queryClient, createConversation, toast]);
 
@@ -450,6 +513,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     messagesLoading,
     isStreaming,
     streamingContent,
+    toolStatus,
     pendingProposals,
     pageContext,
 

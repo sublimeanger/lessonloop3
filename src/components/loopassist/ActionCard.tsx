@@ -22,7 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { useOrg } from '@/contexts/OrgContext';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
-import type { AppRole } from '@/contexts/AuthContext';
+import { ACTION_REGISTRY, isDestructiveAction, getAllowedRoles, getActionLabel } from '@/lib/action-registry';
 
 export interface ActionEntity {
   type: 'invoice' | 'student' | 'lesson' | 'guardian';
@@ -55,46 +55,14 @@ interface ActionCardProps {
   isLoading?: boolean;
 }
 
-const ACTION_ICONS: Record<string, typeof FileText> = {
-  generate_billing_run: Receipt,
-  send_invoice_reminders: Mail,
-  send_bulk_reminders: Mail,
-  reschedule_lessons: Calendar,
-  draft_email: FileText,
-  mark_attendance: ClipboardCheck,
-  cancel_lesson: Ban,
-  complete_lessons: CheckCircle2,
-  bulk_complete_lessons: CheckCircle2,
-  send_progress_report: FileText,
+const ICON_COMPONENT_MAP: Record<string, typeof FileText> = {
+  Receipt, Mail, Calendar, FileText, ClipboardCheck, Ban, CheckCircle2,
 };
 
-const ACTION_LABELS: Record<string, string> = {
-  generate_billing_run: 'Generate Billing Run',
-  send_invoice_reminders: 'Send Invoice Reminders',
-  send_bulk_reminders: 'Send All Overdue Reminders',
-  reschedule_lessons: 'Reschedule Lessons',
-  draft_email: 'Draft Email',
-  mark_attendance: 'Mark Attendance',
-  cancel_lesson: 'Cancel Lesson',
-  complete_lessons: 'Mark Lessons Complete',
-  bulk_complete_lessons: 'Mark All Past Lessons Complete',
-  send_progress_report: 'Send Progress Report',
-};
-
-const ACTION_ROLE_PERMISSIONS: Record<string, AppRole[]> = {
-  generate_billing_run: ['owner', 'admin', 'finance'],
-  send_invoice_reminders: ['owner', 'admin', 'finance'],
-  send_bulk_reminders: ['owner', 'admin', 'finance'],
-  reschedule_lessons: ['owner', 'admin', 'teacher'],
-  draft_email: ['owner', 'admin', 'teacher'],
-  mark_attendance: ['owner', 'admin', 'teacher'],
-  cancel_lesson: ['owner', 'admin'],
-  complete_lessons: ['owner', 'admin', 'teacher'],
-  bulk_complete_lessons: ['owner', 'admin', 'teacher'],
-  send_progress_report: ['owner', 'admin', 'teacher'],
-};
-
-const DESTRUCTIVE_ACTIONS = new Set(['cancel_lesson', 'generate_billing_run', 'bulk_complete_lessons']);
+function getActionIcon(actionType: string): typeof FileText {
+  const def = ACTION_REGISTRY[actionType];
+  return (def ? ICON_COMPONENT_MAP[def.iconName] : null) || FileText;
+}
 
 const ENTITY_COLORS: Record<string, string> = {
   invoice: 'bg-success/10 text-success hover:bg-success/20 dark:bg-success/20 dark:text-success dark:hover:bg-success/30',
@@ -164,11 +132,11 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
   const { currentRole } = useOrg();
   const [isConfirming, setIsConfirming] = useState(false);
   const [awaitingSecondConfirm, setAwaitingSecondConfirm] = useState(false);
-  const Icon = ACTION_ICONS[proposal.action_type] || FileText;
+  const Icon = getActionIcon(proposal.action_type);
 
-  const allowedRoles = ACTION_ROLE_PERMISSIONS[proposal.action_type] || ['owner', 'admin'];
+  const allowedRoles = getAllowedRoles(proposal.action_type);
   const hasPermission = currentRole ? allowedRoles.includes(currentRole) : false;
-  const isDestructive = DESTRUCTIVE_ACTIONS.has(proposal.action_type);
+  const isDestructive = isDestructiveAction(proposal.action_type);
   const previewText = getPreviewText(proposal);
 
   const handleConfirm = async () => {
@@ -200,7 +168,7 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
     }
   };
 
-  const actionLabel = ACTION_LABELS[proposal.action_type] || 'action';
+  const actionLabel = getActionLabel(proposal.action_type);
 
   const confirmButton = awaitingSecondConfirm ? (
     <Button
@@ -255,7 +223,7 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
             )} />
           </div>
           <CardTitle className="text-sm font-semibold">
-            {ACTION_LABELS[proposal.action_type] || proposal.action_type}
+            {getActionLabel(proposal.action_type)}
           </CardTitle>
         </div>
       </CardHeader>
@@ -346,32 +314,43 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
   );
 }
 
-// Parse action block from AI response
-export function parseActionFromResponse(content: string): ActionProposalData | null {
-  const actionBlockMatch = content.match(/```action\s*([\s\S]*?)```/);
-  
-  if (!actionBlockMatch) {
-    return null;
+// Parse ALL action blocks from AI response (supports multi-action responses)
+export function parseActionsFromResponse(content: string): ActionProposalData[] {
+  const matches = [...content.matchAll(/```action\s*([\s\S]*?)```/g)];
+
+  if (matches.length === 0) {
+    return [];
   }
 
-  try {
-    const jsonStr = actionBlockMatch[1].trim();
-    const parsed = JSON.parse(jsonStr);
-    
-    if (!parsed.action_type || !parsed.description) {
-      return null;
+  const actions: ActionProposalData[] = [];
+
+  for (const match of matches) {
+    try {
+      const jsonStr = match[1].trim();
+      const parsed = JSON.parse(jsonStr);
+
+      if (!parsed.action_type || !parsed.description) {
+        continue;
+      }
+
+      actions.push({
+        action_type: parsed.action_type,
+        description: parsed.description,
+        entities: Array.isArray(parsed.entities) ? parsed.entities : [],
+        params: parsed.params || {},
+      });
+    } catch (e) {
+      logger.error('Failed to parse action block:', e);
     }
-
-    return {
-      action_type: parsed.action_type,
-      description: parsed.description,
-      entities: Array.isArray(parsed.entities) ? parsed.entities : [],
-      params: parsed.params || {},
-    };
-  } catch (e) {
-    logger.error('Failed to parse action block:', e);
-    return null;
   }
+
+  return actions;
+}
+
+/** @deprecated Use parseActionsFromResponse instead */
+export function parseActionFromResponse(content: string): ActionProposalData | null {
+  const actions = parseActionsFromResponse(content);
+  return actions.length > 0 ? actions[0] : null;
 }
 
 // Remove action block from message content for display

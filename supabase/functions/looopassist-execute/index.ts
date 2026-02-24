@@ -112,6 +112,7 @@ serve(async (req) => {
       }
 
       // Role-based authorization check
+      // Mirror of src/lib/action-registry.ts roles — keep in sync
       const ACTION_ROLE_PERMISSIONS: Record<string, string[]> = {
         generate_billing_run: ['owner', 'admin', 'finance'],
         send_invoice_reminders: ['owner', 'admin', 'finance'],
@@ -171,6 +172,30 @@ serve(async (req) => {
           for (const entity of entities) {
             if (entity.id && !UUID_RE.test(entity.id)) {
               throw new Error(`Invalid entity ID format: ${entity.id}`);
+            }
+          }
+        }
+
+        // Validate entity ownership — ensure all entities belong to this org
+        const ENTITY_TABLE_MAP: Record<string, string> = {
+          student: "students",
+          lesson: "lessons",
+          guardian: "guardians",
+          // invoice entities use invoice_number not UUID, skip ownership check
+        };
+        if (entities) {
+          for (const entity of entities) {
+            if (!entity.id || !UUID_RE.test(entity.id)) continue;
+            const table = ENTITY_TABLE_MAP[entity.type];
+            if (!table) continue;
+            const { data: owned } = await supabase
+              .from(table)
+              .select("id")
+              .eq("id", entity.id)
+              .eq("org_id", orgId)
+              .maybeSingle();
+            if (!owned) {
+              throw new Error(`Entity "${entity.label}" not found in your organisation`);
             }
           }
         }
@@ -810,11 +835,27 @@ async function executeDraftEmail(
 ): Promise<Record<string, unknown>> {
   const guardianId = params.guardian_id as string;
   const studentId = params.student_id as string;
-  const subject = params.subject as string;
-  const body = params.body as string;
+  const rawSubject = params.subject as string;
+  const rawBody = params.body as string;
 
-  if (!guardianId || !subject || !body) {
+  if (!guardianId || !rawSubject || !rawBody) {
     throw new Error("guardian_id, subject, and body are required");
+  }
+
+  // Sanitise AI-generated email content
+  const sanitiseEmailContent = (text: string, maxLen: number): string =>
+    text
+      .replace(/\[Student:[^\]]+:([^\]]+)\]/g, "$1")  // Strip entity markers, keep name
+      .replace(/\[Invoice:[^\]]+\]/g, (m) => m.replace(/\[Invoice:/, "").replace(/\]/, ""))
+      .replace(/\[Guardian:[^\]]+:([^\]]+)\]/g, "$1")
+      .replace(/\[Lesson:[^\]]+:([^\]]+)\]/g, "$1")
+      .replace(/```[\s\S]*?```/g, "")  // Strip code blocks
+      .replace(/<[^>]*>/g, "")  // Strip HTML tags
+      .slice(0, maxLen)
+      .trim();
+
+  const subject = sanitiseEmailContent(rawSubject, 200);
+  const body = sanitiseEmailContent(rawBody, 5000);
   }
 
   const { data: guardian, error: guardianError } = await supabase
