@@ -25,12 +25,13 @@ import {
   LoopAssistAlerts,
   CalendarSyncBanner,
 } from '@/components/dashboard';
-import { 
+import {
   Calendar, Users, Receipt, Clock, TrendingUp, PoundSterling,
   Building2, Loader2, AlertCircle, ChevronRight, BookOpen, X, Settings, CalendarDays
 } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { PaymentAnalyticsCard } from '@/components/dashboard/PaymentAnalyticsCard';
 
 const itemVariants = {
   hidden: { opacity: 0, y: 8 },
@@ -206,6 +207,13 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
             <QuickActionsGrid variant="solo" className="lg:col-span-3" />
           </SectionErrorBoundary>
         </motion.div>
+
+        {/* Payment Analytics */}
+        <motion.div variants={itemVariants}>
+          <SectionErrorBoundary name="Payment Analytics">
+            <PaymentAnalyticsCard />
+          </SectionErrorBoundary>
+        </motion.div>
       </motion.div>
     </AppLayout>
   );
@@ -324,6 +332,13 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
               <QuickActionsGrid variant="academy" />
             </SectionErrorBoundary>
           </div>
+        </motion.div>
+
+        {/* Payment Analytics */}
+        <motion.div variants={itemVariants}>
+          <SectionErrorBoundary name="Payment Analytics">
+            <PaymentAnalyticsCard />
+          </SectionErrorBoundary>
         </motion.div>
       </motion.div>
     </AppLayout>

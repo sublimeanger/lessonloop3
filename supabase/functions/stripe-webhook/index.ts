@@ -129,6 +129,12 @@ serve(async (req) => {
         break;
       }
 
+      case "payment_intent.succeeded": {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        await handlePaymentIntentSucceeded(supabase, paymentIntent);
+        break;
+      }
+
       case "payment_intent.payment_failed": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         console.error(`Payment failed: ${truncate(paymentIntent.id)}`, paymentIntent.last_payment_error?.message);
@@ -555,6 +561,187 @@ async function handleAccountUpdated(supabase: any, account: Stripe.Account) {
     console.error("Failed to update org connect status:", error);
   } else {
     log(`Org ${truncate(resolvedOrgId)} Connect status → ${newStatus}`);
+  }
+}
+
+// Handle PaymentIntent succeeded (from embedded Payment Element)
+async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe.PaymentIntent) {
+  const invoiceId = paymentIntent.metadata?.lessonloop_invoice_id;
+  const installmentId = paymentIntent.metadata?.lessonloop_installment_id || null;
+  const payRemaining = paymentIntent.metadata?.lessonloop_pay_remaining === "true";
+  const orgId = paymentIntent.metadata?.lessonloop_org_id;
+
+  if (!invoiceId) {
+    log("PaymentIntent succeeded without invoice ID — likely subscription payment");
+    return;
+  }
+
+  log(`PaymentIntent succeeded for invoice ${truncate(invoiceId)}, installment: ${truncate(installmentId)}, payRemaining: ${payRemaining}`);
+
+  // DOUBLE PAYMENT GUARD
+  const { data: existingPayment } = await supabase
+    .from("payments")
+    .select("id")
+    .eq("provider_reference", paymentIntent.id)
+    .maybeSingle();
+
+  if (existingPayment) {
+    log(`Payment already recorded for PI ${truncate(paymentIntent.id)}, skipping`);
+    return;
+  }
+
+  // Update checkout session record
+  await supabase
+    .from("stripe_checkout_sessions")
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      stripe_payment_intent_id: paymentIntent.id,
+    })
+    .eq("stripe_payment_intent_id", paymentIntent.id);
+
+  // Also try matching by pi_ prefixed session id
+  await supabase
+    .from("stripe_checkout_sessions")
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+    })
+    .eq("stripe_session_id", `pi_${paymentIntent.id}`);
+
+  // Get checkout session for org_id if not in metadata
+  const resolvedOrgId = orgId || (await (async () => {
+    const { data } = await supabase
+      .from("stripe_checkout_sessions")
+      .select("org_id")
+      .eq("stripe_payment_intent_id", paymentIntent.id)
+      .maybeSingle();
+    return data?.org_id;
+  })());
+
+  // Record the payment
+  const { data: paymentRecord, error: paymentError } = await supabase
+    .from("payments")
+    .insert({
+      invoice_id: invoiceId,
+      org_id: resolvedOrgId,
+      amount_minor: paymentIntent.amount,
+      method: "card",
+      provider: "stripe",
+      provider_reference: paymentIntent.id,
+      paid_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+
+  if (paymentError) {
+    if (paymentError.code === '23505') {
+      log(`Duplicate payment prevented by DB constraint for PI ${truncate(paymentIntent.id)}`);
+      return;
+    }
+    console.error("Failed to record payment:", paymentError);
+    return;
+  }
+
+  // Installment reconciliation
+  if (payRemaining) {
+    await supabase
+      .from("invoice_installments")
+      .update({ status: "paid", paid_at: new Date().toISOString() })
+      .eq("invoice_id", invoiceId)
+      .in("status", ["pending", "overdue"]);
+  }
+
+  if (installmentId) {
+    await supabase
+      .from("invoice_installments")
+      .update({
+        stripe_payment_intent_id: paymentIntent.id,
+        status: "paid",
+        paid_at: new Date().toISOString(),
+      })
+      .eq("id", installmentId);
+  }
+
+  // Update paid_minor on invoice
+  const { data: payments } = await supabase
+    .from("payments")
+    .select("amount_minor")
+    .eq("invoice_id", invoiceId);
+
+  const totalPaid = payments?.reduce((sum: number, p: any) => sum + p.amount_minor, 0) || 0;
+
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select("total_minor, invoice_number, payer_guardian_id, payer_student_id")
+    .eq("id", invoiceId)
+    .single();
+
+  const updateData: Record<string, unknown> = { paid_minor: totalPaid };
+  if (invoice && totalPaid >= invoice.total_minor) {
+    updateData.status = "paid";
+  }
+
+  const { error: invoiceUpdateError } = await supabase
+    .from("invoices")
+    .update(updateData)
+    .eq("id", invoiceId);
+
+  if (invoiceUpdateError) {
+    console.error("Failed to update invoice:", invoiceUpdateError);
+  } else {
+    log(`Invoice ${truncate(invoiceId)} updated: paid_minor=${totalPaid}${totalPaid >= (invoice?.total_minor || 0) ? ', status=paid' : ''}`);
+  }
+
+  // Create payment notification for real-time teacher alerts
+  if (resolvedOrgId && invoice) {
+    let payerName = "Customer";
+    if (invoice.payer_guardian_id) {
+      const { data: guardian } = await supabase
+        .from("guardians")
+        .select("full_name")
+        .eq("id", invoice.payer_guardian_id)
+        .single();
+      if (guardian?.full_name) payerName = guardian.full_name;
+    } else if (invoice.payer_student_id) {
+      const { data: student } = await supabase
+        .from("students")
+        .select("first_name, last_name")
+        .eq("id", invoice.payer_student_id)
+        .single();
+      if (student) payerName = `${student.first_name} ${student.last_name}`.trim();
+    }
+
+    await supabase.from("payment_notifications").insert({
+      org_id: resolvedOrgId,
+      invoice_id: invoiceId,
+      payment_id: paymentRecord?.id,
+      amount_minor: paymentIntent.amount,
+      payer_name: payerName,
+      invoice_number: invoice.invoice_number || "",
+    });
+  }
+
+  // Send receipt email (best-effort, non-blocking)
+  if (resolvedOrgId && paymentRecord?.id) {
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      await fetch(`${supabaseUrl}/functions/v1/send-payment-receipt`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({
+          paymentId: paymentRecord.id,
+          invoiceId,
+          orgId: resolvedOrgId,
+        }),
+      });
+    } catch (err) {
+      console.error("Failed to trigger receipt email:", err);
+    }
   }
 }
 

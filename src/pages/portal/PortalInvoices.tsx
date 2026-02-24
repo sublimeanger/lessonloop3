@@ -27,6 +27,9 @@ import { useToast } from '@/hooks/use-toast';
 import { formatCurrencyMinor } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { PaymentPlanInvoiceCard } from '@/components/portal/PaymentPlanInvoiceCard';
+import { PaymentDrawer } from '@/components/portal/PaymentDrawer';
+import { useRealtimePortalPayments } from '@/hooks/useRealtimePortalPayments';
+import { useSavedPaymentMethods } from '@/hooks/useSavedPaymentMethods';
 
 export default function PortalInvoices() {
   const { invoicesEnabled } = usePortalFeatures();
@@ -39,6 +42,25 @@ export default function PortalInvoices() {
   const { initiatePayment, isLoading: isPaymentLoading } = useStripePayment();
   const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
   const { data: orgPaymentPrefs } = useOrgPaymentPreferences();
+
+  // Embedded payment drawer state
+  const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false);
+  const [paymentDrawerInvoice, setPaymentDrawerInvoice] = useState<{
+    id: string;
+    invoiceNumber?: string;
+    amount?: number;
+    currencyCode?: string;
+    dueDate?: string;
+    installmentId?: string;
+    payRemaining?: boolean;
+    installmentLabel?: string;
+  } | null>(null);
+
+  // Real-time payment updates
+  useRealtimePortalPayments();
+
+  // Auto-pay status for payment plan badges
+  const { autoPayEnabled } = useSavedPaymentMethods();
 
   const onlinePaymentsEnabled = orgPaymentPrefs?.online_payments_enabled !== false;
   const hasBankDetails = !!(orgPaymentPrefs?.bank_account_name && orgPaymentPrefs?.bank_sort_code && orgPaymentPrefs?.bank_account_number);
@@ -70,6 +92,19 @@ export default function PortalInvoices() {
     }
   }, [searchParams, toast, setSearchParams, refetch]);
 
+  // Auto-open payment drawer from email deep links (?action=pay&invoice=xxx)
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'pay' && highlightedInvoiceId && invoices && !isLoading && onlinePaymentsEnabled) {
+      const inv = invoices.find(i => i.id === highlightedInvoiceId);
+      if (inv && ['sent', 'overdue'].includes(inv.status)) {
+        handlePayInvoice(highlightedInvoiceId);
+        searchParams.delete('action');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [searchParams, highlightedInvoiceId, invoices, isLoading, onlinePaymentsEnabled]);
+
   // Scroll to highlighted invoice on mount
   useEffect(() => {
     if (highlightedInvoiceId && invoices && !isLoading) {
@@ -80,37 +115,42 @@ export default function PortalInvoices() {
     }
   }, [highlightedInvoiceId, invoices, isLoading]);
 
-  const handlePayInvoice = async (invoiceId: string) => {
-    setPayingInvoiceId(invoiceId);
-    try {
-      await initiatePayment(invoiceId);
-    } catch {
-      toast({ title: 'Payment failed', description: 'Something went wrong. Please try again or contact your academy.', variant: 'destructive' });
-    } finally {
-      setPayingInvoiceId(null);
-    }
+  const handlePayInvoice = (invoiceId: string) => {
+    const inv = invoices?.find(i => i.id === invoiceId);
+    setPaymentDrawerInvoice({
+      id: invoiceId,
+      invoiceNumber: inv?.invoice_number,
+      amount: inv ? inv.total_minor - (inv.paid_minor || 0) : undefined,
+      currencyCode: currentOrg?.currency_code || 'GBP',
+      dueDate: inv ? format(parseISO(inv.due_date), 'd MMM yyyy') : undefined,
+    });
+    setPaymentDrawerOpen(true);
   };
 
-  const handlePayInstallment = async (invoiceId: string, installmentId: string) => {
-    setPayingInvoiceId(invoiceId);
-    try {
-      await initiatePayment(invoiceId, { installmentId });
-    } catch {
-      toast({ title: 'Payment failed', description: 'Something went wrong. Please try again or contact your academy.', variant: 'destructive' });
-    } finally {
-      setPayingInvoiceId(null);
-    }
+  const handlePayInstallment = (invoiceId: string, installmentId: string) => {
+    const inv = invoices?.find(i => i.id === invoiceId);
+    setPaymentDrawerInvoice({
+      id: invoiceId,
+      invoiceNumber: inv?.invoice_number,
+      currencyCode: currentOrg?.currency_code || 'GBP',
+      dueDate: inv ? format(parseISO(inv.due_date), 'd MMM yyyy') : undefined,
+      installmentId,
+    });
+    setPaymentDrawerOpen(true);
   };
 
-  const handlePayRemaining = async (invoiceId: string) => {
-    setPayingInvoiceId(invoiceId);
-    try {
-      await initiatePayment(invoiceId, { payRemaining: true });
-    } catch {
-      toast({ title: 'Payment failed', description: 'Something went wrong. Please try again or contact your academy.', variant: 'destructive' });
-    } finally {
-      setPayingInvoiceId(null);
-    }
+  const handlePayRemaining = (invoiceId: string) => {
+    const inv = invoices?.find(i => i.id === invoiceId);
+    setPaymentDrawerInvoice({
+      id: invoiceId,
+      invoiceNumber: inv?.invoice_number,
+      amount: inv ? inv.total_minor - (inv.paid_minor || 0) : undefined,
+      currencyCode: currentOrg?.currency_code || 'GBP',
+      dueDate: inv ? format(parseISO(inv.due_date), 'd MMM yyyy') : undefined,
+      payRemaining: true,
+      installmentLabel: `${inv?.invoice_number} — Remaining balance`,
+    });
+    setPaymentDrawerOpen(true);
   };
 
   const getStatusBadge = (status: string, dueDate: string) => {
@@ -253,6 +293,7 @@ export default function PortalInvoices() {
                         isHighlighted={invoice.id === highlightedInvoiceId}
                         showPayButton={onlinePaymentsEnabled}
                         bankReferencePrefix={orgPaymentPrefs?.bank_reference_prefix}
+                        autoPayEnabled={autoPayEnabled}
                       />
                     ) : (
                       <InvoiceCard
@@ -309,6 +350,26 @@ export default function PortalInvoices() {
           )}
         </div>
       )}
+
+      {/* Embedded Payment Drawer */}
+      <PaymentDrawer
+        open={paymentDrawerOpen}
+        onOpenChange={(open) => {
+          setPaymentDrawerOpen(open);
+          if (!open) {
+            setPaymentDrawerInvoice(null);
+            refetch();
+          }
+        }}
+        invoiceId={paymentDrawerInvoice?.id || null}
+        invoiceNumber={paymentDrawerInvoice?.invoiceNumber}
+        amount={paymentDrawerInvoice?.amount}
+        currencyCode={paymentDrawerInvoice?.currencyCode}
+        dueDate={paymentDrawerInvoice?.dueDate}
+        installmentId={paymentDrawerInvoice?.installmentId}
+        payRemaining={paymentDrawerInvoice?.payRemaining}
+        installmentLabel={paymentDrawerInvoice?.installmentLabel}
+      />
     </PortalLayout>
   );
 }
