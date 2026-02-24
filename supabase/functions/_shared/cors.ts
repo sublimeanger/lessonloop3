@@ -7,9 +7,12 @@ const DEFAULT_ORIGINS = [
   "https://app.lessonloop.net",
   "https://lessonloop3.lovable.app",
   "https://id-preview--c541d756-90e7-442a-ba85-0c723aeabc14.lovable.app",
-  "http://localhost:5173",
-  "http://localhost:8080",
 ];
+
+// Localhost origins only allowed when explicitly enabled via environment variable
+const DEV_ORIGINS = Deno.env.get("ALLOW_LOCALHOST_CORS") === "true"
+  ? ["http://localhost:5173", "http://localhost:8080"]
+  : [];
 
 // Wildcard suffixes that are always allowed (Lovable preview/project domains)
 const WILDCARD_SUFFIXES = [
@@ -22,7 +25,7 @@ function getAllowedOrigins(): string[] {
   if (envOrigins) {
     return envOrigins.split(",").map((o) => o.trim()).filter(Boolean);
   }
-  return DEFAULT_ORIGINS;
+  return [...DEFAULT_ORIGINS, ...DEV_ORIGINS];
 }
 
 function isOriginAllowed(origin: string): boolean {

@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
+import { log, logError as safeLogError } from "../_shared/log.ts";
 
 interface SendMessageRequest {
   org_id: string;
@@ -21,7 +22,8 @@ interface SendMessageRequest {
   send_email?: boolean;
 }
 
-const PORTAL_URL = "https://lessonloop3.lovable.app/portal/messages";
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop.net";
+const PORTAL_URL = `${FRONTEND_URL}/portal/messages`;
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight
@@ -128,7 +130,7 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (logError) {
-      console.error("Error creating message log:", logError);
+      safeLogError("Error creating message log:", logError);
       throw new Error("Failed to create message log");
     }
 
@@ -189,15 +191,15 @@ const handler = async (req: Request): Promise<Response> => {
 
         if (resendResponse.ok) {
           const emailResult = await resendResponse.json();
-          console.log("Email sent successfully, id:", emailResult?.id);
+          log("Email sent successfully, id:", emailResult?.id);
           emailSent = true;
         } else {
           const errorResult = await resendResponse.text();
-          console.error("Resend API error:", errorResult);
+          safeLogError("Resend API error:", errorResult);
           errorMessage = `Email send failed: ${errorResult}`;
         }
       } catch (emailError: any) {
-        console.error("Error sending email via Resend:", emailError);
+        safeLogError("Error sending email via Resend:", emailError);
         errorMessage = emailError.message;
       }
     } else {
@@ -228,7 +230,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
   } catch (error: any) {
-    console.error("Error in send-message function:", error);
+    safeLogError("Error in send-message function:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {

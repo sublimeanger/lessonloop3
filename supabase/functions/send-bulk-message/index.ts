@@ -4,9 +4,11 @@ import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
+import { logError } from "../_shared/log.ts";
 
 const BATCH_SIZE = 50;
-const PORTAL_URL = "https://lessonloop3.lovable.app/portal/messages";
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop.net";
+const PORTAL_URL = `${FRONTEND_URL}/portal/messages`;
 
 interface BulkMessageRequest {
   org_id: string;
@@ -64,7 +66,7 @@ async function sendSingleEmail(
     }
 
     const errorText = await resendResponse.text();
-    console.error("Resend API error for guardian:", guardian.id, errorText);
+    logError("Resend API error for guardian:", guardian.id, errorText);
     return {
       guardianId: guardian.id,
       email: guardian.email,
@@ -72,7 +74,7 @@ async function sendSingleEmail(
       error: `HTTP ${resendResponse.status}: ${errorText}`,
     };
   } catch (err: any) {
-    console.error("Error sending to guardian:", guardian.id);
+    logError("Error sending to guardian:", guardian.id);
     return {
       guardianId: guardian.id,
       email: guardian.email,
@@ -187,7 +189,7 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (batchError) {
-      console.error("Error creating batch:", batchError);
+      logError("Error creating batch:", batchError);
       throw new Error("Failed to create message batch");
     }
 
@@ -377,7 +379,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
   } catch (error: any) {
-    console.error("Error in send-bulk-message function:", error);
+    logError("Error in send-bulk-message function:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -443,7 +445,7 @@ async function fetchFilteredGuardians(
     .not("email", "is", null);
 
   if (guardianError) {
-    console.error("Error fetching guardians:", guardianError);
+    logError("Error fetching guardians:", guardianError);
     return [];
   }
 

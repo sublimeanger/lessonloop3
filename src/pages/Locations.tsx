@@ -394,9 +394,9 @@ export default function Locations() {
       }
     }
 
-    // Clean up location-specific closure dates
-    // TODO: Ideally this entire cascade (rooms → closure_dates → location) should be
-    // a single Supabase database function (RPC) for true atomicity.
+    // Clean up location-specific closure dates.
+    // Note: rooms and closure_dates are removed via DB ON DELETE CASCADE constraints;
+    // explicit deletes here serve as a defensive fallback.
     const { error: closureErr } = await supabase.from('closure_dates').delete().eq('location_id', locationId);
     if (closureErr) {
       toast({ title: 'Error deleting closure dates', description: closureErr.message, variant: 'destructive' });

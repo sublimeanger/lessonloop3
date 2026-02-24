@@ -210,16 +210,31 @@ Deno.serve(async (req) => {
     };
     const parentReschedulePolicy = policyDefaults[org_type] || 'request_only';
 
+    // Derive country and currency from the user's timezone (defaults to GB/GBP)
+    const tzCountryMap: Record<string, { country: string; currency: string }> = {
+      'Europe/London': { country: 'GB', currency: 'GBP' },
+      'America/New_York': { country: 'US', currency: 'USD' },
+      'America/Chicago': { country: 'US', currency: 'USD' },
+      'America/Denver': { country: 'US', currency: 'USD' },
+      'America/Los_Angeles': { country: 'US', currency: 'USD' },
+      'Europe/Dublin': { country: 'IE', currency: 'EUR' },
+      'Pacific/Auckland': { country: 'NZ', currency: 'NZD' },
+    };
+    const tz = body.timezone || 'Europe/London';
+    const isAustralia = tz.startsWith('Australia/');
+    const detected = isAustralia
+      ? { country: 'AU', currency: 'AUD' }
+      : tzCountryMap[tz] || { country: 'GB', currency: 'GBP' };
+
     const { error: orgError } = await adminClient
       .from('organisations')
       .insert({
         id: orgId,
         name: org_name,
         org_type,
-        // TODO: detect country/currency from timezone or collect during onboarding
-        country_code: 'GB',
-        currency_code: 'GBP',
-        timezone: body.timezone || 'Europe/London',
+        country_code: detected.country,
+        currency_code: detected.currency,
+        timezone: tz,
         created_by: user.id,
         subscription_plan: plan,
         subscription_status: 'trialing',

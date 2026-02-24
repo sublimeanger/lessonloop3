@@ -10,7 +10,6 @@ import { UKDifferentiator } from "@/components/marketing/UKDifferentiator";
 import { AudiencePaths } from "@/components/marketing/AudiencePaths";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
 import { FounderStory } from "@/components/marketing/FounderStory";
-// import { TestimonialsCarousel } from "@/components/marketing/TestimonialsCarousel"; // TODO: when ready
 import { StatsCounter } from "@/components/marketing/StatsCounter";
 import { CTASection } from "@/components/marketing/CTASection";
 
@@ -29,7 +28,6 @@ export default function MarketingHome() {
       <AudiencePaths />
       <HowItWorks />
       <FounderStory />
-      {/* <TestimonialsCarousel /> */}
       <StatsCounter />
       <CTASection />
     </MarketingLayout>

@@ -3,7 +3,7 @@ import { validateCronAuth } from "../_shared/cron-auth.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 
-const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop3.lovable.app";
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop.net";
 
 Deno.serve(async (req) => {
   const cronAuthError = validateCronAuth(req);

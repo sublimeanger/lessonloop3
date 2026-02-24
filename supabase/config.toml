@@ -1,21 +1,44 @@
 project_id = "ximxgnkpcswbvfrkkmjq"
 
+# ── User-facing functions: JWT verification ENABLED ──────────────────
+# These functions authenticate via Supabase platform-level JWT check
+# plus manual auth validation as defence-in-depth.
+
 [functions.send-message]
-verify_jwt = false
+verify_jwt = true
 
 [functions.stripe-create-checkout]
-verify_jwt = false
-
-[functions.stripe-webhook]
-verify_jwt = false
+verify_jwt = true
 
 [functions.stripe-connect-onboard]
-verify_jwt = false
+verify_jwt = true
 
 [functions.stripe-connect-status]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-invoice-email]
+verify_jwt = true
+
+[functions.create-billing-run]
+verify_jwt = true
+
+[functions.stripe-billing-history]
+verify_jwt = true
+
+[functions.notify-makeup-offer]
+verify_jwt = true
+
+[functions.send-cancellation-notification]
+verify_jwt = true
+
+[functions.profile-ensure]
+verify_jwt = true
+
+# ── Webhook/public functions: JWT verification DISABLED ──────────────
+# These validate identity through other mechanisms (Stripe signature,
+# cron secret, public access).
+
+[functions.stripe-webhook]
 verify_jwt = false
 
 [functions.marketing-chat]
@@ -24,8 +47,11 @@ verify_jwt = false
 [functions.send-contact-message]
 verify_jwt = false
 
-[functions.profile-ensure]
+[functions.calendar-ical-feed]
 verify_jwt = false
+
+# ── Cron/system functions: JWT verification DISABLED ─────────────────
+# These are called by scheduled jobs with x-cron-secret header auth.
 
 [functions.installment-overdue-check]
 verify_jwt = false
@@ -33,22 +59,10 @@ verify_jwt = false
 [functions.installment-upcoming-reminder]
 verify_jwt = false
 
-[functions.notify-makeup-offer]
-verify_jwt = false
-
 [functions.waitlist-expiry]
 verify_jwt = false
 
-[functions.send-cancellation-notification]
-verify_jwt = false
-
-[functions.create-billing-run]
-verify_jwt = false
-
 [functions.invoice-overdue-check]
-verify_jwt = false
-
-[functions.stripe-billing-history]
 verify_jwt = false
 
 [functions.calendar-refresh-busy]

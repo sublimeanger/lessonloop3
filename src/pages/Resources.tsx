@@ -82,7 +82,7 @@ export default function Resources() {
     [data]
   );
 
-  // Client-side filtering — TODO: move to server-side when pagination is implemented (RES-009)
+  // Client-side filtering applied on top of paginated server fetch
   const filteredResources = resources
     .filter(resource => {
       const matchesSearch =
