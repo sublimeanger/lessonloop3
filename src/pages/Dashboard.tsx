@@ -45,7 +45,6 @@ export default function Dashboard() {
   
   const isParent = currentRole === 'parent';
   const isTeacher = currentRole === 'teacher';
-  const isSoloTeacher = currentOrg?.org_type === 'solo_teacher' || currentOrg?.org_type === 'studio';
   const isAcademyOrAgency = currentOrg?.org_type === 'academy' || currentOrg?.org_type === 'agency';
 
   useEffect(() => {
@@ -188,7 +187,7 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
             <GridSkeleton count={6} columns={4} />
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-              <StatCard title="Today's Lessons" value={stats?.todayLessons ?? 0} subtitle="Across all teachers" icon={Calendar} href="/calendar" variant="teal" />
+              <StatCard title="Today's Lessons" value={stats?.todayLessons ?? 0} subtitle={currentOrg?.org_type === 'solo_teacher' ? 'Your schedule' : 'Across all teachers'} icon={Calendar} href="/calendar" variant="teal" />
               <StatCard title="Active Students" value={stats?.activeStudents ?? 0} subtitle="Currently enrolled" icon={Users} href="/students" variant="coral" />
               <StatCard title="This Week" value={`${stats?.lessonsThisWeek ?? 0} lessons`} subtitle={`${stats?.hoursThisWeek ?? 0} teaching hours`} icon={Clock} href="/calendar" variant="emerald" />
               <StatCard title="Revenue (MTD)" value={formatCurrency(stats?.revenueMTD ?? 0)} subtitle="Month to date" icon={PoundSterling} href="/reports/revenue" variant="violet" />

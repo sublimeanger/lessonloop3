@@ -47,6 +47,14 @@ export interface Organisation {
   stripe_subscription_id: string | null;
   // Music settings (GRADE-003)
   default_exam_board_id?: string | null;
+  // Subscription lifecycle
+  past_due_since?: string | null;
+  cancels_at?: string | null;
+  // Make-up credit settings
+  credit_expiry_days?: number | null;
+  max_credits_per_term?: number | null;
+  // AI preferences
+  ai_preferences?: Record<string, unknown> | null;
 }
 
 export interface OrgMembership {
