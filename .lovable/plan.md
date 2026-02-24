@@ -1,86 +1,59 @@
 
 
-## Advanced Message Filtering for Admins
+# Dashboard Mobile Polish -- World-Class Upgrade
 
-### Overview
-Add a rich filter bar to the Conversations tab so org admins can quickly narrow correspondence by guardian, student, teacher (sender), channel, and date range. The filters sit between the search/view toggle row and the thread list, using a collapsible panel pattern consistent with the existing `InvoiceFiltersBar` and `RecipientFilter` components.
+## Problem
+On mobile, the dashboard's bottom sections ("Today's Schedule", "Quick Actions", and "Cancellation Tracking") look cut off and unpolished. Lesson rows truncate metadata awkwardly, and Quick Actions are buried at the bottom where they're least accessible.
 
-### What Changes
+## Changes
 
-**1. New Component: `MessageFiltersBar`** (`src/components/messages/MessageFiltersBar.tsx`)
-- Collapsible filter panel toggled by the existing Filter icon area
-- Filter chips/controls for:
-  - **Guardian** -- searchable combobox (Command-based) populated from guardians table
-  - **Student** -- searchable combobox populated from students table
-  - **Teacher / Sender** -- searchable combobox populated from org staff (teachers + admins)
-  - **Channel** -- pill toggle: All | Email | In-App
-  - **Date range** -- "From" and "To" date pickers
-- Active filter count badge on the filter toggle button
-- "Clear all" button when any filter is active
-- Only visible to admin/owner roles
+### 1. Reorder: Quick Actions above Today's Schedule (mobile only)
 
-**2. New Hook: `useFilteredMessageThreads`** (extend `src/hooks/useMessageThreads.ts`)
-- Add a new query function that accepts filter parameters and builds the Supabase query dynamically:
-  - `guardian_id` -- filters by `recipient_id` where `recipient_type = 'guardian'`
-  - `student_id` -- filters by `related_id` (the linked student on message_log)
-  - `sender_user_id` -- filters by `sender_user_id` (for teacher/staff filtering)
-  - `channel` -- filters by `channel` column (`email` or `inapp`)
-  - `date_from` / `date_to` -- filters by `created_at` range
-- Reuse existing `groupMessagesIntoThreads` for thread grouping
-- Falls back to unfiltered `useMessageThreads` when no filters are active
+In all three dashboard variants (`SoloTeacherDashboard`, `AcademyDashboard`, `TeacherDashboard`), the bottom grid currently renders Today's Schedule first and Quick Actions second. On mobile these stack vertically, so Quick Actions end up at the very bottom.
 
-**3. Update `ThreadedMessageList`** (`src/components/messages/ThreadedMessageList.tsx`)
-- Accept filter state as props
-- Pass filters to the new filtered query hook
-- Show active filter summary/tags above results
+**Fix:** On mobile (stacked), render Quick Actions first using CSS `order` utilities:
+- `QuickActionsGrid` gets `order-first lg:order-none` so it appears first on mobile but stays in its natural column position on desktop.
+- For `AcademyDashboard`, the Cancellation Tracking card and Quick Actions wrapper div gets the same treatment.
 
-**4. Update `Messages` page** (`src/pages/Messages.tsx`)
-- Add filter state management (`useState` for each filter dimension)
-- Render `MessageFiltersBar` between the search row and thread list (Conversations tab only)
-- Pass filter state down to `ThreadedMessageList`
+### 2. Polish TodayTimeline lesson rows (`TodayTimeline.tsx`)
 
-**5. Data sources for filter dropdowns**
-- Guardians: reuse existing guardians query (already fetched for compose)
-- Students: use `useStudents` hook
-- Teachers/Staff: use `useOrgMembers` hook filtered to staff roles
+The `LessonRow` component currently truncates metadata into a single cramped line. Improvements:
+- Wrap the metadata line so on narrow screens it flows onto a second line instead of cutting off (`line-clamp-2` or remove `truncate` and allow wrapping).
+- Ensure the student name line doesn't compete with the "NOW" / checkmark badges -- use `min-w-0` and `flex-wrap` so badges don't get pushed off-screen.
+- Increase vertical rhythm slightly between rows for better touch separation (py-2.5 baseline).
 
-### Technical Details
+### 3. Polish QuickActionsGrid (`QuickActionsGrid.tsx`)
 
-**Filter State Shape:**
-```text
-interface MessageFilters {
-  guardian_id?: string;
-  student_id?: string;
-  sender_user_id?: string;
-  channel?: 'email' | 'inapp';
-  date_from?: string;    // ISO date
-  date_to?: string;      // ISO date
-}
-```
+- On mobile, use a 2x2 grid (`grid-cols-2`) instead of single-column stacking, giving a more compact and professional appearance.
+- Ensure minimum touch target of 48px (`min-h-12`).
+- Tighten padding for a cleaner card feel.
 
-**Query Building (in useMessageThreads.ts):**
-```text
-When filters are active, build a separate useInfiniteQuery with:
-  - .eq('recipient_id', guardian_id)        if guardian_id set
-  - .eq('related_id', student_id)           if student_id set
-  - .eq('sender_user_id', sender_user_id)   if sender set
-  - .eq('channel', channel)                 if channel set
-  - .gte('created_at', date_from)           if date_from set
-  - .lte('created_at', date_to)             if date_to set
-```
+### 4. Cancellation Tracking card (Academy dashboard only)
 
-**Combobox Pattern:**
-Uses the existing `Command` component (cmdk) inside a `Popover` for searchable dropdowns -- same pattern as other entity selectors in the app.
+- On mobile, this card should appear alongside Quick Actions (above the timeline). Already handled by the reorder in step 1.
 
-**Responsive Design:**
-- On desktop: filters render inline as a horizontal bar with popovers
-- On mobile: filters collapse into a "Filters" button that opens a sheet/drawer with stacked controls
+### 5. StatCard grid mobile tweak
 
-### Files to Create/Modify
-| File | Action |
-|------|--------|
-| `src/components/messages/MessageFiltersBar.tsx` | Create -- filter bar component |
-| `src/hooks/useMessageThreads.ts` | Modify -- add filtered query hook |
-| `src/components/messages/ThreadedMessageList.tsx` | Modify -- accept and pass filter props |
-| `src/pages/Messages.tsx` | Modify -- add filter state and render filter bar |
+- Currently `grid-cols-1` on mobile for Solo/Academy (6 cards stacked). Switch to `grid-cols-2` to match Teacher dashboard and look more polished. Values and titles are already truncated so this is safe.
+
+---
+
+## Technical Details
+
+### Files Modified
+
+**`src/pages/Dashboard.tsx`**
+- `SoloTeacherDashboard` (lines 200-208): Add `order` classes to QuickActionsGrid and TodayTimeline within the grid. Change stats grid from `grid-cols-1` to `grid-cols-2`.
+- `AcademyDashboard` (lines 300-327): Same reorder pattern for the right-side column (Cancellation + Quick Actions). Change stats grid from `grid-cols-1` to `grid-cols-2`.
+- `TeacherDashboard` (lines 431-439): Add order classes (already `grid-cols-2` for stats).
+
+**`src/components/dashboard/TodayTimeline.tsx`**
+- `LessonRow`: Remove `truncate` from the metadata `<p>` tag and replace with `line-clamp-2` to allow wrapping on narrow screens. Increase row padding from `py-2` to `py-2.5`.
+
+**`src/components/dashboard/QuickActionsGrid.tsx`**
+- Change mobile grid from `grid-cols-1` to `grid-cols-2` for a compact 2x2 layout.
+- Increase `min-h` from `min-h-11` to `min-h-12` for better touch targets.
+
+### No functionality changes
+All changes are CSS/layout only. No data fetching, routing, or business logic is touched.
 
