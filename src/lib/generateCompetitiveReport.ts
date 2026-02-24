@@ -1,5 +1,16 @@
 import jsPDF from 'jspdf';
 
+// Sanitise smart/curly quotes and other non-ASCII punctuation that jsPDF's
+// built-in Helvetica cannot render (causes wide letter-spacing).
+function sanitise(text: string): string {
+  return text
+    .replace(/[\u2018\u2019\u201A]/g, "'")
+    .replace(/[\u201C\u201D\u201E]/g, '"')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/\u2026/g, '...')
+    .replace(/[\u00A0]/g, ' ');
+}
+
 export function generateCompetitiveReport() {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
@@ -46,7 +57,7 @@ export function generateCompetitiveReport() {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(...colors.dark);
-    doc.text(text, margin, y);
+    doc.text(sanitise(text), margin, y);
     y += 6;
   }
 
@@ -55,7 +66,7 @@ export function generateCompetitiveReport() {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9.5);
     doc.setTextColor(...colors.mid);
-    const lines = doc.splitTextToSize(text, contentW - indent);
+    const lines = doc.splitTextToSize(sanitise(text), contentW - indent);
     for (const line of lines) {
       checkPage(5);
       doc.text(line, margin + indent, y);
@@ -70,7 +81,7 @@ export function generateCompetitiveReport() {
     doc.setFontSize(9.5);
     doc.setTextColor(...colors.mid);
     doc.text('•', margin + indent, y);
-    const lines = doc.splitTextToSize(text, contentW - indent - 5);
+    const lines = doc.splitTextToSize(sanitise(text), contentW - indent - 5);
     for (let i = 0; i < lines.length; i++) {
       checkPage(5);
       doc.text(lines[i], margin + indent + 4, y);
@@ -488,7 +499,7 @@ export function generateCompetitiveReport() {
       y += 4.5;
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(...colors.mid);
-      const scenarioLines = doc.splitTextToSize(f.scenario, contentW - 8);
+      const scenarioLines = doc.splitTextToSize(sanitise(f.scenario), contentW - 8);
       for (const line of scenarioLines) {
         checkPage(5);
         doc.text(line, margin + 8, y);
