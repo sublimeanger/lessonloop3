@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatCurrencyMinor, formatDateUK } from '@/lib/utils';
+import { formatDateUK } from '@/lib/utils';
 import { parseISO } from 'date-fns';
 
 interface InvoicePdfData {
@@ -47,6 +47,9 @@ interface InvoicePdfData {
 interface OrgPdfDetails {
   name: string | null;
   address: string | null;
+  logo_url: string | null;
+  brand_color: string | null;
+  accent_color: string | null;
   invoice_from_name: string | null;
   invoice_from_address_line1: string | null;
   invoice_from_address_line2: string | null;
@@ -70,11 +73,10 @@ export function useInvoicePdf() {
 
   const downloadPdf = async (invoiceId: string, invoiceNumber: string) => {
     setIsLoading(true);
-    toast({ title: 'Generating PDF…', description: `Preparing ${invoiceNumber}` });
+    toast({ title: 'Generating PDF...', description: `Preparing ${invoiceNumber}` });
     try {
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
-      // Fetch full invoice data (org-scoped for defence-in-depth)
       const { data: invoice, error: invErr } = await supabase
         .from('invoices')
         .select(`
@@ -100,7 +102,6 @@ export function useInvoicePdf() {
         .eq('invoice_id', invoiceId)
         .order('paid_at', { ascending: false });
 
-      // Fetch installments if payment plan
       let installments: InvoicePdfData['installments'] = [];
       if (invoice.payment_plan_enabled) {
         const { data: instData } = await supabase
@@ -111,12 +112,17 @@ export function useInvoicePdf() {
         installments = instData || [];
       }
 
-      // Fetch org details for header
       let orgDetails: OrgPdfDetails | null = null;
       if (currentOrg?.id) {
         const { data } = await supabase
           .from('organisations')
-          .select('name, address, invoice_from_name, invoice_from_address_line1, invoice_from_address_line2, invoice_from_city, invoice_from_postcode, invoice_from_country, invoice_footer_note, vat_enabled, vat_registration_number, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix')
+          .select(`
+            name, address, logo_url, brand_color, accent_color,
+            invoice_from_name, invoice_from_address_line1, invoice_from_address_line2,
+            invoice_from_city, invoice_from_postcode, invoice_from_country,
+            invoice_footer_note, vat_enabled, vat_registration_number,
+            bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix
+          `)
           .eq('id', currentOrg.id)
           .single();
         orgDetails = data;
@@ -130,9 +136,18 @@ export function useInvoicePdf() {
         installments,
       };
 
-      generatePdf(fullInvoice, orgDetails, currency, invoiceNumber);
+      // Load logo image if available
+      let logoImg: HTMLImageElement | null = null;
+      if (orgDetails?.logo_url) {
+        try {
+          logoImg = await loadImage(orgDetails.logo_url);
+        } catch {
+          // Logo load failed — continue without it
+        }
+      }
 
-      // Audit log: PDF generated
+      generatePdf(fullInvoice, orgDetails, currency, invoiceNumber, logoImg);
+
       if (currentOrg?.id && user?.id) {
         supabase.from('audit_log').insert({
           action: 'pdf_generated',
@@ -164,46 +179,144 @@ export function useInvoicePdf() {
   return { downloadPdf, isLoading };
 }
 
+// ─── Helpers ───
+
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Image load failed'));
+    img.src = url;
+  });
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)]
+    : [0, 0, 0];
+}
+
+function luminance(r: number, g: number, b: number): number {
+  const [rs, gs, bs] = [r, g, b].map((v) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+}
+
+/** Returns white or dark text depending on background luminance */
+function contrastColor(hex: string): [number, number, number] {
+  const [r, g, b] = hexToRgb(hex);
+  return luminance(r, g, b) > 0.4 ? [26, 26, 46] : [255, 255, 255];
+}
+
+function fmtCur(amountMinor: number, currencyCode: string): string {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: currencyCode,
+  }).format(amountMinor / 100);
+}
+
+// ─── PDF Generation ───
+
 function generatePdf(
   inv: InvoicePdfData,
   org: OrgPdfDetails | null,
   currency: string,
-  filename: string
+  filename: string,
+  logoImg: HTMLImageElement | null
 ) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 20;
   const contentWidth = pageWidth - margin * 2;
-  let y = margin;
 
-  // --- Watermark for paid/void ---
+  const brandColor = org?.brand_color || '#1a1a2e';
+  const accentColor = org?.accent_color || '#6366f1';
+  const [brandR, brandG, brandB] = hexToRgb(brandColor);
+  const [accentR, accentG, accentB] = hexToRgb(accentColor);
+  const [headerTextR, headerTextG, headerTextB] = contrastColor(brandColor);
+
+  let y = 0;
+
+  // ━━━ WATERMARK for paid/void ━━━
   if (inv.status === 'paid' || inv.status === 'void') {
     doc.saveGraphicsState();
-    doc.setTextColor(200, 200, 200);
+    doc.setTextColor(220, 220, 220);
     doc.setFontSize(60);
-    doc.text(inv.status.toUpperCase(), pageWidth / 2, 150, {
+    doc.text(inv.status.toUpperCase(), pageWidth / 2, 160, {
       align: 'center',
       angle: 45,
     });
     doc.restoreGraphicsState();
-    doc.setTextColor(0, 0, 0);
   }
 
-  // --- Organisation Header ---
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text(org?.name || 'Invoice', margin, y);
-  y += 7;
+  // ━━━ BRANDED HEADER BAR ━━━
+  const headerHeight = 28;
+  doc.setFillColor(brandR, brandG, brandB);
+  doc.rect(0, 0, pageWidth, headerHeight, 'F');
 
-  doc.setFontSize(9);
+  // Logo in header
+  let logoEndX = margin;
+  if (logoImg) {
+    try {
+      const logoSize = 16;
+      const logoX = margin;
+      const logoY = (headerHeight - logoSize) / 2;
+      // White background pill behind logo
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(logoX - 1, logoY - 1, logoSize + 2, logoSize + 2, 2, 2, 'F');
+      doc.addImage(logoImg, 'PNG', logoX, logoY, logoSize, logoSize);
+      logoEndX = logoX + logoSize + 4;
+    } catch {
+      // Logo render failed — continue without
+    }
+  }
+
+  // Org name in header
+  doc.setTextColor(headerTextR, headerTextG, headerTextB);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(org?.invoice_from_name || org?.name || 'Invoice', logoEndX, headerHeight / 2 + 1, {
+    baseline: 'middle',
+  });
+
+  // "INVOICE" label on right
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('INVOICE', pageWidth - margin, headerHeight / 2 - 2, {
+    align: 'right',
+    baseline: 'middle',
+  });
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 100, 100);
+  doc.text(inv.invoice_number, pageWidth - margin, headerHeight / 2 + 4, {
+    align: 'right',
+    baseline: 'middle',
+  });
+
+  y = headerHeight + 10;
+
+  // ━━━ ACCENT LINE under header ━━━
+  doc.setFillColor(accentR, accentG, accentB);
+  doc.rect(0, headerHeight, pageWidth, 1.2, 'F');
+
+  // ━━━ ADDRESS + DATES BLOCK ━━━
+  // Left: org address
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(120, 120, 120);
+
   const addressParts = [
     org?.invoice_from_address_line1,
     org?.invoice_from_address_line2,
     org?.invoice_from_city,
     org?.invoice_from_postcode,
   ].filter(Boolean);
+
   if (addressParts.length) {
     doc.text(addressParts.join(', '), margin, y);
     y += 4;
@@ -212,104 +325,127 @@ function generatePdf(
     doc.text(`VAT: ${org.vat_registration_number}`, margin, y);
     y += 4;
   }
-  doc.setTextColor(0, 0, 0);
 
-  // --- INVOICE title + number (right aligned) ---
-  doc.setFontSize(24);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(80, 80, 80);
-  doc.text('INVOICE', pageWidth - margin, margin, { align: 'right' });
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(0, 0, 0);
-  doc.text(inv.invoice_number, pageWidth - margin, margin + 8, { align: 'right' });
+  y = Math.max(y, headerHeight + 14);
 
-  y = Math.max(y, margin + 20) + 8;
-
-  // --- Bill To / Dates ---
+  // ━━━ BILL TO + DATES ━━━
+  y += 4;
   const payerName = inv.payer_guardian?.full_name
     || (inv.payer_student ? `${inv.payer_student.first_name} ${inv.payer_student.last_name}` : '');
+  const payerEmail = inv.payer_guardian?.email || inv.payer_student?.email || '';
 
-  doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
+  // Bill To section
+  doc.setFontSize(7);
+  doc.setTextColor(accentR, accentG, accentB);
+  doc.setFont('helvetica', 'bold');
   doc.text('BILL TO', margin, y);
-  doc.text('ISSUE DATE', pageWidth / 2 + 10, y);
-  y += 5;
-  doc.setTextColor(0, 0, 0);
+
+  // Dates section
+  const dateX = pageWidth / 2 + 15;
+  doc.text('ISSUE DATE', dateX, y);
+  doc.text('DUE DATE', dateX + 40, y);
+  y += 4;
+
+  doc.setTextColor(30, 30, 30);
   doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
   doc.text(payerName, margin, y);
-  doc.text(formatDateUK(parseISO(inv.issue_date), 'dd/MM/yyyy'), pageWidth / 2 + 10, y);
-  y += 5;
   doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
-  doc.text('', margin, y);
-  doc.text('DUE DATE', pageWidth / 2 + 10, y);
-  y += 5;
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(10);
-  doc.text(formatDateUK(parseISO(inv.due_date), 'dd/MM/yyyy'), pageWidth / 2 + 10, y);
+  doc.setFont('helvetica', 'normal');
+  doc.text(formatDateUK(parseISO(inv.issue_date), 'dd/MM/yyyy'), dateX, y);
+  doc.text(formatDateUK(parseISO(inv.due_date), 'dd/MM/yyyy'), dateX + 40, y);
+  y += 4;
 
-  y += 12;
+  if (payerEmail) {
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text(payerEmail, margin, y);
+    y += 4;
+  }
 
-  // --- Line items table ---
+  y += 8;
+
+  // ━━━ LINE ITEMS TABLE ━━━
   const colX = {
     desc: margin,
     qty: margin + contentWidth * 0.55,
-    rate: margin + contentWidth * 0.7,
+    rate: margin + contentWidth * 0.72,
     amount: pageWidth - margin,
   };
 
-  // Header row
-  doc.setFillColor(245, 245, 245);
-  doc.rect(margin, y - 4, contentWidth, 8, 'F');
-  doc.setFontSize(8);
+  // Table header row with accent background
+  doc.setFillColor(accentR, accentG, accentB);
+  doc.roundedRect(margin, y - 4, contentWidth, 8, 1.5, 1.5, 'F');
+  const [thR, thG, thB] = contrastColor(accentColor);
+  doc.setTextColor(thR, thG, thB);
+  doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(80, 80, 80);
-  doc.text('Description', colX.desc, y);
-  doc.text('Qty', colX.qty, y, { align: 'right' });
-  doc.text('Rate', colX.rate, y, { align: 'right' });
-  doc.text('Amount', colX.amount, y, { align: 'right' });
+  doc.text('DESCRIPTION', colX.desc + 2, y);
+  doc.text('QTY', colX.qty, y, { align: 'right' });
+  doc.text('RATE', colX.rate, y, { align: 'right' });
+  doc.text('AMOUNT', colX.amount - 2, y, { align: 'right' });
   y += 7;
 
+  // Table rows
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(0, 0, 0);
+  doc.setTextColor(30, 30, 30);
   doc.setFontSize(9);
 
-  const descMaxWidth = contentWidth * 0.55 - 4; // leave small gap before qty column
+  const descMaxWidth = contentWidth * 0.53;
+  let rowEven = false;
 
   for (const item of inv.items || []) {
     const descLines = doc.splitTextToSize(item.description, descMaxWidth);
     const lineHeight = 4;
     const blockHeight = descLines.length * lineHeight;
+    const rowH = Math.max(blockHeight, 6) + 3;
 
-    if (y + blockHeight > 260) {
+    if (y + rowH > 258) {
       doc.addPage();
       y = margin;
     }
-    doc.text(descLines, colX.desc, y);
+
+    // Alternating row background
+    if (rowEven) {
+      doc.setFillColor(248, 248, 252);
+      doc.rect(margin, y - 3.5, contentWidth, rowH, 'F');
+    }
+    rowEven = !rowEven;
+
+    doc.setTextColor(30, 30, 30);
+    doc.text(descLines, colX.desc + 2, y);
+    doc.setTextColor(100, 100, 100);
     doc.text(String(item.quantity), colX.qty, y, { align: 'right' });
     doc.text(fmtCur(item.unit_price_minor, currency), colX.rate, y, { align: 'right' });
-    doc.text(fmtCur(item.amount_minor, currency), colX.amount, y, { align: 'right' });
-    y += Math.max(blockHeight, 6) + 2;
+    doc.setTextColor(30, 30, 30);
+    doc.setFont('helvetica', 'bold');
+    doc.text(fmtCur(item.amount_minor, currency), colX.amount - 2, y, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    y += rowH;
   }
 
-  // Line
-  y += 2;
-  doc.setDrawColor(200, 200, 200);
+  // Divider line
+  y += 3;
+  doc.setDrawColor(accentR, accentG, accentB);
+  doc.setLineWidth(0.3);
   doc.line(margin, y, pageWidth - margin, y);
-  y += 6;
+  y += 8;
 
-  // --- Totals ---
-  const totalsX = pageWidth - margin;
-  const labelX = totalsX - 50;
+  // ━━━ TOTALS SECTION ━━━
+  const totalsX = pageWidth - margin - 2;
+  const labelX = totalsX - 52;
 
   doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
   doc.text('Subtotal', labelX, y, { align: 'right' });
+  doc.setTextColor(30, 30, 30);
   doc.text(fmtCur(inv.subtotal_minor, currency), totalsX, y, { align: 'right' });
   y += 5;
 
   if (inv.tax_minor > 0) {
+    doc.setTextColor(100, 100, 100);
     doc.text(`VAT (${inv.vat_rate}%)`, labelX, y, { align: 'right' });
+    doc.setTextColor(30, 30, 30);
     doc.text(fmtCur(inv.tax_minor, currency), totalsX, y, { align: 'right' });
     y += 5;
   }
@@ -318,19 +454,19 @@ function generatePdf(
     doc.setTextColor(34, 139, 34);
     doc.text('Make-Up Credit', labelX, y, { align: 'right' });
     doc.text(`-${fmtCur(inv.credit_applied_minor, currency)}`, totalsX, y, { align: 'right' });
-    doc.setTextColor(0, 0, 0);
     y += 5;
   }
 
-  doc.setDrawColor(200, 200, 200);
-  doc.line(labelX - 5, y, pageWidth - margin, y);
-  y += 6;
-
-  doc.setFontSize(12);
+  // Total highlight bar
+  y += 2;
+  doc.setFillColor(accentR, accentG, accentB);
+  doc.roundedRect(labelX - 8, y - 4, totalsX - labelX + 12, 10, 1.5, 1.5, 'F');
+  doc.setTextColor(thR, thG, thB);
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text('Total', labelX, y, { align: 'right' });
-  doc.text(fmtCur(inv.total_minor, currency), totalsX, y, { align: 'right' });
-  y += 10;
+  doc.text('TOTAL', labelX, y + 1, { align: 'right' });
+  doc.text(fmtCur(inv.total_minor, currency), totalsX, y + 1, { align: 'right' });
+  y += 12;
 
   // Payments
   const totalPaid = (inv.payments || []).reduce((s, p) => s + p.amount_minor, 0);
@@ -340,35 +476,32 @@ function generatePdf(
     doc.setTextColor(34, 139, 34);
     doc.text('Paid', labelX, y, { align: 'right' });
     doc.text(`-${fmtCur(totalPaid, currency)}`, totalsX, y, { align: 'right' });
-    doc.setTextColor(0, 0, 0);
     y += 5;
 
     const amountDue = inv.total_minor - totalPaid;
-    doc.setFontSize(11);
+    doc.setTextColor(30, 30, 30);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text('Amount Due', labelX, y, { align: 'right' });
     doc.text(fmtCur(amountDue, currency), totalsX, y, { align: 'right' });
     y += 10;
   }
 
-  // --- Payment Schedule (for payment plans) ---
+  // ━━━ PAYMENT SCHEDULE (for payment plans) ━━━
   if (inv.payment_plan_enabled && inv.installments && inv.installments.length > 0) {
-    if (y > 230) {
+    if (y > 225) {
       doc.addPage();
       y = margin;
     }
 
     doc.setDrawColor(200, 200, 200);
     doc.line(margin, y, pageWidth - margin, y);
-    y += 6;
+    y += 7;
 
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(accentR, accentG, accentB);
     doc.text('PAYMENT SCHEDULE', margin, y);
-    y += 6;
-
-    doc.setDrawColor(200, 200, 200);
-    doc.line(margin, y, pageWidth - margin, y);
     y += 6;
 
     // Schedule table header
@@ -377,21 +510,20 @@ function generatePdf(
     const schColDue = margin + contentWidth * 0.6;
     const schColStatus = pageWidth - margin;
 
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(80, 80, 80);
-    doc.text('Installment', schColInstallment, y);
-    doc.text('Amount', schColAmount, y, { align: 'right' });
-    doc.text('Due Date', schColDue, y);
-    doc.text('Status', schColStatus, y, { align: 'right' });
+    doc.setTextColor(120, 120, 120);
+    doc.text('INSTALLMENT', schColInstallment, y);
+    doc.text('AMOUNT', schColAmount, y, { align: 'right' });
+    doc.text('DUE DATE', schColDue, y);
+    doc.text('STATUS', schColStatus, y, { align: 'right' });
     y += 5;
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(8);
 
     for (const inst of inv.installments) {
-      if (y > 265) {
+      if (y > 262) {
         doc.addPage();
         y = margin;
       }
@@ -401,6 +533,7 @@ function generatePdf(
           ? 'Overdue'
           : 'Pending';
 
+      doc.setTextColor(30, 30, 30);
       doc.text(`Installment ${inst.installment_number}`, schColInstallment, y);
       doc.text(fmtCur(inst.amount_minor, currency), schColAmount, y, { align: 'right' });
       doc.text(formatDateUK(parseISO(inst.due_date), 'dd/MM/yyyy'), schColDue, y);
@@ -410,16 +543,14 @@ function generatePdf(
       } else if (inst.status === 'overdue') {
         doc.setTextColor(200, 50, 50);
       } else {
-        doc.setTextColor(120, 120, 120);
+        doc.setTextColor(140, 140, 140);
       }
       doc.text(statusLabel, schColStatus, y, { align: 'right' });
-      doc.setTextColor(0, 0, 0);
       y += 5;
     }
 
-    // Schedule summary
-    y += 2;
-    doc.setDrawColor(200, 200, 200);
+    y += 3;
+    doc.setDrawColor(220, 220, 220);
     doc.line(margin, y, pageWidth - margin, y);
     y += 5;
 
@@ -428,61 +559,104 @@ function generatePdf(
       .reduce((s, i) => s + i.amount_minor, 0);
     const remaining = inv.total_minor - paidTotal;
 
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('Total:', schColAmount - 30, y, { align: 'right' });
+    doc.setTextColor(100, 100, 100);
+    doc.text('Total:', schColAmount - 25, y, { align: 'right' });
+    doc.setTextColor(30, 30, 30);
     doc.text(fmtCur(inv.total_minor, currency), schColAmount, y, { align: 'right' });
-    y += 5;
+    y += 4;
     doc.setTextColor(34, 139, 34);
-    doc.text('Paid to date:', schColAmount - 30, y, { align: 'right' });
+    doc.text('Paid:', schColAmount - 25, y, { align: 'right' });
     doc.text(fmtCur(paidTotal, currency), schColAmount, y, { align: 'right' });
-    doc.setTextColor(0, 0, 0);
-    y += 5;
+    y += 4;
+    doc.setTextColor(30, 30, 30);
     doc.setFont('helvetica', 'bold');
-    doc.text('Remaining:', schColAmount - 30, y, { align: 'right' });
+    doc.text('Remaining:', schColAmount - 25, y, { align: 'right' });
     doc.text(fmtCur(remaining, currency), schColAmount, y, { align: 'right' });
-    doc.setFont('helvetica', 'normal');
-    y += 10;
-  }
-
-  // --- Bank details footer ---
-  if (org?.bank_account_name && org?.bank_sort_code && org?.bank_account_number) {
-    y = Math.max(y, 230);
-    doc.setDrawColor(200, 200, 200);
-    doc.line(margin, y, pageWidth - margin, y);
-    y += 6;
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Payment Details', margin, y);
-    y += 4;
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Account Name: ${org.bank_account_name}`, margin, y);
-    y += 4;
-    doc.text(`Sort Code: ${org.bank_sort_code}    Account Number: ${org.bank_account_number}`, margin, y);
-    y += 4;
-    if (org.bank_reference_prefix) {
-      doc.text(`Reference: ${org.bank_reference_prefix}-${inv.invoice_number}`, margin, y);
-    }
-  }
-
-  // --- Notes ---
-  if (inv.notes) {
     y += 8;
-    doc.setFontSize(8);
+  }
+
+  // ━━━ BANK DETAILS SECTION ━━━
+  if (org?.bank_account_name && org?.bank_sort_code && org?.bank_account_number) {
+    if (y > 248) {
+      doc.addPage();
+      y = margin;
+    }
+    y = Math.max(y, y);
+
+    // Left accent border for bank details
+    doc.setFillColor(accentR, accentG, accentB);
+    doc.rect(margin, y, 1.2, 20, 'F');
+
+    doc.setFillColor(248, 248, 252);
+    doc.roundedRect(margin + 2, y, contentWidth - 2, 20, 1.5, 1.5, 'F');
+
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
-    doc.text('Notes', margin, y);
+    doc.setTextColor(accentR, accentG, accentB);
+    doc.text('PAYMENT DETAILS', margin + 5, y + 4);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    doc.setFontSize(8);
+    doc.text(`Account: ${org.bank_account_name}`, margin + 5, y + 9);
+    doc.text(`Sort Code: ${org.bank_sort_code}    Account: ${org.bank_account_number}`, margin + 5, y + 14);
+    if (org.bank_reference_prefix) {
+      doc.text(`Reference: ${org.bank_reference_prefix}-${inv.invoice_number}`, margin + 5, y + 19);
+    }
+    y += 26;
+  }
+
+  // ━━━ NOTES ━━━
+  if (inv.notes) {
+    if (y > 255) {
+      doc.addPage();
+      y = margin;
+    }
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(120, 120, 120);
+    doc.text('NOTES', margin, y);
     y += 4;
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 80);
+    doc.setFontSize(8);
     const lines = doc.splitTextToSize(inv.notes, contentWidth);
     doc.text(lines, margin, y);
+    y += lines.length * 3.5 + 4;
+  }
+
+  // ━━━ FOOTER NOTE ━━━
+  if (org?.invoice_footer_note) {
+    if (y > 260) {
+      doc.addPage();
+      y = margin;
+    }
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(140, 140, 140);
+    const footerLines = doc.splitTextToSize(org.invoice_footer_note, contentWidth);
+    doc.text(footerLines, margin, y);
+  }
+
+  // ━━━ BOTTOM ACCENT BAR ━━━
+  const totalPages = doc.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    // Accent bar at bottom
+    doc.setFillColor(accentR, accentG, accentB);
+    doc.rect(0, pageHeight - 3, pageWidth, 3, 'F');
+    // Page number
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(170, 170, 170);
+    doc.text(
+      `Page ${p} of ${totalPages}`,
+      pageWidth / 2,
+      pageHeight - 6,
+      { align: 'center' }
+    );
   }
 
   doc.save(`${filename}.pdf`);
-}
-
-function fmtCur(amountMinor: number, currencyCode: string): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: currencyCode,
-  }).format(amountMinor / 100);
 }
