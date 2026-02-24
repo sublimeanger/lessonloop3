@@ -64,7 +64,8 @@ export function useOrgMembers() {
     staleTime: STALE_STABLE,
   });
 
-  // TODO: Enforce via RLS policy or DB trigger for production hardening
+  // Role changes are enforced at the database level via RLS policy + trigger
+  // (migration: 20260224120000_role_change_rls_enforcement.sql)
   const changeRoleMutation = useMutation({
     mutationFn: async ({ memberId, newRole }: { memberId: string; newRole: AppRole }) => {
       if (!ASSIGNABLE_ROLES.includes(newRole)) {

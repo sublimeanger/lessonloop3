@@ -1,6 +1,36 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop.net";
+
+/** Validate redirect_uri against allowed domains to prevent open-redirect attacks. */
+function validateRedirectUri(uri: string | undefined | null): string {
+  const fallback = `${FRONTEND_URL}/settings`;
+  if (!uri || typeof uri !== "string") return fallback;
+
+  try {
+    const parsed = new URL(uri);
+    const allowed = [
+      "lessonloop.net",
+      "www.lessonloop.net",
+      "app.lessonloop.net",
+    ];
+    // Also allow *.lovable.app and *.lovableproject.com for previews
+    const isAllowed =
+      allowed.includes(parsed.hostname) ||
+      parsed.hostname.endsWith(".lovable.app") ||
+      parsed.hostname.endsWith(".lovableproject.com");
+
+    if (parsed.protocol === "https:" && isAllowed) {
+      return uri;
+    }
+  } catch {
+    // invalid URL — fall through to fallback
+  }
+
+  return fallback;
+}
+
 Deno.serve(async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
@@ -59,7 +89,7 @@ Deno.serve(async (req) => {
     const stateData = {
       user_id: user.id,
       org_id,
-      redirect_uri: redirect_uri || `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/settings`,
+      redirect_uri: validateRedirectUri(redirect_uri),
       nonce: crypto.randomUUID(),
     };
     const state = btoa(JSON.stringify(stateData));

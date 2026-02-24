@@ -9,6 +9,7 @@ interface EntityChipProps {
   type: EntityType;
   id: string;
   label: string;
+  date?: string;
   className?: string;
 }
 
@@ -19,7 +20,7 @@ const chipConfig: Record<EntityType, { icon: typeof FileText; colorClass: string
   guardian: { icon: Users, colorClass: 'bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:hover:bg-orange-900/50' },
 };
 
-export function EntityChip({ type, id, label, className }: EntityChipProps) {
+export function EntityChip({ type, id, label, date, className }: EntityChipProps) {
   const navigate = useNavigate();
 
   const handleClick = () => {
@@ -31,8 +32,7 @@ export function EntityChip({ type, id, label, className }: EntityChipProps) {
         navigate(`/students/${id}`);
         break;
       case 'lesson':
-        // TODO: Pass lesson date through entity chip data-date attribute for date-aware navigation (/calendar?date=YYYY-MM-DD)
-        navigate('/calendar');
+        navigate(date ? `/calendar?date=${date}` : '/calendar');
         break;
       case 'guardian':
         // No specific guardian page; no-op
@@ -91,7 +91,11 @@ export function preprocessEntityChips(content: string): string {
     .replace(/\[Student:([a-f0-9-]{36})\](?!:)/g, (_, id) =>
       `<span data-entity-type="student" data-entity-id="${id}" data-entity-label="Student">Student</span>`
     )
-    .replace(/\[Lesson:([a-f0-9-]{36}):([^\]]+)\]/g, (_, id, title) => {
+    .replace(/\[Lesson:([a-f0-9-]{36}):([^\]]+):(\d{4}-\d{2}-\d{2})\]/g, (_, id, title, date) => {
+      const safe = escapeHtml(title);
+      return `<span data-entity-type="lesson" data-entity-id="${id}" data-entity-label="${safe}" data-date="${date}">${safe}</span>`;
+    })
+    .replace(/\[Lesson:([a-f0-9-]{36}):([^\]:]+)\]/g, (_, id, title) => {
       const safe = escapeHtml(title);
       return `<span data-entity-type="lesson" data-entity-id="${id}" data-entity-label="${safe}">${safe}</span>`;
     })
@@ -112,12 +116,14 @@ export function parseEntityReferences(content: string): Array<{
   type: EntityType;
   id: string;
   label: string;
+  date?: string;
   fullMatch: string;
 }> {
   const entities: Array<{
     type: EntityType;
     id: string;
     label: string;
+    date?: string;
     fullMatch: string;
   }> = [];
 
@@ -159,15 +165,30 @@ export function parseEntityReferences(content: string): Array<{
     }
   }
 
-  // Match [Lesson:uuid:Title] pattern
-  const lessonNamePattern = /\[Lesson:([a-f0-9-]{36}):([^\]]+)\]/g;
-  while ((match = lessonNamePattern.exec(content)) !== null) {
+  // Match [Lesson:uuid:Title:YYYY-MM-DD] pattern (with date)
+  const lessonDatePattern = /\[Lesson:([a-f0-9-]{36}):([^\]]+):(\d{4}-\d{2}-\d{2})\]/g;
+  while ((match = lessonDatePattern.exec(content)) !== null) {
     entities.push({
       type: 'lesson',
       id: match[1],
       label: match[2],
+      date: match[3],
       fullMatch: match[0],
     });
+  }
+
+  // Match [Lesson:uuid:Title] pattern (without date)
+  const lessonNamePattern = /\[Lesson:([a-f0-9-]{36}):([^\]:]+)\]/g;
+  while ((match = lessonNamePattern.exec(content)) !== null) {
+    const alreadyCaptured = entities.some(e => e.type === 'lesson' && e.id === match![1]);
+    if (!alreadyCaptured) {
+      entities.push({
+        type: 'lesson',
+        id: match[1],
+        label: match[2],
+        fullMatch: match[0],
+      });
+    }
   }
 
   // Fallback: Match [Lesson:uuid] pattern
@@ -253,6 +274,7 @@ export function renderMessageWithChips(content: string): React.ReactNode[] {
         type={entity.type}
         id={entity.id}
         label={entity.label}
+        date={entity.date}
         className="mx-0.5 inline-flex"
       />
     );

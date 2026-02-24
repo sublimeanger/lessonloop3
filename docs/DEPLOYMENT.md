@@ -354,17 +354,32 @@ pg_dump -h db.ximxgnkpcswbvfrkkmjq.supabase.co \
 
 ## 10. Security Hardening
 
-### 10.1 Production Checklist
+### 10.1 Production Checklist (Pre-Launch)
 
-- [ ] **Disable auto-confirm email signups** - In Supabase dashboard: Authentication → Settings → Email → Disable "Confirm email"
-- [ ] **Enable leaked password protection** - In Supabase dashboard: Authentication → Settings → Password → Enable "Leaked password protection"  
-- [ ] **Configure ALLOWED_ORIGINS secret** - Set to your production domain(s), comma-separated
-- [ ] **Set FRONTEND_URL secret** - Required for correct portal links in emails
-- [ ] **Configure RESEND_API_KEY** - Required for actual email delivery
-- [ ] Review all RLS policies
-- [ ] Enable database connection SSL
-- [ ] Set up monitoring alerts
-- [ ] Rate limiting is now enabled for LoopAssist (30 req/5min) and email sending (20 req/5min)
+> Updated 2026-02-24 following production readiness audit.
+
+**P0 — Must complete before first customer:**
+
+- [ ] **Disable auto-confirm email signups** — Supabase Dashboard → Authentication → Settings → Email → Disable "Confirm email". Without this, users bypass email verification entirely.
+- [ ] **Set FRONTEND_URL secret** — `supabase secrets set FRONTEND_URL=https://lessonloop.net`. Required for correct portal links in all outbound emails (invoices, reminders, make-up offers, invites).
+- [ ] **Configure VITE_SENTRY_DSN** — Add Sentry DSN to production build environment. Without this, zero error visibility in production.
+- [ ] **Configure RESEND_API_KEY** — Required for all email delivery (messages, invoices, reminders).
+
+**P1 — Complete within first sprint:**
+
+- [ ] **Enable leaked password protection** — Supabase Dashboard → Authentication → Settings → Password → Enable "Leaked password protection". Prevents users from using compromised passwords.
+- [ ] **Configure ALLOWED_ORIGINS secret** — `supabase secrets set ALLOWED_ORIGINS=https://lessonloop.net,https://www.lessonloop.net,https://app.lessonloop.net`. Overrides default CORS origins to remove preview domains.
+- [ ] **Enable auth rate limiting** — Supabase Dashboard → Authentication → Rate Limits → Set sign-in attempts to 5/15min, password reset to 3/hour.
+- [ ] **Set INTERNAL_CRON_SECRET** — Strong 32+ character random secret for cron job authentication. Rotate quarterly.
+- [ ] **Set up monitoring alerts** — Configure Sentry alert rules for error spikes, Supabase dashboard alerts for connection/query issues.
+
+**P2 — Complete before scale:**
+
+- [ ] Review all RLS policies quarterly
+- [ ] Enable database connection SSL enforcement
+- [ ] Configure Supabase log drain for persistent audit trail
+- [ ] Set `ALLOW_LOCALHOST_CORS=true` only on development instances (production defaults to false)
+- [ ] Rate limiting is enabled for LoopAssist (20 req/min), email sending (50 req/hr), and billing (10 req/hr)
 
 ### 10.2 Environment Separation
 

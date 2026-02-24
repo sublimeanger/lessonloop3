@@ -15,7 +15,7 @@ const entityChipSchema = {
   tagNames: [...(defaultSchema.tagNames || []), 'span'],
   attributes: {
     ...defaultSchema.attributes,
-    span: ['data-entity-type', 'data-entity-id', 'data-entity-label', 'className'],
+    span: ['data-entity-type', 'data-entity-id', 'data-entity-label', 'data-date', 'className'],
   },
 };
 import {
@@ -627,7 +627,7 @@ function ConversationList({
 }) {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // TODO: Add full-text search via Supabase for message content search
+  // Future enhancement: full-text search via Supabase for message content search
   const filteredConversations = searchQuery.trim()
     ? conversations.filter(conv =>
         conv.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -742,6 +742,7 @@ function MessageBubble({ message, conversationId }: { message: AIMessage; conver
                         type={entityType}
                         id={props['data-entity-id'] || ''}
                         label={props['data-entity-label'] || ''}
+                        date={props['data-date'] || undefined}
                         className="mx-0.5 inline-flex"
                       />
                     );

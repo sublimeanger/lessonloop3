@@ -2,8 +2,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
+import { log, logError } from "../_shared/log.ts";
 
-const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop3.lovable.app";
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop.net";
 
 Deno.serve(async (req) => {
   const cronAuthError = validateCronAuth(req);
@@ -33,7 +34,7 @@ Deno.serve(async (req) => {
     .lte("expires_at", threeDaysFromNow);
 
   if (error) {
-    console.error("Credit expiry warning query error:", error.message);
+    logError("Credit expiry warning query error:", error.message);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
       { status: 500, headers: { "Content-Type": "application/json" } }
@@ -93,7 +94,7 @@ Deno.serve(async (req) => {
       if (guardian.user_id) {
         const enabled = await isNotificationEnabled(supabase, credit.org_id, guardian.user_id, "email_makeup_offers");
         if (!enabled) {
-          console.log(`Guardian ${guardian.id} has makeup emails disabled, skipping credit ${credit.id}`);
+          log(`Guardian ${guardian.id} has makeup emails disabled, skipping credit ${credit.id}`);
           continue;
         }
       }
@@ -165,16 +166,16 @@ Deno.serve(async (req) => {
 
           if (emailRes.ok) {
             emailSent = true;
-            console.log(`Sent credit expiry warning to ${guardian.email} for credit ${credit.id}`);
+            log(`Sent credit expiry warning to ${guardian.email} for credit ${credit.id}`);
           } else {
             const errText = await emailRes.text();
-            console.error(`Failed to send to ${guardian.email}:`, errText);
+            logError(`Failed to send to ${guardian.email}:`, errText);
           }
         } catch (emailErr) {
-          console.error(`Error sending to ${guardian.email}:`, emailErr);
+          logError(`Error sending to ${guardian.email}:`, emailErr);
         }
       } else {
-        console.log(`[DRY RUN] Would send credit expiry warning to ${guardian.email}`);
+        log(`[DRY RUN] Would send credit expiry warning to ${guardian.email}`);
       }
 
       // Log to message_log
@@ -195,7 +196,7 @@ Deno.serve(async (req) => {
 
       if (emailSent) sentCount++;
     } catch (creditErr) {
-      console.error(`Error processing credit ${credit.id}:`, creditErr);
+      logError(`Error processing credit ${credit.id}:`, creditErr);
     }
   }
 

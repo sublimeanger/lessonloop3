@@ -1,19 +1,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
+import { log, logError } from "../_shared/log.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
-const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop3.lovable.app";
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop.net";
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const corsResponse = handleCorsPreflightRequest(req);
+  if (corsResponse) return corsResponse;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -102,7 +99,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (entryError || !entry) {
-      console.error("Failed to fetch waitlist entry:", entryError);
+      logError("Failed to fetch waitlist entry:", entryError);
       return new Response(JSON.stringify({ error: "Entry not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -111,7 +108,7 @@ Deno.serve(async (req) => {
 
     const guardian = entry.guardians as { id: string; full_name: string; email: string; user_id: string | null } | null;
     if (!guardian?.email) {
-      console.log("No guardian email for waitlist", waitlist_id);
+      log("No guardian email for waitlist", waitlist_id);
       return new Response(JSON.stringify({ skipped: true, reason: "no_guardian_email" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -121,7 +118,7 @@ Deno.serve(async (req) => {
     if (guardian.user_id) {
       const enabled = await isNotificationEnabled(supabase, entry.org_id, guardian.user_id, "email_makeup_offers");
       if (!enabled) {
-        console.log(`Guardian ${guardian.id} has makeup offer emails disabled`);
+        log(`Guardian ${guardian.id} has makeup offer emails disabled`);
         return new Response(JSON.stringify({ skipped: true, reason: "notification_disabled" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -238,20 +235,20 @@ Deno.serve(async (req) => {
 
         if (emailRes.ok) {
           emailSent = true;
-          console.log(`Sent make-up offer email to ${guardian.email}`);
+          log(`Sent make-up offer email to ${guardian.email}`);
         } else {
           const errText = await emailRes.text();
-          console.error(`Failed to send email to ${guardian.email}:`, errText);
+          logError(`Failed to send email to ${guardian.email}:`, errText);
         }
       } catch (emailErr) {
-        console.error(`Error sending email to ${guardian.email}:`, emailErr);
+        logError(`Error sending email to ${guardian.email}:`, emailErr);
       }
     } else {
-      console.log(`[DRY RUN] Would send make-up offer to ${guardian.email}`);
+      log(`[DRY RUN] Would send make-up offer to ${guardian.email}`);
     }
 
     // Log to message_log
-    const { error: logError } = await supabase.from("message_log").insert({
+    const { error: msgLogError } = await supabase.from("message_log").insert({
       org_id: entry.org_id,
       message_type: "makeup_offer",
       channel: "email",
@@ -266,8 +263,8 @@ Deno.serve(async (req) => {
       sent_at: emailSent ? new Date().toISOString() : null,
     });
 
-    if (logError) {
-      console.error("Failed to log message:", logError);
+    if (msgLogError) {
+      logError("Failed to log message:", msgLogError);
     }
 
     return new Response(
@@ -275,7 +272,7 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("notify-makeup-offer error:", err);
+    logError("notify-makeup-offer error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
