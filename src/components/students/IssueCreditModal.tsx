@@ -77,7 +77,7 @@ export function IssueCreditModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg sm:p-6">
         <DialogHeader>
           <DialogTitle>Issue Make-Up Credit</DialogTitle>
         </DialogHeader>
@@ -140,7 +140,7 @@ export function IssueCreditModal({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
