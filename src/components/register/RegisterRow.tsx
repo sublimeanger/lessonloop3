@@ -150,7 +150,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
   return (
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
       <div className={cn(
-        "rounded-lg border bg-card transition-colors",
+        "rounded-xl border bg-card transition-colors",
         isCompleted && "bg-muted/30",
         isCancelled && "opacity-60"
       )}>

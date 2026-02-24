@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { STALE_STABLE } from '@/config/query-stale-times';
 import { useSearchParams } from 'react-router-dom';
@@ -69,6 +70,7 @@ const FILTER_PILLS: { value: FilterTab; label: string }[] = [
 ];
 
 export default function Locations() {
+  usePageMeta('Locations | LessonLoop', 'Manage your teaching locations and rooms');
   const { currentOrg, isOrgAdmin } = useOrg();
   const { toast } = useToast();
   const { hasAccess: hasMultiLocation, requiredPlanName } = useFeatureGate('multi_location');
@@ -680,7 +682,7 @@ export default function Locations() {
           onAction={isOrgAdmin ? () => openLocationDialog() : undefined}
         />
       ) : filteredLocations.length === 0 ? (
-        <div className="rounded-lg border bg-card p-8 text-center">
+        <div className="rounded-xl border bg-card p-8 text-center">
           <p className="text-muted-foreground">No locations match your search</p>
         </div>
       ) : (
@@ -702,9 +704,9 @@ export default function Locations() {
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className={cn('font-semibold text-sm', location.is_archived && 'text-muted-foreground')}>{location.name}</span>
-                        {location.is_archived && <Badge variant="secondary" className="text-[10px] shrink-0">Archived</Badge>}
-                        {location.is_primary && !location.is_archived && <Badge className="text-[10px] shrink-0">Primary</Badge>}
-                        <Badge variant="outline" className="capitalize text-[10px] shrink-0">{location.location_type}</Badge>
+                        {location.is_archived && <Badge variant="secondary" className="text-micro shrink-0">Archived</Badge>}
+                        {location.is_primary && !location.is_archived && <Badge className="text-micro shrink-0">Primary</Badge>}
+                        <Badge variant="outline" className="capitalize text-micro shrink-0">{location.location_type}</Badge>
                       </div>
                       {/* Address */}
                       {(location.address_line_1 || location.city) && (
@@ -717,7 +719,7 @@ export default function Locations() {
                       )}
                       {/* Usage stats */}
                       {locationStats?.locationStats && locationStats.locationStats[location.id] && (
-                        <div className="text-[11px] mt-1">
+                        <div className="text-micro mt-1">
                           {locationStats.locationStats[location.id].lessonCount > 0 ? (
                             <span className="text-muted-foreground">
                               {locationStats.locationStats[location.id].lessonCount} lesson{locationStats.locationStats[location.id].lessonCount !== 1 ? 's' : ''} this week
@@ -822,7 +824,7 @@ export default function Locations() {
                                 <span className="text-sm font-medium truncate">{room.name}</span>
                                 {room.capacity && <span className="text-xs text-muted-foreground shrink-0">· {room.capacity} cap</span>}
                               </div>
-                              <div className="text-[11px] mt-0.5 ml-5">
+                              <div className="text-micro mt-0.5 ml-5">
                                 {(locationStats?.roomBookings?.[room.id] ?? 0) > 0 ? (
                                   <span className="text-muted-foreground">{locationStats?.roomBookings?.[room.id]} upcoming</span>
                                 ) : (
@@ -917,7 +919,7 @@ export default function Locations() {
             <div className="space-y-1">
               <Label>Notes</Label>
               <Textarea value={locNotes} onChange={(e) => setLocNotes(e.target.value)} placeholder="Parking available behind building..." rows={3} maxLength={500} />
-              <p className={cn('text-[11px] text-right', locNotes.length > 500 ? 'text-destructive' : 'text-muted-foreground')}>{locNotes.length}/500</p>
+              <p className={cn('text-micro text-right', locNotes.length > 500 ? 'text-destructive' : 'text-muted-foreground')}>{locNotes.length}/500</p>
             </div>
           </div>
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">

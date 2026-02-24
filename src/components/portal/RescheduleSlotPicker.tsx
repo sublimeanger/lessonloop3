@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -270,19 +271,21 @@ export function RescheduleSlotPicker({
                 </p>
               </div>
             ) : (
-              <ScrollArea className="h-64">
-                <div className="grid grid-cols-2 gap-1.5 p-1">
+              <ScrollArea className="h-72">
+                <div className="grid grid-cols-2 gap-2 p-1">
                   {availableSlots.map((slot, i) => (
                     <Button
                       key={i}
                       variant={selectedSlot === slot ? 'default' : 'outline'}
-                      size="sm"
-                      className={`justify-start text-xs ${slot.isPreferred ? 'border-primary' : ''}`}
+                      className={cn(
+                        'justify-start text-sm min-h-[44px] active:scale-[0.97] transition-transform',
+                        slot.isPreferred ? 'border-primary' : ''
+                      )}
                       onClick={() => setSelectedSlot(slot)}
                     >
                       {format(slot.start, 'HH:mm')}
                       {slot.isPreferred && (
-                        <Badge variant="secondary" className="ml-1 text-[10px] px-1">
+                        <Badge variant="secondary" className="ml-1 text-micro px-1">
                           Same time
                         </Badge>
                       )}

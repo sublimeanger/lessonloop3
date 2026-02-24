@@ -206,7 +206,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col p-0 sm:max-w-lg" hideCloseButton>
+      <SheetContent className="flex w-full flex-col p-0 sm:max-w-lg max-sm:max-w-full" hideCloseButton>
         <SheetHeader className="border-b px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -214,7 +214,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="min-h-[44px] min-w-[44px]"
                   onClick={() => {
                     setView('landing');
                     setCurrentConversationId(null);
@@ -229,11 +229,11 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleNewConversation}>
+              <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]" onClick={handleNewConversation}>
                 <Plus className="h-4 w-4" />
               </Button>
               <SheetClose asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]">
                   <X className="h-4 w-4" />
                   <span className="sr-only">Close</span>
                 </Button>
@@ -310,10 +310,10 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="mt-1 h-7 gap-1 text-xs text-destructive hover:text-destructive"
+                      className="mt-1 min-h-[44px] gap-1 text-xs text-destructive hover:text-destructive"
                       onClick={handleRetry}
                     >
-                      <RotateCcw className="h-3 w-3" />
+                      <RotateCcw className="h-3.5 w-3.5" />
                       Retry
                     </Button>
                   </div>
@@ -358,7 +358,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                         variant="default"
                         onClick={handleConfirmAll}
                         disabled={handleProposalLoading || batchExecuting}
-                        className="h-7 text-xs"
+                        className="min-h-[44px] text-xs px-3"
                       >
                         Confirm All
                       </Button>
@@ -367,7 +367,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                         variant="outline"
                         onClick={handleCancelAll}
                         disabled={handleProposalLoading || batchExecuting}
-                        className="h-7 text-xs"
+                        className="min-h-[44px] text-xs px-3"
                       >
                         Cancel All
                       </Button>
@@ -390,7 +390,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
             </ScrollArea>
 
             {/* Chat Input */}
-            <div className="border-t p-4" data-tour="loopassist-input">
+            <div className="border-t p-4 pb-safe sticky bottom-0 bg-background" data-tour="loopassist-input">
               <div className="flex gap-3 items-end">
                 <Textarea
                   ref={chatInputRef}
@@ -400,14 +400,14 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                   placeholder="Ask LoopAssist..."
                   disabled={isStreaming}
                   rows={1}
-                  className="flex-1 min-h-[36px] max-h-[96px] resize-none py-2 text-sm"
+                  className="flex-1 min-h-[44px] max-h-[96px] resize-none py-2 text-sm"
                 />
                 {isStreaming ? (
-                  <Button onClick={cancelStreaming} size="icon" variant="destructive" title="Stop generating" className="shrink-0">
+                  <Button onClick={cancelStreaming} size="icon" variant="destructive" title="Stop generating" className="shrink-0 min-h-[44px] min-w-[44px]">
                     <Square className="h-3.5 w-3.5" />
                   </Button>
                 ) : (
-                  <Button onClick={handleSend} disabled={!input.trim()} size="icon" className="shrink-0">
+                  <Button onClick={handleSend} disabled={!input.trim()} size="icon" className="shrink-0 min-h-[44px] min-w-[44px]">
                     <Send className="h-4 w-4" />
                   </Button>
                 )}
@@ -516,9 +516,9 @@ function LandingView({
                 onKeyDown={handleKeyDown}
                 placeholder="Ask LoopAssist..."
                 rows={1}
-                className="flex-1 min-h-[36px] max-h-[96px] resize-none py-2 text-sm"
+                className="flex-1 min-h-[44px] max-h-[96px] resize-none py-2 text-sm"
               />
-              <Button onClick={handleSend} disabled={!input.trim()} size="icon" className="shrink-0">
+              <Button onClick={handleSend} disabled={!input.trim()} size="icon" className="shrink-0 min-h-[44px] min-w-[44px]">
                 <Send className="h-4 w-4" />
               </Button>
             </div>
@@ -531,7 +531,7 @@ function LandingView({
                     key={i}
                     variant="outline"
                     size="sm"
-                    className="h-auto whitespace-normal text-left text-xs"
+                    className="min-h-[44px] whitespace-normal text-left text-xs px-3 py-2"
                     onClick={() => onSendMessage(prompt)}
                   >
                     {prompt}
@@ -562,12 +562,12 @@ function LandingView({
               {conversations.slice(0, 5).map((conv) => (
                 <button
                   key={conv.id}
-                  className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent transition-colors"
+                  className="w-full flex items-center gap-2 rounded-md px-2 py-2.5 min-h-[44px] text-left text-sm hover:bg-accent transition-colors"
                   onClick={() => onSelectConversation(conv.id)}
                 >
                   <MessageSquare className="h-3 w-3 text-muted-foreground shrink-0" />
                   <span className="truncate text-xs">{conv.title}</span>
-                  <span className="ml-auto text-[10px] text-muted-foreground shrink-0">
+                  <span className="ml-auto text-micro text-muted-foreground shrink-0">
                     {format(new Date(conv.updated_at), 'dd/MM')}
                   </span>
                 </button>
@@ -605,7 +605,7 @@ function TypingIndicator({ toolStatus }: { toolStatus?: string | null }) {
         )}
       </div>
       {!toolStatus && elapsed > 10 && (
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-micro text-muted-foreground">
           {elapsed > 30 ? 'Almost there…' : 'Thinking…'}
         </p>
       )}
@@ -667,7 +667,7 @@ function ConversationList({
                 key={conv.id}
                 role="button"
                 tabIndex={0}
-                className="group flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                className="group flex cursor-pointer items-center justify-between rounded-lg border p-3 min-h-[44px] transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 onClick={() => onSelect(conv.id)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -688,7 +688,7 @@ function ConversationList({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100"
+                  className="min-h-[44px] min-w-[44px] shrink-0 opacity-0 group-hover:opacity-100 max-md:opacity-100"
                   onClick={(e) => {
                     e.stopPropagation();
                     onDelete(conv.id);

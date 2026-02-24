@@ -28,7 +28,7 @@ export function BulkActionsBar({
         <span className="text-sm font-medium">
           {selectedCount} invoice{selectedCount !== 1 ? 's' : ''} selected
         </span>
-        <Button variant="ghost" size="sm" onClick={onClearSelection} className="h-7 px-2">
+        <Button variant="ghost" size="sm" onClick={onClearSelection} className="min-h-11 sm:min-h-9 px-2">
           <X className="h-3 w-3 mr-1" />
           Clear
         </Button>

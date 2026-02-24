@@ -17,6 +17,7 @@ import { differenceInDays, parseISO, formatDistanceToNowStrict, startOfToday } f
 import { AlertTriangle, CheckCircle2, Clock, Eye, Send, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LoadingState } from '@/components/shared/LoadingState';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 type PlanHealth = 'on_track' | 'attention' | 'overdue';
 
@@ -66,8 +67,8 @@ function getMaxOverdueDays(installments: Installment[]): number {
 const healthOrder: Record<PlanHealth, number> = { overdue: 0, attention: 1, on_track: 2 };
 
 const healthConfig: Record<PlanHealth, { label: string; color: string; icon: typeof AlertTriangle }> = {
-  on_track: { label: 'On Track', color: 'bg-emerald-500/10 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
-  attention: { label: 'Attention', color: 'bg-amber-500/10 text-amber-700 border-amber-200', icon: Clock },
+  on_track: { label: 'On Track', color: 'bg-success/10 text-success border-success/20', icon: CheckCircle2 },
+  attention: { label: 'Attention', color: 'bg-warning/10 text-warning border-warning/20', icon: Clock },
   overdue: { label: 'Overdue', color: 'bg-destructive/10 text-destructive border-destructive/20', icon: AlertTriangle },
 };
 
@@ -144,10 +145,11 @@ export function PaymentPlansDashboard() {
 
   if (rows.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-40" />
-        <p className="text-sm">No active payment plans</p>
-      </div>
+      <EmptyState
+        icon={TrendingUp}
+        title="No active payment plans"
+        description="Payment plans will appear here once you set them up on an invoice."
+      />
     );
   }
 
@@ -248,7 +250,7 @@ export function PaymentPlansDashboard() {
       </div>
 
       {/* Desktop table layout */}
-      <div className="hidden md:block rounded-lg border bg-card overflow-hidden">
+      <div className="hidden md:block rounded-xl border bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -345,8 +347,8 @@ function StatCard({
 }) {
   const variantStyles: Record<string, string> = {
     default: '',
-    success: 'text-emerald-700',
-    warning: 'text-amber-700',
+    success: 'text-success',
+    warning: 'text-warning',
     danger: 'text-destructive',
   };
 

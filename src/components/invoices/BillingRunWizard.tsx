@@ -471,7 +471,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
           <div className="space-y-4">
             {billingResult?.status === 'completed' ? (
               <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-center">
-                <div className="text-2xl">✓</div>
+                <CheckCircle2 className="mx-auto h-8 w-8 text-primary" />
                 <p className="mt-2 font-medium text-primary">
                   Billing run completed successfully!
                 </p>

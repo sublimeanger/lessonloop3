@@ -90,13 +90,13 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Available Balance</p>
-                <p className="text-2xl font-bold text-primary">
+                <p className="text-section-title text-primary">
                   {formatCurrency(totalAvailableValue)}
                 </p>
               </div>
               <div className="text-left sm:text-right">
                 <p className="text-sm text-muted-foreground">Available Credits</p>
-                <p className="text-2xl font-bold">{availableCredits.length}</p>
+                <p className="text-section-title">{availableCredits.length}</p>
               </div>
             </div>
           </div>

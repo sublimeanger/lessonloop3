@@ -1,18 +1,20 @@
 import { useState, useMemo } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TeacherPracticeReview } from '@/components/practice/TeacherPracticeReview';
 import { CreateAssignmentModal } from '@/components/practice/CreateAssignmentModal';
 import { usePracticeAssignments, usePracticeLogs, useWeeklyProgress } from '@/hooks/usePractice';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Music, Target, Users, TrendingUp, Circle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 export default function Practice() {
+  usePageMeta('Practice | LessonLoop', 'Manage practice assignments and track student progress');
   const [showCreateModal, setShowCreateModal] = useState(false);
   
   const { data: assignments = [], isLoading: loadingAssignments } = usePracticeAssignments();
@@ -187,9 +189,12 @@ export default function Practice() {
             </CardHeader>
             <CardContent>
               {weeklyProgress.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">
-                  No active assignments this week
-                </p>
+                <div className="flex flex-col items-center py-8 text-center">
+                  <TrendingUp className="h-8 w-8 text-muted-foreground/30" />
+                  <p className="mt-2 text-body text-muted-foreground">
+                    No progress this week yet. Once students start practising, their weekly totals will appear here.
+                  </p>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {weeklyProgress.map(progress => (
@@ -228,13 +233,20 @@ export default function Practice() {
             </CardHeader>
             <CardContent>
               {loadingAssignments ? (
-                <p className="text-muted-foreground text-center py-4">Loading...</p>
+                <div className="space-y-3 py-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="ml-auto h-4 w-16" />
+                    </div>
+                  ))}
+                </div>
               ) : assignments.filter(a => a.status === 'active').length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center py-12">
                   <Music className="h-12 w-12 text-muted-foreground/30" />
-                  <h3 className="mt-4 text-lg font-semibold text-foreground">No practice logged</h3>
-                  <p className="mt-2 max-w-sm mx-auto text-sm text-muted-foreground">Students can log practice from their portal</p>
-                  <Button 
+                  <h3 className="mt-4 text-section-title tracking-tight text-foreground">No active assignments</h3>
+                  <p className="mt-2 max-w-sm mx-auto text-body text-muted-foreground">Create a practice assignment and students will be able to log their progress from the portal.</p>
+                  <Button
                     className="mt-6 min-h-11 sm:min-h-9"
                     onClick={() => setShowCreateModal(true)}
                   >

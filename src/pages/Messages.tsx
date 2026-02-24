@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -45,6 +46,7 @@ interface Guardian {
 }
 
 export default function Messages() {
+  usePageMeta('Messages | LessonLoop', 'Send and manage communications');
   const { currentOrg, currentRole, isOrgAdmin, isOrgOwner } = useOrg();
   const isParent = currentRole === 'parent';
   const canViewRequests = isOrgAdmin || isOrgOwner;

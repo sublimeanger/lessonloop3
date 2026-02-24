@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function Resources() {
+  usePageMeta('Resources | LessonLoop', 'Upload and share teaching materials');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [selectedResource, setSelectedResource] = useState<ResourceWithShares | null>(null);

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -200,6 +201,7 @@ function StudentCard({
 }
 
 export default function Students() {
+  usePageMeta('Students | LessonLoop', 'Manage your students');
   const { currentRole, currentOrg } = useOrg();
   const navigate = useNavigate();
   const isAdmin = currentRole === 'owner' || currentRole === 'admin';
@@ -276,12 +278,12 @@ export default function Students() {
           isAdmin ? (
             <div className="flex items-center gap-2">
               <Link to="/students/import">
-                <Button variant="outline" size="sm" className="gap-1.5">
+                <Button variant="outline" size="sm" className="min-h-11 sm:min-h-9 gap-1.5">
                   <Upload className="h-4 w-4" />
                   <span className="hidden sm:inline">Import</span>
                 </Button>
               </Link>
-              <Button onClick={openAddWizard} size="sm" className="gap-1.5" disabled={!canAddStudent} data-tour="add-student-button">
+              <Button onClick={openAddWizard} size="sm" className="min-h-11 sm:min-h-9 gap-1.5" disabled={!canAddStudent} data-tour="add-student-button">
                 {!canAddStudent && <Lock className="h-4 w-4" />}
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Add Student</span>

@@ -1,3 +1,4 @@
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { DateRangeFilter } from '@/components/reports/DateRangeFilter';
@@ -21,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, subMonths } from 'date-fns';
 
 export default function OutstandingReport() {
+  usePageMeta('Outstanding | LessonLoop', 'Ageing report for unpaid invoices');
   const { currentOrg } = useOrg();
   const { toast } = useToast();
   const navigate = useNavigate();

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useSyncExternalStore, useCallback } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { safeGetItem, safeSetItem } from '@/lib/storage';
 import { useSearchParams } from 'react-router-dom';
 import { format, addWeeks, subWeeks, addDays, subDays, parseISO } from 'date-fns';
@@ -23,6 +24,7 @@ const getSnapshot = () => window.matchMedia(LG_QUERY).matches;
 function useIsDesktop() { return useSyncExternalStore(subscribe, getSnapshot, () => true); }
 
 export default function CalendarPage() {
+  usePageMeta('Calendar | LessonLoop', 'View and manage your lesson schedule');
   const { currentRole, currentOrg } = useOrg();
   const { user } = useAuth();
   const isParent = currentRole === 'parent';

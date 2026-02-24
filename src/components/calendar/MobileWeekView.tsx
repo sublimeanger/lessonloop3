@@ -214,7 +214,7 @@ export function MobileWeekView({
                   today && 'bg-primary/5'
                 )}
               >
-                <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
+                <div className="text-micro text-muted-foreground font-medium uppercase tracking-wide">
                   {format(day, 'EEE')}
                 </div>
                 <div
@@ -228,7 +228,7 @@ export function MobileWeekView({
                 {closure && (
                   <Badge
                     variant="outline"
-                    className="text-[9px] px-1 py-0 mt-0.5 bg-warning/20 text-warning-foreground dark:bg-warning/30 dark:text-warning"
+                    className="text-micro px-1 py-0 mt-0.5 bg-warning/20 text-warning-foreground dark:bg-warning/30 dark:text-warning"
                   >
                     {closure.reason}
                   </Badge>
@@ -248,7 +248,7 @@ export function MobileWeekView({
                 {today && (
                   <div className="flex items-center gap-0.5 px-1 py-0.5">
                     <div className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse shrink-0" />
-                    <span className="text-[9px] font-medium text-destructive tabular-nums">
+                    <span className="text-micro font-medium text-destructive tabular-nums">
                       {currentTimeLabel}
                     </span>
                     <div className="flex-1 h-px bg-destructive/30" />
@@ -293,7 +293,7 @@ export function MobileWeekView({
                       onSlotClick(slotDate);
                     }}
                     aria-label={`Add lesson on ${format(day, 'EEEE, d MMMM')}`}
-                    className="flex items-center justify-center py-1 text-muted-foreground/30 hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer"
+                    className="flex items-center justify-center min-h-[44px] text-muted-foreground/30 hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </button>
@@ -305,7 +305,7 @@ export function MobileWeekView({
       </div>
 
       {/* Dot indicators */}
-      <div className="flex items-center justify-center gap-1.5 py-2 bg-background border-t" role="tablist" aria-label="Day navigation">
+      <div className="flex items-center justify-center gap-0 py-1 bg-background border-t" role="tablist" aria-label="Day navigation">
         {days.map((day, idx) => (
           <button
             key={idx}
@@ -313,14 +313,16 @@ export function MobileWeekView({
             role="tab"
             aria-selected={idx === activeDotIndex}
             aria-current={isToday(day) ? 'date' : undefined}
-            className={cn(
+            className="flex items-center justify-center min-h-[44px] min-w-[44px] px-1"
+            aria-label={`Day ${idx + 1} of ${days.length}, ${format(day, 'EEEE d MMMM')}`}
+          >
+            <span className={cn(
               'h-1.5 rounded-full transition-all duration-200',
               idx === activeDotIndex
                 ? 'w-4 bg-primary'
                 : 'w-1.5 bg-muted-foreground/25'
-            )}
-            aria-label={`Day ${idx + 1} of ${days.length}, ${format(day, 'EEEE d MMMM')}`}
-          />
+            )} />
+          </button>
         ))}
       </div>
     </div>

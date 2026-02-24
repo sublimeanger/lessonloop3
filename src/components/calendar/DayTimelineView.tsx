@@ -226,7 +226,7 @@ export function DayTimelineView({
   }, [createDrag]);
 
   return (
-    <ScrollArea className="h-[calc(100vh-220px)] rounded-lg border bg-card" ref={scrollViewportRef}>
+    <ScrollArea className="h-[calc(100vh-220px)] rounded-xl border bg-card" ref={scrollViewportRef}>
       <div className="flex select-none">
         {/* Time gutter */}
         <div className="w-14 shrink-0 border-r bg-muted/30">
@@ -416,7 +416,7 @@ export function DayTimelineView({
                   </p>
                 </div>
                 {/* Time tooltip */}
-                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-[10px] tabular-nums px-1.5 py-0.5 rounded shadow">
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-micro tabular-nums px-1.5 py-0.5 rounded shadow">
                   {timeLabel}
                 </div>
               </div>

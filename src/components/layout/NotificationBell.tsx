@@ -63,7 +63,7 @@ export function NotificationBell() {
                 <span className="text-sm font-medium truncate flex-1">
                   {msg.sender_profile?.full_name || 'Unknown'}
                 </span>
-                <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                <span className="text-micro text-muted-foreground flex-shrink-0">
                   {format(new Date(msg.created_at), 'dd MMM, HH:mm')}
                 </span>
               </div>

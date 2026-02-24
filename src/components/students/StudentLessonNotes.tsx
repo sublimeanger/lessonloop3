@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { InlineEmptyState } from '@/components/shared/EmptyState';
 import { Loader2, FileText, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
@@ -134,13 +135,10 @@ export function StudentLessonNotes({ studentId }: StudentLessonNotesProps) {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : notes.length === 0 ? (
-          <div className="flex flex-col items-center py-8 text-center">
-            <FileText className="h-10 w-10 text-muted-foreground/40" />
-            <p className="mt-3 font-medium">No lesson notes yet</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Notes added during lesson completion will appear here.
-            </p>
-          </div>
+          <InlineEmptyState
+            icon={FileText}
+            message="No lesson notes yet. Notes added during lesson completion will appear here."
+          />
         ) : (
           <div className="space-y-4">
             {notes.map((note) => (

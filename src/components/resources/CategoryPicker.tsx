@@ -31,7 +31,7 @@ export function CategoryPicker({ selected, onChange, disabled }: CategoryPickerP
           <Tag className="h-3.5 w-3.5" />
           Categories
           {selected.length > 0 && (
-            <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] text-[10px] px-1">
+            <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] text-micro px-1">
               {selected.length}
             </Badge>
           )}

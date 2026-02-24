@@ -30,7 +30,7 @@ export const ThreadMessageItem = React.memo(function ThreadMessageItem({ message
     <div className={`flex gap-2 px-3 sm:px-4 py-2 ${isOutgoing ? 'flex-row-reverse' : 'flex-row'}`}>
       {/* Avatar */}
       <Avatar className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 mt-1">
-        <AvatarFallback className={`text-[10px] sm:text-xs font-semibold ${isOutgoing ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
+        <AvatarFallback className={`text-micro sm:text-xs font-semibold ${isOutgoing ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
           {getInitials(senderName === 'You' ? (message.sender_profile?.full_name || 'You') : senderName)}
         </AvatarFallback>
       </Avatar>
@@ -52,7 +52,7 @@ export const ThreadMessageItem = React.memo(function ThreadMessageItem({ message
                 type="student"
                 id={relatedStudent.id}
                 label={relatedStudent.name}
-                className="text-[10px]"
+                className="text-micro"
               />
             )}
           </div>
@@ -68,7 +68,7 @@ export const ThreadMessageItem = React.memo(function ThreadMessageItem({ message
           )}
 
           {/* Footer: timestamp + status */}
-          <div className={`flex items-center gap-1.5 mt-1.5 text-[10px] text-muted-foreground ${isOutgoing ? 'justify-end' : ''}`}>
+          <div className={`flex items-center gap-1.5 mt-1.5 text-micro text-muted-foreground ${isOutgoing ? 'justify-end' : ''}`}>
             <span>{format(new Date(message.created_at), 'HH:mm')}</span>
             {message.status === 'sent' && (
               <Check className="h-3 w-3 text-primary/70" />

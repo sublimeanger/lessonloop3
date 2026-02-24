@@ -25,15 +25,15 @@ function getIcon(streak: number) {
 }
 
 function getColor(streak: number) {
-  if (streak >= 30) return 'text-amber-400';
-  if (streak >= 14) return 'text-orange-400';
-  if (streak >= 7) return 'text-red-400';
-  return 'text-yellow-400';
+  if (streak >= 30) return 'text-warning';
+  if (streak >= 14) return 'text-coral';
+  if (streak >= 7) return 'text-destructive';
+  return 'text-warning';
 }
 
 // Simple confetti particle component (no extra dependency)
 function ConfettiParticle({ delay, x }: { delay: number; x: number }) {
-  const colors = ['bg-amber-400', 'bg-orange-400', 'bg-red-400', 'bg-yellow-400', 'bg-primary', 'bg-green-400'];
+  const colors = ['bg-warning', 'bg-coral', 'bg-destructive', 'bg-warning', 'bg-primary', 'bg-success'];
   const color = colors[Math.floor(Math.random() * colors.length)];
   const size = 6 + Math.random() * 6;
   const rotation = Math.random() * 360;
@@ -120,7 +120,7 @@ export function StreakCelebration({ streak, onDismiss }: StreakCelebrationProps)
             {/* Close button */}
             <button
               onClick={handleDismiss}
-              className="absolute top-2 right-2 text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute top-2 right-2 flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-foreground transition-colors sm:h-8 sm:w-8"
             >
               <X className="h-5 w-5" />
             </button>

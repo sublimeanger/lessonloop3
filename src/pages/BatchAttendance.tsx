@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { format, parseISO, startOfDay, addDays, subDays, isToday, isFuture } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -9,12 +10,15 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useBatchAttendanceLessons, useSaveBatchAttendance } from '@/hooks/useRegisterData';
-import { Loader2, CheckCircle2, Save, UserCheck, ChevronLeft, ChevronRight, CalendarIcon, AlertCircle, AlertTriangle } from 'lucide-react';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { ListSkeleton } from '@/components/shared/LoadingState';
+import { Loader2, CheckCircle2, Save, UserCheck, ChevronLeft, ChevronRight, CalendarIcon, AlertCircle, AlertTriangle, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AttendanceStatus, AbsenceReason } from '@/hooks/useRegisterData';
 import { AbsenceReasonPicker, needsAbsenceReason, type AbsenceReasonValue } from '@/components/register/AbsenceReasonPicker';
 
 export default function BatchAttendance() {
+  usePageMeta('Batch Attendance | LessonLoop', 'Mark attendance for multiple lessons at once');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const dateKey = format(selectedDate, 'yyyy-MM-dd');
   const isFutureDate = isFuture(startOfDay(selectedDate));
@@ -228,19 +232,13 @@ export default function BatchAttendance() {
       )}
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-24">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+        <ListSkeleton count={4} />
       ) : lessons.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <CheckCircle2 className="h-12 w-12 text-muted-foreground/40" />
-            <h3 className="mt-4 text-lg font-medium">No lessons</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              There are no scheduled or completed lessons for {isToday(selectedDate) ? 'today' : format(selectedDate, 'd MMMM yyyy')}.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={ClipboardList}
+          title="No lessons to mark"
+          description={`There are no scheduled or completed lessons for ${isToday(selectedDate) ? 'today' : format(selectedDate, 'd MMMM yyyy')}. Lessons will appear here once they\u2019re on the calendar.`}
+        />
       ) : (
         <div className={cn("space-y-4 relative", saveMutation.isPending && "opacity-70 pointer-events-none")}>
           {saveMutation.isPending && (

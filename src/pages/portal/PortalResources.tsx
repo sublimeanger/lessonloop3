@@ -1,3 +1,4 @@
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -80,6 +81,7 @@ function ResourceDownloadButton({ filePath, fileName }: ResourceDownloadButtonPr
 }
 
 export default function PortalResources() {
+  usePageMeta('Resources | Parent Portal', 'Access learning resources');
   const { resourcesEnabled } = usePortalFeatures();
   const [search, setSearch] = useState('');
   const [previewResource, setPreviewResource] = useState<{

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
+import { InlineEmptyState } from '@/components/shared/EmptyState';
 import { Loader2, Plus, UserPlus, Send, Copy, Pencil } from 'lucide-react';
 import type { Guardian, StudentGuardian, RelationshipType, GuardianInviteStatus } from '@/hooks/useStudentDetailPage';
 
@@ -107,11 +108,12 @@ export function GuardiansCard({
         </CardHeader>
         <CardContent>
           {guardians.length === 0 ? (
-            <div className="flex flex-col items-center py-8 text-center">
-              <UserPlus className="h-10 w-10 text-muted-foreground/40" />
-              <p className="mt-3 font-medium">No guardians linked</p>
-              <p className="mt-1 text-sm text-muted-foreground">Add a parent or guardian for billing and communication.</p>
-            </div>
+            <InlineEmptyState
+              icon={UserPlus}
+              message="No guardians linked yet. Add a parent or guardian for billing and communication."
+              actionLabel={isOrgAdmin ? "Add Guardian" : undefined}
+              onAction={isOrgAdmin ? () => setIsGuardianDialogOpen(true) : undefined}
+            />
           ) : (
             <div className="space-y-3">
               {guardians.map((sg) => (

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { Link } from 'react-router-dom';
 import { safeGetItem, safeSetItem } from '@/lib/storage';
 import { format, addDays, subDays, isToday } from 'date-fns';
@@ -12,7 +13,7 @@ import { RegisterRow } from '@/components/register/RegisterRow';
 import { MarkDayCompleteButton } from '@/components/calendar/MarkDayCompleteButton';
 import { useRegisterData } from '@/hooks/useRegisterData';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { LoadingState } from '@/components/shared/LoadingState';
+import { ListSkeleton } from '@/components/shared/LoadingState';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { useQuery } from '@tanstack/react-query';
@@ -32,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function DailyRegister() {
+  usePageMeta('Daily Register | LessonLoop', 'Take attendance for daily lessons');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const { user } = useAuth();
   const { currentRole, currentOrg } = useOrg();
@@ -270,7 +272,7 @@ export default function DailyRegister() {
 
       {/* Lessons List */}
       {isLoading ? (
-        <LoadingState message="Loading lessons..." />
+        <ListSkeleton count={4} />
       ) : isError ? (
         <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center">
           <p className="text-destructive font-medium">Failed to load lessons</p>
@@ -285,7 +287,7 @@ export default function DailyRegister() {
         <EmptyState
           icon={ClipboardList}
           title="No lessons scheduled"
-          description={`There are no lessons scheduled for ${isToday(selectedDate) ? 'today' : format(selectedDate, 'd MMMM yyyy')}.`}
+          description={`There are no lessons on ${isToday(selectedDate) ? 'today\u2019s' : format(selectedDate, 'd MMMM yyyy') + '\u2019s'} register. Once lessons are scheduled on the calendar, they\u2019ll appear here for attendance.`}
         />
       ) : (
         <div className="space-y-3">

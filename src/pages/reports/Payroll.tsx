@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { Link } from 'react-router-dom';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -20,6 +21,7 @@ import { Download, ChevronDown, ChevronRight, Banknote, Clock, Users, FileSpread
 import { useToast } from '@/hooks/use-toast';
 
 export default function PayrollReport() {
+  usePageMeta('Payroll | LessonLoop', 'Calculate gross pay for teachers');
   const { currentOrg, currentRole } = useOrg();
   const { toast } = useToast();
   const { data: terms } = useTerms();
@@ -242,7 +244,7 @@ function PayrollTeacherList({
           open={expandedTeachers.has(teacher.teacherId)}
           onOpenChange={() => toggleTeacher(teacher.teacherId)}
         >
-          <div className="rounded-lg border bg-card">
+          <div className="rounded-xl border bg-card">
             <CollapsibleTrigger className="flex w-full items-center justify-between p-4 hover:bg-muted/50">
               <div className="flex items-center gap-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">

@@ -1,4 +1,6 @@
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { useState, useEffect } from 'react';
+import { PortalErrorState } from '@/components/portal/PortalErrorState';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -43,9 +45,10 @@ const prefLabels: { key: keyof NotificationPrefs; label: string; description: st
 ];
 
 export default function PortalProfile() {
+  usePageMeta('Profile | Parent Portal', 'Manage your profile settings');
   const { user, profile, signOut } = useAuth();
   const { currentOrg } = useOrg();
-  const { data: guardian, isLoading: guardianLoading } = useGuardianInfo();
+  const { data: guardian, isLoading: guardianLoading, isError: guardianError, refetch: refetchGuardian } = useGuardianInfo();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -170,6 +173,14 @@ export default function PortalProfile() {
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
+      </PortalLayout>
+    );
+  }
+
+  if (guardianError) {
+    return (
+      <PortalLayout>
+        <PortalErrorState onRetry={() => refetchGuardian()} />
       </PortalLayout>
     );
   }

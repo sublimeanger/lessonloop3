@@ -77,7 +77,7 @@ export function MobileDayView({
             {showBreak && (
               <div className="flex items-center gap-3 px-4 py-2">
                 <div className="flex-1 border-t border-dashed border-muted-foreground/20" />
-                <span className="text-[11px] text-muted-foreground/60 font-medium whitespace-nowrap">
+                <span className="text-micro text-muted-foreground/60 font-medium whitespace-nowrap">
                   {gapMinutes >= 60
                     ? `${Math.floor(gapMinutes / 60)}h${gapMinutes % 60 > 0 ? ` ${gapMinutes % 60}m` : ''} break`
                     : `${gapMinutes}m break`
@@ -102,7 +102,7 @@ export function MobileDayView({
                 <span className="text-sm font-semibold tabular-nums text-foreground leading-tight">
                   {format(startTime, 'HH:mm')}
                 </span>
-                <span className="text-[11px] tabular-nums text-muted-foreground leading-tight">
+                <span className="text-micro tabular-nums text-muted-foreground leading-tight">
                   {format(endTime, 'HH:mm')}
                 </span>
               </div>
@@ -123,28 +123,28 @@ export function MobileDayView({
                     {primaryName}
                   </span>
                   {isCompleted && (
-                    <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 shrink-0">
+                    <span className="inline-flex items-center rounded-full bg-success/10 px-1.5 py-0.5 text-micro font-medium text-success shrink-0">
                       Done
                     </span>
                   )}
                   {isCancelled && (
-                    <span className="inline-flex items-center rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive shrink-0">
+                    <span className="inline-flex items-center rounded-full bg-destructive/10 px-1.5 py-0.5 text-micro font-medium text-destructive shrink-0">
                       Cancelled
                     </span>
                   )}
                 </div>
-                <p className="text-[12px] text-muted-foreground truncate mt-0.5">
+                <p className="text-caption text-muted-foreground truncate mt-0.5">
                   {lesson.title !== primaryName ? `${lesson.title} · ` : ''}
                   {duration}min
                   {lesson.location && ` · ${lesson.location.name}`}
                 </p>
                 {lesson.teacher?.full_name && (
-                  <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">
+                  <p className="text-micro text-muted-foreground/70 truncate mt-0.5">
                     {lesson.teacher.full_name}
                   </p>
                 )}
                 {studentNames.length > 1 && (
-                  <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">
+                  <p className="text-micro text-muted-foreground/70 truncate mt-0.5">
                     +{studentNames.length - 1} more student{studentNames.length > 2 ? 's' : ''}
                   </p>
                 )}

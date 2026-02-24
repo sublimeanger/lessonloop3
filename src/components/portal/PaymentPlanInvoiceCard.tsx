@@ -156,13 +156,12 @@ export function PaymentPlanInvoiceCard({
                 <Button
                   onClick={() => onPayInstallment(invoice.id, nextInstallment.id)}
                   disabled={isPaying}
-                  size="sm"
-                  className="print:hidden"
+                  className="print:hidden w-full sm:w-auto min-h-[48px] text-base font-semibold gap-2 mt-2 sm:mt-0"
                 >
                   {isPaying ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
-                    <CreditCard className="h-4 w-4 mr-1" />
+                    <CreditCard className="h-5 w-5" />
                   )}
                   Pay {formatCurrencyMinor(nextInstallment.amount_minor, currencyCode)}
                 </Button>

@@ -1,3 +1,4 @@
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { useMemo } from 'react';
 import { PortalErrorState } from '@/components/portal/PortalErrorState';
 import { PortalLayout } from '@/components/layout/PortalLayout';
@@ -16,6 +17,7 @@ import { usePortalFeatures } from '@/hooks/usePortalFeatures';
 import { PortalFeatureDisabled } from '@/components/portal/PortalFeatureDisabled';
 
 export default function PortalPractice() {
+  usePageMeta('Practice | Parent Portal', 'Track practice progress');
   const { practiceEnabled } = usePortalFeatures();
   const { selectedChildId } = useChildFilter();
   const { data: streaks = [], isError: streaksError, refetch: refetchStreaks } = useChildrenStreaks();

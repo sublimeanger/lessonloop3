@@ -44,7 +44,7 @@ export function UrgentActionsBar() {
           </div>
           <button
             onClick={() => dismissPermanently(BAR_KEY)}
-            className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[11px] text-warning/70 transition-colors hover:bg-warning/20 hover:text-warning-foreground"
+            className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-micro text-warning/70 transition-colors hover:bg-warning/20 hover:text-warning-foreground"
             aria-label="Don't show again"
           >
             <EyeOff className="h-3 w-3" />

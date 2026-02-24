@@ -145,7 +145,7 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
                   {thread.recipient_name || thread.recipient_email}
                 </span>
                 {isRecipientInactive && (
-                  <Badge variant="outline" className="text-muted-foreground text-[10px] px-1.5 py-0 h-4 rounded-full">
+                  <Badge variant="outline" className="text-muted-foreground text-micro px-1.5 py-0 h-4 rounded-full">
                     Inactive
                   </Badge>
                 )}
@@ -226,7 +226,7 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">
-                      <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">⌘ Enter</kbd> to send
+                      <kbd className="px-1.5 py-0.5 bg-muted rounded text-micro font-mono">⌘ Enter</kbd> to send
                     </span>
                     <div className="flex items-center gap-2">
                       <Button 

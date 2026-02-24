@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTeachers } from '@/hooks/useTeachers';
 import { supabase } from '@/integrations/supabase/client';
 import { logAudit } from '@/lib/auditLog';
+import { InlineEmptyState } from '@/components/shared/EmptyState';
 import { Plus, GraduationCap, Star, Loader2 } from 'lucide-react';
 
 interface TeacherAssignment {
@@ -188,15 +189,14 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : assignments.length === 0 ? (
-          <div className="flex flex-col items-center py-8 text-center">
-            <GraduationCap className="h-10 w-10 text-muted-foreground/40" />
-            <p className="mt-3 font-medium">No teachers assigned</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {isOrgAdmin 
-                ? 'Assign teachers to manage this student.'
-                : 'No teachers have been assigned yet.'}
-            </p>
-          </div>
+          <InlineEmptyState
+            icon={GraduationCap}
+            message={isOrgAdmin
+              ? 'No teachers assigned yet. Assign a teacher to manage this student.'
+              : 'No teachers have been assigned yet.'}
+            actionLabel={isOrgAdmin ? "Assign Teacher" : undefined}
+            onAction={isOrgAdmin ? () => setIsDialogOpen(true) : undefined}
+          />
         ) : (
           <div className="space-y-3">
             {assignments.map((assignment) => (

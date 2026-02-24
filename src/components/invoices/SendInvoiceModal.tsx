@@ -164,7 +164,7 @@ export function SendInvoiceModal({
       toast({ title: isReminder ? 'Reminder sent' : 'Invoice sent' });
       handleClose();
     } catch (error: unknown) {
-      toast({ title: 'Error', description: `Failed to send: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: 'destructive' });
+      toast({ title: isReminder ? 'Failed to send reminder' : 'Failed to send invoice', description: error instanceof Error ? error.message : 'An unexpected error occurred.', variant: 'destructive' });
     } finally {
       setIsSending(false);
     }

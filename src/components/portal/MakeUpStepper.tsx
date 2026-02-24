@@ -28,7 +28,7 @@ export function MakeUpStepper({ status }: MakeUpStepperProps) {
             <div className="flex flex-col items-center gap-1">
               <div
                 className={cn(
-                  'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold transition-colors shrink-0',
+                  'flex h-5 w-5 items-center justify-center rounded-full text-micro font-semibold transition-colors shrink-0',
                   isCompleted && 'bg-primary text-primary-foreground',
                   isActive && 'bg-primary text-primary-foreground ring-2 ring-primary/30',
                   !isCompleted && !isActive && 'bg-muted text-muted-foreground'
@@ -38,7 +38,7 @@ export function MakeUpStepper({ status }: MakeUpStepperProps) {
               </div>
               <span
                 className={cn(
-                  'text-[10px] leading-tight text-center whitespace-nowrap',
+                  'text-micro leading-tight text-center whitespace-nowrap',
                   isActive ? 'font-semibold text-primary' : 'text-muted-foreground'
                 )}
               >

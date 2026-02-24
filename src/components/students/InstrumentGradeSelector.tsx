@@ -13,6 +13,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
+import { InlineEmptyState } from '@/components/shared/EmptyState';
 import { Music, Plus, Trash2, Loader2 } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import {
@@ -146,13 +147,17 @@ export function InstrumentGradeSelector({ studentId, readOnly = false }: Instrum
             </div>
           ) : !studentInstruments || studentInstruments.length === 0 ? (
             !showAddForm && (
-              <div className="flex flex-col items-center py-8 text-center">
-                <Music className="h-10 w-10 text-muted-foreground/40" />
-                <p className="mt-3 font-medium">No instruments added yet</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Add an instrument to track this student's grade progress.
-                </p>
-              </div>
+              <InlineEmptyState
+                icon={Music}
+                message="No instruments added yet. Add one to track this student's grade progress."
+                actionLabel={readOnly ? undefined : "Add Instrument"}
+                onAction={readOnly ? undefined : () => {
+                  if (currentOrg?.default_exam_board_id) {
+                    setSelectedExamBoardId(currentOrg.default_exam_board_id);
+                  }
+                  setShowAddForm(true);
+                }}
+              />
             )
           ) : (
             <div className="space-y-3">

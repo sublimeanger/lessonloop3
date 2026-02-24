@@ -52,7 +52,7 @@ export function LoopAssistWidget() {
               </div>
               <span className="text-body-strong">LoopAssist</span>
             </div>
-            <kbd className="hidden sm:inline-flex h-5 items-center gap-0.5 rounded border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+            <kbd className="hidden sm:inline-flex h-5 items-center gap-0.5 rounded border bg-muted px-1.5 text-micro font-medium text-muted-foreground">
               ⌘J
             </kbd>
           </div>

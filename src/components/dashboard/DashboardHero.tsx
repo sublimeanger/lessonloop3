@@ -166,7 +166,7 @@ function getTimeTheme(tz: string) {
       greeting: 'Good morning',
       bg: 'bg-gradient-morning',
       border: 'border-transparent',
-      accentText: 'text-amber-200',
+      accentText: 'text-white/80',
       wave: '👋',
       dark: true,
     };
@@ -176,7 +176,7 @@ function getTimeTheme(tz: string) {
       greeting: 'Good afternoon',
       bg: 'bg-gradient-afternoon',
       border: 'border-transparent',
-      accentText: 'text-sky-200',
+      accentText: 'text-white/80',
       wave: '👋',
       dark: true,
     };
@@ -185,7 +185,7 @@ function getTimeTheme(tz: string) {
     greeting: 'Good evening',
     bg: 'bg-gradient-evening',
     border: 'border-transparent',
-    accentText: 'text-indigo-200',
+    accentText: 'text-white/80',
     wave: '👋',
     dark: true,
   };
@@ -210,7 +210,7 @@ function StatPill({
     <Link to={href}>
       <motion.div
         className={cn(
-          'group flex items-center gap-1.5 sm:gap-2 rounded-full border px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm transition-all',
+          'group flex items-center gap-1.5 sm:gap-2 rounded-full border px-2.5 py-1 sm:px-3 sm:py-1.5 text-caption transition-all',
           'hover:shadow-md hover:-translate-y-0.5',
           highlight 
             ? 'bg-white/20 border-white/30 text-white' 
@@ -221,7 +221,7 @@ function StatPill({
       >
         <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-60 shrink-0" />
         <span className="font-semibold">{value}</span>
-        <span className="text-white/60 text-[10px] sm:text-xs hidden xs:inline">{label}</span>
+        <span className="text-white/60 text-micro hidden xs:inline">{label}</span>
       </motion.div>
     </Link>
   );
@@ -315,7 +315,7 @@ export function DashboardHero({
         <div className="flex-1 space-y-2 sm:space-y-3 min-w-0">
           {/* Date badge */}
           <motion.div
-            className="inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/20 px-2.5 py-0.5 sm:px-3 sm:py-1 text-[11px] sm:text-xs font-medium text-white/80 backdrop-blur-sm"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/20 px-2.5 py-0.5 sm:px-3 sm:py-1 text-micro text-white/80 backdrop-blur-sm"
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
@@ -327,7 +327,7 @@ export function DashboardHero({
 
           {/* Greeting with animated wave */}
           <motion.h1
-            className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight"
+            className="text-page-title"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
@@ -349,7 +349,7 @@ export function DashboardHero({
           {/* Sub-message for new users */}
           {!hasStudents && (
             <motion.p
-              className="text-xs sm:text-sm text-white/70"
+              className="text-body text-white/70"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
@@ -375,12 +375,12 @@ export function DashboardHero({
           {/* All clear message */}
           {hasStudents && pills.length === 0 && (
             <motion.p
-              className="text-xs sm:text-sm text-white/70"
+              className="text-body text-white/70"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
-              All caught up — your schedule is clear today. ✨
+              All caught up — your schedule is clear today.
             </motion.p>
           )}
         </div>

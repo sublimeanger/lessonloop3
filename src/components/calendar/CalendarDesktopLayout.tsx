@@ -107,7 +107,7 @@ export function CalendarDesktopLayout({
           !isParent && (
             <Button onClick={() => actions.openNewLessonModal()} className="gap-2" data-tour="create-lesson-button" disabled={!isOnline}>
               <Plus className="h-4 w-4" />
-              New Lesson <span className="ml-1 text-[10px] opacity-60 bg-primary-foreground/20 px-1 rounded">N</span>
+              New Lesson <span className="ml-1 text-micro opacity-60 bg-primary-foreground/20 px-1 rounded">N</span>
             </Button>
           )
         }
@@ -225,7 +225,7 @@ export function CalendarDesktopLayout({
         )}
       </div>
 
-      <div className="mt-3 text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
+      <div className="mt-3 text-micro sm:text-xs text-muted-foreground hidden sm:block">
         <span className="font-medium">Keyboard:</span> ← → navigate • T today • N new lesson • S/W/A views
       </div>
 

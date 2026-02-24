@@ -94,8 +94,8 @@ export function PreviewStep({
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-success" />
                 <div>
-                  <div className="text-2xl font-bold text-success">{dryRunResult.validation.valid}</div>
-                  <div className="text-sm text-success">Ready to import</div>
+                  <div className="text-section-title text-success">{dryRunResult.validation.valid}</div>
+                  <div className="text-caption text-success">Ready to import</div>
                 </div>
               </div>
             </CardContent>
@@ -105,8 +105,8 @@ export function PreviewStep({
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-warning" />
                 <div>
-                  <div className="text-2xl font-bold text-warning">{dryRunResult.validation.duplicatesInCsv.length}</div>
-                  <div className="text-sm text-warning">Duplicates in CSV</div>
+                  <div className="text-section-title text-warning">{dryRunResult.validation.duplicatesInCsv.length}</div>
+                  <div className="text-caption text-warning">Duplicates in CSV</div>
                 </div>
               </div>
             </CardContent>
@@ -116,8 +116,8 @@ export function PreviewStep({
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-warning" />
                 <div>
-                  <div className="text-2xl font-bold text-warning">{dryRunResult.validation.duplicatesInDatabase.length}</div>
-                  <div className="text-sm text-warning">Already in database</div>
+                  <div className="text-section-title text-warning">{dryRunResult.validation.duplicatesInDatabase.length}</div>
+                  <div className="text-caption text-warning">Already in database</div>
                 </div>
               </div>
             </CardContent>
@@ -127,8 +127,8 @@ export function PreviewStep({
               <div className="flex items-center gap-2">
                 <XCircle className="h-5 w-5 text-destructive" />
                 <div>
-                  <div className="text-2xl font-bold text-destructive">{dryRunResult.validation.errors.length}</div>
-                  <div className="text-sm text-destructive">Invalid rows</div>
+                  <div className="text-section-title text-destructive">{dryRunResult.validation.errors.length}</div>
+                  <div className="text-caption text-destructive">Invalid rows</div>
                 </div>
               </div>
             </CardContent>

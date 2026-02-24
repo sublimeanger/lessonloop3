@@ -50,13 +50,13 @@ function StackedCard({
       {/* Content */}
       <div className="flex-1 min-w-0 pl-1 pr-0.5 py-px">
         <span className={cn(
-          'text-[9px] sm:text-[10px] text-muted-foreground tabular-nums',
+          'text-micro text-muted-foreground tabular-nums',
           isCancelled && 'line-through',
         )}>
           {format(startTime, 'H:mm')}
         </span>
         <span className={cn(
-          'ml-1 text-[10px] sm:text-xs font-semibold text-foreground truncate',
+          'ml-1 text-micro sm:text-xs font-semibold text-foreground truncate',
           isCancelled && 'line-through text-muted-foreground',
         )}>
           {studentLabel}
@@ -158,7 +158,7 @@ export function StackedWeekView({
                 'bg-muted/50 text-muted-foreground',
               )}
             >
-              <div className="text-[10px] sm:text-xs font-medium uppercase tracking-wide">
+              <div className="text-micro sm:text-xs font-medium uppercase tracking-wide">
                 {format(day, 'EEE')}
               </div>
               <div className="flex items-center justify-center gap-0.5">
@@ -172,7 +172,7 @@ export function StackedWeekView({
                   {format(day, 'd')}
                 </span>
                 {count > 0 && (
-                  <span className="text-[10px] sm:text-xs text-muted-foreground font-normal">
+                  <span className="text-micro sm:text-xs text-muted-foreground font-normal">
                     ({count})
                   </span>
                 )}
@@ -195,7 +195,7 @@ export function StackedWeekView({
             >
               {count === 0 ? (
                 <div
-                  className="flex items-center justify-center h-full text-[10px] sm:text-xs text-muted-foreground/50 select-none"
+                  className="flex items-center justify-center h-full text-micro sm:text-xs text-muted-foreground/50 select-none"
                   onClick={() => {
                     if (!isParent) {
                       const d = new Date(day);
@@ -227,7 +227,7 @@ export function StackedWeekView({
                   {count > VISIBLE_WHEN_COLLAPSED && (
                     <button
                       className={cn(
-                        'mx-auto flex items-center justify-center gap-0.5 rounded-full px-2.5 py-0.5 text-[10px] sm:text-xs',
+                        'mx-auto flex items-center justify-center gap-0.5 rounded-full px-2.5 py-0.5 text-micro sm:text-xs',
                         'bg-muted/50 hover:bg-muted text-muted-foreground transition-colors',
                       )}
                       onClick={(e) => {

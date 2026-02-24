@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { useRealtimeInvoices } from '@/hooks/useRealtimeInvoices';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -33,6 +34,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function Invoices() {
+  usePageMeta('Invoices | LessonLoop', 'Manage invoices and billing');
   const { currentRole, currentOrg } = useOrg();
   const { toast } = useToast();
   useRealtimeInvoices();
@@ -223,7 +225,7 @@ export default function Invoices() {
                 onSecondaryAction={() => setCreateModalOpen(true)}
               />
             ) : (
-              <div className="rounded-lg border bg-card" data-tour="invoice-list">
+              <div className="rounded-xl border bg-card" data-tour="invoice-list">
                 <InvoiceList
                   invoices={invoices}
                   totalCount={totalCount}
@@ -253,7 +255,7 @@ export default function Invoices() {
               description="You don't have any invoices yet. They will appear here when your teacher creates them."
             />
           ) : (
-            <div className="rounded-lg border bg-card" data-tour="invoice-list">
+            <div className="rounded-xl border bg-card" data-tour="invoice-list">
               <InvoiceList
                 invoices={invoices}
                 totalCount={totalCount}

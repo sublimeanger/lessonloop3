@@ -1,6 +1,7 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { parseISO, isBefore, startOfToday } from 'date-fns';
 import { useEffect, useState } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { useOrgPaymentPreferences } from '@/hooks/useOrgPaymentPreferences';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -17,7 +18,7 @@ import { useStripePayment } from '@/hooks/useStripePayment';
 import { useInvoicePdf } from '@/hooks/useInvoicePdf';
 import { useToast } from '@/hooks/use-toast';
 
-import { LoadingState } from '@/components/shared/LoadingState';
+import { DetailSkeleton } from '@/components/shared/LoadingState';
 import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
 import { SendInvoiceModal } from '@/components/invoices/SendInvoiceModal';
 import { InstallmentTimeline } from '@/components/invoices/InstallmentTimeline';
@@ -63,6 +64,7 @@ function getStatusBadge(status: InvoiceStatus, dueDate: string) {
 }
 
 export default function InvoiceDetail() {
+  usePageMeta('Invoice Detail | LessonLoop', 'View invoice details and payment status');
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -125,7 +127,7 @@ export default function InvoiceDetail() {
   if (isLoading) {
     return (
       <AppLayout>
-        <LoadingState message="Loading invoice..." />
+        <DetailSkeleton />
       </AppLayout>
     );
   }

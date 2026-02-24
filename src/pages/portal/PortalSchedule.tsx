@@ -1,3 +1,4 @@
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { useState, useMemo } from 'react';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { PortalErrorState } from '@/components/portal/PortalErrorState';
@@ -42,6 +43,7 @@ interface WeekGroup {
 }
 
 export default function PortalSchedule() {
+  usePageMeta('Schedule | Parent Portal', 'View and manage lesson schedule');
   const [searchParams, setSearchParams] = useSearchParams();
   const { selectedChildId } = useChildFilter();
   const [requestModalOpen, setRequestModalOpen] = useState(false);
@@ -400,7 +402,7 @@ export default function PortalSchedule() {
             <CardTitle className="text-sm flex items-center gap-2">
               <Rss className="h-4 w-4" />
               Subscribe to Calendar Feed
-              <Badge variant="secondary" className="ml-auto text-[10px]">New</Badge>
+              <Badge variant="secondary" className="ml-auto text-micro">New</Badge>
               <ChevronDown className={cn('h-4 w-4 transition-transform', calSyncOpen && 'rotate-180')} />
             </CardTitle>
           </CardHeader>
@@ -552,7 +554,7 @@ export default function PortalSchedule() {
       />
 
       <Dialog open={rescheduleModalOpen} onOpenChange={setRescheduleModalOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[100dvh] h-full sm:h-auto sm:max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Request Reschedule</DialogTitle>
           </DialogHeader>

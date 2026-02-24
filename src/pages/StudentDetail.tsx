@@ -1,3 +1,4 @@
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { useStudentDetailPage } from '@/hooks/useStudentDetailPage';
 import { Trash2 } from 'lucide-react';
 
 export default function StudentDetail() {
+  usePageMeta('Student Detail | LessonLoop', 'View and manage student information');
   const hook = useStudentDetailPage();
 
   if (hook.isLoading || !hook.student) {

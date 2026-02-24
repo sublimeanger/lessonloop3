@@ -131,9 +131,22 @@ export function StudentInfoCard({
                 <Label htmlFor="edit-notes">Notes</Label>
                 <Textarea id="edit-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
               </div>
-              <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
-              </Button>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button variant="outline" onClick={() => {
+                  setFirstName(student.first_name);
+                  setLastName(student.last_name);
+                  setEmail(student.email || '');
+                  setPhone(student.phone || '');
+                  setDob(student.dob || '');
+                  setNotes(student.notes || '');
+                  handleToggleEdit();
+                }}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">

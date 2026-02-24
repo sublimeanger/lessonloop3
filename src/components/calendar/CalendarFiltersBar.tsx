@@ -75,7 +75,7 @@ export function CalendarFiltersBar({
         All
         {totalCount > 0 && (
           <span className={cn(
-            'text-[10px] opacity-70',
+            'text-micro opacity-70',
             !filters.teacher_id ? 'text-background/70' : ''
           )}>
             ({totalCount})
@@ -117,7 +117,7 @@ export function CalendarFiltersBar({
             {firstName}
             {count > 0 && (
               <span className={cn(
-                'text-[10px] opacity-70',
+                'text-micro opacity-70',
                 isSelected ? 'text-white/70' : ''
               )}>
                 ({count})
@@ -186,7 +186,7 @@ export function CalendarFiltersBar({
             {location.name}
             {count > 0 && (
               <span className={cn(
-                'text-[10px] opacity-70',
+                'text-micro opacity-70',
                 isSelected ? 'text-background/70' : ''
               )}>
                 ({count})
@@ -215,7 +215,7 @@ export function CalendarFiltersBar({
                     })
                   }
                   className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-all cursor-pointer shrink-0',
+                    'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-micro font-medium whitespace-nowrap transition-all cursor-pointer shrink-0',
                     isSelected
                       ? 'bg-foreground text-background border-foreground shadow-sm'
                       : 'border-border bg-background text-foreground hover:bg-muted'
