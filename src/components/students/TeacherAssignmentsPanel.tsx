@@ -111,7 +111,7 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
       setIsPrimary(false);
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: 'Failed to update teacher assignments', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -135,7 +135,7 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
       setConfirmRemove({ open: false, assignmentId: '', teacherName: '' });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: 'Failed to update teacher assignments', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -159,7 +159,7 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
       queryClient.invalidateQueries({ queryKey: assignmentQueryKey });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: 'Failed to update teacher assignments', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -200,13 +200,13 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
         ) : (
           <div className="space-y-3">
             {assignments.map((assignment) => (
-              <div key={assignment.id} className="flex items-center justify-between rounded-lg border p-3">
-                <div className="flex items-center gap-3">
+              <div key={assignment.id} className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
                     {assignment.teacher?.display_name?.[0] || assignment.teacher?.email?.[0] || '?'}
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium">
                         {assignment.teacher?.display_name || assignment.teacher?.email || 'Unknown'}
                       </span>
@@ -220,12 +220,12 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
                       )}
                     </div>
                     {assignment.teacher?.email && (
-                      <p className="text-sm text-muted-foreground">{assignment.teacher.email}</p>
+                      <p className="truncate text-sm text-muted-foreground">{assignment.teacher.email}</p>
                     )}
                   </div>
                 </div>
                 {isOrgAdmin && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {!assignment.is_primary && (
                       <Button
                         variant="ghost"
@@ -252,7 +252,7 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
 
       {/* Add Teacher Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg sm:p-6">
           <DialogHeader>
             <DialogTitle>Assign Teacher</DialogTitle>
             <DialogDescription>
@@ -290,7 +290,7 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
               <Switch checked={isPrimary} onCheckedChange={setIsPrimary} />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
             <Button onClick={() => addAssignment.mutate()} disabled={addAssignment.isPending || !selectedTeacherId}>
               {addAssignment.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Assigning...</> : 'Assign Teacher'}
@@ -309,7 +309,7 @@ export function TeacherAssignmentsPanel({ studentId }: TeacherAssignmentsPanelPr
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => removeAssignment.mutate(confirmRemove.assignmentId)}>
+            <AlertDialogAction onClick={() => removeAssignment.mutate(confirmRemove.assignmentId)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Remove
             </AlertDialogAction>
           </AlertDialogFooter>

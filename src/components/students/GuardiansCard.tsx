@@ -115,9 +115,9 @@ export function GuardiansCard({
           ) : (
             <div className="space-y-3">
               {guardians.map((sg) => (
-                <div key={sg.id} className="flex items-center justify-between rounded-lg border p-3">
+                <div key={sg.id} className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium">{sg.guardian?.full_name}</span>
                       <Badge variant="outline" className="text-xs capitalize">{sg.relationship}</Badge>
                       {sg.is_primary_payer && <Badge className="text-xs">Primary Payer</Badge>}
@@ -125,12 +125,12 @@ export function GuardiansCard({
                         <Badge variant="secondary" className="text-xs">Portal Access</Badge>
                       )}
                     </div>
-                    <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                    <div className="mt-1 flex flex-col gap-1 text-sm text-muted-foreground sm:flex-row sm:gap-4">
                       {sg.guardian?.email && <span>{sg.guardian.email}</span>}
                       {sg.guardian?.phone && <span>{sg.guardian.phone}</span>}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {isOrgAdmin && !sg.guardian?.user_id && sg.guardian?.email && (() => {
                       const inviteStatus = guardianInvites[sg.guardian.id];
                       const isInviting = invitingGuardianId === sg.guardian.id;
@@ -144,7 +144,7 @@ export function GuardiansCard({
                         );
                       } else if (inviteStatus.inviteStatus === 'pending') {
                         return (
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <Badge variant="secondary" className="text-xs">Invite Pending</Badge>
                             {inviteStatus.token && (
                               <Button variant="ghost" size="sm" onClick={() => handleCopyInviteLink(inviteStatus.token!)} className="gap-1 text-xs">
@@ -179,7 +179,7 @@ export function GuardiansCard({
 
       {/* Add Guardian Dialog */}
       <Dialog open={isGuardianDialogOpen} onOpenChange={setIsGuardianDialogOpen}>
-        <DialogContent>
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg sm:p-6">
           <DialogHeader>
             <DialogTitle>Add Guardian</DialogTitle>
             <DialogDescription>Link a parent or guardian to this student.</DialogDescription>
@@ -248,7 +248,7 @@ export function GuardiansCard({
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => { setIsGuardianDialogOpen(false); resetGuardianForm(); }}>Cancel</Button>
             <Button onClick={handleAddGuardian} disabled={isSaving}>
               {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Adding...</> : 'Add Guardian'}
@@ -259,7 +259,7 @@ export function GuardiansCard({
 
       {/* Edit Guardian Dialog */}
       <Dialog open={editGuardianDialog.open} onOpenChange={(open) => setEditGuardianDialog(prev => ({ ...prev, open }))}>
-        <DialogContent>
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg sm:p-6">
           <DialogHeader>
             <DialogTitle>Edit Guardian</DialogTitle>
             <DialogDescription>Update contact details for this guardian.</DialogDescription>
@@ -289,7 +289,7 @@ export function GuardiansCard({
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => setEditGuardianDialog(prev => ({ ...prev, open: false }))}>Cancel</Button>
             <Button onClick={handleSaveGuardianEdit} disabled={isEditGuardianSaving || !editGuardianDialog.fullName.trim()}>
               {isEditGuardianSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
