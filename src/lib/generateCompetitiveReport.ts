@@ -567,10 +567,12 @@ export function generateCompetitiveReport() {
     checkPage(20);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
+    const gradeLabel = `[${gap.grade}]`;
     doc.setTextColor(...gradeColor(gap.grade));
-    doc.text(`[${gap.grade}]`, margin, y);
+    doc.text(gradeLabel, margin, y);
+    const gradeLabelWidth = doc.getTextWidth(gradeLabel) + 3;
     doc.setTextColor(...colors.dark);
-    doc.text(gap.feature, margin + 14, y);
+    doc.text(gap.feature, margin + gradeLabelWidth, y);
     y += 5;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
