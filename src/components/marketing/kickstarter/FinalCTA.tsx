@@ -25,7 +25,7 @@ export function FinalCTA() {
     if (isDisposableDomain(email)) { toast({ title: "Please use a real email address.", variant: "destructive" }); return; }
     setLoading(true);
     try {
-      const { error } = await supabase.from("kickstarter_signups" as any).insert({ email });
+      const { error } = await supabase.from("kickstarter_signups").insert({ email });
       if (error) {
         if (error.code === "23505") {
           toast({ title: "You're already on the list!" });

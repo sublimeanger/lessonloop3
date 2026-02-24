@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { getErrorMessage } from '@/lib/error-utils';
 
 const contactMethods = [
   {
@@ -85,9 +86,9 @@ export default function Contact() {
       setIsSuccess(true);
       toast({ title: "Message sent! We'll get back to you soon." });
       setFormData({ firstName: "", lastName: "", email: "", subject: "", message: "" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Contact form error:', error);
-      toast({ title: error.message || "Failed to send message. Please try again.", variant: "destructive" });
+      toast({ title: getErrorMessage(error), variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }

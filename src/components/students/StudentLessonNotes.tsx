@@ -120,7 +120,7 @@ export function StudentLessonNotes({ studentId }: StudentLessonNotesProps) {
     };
 
     fetchNotes();
-  }, [studentId, currentOrg?.id, isOrgAdmin]);
+  }, [studentId, currentOrg, isOrgAdmin]);
 
   return (
     <Card>

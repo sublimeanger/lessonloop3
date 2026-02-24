@@ -47,7 +47,9 @@ import { format } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, formatLimit, TRIAL_DAYS, DB_PLAN_MAP, PLAN_DISPLAY_NAMES } from '@/lib/pricing-config';
+import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, TRIAL_DAYS, PLAN_DISPLAY_NAMES } from '@/lib/pricing-config';
+import { DisputeAlertBanner } from '@/components/invoices/DisputeAlertBanner';
+import { RevenueDashboard } from '@/components/settings/RevenueDashboard';
 
 // Database plan types
 type DbSubscriptionPlan = 'solo_teacher' | 'academy' | 'agency';
@@ -74,7 +76,7 @@ interface PlanCardProps {
 }
 
 function PlanCard({ 
-  plan, 
+  plan: _plan, 
   name, 
   price, 
   features, 
@@ -707,8 +709,19 @@ export function BillingTab() {
         </Card>
       )}
 
+      {/* Dispute Alert */}
+      {canManageBilling && <DisputeAlertBanner />}
+
       {/* Payment Preferences */}
       {canManageBilling && <PaymentPreferencesCard orgId={currentOrg?.id} isConnected={isConnected} />}
+
+      {/* Reminder Preferences */}
+      {canManageBilling && <ReminderPreferencesCard orgId={currentOrg?.id} />}
+
+      {/* Revenue Dashboard */}
+      {canManageBilling && isConnected && (
+        <RevenueDashboard orgId={currentOrg?.id} currencyCode={currentOrg?.currency_code} />
+      )}
 
       {/* Billing History */}
       {canManageBilling && hasActiveSubscription && currentOrg?.id && (
@@ -1227,5 +1240,121 @@ function CancellationFlowCard({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+// ── Reminder Preferences ──────────────────────────────────
+
+const UPCOMING_DAY_OPTIONS = [1, 3, 7, 14] as const;
+const OVERDUE_DAY_OPTIONS = [7, 14, 30, 60] as const;
+
+function ReminderPreferencesCard({ orgId }: { orgId?: string }) {
+  const [upcomingDays, setUpcomingDays] = useState<number[]>([7, 1]);
+  const [overdueDays, setOverdueDays] = useState<number[]>([7, 14, 30]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!orgId) return;
+    supabase
+      .from('organisations')
+      .select('upcoming_reminder_days, overdue_reminder_days')
+      .eq('id', orgId)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setUpcomingDays(data.upcoming_reminder_days || [7, 1]);
+          setOverdueDays(data.overdue_reminder_days || [7, 14, 30]);
+        }
+        setIsLoaded(true);
+      });
+  }, [orgId]);
+
+  const toggleDay = (list: number[], setList: (v: number[]) => void, day: number) => {
+    if (list.includes(day)) {
+      setList(list.filter((d) => d !== day));
+    } else {
+      setList([...list, day].sort((a, b) => a - b));
+    }
+  };
+
+  const handleSave = async () => {
+    if (!orgId) return;
+    setIsSaving(true);
+    const { error } = await supabase
+      .from('organisations')
+      .update({
+        upcoming_reminder_days: upcomingDays.length > 0 ? upcomingDays : null,
+        overdue_reminder_days: overdueDays.length > 0 ? overdueDays : null,
+      })
+      .eq('id', orgId);
+    setIsSaving(false);
+    if (error) {
+      toast({ title: 'Failed to save reminder preferences', variant: 'destructive' });
+    } else {
+      toast({ title: 'Reminder preferences saved' });
+    }
+  };
+
+  if (!isLoaded) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Clock className="h-4 w-4" />
+          Payment Reminders
+        </CardTitle>
+        <CardDescription>
+          Automatic email reminders sent to parents before and after invoice due dates.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div>
+          <Label className="text-sm font-medium">Before due date</Label>
+          <p className="text-xs text-muted-foreground mb-2">
+            Send reminders this many days before the payment is due.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {UPCOMING_DAY_OPTIONS.map((day) => (
+              <Button
+                key={day}
+                variant={upcomingDays.includes(day) ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => toggleDay(upcomingDays, setUpcomingDays, day)}
+              >
+                {day} day{day > 1 ? 's' : ''}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <Separator />
+
+        <div>
+          <Label className="text-sm font-medium">After due date (overdue)</Label>
+          <p className="text-xs text-muted-foreground mb-2">
+            Send reminders this many days after the payment becomes overdue.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {OVERDUE_DAY_OPTIONS.map((day) => (
+              <Button
+                key={day}
+                variant={overdueDays.includes(day) ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => toggleDay(overdueDays, setOverdueDays, day)}
+              >
+                {day} day{day > 1 ? 's' : ''}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <Button onClick={handleSave} disabled={isSaving} className="gap-2">
+          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          {isSaving ? 'Saving...' : 'Save Reminder Settings'}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

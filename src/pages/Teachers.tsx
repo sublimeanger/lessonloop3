@@ -337,7 +337,7 @@ export default function Teachers() {
           const { error } = await supabase
             .from('lessons')
             .update({ 
-              status: 'cancelled' as any,
+              status: 'cancelled',
               cancellation_reason: `Teacher ${teacher.display_name} removed from organisation`,
               cancelled_at: new Date().toISOString(),
             })

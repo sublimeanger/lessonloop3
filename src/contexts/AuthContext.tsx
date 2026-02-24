@@ -278,6 +278,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(hardTimeout);
       subscription.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Auth subscription must only initialise once on mount; isInitialised is read via initialisedRef to avoid stale closures.
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, fullName?: string) => {

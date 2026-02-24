@@ -12,6 +12,7 @@ const mockSelectResponse = vi.fn();
 const mockSingleResponse = vi.fn();
 
 function createChain() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chain: any = {};
   const methods = [
     'select', 'insert', 'update', 'delete',
@@ -26,6 +27,7 @@ function createChain() {
   // Terminal — returns whatever mockSelectResponse currently returns
   chain.single = vi.fn().mockImplementation(() => mockSingleResponse());
   // Thenable — returns whatever mockSelectResponse currently returns
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   chain.then = (resolve: any) => resolve(mockSelectResponse());
   Object.defineProperty(chain, Symbol.toStringTag, { value: 'Promise' });
   return chain;

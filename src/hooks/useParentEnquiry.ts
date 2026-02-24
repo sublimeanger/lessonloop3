@@ -35,7 +35,7 @@ export function useParentEnquiry() {
       queryClient.invalidateQueries({ queryKey: ['parent-messages'] });
       toast({ title: 'Message sent', description: 'Your enquiry has been sent. You\'ll see replies in your inbox.' });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({ title: 'Error', description: error.message || 'Failed to send message', variant: 'destructive' });
     },
   });

@@ -34,7 +34,7 @@ export function useAvailableCreditsForPayer(
       if (payerType === 'student') {
         // For adult students paying for themselves, get their own credits
         const { data, error } = await supabase
-          .from('available_credits' as any)
+          .from('available_credits')
           .select(`
             id,
             student_id,
@@ -64,7 +64,7 @@ export function useAvailableCreditsForPayer(
       const studentIds = studentLinks.map((l) => l.student_id);
 
       const { data, error } = await supabase
-        .from('available_credits' as any)
+        .from('available_credits')
         .select(`
           id,
           student_id,

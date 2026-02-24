@@ -151,8 +151,8 @@ describe('LL-BIL-P0-02: Billing Run Deduplication', () => {
 
     it('empty lessons array produces zero invoices', () => {
       const payerGroups = new Map();
-      const unbilledLessons: any[] = [];
-      for (const lesson of unbilledLessons) {
+      const unbilledLessons: unknown[] = [];
+      for (const _lesson of unbilledLessons) {
         // No iterations
       }
       expect(payerGroups.size).toBe(0);

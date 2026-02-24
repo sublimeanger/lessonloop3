@@ -98,10 +98,10 @@ export function useSubscription(): SubscriptionState {
     const status = (currentOrg?.subscription_status as SubscriptionStatus) || 'trialing';
     const trialEndsAtRaw = currentOrg?.trial_ends_at;
     const trialEndsAt = trialEndsAtRaw ? parseISO(trialEndsAtRaw) : null;
-    const pastDueSinceRaw = (currentOrg as any)?.past_due_since;
-    const pastDueSince = pastDueSinceRaw ? parseISO(pastDueSinceRaw as string) : null;
-    const cancelsAtRaw = (currentOrg as any)?.cancels_at;
-    const cancelsAt = cancelsAtRaw ? parseISO(cancelsAtRaw as string) : null;
+    const pastDueSinceRaw = currentOrg?.past_due_since;
+    const pastDueSince = pastDueSinceRaw ? parseISO(pastDueSinceRaw) : null;
+    const cancelsAtRaw = currentOrg?.cancels_at;
+    const cancelsAt = cancelsAtRaw ? parseISO(cancelsAtRaw) : null;
     
     const isTrialing = status === 'trialing';
     const isTrialExpired = trialEndsAt ? isPast(trialEndsAt) : false;

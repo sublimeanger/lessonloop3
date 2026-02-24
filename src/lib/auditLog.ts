@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/lib/logger';
+import type { Json } from '@/integrations/supabase/types';
 
 /**
  * Fire-and-forget audit log helper.
@@ -24,8 +25,8 @@ export function logAudit(
       action,
       entity_type: entityType,
       entity_id: entityId,
-      before: (details?.before ?? null) as any,
-      after: (details?.after ?? null) as any,
+      before: (details?.before ?? null) as Json,
+      after: (details?.after ?? null) as Json,
     }])
     .then(({ error }) => {
       if (error) logger.warn('[audit] Failed to log:', error.message);

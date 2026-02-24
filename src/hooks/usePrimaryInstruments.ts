@@ -20,7 +20,7 @@ export function usePrimaryInstruments() {
   return useQuery({
     queryKey: ['primary-instruments', currentOrg?.id],
     queryFn: async (): Promise<Record<string, PrimaryInstrumentInfo>> => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('student_instruments')
         .select(`
           student_id,
@@ -34,7 +34,7 @@ export function usePrimaryInstruments() {
       if (error) throw error;
 
       const map: Record<string, PrimaryInstrumentInfo> = {};
-      for (const row of (data || []) as any[]) {
+      for (const row of (data || [])) {
         const inst = row.instrument as { name: string; category: string } | null;
         const grade = row.current_grade as { short_name: string } | null;
         const board = row.exam_board as { short_name: string } | null;

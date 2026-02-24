@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Receipt, Loader2, Download, CreditCard, AlertCircle, CheckCircle, Building2, FileDown } from 'lucide-react';
+import { Receipt, Loader2, CreditCard, AlertCircle, CheckCircle, Building2, FileDown } from 'lucide-react';
 import { format, parseISO, isBefore, startOfToday } from 'date-fns';
 import { useOrg } from '@/contexts/OrgContext';
 import { useParentInvoices } from '@/hooks/useParentPortal';
@@ -73,8 +73,8 @@ export default function PortalInvoices() {
     const paymentStatus = searchParams.get('payment');
     if (paymentStatus === 'success') {
       toast({
-        title: 'Payment Successful',
-        description: 'Your payment has been processed. The invoice will be updated shortly.',
+        title: 'Payment Submitted',
+        description: 'Your payment has been received. Card payments update instantly; bank payments may take 3-5 business days.',
       });
       // Refetch invoices to show updated status
       refetch();

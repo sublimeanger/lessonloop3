@@ -17,6 +17,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-utils';
 
 interface SettingRowProps {
   id: keyof Omit<MessagingSettings, 'org_id'>;
@@ -71,8 +72,8 @@ export function MessagingSettingsTab() {
       if (error) throw error;
       updateSetting('parent_can_message_teacher', false);
       toast.success('Teacher messaging disabled. Teachers will no longer see parent conversations.');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to reassign conversations');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     } finally {
       setIsReassigning(false);
       setShowReassignDialog(false);

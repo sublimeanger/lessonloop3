@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Sparkles, Clock, AlertTriangle, ArrowRight, X, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSubscription } from '@/hooks/useSubscription';
-import { PLAN_NAMES } from '@/hooks/useFeatureGate';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { safeGetItem, safeSetItem } from '@/lib/storage';
@@ -22,7 +21,7 @@ export function UpgradeBanner({
   dismissible = true,
   storageKey = 'upgrade-banner-dismissed'
 }: UpgradeBannerProps) {
-  const { plan, isTrialing, trialDaysRemaining, trialEndsAt, isTrialExpired, isPastDue, canUpgrade } = useSubscription();
+  const { plan: _plan, isTrialing, trialDaysRemaining, trialEndsAt, isTrialExpired, isPastDue, canUpgrade } = useSubscription();
   const [isDismissed, setIsDismissed] = useState(() => {
     if (!dismissible) return false;
     const dismissedAt = safeGetItem(storageKey);

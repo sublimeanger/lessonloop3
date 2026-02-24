@@ -101,7 +101,7 @@ export function InviteMemberDialog({ open, onOpenChange, onInviteSent }: InviteM
         body: { inviteId: invite.id },
       });
       toast({ title: 'Invite sent', description: `Invitation sent to ${email.trim()}` });
-    } catch (emailError: any) {
+    } catch (emailError: unknown) {
       logger.error('Email error:', emailError);
       toast({ title: 'Invite created', description: 'Email may not have been sent.' });
     }

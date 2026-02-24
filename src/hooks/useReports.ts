@@ -49,7 +49,7 @@ export function useRevenueReport(startDate: string, endDate: string) {
       // all month arithmetic in the academy's timezone so that month
       // boundaries (e.g. start-of-month) align with the academy's local
       // calendar, avoiding BST edge-case drift.
-      const orgTz = (currentOrg as any).timezone ?? 'Europe/London';
+      const orgTz = currentOrg.timezone ?? 'Europe/London';
 
       // Parse dates into the academy's timezone for correct month arithmetic
       const startZoned = toZonedTime(parseISO(startDate), orgTz);

@@ -50,7 +50,7 @@ export function MobileLessonSheet({
     .map((w) => w[0]?.toUpperCase())
     .join('');
 
-  const isCancelled = lesson.status === 'cancelled';
+  const _isCancelled = lesson.status === 'cancelled';
 
   return (
     <Drawer open={open} onOpenChange={(o) => { if (!o) onClose(); }}>

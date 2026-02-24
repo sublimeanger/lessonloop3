@@ -162,7 +162,7 @@ export function PreviewStep({
         )}
 
         {/* Tabbed row list */}
-        <Tabs value={previewTab} onValueChange={(v) => setPreviewTab(v as any)}>
+        <Tabs value={previewTab} onValueChange={(v) => setPreviewTab(v as "all" | "issues" | "ready")}>
           <TabsList className="h-auto w-full flex-wrap justify-start">
             <TabsTrigger value="all">All Records ({dryRunResult.rowStatuses.length})</TabsTrigger>
             <TabsTrigger value="issues" className="text-warning">

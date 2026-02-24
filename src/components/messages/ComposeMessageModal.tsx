@@ -138,6 +138,7 @@ export function ComposeMessageModal({
       }
     };
     fetchStudents();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedStudentId is only read to avoid overwriting user selection; re-running on its change would reset the dropdown. currentOrg?.id covers the org identity.
   }, [selectedGuardianId, preselectedGuardian?.id, currentOrg?.id]);
 
   const selectedGuardian = guardians.find(g => g.id === selectedGuardianId) || preselectedGuardian;

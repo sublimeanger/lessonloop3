@@ -200,7 +200,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
 
       // 1b. Create student_instruments record if instrument selected
       if (studentData.instrumentId && studentData.instrumentId !== 'none') {
-        const { error: instrError } = await (supabase as any)
+        const { error: instrError } = await supabase
           .from('student_instruments')
           .insert({
             student_id: createdStudent.id,

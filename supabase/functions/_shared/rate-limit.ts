@@ -26,6 +26,8 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   // Billing operations
   "billing-run":           { maxRequests: 10,  windowMinutes: 60 },
   "stripe-create-checkout": { maxRequests: 10, windowMinutes: 60 },
+  "stripe-refund":         { maxRequests: 5,   windowMinutes: 60 },
+  "stripe-connect-revenue": { maxRequests: 10, windowMinutes: 60 },
   "record-payment":        { maxRequests: 10,  windowMinutes: 60 },
 
   // Marketing chat (IP-based)

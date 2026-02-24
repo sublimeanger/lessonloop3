@@ -59,7 +59,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         firstActionRef.current?.focus();
       });
     }
-  }, [open, lesson?.id]);
+  }, [open, lesson]);
   
   const [savingAttendance, setSavingAttendance] = useState<string | null>(null);
   const [actionInProgress, setActionInProgress] = useState(false);
@@ -202,7 +202,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           setCreditOfferOpen(true);
         }
       }
-    } catch (error: any) {
+    } catch {
       // Error toast is handled by the hook
     } finally {
       setSavingAttendance(null);

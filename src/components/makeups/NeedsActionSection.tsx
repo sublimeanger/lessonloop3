@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, ArrowDown, Star, Clock } from 'lucide-react';
+import { Bell, ArrowDown, Clock } from 'lucide-react';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

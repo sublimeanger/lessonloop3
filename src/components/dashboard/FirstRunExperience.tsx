@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   Users, Calendar, Building2, UserPlus, Settings, 
-  X, Sparkles, ChevronRight, Rocket, CheckCircle2, ArrowRight
+  X, Rocket, ArrowRight
 } from 'lucide-react';
 import { useFirstRunExperience } from '@/hooks/useFirstRunExperience';
 import { cn } from '@/lib/utils';

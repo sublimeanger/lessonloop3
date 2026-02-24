@@ -14,6 +14,6 @@ export function activeStudentsQuery(orgId: string) {
     .from('students')
     .select()
     .eq('org_id', orgId)
-    .eq('status', 'active' as any)
+    .eq('status', 'active')
     .is('deleted_at', null);
 }

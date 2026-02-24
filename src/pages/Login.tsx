@@ -43,7 +43,7 @@ export default function Login() {
 
       return () => clearTimeout(timeout);
     }
-  }, []);
+  }, [toast]);
 
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);

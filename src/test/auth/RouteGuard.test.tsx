@@ -23,12 +23,12 @@ let currentOrg = createMockOrgContext('owner');
 
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => currentAuth,
-  AuthProvider: ({ children }: any) => children,
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 vi.mock('@/contexts/OrgContext', () => ({
   useOrg: () => currentOrg,
-  OrgProvider: ({ children }: any) => children,
+  OrgProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 vi.mock('@/integrations/supabase/client', () => ({

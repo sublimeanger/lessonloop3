@@ -138,7 +138,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isRunning]);
+  }, [isRunning, STORAGE_KEYS.pausedElapsed]);
 
   // ─── beforeunload warning ────────────
   useEffect(() => {

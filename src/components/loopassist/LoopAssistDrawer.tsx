@@ -145,18 +145,18 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     el.style.height = Math.min(el.scrollHeight, 96) + 'px'; // 96px max (~4 lines)
   };
 
-  const handleNewConversation = () => {
+  const handleNewConversation = useCallback(() => {
     setCurrentConversationId(null);
     setView('chat');
     setFailedMessage(null);
-  };
+  }, [setCurrentConversationId]);
 
   // Listen for new conversation shortcut event (Cmd+Shift+J)
   useEffect(() => {
     const handler = () => handleNewConversation();
     window.addEventListener('loopassist-new-conversation', handler);
     return () => window.removeEventListener('loopassist-new-conversation', handler);
-  }, []);
+  }, [handleNewConversation]);
 
   const handleSelectConversation = (id: string) => {
     setCurrentConversationId(id);
@@ -734,7 +734,8 @@ function MessageBubble({ message, conversationId }: { message: AIMessage; conver
                 em: ({ children }) => <em>{children}</em>,
                 a: ({ href, children }) => <a href={href} className="text-primary underline" target="_blank" rel="noopener noreferrer">{children}</a>,
                 li: ({ children }) => <li className="my-0">{children}</li>,
-                span: ({ node, ...props }: any) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                span: ({ node: _node, ...props }: any) => {
                   const entityType = props['data-entity-type'];
                   if (entityType) {
                     return (

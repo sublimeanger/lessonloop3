@@ -20,7 +20,7 @@ export function useOrgPaymentPreferences() {
     queryFn: async (): Promise<OrgPaymentPreferences> => {
       // Use the restricted parent_org_info view to minimise data surface
       const { data, error } = await supabase
-        .from('parent_org_info' as any)
+        .from('parent_org_info')
         .select('online_payments_enabled, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix')
         .eq('id', orgId!)
         .single();

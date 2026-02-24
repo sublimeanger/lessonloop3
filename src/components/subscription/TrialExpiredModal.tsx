@@ -15,7 +15,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { PRICING_CONFIG, PLAN_ORDER, formatLimit } from '@/lib/pricing-config';
 
 export function TrialExpiredModal() {
-  const { isTrialExpired, isTrialing, trialDaysRemaining } = useSubscription();
+  const { isTrialExpired, isTrialing: _isTrialing, trialDaysRemaining: _trialDaysRemaining } = useSubscription();
   const [isOpen, setIsOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 

@@ -43,7 +43,7 @@ describe('LL-MSG-P0-01 Message request types', () => {
 // Message request required fields
 // ---------------------------------------------------------------------------
 describe('LL-MSG-P0-01 Message request required fields', () => {
-  function validateMessageRequest(data: Record<string, any>): string[] {
+  function validateMessageRequest(data: Record<string, unknown>): string[] {
     const errors: string[] = [];
     if (!data.guardian_id) errors.push('guardian_id is required');
     if (!data.org_id) errors.push('org_id is required');

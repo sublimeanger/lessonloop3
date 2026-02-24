@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { format, startOfDay, endOfDay, isBefore } from 'date-fns';
+import { format, endOfDay, isBefore } from 'date-fns';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -82,7 +82,7 @@ export function MarkDayCompleteButton({ currentDate, lessons, onComplete }: Mark
       if (newRecords.length > 0) {
         const { error: attError } = await supabase
           .from('attendance_records')
-          .upsert(newRecords as any, { onConflict: 'lesson_id,student_id' });
+          .upsert(newRecords, { onConflict: 'lesson_id,student_id' });
         if (attError) throw attError;
       }
 
@@ -92,10 +92,10 @@ export function MarkDayCompleteButton({ currentDate, lessons, onComplete }: Mark
       });
       
       onComplete();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error marking lessons complete',
-        description: error.message,
+        description: error instanceof Error ? error.message : "Unknown error",
         variant: 'destructive',
       });
     } finally {

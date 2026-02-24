@@ -29,7 +29,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useCreateInvoice, useUnbilledLessons } from '@/hooks/useInvoices';
 import { useRateCards, findRateForDuration } from '@/hooks/useRateCards';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useAvailableCreditsForPayer, AvailableCredit } from '@/hooks/useAvailableCredits';
+import { useAvailableCreditsForPayer } from '@/hooks/useAvailableCredits';
 import { Badge } from '@/components/ui/badge';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
@@ -75,7 +75,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
     watch,
     setValue,
     reset,
-    formState: { errors },
+    formState: { errors: _errors },
   } = useForm<InvoiceFormData>({
     defaultValues: {
       payerType: 'guardian',
@@ -138,7 +138,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
         .from('students')
         .select('id, first_name, last_name, email')
         .eq('org_id', currentOrg!.id)
-        .eq('status', 'active' as any)
+        .eq('status', 'active')
         .is('deleted_at', null)
         .order('first_name');
       return data || [];

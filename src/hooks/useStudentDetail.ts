@@ -171,6 +171,7 @@ export function useStudentInvoices(studentId: string | undefined) {
       const guardianIds = (guardiansResult.data || []).map(sg => sg.guardian_id);
 
       // Collect direct-payer invoices
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const allInvoicesMap = new Map<string, any>();
       for (const inv of directResult.data || []) {
         allInvoicesMap.set(inv.id, inv);

@@ -43,7 +43,7 @@ export function useParentChildInstruments() {
       if (studentIds.length === 0) return {};
 
       // Fetch instruments for all linked children
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('student_instruments')
         .select(`
           student_id,
@@ -59,7 +59,7 @@ export function useParentChildInstruments() {
       if (error) throw error;
 
       const map: Record<string, ParentInstrumentInfo[]> = {};
-      for (const row of (data || []) as any[]) {
+      for (const row of (data || [])) {
         const inst = row.instrument as { name: string; category: string } | null;
         if (!inst) continue;
         const grade = row.current_grade as { short_name: string } | null;

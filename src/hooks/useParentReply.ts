@@ -34,7 +34,7 @@ export function useParentReply() {
       queryClient.invalidateQueries({ queryKey: ['parent-conversations'] });
       toast({ title: 'Reply sent', description: 'Your reply has been sent.' });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({ title: 'Error', description: error.message || 'Failed to send reply', variant: 'destructive' });
     },
   });

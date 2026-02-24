@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { X, Clock, User, MapPin, Repeat, Users, Edit2, Check, UserX, Ban, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Clock, User, MapPin, Repeat, Edit2, Check, Ban, AlertCircle, Loader2 } from 'lucide-react';
 import { useUpdateAttendance } from '@/hooks/useRegisterData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -41,7 +41,7 @@ export function LessonDetailSidePanel({
   onClose,
   onEdit,
   onMarkAttendance,
-  onUpdated,
+  onUpdated: _onUpdated,
   teacherColour,
 }: LessonDetailSidePanelProps) {
   const { currentOrg } = useOrg();

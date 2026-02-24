@@ -51,6 +51,7 @@ interface Location {
   is_primary: boolean;
   is_archived: boolean;
   rooms?: Room[];
+  country_code?: string;
 }
 
 const LOCATION_TYPE_ICONS: Record<LocationType, string> = {
@@ -266,7 +267,7 @@ export default function Locations() {
       setLocCity(location.city || '');
       setLocPostcode(location.postcode || '');
       setLocNotes(location.notes || '');
-      setLocCountry((location as any).country_code || currentOrg?.country_code || 'GB');
+      setLocCountry(location.country_code || currentOrg?.country_code || 'GB');
     } else {
       setEditingLocation(null);
       setLocName('');
@@ -497,6 +498,7 @@ export default function Locations() {
             .neq('status', 'cancelled');
 
           const overCapacity = (futureLessons || []).filter(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (l: any) => (l.lesson_participants?.length || 0) > parsedCapacity!
           );
 

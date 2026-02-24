@@ -42,7 +42,7 @@ export function KickstarterHero() {
     if (isDisposableDomain(email)) { toast({ title: "Please use a real email address.", variant: "destructive" }); return; }
     setLoading(true);
     try {
-      const { error } = await supabase.from("kickstarter_signups" as any).insert({ email, name: name || null });
+      const { error } = await supabase.from("kickstarter_signups").insert({ email, name: name || null });
       if (error) {
         if (error.code === "23505") {
           toast({ title: "You're already on the list! We'll be in touch." });

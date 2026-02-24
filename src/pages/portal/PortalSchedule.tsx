@@ -62,7 +62,7 @@ export default function PortalSchedule() {
   } | null>(null);
 
   const { currentOrg } = useOrg();
-  const tz = (currentOrg as any)?.timezone || 'Europe/London';
+  const tz = currentOrg?.timezone || 'Europe/London';
   const { toast } = useToast();
   const { generateParentICalUrl } = useCalendarConnections();
   const { guardianId } = useGuardianId();

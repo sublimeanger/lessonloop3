@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { logger } from '@/lib/logger';
 import { format, addMinutes, addDays, addWeeks, setHours, setMinutes, startOfDay, parseISO, eachDayOfInterval } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
@@ -15,6 +15,7 @@ import { logAudit } from '@/lib/auditLog';
 import { LessonWithDetails, ConflictResult, LessonStatus, LessonType } from './types';
 import { RecurringEditMode } from './RecurringEditDialog';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { getErrorMessage } from '@/lib/error-utils';
 
 interface UseLessonFormProps {
   open: boolean;
@@ -32,7 +33,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
   const { teachers, locations, rooms, students } = useTeachersAndLocations();
   const { checkConflicts } = useConflictDetection();
   const { sendNotesNotification } = useNotesNotification();
-  const { syncLesson, syncLessons } = useCalendarSync();
+  const { syncLessons } = useCalendarSync();
   const { isOnline, guardOffline } = useOnlineStatus();
 
   const [isSaving, setIsSaving] = useState(false);
@@ -136,7 +137,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
     setRecurringEditMode(null);
     conflictCheckRef.current = 0;
     lastCheckKeyRef.current = '';
-  }, [open, lesson, initialDate, initialEndDate, user?.id, orgTimezone, currentOrg?.default_lesson_length_mins]);
+  }, [open, lesson, initialDate, initialEndDate, user?.id, orgTimezone, currentOrg?.default_lesson_length_mins, teachers]);
 
   useEffect(() => {
     if (teachers.length === 1 && !teacherId) {
@@ -453,10 +454,10 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
 
             if (partError) throw partError;
           }
-        } catch (batchError: any) {
+        } catch (batchError: unknown) {
           toast({
             title: 'Error updating lessons',
-            description: `${batchError.message}. Partial updates may have occurred — please check the calendar.`,
+            description: `${getErrorMessage(batchError)}. Partial updates may have occurred — please check the calendar.`,
             variant: 'destructive',
           });
           throw batchError;
@@ -642,8 +643,8 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
             // Fire-and-forget calendar sync for all newly created lessons
             syncLessons(insertedLessons.map(l => l.id), 'create');
           }
-        } catch (batchError: any) {
-          const msg = batchError.message || '';
+        } catch (batchError: unknown) {
+          const msg = getErrorMessage(batchError);
           if (msg.includes('CONFLICT:TEACHER:')) {
             toast({ title: 'Teacher conflict', description: msg.split('CONFLICT:TEACHER:')[1], variant: 'destructive' });
           } else if (msg.includes('CONFLICT:ROOM:')) {
@@ -666,8 +667,8 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
 
       onSaved();
       onClose();
-    } catch (error: any) {
-      const msg = error.message || '';
+    } catch (error: unknown) {
+      const msg = getErrorMessage(error);
       if (msg.includes('CONFLICT:TEACHER:')) {
         toast({ title: 'Teacher conflict', description: msg.split('CONFLICT:TEACHER:')[1], variant: 'destructive' });
       } else if (msg.includes('CONFLICT:ROOM:')) {

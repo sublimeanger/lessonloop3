@@ -38,9 +38,9 @@ const tours: { name: TourName; title: string; description: string; icon: typeof 
 ];
 
 export function HelpToursTab() {
-  const { startTour, hasCompletedTour, resetTours, completedTours } = useTour();
+  const { startTour: _startTour, hasCompletedTour, resetTours, completedTours } = useTour();
 
-  const handleStartTour = (tourName: TourName, path: string) => {
+  const _handleStartTour = (tourName: TourName, path: string) => {
     // Navigate to the page and start the tour
     window.location.href = path;
     // Tour will auto-trigger based on TourTrigger if not completed,

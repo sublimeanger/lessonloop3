@@ -186,7 +186,7 @@ export default function Onboarding() {
     } else if (urlStep !== 'plan' && step === 'plan') {
       setStep('profile');
     }
-  }, [searchParams]);
+  }, [searchParams, step]);
 
   const handleLogout = async () => {
     await signOut();
