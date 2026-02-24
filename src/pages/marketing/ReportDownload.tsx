@@ -6,8 +6,8 @@ export default function ReportDownload() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="text-center space-y-6 p-8">
-        <h1 className="text-3xl font-bold text-foreground">LessonLoop Report</h1>
-        <p className="text-muted-foreground">Competitive Analysis, Feature Audit & Valuation</p>
+        <h1 className="text-3xl font-bold text-foreground">Independent App Review</h1>
+        <p className="text-muted-foreground">Feature Audit, Competitive Analysis & Market Readiness — A–F Grading</p>
         <Button size="lg" onClick={() => generateCompetitiveReport()} className="gap-2">
           <FileDown className="h-5 w-5" />
           Download PDF Report
