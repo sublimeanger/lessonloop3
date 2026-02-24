@@ -20,7 +20,7 @@ import {
   Users,
   Download,
   Eye,
-  Trash2,
+
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ResourceWithShares } from '@/hooks/useResources';

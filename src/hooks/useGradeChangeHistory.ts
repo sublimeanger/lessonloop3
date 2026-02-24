@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
+import { logger } from '@/lib/logger';
 
 export interface GradeChangeRecord {
   id: string;
@@ -24,7 +25,7 @@ export function useGradeChangeHistory(studentInstrumentId: string | undefined) {
   return useQuery({
     queryKey: ['grade-change-history', studentInstrumentId, currentOrg?.id],
     queryFn: async (): Promise<GradeChangeRecord[]> => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('grade_change_history')
         .select(`
           id,
@@ -72,7 +73,7 @@ export async function recordGradeChange({
   changedBy: string;
   reason?: string;
 }) {
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from('grade_change_history')
     .insert({
       org_id: orgId,
@@ -85,7 +86,7 @@ export async function recordGradeChange({
     });
 
   if (error) {
-    console.error('Failed to record grade change:', error);
+    logger.error('Failed to record grade change:', error);
     // Don't throw — grade change history is non-critical
   }
 }

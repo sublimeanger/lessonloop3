@@ -78,6 +78,7 @@ function escapeHtml(str: string): string {
 }
 
 // Preprocess entity chip patterns into HTML spans for use with rehype-raw
+// eslint-disable-next-line react-refresh/only-export-components
 export function preprocessEntityChips(content: string): string {
   return content
     .replace(/\[Invoice:(LL-\d{4}-\d{5})\]/g, (_, num) => {
@@ -108,6 +109,7 @@ export function preprocessEntityChips(content: string): string {
 }
 
 // Parse message content and extract entity references
+// eslint-disable-next-line react-refresh/only-export-components
 export function parseEntityReferences(content: string): Array<{
   type: EntityType;
   id: string;
@@ -213,6 +215,7 @@ export function parseEntityReferences(content: string): Array<{
 }
 
 // Render message content with entity chips inline
+// eslint-disable-next-line react-refresh/only-export-components
 export function renderMessageWithChips(content: string): React.ReactNode[] {
   const entities = parseEntityReferences(content);
   

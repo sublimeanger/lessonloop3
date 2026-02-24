@@ -21,7 +21,7 @@ export function useProactiveAlerts() {
     queryFn: async (): Promise<ProactiveAlert[]> => {
       if (!currentOrg?.id) return [];
 
-      const tz = (currentOrg as any).timezone || 'Europe/London';
+      const tz = currentOrg.timezone || 'Europe/London';
       const now = new Date();
       const todayStr = format(now, 'yyyy-MM-dd'); // for DATE column comparisons (due_date)
       const todayStartUtc = fromZonedTime(startOfDay(now), tz).toISOString();

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useUrgentActions, UrgentAction } from '@/hooks/useUrgentActions';
+import { useUrgentActions } from '@/hooks/useUrgentActions';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { safeGetItem, safeSetItem } from '@/lib/storage';
@@ -27,7 +27,7 @@ function setDismissedStorage(orgId?: string): void {
 }
 
 export function UrgentActionsBar() {
-  const { actions, isLoading, hasActions, totalCount } = useUrgentActions();
+  const { actions, isLoading, hasActions } = useUrgentActions();
   const { currentOrg } = useOrg();
   const orgId = currentOrg?.id;
   const [isDismissed, setIsDismissed] = useState(() => getIsDismissed(orgId));

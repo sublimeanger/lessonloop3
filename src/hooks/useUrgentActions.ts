@@ -111,6 +111,7 @@ export function useUrgentActions() {
 
         // Fetch unreviewed practice logs (for teachers)
         if (isAdmin || isTeacher) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           let query: any = supabase
             .from('practice_logs')
             .select('id', { count: 'exact', head: true })

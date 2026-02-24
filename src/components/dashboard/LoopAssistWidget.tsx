@@ -5,7 +5,6 @@ import { Sparkles, Send, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { useProactiveAlerts } from '@/hooks/useProactiveAlerts';
-import { cn } from '@/lib/utils';
 
 const SUGGESTED_PROMPTS = [
   "What's my schedule today?",

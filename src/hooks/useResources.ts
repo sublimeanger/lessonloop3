@@ -364,6 +364,7 @@ export function useSharedResources() {
         .select('student_id, students:student_id (status, deleted_at)')
         .eq('guardian_id', guardian.id);
       const studentIds = (studentGuardians || [])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .filter((sg: any) => sg.students?.status === 'active' && !sg.students?.deleted_at)
         .map(sg => sg.student_id);
       if (studentIds.length === 0) return [];

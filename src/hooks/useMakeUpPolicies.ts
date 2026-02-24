@@ -80,7 +80,7 @@ export function useMakeUpPolicies() {
         }
       });
     }
-  }, [currentOrg?.id, policies, isLoading, refetch]);
+  }, [currentOrg?.id, policies, isLoading, refetch, toast]);
 
   const updatePolicy = useMutation({
     mutationFn: async (params: { id: string; eligibility?: Eligibility; releases_slot?: boolean }) => {

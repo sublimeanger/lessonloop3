@@ -2,7 +2,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { HelpArticle as HelpArticleType, categoryLabels } from './helpArticles';
-import { cn } from '@/lib/utils';
 
 interface HelpArticleViewProps {
   article: HelpArticleType;

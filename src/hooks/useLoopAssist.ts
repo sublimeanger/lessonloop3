@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { logger } from '@/lib/logger';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -101,7 +101,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
   const contextHashRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pageContext = externalPageContext || { type: 'general' as const };
+  const pageContext = useMemo(() => externalPageContext || { type: 'general' as const }, [externalPageContext]);
 
   // Fetch conversations
   const { data: conversations = [], isLoading: conversationsLoading } = useQuery({

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { logger } from '@/lib/logger';
 import { isValidEmail, isValidPhone } from '@/lib/validation';
 import { stripHtml } from '@/lib/sanitize';
@@ -91,7 +91,7 @@ export function useStudentDetailPage() {
       toast({ title: 'Student not found', variant: 'destructive' });
       navigate('/students');
     }
-  }, [studentQuery.isLoading, studentQuery.isFetched, student, id, currentOrg]);
+  }, [studentQuery.isLoading, studentQuery.isFetched, student, id, currentOrg, navigate, toast]);
 
   // React Query for guardians
   const guardiansQuery = useQuery({
@@ -122,8 +122,8 @@ export function useStudentDetailPage() {
     // Uses default SEMI_STABLE (2 min)
   });
 
-  const guardians = guardiansQuery.data?.guardians ?? [];
-  const allGuardians = guardiansQuery.data?.allGuardians ?? [];
+  const guardians = useMemo(() => guardiansQuery.data?.guardians ?? [], [guardiansQuery.data?.guardians]);
+  const allGuardians = useMemo(() => guardiansQuery.data?.allGuardians ?? [], [guardiansQuery.data?.allGuardians]);
 
   // Invalidation helpers (keep API compatible for consumers)
   const invalidateStudent = () => {
@@ -211,7 +211,7 @@ export function useStudentDetailPage() {
   const lessonsIsFetchingMore = lessonsQuery.isFetchingNextPage;
   const { data: studentInvoices, isLoading: invoicesLoading } = useStudentInvoices(id);
 
-  const fetchGuardianInvites = async () => {
+  const fetchGuardianInvites = useCallback(async () => {
     if (!currentOrg) return;
 
     const guardianEmails = guardians
@@ -249,7 +249,7 @@ export function useStudentDetailPage() {
     });
 
     setGuardianInvites(inviteMap);
-  };
+  }, [currentOrg, guardians]);
 
   const handleCopyInviteLink = async (token: string) => {
     const url = `${window.location.origin}/accept-invite?token=${token}`;
@@ -261,7 +261,7 @@ export function useStudentDetailPage() {
     if (guardians.length > 0) {
       fetchGuardianInvites();
     }
-  }, [guardians, currentOrg?.id]);
+  }, [guardians, currentOrg?.id, fetchGuardianInvites]);
 
   const handleSave = async () => {
     if (!student) return;

@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/lib/error-utils';
 
 interface CalendarConnection {
   id: string;
@@ -157,11 +158,11 @@ export function useCalendarConnections() {
       } else {
         throw new Error('No auth URL returned');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error starting Google OAuth:', error);
       toast({
         title: 'Connection failed',
-        description: error.message || 'Could not connect to Google Calendar',
+        description: getErrorMessage(error),
         variant: 'destructive',
       });
       setIsConnecting(false);

@@ -289,7 +289,7 @@ export function useCalendarActions({
         });
       }
     },
-    [refetch, setLessons, lessons, currentOrg, user, isOnline]
+    [refetch, setLessons, lessons, currentOrg, user, isOnline, syncLessons]
   );
 
   const handleLessonDrop = useCallback(

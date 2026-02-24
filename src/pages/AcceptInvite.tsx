@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { logger } from '@/lib/logger';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -73,17 +73,7 @@ export default function AcceptInvite() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordMismatch, setPasswordMismatch] = useState(false);
-
-  useEffect(() => {
-    if (token) {
-      fetchInvite();
-    } else {
-      setError('Invalid invitation link');
-      setIsLoading(false);
-    }
-  }, [token]);
-
-  const fetchInvite = async () => {
+  const fetchInvite = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -116,7 +106,16 @@ export default function AcceptInvite() {
       setError('Failed to load invitation');
       setIsLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    if (token) {
+      fetchInvite();
+    } else {
+      setError('Invalid invitation link');
+      setIsLoading(false);
+    }
+  }, [token, fetchInvite]);
 
   const acceptInvite = async () => {
     if (!invite || !token) return;

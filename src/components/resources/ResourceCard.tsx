@@ -41,6 +41,7 @@ import { getFileIcon, getFileTypeBadge, formatFileSize } from '@/lib/fileUtils';
 import { ResourcePreviewModal, isPreviewable } from './ResourcePreviewModal';
 import { ResourceDetailModal } from './ResourceDetailModal';
 import { AudioPlayer } from './AudioPlayer';
+import { getErrorMessage } from '@/lib/error-utils';
 
 interface ResourceCardProps {
   resource: ResourceWithShares;
@@ -93,10 +94,10 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
       if (data?.signedUrl) {
         window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Download failed',
-        description: error?.message || 'Could not generate download link. Please try again.',
+        description: getErrorMessage(error) || 'Could not generate download link. Please try again.',
         variant: 'destructive',
       });
     } finally {

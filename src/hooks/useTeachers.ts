@@ -147,7 +147,7 @@ export function useTeacherMutations() {
       if (teacher?.user_id) {
         const { error: memberError } = await supabase
           .from('org_memberships')
-          .update({ status: 'disabled' as any })
+          .update({ status: 'disabled' })
           .eq('org_id', currentOrg.id)
           .eq('user_id', teacher.user_id);
         if (memberError) logger.error('Failed to disable membership:', memberError);
@@ -187,7 +187,7 @@ export function useTeacherMutations() {
       if (teacher?.user_id) {
         const { error: memberError } = await supabase
           .from('org_memberships')
-          .update({ status: 'active' as any })
+          .update({ status: 'active' })
           .eq('org_id', currentOrg.id)
           .eq('user_id', teacher.user_id);
         if (memberError) logger.error('Failed to re-enable membership:', memberError);

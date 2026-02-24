@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import {
   Dialog,
@@ -24,7 +24,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useStudentInstruments } from '@/hooks/useStudentInstruments';
-import { useGradeLevels, getGradesForBoard } from '@/hooks/useInstruments';
+import { useGradeLevels } from '@/hooks/useInstruments';
 
 interface CreateAssignmentModalProps {
   open: boolean;
@@ -75,19 +75,7 @@ export function CreateAssignmentModal({
     );
   })();
 
-  useEffect(() => {
-    if (open && currentOrg?.id) {
-      fetchStudents();
-    }
-  }, [open, currentOrg?.id]);
-
-  useEffect(() => {
-    if (preselectedStudentId) {
-      setStudentId(preselectedStudentId);
-    }
-  }, [preselectedStudentId]);
-
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     if (isAdmin) {
       const { data } = await activeStudentsQuery(currentOrg!.id)
         .order('first_name');
@@ -120,7 +108,21 @@ export function CreateAssignmentModal({
         setStudents([]);
       }
     }
-  };
+  }, [isAdmin, currentOrg, user]);
+
+  useEffect(() => {
+    if (open && currentOrg?.id) {
+      fetchStudents();
+    }
+  }, [open, currentOrg?.id, fetchStudents]);
+
+  useEffect(() => {
+    if (preselectedStudentId) {
+      setStudentId(preselectedStudentId);
+    }
+  }, [preselectedStudentId]);
+
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

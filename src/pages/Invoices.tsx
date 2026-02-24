@@ -40,7 +40,7 @@ export default function Invoices() {
   const [filters, setFilters] = useState<InvoiceFilters>({});
   const [currentPage, setCurrentPage] = useState(1);
   const { data: invoiceResult, isLoading } = useInvoices({ ...filters, page: currentPage });
-  const invoices = invoiceResult?.data ?? [];
+  const invoices = useMemo(() => invoiceResult?.data ?? [], [invoiceResult?.data]);
   const totalCount = invoiceResult?.totalCount ?? 0;
 
   const handleFiltersChange = (newFilters: InvoiceFilters) => {
@@ -170,7 +170,7 @@ export default function Invoices() {
       {/* Inline stats bar */}
       {!isParent && (
         <div className="mb-4" data-tour="invoice-stats">
-          <InvoiceStatsWidget onFilterStatus={(status) => { handleFiltersChange({ ...filters, status: status as any }); }} />
+          <InvoiceStatsWidget onFilterStatus={(status) => { handleFiltersChange({ ...filters, status: status as InvoiceFilters['status'] }); }} />
         </div>
       )}
 

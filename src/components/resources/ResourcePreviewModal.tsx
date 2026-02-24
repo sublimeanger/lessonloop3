@@ -29,14 +29,14 @@ export function ResourcePreviewModal({
   open,
   onOpenChange,
   filePath,
-  fileName,
+  fileName: _fileName,
   fileType,
   title,
 }: ResourcePreviewModalProps) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
+  const { toast: _toast } = useToast();
 
   const previewType = isPreviewable(fileType);
 

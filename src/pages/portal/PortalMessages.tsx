@@ -112,7 +112,7 @@ function ConversationCard({
       const timer = setTimeout(() => markAsRead.mutate(unreadIds), 800);
       return () => clearTimeout(timer);
     }
-  }, [isExpanded, conversation.messages, conversation.unreadCount]);
+  }, [isExpanded, conversation.messages, conversation.unreadCount, markAsRead]);
 
   // Scroll to bottom when expanded
   useEffect(() => {

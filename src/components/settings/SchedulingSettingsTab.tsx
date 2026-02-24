@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { format, addDays, eachDayOfInterval, parseISO } from 'date-fns';
+import { format, eachDayOfInterval, parseISO } from 'date-fns';
 import { getUKHolidayPresets } from '@/lib/holidayPresets';
 import { useClosureDateSettings } from '@/hooks/useClosureDateSettings';
 import { TermManagementCard } from '@/components/settings/TermManagementCard';
@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CalendarIcon, Plus, Trash2, Loader2, Upload, Calendar as CalendarIconSolid, Info, X } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Loader2, Calendar as CalendarIconSolid, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 
@@ -248,10 +248,10 @@ function MakeUpPolicySettings() {
   const { toast } = useToast();
   const [localExpiry, setLocalExpiry] = useState(expiryWeeks);
   const [localMaxCredits, setLocalMaxCredits] = useState<string>(
-    (currentOrg as any)?.max_credits_per_term != null ? String((currentOrg as any).max_credits_per_term) : ''
+    currentOrg?.max_credits_per_term != null ? String(currentOrg?.max_credits_per_term) : ''
   );
   const [localExpiryDays, setLocalExpiryDays] = useState(
-    (currentOrg as any)?.credit_expiry_days ?? 90
+    currentOrg?.credit_expiry_days ?? 90
   );
   const [isSavingCredits, setIsSavingCredits] = useState(false);
 
@@ -261,10 +261,10 @@ function MakeUpPolicySettings() {
 
   useEffect(() => {
     setLocalMaxCredits(
-      (currentOrg as any)?.max_credits_per_term != null ? String((currentOrg as any).max_credits_per_term) : ''
+      currentOrg?.max_credits_per_term != null ? String(currentOrg?.max_credits_per_term) : ''
     );
-    setLocalExpiryDays((currentOrg as any)?.credit_expiry_days ?? 90);
-  }, [(currentOrg as any)?.max_credits_per_term, (currentOrg as any)?.credit_expiry_days]);
+    setLocalExpiryDays(currentOrg?.credit_expiry_days ?? 90);
+  }, [currentOrg?.max_credits_per_term, currentOrg?.credit_expiry_days]);
 
   const handleSaveCreditSettings = async () => {
     if (!currentOrg) return;
@@ -280,7 +280,7 @@ function MakeUpPolicySettings() {
       .update({
         max_credits_per_term: maxVal,
         credit_expiry_days: localExpiryDays,
-      } as any)
+      })
       .eq('id', currentOrg.id);
     setIsSavingCredits(false);
     if (error) {
@@ -293,8 +293,8 @@ function MakeUpPolicySettings() {
 
   const hasCreditsChanged =
     (localMaxCredits.trim() === '' ? null : parseInt(localMaxCredits)) !==
-      ((currentOrg as any)?.max_credits_per_term ?? null) ||
-    localExpiryDays !== ((currentOrg as any)?.credit_expiry_days ?? 90);
+      (currentOrg?.max_credits_per_term ?? null) ||
+    localExpiryDays !== (currentOrg?.credit_expiry_days ?? 90);
 
   if (isLoading) {
     return (
@@ -458,7 +458,7 @@ function MakeUpPolicySettings() {
 
 export function SchedulingSettingsTab() {
   const { currentOrg, refreshOrganisations } = useOrg();
-  const { user } = useAuth();
+  const { user: _user } = useAuth();
   const { toast } = useToast();
   const ukPresets = useMemo(() => getUKHolidayPresets(), []);
 
@@ -468,7 +468,7 @@ export function SchedulingSettingsTab() {
     isLoading,
     addClosureDates: addClosureDatesHook,
     addPreset: addPresetHook,
-    deleteClosure,
+    deleteClosure: _deleteClosure,
     deleteBulk,
     isSaving,
   } = useClosureDateSettings();

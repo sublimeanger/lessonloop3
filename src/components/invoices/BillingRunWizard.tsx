@@ -74,6 +74,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
 
   const hasRateCards = rateCards.length > 0;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getLessonRate = (lesson: any): number => {
     const durationMins = differenceInMinutes(new Date(lesson.end_at), new Date(lesson.start_at));
     return findRateForDuration(durationMins, rateCards, 3000);
@@ -82,15 +83,18 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
   // Group lessons by payer for preview
   const payerGroups = new Map<string, { name: string; lessonCount: number; totalMinor: number; addedLessonIds: Set<string> }>();
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   unbilledLessons.forEach((lesson: any) => {
     const lessonRate = getLessonRate(lesson);
     const participants = lesson.lesson_participants || [];
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     participants.forEach((p: any) => {
       const student = p.student;
       if (!student) return;
 
       const guardianLinks = student.student_guardians || [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const primaryGuardianLink = guardianLinks.find((sg: any) => sg.is_primary_payer);
       const primaryGuardian = primaryGuardianLink?.guardian;
 

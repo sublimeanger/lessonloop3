@@ -315,6 +315,7 @@ export function ActionCard({ proposalId, proposal, onConfirm, onCancel, isLoadin
 }
 
 // Parse ALL action blocks from AI response (supports multi-action responses)
+// eslint-disable-next-line react-refresh/only-export-components
 export function parseActionsFromResponse(content: string): ActionProposalData[] {
   const matches = [...content.matchAll(/```action\s*([\s\S]*?)```/g)];
 
@@ -348,12 +349,14 @@ export function parseActionsFromResponse(content: string): ActionProposalData[] 
 }
 
 /** @deprecated Use parseActionsFromResponse instead */
+// eslint-disable-next-line react-refresh/only-export-components
 export function parseActionFromResponse(content: string): ActionProposalData | null {
   const actions = parseActionsFromResponse(content);
   return actions.length > 0 ? actions[0] : null;
 }
 
 // Remove action block from message content for display
+// eslint-disable-next-line react-refresh/only-export-components
 export function stripActionBlock(content: string): string {
   return content.replace(/```action\s*[\s\S]*?```/g, '').trim();
 }

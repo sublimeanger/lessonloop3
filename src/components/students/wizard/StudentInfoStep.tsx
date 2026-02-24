@@ -50,7 +50,7 @@ export function StudentInfoStep({ data, onChange }: StudentInfoStepProps) {
       defaultApplied.current = true;
       onChange({ ...data, examBoardId: currentOrg.default_exam_board_id });
     }
-  }, [currentOrg?.default_exam_board_id]);
+  }, [currentOrg?.default_exam_board_id, data, onChange]);
 
   const grouped = groupInstrumentsByCategory(instruments || []);
   const availableGrades = getGradesForBoard(

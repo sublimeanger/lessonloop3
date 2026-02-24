@@ -32,7 +32,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Loader2, Plus, Trash2, Clock, CalendarOff, Calendar } from 'lucide-react';
 import {
   useAvailabilityBlocks,
@@ -43,8 +42,8 @@ import {
   useDeleteTimeOffBlock,
   DAYS_OF_WEEK,
   type DayOfWeek,
-  type AvailabilityBlock,
-  type TimeOffBlock,
+
+
 } from '@/hooks/useTeacherAvailability';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { cn } from '@/lib/utils';
@@ -142,7 +141,7 @@ export function TeacherAvailabilityTab({ teacherId, teacherUserId }: TeacherAvai
       }).length;
       setAffectedLessonCount(count);
     })();
-  }, [deleteAvailabilityId, teacherId, currentOrg?.id]);
+  }, [deleteAvailabilityId, teacherId, currentOrg, availabilityBlocks]);
 
   // Group availability by day
   const availabilityByDay = DAYS_OF_WEEK.map(day => ({

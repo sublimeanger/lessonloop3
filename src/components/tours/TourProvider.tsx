@@ -1,8 +1,7 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { safeGetItem, safeSetItem, safeRemoveItem } from '@/lib/storage';
-import Joyride, { CallBackProps, STATUS, Step, EVENTS, ACTIONS } from 'react-joyride';
+import Joyride, { CallBackProps, STATUS, Step, ACTIONS } from 'react-joyride';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 
 export type TourName = 'dashboard' | 'calendar' | 'students' | 'invoices' | 'loopassist';
 
@@ -239,7 +238,7 @@ export function TourProvider({ children }: TourProviderProps) {
   }, [user]);
 
   const handleJoyrideCallback = useCallback((data: CallBackProps) => {
-    const { status, action, type } = data;
+    const { status, action, type: _type } = data;
     const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED];
 
     // Handle finished or skipped statuses - save completion for both

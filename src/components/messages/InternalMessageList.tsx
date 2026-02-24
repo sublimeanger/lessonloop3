@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { Mail, MailOpen, User, Reply as ReplyIcon, MessageSquare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -40,7 +40,7 @@ export function InternalMessageList({ view }: InternalMessageListProps) {
         markRead.mutate(expandedId);
       }
     }
-  }, [expandedId, messages, view]);
+  }, [expandedId, messages, view, markRead]);
 
   const handleReply = async (originalMsg: InternalMessage) => {
     if (!replyBody.trim()) return;

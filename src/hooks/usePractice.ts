@@ -391,7 +391,7 @@ export function useCreateAssignment() {
         start_date: data.start_date || format(new Date(), 'yyyy-MM-dd'),
         end_date: data.end_date || null,
         grade_level_id: data.grade_level_id || null,
-      } as any);
+      });
       if (error) throw error;
     },
     onSuccess: () => {

@@ -81,6 +81,12 @@ export function useHint(hintId: string, autoDismissMs = 5000) {
     }
   }, [hintId, hasSeenHint]);
 
+  const handleDismiss = useCallback(() => {
+    setIsDismissed(true);
+    setIsVisible(false);
+    markHintAsSeen(hintId);
+  }, [hintId, markHintAsSeen]);
+
   useEffect(() => {
     if (isVisible && autoDismissMs > 0) {
       const hideTimer = setTimeout(() => {
@@ -89,13 +95,7 @@ export function useHint(hintId: string, autoDismissMs = 5000) {
 
       return () => clearTimeout(hideTimer);
     }
-  }, [isVisible, autoDismissMs]);
-
-  const handleDismiss = useCallback(() => {
-    setIsDismissed(true);
-    setIsVisible(false);
-    markHintAsSeen(hintId);
-  }, [hintId, markHintAsSeen]);
+  }, [isVisible, autoDismissMs, handleDismiss]);
 
   return {
     isVisible: isVisible && !isDismissed,

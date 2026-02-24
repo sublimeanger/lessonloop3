@@ -139,9 +139,9 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const typedMemberships = (membershipData || []).map((m: any) => ({
+      const typedMemberships = (membershipData || []).map((m) => ({
         ...m,
-        organisation: m.organisation as Organisation,
+        organisation: m.organisation as unknown as Organisation,
       })) as OrgMembership[];
 
       setMemberships(typedMemberships);

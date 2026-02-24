@@ -36,7 +36,7 @@ export function useInstruments() {
   return useQuery({
     queryKey: ['instruments', currentOrg?.id],
     queryFn: async (): Promise<Instrument[]> => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('instruments')
         .select('*')
         .or(`org_id.is.null,org_id.eq.${currentOrg!.id}`)
@@ -55,7 +55,7 @@ export function useExamBoards() {
   return useQuery({
     queryKey: ['exam-boards'],
     queryFn: async (): Promise<ExamBoard[]> => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('exam_boards')
         .select('*')
         .order('sort_order', { ascending: true });
@@ -71,7 +71,7 @@ export function useGradeLevels() {
   return useQuery({
     queryKey: ['grade-levels'],
     queryFn: async (): Promise<GradeLevel[]> => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('grade_levels')
         .select('*')
         .order('sort_order', { ascending: true });
@@ -139,7 +139,7 @@ export function useAddCustomInstrument() {
 
   return useMutation({
     mutationFn: async (data: { name: string; category: string }) => {
-      const { data: result, error } = await (supabase as any)
+      const { data: result, error } = await supabase
         .from('instruments')
         .insert({
           name: data.name.trim(),
@@ -174,7 +174,7 @@ export function useUpdateCustomInstrument() {
 
   return useMutation({
     mutationFn: async ({ id, name, category }: { id: string; name: string; category: string }) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('instruments')
         .update({ name: name.trim(), category })
         .eq('id', id)
@@ -200,7 +200,7 @@ export function useDeleteCustomInstrument() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('instruments')
         .delete()
         .eq('id', id)

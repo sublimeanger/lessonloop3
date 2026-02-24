@@ -272,7 +272,8 @@ export function useTeachersAndLocations() {
           .limit(500)
       ]);
 
-      const teachersList = (teachersResult.data || []).map((t: any) => ({
+      const teachersList = // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (teachersResult.data || []).map((t: any) => ({
         id: t.id,
         name: t.display_name || 'Unknown',
         userId: t.user_id,
@@ -286,6 +287,7 @@ export function useTeachersAndLocations() {
         .eq('status', 'active');
 
       const instrumentSet = new Set<string>();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (teacherInstruments || []).forEach((t: any) => {
         (t.instruments || []).forEach((i: string) => {
           if (i) instrumentSet.add(i);
@@ -296,8 +298,10 @@ export function useTeachersAndLocations() {
       return {
         teachers: teachersList,
         locations: locationResult.data || [],
-        rooms: (roomResult.data || []).map((r: any) => ({ id: r.id, name: r.name, location_id: r.location_id })),
-        students: (studentResult.data || []).map((s: any) => ({
+        rooms: // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (roomResult.data || []).map((r: any) => ({ id: r.id, name: r.name, location_id: r.location_id })),
+        students: // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (studentResult.data || []).map((s: any) => ({
           id: s.id,
           name: `${s.first_name} ${s.last_name}`,
           default_location_id: s.default_location_id,

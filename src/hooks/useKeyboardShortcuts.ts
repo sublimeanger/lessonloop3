@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 
@@ -18,7 +18,7 @@ export function useKeyboardShortcuts() {
   const [searchOpen, setSearchOpen] = useState(false);
 
   // Define shortcuts
-  const shortcuts: Shortcut[] = [
+  const shortcuts: Shortcut[] = useMemo(() => [
     // Global
     {
       key: '?',
@@ -166,7 +166,7 @@ export function useKeyboardShortcuts() {
       },
       displayKey: 'M'
     }
-  ];
+  ], [navigate, location.pathname, isLoopAssistOpen, setLoopAssistOpen]);
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     // Ignore if input, textarea, or contentEditable is focused
@@ -218,7 +218,7 @@ export function useKeyboardShortcuts() {
       event.preventDefault();
       shortcut.action();
     }
-  }, [location.pathname, navigate, isLoopAssistOpen]);
+  }, [location.pathname, isLoopAssistOpen, setLoopAssistOpen, shortcuts]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);

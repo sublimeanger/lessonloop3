@@ -7,6 +7,7 @@ export type RouteAuth = 'public' | 'protected' | 'auth-only' | 'public-auth-redi
 
 export interface RouteConfig {
   path: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   component: LazyExoticComponent<ComponentType<any>> | ComponentType<any>;
   auth: RouteAuth;
   allowedRoles?: AppRole[];

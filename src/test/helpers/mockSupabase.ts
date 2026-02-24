@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Reusable Supabase client mock factory for Vitest tests.
  * Creates a chainable query builder that resolves to configurable test data.

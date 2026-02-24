@@ -72,7 +72,7 @@ export function LoopAssistPreferencesTab() {
 
       const { error } = await supabase
         .from('organisations')
-        .update({ ai_preferences: aiPreferences } as any)
+        .update({ ai_preferences: aiPreferences })
         .eq('id', currentOrg!.id);
       if (error) throw error;
     },
