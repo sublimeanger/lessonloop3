@@ -165,12 +165,6 @@ serve(async (req) => {
         break;
       }
 
-      case "payment_intent.succeeded": {
-        const pi = event.data.object as Stripe.PaymentIntent;
-        await handlePaymentIntentSucceeded(supabase, pi);
-        break;
-      }
-
       case "account.updated": {
         const account = event.data.object as Stripe.Account;
         await handleAccountUpdated(supabase, account);
@@ -609,6 +603,10 @@ async function handleAccountUpdated(supabase: any, account: Stripe.Account) {
 
 // Handle PaymentIntent succeeded (from embedded Payment Element)
 async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe.PaymentIntent) {
+  // Check if this is a BACS payment transitioning from processing → succeeded
+  const bacsHandled = await handleBacsPaymentSucceeded(supabase, paymentIntent);
+  if (bacsHandled) return;
+
   const invoiceId = paymentIntent.metadata?.lessonloop_invoice_id;
   const installmentId = paymentIntent.metadata?.lessonloop_installment_id || null;
   const payRemaining = paymentIntent.metadata?.lessonloop_pay_remaining === "true";
@@ -662,6 +660,12 @@ async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe
     return data?.org_id;
   })());
 
+  // Detect actual payment method (card, BACS, bank transfer)
+  let piPaymentMethod = "card";
+  const pmType = paymentIntent.charges?.data?.[0]?.payment_method_details?.type;
+  if (pmType === "bacs_debit") piPaymentMethod = "bacs_debit";
+  else if (pmType === "bank_transfer") piPaymentMethod = "bank_transfer";
+
   // Record the payment
   const { data: paymentRecord, error: paymentError } = await supabase
     .from("payments")
@@ -669,7 +673,7 @@ async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe
       invoice_id: invoiceId,
       org_id: resolvedOrgId,
       amount_minor: paymentIntent.amount,
-      method: "card",
+      method: piPaymentMethod,
       provider: "stripe",
       provider_reference: paymentIntent.id,
       paid_at: new Date().toISOString(),
@@ -978,19 +982,19 @@ async function handlePaymentIntentProcessing(supabase: any, pi: Stripe.PaymentIn
   log(`Payment created in processing state for PI ${truncate(pi.id)}`);
 }
 
-async function handlePaymentIntentSucceeded(supabase: any, pi: Stripe.PaymentIntent) {
+async function handleBacsPaymentSucceeded(supabase: any, pi: Stripe.PaymentIntent): Promise<boolean> {
   // Only relevant for delayed payment methods (BACS)
-  // Card payments are handled via checkout.session.completed
+  // Card payments are handled via the main handlePaymentIntentSucceeded
   const { data: payment } = await supabase
     .from("payments")
     .select("id, invoice_id, status")
     .eq("provider_reference", pi.id)
     .maybeSingle();
 
-  if (!payment) return;
+  if (!payment) return false;
 
   // Only transition from processing → succeeded
-  if (payment.status !== "processing") return;
+  if (payment.status !== "processing") return false;
 
   await supabase
     .from("payments")
@@ -1021,6 +1025,7 @@ async function handlePaymentIntentSucceeded(supabase: any, pi: Stripe.PaymentInt
 
   await supabase.from("invoices").update(updateData).eq("id", payment.invoice_id);
   log(`BACS payment ${truncate(payment.id)} succeeded, invoice updated`);
+  return true;
 }
 
 // ── Shared Helpers ─────────────────────────────────────────
