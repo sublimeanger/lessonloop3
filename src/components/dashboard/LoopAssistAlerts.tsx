@@ -1,41 +1,21 @@
-import { useState } from 'react';
-import { AlertTriangle, CircleAlert, Sparkles, X } from 'lucide-react';
+import { AlertTriangle, CircleAlert, Sparkles, X, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProactiveAlerts, ProactiveAlert } from '@/hooks/useProactiveAlerts';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
+import { useBannerDismissals } from '@/hooks/useBannerDismissals';
 import { cn } from '@/lib/utils';
-
-const DISMISS_KEY = 'll_alerts_dismissed';
-
-function getDismissed(): Set<string> {
-  try {
-    const raw = sessionStorage.getItem(DISMISS_KEY);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch { return new Set(); }
-}
-
-function setDismissed(set: Set<string>) {
-  sessionStorage.setItem(DISMISS_KEY, JSON.stringify([...set]));
-}
 
 export function LoopAssistAlerts() {
   const { alerts } = useProactiveAlerts();
   const { openDrawerWithMessage } = useLoopAssistUI();
-  const [dismissed, setDismissedState] = useState(getDismissed);
+  const { isDismissed, dismissForSession, dismissPermanently } = useBannerDismissals();
 
   const actionableAlerts = alerts
     .filter(a => a.severity === 'urgent' || a.severity === 'warning')
-    .filter(a => !dismissed.has(a.type))
+    .filter(a => !isDismissed(a.type))
     .slice(0, 2);
 
   if (actionableAlerts.length === 0) return null;
-
-  const dismiss = (type: string) => {
-    const next = new Set(dismissed);
-    next.add(type);
-    setDismissed(next);
-    setDismissedState(next);
-  };
 
   return (
     <div className="space-y-2">
@@ -45,10 +25,13 @@ export function LoopAssistAlerts() {
           alert={alert}
           onAction={() => {
             if (alert.suggestedAction) {
+              // Auto-dismiss this alert when the user takes action
+              dismissForSession(alert.type);
               openDrawerWithMessage(alert.suggestedAction);
             }
           }}
-          onDismiss={() => dismiss(alert.type)}
+          onDismiss={() => dismissForSession(alert.type)}
+          onDismissForever={() => dismissPermanently(alert.type)}
         />
       ))}
     </div>
@@ -59,10 +42,12 @@ function AlertRow({
   alert,
   onAction,
   onDismiss,
+  onDismissForever,
 }: {
   alert: ProactiveAlert;
   onAction: () => void;
   onDismiss: () => void;
+  onDismissForever: () => void;
 }) {
   const isUrgent = alert.severity === 'urgent';
 
@@ -95,6 +80,15 @@ function AlertRow({
           <span className="sm:hidden">Fix</span>
         </Button>
       )}
+
+      <button
+        onClick={onDismissForever}
+        className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        aria-label="Don't show again"
+      >
+        <EyeOff className="h-3 w-3" />
+        <span>Don't show</span>
+      </button>
 
       <button
         onClick={onDismiss}

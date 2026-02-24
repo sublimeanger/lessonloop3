@@ -5,7 +5,7 @@ import { Sparkles, Send, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { useProactiveAlerts } from '@/hooks/useProactiveAlerts';
-import { cn } from '@/lib/utils';
+import { useBannerDismissals } from '@/hooks/useBannerDismissals';
 
 const SUGGESTED_PROMPTS = [
   "What's my schedule today?",
@@ -17,9 +17,11 @@ export function LoopAssistWidget() {
   const [input, setInput] = useState('');
   const { openDrawerWithMessage } = useLoopAssistUI();
   const { alerts } = useProactiveAlerts();
+  const { isDismissed } = useBannerDismissals();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const topAlert = alerts[0];
+  // Show first non-dismissed alert in the widget
+  const topAlert = alerts.find(a => !isDismissed(a.type));
 
   const handleSend = () => {
     if (!input.trim()) return;

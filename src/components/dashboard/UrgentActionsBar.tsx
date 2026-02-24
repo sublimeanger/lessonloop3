@@ -1,43 +1,18 @@
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useUrgentActions, UrgentAction } from '@/hooks/useUrgentActions';
+import { useUrgentActions } from '@/hooks/useUrgentActions';
+import { useBannerDismissals } from '@/hooks/useBannerDismissals';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
-import { safeGetItem, safeSetItem } from '@/lib/storage';
-import { useOrg } from '@/contexts/OrgContext';
 
-const DISMISS_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
-
-function getDismissKey(orgId?: string): string {
-  return orgId ? `urgent_actions_dismissed_${orgId}` : 'urgent_actions_dismissed';
-}
-
-function getIsDismissed(orgId?: string): boolean {
-  const raw = safeGetItem(getDismissKey(orgId));
-  if (!raw) return false;
-  const timestamp = Number(raw);
-  if (isNaN(timestamp)) return false;
-  return Date.now() - timestamp < DISMISS_TTL_MS;
-}
-
-function setDismissedStorage(orgId?: string): void {
-  safeSetItem(getDismissKey(orgId), String(Date.now()));
-}
+const BAR_KEY = 'urgent_actions_bar';
 
 export function UrgentActionsBar() {
-  const { actions, isLoading, hasActions, totalCount } = useUrgentActions();
-  const { currentOrg } = useOrg();
-  const orgId = currentOrg?.id;
-  const [isDismissed, setIsDismissed] = useState(() => getIsDismissed(orgId));
+  const { actions, isLoading, hasActions } = useUrgentActions();
+  const { isDismissed, dismissForSession, dismissPermanently } = useBannerDismissals();
 
-  const handleDismiss = () => {
-    setIsDismissed(true);
-    setDismissedStorage(orgId);
-  };
-
-  if (isLoading || !hasActions || isDismissed) return null;
+  if (isLoading || !hasActions || isDismissed(BAR_KEY)) return null;
 
   const summaryParts = actions.map(
     (a) => `${a.count} ${a.label.toLowerCase()}`
@@ -67,11 +42,19 @@ export function UrgentActionsBar() {
               ))}
             </span>
           </div>
+          <button
+            onClick={() => dismissPermanently(BAR_KEY)}
+            className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[11px] text-warning/70 transition-colors hover:bg-warning/20 hover:text-warning-foreground"
+            aria-label="Don't show again"
+          >
+            <EyeOff className="h-3 w-3" />
+            <span>Don't show</span>
+          </button>
           <Button
             variant="ghost"
             size="icon"
             className="h-11 w-11 shrink-0 text-warning hover:bg-warning/20 hover:text-warning-foreground"
-            onClick={handleDismiss}
+            onClick={() => dismissForSession(BAR_KEY)}
             aria-label="Dismiss"
           >
             <X className="h-3.5 w-3.5" />
