@@ -51,14 +51,14 @@ export function StudentInfoCard({
     <SectionErrorBoundary name="Overview">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <CardTitle>Student Information</CardTitle>
               <CardDescription>Personal details and contact information</CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <CreditBalanceBadge studentId={student.id} />
-              <Badge variant={student.status === 'active' ? 'default' : 'secondary'}>{student.status}</Badge>
+              <Badge variant={student.status === 'active' ? 'success' : 'secondary'} className="capitalize">{student.status}</Badge>
               {(() => {
                 const checks = [
                   { label: 'Email', done: !!student.email },
@@ -72,7 +72,7 @@ export function StudentInfoCard({
                 if (completed < checks.length) {
                   const missing = checks.filter(c => !c.done).map(c => c.label).join(', ');
                   return (
-                    <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs" title={`Missing: ${missing}`}>
+                    <Badge variant="outline" className="text-warning border-warning/40 text-xs" title={`Missing: ${missing}`}>
                       {completed}/{checks.length} complete
                     </Badge>
                   );
@@ -97,30 +97,6 @@ export function StudentInfoCard({
                   {isEditing ? 'Cancel' : 'Edit'}
                 </Button>
               )}
-            </div>
-            <div className="flex items-center gap-2">
-              <CreditBalanceBadge studentId={student.id} />
-              <Badge variant={student.status === 'active' ? 'default' : 'secondary'}>{student.status}</Badge>
-              {(() => {
-                const checks = [
-                  { label: 'Email', done: !!student.email },
-                  { label: 'Phone', done: !!student.phone },
-                  { label: 'DOB', done: !!student.dob },
-                  { label: 'Location', done: !!student.default_location_id },
-                  { label: 'Teacher', done: !!student.default_teacher_id },
-                  { label: 'Rate card', done: !!student.default_rate_card_id },
-                ];
-                const completed = checks.filter(c => c.done).length;
-                if (completed < checks.length) {
-                  const missing = checks.filter(c => !c.done).map(c => c.label).join(', ');
-                  return (
-                    <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs" title={`Missing: ${missing}`}>
-                      {completed}/{checks.length} complete
-                    </Badge>
-                  );
-                }
-                return null;
-              })()}
             </div>
           </div>
         </CardHeader>
@@ -191,7 +167,7 @@ export function StudentInfoCard({
         </CardContent>
       </Card>
 
-      <div className="mt-6">
+      <div className="mt-6 xl:max-w-xl">
         <TeachingDefaultsCard
           studentId={student.id}
           defaultLocationId={student.default_location_id}

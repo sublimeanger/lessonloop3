@@ -90,7 +90,7 @@ export function MappingStep({
           </Alert>
         )}
 
-        <div className="border rounded-lg overflow-hidden">
+        <div className="overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -112,7 +112,7 @@ export function MappingStep({
                       value={mapping.target_field || "none"}
                       onValueChange={(value) => updateMapping(mapping.csv_header, value)}
                     >
-                      <SelectTrigger className="w-[200px]">
+                      <SelectTrigger className="w-[180px] sm:w-[220px]">
                         <SelectValue placeholder="Select field..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -174,7 +174,7 @@ export function MappingStep({
               <div className="ml-6 space-y-2">
                 <Label>Assign lessons to teacher:</Label>
                 <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
-                  <SelectTrigger className="w-[250px]">
+                  <SelectTrigger className="w-full sm:w-[280px]">
                     <SelectValue placeholder="Select teacher..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -188,7 +188,7 @@ export function MappingStep({
           </div>
         )}
 
-        <div className="flex justify-between">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <Button variant="outline" onClick={onBack}>Back</Button>
           <Button onClick={onNext} disabled={!canProceedWithImport || isLoading}>
             {isLoading ? (
