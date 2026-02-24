@@ -43,7 +43,7 @@ export function OrgMembersTab() {
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
@@ -54,7 +54,7 @@ export function OrgMembersTab() {
               </CardDescription>
             </div>
             {isOrgAdmin && (
-              <Button onClick={() => setIsInviteDialogOpen(true)} className="gap-2">
+              <Button onClick={() => setIsInviteDialogOpen(true)} className="w-full gap-2 sm:w-auto">
                 <UserPlus className="h-4 w-4" />
                 Invite Member
               </Button>
@@ -71,13 +71,13 @@ export function OrgMembersTab() {
             return (
               <div
                 key={member.id}
-                className="flex items-center gap-4 rounded-lg border bg-card p-4"
+                className="flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:gap-4"
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
                   {member.profile?.full_name?.[0] || member.profile?.email?.[0] || '?'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
                     <span className="font-medium truncate">
                       {member.profile?.full_name || member.profile?.email || 'Unknown'}
                     </span>
@@ -95,14 +95,14 @@ export function OrgMembersTab() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
                   {canEditRole ? (
                     <Select
                       value={member.role}
                       onValueChange={(value) => changeRole({ memberId: member.id, newRole: value as AppRole })}
                       disabled={updatingMember === member.id}
                     >
-                      <SelectTrigger className="w-28">
+                      <SelectTrigger className="h-11 w-full sm:w-28">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -123,8 +123,9 @@ export function OrgMembersTab() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="text-destructive hover:text-destructive"
+                          className="h-11 w-11 text-destructive hover:text-destructive sm:h-10 sm:w-10"
                           disabled={updatingMember === member.id}
+                          aria-label={`Disable ${member.profile?.full_name || member.profile?.email || 'member'} access`}
                         >
                           <UserMinus className="h-4 w-4" />
                         </Button>

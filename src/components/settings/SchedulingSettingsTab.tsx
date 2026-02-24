@@ -344,7 +344,7 @@ function MakeUpPolicySettings() {
                           updatePolicy.mutate({ id: policy.id, eligibility: val as Eligibility })
                         }
                       >
-                        <SelectTrigger className="w-[180px] bg-background">
+                        <SelectTrigger className="h-11 w-full bg-background sm:w-[180px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-popover z-50">
@@ -693,7 +693,7 @@ export function SchedulingSettingsTab() {
 
       {/* Add Closure Modal */}
       <Dialog open={isAddModalOpen} onOpenChange={resetModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-md sm:rounded-lg sm:border sm:p-6">
           <DialogHeader>
             <DialogTitle>Add Closure Dates</DialogTitle>
             <DialogDescription>Add single dates, date ranges, or import UK school holidays</DialogDescription>
@@ -866,7 +866,7 @@ export function SchedulingSettingsTab() {
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={resetModal}>Cancel</Button>
             <Button
               onClick={

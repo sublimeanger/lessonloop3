@@ -119,7 +119,7 @@ export function TermManagementCard() {
                 Define your teaching terms for termly billing and reporting
               </CardDescription>
             </div>
-            <Button onClick={openAdd} className="gap-2">
+            <Button onClick={openAdd} className="w-full gap-2 sm:w-auto">
               <Plus className="h-4 w-4" />
               Add Term
             </Button>
@@ -165,7 +165,7 @@ export function TermManagementCard() {
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(term)}>
+                      <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-9" aria-label={`Edit term ${term.name}`} onClick={() => openEdit(term)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <AlertDialog>
@@ -173,7 +173,8 @@ export function TermManagementCard() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-destructive hover:text-destructive"
+                            className="min-h-11 text-destructive hover:text-destructive sm:min-h-9"
+                            aria-label={`Delete term ${term.name}`}
                             disabled={deleteTerm.isPending}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -208,7 +209,7 @@ export function TermManagementCard() {
           <div className="mt-4 flex items-center gap-2 rounded-lg border border-dashed p-3">
             <span className="text-sm text-muted-foreground">Quick-add UK academic year:</span>
             <Select value={presetYear} onValueChange={setPresetYear}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="h-11 w-full sm:w-[140px]">
                 <SelectValue placeholder="Select year" />
               </SelectTrigger>
               <SelectContent>
@@ -233,7 +234,7 @@ export function TermManagementCard() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-md sm:rounded-lg sm:border sm:p-6">
           <DialogHeader>
             <DialogTitle>{editingTerm ? 'Edit Term' : 'Add Term'}</DialogTitle>
             <DialogDescription>
@@ -268,7 +269,7 @@ export function TermManagementCard() {
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancel
             </Button>
@@ -277,7 +278,7 @@ export function TermManagementCard() {
               disabled={isSaving || !form.name.trim() || !form.start_date || !form.end_date}
             >
               {isSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              {editingTerm ? 'Save Changes' : 'Create Term'}
+              {editingTerm ? 'Save changes' : 'Create Term'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useOrg } from '@/contexts/OrgContext';
-import { useFeatureGate, Feature, PLAN_NAMES } from '@/hooks/useFeatureGate';
+import { useFeatureGate, Feature } from '@/hooks/useFeatureGate';
 import { Banknote, Clock, TrendingUp, ChevronRight, Calendar, XCircle, MapPin, Lock, Sparkles, FileBarChart } from 'lucide-react';
 
 interface Report {
@@ -90,7 +90,7 @@ function ReportCard({ report }: { report: Report }) {
 
   if (!isAvailable) {
     return (
-      <Card className="h-full opacity-60">
+      <Card className="h-full rounded-xl border bg-card opacity-60">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
@@ -107,7 +107,7 @@ function ReportCard({ report }: { report: Report }) {
 
   if (isLocked) {
     return (
-      <Card className="h-full border-dashed opacity-80">
+      <Card className="h-full rounded-xl border border-dashed bg-card opacity-80">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
@@ -134,7 +134,7 @@ function ReportCard({ report }: { report: Report }) {
 
   return (
     <Link to={report.href}>
-      <Card className="h-full min-h-[180px] transition-all hover:border-primary/50 hover:shadow-md cursor-pointer">
+      <Card className="h-full min-h-[180px] cursor-pointer rounded-xl border bg-card transition-shadow hover:border-primary/50 hover:shadow-card-hover">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">

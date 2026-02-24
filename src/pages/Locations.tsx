@@ -631,17 +631,18 @@ export default function Locations() {
               placeholder="Search locations..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9"
+              className="h-11 pl-9"
             />
           </div>
 
-          <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-0.5 w-fit overflow-x-auto">
+          <div className="flex w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted/50 p-1 sm:w-fit">
             {FILTER_PILLS.map((pill) => (
               <button
+                type="button"
                 key={pill.value}
                 onClick={() => setFilterTab(pill.value)}
                 className={cn(
-                  'rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all',
+                  'min-h-11 rounded-md px-3 py-2 text-xs font-medium whitespace-nowrap transition-all',
                   filterTab === pill.value
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground',
@@ -654,9 +655,10 @@ export default function Locations() {
           </div>
           {archivedCount > 0 && (
             <button
+              type="button"
               onClick={() => setShowArchived(v => !v)}
               className={cn(
-                'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
+                'min-h-11 inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium transition-all',
                 showArchived ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
               )}
             >
@@ -713,7 +715,7 @@ export default function Locations() {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                            className="inline-flex min-h-11 items-center gap-1 px-1 text-xs text-muted-foreground transition-colors hover:text-foreground shrink-0"
                           >
                             <MapPin className="h-3 w-3" />
                             Directions
@@ -741,33 +743,35 @@ export default function Locations() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-11 w-11 sm:h-8 sm:w-8"
+                          aria-label={location.is_primary ? 'Primary location' : `Set ${location.name} as primary location`}
                           title={location.is_primary ? 'Primary location' : 'Set as primary'}
                           onClick={(e) => { e.stopPropagation(); handleSetPrimary(location.id); }}
                         >
                           <Star className={cn('h-4 w-4', location.is_primary && 'fill-primary text-primary')} />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openLocationDialog(location)} disabled={location.is_archived}>
+                        <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-8 sm:w-8" aria-label={`Edit ${location.name}`} onClick={() => openLocationDialog(location)} disabled={location.is_archived}>
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-11 w-11 sm:h-8 sm:w-8"
+                          aria-label={location.is_archived ? `Restore ${location.name}` : `Archive ${location.name}`}
                           title={location.is_archived ? 'Restore location' : 'Archive location'}
                           onClick={() => handleArchiveLocation(location)}
                         >
                           {location.is_archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                         </Button>
                         {location.is_archived && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => initiateDeleteLocation(location)}>
+                          <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-8 sm:w-8" aria-label={`Delete ${location.name}`} onClick={() => initiateDeleteLocation(location)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
                       </>
                     )}
                     <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
+                      <Button variant="ghost" size="sm" className="min-h-11 gap-1.5 text-xs sm:min-h-8">
                         <DoorOpen className="h-4 w-4" />
                         <span className="hidden sm:inline">{location.rooms?.length || 0} Room{(location.rooms?.length || 0) !== 1 ? 's' : ''}</span>
                         <span className="sm:hidden">{location.rooms?.length || 0}</span>
@@ -783,7 +787,7 @@ export default function Locations() {
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Rooms</h4>
                       {isOrgAdmin && (
-                        <Button variant="outline" size="sm" onClick={() => openRoomDialog(location.id)} className="gap-1 h-7 text-xs">
+                        <Button variant="outline" size="sm" onClick={() => openRoomDialog(location.id)} className="h-11 gap-1 text-xs sm:h-8">
                           <Plus className="h-3 w-3" />
                           Add Room
                         </Button>
@@ -794,7 +798,7 @@ export default function Locations() {
                         <DoorOpen className="h-6 w-6 text-muted-foreground" />
                         <p className="text-xs text-muted-foreground">No rooms yet. Add rooms to schedule lessons in specific spaces.</p>
                         {isOrgAdmin && (
-                          <Button variant="outline" size="sm" onClick={() => openRoomDialog(location.id)} className="gap-1 h-7 text-xs">
+                          <Button variant="outline" size="sm" onClick={() => openRoomDialog(location.id)} className="h-11 gap-1 text-xs sm:h-8">
                             <Plus className="h-3 w-3" />
                             Add Room
                           </Button>
@@ -817,10 +821,10 @@ export default function Locations() {
                             </div>
                             {isOrgAdmin && (
                               <div className="flex gap-0.5 shrink-0">
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openRoomDialog(location.id, room)}>
+                                <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-8 sm:w-8" aria-label={`Edit room ${room.name}`} onClick={() => openRoomDialog(location.id, room)}>
                                   <Edit className="h-3 w-3" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => initiateDeleteRoom(room)}>
+                                <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-8 sm:w-8" aria-label={`Delete room ${room.name}`} onClick={() => initiateDeleteRoom(room)}>
                                   <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
@@ -839,7 +843,7 @@ export default function Locations() {
 
       {/* Location Dialog */}
       <Dialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto">
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-lg sm:border sm:p-6">
           <DialogHeader>
             <DialogTitle>{editingLocation ? 'Edit Location' : 'Add Location'}</DialogTitle>
             <DialogDescription>Configure your teaching venue details.</DialogDescription>
@@ -905,10 +909,10 @@ export default function Locations() {
               <p className={cn('text-[11px] text-right', locNotes.length > 500 ? 'text-destructive' : 'text-muted-foreground')}>{locNotes.length}/500</p>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => setIsLocationDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSaveLocation} disabled={isLocationSaving}>
-              {isLocationSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : editingLocation ? 'Update' : 'Add Location'}
+              {isLocationSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : editingLocation ? 'Save changes' : 'Add Location'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -916,7 +920,7 @@ export default function Locations() {
 
       {/* Room Dialog */}
       <Dialog open={isRoomDialogOpen} onOpenChange={setIsRoomDialogOpen}>
-        <DialogContent>
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg sm:border sm:p-6">
           <DialogHeader>
             <DialogTitle>{editingRoom ? 'Edit Room' : 'Add Room'}</DialogTitle>
             <DialogDescription>Add a room within this location.</DialogDescription>
@@ -931,10 +935,10 @@ export default function Locations() {
               <Input type="number" min="1" step="1" value={roomCapacity} onChange={(e) => setRoomCapacity(e.target.value)} placeholder="4" />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => setIsRoomDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSaveRoom} disabled={isRoomSaving}>
-              {isRoomSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : editingRoom ? 'Update' : 'Add Room'}
+              {isRoomSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : editingRoom ? 'Save changes' : 'Add Room'}
             </Button>
           </DialogFooter>
         </DialogContent>

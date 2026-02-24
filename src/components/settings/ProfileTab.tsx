@@ -204,7 +204,7 @@ export function ProfileTab() {
     <div className="space-y-6">
       {/* Email Change Dialog */}
       <Dialog open={showEmailDialog} onOpenChange={(open) => { setShowEmailDialog(open); if (!open) setNewEmail(''); }}>
-        <DialogContent>
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-md sm:rounded-lg sm:border sm:p-6">
           <DialogHeader>
             <DialogTitle>Change email address</DialogTitle>
             <DialogDescription>
@@ -228,7 +228,7 @@ export function ProfileTab() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => setShowEmailDialog(false)}>
               Cancel
             </Button>

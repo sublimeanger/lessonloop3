@@ -55,24 +55,26 @@ function ScrollableTabBar({ initialTab, isOrgAdmin }: { initialTab: string; isOr
     return () => el.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const tabTriggerClass = 'min-h-11 shrink-0 px-3 text-xs sm:min-h-9 sm:text-sm';
+
   const tabs = (
     <>
-      <TabsTrigger value="profile">Profile</TabsTrigger>
-      <TabsTrigger value="organisation">Organisation</TabsTrigger>
-      <TabsTrigger value="branding">Branding</TabsTrigger>
-      {isOrgAdmin && <TabsTrigger value="members">Members</TabsTrigger>}
-      {isOrgAdmin && <TabsTrigger value="scheduling">Scheduling</TabsTrigger>}
-      {isOrgAdmin && <TabsTrigger value="audit">Audit Log</TabsTrigger>}
-      {isOrgAdmin && <TabsTrigger value="privacy">Privacy &amp; GDPR</TabsTrigger>}
-      {isOrgAdmin && <TabsTrigger value="rate-cards">Rate Cards</TabsTrigger>}
-      {isOrgAdmin && <TabsTrigger value="music">Music</TabsTrigger>}
-      {isOrgAdmin && <TabsTrigger value="messaging">Messaging</TabsTrigger>}
-      <TabsTrigger value="availability">Availability</TabsTrigger>
-      <TabsTrigger value="calendar">Calendar Sync</TabsTrigger>
-      {isOrgAdmin && <TabsTrigger value="billing">Billing</TabsTrigger>}
-      {isOrgAdmin && <TabsTrigger value="looopassist">LoopAssist AI</TabsTrigger>}
-      <TabsTrigger value="notifications">Notifications</TabsTrigger>
-      <TabsTrigger value="help-tours">Help &amp; Tours</TabsTrigger>
+      <TabsTrigger value="profile" className={tabTriggerClass}>Profile</TabsTrigger>
+      <TabsTrigger value="organisation" className={tabTriggerClass}>Organisation</TabsTrigger>
+      <TabsTrigger value="branding" className={tabTriggerClass}>Branding</TabsTrigger>
+      {isOrgAdmin && <TabsTrigger value="members" className={tabTriggerClass}>Members</TabsTrigger>}
+      {isOrgAdmin && <TabsTrigger value="scheduling" className={tabTriggerClass}>Scheduling</TabsTrigger>}
+      {isOrgAdmin && <TabsTrigger value="audit" className={tabTriggerClass}>Audit Log</TabsTrigger>}
+      {isOrgAdmin && <TabsTrigger value="privacy" className={tabTriggerClass}>Privacy &amp; GDPR</TabsTrigger>}
+      {isOrgAdmin && <TabsTrigger value="rate-cards" className={tabTriggerClass}>Rate Cards</TabsTrigger>}
+      {isOrgAdmin && <TabsTrigger value="music" className={tabTriggerClass}>Music</TabsTrigger>}
+      {isOrgAdmin && <TabsTrigger value="messaging" className={tabTriggerClass}>Messaging</TabsTrigger>}
+      <TabsTrigger value="availability" className={tabTriggerClass}>Availability</TabsTrigger>
+      <TabsTrigger value="calendar" className={tabTriggerClass}>Calendar Sync</TabsTrigger>
+      {isOrgAdmin && <TabsTrigger value="billing" className={tabTriggerClass}>Billing</TabsTrigger>}
+      {isOrgAdmin && <TabsTrigger value="looopassist" className={tabTriggerClass}>LoopAssist AI</TabsTrigger>}
+      <TabsTrigger value="notifications" className={tabTriggerClass}>Notifications</TabsTrigger>
+      <TabsTrigger value="help-tours" className={tabTriggerClass}>Help &amp; Tours</TabsTrigger>
     </>
   );
 
@@ -134,7 +136,7 @@ function AvailabilityTabWithSelector({ isOrgAdmin }: { isOrgAdmin: boolean }) {
 }
 
 export default function Settings() {
-  usePageMeta('Settings — LessonLoop', 'Manage your account, organisation, and subscription settings');
+  usePageMeta('Settings | LessonLoop', 'Manage your account, organisation, and subscription settings');
   const [searchParams, setSearchParams] = useSearchParams();
   const { isOrgAdmin } = useOrg();
   const adminTabs = ['members', 'scheduling', 'audit', 'privacy', 'rate-cards', 'music', 'messaging', 'billing', 'looopassist'];
