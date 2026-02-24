@@ -20,7 +20,7 @@ export function SettingsLayout({
   const showContent = activeTab !== null;
 
   return (
-    <div className="flex gap-6 min-h-0">
+    <div className="flex gap-6 min-h-0 max-w-5xl">
       {/* Desktop sidebar — always visible */}
       <SettingsSidebar
         activeTab={activeTab ?? 'profile'}
@@ -29,7 +29,7 @@ export function SettingsLayout({
       />
 
       {/* Main content area */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 max-w-3xl">
         {/* Mobile: show nav list OR content, not both */}
         <div className="md:hidden">
           {!showContent ? (
