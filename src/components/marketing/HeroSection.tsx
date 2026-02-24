@@ -1,10 +1,11 @@
 import { motion, useMotionValue, useTransform, useSpring } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Play, Calendar, Clock, CheckCircle2, Bell, X, Globe, CreditCard } from "lucide-react";
+import { ChevronRight, Play, Calendar, Clock, CheckCircle2, Bell, X, Globe, CreditCard, LayoutDashboard } from "lucide-react";
 import { useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { dashboardHeroHd, dashboardHero } from "@/assets/marketing";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Word-by-word animation variants
 const containerVariants = {
@@ -70,6 +71,9 @@ const notifications = [
 
 export function HeroSection() {
   const isMobile = useIsMobile();
+  const { user, isInitialised, isParent } = useAuth();
+  const isLoggedIn = isInitialised && !!user;
+  const dashboardHref = isParent ? "/portal/home" : "/dashboard";
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   
@@ -251,17 +255,26 @@ export function HeroSection() {
             transition={{ duration: 0.6, delay: 1 }}
             className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <Link to="/signup">
+            <Link to={isLoggedIn ? dashboardHref : "/signup"}>
               <motion.div
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <Button 
-                  size="xl" 
+                <Button
+                  size="xl"
                   className="bg-gradient-to-r from-teal to-teal-dark text-white hover:from-teal-dark hover:to-teal font-bold shadow-2xl shadow-teal/20 px-10 h-14 text-lg"
                 >
-                  Start free trial
-                  <ChevronRight className="w-5 h-5 ml-1" />
+                  {isLoggedIn ? (
+                    <>
+                      <LayoutDashboard className="w-5 h-5 mr-2" />
+                      Go to Dashboard
+                    </>
+                  ) : (
+                    <>
+                      Start free trial
+                      <ChevronRight className="w-5 h-5 ml-1" />
+                    </>
+                  )}
                 </Button>
               </motion.div>
             </Link>
@@ -445,10 +458,19 @@ export function HeroSection() {
             <p className="text-muted-foreground mb-6">
               We'll let you know when our demo video is ready.
             </p>
-            <Link to="/signup">
+            <Link to={isLoggedIn ? dashboardHref : "/signup"}>
               <Button size="lg" className="bg-gradient-to-r from-teal to-teal-dark text-white hover:from-teal-dark hover:to-teal font-bold">
-                Start free trial instead
-                <ChevronRight className="w-4 h-4 ml-1" />
+                {isLoggedIn ? (
+                  <>
+                    <LayoutDashboard className="w-4 h-4 mr-2" />
+                    Go to Dashboard
+                  </>
+                ) : (
+                  <>
+                    Start free trial instead
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </>
+                )}
               </Button>
             </Link>
           </motion.div>
