@@ -108,7 +108,7 @@ export function TeachingDefaultsCard({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Teaching Defaults</CardTitle>
+          <CardTitle>Teaching Defaults</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-4">
@@ -123,7 +123,7 @@ export function TeachingDefaultsCard({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div>
-          <CardTitle className="text-base">Teaching Defaults</CardTitle>
+          <CardTitle>Teaching Defaults</CardTitle>
           <CardDescription className="text-xs">
             Auto-populate when scheduling lessons
           </CardDescription>

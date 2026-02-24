@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { Link } from 'react-router-dom';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -25,6 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--destructive))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
 
 export default function CancellationReport() {
+  usePageMeta('Cancellations | LessonLoop', 'Analyse lesson cancellations and patterns');
   const { currentOrg } = useOrg();
   const { toast } = useToast();
   const isMobile = useIsMobile();

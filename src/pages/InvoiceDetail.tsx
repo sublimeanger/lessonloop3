@@ -1,6 +1,7 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { parseISO, isBefore, startOfToday } from 'date-fns';
 import { useEffect, useState } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { useOrgPaymentPreferences } from '@/hooks/useOrgPaymentPreferences';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -63,6 +64,7 @@ function getStatusBadge(status: InvoiceStatus, dueDate: string) {
 }
 
 export default function InvoiceDetail() {
+  usePageMeta('Invoice Detail | LessonLoop', 'View invoice details and payment status');
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();

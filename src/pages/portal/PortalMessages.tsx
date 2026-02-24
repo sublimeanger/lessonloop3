@@ -1,3 +1,4 @@
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ListSkeleton } from '@/components/shared/LoadingState';
@@ -43,7 +44,7 @@ function MessageBubble({ msg }: { msg: ConversationMessage }) {
       <div className={cn('max-w-[80%] space-y-1')}>
         <div className="flex items-center gap-2 mb-0.5">
           {!isParent && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 gap-1">
+            <Badge variant="secondary" className="text-micro px-1.5 py-0 h-4 gap-1">
               <Shield className="h-2.5 w-2.5" />
               {msg.sender_name || 'Staff'}
               {msg.sender_org_role && (
@@ -54,12 +55,12 @@ function MessageBubble({ msg }: { msg: ConversationMessage }) {
             </Badge>
           )}
           {isParent && (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-1 ml-auto">
+            <Badge variant="outline" className="text-micro px-1.5 py-0 h-4 gap-1 ml-auto">
               <User className="h-2.5 w-2.5" />
               You
             </Badge>
           )}
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-micro text-muted-foreground">
             {formatMessageTime(msg.created_at)}
           </span>
         </div>
@@ -162,7 +163,7 @@ function ConversationCard({
             )}>
               {conversation.subject}
             </h4>
-            <span className="text-[11px] text-muted-foreground whitespace-nowrap flex-shrink-0">
+            <span className="text-micro text-muted-foreground whitespace-nowrap flex-shrink-0">
               {formatConversationDate(conversation.lastMessageAt)}
             </span>
           </div>
@@ -178,7 +179,7 @@ function ConversationCard({
           </Badge>
         )}
 
-        <Badge variant="outline" className="text-[10px] flex-shrink-0">
+        <Badge variant="outline" className="text-micro flex-shrink-0">
           {conversation.messages.length}
         </Badge>
       </button>
@@ -210,7 +211,7 @@ function ConversationCard({
               className="text-sm"
             />
             <div className="flex items-center justify-between">
-              <p className="text-[10px] text-muted-foreground">Ctrl+Enter to send</p>
+              <p className="text-micro text-muted-foreground">Ctrl+Enter to send</p>
               <Button
                 size="sm"
                 onClick={handleSendReply}
@@ -232,6 +233,7 @@ function ConversationCard({
 }
 
 export default function PortalMessages() {
+  usePageMeta('Messages | Parent Portal', 'Communicate with teachers');
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('inbox');
   const [expandedThread, setExpandedThread] = useState<string | null>(null);

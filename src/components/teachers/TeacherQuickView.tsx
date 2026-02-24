@@ -229,13 +229,16 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, onRemove
             </p>
           </div>
           {assignedStudents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No students assigned</p>
+            <p className="text-sm text-muted-foreground">No students assigned to this teacher yet. Assign students from their profile or when creating lessons.</p>
           ) : (
             <div className="space-y-1.5">
               {assignedStudents.map((s) => (
                 <div
                   key={s.id}
-                  className="flex min-h-11 items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors hover:bg-accent"
+                  className="flex min-h-11 items-center justify-between rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors hover:bg-accent"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { onOpenChange(false); navigate(`/students/${s.id}`); } }}
                   onClick={() => {
                     onOpenChange(false);
                     navigate(`/students/${s.id}`);

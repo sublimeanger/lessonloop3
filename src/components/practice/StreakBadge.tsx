@@ -15,11 +15,11 @@ interface StreakBadgeProps {
 }
 
 function getStreakTier(streak: number) {
-  if (streak >= 30) return { tier: 'legendary', color: 'text-amber-500', bg: 'bg-amber-500/10', icon: Trophy, label: 'Legendary!' };
-  if (streak >= 14) return { tier: 'blazing', color: 'text-orange-500', bg: 'bg-orange-500/10', icon: Flame, label: 'On fire!' };
-  if (streak >= 7) return { tier: 'hot', color: 'text-red-500', bg: 'bg-red-500/10', icon: Flame, label: 'Hot streak!' };
-  if (streak >= 3) return { tier: 'building', color: 'text-yellow-500', bg: 'bg-yellow-500/10', icon: Zap, label: 'Building momentum!' };
-  if (streak >= 1) return { tier: 'starting', color: 'text-green-500', bg: 'bg-green-500/10', icon: Star, label: 'Great start!' };
+  if (streak >= 30) return { tier: 'legendary', color: 'text-warning', bg: 'bg-warning/10', icon: Trophy, label: 'Legendary!' };
+  if (streak >= 14) return { tier: 'blazing', color: 'text-coral', bg: 'bg-coral/10', icon: Flame, label: 'On fire!' };
+  if (streak >= 7) return { tier: 'hot', color: 'text-destructive', bg: 'bg-destructive/10', icon: Flame, label: 'Hot streak!' };
+  if (streak >= 3) return { tier: 'building', color: 'text-warning', bg: 'bg-warning/10', icon: Zap, label: 'Building momentum!' };
+  if (streak >= 1) return { tier: 'starting', color: 'text-success', bg: 'bg-success/10', icon: Star, label: 'Great start!' };
   return null;
 }
 

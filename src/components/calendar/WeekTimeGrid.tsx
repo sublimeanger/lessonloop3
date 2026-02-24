@@ -388,7 +388,7 @@ export function WeekTimeGrid({
                     closure && 'bg-warning/10 dark:bg-warning/5'
                   )}
                 >
-                  <div className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">
+                  <div className="text-micro text-muted-foreground font-medium uppercase tracking-wide">
                     {format(day, 'EEE')}
                   </div>
                   <div className="flex items-center justify-center gap-1">
@@ -398,7 +398,7 @@ export function WeekTimeGrid({
                     {(() => {
                       const dayCount = lessons.filter((l) => isSameDay(parseISO(l.start_at), day)).length;
                       return dayCount > 10 ? (
-                        <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 leading-none">
+                        <Badge variant="secondary" className="text-micro px-1 py-0 h-4 leading-none">
                           {dayCount}
                         </Badge>
                       ) : null;
@@ -407,7 +407,7 @@ export function WeekTimeGrid({
                   {closure && (
                     <Badge
                       variant="outline"
-                      className="text-[10px] px-1 py-0 mt-0.5 bg-warning/20 text-warning-foreground dark:bg-warning/30 dark:text-warning"
+                      className="text-micro px-1 py-0 mt-0.5 bg-warning/20 text-warning-foreground dark:bg-warning/30 dark:text-warning"
                     >
                       {closure.reason}
                     </Badge>
@@ -578,7 +578,7 @@ export function WeekTimeGrid({
                         <Popover key={`overflow-${bucketKey}`}>
                           <PopoverTrigger asChild>
                             <button
-                              className="absolute z-[6] rounded-sm bg-muted/80 hover:bg-muted text-[10px] font-semibold text-muted-foreground px-1 py-0.5 cursor-pointer transition-colors truncate text-center"
+                              className="absolute z-[6] rounded-sm bg-muted/80 hover:bg-muted text-micro font-semibold text-muted-foreground px-1 py-0.5 cursor-pointer transition-colors truncate text-center"
                               style={{
                                 top: bucket.top,
                                 height: Math.max(bucket.height, 20),
@@ -632,7 +632,7 @@ export function WeekTimeGrid({
                           />
                         </div>
                         {/* Time tooltip */}
-                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-[10px] tabular-nums px-1.5 py-0.5 rounded shadow">
+                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-micro tabular-nums px-1.5 py-0.5 rounded shadow">
                           {formatTimeFromTop(dragState.currentTop, START_HOUR, END_HOUR)}
                         </div>
                       </div>

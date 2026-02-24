@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -151,6 +152,7 @@ function ReportCard({ report }: { report: Report }) {
 }
 
 export default function Reports() {
+  usePageMeta('Reports | LessonLoop', 'Analytics and insights for your teaching business');
   const { currentRole } = useOrg();
 
   if (!currentRole) {

@@ -89,7 +89,7 @@ export function RequestModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[100dvh] h-full sm:h-auto sm:max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isGeneralEnquiry ? 'Send a Message' : 'Send a Request'}</DialogTitle>
           <DialogDescription>
@@ -155,13 +155,14 @@ export function RequestModal({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="flex-col gap-2 sm:flex-row sticky bottom-0 bg-background pt-4 pb-safe">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="min-h-[44px]">
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={!subject.trim() || !message.trim() || isPending}
+            className="min-h-[44px] w-full sm:w-auto"
           >
             {isPending ? (
               <>

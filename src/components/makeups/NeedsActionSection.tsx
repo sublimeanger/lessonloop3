@@ -91,8 +91,9 @@ export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionPro
               <div className="space-y-1">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <p className="font-semibold text-foreground">
-                      🔔 Match Found
+                    <p className="font-semibold text-foreground flex items-center gap-1.5">
+                      <Bell className="h-4 w-4 text-warning" />
+                      Match Found
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
                       <span className="font-medium text-foreground">{studentName}</span> missed "{entry.lesson_title}" on {formatDate(entry.missed_lesson_date)} ({entry.absence_reason.replace(/_/g, ' ')})

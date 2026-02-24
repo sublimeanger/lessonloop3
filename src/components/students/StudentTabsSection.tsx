@@ -12,6 +12,8 @@ import { StudentInfoCard } from './StudentInfoCard';
 import { InstrumentGradeSelector } from './InstrumentGradeSelector';
 import { GuardiansCard } from './GuardiansCard';
 import { MessageList } from '@/components/messages/MessageList';
+import { InlineEmptyState } from '@/components/shared/EmptyState';
+import { LoadingSpinner } from '@/components/shared/LoadingState';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
 import { Loader2, Calendar, Receipt, Music, MessageSquare, Send } from 'lucide-react';
 import type { useStudentDetailPage } from '@/hooks/useStudentDetailPage';
@@ -125,14 +127,13 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
             <CardContent>
               {hook.lessonsLoading ? (
                 <div className="flex justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <LoadingSpinner className="h-6 w-6 text-muted-foreground" />
                 </div>
               ) : !hook.studentLessons?.length ? (
-                <div className="flex flex-col items-center py-8 text-center">
-                  <Calendar className="h-10 w-10 text-muted-foreground/40" />
-                  <p className="mt-3 font-medium">No lessons yet</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Schedule a lesson to see it here.</p>
-                </div>
+                <InlineEmptyState
+                  icon={Calendar}
+                  message="No lessons yet. Schedule a lesson to see it here."
+                />
               ) : (
                 <div className="space-y-3">
                   {hook.studentLessons.map((sl) => (
@@ -198,14 +199,13 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
             <CardContent>
               {hook.invoicesLoading ? (
                 <div className="flex justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <LoadingSpinner className="h-6 w-6 text-muted-foreground" />
                 </div>
               ) : !hook.studentInvoices?.length ? (
-                <div className="flex flex-col items-center py-8 text-center">
-                  <Receipt className="h-10 w-10 text-muted-foreground/40" />
-                  <p className="mt-3 font-medium">No invoices yet</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Invoices will appear here when created.</p>
-                </div>
+                <InlineEmptyState
+                  icon={Receipt}
+                  message="No invoices yet. Invoices will appear here when created."
+                />
               ) : (
                 <div className="space-y-3">
                   {hook.studentInvoices.map((inv) => (
@@ -284,11 +284,10 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
             </CardHeader>
             <CardContent>
               {hook.guardians.length === 0 ? (
-                <div className="flex flex-col items-center py-8 text-center">
-                  <MessageSquare className="h-10 w-10 text-muted-foreground/40" />
-                  <p className="mt-3 font-medium">Add a guardian first</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Link a guardian with an email to send messages.</p>
-                </div>
+                <InlineEmptyState
+                  icon={MessageSquare}
+                  message="Link a guardian with an email address to start sending messages."
+                />
               ) : (
                 <MessageList
                   messages={hook.messages || []}

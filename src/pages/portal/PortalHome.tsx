@@ -1,3 +1,4 @@
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { logger } from '@/lib/logger';
 import { PortalErrorState } from '@/components/portal/PortalErrorState';
 import { PortalLayout } from '@/components/layout/PortalLayout';
@@ -45,6 +46,7 @@ function relativeDayLabel(dateStr: string, timezone?: string): string {
 }
 
 export default function PortalHome() {
+  usePageMeta('Home | Parent Portal', "Your children's music lesson overview");
   const { profile } = useAuth();
   const { currentOrg } = useOrg();
   const navigate = useNavigate();
@@ -394,7 +396,7 @@ export default function PortalHome() {
                                 {childInstruments?.[child.id] && childInstruments[child.id].length > 0 && (
                                   <div className="flex flex-wrap gap-1 mt-0.5">
                                     {childInstruments[child.id].slice(0, 2).map((inst, i) => (
-                                      <span key={i} className="text-[10px] text-muted-foreground">
+                                      <span key={i} className="text-micro text-muted-foreground">
                                         {getInstrumentCategoryIcon(inst.instrument_category)} {inst.instrument_name}
                                         {inst.grade_short_name ? ` ${inst.grade_short_name}` : ''}
                                       </span>

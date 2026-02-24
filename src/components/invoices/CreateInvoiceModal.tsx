@@ -109,13 +109,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
     setSelectedCredits(new Set());
   }, [payerId, payerType]);
 
-  // Currency formatting helper
-  const formatCurrency = (minor: number) => {
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: currentOrg?.currency_code || 'GBP',
-    }).format(minor / 100);
-  };
+  const currency = currentOrg?.currency_code || 'GBP';
 
   const { data: guardians = [] } = useQuery({
     queryKey: ['guardians-for-invoice', currentOrg?.id],
@@ -487,7 +481,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium">
-                            {formatCurrency(credit.credit_value_minor)}
+                            {formatCurrencyMinor(credit.credit_value_minor, currency)}
                           </span>
                           <span className="text-xs text-muted-foreground">
                             for {credit.student?.first_name} {credit.student?.last_name}
@@ -508,7 +502,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                     <span className="text-sm text-muted-foreground">Credit to apply:</span>
                     <Badge variant="secondary" className="gap-1">
                       <Gift className="h-3 w-3" />
-                      -{formatCurrency(totalSelectedCredit)}
+                      -{formatCurrencyMinor(totalSelectedCredit)}
                     </Badge>
                   </div>
                 )}

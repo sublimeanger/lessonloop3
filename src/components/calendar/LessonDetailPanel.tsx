@@ -165,7 +165,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
 
   const statusColors = {
     scheduled: 'bg-primary/10 text-primary',
-    completed: 'bg-green-500/10 text-green-700',
+    completed: 'bg-success/10 text-success',
     cancelled: 'bg-muted text-muted-foreground',
   };
 
@@ -566,7 +566,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
                       <TooltipProvider delayDuration={200}>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Badge variant="outline" className="ml-1 text-[9px] px-1 py-0 h-4 border-amber-500/50 text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-900/30 cursor-help">
+                            <Badge variant="outline" className="ml-1 text-micro px-1 py-0 h-4 border-warning/50 text-warning bg-warning/10 cursor-help">
                               Make-up
                             </Badge>
                           </TooltipTrigger>

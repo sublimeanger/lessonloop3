@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -200,6 +201,7 @@ function StudentCard({
 }
 
 export default function Students() {
+  usePageMeta('Students | LessonLoop', 'Manage your students');
   const { currentRole, currentOrg } = useOrg();
   const navigate = useNavigate();
   const isAdmin = currentRole === 'owner' || currentRole === 'admin';

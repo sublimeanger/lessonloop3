@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { useRealtimeInvoices } from '@/hooks/useRealtimeInvoices';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -33,6 +34,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function Invoices() {
+  usePageMeta('Invoices | LessonLoop', 'Manage invoices and billing');
   const { currentRole, currentOrg } = useOrg();
   const { toast } = useToast();
   useRealtimeInvoices();

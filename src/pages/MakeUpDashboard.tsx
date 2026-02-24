@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { RefreshCw, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useWaitlist, useWaitlistStats } from '@/hooks/useMakeUpWaitlist';
@@ -10,6 +11,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 const MakeUpDashboard = () => {
+  usePageMeta('Make-Up Credits | LessonLoop', 'Manage make-up lesson waitlist and credits');
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [teacherFilter, setTeacherFilter] = useState<string | undefined>();
   const [showAddDialog, setShowAddDialog] = useState(false);

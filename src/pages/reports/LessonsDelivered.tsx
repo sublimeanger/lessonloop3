@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { Link } from 'react-router-dom';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -21,6 +22,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useToast } from '@/hooks/use-toast';
 
 export default function LessonsDeliveredReport() {
+  usePageMeta('Lessons Delivered | LessonLoop', 'Analyse lessons by teacher and location');
   const { currentOrg } = useOrg();
   const { toast } = useToast();
   const isMobile = useIsMobile();

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { Link } from 'react-router-dom';
 import { format, subMonths, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -19,6 +20,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useToast } from '@/hooks/use-toast';
 
 export default function RevenueReport() {
+  usePageMeta('Revenue | LessonLoop', 'Track income from paid invoices over time');
   const { currentOrg } = useOrg();
   const { toast } = useToast();
   const { data: terms } = useTerms();

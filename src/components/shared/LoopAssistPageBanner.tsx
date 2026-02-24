@@ -45,7 +45,7 @@ export function LoopAssistPageBanner({ bannerKey, message, prompt }: LoopAssistP
       <button
         type="button"
         onClick={handleDismissForever}
-        className="hidden sm:inline-flex ml-1 shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        className="hidden sm:inline-flex ml-1 shrink-0 items-center gap-1 rounded-md px-2 py-1 text-micro text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         aria-label="Don't show again"
       >
         <EyeOff className="h-3 w-3" />

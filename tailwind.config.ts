@@ -49,6 +49,16 @@ export default {
           light: "hsl(var(--coral-light))",
           dark: "hsl(var(--coral-dark))",
         },
+        violet: {
+          DEFAULT: "hsl(var(--violet))",
+          light: "hsl(var(--violet-light))",
+          dark: "hsl(var(--violet-dark))",
+        },
+        emerald: {
+          DEFAULT: "hsl(var(--emerald))",
+          light: "hsl(var(--emerald-light))",
+          dark: "hsl(var(--emerald-dark))",
+        },
         
         // Semantic colors
         primary: {

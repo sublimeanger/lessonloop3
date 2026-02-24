@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { format, subMonths, startOfMonth, endOfMonth, differenceInMinutes, parseISO, eachDayOfInterval, isWeekend } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 import { useQuery } from '@tanstack/react-query';
@@ -184,6 +185,7 @@ function formatHoursMinutes(minutes: number): string {
 }
 
 export default function UtilisationReport() {
+  usePageMeta('Utilisation | LessonLoop', 'Analyse how effectively your teaching spaces are used');
   const { currentOrg } = useOrg();
   const { toast } = useToast();
   const { data: terms } = useTerms();

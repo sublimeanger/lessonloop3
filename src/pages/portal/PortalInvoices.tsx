@@ -1,3 +1,4 @@
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { PortalErrorState } from '@/components/portal/PortalErrorState';
@@ -33,6 +34,7 @@ import { useRealtimePortalPayments } from '@/hooks/useRealtimePortalPayments';
 import { useSavedPaymentMethods } from '@/hooks/useSavedPaymentMethods';
 
 export default function PortalInvoices() {
+  usePageMeta('Invoices | Parent Portal', 'View and pay invoices');
   const { invoicesEnabled } = usePortalFeatures();
   const { currentOrg } = useOrg();
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -494,46 +496,49 @@ function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, i
             )}
           </div>
 
-          <div className="text-right">
-            <p className="text-lg font-bold">
+          <div className="text-right shrink-0">
+            <p className="text-2xl font-bold">
               {formatCurrencyMinor(invoice.total_minor, currencyCode)}
             </p>
-            <div className="flex items-center gap-2 mt-2">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => downloadPdf(invoice.id, invoice.invoice_number)}
-                disabled={isPdfLoading}
-              >
-                {isPdfLoading ? (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
-                  <FileDown className="h-4 w-4 mr-1" />
-                )}
-                PDF
-              </Button>
-              {isPayable && (
-                <Button 
-                  size="sm" 
-                  onClick={() => onPay(invoice.id)}
-                  disabled={isPaying}
-                >
-                  {isPaying ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <CreditCard className="h-4 w-4 mr-1" />
-                  )}
-                  {isPaying ? 'Processing...' : 'Pay Now'}
-                </Button>
-              )}
-              {isPaid && (
-                <Badge variant="secondary" className="bg-success/10 text-success dark:bg-success/20">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Paid
-                </Badge>
-              )}
-            </div>
+            {isPaid && (
+              <Badge variant="secondary" className="bg-success/10 text-success dark:bg-success/20 mt-1">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Paid
+              </Badge>
+            )}
           </div>
+        </div>
+
+        {/* Actions row */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-3 pt-3 border-t">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="min-h-[44px] gap-1"
+            onClick={() => downloadPdf(invoice.id, invoice.invoice_number)}
+            disabled={isPdfLoading}
+          >
+            {isPdfLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown className="h-4 w-4" />
+            )}
+            Download PDF
+          </Button>
+          {isPayable && (
+            <Button
+              onClick={() => onPay(invoice.id)}
+              disabled={isPaying}
+              className="w-full sm:w-auto min-h-[48px] text-base font-semibold gap-2"
+            >
+              {isPaying ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <CreditCard className="h-5 w-5" />
+              )}
+              {isPaying ? 'Processing...' : `Pay ${formatCurrencyMinor(invoice.total_minor, currencyCode)}`}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

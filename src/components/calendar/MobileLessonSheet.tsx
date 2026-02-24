@@ -19,7 +19,7 @@ interface MobileLessonSheetProps {
 
 const STATUS_STYLES: Record<string, { className: string; label: string }> = {
   scheduled: { className: 'bg-primary/10 text-primary', label: 'Scheduled' },
-  completed: { className: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400', label: 'Completed' },
+  completed: { className: 'bg-success/10 text-success', label: 'Completed' },
   cancelled: { className: 'bg-muted text-muted-foreground', label: 'Cancelled' },
 };
 
@@ -60,7 +60,7 @@ export function MobileLessonSheet({
             <DrawerTitle className="text-lg font-bold truncate">
               {primaryStudentName}
             </DrawerTitle>
-            <Badge className={cn('text-[11px] shrink-0', statusInfo.className)}>
+            <Badge className={cn('text-micro shrink-0', statusInfo.className)}>
               {statusInfo.label}
             </Badge>
           </div>
@@ -78,7 +78,7 @@ export function MobileLessonSheet({
                 <span className="tabular-nums text-foreground">
                   {format(startTime, 'HH:mm')} – {format(endTime, 'HH:mm')}
                 </span>
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                <Badge variant="secondary" className="text-micro px-1.5 py-0">
                   {duration} min
                 </Badge>
               </div>
@@ -88,7 +88,7 @@ export function MobileLessonSheet({
               <User className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="flex items-center gap-2 text-sm">
                 <span
-                  className="h-5 w-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                  className="h-5 w-5 rounded-full flex items-center justify-center text-micro font-bold text-white shrink-0"
                   style={{ backgroundColor: teacherColour.hex }}
                 >
                   {teacherInitials}
@@ -132,13 +132,13 @@ export function MobileLessonSheet({
               <Separator />
               {lesson.notes_shared && (
                 <div className="rounded-lg bg-muted/50 p-3 text-sm text-foreground">
-                  <p className="text-[11px] font-medium text-muted-foreground mb-1">Shared notes</p>
+                  <p className="text-micro font-medium text-muted-foreground mb-1">Shared notes</p>
                   {lesson.notes_shared}
                 </div>
               )}
               {lesson.notes_private && (
                 <div className="rounded-lg bg-muted/50 p-3 text-sm text-foreground">
-                  <p className="text-[11px] font-medium text-muted-foreground mb-1">Private notes</p>
+                  <p className="text-micro font-medium text-muted-foreground mb-1">Private notes</p>
                   {lesson.notes_private}
                 </div>
               )}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { HelpSearch } from '@/components/help/HelpSearch';
@@ -13,10 +14,11 @@ import {
   HelpArticle,
 } from '@/components/help/helpArticles';
 import { Button } from '@/components/ui/button';
-import { Sparkles, MessageSquare, ExternalLink } from 'lucide-react';
+import { Sparkles, MessageSquare, Mail } from 'lucide-react';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 
 export default function Help() {
+  usePageMeta('Help | LessonLoop', 'Find answers and learn how to use LessonLoop');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<HelpCategoryType | null>(null);
   const [selectedArticle, setSelectedArticle] = useState<HelpArticle | null>(null);
@@ -48,13 +50,13 @@ export default function Help() {
       <div className="max-w-6xl mx-auto">
         {/* Search Bar */}
         <div className="mb-8">
-          <HelpSearch 
-            value={searchQuery} 
+          <HelpSearch
+            value={searchQuery}
             onChange={(v) => {
               setSearchQuery(v);
               setSelectedArticle(null);
-            }} 
-            className="max-w-xl"
+            }}
+            className="w-full md:max-w-xl"
           />
         </div>
 
@@ -63,8 +65,8 @@ export default function Help() {
           <div className="mb-8 p-6 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/10">
             <div className="flex flex-col md:flex-row md:items-center gap-4">
               <div className="flex-1">
-                <h2 className="text-lg font-semibold mb-1">Need quick help?</h2>
-                <p className="text-muted-foreground text-sm">
+                <h2 className="text-section-title mb-1">Need quick help?</h2>
+                <p className="text-body text-muted-foreground">
                   Ask LoopAssist anything about scheduling, billing, or managing your lessons.
                 </p>
               </div>
@@ -86,7 +88,7 @@ export default function Help() {
 
         {/* Category Grid (Home View) */}
         {showCategories && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {categories.map((category) => (
               <HelpCategoryCard
                 key={category}
@@ -114,36 +116,50 @@ export default function Help() {
             {/* Articles */}
             <div className="flex-1">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">
-                  {searchQuery 
+                <h2 className="text-section-title">
+                  {searchQuery
                     ? `Search results for "${searchQuery}"`
-                    : selectedCategory 
+                    : selectedCategory
                       ? categoryLabels[selectedCategory].title
                       : 'All Articles'
                   }
                 </h2>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-caption text-muted-foreground">
                   {displayedArticles.length} article{displayedArticles.length !== 1 ? 's' : ''}
                 </span>
               </div>
 
               {displayedArticles.length === 0 ? (
-                <div className="text-center py-12 border rounded-lg">
-                  <MessageSquare className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-                  <h3 className="font-medium mb-1">No articles found</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Try a different search term or browse categories
+                <div className="text-center py-12 border rounded-lg bg-muted/30">
+                  <MessageSquare className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+                  <h3 className="text-body-strong mb-1">
+                    We couldn't find a match for that
+                  </h3>
+                  <p className="text-body text-muted-foreground mb-4 max-w-sm mx-auto">
+                    Try different keywords, browse the categories below, or ask LoopAssist directly.
                   </p>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setSelectedCategory(null);
-                    }}
-                  >
-                    View all categories
-                  </Button>
+                  <div className="flex justify-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="min-h-11 sm:min-h-9"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setSelectedCategory(null);
+                      }}
+                    >
+                      Browse categories
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="min-h-11 sm:min-h-9 gap-2"
+                      onClick={openDrawer}
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      Ask LoopAssist
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-2">

@@ -102,7 +102,7 @@ export function WaitlistTable({
                       <p className="text-muted-foreground">
                         {m.missed_lesson_title}
                       </p>
-                      <Badge variant="outline" className="text-[10px] mt-1 capitalize">
+                      <Badge variant="outline" className="text-micro mt-1 capitalize">
                         {m.match_quality.replace(/_/g, ' ')}
                       </Badge>
                     </div>
@@ -179,8 +179,12 @@ export function WaitlistTable({
             {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}
           </div>
         ) : entries.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">
-            No waitlist entries found.
+          <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
+            <Search className="h-10 w-10 text-muted-foreground/30" />
+            <p className="mt-3 text-body font-medium text-foreground">No waitlist entries yet</p>
+            <p className="mt-1 text-body text-muted-foreground">
+              When students miss a lesson, add them here so they can be matched with an available slot.
+            </p>
           </div>
         ) : (
           <>

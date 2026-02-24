@@ -11,7 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Send, Eye, CreditCard, XCircle, Bell, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { MoreHorizontal, Send, Eye, CreditCard, XCircle, Bell, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, Receipt } from 'lucide-react';
+import { InlineEmptyState } from '@/components/shared/EmptyState';
 import { useOrg } from '@/contexts/OrgContext';
 import type { InvoiceWithDetails } from '@/hooks/useInvoices';
 import type { Database } from '@/integrations/supabase/types';
@@ -101,7 +102,7 @@ function StatusBadge({ status, dueDate }: { status: InvoiceStatus; dueDate: stri
   const c = config[effectiveStatus] || config.draft;
 
   return (
-    <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium', c.className)}>
+    <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium', c.className)}>
       {c.dot && <span className={cn('h-1.5 w-1.5 rounded-full', c.dot)} />}
       {c.label}
     </span>
@@ -307,9 +308,10 @@ export function InvoiceList({
 
   if (invoices.length === 0) {
     return (
-      <div className="rounded-lg border bg-card p-8 text-center">
-        <p className="text-muted-foreground">No invoices found</p>
-      </div>
+      <InlineEmptyState
+        icon={Receipt}
+        message="No invoices match your current filters."
+      />
     );
   }
 

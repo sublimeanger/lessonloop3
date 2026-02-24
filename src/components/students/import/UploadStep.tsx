@@ -35,10 +35,10 @@ export function UploadStep({ isLoading, handleFileUpload }: UploadStepProps) {
             ) : (
               <FileSpreadsheet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             )}
-            <p className="text-lg font-medium mb-1">
+            <p className="text-section-title mb-1">
               {isLoading ? "Processing..." : "Drop your CSV file here or click to upload"}
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-body text-muted-foreground">
               Supports: students, guardians, student-guardian links, and recurring lessons
             </p>
           </label>

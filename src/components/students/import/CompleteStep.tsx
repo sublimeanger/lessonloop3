@@ -24,26 +24,26 @@ export function CompleteStep({ importResult, downloadFailedRows, onImportMore, o
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-4 text-center">
-              <div className="text-2xl font-bold text-primary">{importResult.studentsCreated}</div>
-              <div className="text-sm text-muted-foreground">Students Created</div>
+              <div className="text-section-title text-primary">{importResult.studentsCreated}</div>
+              <div className="text-caption text-muted-foreground">Students Created</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4 text-center">
-              <div className="text-2xl font-bold text-primary">{importResult.guardiansCreated}</div>
-              <div className="text-sm text-muted-foreground">Guardians Created</div>
+              <div className="text-section-title text-primary">{importResult.guardiansCreated}</div>
+              <div className="text-caption text-muted-foreground">Guardians Created</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4 text-center">
-              <div className="text-2xl font-bold text-primary">{importResult.linksCreated}</div>
-              <div className="text-sm text-muted-foreground">Links Created</div>
+              <div className="text-section-title text-primary">{importResult.linksCreated}</div>
+              <div className="text-caption text-muted-foreground">Links Created</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4 text-center">
-              <div className="text-2xl font-bold text-primary">{importResult.lessonsCreated}</div>
-              <div className="text-sm text-muted-foreground">Lessons Created</div>
+              <div className="text-section-title text-primary">{importResult.lessonsCreated}</div>
+              <div className="text-caption text-muted-foreground">Lessons Created</div>
             </CardContent>
           </Card>
         </div>

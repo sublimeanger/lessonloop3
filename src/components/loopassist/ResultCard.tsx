@@ -60,7 +60,7 @@ export function ResultCard({ result }: { result: ActionResult }) {
                   type={entity.type}
                   id={entity.id}
                   label={entity.label}
-                  className="text-[11px]"
+                  className="text-micro"
                 />
                 {entity.detail && (
                   <span className="text-muted-foreground truncate">{entity.detail}</span>

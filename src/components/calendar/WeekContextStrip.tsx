@@ -56,7 +56,7 @@ export function WeekContextStrip({
               key={key}
               onClick={() => onDayClick(day)}
               className={cn(
-                'flex flex-col items-center py-1.5 sm:py-2 rounded-xl transition-all duration-150 cursor-pointer',
+                'flex flex-col items-center py-2 sm:py-2 rounded-xl transition-all duration-150 cursor-pointer min-h-[44px]',
                 'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                 isSelected
                   ? 'bg-foreground text-background shadow-sm'
@@ -68,7 +68,7 @@ export function WeekContextStrip({
               )}
             >
               <span className={cn(
-                'text-[10px] sm:text-caption font-medium uppercase tracking-wider leading-none',
+                'text-micro sm:text-caption font-medium uppercase tracking-wider leading-none',
                 isSelected ? 'text-background/70' : 'text-muted-foreground',
               )}>
                 {format(day, 'EEE').toUpperCase()}

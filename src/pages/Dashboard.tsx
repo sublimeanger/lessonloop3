@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { useRealtimeInvoices } from '@/hooks/useRealtimeInvoices';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -39,6 +40,7 @@ const itemVariants = {
 };
 
 export default function Dashboard() {
+  usePageMeta('Dashboard | LessonLoop', 'Overview of your teaching business');
   const { profile } = useAuth();
   const { currentOrg, currentRole, hasOrgs, isLoading: orgLoading, hasInitialised } = useOrg();
   const navigate = useNavigate();

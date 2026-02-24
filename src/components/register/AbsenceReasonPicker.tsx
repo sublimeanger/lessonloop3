@@ -10,12 +10,12 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const ABSENCE_REASONS = [
-  { value: 'sick', label: '🤒 Sick', shortLabel: 'Sick' },
-  { value: 'school_commitment', label: '🏫 School commitment', shortLabel: 'School' },
-  { value: 'family_emergency', label: '🏠 Family emergency', shortLabel: 'Emergency' },
-  { value: 'holiday', label: '✈️ Holiday', shortLabel: 'Holiday' },
-  { value: 'no_show', label: '👻 No show', shortLabel: 'No show' },
-  { value: 'other', label: '📋 Other', shortLabel: 'Other' },
+  { value: 'sick', label: 'Sick', shortLabel: 'Sick' },
+  { value: 'school_commitment', label: 'School commitment', shortLabel: 'School' },
+  { value: 'family_emergency', label: 'Family emergency', shortLabel: 'Emergency' },
+  { value: 'holiday', label: 'Holiday', shortLabel: 'Holiday' },
+  { value: 'no_show', label: 'No show', shortLabel: 'No show' },
+  { value: 'other', label: 'Other', shortLabel: 'Other' },
 ] as const;
 
 export type AbsenceReasonValue = typeof ABSENCE_REASONS[number]['value'];
@@ -37,31 +37,80 @@ export function AbsenceReasonPicker({
 }: AbsenceReasonPickerProps) {
   const isMobile = useIsMobile();
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [reasonSheetOpen, setReasonSheetOpen] = useState(false);
+
+  const selectedReasonLabel = reason
+    ? ABSENCE_REASONS.find((r) => r.value === reason)?.[compact ? 'shortLabel' : 'label'] || reason
+    : null;
 
   return (
     <div className={cn('mt-2 flex w-full flex-wrap items-center gap-2', compact && 'mt-1')}>
-      <Select value={reason || ''} onValueChange={(v) => onReasonChange(v as AbsenceReasonValue)}>
-        <SelectTrigger className={cn('h-11 text-xs sm:h-8', compact ? 'w-full sm:w-[160px]' : 'w-full sm:w-[220px]')}>
-          <SelectValue placeholder="Reason (optional)" />
-        </SelectTrigger>
-        <SelectContent>
-          {ABSENCE_REASONS.map((r) => (
-            <SelectItem key={r.value} value={r.value} className="text-xs">
-              {compact ? r.shortLabel : r.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {/* Reason picker: Sheet on mobile, Select on desktop */}
+      {isMobile ? (
+        <Sheet open={reasonSheetOpen} onOpenChange={setReasonSheetOpen}>
+          <SheetTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                'h-11 justify-start text-xs',
+                compact ? 'w-full' : 'w-full',
+                !reason && 'text-muted-foreground'
+              )}
+            >
+              {selectedReasonLabel || 'Reason (optional)'}
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="p-4">
+            <SheetHeader>
+              <SheetTitle>Absence reason</SheetTitle>
+            </SheetHeader>
+            <div className="mt-4 space-y-1">
+              {ABSENCE_REASONS.map((r) => (
+                <button
+                  key={r.value}
+                  type="button"
+                  onClick={() => {
+                    onReasonChange(r.value);
+                    setReasonSheetOpen(false);
+                  }}
+                  className={cn(
+                    'flex w-full min-h-[44px] items-center rounded-lg px-3 py-2 text-sm transition-colors',
+                    reason === r.value
+                      ? 'bg-primary/10 text-primary font-medium'
+                      : 'hover:bg-accent'
+                  )}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <Select value={reason || ''} onValueChange={(v) => onReasonChange(v as AbsenceReasonValue)}>
+          <SelectTrigger className={cn('h-8 text-xs', compact ? 'w-[160px]' : 'w-[220px]')}>
+            <SelectValue placeholder="Reason (optional)" />
+          </SelectTrigger>
+          <SelectContent>
+            {ABSENCE_REASONS.map((r) => (
+              <SelectItem key={r.value} value={r.value} className="text-xs">
+                {compact ? r.shortLabel : r.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
 
+      {/* Date picker: Sheet on mobile, Popover on desktop */}
       {isMobile ? (
         <Sheet open={calendarOpen} onOpenChange={setCalendarOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" size="sm" className="h-11 gap-1 px-3 text-xs">
-              <CalendarIcon className="h-3 w-3" />
+            <Button variant="outline" size="sm" className="h-11 gap-1.5 px-3 text-xs">
+              <CalendarIcon className="h-3.5 w-3.5" />
               {format(notifiedAt, 'dd/MM')}
             </Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="h-[80vh] p-4">
+          <SheetContent side="bottom" className="p-4">
             <SheetHeader>
               <SheetTitle>Select notified date</SheetTitle>
             </SheetHeader>

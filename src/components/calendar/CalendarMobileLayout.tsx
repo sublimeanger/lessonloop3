@@ -77,13 +77,13 @@ export function CalendarMobileLayout({
           <Button variant="outline" size="sm" onClick={goToToday} className="h-8 px-3 text-xs">Today</Button>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={navigatePrev} aria-label="Previous week">
+          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" onClick={navigatePrev} aria-label="Previous week">
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="flex-1 min-w-0">
             <WeekContextStrip currentDate={currentDate} onDayClick={setCurrentDate} lessonsByDay={lessonsByDay} view="day" />
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={navigateNext} aria-label="Next week">
+          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" onClick={navigateNext} aria-label="Next week">
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>

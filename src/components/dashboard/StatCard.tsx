@@ -31,14 +31,14 @@ const variantStyles = {
     trendUp: 'text-coral',
   },
   violet: {
-    iconBg: 'bg-violet-500/10',
-    iconColor: 'text-violet-500',
-    trendUp: 'text-violet-500',
+    iconBg: 'bg-violet/10',
+    iconColor: 'text-violet',
+    trendUp: 'text-violet',
   },
   emerald: {
-    iconBg: 'bg-emerald-500/10',
-    iconColor: 'text-emerald-500',
-    trendUp: 'text-emerald-500',
+    iconBg: 'bg-emerald/10',
+    iconColor: 'text-emerald',
+    trendUp: 'text-emerald',
   },
   default: {
     iconBg: 'bg-primary/10',
@@ -87,7 +87,7 @@ export function StatCard({
             {trend && trend.value !== 0 && (
               <div
                 className={cn(
-                  'flex items-center gap-1 text-xs sm:text-sm font-medium',
+                  'flex items-center gap-1 text-caption',
                   trend.value > 0 ? 'text-success' : 'text-destructive'
                 )}
               >
@@ -103,15 +103,15 @@ export function StatCard({
 
           {/* Value */}
           <div className="mt-3 sm:mt-4">
-            <p className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight truncate">{value}</p>
-            <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-muted-foreground truncate">
+            <p className="text-page-title truncate">{value}</p>
+            <p className="mt-0.5 sm:mt-1 text-body-strong text-muted-foreground truncate">
               {title}
             </p>
           </div>
 
           {/* Subtitle */}
           {subtitle && (
-            <p className="mt-1.5 sm:mt-2 text-[11px] sm:text-xs text-muted-foreground truncate">{subtitle}</p>
+            <p className="mt-1.5 sm:mt-2 text-caption text-muted-foreground truncate">{subtitle}</p>
           )}
         </CardContent>
 
@@ -121,8 +121,8 @@ export function StatCard({
             'absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-20 blur-2xl',
             variant === 'teal' && 'bg-teal',
             variant === 'coral' && 'bg-coral',
-            variant === 'violet' && 'bg-violet-500',
-            variant === 'emerald' && 'bg-emerald-500',
+            variant === 'violet' && 'bg-violet',
+            variant === 'emerald' && 'bg-emerald',
             variant === 'default' && 'bg-primary'
           )}
         />

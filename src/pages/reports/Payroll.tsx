@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { Link } from 'react-router-dom';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -20,6 +21,7 @@ import { Download, ChevronDown, ChevronRight, Banknote, Clock, Users, FileSpread
 import { useToast } from '@/hooks/use-toast';
 
 export default function PayrollReport() {
+  usePageMeta('Payroll | LessonLoop', 'Calculate gross pay for teachers');
   const { currentOrg, currentRole } = useOrg();
   const { toast } = useToast();
   const { data: terms } = useTerms();

@@ -281,7 +281,7 @@ export function AppSidebar() {
         {navGroups.map((group, gi) => (
           <SidebarGroup key={gi} className="py-1">
             {group.label && !collapsed && (
-              <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/60 px-4 mb-0.5">
+              <SidebarGroupLabel className="text-micro font-semibold uppercase tracking-widest text-sidebar-foreground/60 px-4 mb-0.5">
                 {group.label}
               </SidebarGroupLabel>
             )}
@@ -318,7 +318,7 @@ export function AppSidebar() {
                     <Sparkles className="h-[18px] w-[18px]" strokeWidth={1.5} />
                     {totalActionable > 0 && (
                       <span className={cn(
-                        'absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[9px] font-bold text-destructive-foreground',
+                        'absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-micro font-bold text-destructive-foreground',
                         hasCritical ? 'bg-destructive' : 'bg-warning'
                       )}>
                         {totalActionable > 9 ? '9+' : totalActionable}
@@ -337,14 +337,14 @@ export function AppSidebar() {
                 <span className="flex-1 text-left">LoopAssist</span>
                 {totalActionable > 0 && (
                   <span className={cn(
-                    'flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-destructive-foreground',
+                    'flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-micro font-bold text-destructive-foreground',
                     hasCritical ? 'bg-destructive' : 'bg-warning'
                   )}>
                     {totalActionable > 9 ? '9+' : totalActionable}
                   </span>
                 )}
                 {totalActionable === 0 && (
-                  <span className="text-[10px] text-sidebar-foreground/40">⌘J</span>
+                  <span className="text-micro text-sidebar-foreground/40">⌘J</span>
                 )}
               </button>
             )}
@@ -373,7 +373,7 @@ export function AppSidebar() {
               <div className="truncate text-sm font-medium text-sidebar-foreground">
                 {profile?.full_name || 'User'}
               </div>
-              <div className="truncate text-[11px] text-sidebar-foreground/60">
+              <div className="truncate text-micro text-sidebar-foreground/60">
                 {getRoleLabel(currentRole)}
               </div>
             </div>

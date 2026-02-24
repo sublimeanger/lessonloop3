@@ -83,7 +83,7 @@ function AlertRow({
 
       <button
         onClick={onDismissForever}
-        className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-micro text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         aria-label="Don't show again"
       >
         <EyeOff className="h-3 w-3" />

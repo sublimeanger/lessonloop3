@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { logger } from '@/lib/logger';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,7 +17,7 @@ import { useDeleteValidation, DeletionCheckResult } from '@/hooks/useDeleteValid
 import { DeleteValidationDialog } from '@/components/shared/DeleteValidationDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { EmptyState } from '@/components/shared/EmptyState';
+import { EmptyState, InlineEmptyState } from '@/components/shared/EmptyState';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
@@ -109,6 +110,7 @@ function TeacherFormFields() {
 }
 
 export default function Teachers() {
+  usePageMeta('Teachers | LessonLoop', 'Manage your teaching staff');
   const { currentOrg, isOrgAdmin } = useOrg();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -491,7 +493,7 @@ export default function Teachers() {
                 type="button"
                 onClick={() => setFilterTab(pill.value)}
                 className={cn(
-                  'min-h-11 rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all',
+                  'min-h-11 rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all sm:min-h-9',
                   filterTab === pill.value
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground',
@@ -511,7 +513,7 @@ export default function Teachers() {
         <EmptyState
           icon={GraduationCap}
           title="No teachers yet"
-          description="Add teachers to manage your teaching staff and assign lessons."
+          description="Once you add your first teacher, they'll appear here ready to be assigned to lessons on the calendar."
           actionLabel={isOrgAdmin ? 'Add Teacher' : undefined}
           onAction={isOrgAdmin ? () => setIsCreateDialogOpen(true) : undefined}
           secondaryActionLabel={isOrgAdmin ? 'Invite to Login' : undefined}
@@ -520,8 +522,11 @@ export default function Teachers() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {filteredTeachers.length === 0 ? (
-            <div className="rounded-lg border bg-card p-8 text-center">
-              <p className="text-muted-foreground">No teachers match your search</p>
+            <div className="col-span-full">
+              <InlineEmptyState
+                icon={Search}
+                message="No teachers match your search. Try a different name or email."
+              />
             </div>
           ) : (
             filteredTeachers.map((teacher) => {

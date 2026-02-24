@@ -1,4 +1,5 @@
 import { Check } from "lucide-react";
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useStudentsImport } from "@/hooks/useStudentsImport";
@@ -9,6 +10,7 @@ import { ImportingStep } from "@/components/students/import/ImportingStep";
 import { CompleteStep } from "@/components/students/import/CompleteStep";
 
 export default function StudentsImport() {
+  usePageMeta('Import Students | LessonLoop', 'Bulk import students from CSV');
   const hook = useStudentsImport();
 
   return (

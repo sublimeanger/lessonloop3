@@ -91,26 +91,26 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
           )}
         >
           <span className={cn(
-            'text-[9px] tabular-nums shrink-0',
+            'text-micro tabular-nums shrink-0',
             colour.text,
             isCancelled && 'line-through'
           )}>
             {format(startTime, 'HH:mm')}
           </span>
           <span className={cn(
-            'text-[10px] font-semibold truncate',
+            'text-micro font-semibold truncate',
             isCancelled && 'line-through text-muted-foreground'
           )}>
             {studentShort || lesson.title}
           </span>
           {isRecurring && <Repeat className="h-2 w-2 shrink-0 text-muted-foreground" />}
           {isEditedException && (
-            <span className="text-[8px] font-medium text-warning bg-warning/20 px-0.5 rounded shrink-0">
+            <span className="text-micro font-medium text-warning bg-warning/20 px-0.5 rounded shrink-0">
               Edited
             </span>
           )}
           {hasMakeup && (
-            <span className="text-[8px] font-medium text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/40 px-0.5 rounded shrink-0">MU</span>
+            <span className="text-micro font-medium text-warning bg-warning/20 px-0.5 rounded shrink-0">MU</span>
           )}
         </div>
       );
@@ -129,14 +129,14 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
       >
         {/* Time */}
         <div className={cn(
-          'text-[9px] sm:text-[10px] leading-tight tabular-nums',
+          'text-micro leading-tight tabular-nums',
           colour.text,
           isCancelled && 'line-through'
         )}>
           {format(startTime, 'HH:mm')}–{format(endTime, 'HH:mm')}
           {isRecurring && <Repeat className="h-2 w-2 sm:h-2.5 sm:w-2.5 inline-block ml-0.5 -mt-px" />}
           {isEditedException && (
-            <span className="text-[8px] sm:text-[9px] font-medium text-warning bg-warning/20 px-0.5 rounded ml-0.5 inline-block -mt-px">
+            <span className="text-micro font-medium text-warning bg-warning/20 px-0.5 rounded ml-0.5 inline-block -mt-px">
               Edited
             </span>
           )}
@@ -145,7 +145,7 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
         {/* Student name */}
         {(studentDisplay || studentShort) && (
           <div className={cn(
-            'text-[10px] sm:text-xs font-semibold truncate leading-snug',
+            'text-micro sm:text-xs font-semibold truncate leading-snug',
             isCancelled && 'line-through text-muted-foreground'
           )}>
             <span className="hidden sm:inline">{studentDisplay}</span>
@@ -156,7 +156,7 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
         {/* Teacher / location — hide on very small screens */}
         {secondaryLine && (
           <div className={cn(
-            'text-[9px] sm:text-[10px] truncate leading-tight hidden sm:block',
+            'text-micro truncate leading-tight hidden sm:block',
             colour.text
           )}>
             {secondaryLine}
@@ -182,7 +182,7 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
           <span className={cn('text-xl sm:text-2xl font-bold', colour.text)}>
             {format(startTime, 'HH:mm')}
           </span>
-          <span className="text-[10px] sm:text-xs text-muted-foreground">{format(endTime, 'HH:mm')}</span>
+          <span className="text-micro sm:text-xs text-muted-foreground">{format(endTime, 'HH:mm')}</span>
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -196,12 +196,12 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
               <Repeat className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground flex-shrink-0" />
             )}
             {isEditedException && (
-              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-warning/50 text-warning bg-warning/10">
+              <Badge variant="outline" className="text-micro px-1 py-0 h-4 border-warning/50 text-warning bg-warning/10">
                 Edited
               </Badge>
             )}
             {hasMakeup && (
-              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-amber-500/50 text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-900/30">
+              <Badge variant="outline" className="text-micro px-1 py-0 h-4 border-warning/50 text-warning bg-warning/10">
                 Make-up
               </Badge>
             )}
@@ -209,7 +209,7 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
           <div className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">
             {secondaryLine}
           </div>
-          <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+          <div className="text-micro sm:text-xs text-muted-foreground mt-0.5">
             {duration} min · {lesson.lesson_type}
           </div>
         </div>
@@ -242,10 +242,10 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
           )}>
             {isRecurring && !compact && <Repeat className="h-3 w-3 flex-shrink-0" />}
             {isEditedException && !compact && (
-              <span className="text-[8px] font-medium text-warning bg-warning/20 px-0.5 rounded shrink-0">Ed.</span>
+              <span className="text-micro font-medium text-warning bg-warning/20 px-0.5 rounded shrink-0">Ed.</span>
             )}
             {hasMakeup && !compact && (
-              <span className="text-[8px] font-medium text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/40 px-0.5 rounded shrink-0">MU</span>
+              <span className="text-micro font-medium text-warning bg-warning/20 px-0.5 rounded shrink-0">MU</span>
             )}
             <span className="truncate">{compactStudentName}</span>
           </div>

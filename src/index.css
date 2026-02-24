@@ -23,6 +23,14 @@
     --coral: 14 100% 64%;
     --coral-light: 14 100% 85%;
     --coral-dark: 14 100% 50%;
+
+    --violet: 263 70% 50%;
+    --violet-light: 263 60% 85%;
+    --violet-dark: 263 70% 40%;
+
+    --emerald: 160 84% 39%;
+    --emerald-light: 160 60% 85%;
+    --emerald-dark: 160 84% 30%;
     
     /* Semantic Tokens - Light Mode */
     --background: 0 0% 100%;

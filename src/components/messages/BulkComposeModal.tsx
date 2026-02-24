@@ -183,7 +183,7 @@ export function BulkComposeModal({ open, onOpenChange }: BulkComposeModalProps) 
           </div>
 
           <DialogFooter>
-            <Button onClick={() => onOpenChange(false)}>Close</Button>
+            <Button onClick={() => onOpenChange(false)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
