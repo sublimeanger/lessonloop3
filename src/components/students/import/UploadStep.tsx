@@ -20,7 +20,7 @@ export function UploadStep({ isLoading, handleFileUpload }: UploadStepProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-12 text-center hover:border-primary/50 transition-colors">
+        <div className="rounded-lg border-2 border-dashed border-muted-foreground/25 p-6 text-center transition-colors hover:border-primary/50 sm:p-12">
           <input
             type="file"
             accept=".csv"

@@ -72,7 +72,7 @@ export function CompleteStep({ importResult, downloadFailedRows, onImportMore, o
           </div>
         )}
 
-        <div className="flex justify-center gap-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
           <Button variant="outline" onClick={onImportMore}>Import More</Button>
           <Button onClick={onViewStudents}>View Students</Button>
         </div>
