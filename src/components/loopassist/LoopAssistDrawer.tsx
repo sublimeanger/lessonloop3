@@ -29,13 +29,14 @@ import {
   X,
   RotateCcw,
   Search,
+  Loader2,
 } from 'lucide-react';
 import { useLoopAssist, AIMessage, AIConversation } from '@/hooks/useLoopAssist';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { useProactiveAlerts, ProactiveAlert } from '@/hooks/useProactiveAlerts';
 import { useLoopAssistFirstRun, type ProactiveMessage } from '@/hooks/useLoopAssistFirstRun';
 import { preprocessEntityChips, EntityChip } from './EntityChip';
-import { ActionCard, stripActionBlock, parseActionFromResponse } from './ActionCard';
+import { ActionCard, stripActionBlock, parseActionsFromResponse } from './ActionCard';
 import { ResultCard, parseResultFromResponse, stripResultBlock } from './ResultCard';
 import { MessageFeedback } from './MessageFeedback';
 import { ProactiveAlerts } from './ProactiveAlerts';
@@ -70,6 +71,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
     messages,
     isStreaming,
     streamingContent,
+    toolStatus,
     pendingProposals,
     sendMessage,
     cancelStreaming,
@@ -168,6 +170,30 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
 
   const handleCancelAction = (proposalId: string) => {
     handleProposal({ proposalId, action: 'cancel' });
+  };
+
+  const [batchExecuting, setBatchExecuting] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
+
+  const handleConfirmAll = async () => {
+    if (pendingProposals.length === 0) return;
+    setBatchExecuting(true);
+    setBatchProgress({ current: 0, total: pendingProposals.length });
+    for (let i = 0; i < pendingProposals.length; i++) {
+      setBatchProgress({ current: i + 1, total: pendingProposals.length });
+      handleProposal({ proposalId: pendingProposals[i].id, action: 'confirm' });
+      // Small delay between executions to avoid race conditions
+      if (i < pendingProposals.length - 1) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+    setBatchExecuting(false);
+  };
+
+  const handleCancelAll = () => {
+    for (const proposal of pendingProposals) {
+      handleProposal({ proposalId: proposal.id, action: 'cancel' });
+    }
   };
 
   const handleRetry = () => {
@@ -308,12 +334,46 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                 {isStreaming && !streamingContent && (
                   <div className="flex items-start">
                     <div className="rounded-lg bg-muted px-4 py-3">
-                      <TypingIndicator />
+                      <TypingIndicator toolStatus={toolStatus} />
                     </div>
                   </div>
                 )}
 
                 {/* Pending action proposals */}
+                {pendingProposals.length > 1 && (
+                  <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+                    {batchExecuting ? (
+                      <p className="text-xs text-muted-foreground">
+                        <Loader2 className="mr-1 inline h-3 w-3 animate-spin" />
+                        Executing {batchProgress.current} of {batchProgress.total}...
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        {pendingProposals.length} actions proposed
+                      </p>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={handleConfirmAll}
+                        disabled={handleProposalLoading || batchExecuting}
+                        className="h-7 text-xs"
+                      >
+                        Confirm All
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleCancelAll}
+                        disabled={handleProposalLoading || batchExecuting}
+                        className="h-7 text-xs"
+                      >
+                        Cancel All
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 {pendingProposals.map((proposal) => (
                   <ActionCard
                     key={proposal.id}
@@ -321,7 +381,7 @@ export function LoopAssistDrawer({ open, onOpenChange }: LoopAssistDrawerProps) 
                     proposal={proposal.proposal}
                     onConfirm={handleConfirmAction}
                     onCancel={handleCancelAction}
-                    isLoading={handleProposalLoading}
+                    isLoading={handleProposalLoading || batchExecuting}
                   />
                 ))}
 
@@ -521,7 +581,7 @@ function LandingView({
 }
 
 // ─── Typing Indicator ───
-function TypingIndicator() {
+function TypingIndicator({ toolStatus }: { toolStatus?: string | null }) {
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     const interval = setInterval(() => setElapsed(e => e + 1), 1000);
@@ -530,12 +590,21 @@ function TypingIndicator() {
 
   return (
     <div className="flex flex-col gap-1" aria-label="LoopAssist is thinking">
-      <div className="flex items-center gap-1 h-5">
-        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-[typing-bounce_1.4s_ease-in-out_infinite]" />
-        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-[typing-bounce_1.4s_ease-in-out_0.2s_infinite]" />
-        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-[typing-bounce_1.4s_ease-in-out_0.4s_infinite]" />
+      <div className="flex items-center gap-1.5 h-5">
+        {toolStatus ? (
+          <>
+            <Loader2 className="h-3 w-3 animate-spin text-primary" />
+            <span className="text-xs text-muted-foreground">{toolStatus}</span>
+          </>
+        ) : (
+          <>
+            <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-[typing-bounce_1.4s_ease-in-out_infinite]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-[typing-bounce_1.4s_ease-in-out_0.2s_infinite]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-[typing-bounce_1.4s_ease-in-out_0.4s_infinite]" />
+          </>
+        )}
       </div>
-      {elapsed > 10 && (
+      {!toolStatus && elapsed > 10 && (
         <p className="text-[10px] text-muted-foreground">
           {elapsed > 30 ? 'Almost there…' : 'Thinking…'}
         </p>
@@ -642,7 +711,7 @@ function MessageBubble({ message, conversationId }: { message: AIMessage; conver
   const rawContent = isUser ? message.content : stripActionBlock(message.content);
   const displayContent = isUser ? rawContent : stripResultBlock(rawContent);
   const processedContent = isUser ? displayContent : preprocessEntityChips(displayContent);
-  const hasAction = !isUser && parseActionFromResponse(message.content);
+  const hasAction = !isUser && parseActionsFromResponse(message.content).length > 0;
   const resultData = !isUser ? parseResultFromResponse(message.content) : null;
 
   return (
