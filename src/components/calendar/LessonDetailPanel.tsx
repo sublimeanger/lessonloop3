@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { format, parseISO, subDays, addDays, startOfDay, differenceInMinutes, differenceInHours, addWeeks, isAfter, isBefore, getDay } from 'date-fns';
 import { useCalendarSync } from '@/hooks/useCalendarSync';
+import { useZoomSync } from '@/hooks/useZoomSync';
 import { useQuery } from '@tanstack/react-query';
 import { STALE_STABLE } from '@/config/query-stale-times';
 import { LessonWithDetails, AttendanceStatus } from './types';
@@ -23,7 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban, Gift, AlertTriangle, CalendarClock, StopCircle, Repeat, Video, ExternalLink } from 'lucide-react';
+import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban, Gift, AlertTriangle, CalendarClock, StopCircle, Repeat, Video, ExternalLink, RefreshCw } from 'lucide-react';
 import { LessonNotesForm } from './LessonNotesForm';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -48,6 +49,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
   const { user } = useAuth();
   const { toast } = useToast();
   const { syncLesson, syncLessons } = useCalendarSync();
+  const { syncZoomMeeting, syncZoomMeetings } = useZoomSync();
   const { createCredit, checkCreditEligibility } = useMakeUpCredits();
   const { data: rateCards } = useRateCards();
   const updateAttendance = useUpdateAttendance();
@@ -369,6 +371,8 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
 
       // Fire-and-forget calendar sync for cancelled lessons
       syncLessons(cancelledLessonIds, 'update');
+      // Fire-and-forget Zoom meeting deletion for cancelled lessons
+      syncZoomMeetings(cancelledLessonIds, 'delete');
 
       setCancellationReason('');
       onUpdated();
@@ -398,8 +402,9 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         logAudit(currentOrg.id, user.id, 'delete', 'lesson', lesson.id, {
           before: { title: lesson.title, start_at: lesson.start_at },
         });
-        // Fire-and-forget calendar sync
+        // Fire-and-forget calendar + Zoom sync
         syncLesson(lesson.id, 'delete');
+        syncZoomMeeting(lesson.id, 'delete');
         toast({ title: 'Lesson deleted' });
       } else {
         // Delete this and all future lessons in series
@@ -420,8 +425,9 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         logAudit(currentOrg.id, user.id, 'delete', 'lesson', lesson.id, {
           before: { title: lesson.title, start_at: lesson.start_at, scope: 'this_and_future' },
         });
-        // Fire-and-forget calendar sync for all deleted lessons
+        // Fire-and-forget calendar + Zoom sync for all deleted lessons
         syncLessons(deletedIds, 'delete');
+        syncZoomMeetings(deletedIds, 'delete');
         toast({ title: 'Series deleted', description: 'This and all future lessons have been deleted.' });
       }
       onUpdated();
@@ -440,7 +446,15 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         <SheetHeader className="space-y-1">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-xl">{lesson.title}</SheetTitle>
-            <Badge className={statusColors[lesson.status]}>{lesson.status}</Badge>
+            <div className="flex items-center gap-2">
+              {lesson.is_online && (
+                <Badge variant="outline" className="border-primary/50 text-primary bg-primary/10">
+                  <Video className="h-3 w-3 mr-1" />
+                  Online
+                </Badge>
+              )}
+              <Badge className={statusColors[lesson.status]}>{lesson.status}</Badge>
+            </div>
           </div>
         </SheetHeader>
 
@@ -540,6 +554,40 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
                 {lesson.location.name}{lesson.location.is_archived && <span className="text-muted-foreground"> (Archived)</span>}
                 {lesson.room && ` – ${lesson.room.name}`}
               </span>
+            </div>
+          )}
+
+          {/* Online Meeting Link */}
+          {lesson.online_meeting_url && (
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <Video className="h-4 w-4 flex-shrink-0" />
+              <a
+                href={lesson.online_meeting_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                Join Zoom Meeting
+              </a>
+            </div>
+          )}
+
+          {/* Retry Zoom link creation */}
+          {lesson.is_online && !lesson.online_meeting_url && lesson.status !== 'cancelled' && (
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <Video className="h-4 w-4 flex-shrink-0" />
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Zoom link pending</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1.5"
+                  onClick={() => syncZoomMeeting(lesson.id, 'create')}
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  Create Link
+                </Button>
+              </div>
             </div>
           )}
 

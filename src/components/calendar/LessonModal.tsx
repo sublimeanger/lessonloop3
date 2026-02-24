@@ -8,6 +8,7 @@ import { RecurringEditDialog } from './RecurringEditDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLessonForm } from './useLessonForm';
 import { LessonFormBody } from './lesson-form/LessonFormBody';
+import { useCalendarConnections } from '@/hooks/useCalendarConnections';
 
 interface LessonModalProps {
   open: boolean;
@@ -23,6 +24,8 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
   const studentSelectorRef = useRef<HTMLButtonElement>(null);
 
   const form = useLessonForm({ open, lesson, initialDate, initialEndDate, onSaved, onClose });
+  const { zoomConnection } = useCalendarConnections();
+  const hasZoomConnection = !!zoomConnection && zoomConnection.sync_status === 'active';
 
   const footerButtons = (
     <>
@@ -53,6 +56,8 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       notesShared={form.notesShared} setNotesShared={form.setNotesShared}
       recapUrl={form.recapUrl} setRecapUrl={form.setRecapUrl}
       status={form.status} setStatus={form.setStatus}
+      isOnlineLesson={form.isOnlineLesson} setIsOnlineLesson={form.setIsOnlineLesson}
+      hasZoomConnection={hasZoomConnection}
       isRecurring={form.isRecurring} setIsRecurring={form.setIsRecurring}
       recurrenceDays={form.recurrenceDays}
       recurrenceEndDate={form.recurrenceEndDate} setRecurrenceEndDate={form.setRecurrenceEndDate}

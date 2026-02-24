@@ -17,6 +17,7 @@ export interface Lesson {
   room_id: string | null;
   online_meeting_url: string | null;
   recap_url: string | null;
+  is_online: boolean;
   recurrence_id: string | null;
   title: string;
   notes_private: string | null;

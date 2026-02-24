@@ -12,6 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { CalendarIcon, Video } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { DURATION_OPTIONS, TIME_OPTIONS } from './constants';
@@ -49,6 +50,9 @@ interface LessonFormBodyProps {
   setRecapUrl: (url: string) => void;
   status: LessonStatus;
   setStatus: (status: LessonStatus) => void;
+  isOnlineLesson: boolean;
+  setIsOnlineLesson: (value: boolean) => void;
+  hasZoomConnection: boolean;
   isRecurring: boolean;
   setIsRecurring: (value: boolean) => void;
   recurrenceDays: number[];
@@ -86,6 +90,8 @@ export function LessonFormBody({
   notesShared, setNotesShared,
   recapUrl, setRecapUrl,
   status, setStatus,
+  isOnlineLesson, setIsOnlineLesson,
+  hasZoomConnection,
   isRecurring, setIsRecurring,
   recurrenceDays,
   recurrenceEndDate, setRecurrenceEndDate,
@@ -320,6 +326,22 @@ export function LessonFormBody({
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      {/* Online Lesson */}
+      <div className="flex items-center justify-between rounded-lg border p-3">
+        <div className="flex items-center gap-3">
+          <Video className="h-4 w-4 text-muted-foreground" />
+          <div className="space-y-0.5">
+            <Label className="text-sm font-medium">Online Lesson</Label>
+            <p className="text-xs text-muted-foreground">
+              {hasZoomConnection
+                ? 'A Zoom meeting link will be created automatically'
+                : 'Connect Zoom in Settings to auto-create meeting links'}
+            </p>
+          </div>
+        </div>
+        <Switch checked={isOnlineLesson} onCheckedChange={setIsOnlineLesson} />
       </div>
 
       {/* Recurrence */}

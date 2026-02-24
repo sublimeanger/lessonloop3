@@ -291,6 +291,19 @@ export default function PortalSchedule() {
                   <User className="h-4 w-4 flex-shrink-0" />
                   <span>{lesson.students.map(s => `${s.first_name} ${s.last_name}`).join(', ')}</span>
                 </div>
+                {lesson.online_meeting_url && lesson.status === 'scheduled' && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <Video className="h-4 w-4 flex-shrink-0 text-primary" />
+                    <a
+                      href={lesson.online_meeting_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-primary hover:underline"
+                    >
+                      Join Online Lesson
+                    </a>
+                  </div>
+                )}
               </div>
 
               {/* Attendance */}
