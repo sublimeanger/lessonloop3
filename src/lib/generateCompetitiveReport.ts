@@ -147,7 +147,7 @@ export function generateCompetitiveReport() {
 
   doc.setFontSize(10);
   doc.text('February 2026', pageW / 2, 136, { align: 'center' });
-  doc.text('Prepared for External Review', pageW / 2, 144, { align: 'center' });
+  doc.text('Reviewer: S. Atkinson (Phaze)', pageW / 2, 144, { align: 'center' });
 
   doc.setFontSize(9);
   doc.setTextColor(200, 200, 255);
