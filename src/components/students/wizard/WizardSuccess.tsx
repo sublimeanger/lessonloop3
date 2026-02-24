@@ -25,7 +25,7 @@ export function WizardSuccess({ data, onViewStudent, onAddAnother }: WizardSucce
         <CheckCircle2 className="h-10 w-10 text-primary" />
       </div>
       
-      <h3 className="text-xl font-semibold mb-6">Student Created</h3>
+      <h3 className="mb-6 text-section-title tracking-tight">Student Created</h3>
       
       <Card className="w-full max-w-md mb-6">
         <CardContent className="pt-6 space-y-3">
@@ -65,10 +65,10 @@ export function WizardSuccess({ data, onViewStudent, onAddAnother }: WizardSucce
         </CardContent>
       </Card>
       
-      <div className="flex gap-3">
+      <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
         <Button variant="outline" onClick={onAddAnother}>
           <Plus className="mr-2 h-4 w-4" />
-          Add Another
+          Add another
         </Button>
         <Button onClick={onViewStudent}>
           View Student
