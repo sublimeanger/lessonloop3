@@ -226,6 +226,7 @@ export function BillingTab() {
     refreshStatus,
     isConnected,
     isPending,
+    isDisconnected,
     dashboardUrl,
   } = useStripeConnect();
 
@@ -627,6 +628,12 @@ export function BillingTab() {
                   Setup Incomplete
                 </Badge>
               )}
+              {isDisconnected && (
+                <Badge variant="destructive" className="bg-destructive/10 text-destructive border-destructive/30">
+                  <XCircle className="h-3 w-3 mr-1" />
+                  Disconnected
+                </Badge>
+              )}
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -663,6 +670,29 @@ export function BillingTab() {
                   </Button>
                 </div>
               </div>
+            ) : isDisconnected ? (
+              <div className="space-y-4">
+                <div className="p-4 rounded-lg bg-destructive/5 border border-destructive/20">
+                  <div className="flex items-center gap-3">
+                    <XCircle className="h-5 w-5 text-destructive" />
+                    <div>
+                      <p className="font-medium text-sm">Stripe account disconnected</p>
+                      <p className="text-xs text-muted-foreground">
+                        Your Stripe account has been disconnected. Parents will not be able to make
+                        online payments until you reconnect. Any pending payments will still be processed.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <Button onClick={startOnboarding} disabled={isOnboarding}>
+                  {isOnboarding ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <CreditCard className="h-4 w-4 mr-2" />
+                  )}
+                  Reconnect Stripe Account
+                </Button>
+              </div>
             ) : isPending ? (
               <div className="space-y-4">
                 <div className="p-4 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30">
@@ -671,7 +701,7 @@ export function BillingTab() {
                     <div>
                       <p className="font-medium text-sm">Setup incomplete</p>
                       <p className="text-xs text-muted-foreground">
-                        Your Stripe account has been created but setup isn't complete. 
+                        Your Stripe account has been created but setup isn't complete.
                         Click below to finish the process.
                       </p>
                     </div>

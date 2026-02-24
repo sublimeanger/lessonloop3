@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog,
@@ -19,7 +20,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, Eye } from 'lucide-react';
 
 const COMMON_TIMEZONES = [
   'Europe/London',
@@ -90,7 +91,7 @@ export function OrganisationTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('organisations')
-        .select('name, address, timezone, currency_code')
+        .select('name, address, timezone, currency_code, teacher_payment_notifications_enabled, teacher_payment_analytics_enabled')
         .eq('id', currentOrg!.id)
         .single();
       if (error) throw error;
@@ -107,6 +108,10 @@ export function OrganisationTab() {
   const [currencyCode, setCurrencyCode] = useState('GBP');
   const [showTimezoneWarning, setShowTimezoneWarning] = useState(false);
   const [pendingTimezone, setPendingTimezone] = useState<string | null>(null);
+  const [teacherPaymentNotifications, setTeacherPaymentNotifications] = useState(true);
+  const [teacherPaymentAnalytics, setTeacherPaymentAnalytics] = useState(true);
+
+  const isMultiTeacherOrg = currentOrg?.org_type === 'academy' || currentOrg?.org_type === 'agency';
 
   useEffect(() => {
     if (orgData) {
@@ -114,6 +119,8 @@ export function OrganisationTab() {
       setOrgAddress(orgData.address || '');
       setTimezone(orgData.timezone || 'Europe/London');
       setCurrencyCode(orgData.currency_code || 'GBP');
+      setTeacherPaymentNotifications(orgData.teacher_payment_notifications_enabled !== false);
+      setTeacherPaymentAnalytics(orgData.teacher_payment_analytics_enabled !== false);
     }
   }, [orgData]);
 
@@ -163,14 +170,19 @@ export function OrganisationTab() {
     mutationFn: async () => {
       const nameErr = validateName(orgName);
       if (nameErr) throw new Error(nameErr);
+      const updatePayload: Record<string, unknown> = {
+        name: orgName.trim(),
+        address: orgAddress,
+        timezone,
+        currency_code: currencyCode,
+      };
+      if (isMultiTeacherOrg) {
+        updatePayload.teacher_payment_notifications_enabled = teacherPaymentNotifications;
+        updatePayload.teacher_payment_analytics_enabled = teacherPaymentAnalytics;
+      }
       const { error } = await supabase
         .from('organisations')
-        .update({ 
-          name: orgName.trim(), 
-          address: orgAddress,
-          timezone,
-          currency_code: currencyCode,
-        })
+        .update(updatePayload)
         .eq('id', currentOrg!.id);
       if (error) throw error;
     },
@@ -299,6 +311,50 @@ export function OrganisationTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Teacher Visibility — only for multi-teacher orgs, visible to owners/admins */}
+      {canEdit && isMultiTeacherOrg && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5 text-primary" />
+              Teacher Visibility
+            </CardTitle>
+            <CardDescription>
+              Control what financial information teachers can see
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-start justify-between gap-4 py-2">
+              <div className="space-y-0.5">
+                <div className="text-sm font-medium">Payment notifications</div>
+                <div className="text-xs text-muted-foreground leading-relaxed">
+                  When a parent pays, teachers see a real-time notification toast
+                </div>
+              </div>
+              <Switch
+                checked={teacherPaymentNotifications}
+                onCheckedChange={setTeacherPaymentNotifications}
+                className="shrink-0 mt-0.5"
+              />
+            </div>
+            <Separator />
+            <div className="flex items-start justify-between gap-4 py-2">
+              <div className="space-y-0.5">
+                <div className="text-sm font-medium">Payment analytics</div>
+                <div className="text-xs text-muted-foreground leading-relaxed">
+                  Show the payment analytics dashboard card to teachers on their dashboard
+                </div>
+              </div>
+              <Switch
+                checked={teacherPaymentAnalytics}
+                onCheckedChange={setTeacherPaymentAnalytics}
+                className="shrink-0 mt-0.5"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </>
   );
 }

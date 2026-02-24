@@ -84,16 +84,27 @@ serve(async (req) => {
         if (account.details_submitted) {
           dashboardUrl = `https://dashboard.stripe.com/${org.stripe_connect_account_id}`;
         }
-      } catch (err) {
-        console.error("Failed to retrieve Stripe account:", err);
-        stripeStatus = { status: org.stripe_connect_status, error: true };
+      } catch (err: any) {
+        // If account no longer exists or is deauthorized, mark as disconnected
+        if (err?.type === "StripeInvalidRequestError" || err?.statusCode === 404) {
+          await supabase.from("organisations").update({
+            stripe_connect_status: "disconnected",
+            stripe_connect_account_id: null,
+          }).eq("id", orgId);
+          stripeStatus = { status: "disconnected" };
+        } else {
+          console.error("Failed to retrieve Stripe account:", err);
+          stripeStatus = { status: org.stripe_connect_status, error: true };
+        }
       }
     }
 
+    const currentStatus = stripeStatus?.status === "disconnected" ? "disconnected" : org.stripe_connect_status;
+
     return new Response(
       JSON.stringify({
-        connected: !!org.stripe_connect_account_id,
-        status: org.stripe_connect_status,
+        connected: !!org.stripe_connect_account_id && currentStatus !== "disconnected",
+        status: currentStatus,
         onboardedAt: org.stripe_connect_onboarded_at,
         platformFeePercent: org.platform_fee_percent,
         stripe: stripeStatus,

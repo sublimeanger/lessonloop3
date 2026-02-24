@@ -55,6 +55,9 @@ export interface Organisation {
   max_credits_per_term?: number | null;
   // AI preferences
   ai_preferences?: Record<string, unknown> | null;
+  // Teacher visibility controls
+  teacher_payment_notifications_enabled?: boolean;
+  teacher_payment_analytics_enabled?: boolean;
 }
 
 export interface OrgMembership {

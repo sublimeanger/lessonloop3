@@ -218,7 +218,7 @@ serve(async (req) => {
 
     // Build success/cancel URLs
     const baseUrl = successUrl?.split("?")[0] || `${req.headers.get("origin")}/portal/invoices`;
-    const finalSuccessUrl = `${baseUrl}?payment=success&invoice=${invoiceId}`;
+    const finalSuccessUrl = `${baseUrl}?payment=success&invoice=${invoiceId}&session_id={CHECKOUT_SESSION_ID}`;
     const finalCancelUrl = cancelUrl || `${baseUrl}?payment=cancelled&invoice=${invoiceId}`;
 
     // Build checkout session params
@@ -267,7 +267,7 @@ serve(async (req) => {
     }
 
     // Create Stripe Checkout Session with idempotency key
-    const idempotencyKey = `checkout_${invoiceId}_${resolvedInstallmentId || "full"}_${paymentAmount}_${Date.now()}`;
+    const idempotencyKey = `checkout_${invoiceId}_${resolvedInstallmentId || "full"}_${paymentAmount}`;
     const session = await stripe.checkout.sessions.create(sessionParams, {
       idempotencyKey,
     });

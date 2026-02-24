@@ -147,6 +147,18 @@ serve(async (req) => {
         break;
       }
 
+      case "account.application.deauthorized": {
+        const account = event.data.object as Stripe.Account;
+        await handleAccountDeauthorized(supabase, account);
+        break;
+      }
+
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+        await handleChargeRefunded(supabase, charge);
+        break;
+      }
+
       default:
         log(`Unhandled event type: ${event.type}`);
     }
@@ -262,7 +274,7 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
     .single();
 
   // Record the payment
-  const { error: paymentError } = await supabase
+  const { data: paymentRecord, error: paymentError } = await supabase
     .from("payments")
     .insert({
       invoice_id: invoiceId,
@@ -272,7 +284,9 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
       provider: "stripe",
       provider_reference: paymentIntentId,
       paid_at: new Date().toISOString(),
-    });
+    })
+    .select("id")
+    .single();
 
   if (paymentError) {
     if (paymentError.code === '23505') {
@@ -325,7 +339,7 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
   // Update paid_minor and check if fully paid
   const { data: invoice } = await supabase
     .from("invoices")
-    .select("total_minor")
+    .select("total_minor, invoice_number, payer_guardian_id, payer_student_id")
     .eq("id", invoiceId)
     .single();
 
@@ -343,6 +357,59 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
     console.error("Failed to update invoice:", invoiceUpdateError);
   } else {
     log(`Invoice ${truncate(invoiceId)} updated: paid_minor=${totalPaid}${totalPaid >= (invoice?.total_minor || 0) ? ', status=paid' : ''}`);
+  }
+
+  const resolvedOrgId = checkoutSession?.org_id;
+
+  // Create payment notification for real-time teacher alerts
+  if (resolvedOrgId && invoice) {
+    let payerName = "Customer";
+    if (invoice.payer_guardian_id) {
+      const { data: guardian } = await supabase
+        .from("guardians")
+        .select("full_name")
+        .eq("id", invoice.payer_guardian_id)
+        .single();
+      if (guardian?.full_name) payerName = guardian.full_name;
+    } else if (invoice.payer_student_id) {
+      const { data: student } = await supabase
+        .from("students")
+        .select("first_name, last_name")
+        .eq("id", invoice.payer_student_id)
+        .single();
+      if (student) payerName = `${student.first_name} ${student.last_name}`.trim();
+    }
+
+    await supabase.from("payment_notifications").insert({
+      org_id: resolvedOrgId,
+      invoice_id: invoiceId,
+      payment_id: paymentRecord?.id,
+      amount_minor: checkoutSession?.amount_minor || session.amount_total,
+      payer_name: payerName,
+      invoice_number: invoice.invoice_number || "",
+    });
+  }
+
+  // Send receipt email (best-effort, non-blocking)
+  if (resolvedOrgId && paymentRecord?.id) {
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      await fetch(`${supabaseUrl}/functions/v1/send-payment-receipt`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({
+          paymentId: paymentRecord.id,
+          invoiceId,
+          orgId: resolvedOrgId,
+        }),
+      });
+    } catch (err) {
+      console.error("Failed to trigger receipt email:", err);
+    }
   }
 }
 
@@ -772,4 +839,134 @@ async function handleSubscriptionPaymentFailed(supabase: any, invoice: Stripe.In
     throw new Error(`DB update failed for payment failure: ${error.message}`);
   }
   log(`Org ${truncate(org.id)} marked past_due`);
+}
+
+// Handle Connect account deauthorization (teacher disconnects from Stripe Dashboard)
+async function handleAccountDeauthorized(supabase: any, account: Stripe.Account) {
+  const orgId = account.metadata?.lessonloop_org_id;
+
+  const resolveOrgId = async (): Promise<string | null> => {
+    if (orgId) return orgId;
+    const { data: org } = await supabase
+      .from("organisations")
+      .select("id")
+      .eq("stripe_connect_account_id", account.id)
+      .single();
+    return org?.id || null;
+  };
+
+  const resolvedOrgId = await resolveOrgId();
+  if (!resolvedOrgId) {
+    log("Cannot find org for account.application.deauthorized event");
+    return;
+  }
+
+  const { error } = await supabase
+    .from("organisations")
+    .update({
+      stripe_connect_status: "disconnected",
+      stripe_connect_account_id: null,
+    })
+    .eq("id", resolvedOrgId);
+
+  if (error) {
+    console.error("Failed to update org on account deauthorization:", error);
+  } else {
+    log(`Org ${truncate(resolvedOrgId)} Connect account deauthorized`);
+  }
+}
+
+// Handle refunds initiated externally (from Stripe Dashboard)
+async function handleChargeRefunded(supabase: any, charge: Stripe.Charge) {
+  const paymentIntentId = charge.payment_intent as string;
+  if (!paymentIntentId) {
+    log("Charge refund without payment_intent — skipping");
+    return;
+  }
+
+  // Find the payment by provider_reference
+  const { data: payment } = await supabase
+    .from("payments")
+    .select("id, invoice_id, org_id, amount_minor")
+    .eq("provider_reference", paymentIntentId)
+    .maybeSingle();
+
+  if (!payment) {
+    log(`No payment found for refunded charge PI ${truncate(paymentIntentId)}`);
+    return;
+  }
+
+  // Process each refund in the charge
+  const refunds = charge.refunds?.data || [];
+  for (const refund of refunds) {
+    // Idempotent: skip if already recorded
+    const { data: existing } = await supabase
+      .from("refunds")
+      .select("id")
+      .eq("stripe_refund_id", refund.id)
+      .maybeSingle();
+
+    if (existing) {
+      log(`Refund ${truncate(refund.id)} already recorded, skipping`);
+      continue;
+    }
+
+    const { error: refundError } = await supabase
+      .from("refunds")
+      .insert({
+        payment_id: payment.id,
+        invoice_id: payment.invoice_id,
+        org_id: payment.org_id,
+        amount_minor: refund.amount,
+        reason: refund.reason || "Refund via Stripe Dashboard",
+        status: refund.status === "succeeded" ? "succeeded" : refund.status === "failed" ? "failed" : "pending",
+        stripe_refund_id: refund.id,
+      });
+
+    if (refundError) {
+      if (refundError.code === "23505") {
+        log(`Duplicate refund prevented for ${truncate(refund.id)}`);
+      } else {
+        console.error("Failed to record refund:", refundError);
+      }
+      continue;
+    }
+
+    log(`Refund ${truncate(refund.id)} recorded: ${refund.amount} for payment ${truncate(payment.id)}`);
+  }
+
+  // Recalculate invoice paid_minor
+  const { data: allPayments } = await supabase
+    .from("payments")
+    .select("amount_minor")
+    .eq("invoice_id", payment.invoice_id);
+
+  const { data: allRefunds } = await supabase
+    .from("refunds")
+    .select("amount_minor")
+    .eq("invoice_id", payment.invoice_id)
+    .eq("status", "succeeded");
+
+  const totalPaid = (allPayments || []).reduce((sum: number, p: any) => sum + p.amount_minor, 0);
+  const totalRefunded = (allRefunds || []).reduce((sum: number, r: any) => sum + r.amount_minor, 0);
+  const netPaid = totalPaid - totalRefunded;
+
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select("total_minor")
+    .eq("id", payment.invoice_id)
+    .single();
+
+  const invoiceUpdate: Record<string, unknown> = { paid_minor: netPaid };
+  if (invoice && netPaid < invoice.total_minor) {
+    // Reopen invoice if it was fully paid but now has a refund
+    invoiceUpdate.status = "sent";
+  }
+
+  await supabase
+    .from("invoices")
+    .update(invoiceUpdate)
+    .eq("id", payment.invoice_id);
+
+  log(`Invoice ${truncate(payment.invoice_id)} recalculated after refund: net_paid=${netPaid}`);
 }

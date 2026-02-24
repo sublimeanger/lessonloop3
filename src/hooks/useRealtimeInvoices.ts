@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrencyMinor } from '@/lib/utils';
 
@@ -12,10 +13,16 @@ import { formatCurrencyMinor } from '@/lib/utils';
  */
 export function useRealtimeInvoices() {
   const queryClient = useQueryClient();
-  const { currentOrg } = useOrg();
+  const { currentOrg, currentRole } = useOrg();
   const { toast } = useToast();
   const orgId = currentOrg?.id;
   const currencyCode = currentOrg?.currency_code || 'GBP';
+
+  // Determine if payment toasts should be shown:
+  // - Always for owners/admins/finance
+  // - For teachers: only if org has teacher_payment_notifications_enabled !== false
+  const isTeacherRole = currentRole === 'teacher';
+  const showPaymentToasts = !isTeacherRole || currentOrg?.teacher_payment_notifications_enabled !== false;
 
   useEffect(() => {
     if (!orgId) return;
@@ -70,15 +77,18 @@ export function useRealtimeInvoices() {
           filter: `org_id=eq.${orgId}`,
         },
         (payload) => {
-          const n = payload.new as {
-            payer_name?: string;
-            amount_minor?: number;
-            invoice_number?: string;
-          };
-          toast({
-            title: 'Payment Received!',
-            description: `${n.payer_name || 'A parent'} paid ${formatCurrencyMinor(n.amount_minor || 0, currencyCode)} for ${n.invoice_number || 'an invoice'}`,
-          });
+          // Only show toast if user should see payment notifications
+          if (showPaymentToasts) {
+            const n = payload.new as {
+              payer_name?: string;
+              amount_minor?: number;
+              invoice_number?: string;
+            };
+            toast({
+              title: 'Payment Received!',
+              description: `${n.payer_name || 'A parent'} paid ${formatCurrencyMinor(n.amount_minor || 0, currencyCode)} for ${n.invoice_number || 'an invoice'}`,
+            });
+          }
           queryClient.invalidateQueries({ queryKey: ['invoice-stats', orgId] });
           queryClient.invalidateQueries({ queryKey: ['invoices', orgId] });
         }
@@ -88,5 +98,5 @@ export function useRealtimeInvoices() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [orgId, queryClient, toast, currencyCode]);
+  }, [orgId, queryClient, toast, currencyCode, showPaymentToasts]);
 }

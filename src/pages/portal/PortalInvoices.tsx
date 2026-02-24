@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { PortalErrorState } from '@/components/portal/PortalErrorState';
 import { useSearchParams } from 'react-router-dom';
@@ -20,6 +20,7 @@ import {
 import { Receipt, Loader2, Download, CreditCard, AlertCircle, CheckCircle, Building2, FileDown } from 'lucide-react';
 import { format, parseISO, isBefore, startOfToday } from 'date-fns';
 import { useOrg } from '@/contexts/OrgContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useParentInvoices } from '@/hooks/useParentPortal';
 import { useStripePayment } from '@/hooks/useStripePayment';
 import { useInvoicePdf } from '@/hooks/useInvoicePdf';
@@ -68,19 +69,88 @@ export default function PortalInvoices() {
   // Get highlighted invoice from URL param
   const highlightedInvoiceId = searchParams.get('invoice');
 
-  // Handle payment success/cancel URL params
+  // Handle payment success/cancel URL params with server-side verification
+  const verificationDone = useRef(false);
   useEffect(() => {
     const paymentStatus = searchParams.get('payment');
-    if (paymentStatus === 'success') {
-      toast({
-        title: 'Payment Successful',
-        description: 'Your payment has been processed. The invoice will be updated shortly.',
-      });
-      // Refetch invoices to show updated status
-      refetch();
-      // Clear only payment param, keep invoice if present
+    if (paymentStatus === 'success' && !verificationDone.current) {
+      verificationDone.current = true;
+      const sessionId = searchParams.get('session_id');
+      const invoiceId = searchParams.get('invoice');
+
+      // Clear URL params immediately to prevent re-triggering
       searchParams.delete('payment');
+      searchParams.delete('session_id');
       setSearchParams(searchParams);
+
+      // Show initial processing state
+      toast({
+        title: 'Verifying payment...',
+        description: 'Please wait while we confirm your payment.',
+      });
+
+      // Verify the session server-side if we have a session_id (anti-spoofing)
+      const verifyAndPoll = async () => {
+        let verified = false;
+
+        if (sessionId) {
+          try {
+            const { data } = await supabase.functions.invoke('stripe-verify-session', {
+              body: { sessionId },
+            });
+            verified = data?.verified === true;
+          } catch {
+            // Verification failed, fall through to polling
+          }
+        }
+
+        if (verified) {
+          toast({
+            title: 'Payment Successful',
+            description: 'Your payment has been confirmed.',
+          });
+          refetch();
+          return;
+        }
+
+        // Poll for invoice update (webhook may not have fired yet)
+        let attempts = 0;
+        const maxAttempts = 8;
+        const pollInterval = setInterval(async () => {
+          attempts++;
+          refetch();
+
+          // Check if the specific invoice has been updated
+          if (invoiceId) {
+            const { data: inv } = await supabase
+              .from('invoices')
+              .select('status, paid_minor, total_minor')
+              .eq('id', invoiceId)
+              .single();
+
+            if (inv?.status === 'paid' || (inv?.paid_minor && inv.paid_minor > 0)) {
+              clearInterval(pollInterval);
+              toast({
+                title: 'Payment Successful',
+                description: 'Your payment has been confirmed and the invoice updated.',
+              });
+              refetch();
+              return;
+            }
+          }
+
+          if (attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            toast({
+              title: 'Payment Processing',
+              description: 'Your payment is being processed. The invoice will update shortly.',
+            });
+            refetch();
+          }
+        }, 2000);
+      };
+
+      verifyAndPoll();
     } else if (paymentStatus === 'cancelled') {
       toast({
         title: 'Payment Cancelled',
