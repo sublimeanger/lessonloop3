@@ -1,12 +1,12 @@
-import { Suspense } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
 import { logger } from "@/lib/logger";
 import { toast } from "@/hooks/use-toast";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { OrgProvider } from "@/contexts/OrgContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { OrgProvider, useOrg } from "@/contexts/OrgContext";
 import { LoopAssistProvider } from "@/contexts/LoopAssistContext";
 import { TourProvider } from "@/components/tours/TourProvider";
 import { RouteGuard, PublicRoute } from "@/components/auth/RouteGuard";
@@ -14,6 +14,8 @@ import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { AppShellSkeleton } from "@/components/shared/LoadingState";
+import { useAndroidBackButton } from "@/hooks/useAndroidBackButton";
+import { initPushNotifications, teardownPushNotifications } from "@/services/pushNotifications";
 import {
   publicAuthRoutes,
   authOnlyRoutes,
@@ -100,6 +102,29 @@ function renderRoutes(routes: RouteConfig[]) {
   ));
 }
 
+// ─── Native platform initialiser ─────────────────────────
+
+function NativeInitializer() {
+  useAndroidBackButton();
+
+  const { user } = useAuth();
+  const { currentOrg } = useOrg();
+  const pushInitRef = useRef(false);
+
+  useEffect(() => {
+    if (user && currentOrg && !pushInitRef.current) {
+      pushInitRef.current = true;
+      initPushNotifications(user.id, currentOrg.id);
+    }
+    if (!user) {
+      pushInitRef.current = false;
+      teardownPushNotifications();
+    }
+  }, [user, currentOrg]);
+
+  return null;
+}
+
 // ─── App ─────────────────────────────────────────────────
 
 const App = () => (
@@ -114,6 +139,7 @@ const App = () => (
         >
           <AuthProvider>
             <OrgProvider>
+              <NativeInitializer />
               <LoopAssistProvider>
                 <TourProvider>
                   <ScrollToTop />
