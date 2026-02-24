@@ -23,6 +23,7 @@ import ForgotPassword from '@/pages/ForgotPassword';
 
 // ─── Lazy: Marketing ─────────────────────────────────────
 const MarketingHome = lazy(() => import('@/pages/marketing/Home'));
+const ReportDownload = lazy(() => import('@/pages/marketing/ReportDownload'));
 const Features = lazy(() => import('@/pages/marketing/Features'));
 const Pricing = lazy(() => import('@/pages/marketing/Pricing'));
 const About = lazy(() => import('@/pages/marketing/About'));
@@ -147,6 +148,7 @@ export const marketingRoutes: RouteConfig[] = [
   { path: '/gdpr', component: GDPR, auth: 'public', label: 'GDPR' },
   { path: '/cookies', component: Cookies, auth: 'public', label: 'Cookie Policy' },
   { path: '/kickstarter', component: Kickstarter, auth: 'public', label: 'Kickstarter' },
+  { path: '/report', component: ReportDownload, auth: 'public', label: 'Report' },
   { path: '/reset-password', component: ResetPassword, auth: 'public', label: 'Reset Password' },
 ];
 
