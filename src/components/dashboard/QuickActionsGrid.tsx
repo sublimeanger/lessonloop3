@@ -54,13 +54,13 @@ export function QuickActionsGrid({ variant = 'solo', className }: QuickActionsGr
         <CardTitle className="text-body-strong">Quick Actions</CardTitle>
       </CardHeader>
       <CardContent className="pb-4">
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2">
           {actions.map((action) => (
             <Link
               key={action.id}
               to={action.href}
               className={cn(
-                'flex min-h-11 items-center gap-2 sm:gap-3 rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 transition-all',
+                'flex min-h-12 items-center gap-2 sm:gap-3 rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 transition-all',
                 'hover:shadow-sm active:scale-[0.98]',
                 action.primary
                   ? 'bg-primary text-primary-foreground hover:bg-primary/90'

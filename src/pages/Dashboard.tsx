@@ -186,7 +186,7 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
           {isLoading ? (
             <GridSkeleton count={6} columns={4} />
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
               <StatCard title="Today's Lessons" value={stats?.todayLessons ?? 0} subtitle={currentOrg?.org_type === 'solo_teacher' ? 'Your schedule' : 'Across all teachers'} icon={Calendar} href="/calendar" variant="teal" />
               <StatCard title="Active Students" value={stats?.activeStudents ?? 0} subtitle="Currently enrolled" icon={Users} href="/students" variant="coral" />
               <StatCard title="This Week" value={`${stats?.lessonsThisWeek ?? 0} lessons`} subtitle={`${stats?.hoursThisWeek ?? 0} teaching hours`} icon={Clock} href="/calendar" variant="emerald" />
@@ -200,10 +200,10 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
         {/* Main Content Grid — stacked on mobile, side-by-side on lg */}
         <motion.div variants={itemVariants} className="grid gap-4 sm:gap-6 lg:grid-cols-8">
           <SectionErrorBoundary name="Today's Timeline">
-            <TodayTimeline className="lg:col-span-5" />
+            <TodayTimeline className="order-last lg:order-none lg:col-span-5" />
           </SectionErrorBoundary>
           <SectionErrorBoundary name="Quick Actions">
-            <QuickActionsGrid variant="solo" className="lg:col-span-3" />
+            <QuickActionsGrid variant="solo" className="order-first lg:order-none lg:col-span-3" />
           </SectionErrorBoundary>
         </motion.div>
       </motion.div>
@@ -286,7 +286,7 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
           {isLoading ? (
             <GridSkeleton count={6} columns={4} />
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
               <StatCard title="Today's Lessons" value={stats?.todayLessons ?? 0} subtitle="Across all teachers" icon={Calendar} href="/calendar" variant="teal" />
               <StatCard title="Active Students" value={stats?.activeStudents ?? 0} subtitle="Currently enrolled" icon={Users} href="/students" variant="coral" />
               <StatCard title="This Week" value={`${stats?.lessonsThisWeek ?? 0} lessons`} subtitle={`${stats?.hoursThisWeek ?? 0} teaching hours`} icon={Clock} href="/calendar" variant="emerald" />
@@ -300,10 +300,10 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
         {/* Main Content Grid */}
         <motion.div variants={itemVariants} className="grid gap-4 sm:gap-6 lg:grid-cols-9">
           <SectionErrorBoundary name="Today's Timeline">
-            <TodayTimeline className="lg:col-span-5" />
+            <TodayTimeline className="order-last lg:order-none lg:col-span-5" />
           </SectionErrorBoundary>
           
-          <div className="lg:col-span-4 space-y-4 sm:space-y-6">
+          <div className="order-first lg:order-none lg:col-span-4 space-y-4 sm:space-y-6">
             {/* Cancellation Alert Card */}
             <Card className="border-amber-200/50 bg-amber-50/30">
               <CardContent className="p-3 sm:p-4">
@@ -431,10 +431,10 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
         {/* Main Content Grid */}
         <motion.div variants={itemVariants} className="grid gap-4 sm:gap-6 lg:grid-cols-5">
           <SectionErrorBoundary name="Today's Timeline">
-            <TodayTimeline className="lg:col-span-3" />
+            <TodayTimeline className="order-last lg:order-none lg:col-span-3" />
           </SectionErrorBoundary>
           <SectionErrorBoundary name="Quick Actions">
-            <QuickActionsGrid variant="teacher" className="lg:col-span-2" />
+            <QuickActionsGrid variant="teacher" className="order-first lg:order-none lg:col-span-2" />
           </SectionErrorBoundary>
         </motion.div>
       </motion.div>
