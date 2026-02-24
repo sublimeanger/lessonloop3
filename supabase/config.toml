@@ -70,3 +70,14 @@ verify_jwt = false
 
 [functions.calendar-refresh-busy]
 verify_jwt = false
+
+# ── Zoom integration ────────────────────────────────────────────────
+
+[functions.zoom-oauth-start]
+verify_jwt = true
+
+[functions.zoom-oauth-callback]
+verify_jwt = false
+
+[functions.zoom-sync-lesson]
+verify_jwt = true

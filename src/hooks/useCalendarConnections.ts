@@ -178,16 +178,26 @@ export function useCalendarConnections() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const response = await supabase.functions.invoke('zoom-oauth-start', {
+      const { data, error, response: rawResponse } = await supabase.functions.invoke('zoom-oauth-start', {
         body: {
           org_id: currentOrg.id,
           redirect_uri: window.location.origin + '/settings?tab=calendar',
         },
       });
 
-      if (response.error) throw response.error;
+      if (error) {
+        // Extract actual error message from the edge function response body
+        let errorMessage = 'Could not connect to Zoom';
+        try {
+          const errorBody = await rawResponse?.json();
+          errorMessage = errorBody?.message || errorBody?.error || errorMessage;
+        } catch {
+          // Body may already be consumed or not JSON
+        }
+        throw new Error(errorMessage);
+      }
 
-      const { auth_url } = response.data;
+      const { auth_url } = data;
       if (auth_url) {
         window.location.href = auth_url;
       } else {
