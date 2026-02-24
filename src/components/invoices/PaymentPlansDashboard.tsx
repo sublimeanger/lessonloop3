@@ -250,7 +250,7 @@ export function PaymentPlansDashboard() {
       </div>
 
       {/* Desktop table layout */}
-      <div className="hidden md:block rounded-lg border bg-card overflow-hidden">
+      <div className="hidden md:block rounded-xl border bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>

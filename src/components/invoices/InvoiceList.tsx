@@ -200,7 +200,7 @@ const MobileInvoiceCard = React.memo(function MobileInvoiceCard({
     <div
       onClick={onNavigate}
       className={cn(
-        'rounded-lg border bg-card p-3 cursor-pointer transition-colors active:bg-muted/40',
+        'rounded-xl border bg-card p-3 cursor-pointer transition-colors active:bg-muted/40',
         selected && 'ring-1 ring-primary bg-primary/5',
       )}
     >
@@ -321,13 +321,13 @@ export function InvoiceList({
         {startIndex + 1}–{endIndex} of {effectiveTotal}
       </p>
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="sm" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage <= 1}>
+        <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-9" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage <= 1}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <span className="text-xs text-muted-foreground px-2">
           {currentPage}/{totalPages}
         </span>
-        <Button variant="ghost" size="sm" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage >= totalPages}>
+        <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-9" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage >= totalPages}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>

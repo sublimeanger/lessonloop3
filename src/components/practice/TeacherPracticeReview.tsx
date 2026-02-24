@@ -48,7 +48,7 @@ export function TeacherPracticeReview() {
   const renderLogCard = (log: PracticeLog, showFeedbackInput: boolean) => (
     <div 
       key={log.id} 
-      className="border rounded-lg p-4 bg-card"
+      className="border rounded-xl p-4 bg-card"
     >
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div className="space-y-1">

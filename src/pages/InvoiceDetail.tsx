@@ -18,7 +18,7 @@ import { useStripePayment } from '@/hooks/useStripePayment';
 import { useInvoicePdf } from '@/hooks/useInvoicePdf';
 import { useToast } from '@/hooks/use-toast';
 
-import { LoadingState } from '@/components/shared/LoadingState';
+import { DetailSkeleton } from '@/components/shared/LoadingState';
 import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
 import { SendInvoiceModal } from '@/components/invoices/SendInvoiceModal';
 import { InstallmentTimeline } from '@/components/invoices/InstallmentTimeline';
@@ -127,7 +127,7 @@ export default function InvoiceDetail() {
   if (isLoading) {
     return (
       <AppLayout>
-        <LoadingState message="Loading invoice..." />
+        <DetailSkeleton />
       </AppLayout>
     );
   }

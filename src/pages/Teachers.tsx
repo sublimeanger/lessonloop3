@@ -431,7 +431,7 @@ export default function Teachers() {
 
       {/* Usage indicator */}
       {limits.maxTeachers < 9999 && (
-        <div className="mb-4 p-3 rounded-lg border bg-card">
+        <div className="mb-4 p-3 rounded-xl border bg-card">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-medium">Teacher Usage</span>
             <span className={cn(

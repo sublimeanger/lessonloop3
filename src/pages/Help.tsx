@@ -185,13 +185,13 @@ export default function Help() {
               Our support team is here to assist you with any questions.
             </p>
             <div className="flex justify-center gap-3">
-              <Button variant="outline" size="sm" className="gap-2" asChild>
+              <Button variant="outline" size="sm" className="min-h-11 sm:min-h-9 gap-2" asChild>
                 <a href="/contact" target="_blank">
                   <ExternalLink className="h-3 w-3" />
                   Contact Support
                 </a>
               </Button>
-              <Button variant="outline" size="sm" className="gap-2" onClick={openDrawer}>
+              <Button variant="outline" size="sm" className="min-h-11 sm:min-h-9 gap-2" onClick={openDrawer}>
                 <Sparkles className="h-4 w-4" />
                 Ask LoopAssist
               </Button>

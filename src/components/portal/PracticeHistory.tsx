@@ -124,7 +124,7 @@ export function PracticeHistory() {
                         {day.logs.map(log => {
                           const encouragement = getEncouragement(log.duration_minutes);
                           return (
-                            <div key={log.id} className="border rounded-lg p-4 bg-card">
+                            <div key={log.id} className="border rounded-xl p-4 bg-card">
                               <div className="flex items-start justify-between">
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-2">

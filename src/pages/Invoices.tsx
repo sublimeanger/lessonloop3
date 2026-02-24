@@ -225,7 +225,7 @@ export default function Invoices() {
                 onSecondaryAction={() => setCreateModalOpen(true)}
               />
             ) : (
-              <div className="rounded-lg border bg-card" data-tour="invoice-list">
+              <div className="rounded-xl border bg-card" data-tour="invoice-list">
                 <InvoiceList
                   invoices={invoices}
                   totalCount={totalCount}
@@ -255,7 +255,7 @@ export default function Invoices() {
               description="You don't have any invoices yet. They will appear here when your teacher creates them."
             />
           ) : (
-            <div className="rounded-lg border bg-card" data-tour="invoice-list">
+            <div className="rounded-xl border bg-card" data-tour="invoice-list">
               <InvoiceList
                 invoices={invoices}
                 totalCount={totalCount}

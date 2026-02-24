@@ -169,7 +169,7 @@ export function PaymentAnalyticsCard() {
 
 function MiniStat({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
   return (
-    <div className="rounded-lg border p-3 space-y-1">
+    <div className="rounded-xl border p-3 space-y-1">
       <div className="flex items-center gap-1.5">
         {icon}
         <span className="text-xs text-muted-foreground">{label}</span>

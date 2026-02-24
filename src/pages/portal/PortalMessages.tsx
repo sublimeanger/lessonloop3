@@ -395,7 +395,7 @@ export default function PortalMessages() {
                     )}
 
                     {request.admin_response && (
-                      <div className="mt-4 p-3 rounded-lg border bg-card">
+                      <div className="mt-4 p-3 rounded-xl border bg-card">
                         <div className="flex items-center gap-2 text-sm font-medium mb-2">
                           <AlertCircle className="h-4 w-4" />
                           Admin Response

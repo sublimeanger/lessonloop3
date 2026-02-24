@@ -152,7 +152,7 @@ export function TermManagementCard() {
                 return (
                   <div
                     key={term.id}
-                    className="flex items-center justify-between rounded-lg border p-4"
+                    className="flex items-center justify-between rounded-xl border p-4"
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-2">

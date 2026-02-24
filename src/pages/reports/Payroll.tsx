@@ -244,7 +244,7 @@ function PayrollTeacherList({
           open={expandedTeachers.has(teacher.teacherId)}
           onOpenChange={() => toggleTeacher(teacher.teacherId)}
         >
-          <div className="rounded-lg border bg-card">
+          <div className="rounded-xl border bg-card">
             <CollapsibleTrigger className="flex w-full items-center justify-between p-4 hover:bg-muted/50">
               <div className="flex items-center gap-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">

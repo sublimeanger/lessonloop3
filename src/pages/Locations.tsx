@@ -682,7 +682,7 @@ export default function Locations() {
           onAction={isOrgAdmin ? () => openLocationDialog() : undefined}
         />
       ) : filteredLocations.length === 0 ? (
-        <div className="rounded-lg border bg-card p-8 text-center">
+        <div className="rounded-xl border bg-card p-8 text-center">
           <p className="text-muted-foreground">No locations match your search</p>
         </div>
       ) : (

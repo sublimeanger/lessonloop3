@@ -86,7 +86,7 @@ export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionPro
             : 'Unknown Student';
 
           return (
-            <div key={entry.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <div key={entry.id} className="rounded-xl border border-border bg-card p-4 space-y-3">
               {/* Match info */}
               <div className="space-y-1">
                 <div className="flex flex-wrap items-start justify-between gap-2">
