@@ -168,8 +168,8 @@ export default function InvoiceDetail() {
           { label: invoice.invoice_number },
         ]}
         actions={
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate('/invoices')}>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="min-h-11 sm:min-h-9" onClick={() => navigate('/invoices')}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
@@ -177,7 +177,7 @@ export default function InvoiceDetail() {
               <>
                 <Button 
                   variant="outline" 
-                  className="gap-2"
+                  className="min-h-11 gap-2 sm:min-h-9"
                   onClick={handleDownloadPdf}
                   disabled={isPdfLoading}
                 >
@@ -190,7 +190,7 @@ export default function InvoiceDetail() {
                 </Button>
                 {invoice.status !== 'paid' && invoice.status !== 'void' && onlinePaymentsEnabled && (
                   <Button 
-                    className="gap-2" 
+                    className="min-h-11 gap-2 sm:min-h-9" 
                     onClick={handlePayNow}
                     disabled={isPaymentLoading}
                   >
@@ -206,18 +206,18 @@ export default function InvoiceDetail() {
             ) : (
               <>
                 {invoice.status === 'draft' && (
-                  <Button className="gap-2" onClick={() => setSendModalOpen(true)}>
+                  <Button className="min-h-11 gap-2 sm:min-h-9" onClick={() => setSendModalOpen(true)}>
                     <Send className="h-4 w-4" />
                     Send
                   </Button>
                 )}
                 {(invoice.status === 'sent' || invoice.status === 'overdue') && (
                   <>
-                    <Button variant="outline" className="gap-2" onClick={() => setReminderModalOpen(true)}>
+                    <Button variant="outline" className="min-h-11 gap-2 sm:min-h-9" onClick={() => setReminderModalOpen(true)}>
                       <Bell className="h-4 w-4" />
                       Reminder
                     </Button>
-                    <Button className="gap-2" onClick={() => setPaymentModalOpen(true)}>
+                    <Button className="min-h-11 gap-2 sm:min-h-9" onClick={() => setPaymentModalOpen(true)}>
                       <CreditCard className="h-4 w-4" />
                       Record Payment
                     </Button>
@@ -260,8 +260,8 @@ export default function InvoiceDetail() {
 
                 <Separator />
 
-                <div>
-                  <table className="w-full">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[520px]">
                     <thead>
                       <tr className="border-b text-left text-sm text-muted-foreground">
                         <th className="pb-3">Description</th>

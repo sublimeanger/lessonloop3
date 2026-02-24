@@ -163,7 +163,7 @@ export function PreviewStep({
 
         {/* Tabbed row list */}
         <Tabs value={previewTab} onValueChange={(v) => setPreviewTab(v as any)}>
-          <TabsList>
+          <TabsList className="h-auto w-full flex-wrap justify-start">
             <TabsTrigger value="all">All Records ({dryRunResult.rowStatuses.length})</TabsTrigger>
             <TabsTrigger value="issues" className="text-warning">
               Issues ({dryRunResult.rowStatuses.filter(s => s.status !== "ready").length})
@@ -174,7 +174,7 @@ export function PreviewStep({
           </TabsList>
 
           <TabsContent value={previewTab} className="mt-4">
-            <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
+            <div className="max-h-[400px] overflow-auto rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -215,7 +215,7 @@ export function PreviewStep({
           </TabsContent>
         </Tabs>
 
-        <div className="flex justify-between">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <Button variant="outline" onClick={onBack}>Back to Mapping</Button>
           <Button onClick={onExecute} disabled={isLoading || dryRunResult.validation.valid === 0}>
             {isLoading ? (
