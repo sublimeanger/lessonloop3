@@ -22,6 +22,7 @@ import {
   FolderOpen,
   UserX,
   Users,
+  Video,
 } from 'lucide-react';
 import { PortalHomeSkeleton } from '@/components/shared/LoadingState';
 import { useEffect, useRef, useState } from 'react';
@@ -353,12 +354,22 @@ export default function PortalHome() {
                         </p>
                       )}
                     </div>
-                    <Link to="/portal/schedule" className="shrink-0">
-                      <Button variant="secondary" size="sm" className="gap-1">
-                        Schedule
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </Button>
-                    </Link>
+                    <div className="flex flex-col gap-2 shrink-0">
+                      {nextLesson.online_meeting_url && (
+                        <a href={nextLesson.online_meeting_url} target="_blank" rel="noopener noreferrer">
+                          <Button size="sm" className="gap-1.5 w-full">
+                            <Video className="h-3.5 w-3.5" />
+                            Join Online
+                          </Button>
+                        </a>
+                      )}
+                      <Link to="/portal/schedule">
+                        <Button variant="secondary" size="sm" className="gap-1 w-full">
+                          Schedule
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

@@ -34,9 +34,11 @@ export interface ParentLesson {
   teacher_id: string | null;
   teacher_name?: string | null;
   notes_shared: string | null;
-  students: Array<{ 
-    id: string; 
-    first_name: string; 
+  online_meeting_url: string | null;
+  is_online: boolean;
+  students: Array<{
+    id: string;
+    first_name: string;
     last_name: string;
     attendance_status?: string | null;
   }>;
@@ -167,6 +169,8 @@ interface ParticipantLesson {
   teacher_id: string | null;
   location_id: string | null;
   notes_shared: string | null;
+  online_meeting_url: string | null;
+  is_online: boolean;
   location: { name: string } | null;
   teacher: { display_name: string } | null;
 }
@@ -235,6 +239,8 @@ export function useParentLessons(options?: { studentId?: string; status?: string
             teacher_id,
             location_id,
             notes_shared,
+            online_meeting_url,
+            is_online,
             location:locations(name),
             teacher:teachers!lessons_teacher_id_fkey(display_name)
           )
@@ -287,6 +293,8 @@ export function useParentLessons(options?: { studentId?: string; status?: string
             teacher_id: lesson.teacher_id,
             teacher_name: lesson.teacher?.display_name || null,
             notes_shared: lesson.notes_shared || null,
+            online_meeting_url: lesson.online_meeting_url || null,
+            is_online: lesson.is_online || false,
             students: [],
           });
         }
@@ -500,6 +508,17 @@ export function useParentSummary() {
         unreadMessages = count || 0;
       }
 
+      // Fetch online_meeting_url for next lesson if available
+      let nextLessonMeetingUrl: string | null = null;
+      if (dashData.next_lesson?.id) {
+        const { data: lessonData } = await supabase
+          .from('lessons')
+          .select('online_meeting_url')
+          .eq('id', dashData.next_lesson.id)
+          .single();
+        nextLessonMeetingUrl = lessonData?.online_meeting_url || null;
+      }
+
       return {
         nextLesson: dashData.next_lesson ? {
           id: dashData.next_lesson.id,
@@ -507,6 +526,7 @@ export function useParentSummary() {
           start_at: dashData.next_lesson.start_at,
           end_at: dashData.next_lesson.end_at,
           location_name: dashData.next_lesson.location_name,
+          online_meeting_url: nextLessonMeetingUrl,
         } : null,
         outstandingBalance: dashData.outstanding_balance,
         overdueInvoices: dashData.overdue_count,

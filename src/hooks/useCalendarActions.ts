@@ -7,6 +7,7 @@ import { toast } from '@/hooks/use-toast';
 import { LessonWithDetails } from '@/components/calendar/types';
 import { RecurringActionMode } from '@/components/calendar/RecurringActionDialog';
 import { useCalendarSync } from '@/hooks/useCalendarSync';
+import { useZoomSync } from '@/hooks/useZoomSync';
 import type { ConflictResult } from '@/components/calendar/types';
 
 interface UseCalendarActionsParams {
@@ -44,6 +45,7 @@ export function useCalendarActions({
   isParent,
 }: UseCalendarActionsParams) {
   const { syncLesson, syncLessons } = useCalendarSync();
+  const { syncZoomMeetings } = useZoomSync();
   // Lesson modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<LessonWithDetails | null>(null);
@@ -258,8 +260,9 @@ export function useCalendarActions({
           description: `Moved to ${format(newStart, 'EEE d MMM, HH:mm')}`,
         });
 
-        // Fire-and-forget calendar sync for all affected lessons
+        // Fire-and-forget calendar + Zoom sync for all affected lessons
         syncLessons([...affectedIds], 'update');
+        syncZoomMeetings([...affectedIds], 'update');
 
         refetch();
       } catch (err: any) {

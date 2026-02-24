@@ -87,6 +87,38 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Optionally delete Zoom meetings
+    if (delete_events && connection.provider === 'zoom' && connection.access_token) {
+      const { data: zoomMappings } = await supabase
+        .from('zoom_meeting_mappings')
+        .select('id, zoom_meeting_id, lesson_id')
+        .eq('connection_id', connection_id);
+
+      if (zoomMappings && zoomMappings.length > 0) {
+        const lessonIds: string[] = [];
+        for (const mapping of zoomMappings) {
+          if (mapping.zoom_meeting_id) {
+            try {
+              await fetch(`https://api.zoom.us/v2/meetings/${mapping.zoom_meeting_id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${connection.access_token}` },
+              });
+            } catch (e) {
+              console.error('Error deleting Zoom meeting:', e);
+            }
+          }
+          lessonIds.push(mapping.lesson_id);
+        }
+        // Clear online_meeting_url on affected lessons
+        if (lessonIds.length > 0) {
+          await supabase
+            .from('lessons')
+            .update({ online_meeting_url: null })
+            .in('id', lessonIds);
+        }
+      }
+    }
+
     // Revoke Google token if applicable
     if (connection.provider === 'google' && connection.access_token) {
       try {
@@ -99,9 +131,35 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Revoke Zoom token if applicable
+    if (connection.provider === 'zoom' && connection.access_token) {
+      const zoomClientId = Deno.env.get('ZOOM_CLIENT_ID');
+      const zoomClientSecret = Deno.env.get('ZOOM_CLIENT_SECRET');
+      if (zoomClientId && zoomClientSecret) {
+        try {
+          await fetch('https://zoom.us/oauth/revoke', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Basic ${btoa(`${zoomClientId}:${zoomClientSecret}`)}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({ token: connection.access_token }),
+          });
+        } catch (e) {
+          console.error('Error revoking Zoom token:', e);
+        }
+      }
+    }
+
     // Delete mappings first (foreign key constraint)
     await supabase
       .from('calendar_event_mappings')
+      .delete()
+      .eq('connection_id', connection_id);
+
+    // Delete Zoom meeting mappings
+    await supabase
+      .from('zoom_meeting_mappings')
       .delete()
       .eq('connection_id', connection_id);
 

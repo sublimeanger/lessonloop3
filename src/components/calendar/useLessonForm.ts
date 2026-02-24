@@ -10,6 +10,7 @@ import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { useNotesNotification } from '@/hooks/useNotesNotification';
 import { useClosurePatternCheck } from '@/hooks/useClosurePatternCheck';
 import { useCalendarSync } from '@/hooks/useCalendarSync';
+import { useZoomSync } from '@/hooks/useZoomSync';
 import { supabase } from '@/integrations/supabase/client';
 import { logAudit } from '@/lib/auditLog';
 import { LessonWithDetails, ConflictResult, LessonStatus, LessonType } from './types';
@@ -33,6 +34,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
   const { checkConflicts } = useConflictDetection();
   const { sendNotesNotification } = useNotesNotification();
   const { syncLesson, syncLessons } = useCalendarSync();
+  const { syncZoomMeetings } = useZoomSync();
   const { isOnline, guardOffline } = useOnlineStatus();
 
   const [isSaving, setIsSaving] = useState(false);
@@ -58,6 +60,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
   const [notesPrivate, setNotesPrivate] = useState('');
   const [notesShared, setNotesShared] = useState('');
   const [status, setStatus] = useState<LessonStatus>('scheduled');
+  const [isOnlineLesson, setIsOnlineLesson] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]);
   const [recurrenceEndDate, setRecurrenceEndDate] = useState<Date | null>(null);
@@ -104,6 +107,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
       setNotesPrivate(lesson.notes_private || '');
       setNotesShared(lesson.notes_shared || '');
       setStatus(lesson.status);
+      setIsOnlineLesson(lesson.is_online || false);
       setIsRecurring(!!lesson.recurrence_id);
     } else {
       setLessonType('private');
@@ -115,6 +119,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
       setNotesPrivate('');
       setNotesShared('');
       setStatus('scheduled');
+      setIsOnlineLesson(false);
       setIsRecurring(false);
       setRecurrenceDays([]);
       setRecurrenceEndDate(null);
@@ -396,6 +401,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
               notes_private: notesPrivate || null,
               notes_shared: notesShared || null,
               status,
+              is_online: isOnlineLesson,
               recurrence_id: editMode === 'this_only' ? null : lesson.recurrence_id,
             })
             .eq('id', lesson.id);
@@ -485,6 +491,11 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
 
         // Fire-and-forget calendar sync for updated lessons
         syncLessons(lessonIdsToUpdate, 'update');
+
+        // Fire-and-forget Zoom sync for online lessons
+        if (isOnlineLesson) {
+          syncZoomMeetings(lessonIdsToUpdate, 'update');
+        }
 
         toast({
           title: updatedCount > 1
@@ -594,6 +605,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
           status: 'scheduled' as const,
           created_by: user.id,
           recurrence_id: recurrenceId,
+          is_online: isOnlineLesson,
         }));
 
         try {
@@ -641,6 +653,11 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
 
             // Fire-and-forget calendar sync for all newly created lessons
             syncLessons(insertedLessons.map(l => l.id), 'create');
+
+            // Fire-and-forget Zoom meeting creation for online lessons
+            if (isOnlineLesson) {
+              syncZoomMeetings(insertedLessons.map(l => l.id), 'create');
+            }
           }
         } catch (batchError: any) {
           const msg = batchError.message || '';
@@ -710,6 +727,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
     notesPrivate, setNotesPrivate,
     notesShared, setNotesShared,
     status, setStatus,
+    isOnlineLesson, setIsOnlineLesson,
     isRecurring, setIsRecurring,
     recurrenceDays,
     recurrenceEndDate, setRecurrenceEndDate,

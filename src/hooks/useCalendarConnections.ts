@@ -10,7 +10,7 @@ interface CalendarConnection {
   id: string;
   user_id: string;
   org_id: string;
-  provider: 'google' | 'apple';
+  provider: 'google' | 'apple' | 'zoom';
   calendar_id: string | null;
   calendar_name: string | null;
   sync_enabled: boolean;
@@ -49,6 +49,7 @@ export function useCalendarConnections() {
 
   const googleConnection = connections?.find(c => c.provider === 'google');
   const appleConnection = connections?.find(c => c.provider === 'apple');
+  const zoomConnection = connections?.find(c => c.provider === 'zoom');
 
   // Generate iCal URL for Apple Calendar
   const generateICalUrl = useCallback(async () => {
@@ -162,6 +163,41 @@ export function useCalendarConnections() {
       toast({
         title: 'Connection failed',
         description: error.message || 'Could not connect to Google Calendar',
+        variant: 'destructive',
+      });
+      setIsConnecting(false);
+    }
+  }, [currentOrg, toast]);
+
+  // Connect Zoom
+  const connectZoom = useCallback(async () => {
+    if (!currentOrg) return;
+    setIsConnecting(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const response = await supabase.functions.invoke('zoom-oauth-start', {
+        body: {
+          org_id: currentOrg.id,
+          redirect_uri: window.location.origin + '/settings?tab=calendar',
+        },
+      });
+
+      if (response.error) throw response.error;
+
+      const { auth_url } = response.data;
+      if (auth_url) {
+        window.location.href = auth_url;
+      } else {
+        throw new Error('No auth URL returned');
+      }
+    } catch (error: any) {
+      logger.error('Error starting Zoom OAuth:', error);
+      toast({
+        title: 'Connection failed',
+        description: error.message || 'Could not connect to Zoom',
         variant: 'destructive',
       });
       setIsConnecting(false);
@@ -331,15 +367,49 @@ export function useCalendarConnections() {
       url.searchParams.delete('calendar_error');
       window.history.replaceState({}, '', url.toString());
     }
+
+    // Handle Zoom OAuth callback params
+    const zoomConnected = params.get('zoom_connected');
+    const zoomError = params.get('zoom_error');
+
+    if (zoomConnected) {
+      setTimeout(() => {
+        toast({
+          title: 'Zoom connected successfully!',
+          description: 'Online lessons will now automatically get Zoom meeting links.',
+          duration: 8000,
+        });
+      }, 500);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('zoom_connected');
+      url.searchParams.set('tab', 'calendar');
+      window.history.replaceState({}, '', url.toString());
+      refetch();
+    }
+
+    if (zoomError) {
+      let errorMessage = 'Could not connect to Zoom';
+      if (zoomError === 'not_configured') {
+        errorMessage = 'Zoom integration is not configured';
+      } else if (zoomError === 'token_exchange_failed') {
+        errorMessage = 'Failed to authenticate with Zoom';
+      }
+      toast({ title: 'Connection failed', description: errorMessage, variant: 'destructive' });
+      const url = new URL(window.location.href);
+      url.searchParams.delete('zoom_error');
+      window.history.replaceState({}, '', url.toString());
+    }
   }, [toast, refetch]);
 
   return {
     connections,
     googleConnection,
     appleConnection,
+    zoomConnection,
     isLoading,
     isConnecting,
     connectGoogle,
+    connectZoom,
     disconnectCalendar,
     toggleSync,
     triggerSync,
