@@ -89,26 +89,29 @@ const handler = async (req: Request): Promise<Response> => {
     // Fetch payer details and email
     let recipientEmail: string | null = null;
     let recipientName = "Customer";
+    let payerUserId: string | null = null;
 
     if (invoice.payer_guardian_id) {
       const { data: guardian } = await supabase
         .from("guardians")
-        .select("full_name, email")
+        .select("full_name, email, user_id")
         .eq("id", invoice.payer_guardian_id)
         .single();
       if (guardian) {
         recipientName = guardian.full_name || "Customer";
         recipientEmail = guardian.email;
+        payerUserId = guardian.user_id;
       }
     } else if (invoice.payer_student_id) {
       const { data: student } = await supabase
         .from("students")
-        .select("first_name, last_name, email")
+        .select("first_name, last_name, email, user_id")
         .eq("id", invoice.payer_student_id)
         .single();
       if (student) {
         recipientName = `${student.first_name} ${student.last_name}`.trim();
         recipientEmail = student.email;
+        payerUserId = student.user_id;
       }
     }
 
@@ -118,6 +121,24 @@ const handler = async (req: Request): Promise<Response> => {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
+    }
+
+    // Check notification preferences — respect opt-out
+    if (payerUserId) {
+      const { data: prefs } = await supabase
+        .from("notification_preferences")
+        .select("email_payment_receipts")
+        .eq("user_id", payerUserId)
+        .eq("org_id", orgId)
+        .maybeSingle();
+
+      if (prefs && prefs.email_payment_receipts === false) {
+        console.log("Recipient opted out of payment receipts — skipping");
+        return new Response(JSON.stringify({ success: true, message: "Receipt opted out" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Format currency

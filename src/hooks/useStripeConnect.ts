@@ -84,6 +84,7 @@ export function useStripeConnect() {
     refreshStatus,
     isConnected: connectStatus?.status === 'active',
     isPending: connectStatus?.status === 'pending',
+    isDisconnected: connectStatus?.status === 'disconnected',
     dashboardUrl: connectStatus?.dashboardUrl ?? null,
   };
 }

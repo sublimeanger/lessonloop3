@@ -334,12 +334,14 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
           </div>
         </motion.div>
 
-        {/* Payment Analytics */}
-        <motion.div variants={itemVariants}>
-          <SectionErrorBoundary name="Payment Analytics">
-            <PaymentAnalyticsCard />
-          </SectionErrorBoundary>
-        </motion.div>
+        {/* Payment Analytics — hidden for teachers when org has disabled it */}
+        {currentOrg?.teacher_payment_analytics_enabled !== false && (
+          <motion.div variants={itemVariants}>
+            <SectionErrorBoundary name="Payment Analytics">
+              <PaymentAnalyticsCard />
+            </SectionErrorBoundary>
+          </motion.div>
+        )}
       </motion.div>
     </AppLayout>
   );

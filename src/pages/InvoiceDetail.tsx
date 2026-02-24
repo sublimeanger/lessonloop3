@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2, Loader2, Gift, Building2, SplitSquareHorizontal } from 'lucide-react';
+import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2, Loader2, Gift, Building2, SplitSquareHorizontal, RotateCcw } from 'lucide-react';
 import { PaymentPlanSetup } from '@/components/invoices/PaymentPlanSetup';
+import { RefundDialog } from '@/components/invoices/RefundDialog';
 import { useOrg } from '@/contexts/OrgContext';
 import { useInvoice, useUpdateInvoiceStatus } from '@/hooks/useInvoices';
 import { useStripePayment } from '@/hooks/useStripePayment';
@@ -65,9 +66,10 @@ export default function InvoiceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { currentOrg, currentRole } = useOrg();
+  const { currentOrg, currentRole, isOrgOwner, isOrgAdmin } = useOrg();
   const { toast } = useToast();
   const isParent = currentRole === 'parent';
+  const canManageBilling = isOrgOwner || isOrgAdmin || currentOrg?.org_type === 'solo_teacher';
   const { data: invoice, isLoading, refetch } = useInvoice(id);
   const updateStatus = useUpdateInvoiceStatus();
   const { initiatePayment, isLoading: isPaymentLoading } = useStripePayment();
@@ -79,6 +81,8 @@ export default function InvoiceDetail() {
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
   const [voidConfirmOpen, setVoidConfirmOpen] = useState(false);
   const [paymentPlanOpen, setPaymentPlanOpen] = useState(false);
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [refundPayment, setRefundPayment] = useState<any>(null);
   const { data: orgPaymentPrefs } = useOrgPaymentPreferences();
 
   const onlinePaymentsEnabled = orgPaymentPrefs?.online_payments_enabled !== false;
@@ -377,6 +381,21 @@ export default function InvoiceDetail() {
                           </div>
                         </div>
                       </div>
+                      {/* Refund button — only for Stripe payments, visible to billing admins */}
+                      {!isParent && canManageBilling && payment.provider === 'stripe' && payment.provider_reference && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-destructive h-8 gap-1.5"
+                          onClick={() => {
+                            setRefundPayment(payment);
+                            setRefundDialogOpen(true);
+                          }}
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Refund</span>
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -505,6 +524,24 @@ export default function InvoiceDetail() {
         invoice={invoice}
         open={paymentPlanOpen}
         onOpenChange={setPaymentPlanOpen}
+      />
+
+      {/* Refund Dialog */}
+      <RefundDialog
+        open={refundDialogOpen}
+        onOpenChange={(open) => {
+          setRefundDialogOpen(open);
+          if (!open) {
+            setRefundPayment(null);
+            refetch();
+          }
+        }}
+        paymentId={refundPayment?.id || null}
+        paymentAmount={refundPayment?.amount_minor || 0}
+        method={refundPayment?.method}
+        paidAt={refundPayment?.paid_at}
+        invoiceNumber={invoice.invoice_number}
+        currencyCode={currency}
       />
 
       {/* Void confirmation dialog */}
