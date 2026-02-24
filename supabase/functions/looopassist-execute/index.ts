@@ -856,7 +856,6 @@ async function executeDraftEmail(
 
   const subject = sanitiseEmailContent(rawSubject, 200);
   const body = sanitiseEmailContent(rawBody, 5000);
-  }
 
   const { data: guardian, error: guardianError } = await supabase
     .from("guardians")
