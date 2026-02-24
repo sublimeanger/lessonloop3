@@ -23,7 +23,7 @@ function LessonRow({ lesson }: { lesson: TodayLesson }) {
     <Link
       to={`/calendar?date=${lessonDate}`}
       className={cn(
-        'group flex min-h-11 items-stretch gap-0 rounded-xl px-1 py-2 sm:py-2.5 transition-colors hover:bg-muted/50',
+        'group flex min-h-11 items-stretch gap-0 rounded-xl px-1 py-2.5 sm:py-3 transition-colors hover:bg-muted/50',
         isCancelled && 'opacity-40',
       )}
     >
@@ -60,7 +60,7 @@ function LessonRow({ lesson }: { lesson: TodayLesson }) {
             </span>
           )}
         </div>
-        <p className="text-[11px] sm:text-xs text-muted-foreground truncate mt-0.5">
+        <p className="text-[11px] sm:text-xs text-muted-foreground line-clamp-2 mt-0.5">
           {lesson.title !== studentName ? `${lesson.title} · ` : ''}
           {lesson.duration}min
           {lesson.teacherName && ` · ${lesson.teacherName}`}
