@@ -158,7 +158,7 @@ export function ResourceDetailModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[550px] max-h-[85vh] flex flex-col">
+        <DialogContent className="h-screen w-screen max-w-none overflow-y-auto rounded-none border-0 p-4 sm:max-h-[85vh] sm:max-w-[550px] sm:rounded-lg sm:border sm:p-6 flex flex-col">
           <DialogHeader className="shrink-0">
             <DialogTitle className="sr-only">Resource Details</DialogTitle>
           </DialogHeader>
@@ -213,7 +213,7 @@ export function ResourceDetailModal({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 opacity-0 group-hover/title:opacity-100 transition-opacity"
+                      className="h-11 w-11 opacity-100 transition-opacity sm:h-7 sm:w-7 sm:opacity-0 sm:group-hover/title:opacity-100"
                       onClick={() => setEditingTitle(true)}
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -242,9 +242,10 @@ export function ResourceDetailModal({
                       }
                     }}
                   />
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <Button
                       size="sm"
+                      className="min-h-11 sm:min-h-9"
                       onClick={handleSaveDesc}
                       disabled={updateMutation.isPending}
                     >
@@ -256,6 +257,7 @@ export function ResourceDetailModal({
                     <Button
                       variant="ghost"
                       size="sm"
+                      className="min-h-11 sm:min-h-9"
                       onClick={() => {
                         setDescDraft(resource.description || '');
                         setEditingDesc(false);
@@ -274,7 +276,7 @@ export function ResourceDetailModal({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 shrink-0 opacity-0 group-hover/desc:opacity-100 transition-opacity"
+                      className="h-11 w-11 shrink-0 opacity-100 transition-opacity sm:h-7 sm:w-7 sm:opacity-0 sm:group-hover/desc:opacity-100"
                       onClick={() => setEditingDesc(true)}
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -287,7 +289,7 @@ export function ResourceDetailModal({
             <Separator />
 
             {/* File metadata */}
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <div>
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide block">
                   Type

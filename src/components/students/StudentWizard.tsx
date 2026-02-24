@@ -299,7 +299,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
       });
       
       setCurrentStep('success');
-      toast({ title: 'Student created successfully!' });
+      toast({ title: 'Student created' });
       queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
       if (currentOrg && user) {
         logAudit(currentOrg.id, user.id, 'student.created', 'student', createdStudent.id, {
@@ -311,7 +311,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
     } catch (error: unknown) {
       logger.error('Student creation error:', error);
       toast({ 
-        title: 'Error creating student', 
+        title: 'Failed to create student', 
         description: error instanceof Error ? error.message : 'Unknown error', 
         variant: 'destructive' 
       });
@@ -347,7 +347,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-auto">
+      <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-lg sm:p-6">
         <DialogHeader>
           <DialogTitle>
             {currentStep === 'success' ? 'Student Created!' : 'Add Student'}
@@ -424,7 +424,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
                 <TeachingDefaultsStep data={teachingData} onChange={setTeachingData} />
               )}
             </div>
-            <div className="flex justify-between pt-4 border-t">
+            <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-between">
               <Button
                 type="button"
                 variant="outline"

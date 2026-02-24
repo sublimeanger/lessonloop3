@@ -133,7 +133,7 @@ function InvoiceActions({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-        <Button variant="ghost" size="icon" className={cn('h-7 w-7 transition-opacity', !alwaysVisible && 'opacity-0 group-hover:opacity-100')}>
+        <Button variant="ghost" size="icon" className={cn('h-11 w-11 transition-opacity sm:h-7 sm:w-7', !alwaysVisible && 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100')}>
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
@@ -335,14 +335,12 @@ export function InvoiceList({
   return (
     <div>
       {/* Mobile card layout */}
-      <div className="md:hidden space-y-2 px-1">
+      <div className="space-y-2 px-1 md:hidden">
         <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground">
           <Checkbox
-            checked={allSelected}
-            onCheckedChange={handleSelectAll}
+            checked={someSelected ? 'indeterminate' : allSelected}
+            onCheckedChange={(checked) => handleSelectAll(checked === true)}
             aria-label="Select all"
-            className={someSelected ? 'data-[state=checked]:bg-primary data-[state=unchecked]:bg-primary/50' : ''}
-            {...(someSelected ? { 'data-state': 'indeterminate' } : {})}
           />
           <span>Select all</span>
         </div>
@@ -363,15 +361,13 @@ export function InvoiceList({
       </div>
 
       {/* Desktop list layout */}
-      <div className="hidden md:block">
+      <div className="hidden overflow-x-auto md:block">
         {/* Select all row */}
         <div className="flex items-center gap-3 px-3 py-2 text-xs text-muted-foreground border-b">
           <Checkbox
-            checked={allSelected}
-            onCheckedChange={handleSelectAll}
+            checked={someSelected ? 'indeterminate' : allSelected}
+            onCheckedChange={(checked) => handleSelectAll(checked === true)}
             aria-label="Select all"
-            className={someSelected ? 'data-[state=checked]:bg-primary data-[state=unchecked]:bg-primary/50' : ''}
-            {...(someSelected ? { 'data-state': 'indeterminate' } : {})}
           />
           <button onClick={() => handleSort('payer')} className={cn('flex-1 flex items-center text-left hover:text-foreground transition-colors', sortColumn === 'payer' && 'text-foreground font-semibold')}>
             Invoice <SortIcon column="payer" active={sortColumn} direction={sortDirection} />

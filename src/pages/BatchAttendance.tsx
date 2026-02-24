@@ -162,15 +162,15 @@ export default function BatchAttendance() {
           { label: 'Batch Attendance' },
         ]}
         actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={markAllPresent} disabled={isFutureDate} className="gap-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={markAllPresent} disabled={isFutureDate} className="min-h-11 gap-1.5 sm:min-h-9">
               <UserCheck className="h-4 w-4" />
               Mark All Present
             </Button>
             <Button
               onClick={() => { setSaveError(false); handleSave(); }}
               disabled={saveMutation.isPending || isFutureDate}
-              className={cn("gap-1.5", saveError && "border-destructive")}
+              className={cn("min-h-11 gap-1.5 sm:min-h-9", saveError && "border-destructive")}
               variant={saveError ? "outline" : "default"}
             >
               {saveMutation.isPending ? (
@@ -187,14 +187,14 @@ export default function BatchAttendance() {
       />
 
       {/* Date Navigation */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={goToPrevDay}>
+      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="flex w-full items-center gap-2 lg:w-auto">
+          <Button variant="outline" size="icon" className="h-11 w-11 sm:h-9 sm:w-9" onClick={goToPrevDay}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="min-w-[200px] justify-start gap-2">
+              <Button variant="outline" className="h-11 min-w-0 flex-1 justify-start gap-2 text-left sm:h-9 sm:min-w-[200px]">
                 <CalendarIcon className="h-4 w-4" />
                 {dateLabel}
               </Button>
@@ -209,13 +209,13 @@ export default function BatchAttendance() {
               />
             </PopoverContent>
           </Popover>
-          <Button variant="outline" size="icon" onClick={goToNextDay}>
+          <Button variant="outline" size="icon" className="h-11 w-11 sm:h-9 sm:w-9" onClick={goToNextDay}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 
         {!isToday(selectedDate) && (
-          <Button variant="ghost" size="sm" onClick={goToToday}>
+          <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-9" onClick={goToToday}>
             Go to Today
           </Button>
         )}
@@ -268,10 +268,10 @@ export default function BatchAttendance() {
                   </div>
                 )}
                 <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <CardTitle className="text-base leading-tight">
                       {format(parseISO(lesson.start_at), 'HH:mm')} – {format(parseISO(lesson.end_at), 'HH:mm')}
-                      <span className="ml-2 font-normal text-muted-foreground">{lesson.title}</span>
+                      <span className="ml-0 block text-sm font-normal text-muted-foreground sm:ml-2 sm:inline">{lesson.title}</span>
                     </CardTitle>
                     <Badge variant={lesson.status === 'completed' ? 'secondary' : 'default'}>
                       {lesson.status}
@@ -290,9 +290,9 @@ export default function BatchAttendance() {
                         const dateMap = notifiedDates.get(lesson.id);
                         const currentNotified = dateMap?.get(p.student_id) || new Date();
                         return (
-                          <div key={p.student_id} className="py-1.5 border-b last:border-b-0">
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="text-sm font-medium flex items-center gap-1.5">
+                          <div key={p.student_id} className="border-b py-2 last:border-b-0">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                              <span className="flex items-center gap-1.5 text-sm font-medium">
                                 {p.student_name}
                                 {needsAbsenceReason(currentStatus) && !currentReason && (
                                   <span title="Absence reason missing" className="text-warning">
@@ -316,7 +316,7 @@ export default function BatchAttendance() {
                                     });
                                   }
                                 }}
-                                className="gap-1 flex-wrap justify-end"
+                                className="w-full gap-1 flex-wrap justify-start sm:justify-end"
                               >
                                 <ToggleGroupItem
                                   value="present"

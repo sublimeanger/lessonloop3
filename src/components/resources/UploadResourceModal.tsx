@@ -149,7 +149,7 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[540px]">
+      <DialogContent className="h-screen w-screen max-w-none overflow-y-auto rounded-none border-0 p-4 sm:max-h-[92vh] sm:max-w-[540px] sm:rounded-lg sm:border sm:p-6">
         <DialogHeader>
           <DialogTitle>Upload Resources</DialogTitle>
           <DialogDescription>
@@ -196,6 +196,7 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
               type="button"
               variant="outline"
               size="sm"
+              className="min-h-11 sm:min-h-9"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
               aria-describedby="file-format-hint"
@@ -242,7 +243,7 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
                         <Input
                           value={entry.title}
                           onChange={(e) => updateTitle(index, e.target.value)}
-                          className="h-7 text-sm"
+                          className="h-11 text-sm sm:h-9"
                           disabled={isUploading}
                           placeholder="Title"
                           required
@@ -256,7 +257,7 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 shrink-0"
+                          className="h-11 w-11 shrink-0 sm:h-9 sm:w-9"
                           onClick={() => removeFile(index)}
                         >
                           <X className="h-3.5 w-3.5" />
@@ -305,10 +306,11 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
             <Button
               type="button"
               variant="outline"
+              className="min-h-11 w-full sm:min-h-9 sm:w-auto"
               onClick={() => handleClose(false)}
               disabled={isUploading}
             >
@@ -316,6 +318,7 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
             </Button>
             <Button
               type="submit"
+              className="min-h-11 w-full sm:min-h-9 sm:w-auto"
               disabled={files.length === 0 || !allTitlesValid || isUploading || quotaExceeded}
             >
               {isUploading && (

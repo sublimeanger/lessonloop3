@@ -44,7 +44,7 @@ export function StudentPracticePanel({ studentId, studentName }: StudentPractice
       setFeedbackText('');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      toast({ title: 'Error', description: message, variant: 'destructive' });
+      toast({ title: 'Failed to send feedback', description: message, variant: 'destructive' });
     }
   };
 
@@ -153,7 +153,7 @@ export function StudentPracticePanel({ studentId, studentName }: StudentPractice
           ) : (
             <div className="space-y-3">
               {activeAssignments.map(assignment => (
-                <div key={assignment.id} className="flex items-center justify-between rounded-lg border p-3">
+                <div key={assignment.id} className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{assignment.title}</span>
@@ -260,7 +260,7 @@ export function StudentPracticePanel({ studentId, studentName }: StudentPractice
         <CardContent>
           {logs.length === 0 ? (
             <div className="flex flex-col items-center py-8 text-center">
-              <Music className="h-12 w-12 text-primary/30 animate-bounce" style={{ animationDuration: '2s' }} />
+              <Music className="h-12 w-12 text-primary/30" />
               <p className="mt-3 font-medium">Waiting for the first note! 🎶</p>
               <p className="mt-1 text-sm text-muted-foreground max-w-xs">
                 Once {studentName.split(' ')[0]} starts practising, you'll see their progress here.
@@ -269,8 +269,8 @@ export function StudentPracticePanel({ studentId, studentName }: StudentPractice
           ) : (
             <div className="space-y-2">
               {logs.slice(0, 10).map(log => (
-                <div key={log.id} className="flex items-center justify-between rounded-lg border p-3">
-                  <div className="flex items-center gap-3">
+                <div key={log.id} className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
                     {log.reviewed_at ? (
                       <CheckCircle className="h-4 w-4 text-success" />
                     ) : (

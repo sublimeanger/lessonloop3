@@ -171,7 +171,7 @@ export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSet
   if (invoice.payment_plan_enabled && existingInstallments) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
+        <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
           <SheetHeader>
             <SheetTitle>Payment Plan</SheetTitle>
             <SheetDescription>
@@ -185,7 +185,7 @@ export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSet
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <Table>
+              <div className="overflow-x-auto"><Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12">#</TableHead>
@@ -221,16 +221,16 @@ export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSet
                     <TableCell />
                   </TableRow>
                 </TableFooter>
-              </Table>
+              </Table></div>
             )}
           </div>
 
-          <SheetFooter className="mt-6">
+          <SheetFooter className="mt-6 flex-col gap-2 sm:flex-row">
             <Button
               variant="destructive"
               onClick={() => setRemoveConfirmOpen(true)}
               disabled={isSubmitting}
-              className="w-full"
+              className="min-h-11 w-full"
             >
               Remove Payment Plan
             </Button>
@@ -260,7 +260,7 @@ export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSet
   // ─── Create plan view ────────────────────────────────────
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-lg overflow-y-auto">
+      <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
         <SheetHeader>
           <SheetTitle>Set Up Payment Plan</SheetTitle>
           <SheetDescription>
@@ -341,7 +341,7 @@ export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSet
               {/* Preview */}
               <div className="space-y-2">
                 <Label>Preview</Label>
-                <Table>
+                <div className="overflow-x-auto"><Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-12">#</TableHead>
@@ -368,14 +368,14 @@ export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSet
                       <TableCell />
                     </TableRow>
                   </TableFooter>
-                </Table>
+                </Table></div>
               </div>
             </>
           )}
 
           {mode === 'custom' && (
             <div className="space-y-4">
-              <Table>
+              <div className="overflow-x-auto"><Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12">#</TableHead>
@@ -441,9 +441,9 @@ export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSet
                     <TableCell />
                   </TableRow>
                 </TableFooter>
-              </Table>
+              </Table></div>
               {customRows.length < 12 && (
-                <Button variant="outline" size="sm" onClick={addCustomRow} className="w-full">
+                <Button variant="outline" size="sm" onClick={addCustomRow} className="min-h-11 w-full">
                   Add Installment
                 </Button>
               )}
@@ -461,11 +461,11 @@ export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSet
           )}
         </div>
 
-        <SheetFooter className="mt-6">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+        <SheetFooter className="mt-6 flex-col gap-2 sm:flex-row">
+          <Button variant="outline" className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm} disabled={!canSubmit || isSubmitting}>
+          <Button className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={handleConfirm} disabled={!canSubmit || isSubmitting}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Confirm Payment Plan
           </Button>

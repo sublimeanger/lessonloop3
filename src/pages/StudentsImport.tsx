@@ -22,9 +22,9 @@ export default function StudentsImport() {
         ]}
       />
 
-      <div className="p-6 max-w-4xl mx-auto space-y-6">
+      <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
         {/* Progress indicator */}
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
           {["upload", "mapping", "preview", "complete"].map((s, idx) => (
             <div key={s} className="flex items-center">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${

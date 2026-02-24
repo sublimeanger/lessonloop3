@@ -163,7 +163,7 @@ export function CreateAssignmentModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="h-screen w-screen max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-w-md sm:rounded-lg sm:border sm:p-6">
         <DialogHeader>
           <DialogTitle>Create Practice Assignment</DialogTitle>
         </DialogHeader>
@@ -172,7 +172,7 @@ export function CreateAssignmentModal({
           <div className="space-y-2">
             <Label htmlFor="student">Student *</Label>
             <Select value={studentId} onValueChange={setStudentId}>
-              <SelectTrigger>
+              <SelectTrigger className="min-h-11 sm:min-h-9">
                 <SelectValue placeholder="Select student" />
               </SelectTrigger>
               <SelectContent>
@@ -211,7 +211,7 @@ export function CreateAssignmentModal({
             <div className="space-y-2">
               <Label htmlFor="gradeLevel">Grade Level</Label>
               <Select value={gradeLevelId} onValueChange={setGradeLevelId}>
-                <SelectTrigger>
+                <SelectTrigger className="min-h-11 sm:min-h-9">
                   <SelectValue placeholder="Optional — tag with grade level" />
                 </SelectTrigger>
                 <SelectContent>
@@ -272,11 +272,11 @@ export function CreateAssignmentModal({
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={createAssignment.isPending}>
+            <Button type="submit" className="min-h-11 w-full sm:min-h-9 sm:w-auto" disabled={createAssignment.isPending}>
               Create Assignment
             </Button>
           </div>

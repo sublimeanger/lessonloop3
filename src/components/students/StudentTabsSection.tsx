@@ -28,7 +28,7 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
 
   return (
     <Tabs defaultValue="overview" className="space-y-6" onValueChange={() => hook.setIsEditing(false)}>
-      <TabsList className="flex w-full overflow-x-auto scrollbar-hide gap-1 h-auto pb-1 justify-start">
+      <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto pb-1">
         <TabsTrigger value="overview" className="shrink-0">Overview</TabsTrigger>
         <TabsTrigger value="instruments" className="gap-1.5 shrink-0">
           <Music className="h-3.5 w-3.5" />
@@ -136,7 +136,7 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
               ) : (
                 <div className="space-y-3">
                   {hook.studentLessons.map((sl) => (
-                    <div key={sl.id} className="flex items-center justify-between rounded-lg border p-3">
+                    <div key={sl.id} className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">
@@ -155,7 +155,7 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
                             </Badge>
                           )}
                         </div>
-                        <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                        <div className="mt-1 flex flex-col gap-1 text-sm text-muted-foreground sm:flex-row sm:gap-4">
                           {sl.lesson.title && <span>{sl.lesson.title}</span>}
                           {sl.lesson.teacher_name && <span>with {sl.lesson.teacher_name}</span>}
                           {sl.lesson.location_name && <span>@ {sl.lesson.location_name}</span>}
@@ -209,7 +209,7 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
               ) : (
                 <div className="space-y-3">
                   {hook.studentInvoices.map((inv) => (
-                    <div key={inv.id} className="flex items-center justify-between rounded-lg border p-3">
+                    <div key={inv.id} className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{inv.invoice_number}</span>
@@ -221,7 +221,7 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
                             {inv.status}
                           </Badge>
                         </div>
-                        <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                        <div className="mt-1 flex flex-col gap-1 text-sm text-muted-foreground sm:flex-row sm:gap-4">
                           <span>{formatCurrencyMinor(inv.total_minor)}</span>
                           {inv.due_date && <span>Due: {formatDateUK(inv.due_date)}</span>}
                           {inv.payer_name && <span>Payer: {inv.payer_name}</span>}

@@ -185,7 +185,7 @@ export function SendInvoiceModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="h-screen w-screen max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-w-lg sm:rounded-lg sm:border sm:p-6">
         <DialogHeader>
           <DialogTitle>
             {step === 'preview'
@@ -234,11 +234,12 @@ export function SendInvoiceModal({
               </div>
             </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={handleClose}>
+            <DialogFooter className="flex-col gap-2 sm:flex-row">
+              <Button variant="outline" className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={handleClose}>
                 Cancel
               </Button>
               <Button
+                className="min-h-11 w-full sm:min-h-9 sm:w-auto"
                 variant="secondary"
                 onClick={() => setStep('preview')}
                 disabled={!recipientEmail}
@@ -278,12 +279,12 @@ export function SendInvoiceModal({
               </p>
             </div>
 
-            <DialogFooter className="flex-col sm:flex-row gap-2">
-              <Button variant="outline" onClick={() => setStep('compose')} className="gap-1.5">
+            <DialogFooter className="flex-col gap-2 sm:flex-row">
+              <Button variant="outline" onClick={() => setStep('compose')} className="min-h-11 w-full gap-1.5 sm:min-h-9 sm:w-auto">
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
-              <Button onClick={handleSend} disabled={isSending}>
+              <Button className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={handleSend} disabled={isSending}>
                 {isSending ? 'Sending...' : isReminder ? 'Send Reminder' : 'Send Invoice'}
               </Button>
             </DialogFooter>

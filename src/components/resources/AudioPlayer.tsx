@@ -86,7 +86,7 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 mt-2">
+      <div className="mt-2 flex items-center gap-2 rounded-md bg-muted/50 p-2">
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         <span className="text-xs text-muted-foreground">Loading audio…</span>
       </div>
@@ -98,7 +98,7 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
   }
 
   return (
-    <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 mt-2">
+    <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md bg-muted/50 p-2 sm:flex-nowrap">
       <audio
         ref={audioRef}
         src={signedUrl}
@@ -112,7 +112,7 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
       <Button
         variant="ghost"
         size="icon"
-        className="h-7 w-7 shrink-0"
+        className="h-11 w-11 shrink-0 sm:h-8 sm:w-8"
         onClick={togglePlay}
       >
         {playing ? (
@@ -122,7 +122,7 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
         )}
       </Button>
 
-      <span className="text-xs text-muted-foreground w-9 shrink-0 tabular-nums">
+      <span className="w-10 shrink-0 text-xs tabular-nums text-muted-foreground">
         {formatTime(currentTime)}
       </span>
 
@@ -131,17 +131,17 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
         max={duration || 1}
         step={0.5}
         onValueChange={handleSeek}
-        className="flex-1"
+        className="min-w-[140px] flex-1"
       />
 
-      <span className="text-xs text-muted-foreground w-9 shrink-0 tabular-nums">
+      <span className="w-10 shrink-0 text-xs tabular-nums text-muted-foreground">
         {formatTime(duration)}
       </span>
 
       <Button
         variant="ghost"
         size="icon"
-        className="h-7 w-7 shrink-0"
+        className="h-11 w-11 shrink-0 sm:h-8 sm:w-8"
         onClick={() => setMuted(!muted)}
       >
         {muted ? (

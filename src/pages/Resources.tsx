@@ -148,12 +148,13 @@ export default function Resources() {
           title="Resource Library"
           description="Upload and share teaching materials with students"
           actions={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {canUpload && (
                 <>
                   <Button
                     variant="outline"
                     size="sm"
+                    className="min-h-11 sm:min-h-9"
                     onClick={selectionMode ? exitSelectionMode : () => setSelectionMode(true)}
                   >
                     {selectionMode ? (
@@ -168,7 +169,7 @@ export default function Resources() {
                       </>
                     )}
                   </Button>
-                   <Button onClick={() => setUploadModalOpen(true)}>
+                   <Button className="min-h-11 sm:min-h-9" onClick={() => setUploadModalOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Upload Resource
                   </Button>
@@ -178,6 +179,7 @@ export default function Resources() {
                 <Button
                   variant="outline"
                   size="icon"
+                  className="h-11 w-11 sm:h-9 sm:w-9"
                   onClick={() => setManageCategoriesOpen(true)}
                   title="Manage categories"
                 >
@@ -202,7 +204,7 @@ export default function Resources() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Select value={fileTypeFilter} onValueChange={setFileTypeFilter}>
-              <SelectTrigger className="w-[130px] h-9 text-xs">
+              <SelectTrigger className="h-11 w-full text-xs sm:h-9 sm:w-[130px]">
                 <SelectValue placeholder="File type" />
               </SelectTrigger>
               <SelectContent>
@@ -219,7 +221,7 @@ export default function Resources() {
               size="sm"
               pressed={sharedOnly}
               onPressedChange={setSharedOnly}
-              className="text-xs"
+              className="min-h-11 text-xs sm:min-h-9"
             >
               Shared only
             </Toggle>
@@ -227,17 +229,17 @@ export default function Resources() {
               size="sm"
               pressed={!sortNewest}
               onPressedChange={(pressed) => setSortNewest(!pressed)}
-              className="text-xs gap-1"
+              className="min-h-11 gap-1 text-xs sm:min-h-9"
             >
               <ArrowUpDown className="h-3 w-3" />
               {sortNewest ? 'Newest' : 'Oldest'}
             </Toggle>
 
-            <div className="ml-auto flex items-center border rounded-md">
+            <div className="ml-auto flex items-center rounded-md border">
               <Button
                 variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
                 size="icon"
-                className="h-8 w-8 rounded-r-none"
+                className="h-11 w-11 rounded-r-none sm:h-8 sm:w-8"
                 onClick={() => handleViewChange('grid')}
                 title="Grid view"
               >
@@ -246,7 +248,7 @@ export default function Resources() {
               <Button
                 variant={viewMode === 'list' ? 'secondary' : 'ghost'}
                 size="icon"
-                className="h-8 w-8 rounded-l-none"
+                className="h-11 w-11 rounded-l-none sm:h-8 sm:w-8"
                 onClick={() => handleViewChange('list')}
                 title="List view"
               >
@@ -300,7 +302,7 @@ export default function Resources() {
           )
         ) : (
           <>
-            <div role="feed" aria-label="Resource library" className={viewMode === 'grid' ? 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-3'}>
+            <div role="feed" aria-label="Resource library" className={viewMode === 'grid' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-3'}>
               {filteredResources.map(resource => (
                 <ResourceCard
                   key={resource.id}
@@ -332,7 +334,7 @@ export default function Resources() {
 
         {/* Bulk delete floating bar */}
         {selectionMode && selectedIds.size > 0 && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-background border shadow-lg rounded-lg px-4 py-3 flex items-center gap-3">
+          <div className="fixed bottom-4 left-1/2 z-50 flex w-[calc(100vw-1.5rem)] -translate-x-1/2 flex-wrap items-center gap-2 rounded-lg border bg-background px-3 py-3 shadow-lg sm:bottom-6 sm:w-auto sm:flex-nowrap sm:gap-3 sm:px-4">
             <span className="text-sm font-medium">
               {selectedIds.size} selected
             </span>

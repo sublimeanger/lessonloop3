@@ -27,7 +27,7 @@ export function CategoryPicker({ selected, onChange, disabled }: CategoryPickerP
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-9 text-xs gap-1" disabled={disabled}>
+        <Button variant="outline" size="sm" className="min-h-11 gap-1 text-xs sm:min-h-9" disabled={disabled}>
           <Tag className="h-3.5 w-3.5" />
           Categories
           {selected.length > 0 && (
@@ -37,14 +37,14 @@ export function CategoryPicker({ selected, onChange, disabled }: CategoryPickerP
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-2" align="start">
+      <PopoverContent className="w-[260px] p-2 sm:w-[220px]" align="start">
         <div className="space-y-1 max-h-[250px] overflow-y-auto">
           {categories.map((cat) => (
             <button
               key={cat.id}
               type="button"
               className={cn(
-                'w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors text-left',
+                'flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent sm:min-h-9',
                 selected.includes(cat.id) && 'bg-accent'
               )}
               onClick={() => toggle(cat.id)}

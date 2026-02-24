@@ -19,12 +19,12 @@ const cards = [
   { key: 'matched' as const, label: 'Needs Action', icon: Bell, color: 'text-warning' },
   { key: 'waiting' as const, label: 'Waiting', icon: Clock, color: 'text-muted-foreground' },
   { key: 'offered' as const, label: 'Offered', icon: Mail, color: 'text-primary' },
-  { key: 'booked' as const, label: 'Booked This Month', icon: CheckCircle2, color: 'text-emerald-500' },
+  { key: 'booked' as const, label: 'Booked This Month', icon: CheckCircle2, color: 'text-success' },
 ];
 
 export function MakeUpStatsCards({ stats, isLoading }: MakeUpStatsCardsProps) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
       {cards.map(({ key, label, icon: Icon, color }) => (
         <Card key={key} className="border border-border bg-card">
           <CardContent className="p-4">
