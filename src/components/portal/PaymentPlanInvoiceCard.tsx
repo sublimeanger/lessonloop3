@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format, parseISO, isBefore, startOfToday, formatDistanceToNowStrict } from 'date-fns';
-import { CheckCircle, AlertCircle, Clock, CreditCard, ChevronDown, ChevronUp, Loader2, FileDown } from 'lucide-react';
+import { CheckCircle, AlertCircle, Clock, CreditCard, ChevronDown, ChevronUp, Loader2, FileDown, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrencyMinor } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
@@ -32,6 +32,7 @@ interface PaymentPlanInvoiceCardProps {
   isHighlighted?: boolean;
   showPayButton?: boolean;
   bankReferencePrefix?: string | null;
+  autoPayEnabled?: boolean;
 }
 
 function useParentInstallments(invoiceId: string | undefined) {
@@ -60,6 +61,7 @@ export function PaymentPlanInvoiceCard({
   isHighlighted,
   showPayButton = true,
   bankReferencePrefix,
+  autoPayEnabled,
 }: PaymentPlanInvoiceCardProps) {
   const [timelineOpen, setTimelineOpen] = useState(true);
   const { data: installments } = useParentInstallments(invoice.id);
@@ -92,6 +94,12 @@ export function PaymentPlanInvoiceCard({
             <Badge variant="outline" className="border-sky-300 text-sky-700 dark:border-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/30">
               Payment Plan
             </Badge>
+            {autoPayEnabled && (
+              <Badge variant="outline" className="border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 gap-1">
+                <Zap className="h-3 w-3" />
+                Auto-pay
+              </Badge>
+            )}
           </div>
           <Button
             variant="ghost"

@@ -88,8 +88,8 @@ const handler = async (req: Request): Promise<Response> => {
       ? `${orgPaymentPrefs.bank_reference_prefix}-${invoiceNumber}`
       : invoiceNumber;
 
-    // Build the portal link with invoice ID
-    const portalLink = `${FRONTEND_URL}/portal/invoices?invoice=${invoiceId}`;
+    // Build the portal link with invoice ID and action=pay to auto-open payment drawer
+    const portalLink = `${FRONTEND_URL}/portal/invoices?invoice=${invoiceId}&action=pay`;
 
     const subject = isReminder
       ? `Payment Reminder: Invoice ${invoiceNumber}`

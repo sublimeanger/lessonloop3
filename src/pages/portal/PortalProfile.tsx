@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { PaymentMethodsCard } from '@/components/portal/PaymentMethodsCard';
 
 interface NotificationPrefs {
   email_lesson_reminders: boolean;
@@ -245,6 +246,9 @@ export default function PortalProfile() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Payment Methods */}
+        <PaymentMethodsCard />
 
         {/* Notification Preferences */}
         <Card className="rounded-2xl">
