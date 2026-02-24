@@ -80,9 +80,9 @@ serve(async (req) => {
           detailsSubmitted: account.details_submitted,
         };
 
-        // Generate dashboard login link for standard accounts
+        // Standard accounts use their own Stripe dashboard (no account ID in URL)
         if (account.details_submitted) {
-          dashboardUrl = `https://dashboard.stripe.com/${org.stripe_connect_account_id}`;
+          dashboardUrl = "https://dashboard.stripe.com/";
         }
       } catch (err) {
         console.error("Failed to retrieve Stripe account:", err);

@@ -60,6 +60,7 @@ serve(async (req) => {
     if (!accountId) {
       const account = await stripe.accounts.create({
         type: "standard",
+        country: "GB",
         metadata: { lessonloop_org_id: orgId },
         business_profile: {
           name: org.name || undefined,

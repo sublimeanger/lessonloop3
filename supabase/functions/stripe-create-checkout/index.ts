@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -33,6 +34,12 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
     if (userError || !user) {
       throw new Error("Unauthorized");
+    }
+
+    // Rate limit check
+    const rateCheck = await checkRateLimit(user.id, "stripe-create-checkout");
+    if (!rateCheck.allowed) {
+      return rateLimitResponse(corsHeaders, rateCheck);
     }
 
     // Parse request
@@ -196,12 +203,16 @@ serve(async (req) => {
     // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
-    // Check for existing Stripe customer or create one
+    // Check for existing Stripe customer or create one (scoped to this org)
     let customerId: string | undefined;
     if (payerEmail) {
-      const customers = await stripe.customers.list({ email: payerEmail, limit: 1 });
-      if (customers.data.length > 0) {
-        customerId = customers.data[0].id;
+      const customers = await stripe.customers.list({ email: payerEmail, limit: 10 });
+      // Find a customer belonging to this org to prevent cross-org reuse
+      const matchingCustomer = customers.data.find(
+        (c) => c.metadata?.lessonloop_org_id === invoice.org_id
+      );
+      if (matchingCustomer) {
+        customerId = matchingCustomer.id;
       } else {
         const customer = await stripe.customers.create({
           email: payerEmail,
@@ -222,13 +233,22 @@ serve(async (req) => {
     const finalCancelUrl = cancelUrl || `${baseUrl}?payment=cancelled&invoice=${invoiceId}`;
 
     // Build checkout session params
+    const enabledMethods = orgConnect?.payment_methods_enabled?.length > 0
+      ? orgConnect.payment_methods_enabled
+      : ["card"];
+    const hasBacs = enabledMethods.includes("bacs_debit");
+
     const sessionParams: any = {
       customer: customerId,
       customer_email: customerId ? undefined : payerEmail,
-      payment_method_types: orgConnect?.payment_methods_enabled?.length > 0
-        ? orgConnect.payment_methods_enabled
-        : ["card"],
+      payment_method_types: enabledMethods,
       mode: "payment",
+      // Store mandate for BACS Direct Debit future usage
+      ...(hasBacs && {
+        payment_method_options: {
+          bacs_debit: { setup_future_usage: "off_session" },
+        },
+      }),
       line_items: [
         {
           price_data: {
@@ -266,8 +286,8 @@ serve(async (req) => {
       };
     }
 
-    // Create Stripe Checkout Session with idempotency key
-    const idempotencyKey = `checkout_${invoiceId}_${resolvedInstallmentId || "full"}_${paymentAmount}_${Date.now()}`;
+    // Create Stripe Checkout Session with stable idempotency key
+    const idempotencyKey = `checkout_${invoiceId}_${resolvedInstallmentId || "full"}_${paymentAmount}`;
     const session = await stripe.checkout.sessions.create(sessionParams, {
       idempotencyKey,
     });
