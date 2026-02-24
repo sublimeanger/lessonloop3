@@ -80,7 +80,7 @@ export default function OutstandingReport() {
         ]}
         actions={
           data && data.totalOutstanding > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap">
               <Button onClick={() => window.print()} variant="outline" className="gap-2 print:hidden">
                 <Printer className="h-4 w-4" />
                 Print
