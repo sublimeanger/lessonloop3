@@ -6,18 +6,20 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
-import { 
-  Check, 
-  X, 
-  Clock, 
-  ChevronDown, 
-  MapPin, 
+import {
+  Check,
+  X,
+  Clock,
+  ChevronDown,
+  MapPin,
   CheckCircle2,
   Loader2,
   StickyNote,
   Ban,
-  AlertCircle
+  AlertCircle,
+  FileText
 } from 'lucide-react';
+import { LessonNotesForm } from '@/components/calendar/LessonNotesForm';
 import { cn } from '@/lib/utils';
 import { AbsenceReasonPicker, needsAbsenceReason, type AbsenceReasonValue } from './AbsenceReasonPicker';
 
@@ -38,6 +40,7 @@ const cancellationStatuses: AttendanceStatus[] = ['cancelled_by_teacher', 'cance
 
 export function RegisterRow({ lesson }: RegisterRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showNotesForm, setShowNotesForm] = useState(false);
   const [savingStudent, setSavingStudent] = useState<string | null>(null);
   const updateAttendance = useUpdateAttendance();
   const markComplete = useMarkLessonComplete();
@@ -318,23 +321,58 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
               </div>
             )}
 
-            {/* Mark Complete Button */}
-            {!isCompleted && !isCancelled && (
-              <div className="pt-2 border-t flex justify-end">
+            {/* Mark Complete + Add Notes Buttons */}
+            {!isCancelled && (
+              <div className="pt-2 border-t flex items-center justify-between gap-2">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  onClick={handleMarkComplete}
-                  disabled={markComplete.isPending}
-                  className="min-h-11 gap-2 sm:min-h-9"
+                  onClick={() => setShowNotesForm(!showNotesForm)}
+                  className="min-h-11 gap-2 sm:min-h-9 text-muted-foreground"
                 >
-                  {markComplete.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="h-4 w-4" />
-                  )}
-                  Mark Complete
+                  <FileText className="h-4 w-4" />
+                  {showNotesForm ? 'Hide Notes' : 'Add Notes'}
                 </Button>
+                {!isCompleted && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleMarkComplete}
+                    disabled={markComplete.isPending}
+                    className="min-h-11 gap-2 sm:min-h-9"
+                  >
+                    {markComplete.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    Mark Complete
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Structured Notes Form */}
+            {showNotesForm && !isCancelled && (
+              <div className="pt-2">
+                <LessonNotesForm
+                  lessonId={lesson.id}
+                  participants={lesson.participants.map(p => {
+                    const nameParts = p.student_name.split(' ');
+                    const firstName = nameParts[0] || '';
+                    const lastName = nameParts.slice(1).join(' ') || '';
+                    return {
+                      id: p.student_id,
+                      student: {
+                        id: p.student_id,
+                        first_name: firstName,
+                        last_name: lastName,
+                      },
+                    };
+                  })}
+                  isGroupLesson={lesson.participants.length > 1}
+                  defaultOpen={true}
+                />
               </div>
             )}
           </div>

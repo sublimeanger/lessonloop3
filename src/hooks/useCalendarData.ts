@@ -37,7 +37,7 @@ async function fetchCalendarLessons(
   let query = supabase
     .from('lessons')
     .select(`
-      id, title, start_at, end_at, status, lesson_type, notes_shared, notes_private,
+      id, title, start_at, end_at, status, lesson_type, notes_shared, notes_private, recap_url,
       teacher_id, teacher_user_id, location_id, room_id, org_id, recurrence_id, online_meeting_url, is_online,
       created_by, created_at, updated_at, is_series_exception,
       location:locations(id, name, is_archived),

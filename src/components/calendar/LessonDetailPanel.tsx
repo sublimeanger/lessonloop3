@@ -24,7 +24,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban, Gift, AlertTriangle, CalendarClock, StopCircle, Repeat, Video, RefreshCw } from 'lucide-react';
+import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban, Gift, AlertTriangle, CalendarClock, StopCircle, Repeat, Video, ExternalLink, RefreshCw } from 'lucide-react';
+import { LessonNotesForm } from './LessonNotesForm';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface LessonDetailPanelProps {
@@ -675,6 +676,18 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
             </div>
           </div>
 
+          {/* Structured Lesson Notes Form */}
+          {lesson.status !== 'cancelled' && lesson.participants && lesson.participants.length > 0 && (
+            <>
+              <Separator />
+              <LessonNotesForm
+                lessonId={lesson.id}
+                participants={lesson.participants}
+                isGroupLesson={lesson.lesson_type === 'group'}
+              />
+            </>
+          )}
+
           {/* Shared Notes */}
           {lesson.notes_shared && (
             <>
@@ -693,6 +706,28 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
               <div>
                 <h3 className="font-semibold mb-2 text-sm">Private Notes (Staff Only)</h3>
                 <p className="text-muted-foreground text-sm whitespace-pre-wrap">{lesson.notes_private}</p>
+              </div>
+            </>
+          )}
+
+          {/* Recap Link */}
+          {lesson.recap_url && (
+            <>
+              <Separator />
+              <div>
+                <h3 className="font-semibold mb-2 text-sm flex items-center gap-1.5">
+                  <Video className="h-4 w-4 text-muted-foreground" />
+                  Lesson Recording
+                </h3>
+                <a
+                  href={lesson.recap_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm font-medium text-primary hover:bg-muted transition-colors"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Watch Recap
+                </a>
               </div>
             </>
           )}

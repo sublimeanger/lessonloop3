@@ -1,5 +1,5 @@
 import { usePageMeta } from '@/hooks/usePageMeta';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { PortalErrorState } from '@/components/portal/PortalErrorState';
 import { useSearchParams } from 'react-router-dom';
@@ -22,7 +22,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar, Clock, MapPin, User, CheckCircle, XCircle, AlertCircle, FileText, CalendarClock, CalendarPlus, ChevronDown, History, MoreVertical, Copy, Rss, Video } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, CheckCircle, XCircle, AlertCircle, FileText, CalendarClock, CalendarPlus, ChevronDown, History, MoreVertical, Copy, Rss, Video, ExternalLink } from 'lucide-react';
 import { parseISO, isAfter, isBefore, startOfToday, differenceInHours, startOfWeek, endOfWeek, addWeeks, isSameWeek } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { useParentLessons, useCreateMessageRequest, useGuardianId } from '@/hooks/useParentPortal';
@@ -33,6 +33,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useCalendarConnections } from '@/hooks/useCalendarConnections';
 import { downloadICSFile, generateGoogleCalendarUrl } from '@/lib/calendarExport';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { safeSetItem } from '@/lib/storage';
 
 // --- Types ---
 type Lesson = NonNullable<ReturnType<typeof useParentLessons>['data']>[number];
@@ -44,6 +46,10 @@ interface WeekGroup {
 
 export default function PortalSchedule() {
   usePageMeta('Schedule | Parent Portal', 'View and manage lesson schedule');
+  const { user } = useAuth();
+  useEffect(() => {
+    if (user?.id) safeSetItem(`ll-parent-visited-schedule-${user.id}`, 'true');
+  }, [user?.id]);
   const [searchParams, setSearchParams] = useSearchParams();
   const { selectedChildId } = useChildFilter();
   const [requestModalOpen, setRequestModalOpen] = useState(false);
@@ -322,6 +328,23 @@ export default function PortalSchedule() {
                     <FileText className="h-3.5 w-3.5" /> Lesson Notes
                   </div>
                   <p className="text-sm bg-muted/50 p-2.5 rounded-md whitespace-pre-wrap">{lesson.notes_shared}</p>
+                </div>
+              )}
+
+              {/* Recap Link */}
+              {lesson.recap_url && (
+                <div className="mt-3 pt-3 border-t">
+                  <a
+                    href={lesson.recap_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm font-medium text-primary hover:bg-muted transition-colors"
+                    style={{ minHeight: 44 }}
+                  >
+                    <Video className="h-4 w-4 shrink-0" />
+                    Watch Recap
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  </a>
                 </div>
               )}
             </div>

@@ -21,7 +21,8 @@ import type { PrimaryInstrumentInfo } from '@/hooks/usePrimaryInstruments';
 import { getInstrumentCategoryIcon } from '@/hooks/useInstruments';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Users, Upload, Lock, Loader2, X } from 'lucide-react';
+import { Plus, Search, Users, Upload, Lock, Loader2, X, Download } from 'lucide-react';
+import { useDataExport } from '@/hooks/useDataExport';
 import { cn } from '@/lib/utils';
 import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
 import { supabase } from '@/integrations/supabase/client';
@@ -209,6 +210,7 @@ export default function Students() {
   const queryClient = useQueryClient();
   const { limits, canAddStudent } = useUsageCounts();
   const { data: students = [], isLoading } = useStudents();
+  const { exportStudents } = useDataExport();
   const { data: primaryInstrumentMap = {} } = usePrimaryInstruments();
   const toggleMutation = useToggleStudentStatus();
   const [searchQuery, setSearchQuery] = useState('');
@@ -277,6 +279,10 @@ export default function Students() {
         actions={
           isAdmin ? (
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="min-h-11 sm:min-h-9 gap-1.5" onClick={exportStudents} disabled={isLoading || students.length === 0}>
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
               <Link to="/students/import">
                 <Button variant="outline" size="sm" className="min-h-11 sm:min-h-9 gap-1.5">
                   <Upload className="h-4 w-4" />

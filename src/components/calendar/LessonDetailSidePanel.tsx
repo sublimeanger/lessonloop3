@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { X, Clock, User, MapPin, Repeat, Users, Edit2, Check, UserX, Ban, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Clock, User, MapPin, Repeat, Users, Edit2, Check, UserX, Ban, AlertCircle, Loader2, Video, ExternalLink } from 'lucide-react';
 import { useUpdateAttendance } from '@/hooks/useRegisterData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -176,6 +176,23 @@ export function LessonDetailSidePanel({
                   </div>
                 )}
               </div>
+            </>
+          )}
+
+          {/* Recap Link */}
+          {lesson.recap_url && (
+            <>
+              <Separator />
+              <a
+                href={lesson.recap_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 rounded-lg border bg-muted/50 p-2.5 text-sm text-primary hover:bg-muted transition-colors"
+              >
+                <Video className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate flex-1">Watch Recap</span>
+                <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+              </a>
             </>
           )}
 

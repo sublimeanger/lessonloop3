@@ -28,6 +28,8 @@ import { useInvoicePdf } from '@/hooks/useInvoicePdf';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrencyMinor } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { safeSetItem } from '@/lib/storage';
 import { PaymentPlanInvoiceCard } from '@/components/portal/PaymentPlanInvoiceCard';
 import { PaymentDrawer } from '@/components/portal/PaymentDrawer';
 import { useRealtimePortalPayments } from '@/hooks/useRealtimePortalPayments';
@@ -35,6 +37,10 @@ import { useSavedPaymentMethods } from '@/hooks/useSavedPaymentMethods';
 
 export default function PortalInvoices() {
   usePageMeta('Invoices | Parent Portal', 'View and pay invoices');
+  const { user } = useAuth();
+  useEffect(() => {
+    if (user?.id) safeSetItem(`ll-parent-visited-invoices-${user.id}`, 'true');
+  }, [user?.id]);
   const { invoicesEnabled } = usePortalFeatures();
   const { currentOrg } = useOrg();
   const [statusFilter, setStatusFilter] = useState<string>('all');

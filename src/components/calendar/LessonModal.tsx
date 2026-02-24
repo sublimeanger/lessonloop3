@@ -54,6 +54,7 @@ export function LessonModal({ open, onClose, onSaved, lesson, initialDate, initi
       durationMins={form.durationMins} setDurationMins={form.setDurationMins}
       notesPrivate={form.notesPrivate} setNotesPrivate={form.setNotesPrivate}
       notesShared={form.notesShared} setNotesShared={form.setNotesShared}
+      recapUrl={form.recapUrl} setRecapUrl={form.setRecapUrl}
       status={form.status} setStatus={form.setStatus}
       isOnlineLesson={form.isOnlineLesson} setIsOnlineLesson={form.setIsOnlineLesson}
       hasZoomConnection={hasZoomConnection}

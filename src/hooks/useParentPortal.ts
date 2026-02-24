@@ -34,6 +34,7 @@ export interface ParentLesson {
   teacher_id: string | null;
   teacher_name?: string | null;
   notes_shared: string | null;
+  recap_url: string | null;
   online_meeting_url: string | null;
   is_online: boolean;
   students: Array<{
@@ -169,6 +170,7 @@ interface ParticipantLesson {
   teacher_id: string | null;
   location_id: string | null;
   notes_shared: string | null;
+  recap_url: string | null;
   online_meeting_url: string | null;
   is_online: boolean;
   location: { name: string } | null;
@@ -239,6 +241,7 @@ export function useParentLessons(options?: { studentId?: string; status?: string
             teacher_id,
             location_id,
             notes_shared,
+            recap_url,
             online_meeting_url,
             is_online,
             location:locations(name),
@@ -293,6 +296,7 @@ export function useParentLessons(options?: { studentId?: string; status?: string
             teacher_id: lesson.teacher_id,
             teacher_name: lesson.teacher?.display_name || null,
             notes_shared: lesson.notes_shared || null,
+            recap_url: lesson.recap_url || null,
             online_meeting_url: lesson.online_meeting_url || null,
             is_online: lesson.is_online || false,
             students: [],

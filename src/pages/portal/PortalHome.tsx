@@ -30,6 +30,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RequestModal } from '@/components/portal/RequestModal';
+import { ParentOnboardingChecklist } from '@/components/portal/ParentOnboardingChecklist';
 import { MakeUpStepper } from '@/components/portal/MakeUpStepper';
 import { PortalWelcomeDialog } from '@/components/portal/PortalWelcomeDialog';
 import { Button } from '@/components/ui/button';
@@ -266,6 +267,8 @@ export default function PortalHome() {
           <div className="absolute -top-8 -right-8 h-32 w-32 rounded-full bg-white/5" />
           <div className="absolute -bottom-12 -right-4 h-40 w-40 rounded-full bg-white/[0.03]" />
         </div>
+
+        <ParentOnboardingChecklist className="mb-2" />
 
         {isLoading ? (
           <PortalHomeSkeleton />
