@@ -13,6 +13,7 @@ interface OnboardingRequest {
   phone?: string;
   subscription_plan?: 'solo_teacher' | 'academy' | 'agency';
   timezone?: string;
+  also_teaches?: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -87,7 +88,7 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body: OnboardingRequest = await req.json();
-    const { org_type, phone, subscription_plan } = body;
+    const { org_type, phone, subscription_plan, also_teaches } = body;
     let { org_name, full_name } = body;
 
     if (!org_name || !org_type || !full_name) {
@@ -258,9 +259,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Step 3.5: For solo_teacher orgs, create a teacher record for the owner
-    if (org_type === 'solo_teacher') {
-      console.log('[onboarding-setup] Creating teacher record for solo teacher');
+    // Step 3.5: Create a teacher record for the owner when applicable
+    // - solo_teacher: always (the owner IS the teacher)
+    // - studio/academy: only if they indicated they also teach
+    const shouldCreateTeacher = org_type === 'solo_teacher' || (also_teaches && (org_type === 'studio' || org_type === 'academy'));
+    if (shouldCreateTeacher) {
+      console.log('[onboarding-setup] Creating teacher record for owner (org_type:', org_type, ', also_teaches:', also_teaches, ')');
       
       const { error: teacherError } = await adminClient
         .from('teachers')

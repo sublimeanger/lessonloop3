@@ -56,28 +56,15 @@ async function fetchCalendarLessons(
 
   // Instrument filter: find teachers who teach this instrument, then filter lessons by those teacher IDs
   if (filters.instrument) {
-    const { data: matchingProfiles } = await supabase
-      .from('teacher_profiles')
-      .select('user_id')
+    const { data: matchingTeachers } = await supabase
+      .from('teachers')
+      .select('id')
       .eq('org_id', orgId)
       .contains('instruments', [filters.instrument]);
 
-    if (matchingProfiles && matchingProfiles.length > 0) {
-      // Get teacher IDs (from teachers table) for these user_ids
-      const userIds = matchingProfiles.map(p => p.user_id);
-      const { data: matchingTeachers } = await supabase
-        .from('teachers')
-        .select('id')
-        .eq('org_id', orgId)
-        .in('user_id', userIds);
-
-      const teacherIds = (matchingTeachers || []).map(t => t.id);
-      if (teacherIds.length > 0) {
-        query = query.in('teacher_id', teacherIds);
-      } else {
-        // No teachers for this instrument — return empty
-        return { lessons: [], isCapReached: false };
-      }
+    const teacherIds = (matchingTeachers || []).map(t => t.id);
+    if (teacherIds.length > 0) {
+      query = query.in('teacher_id', teacherIds);
     } else {
       return { lessons: [], isCapReached: false };
     }
@@ -291,15 +278,16 @@ export function useTeachersAndLocations() {
         userId: t.user_id,
       }));
 
-      // Fetch instruments from teacher_profiles for the org
-      const { data: profilesData } = await supabase
-        .from('teacher_profiles')
+      // Fetch instruments from teachers table for the org
+      const { data: teacherInstruments } = await supabase
+        .from('teachers')
         .select('instruments')
-        .eq('org_id', currentOrg!.id);
+        .eq('org_id', currentOrg!.id)
+        .eq('status', 'active');
 
       const instrumentSet = new Set<string>();
-      (profilesData || []).forEach((p: any) => {
-        (p.instruments || []).forEach((i: string) => {
+      (teacherInstruments || []).forEach((t: any) => {
+        (t.instruments || []).forEach((i: string) => {
           if (i) instrumentSet.add(i);
         });
       });

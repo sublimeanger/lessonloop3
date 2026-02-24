@@ -25,7 +25,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { useTeachers, useTeacherMutations, useTeacherStudentCounts, Teacher } from '@/hooks/useTeachers';
 import { Progress } from '@/components/ui/progress';
-import { Plus, GraduationCap, Loader2, UserPlus, Lock, Link2, Link2Off, Phone, Trash2, Search, Pencil, RotateCcw } from 'lucide-react';
+import { Plus, GraduationCap, Loader2, UserPlus, Lock, Link2, Link2Off, Phone, Trash2, Search, Pencil, RotateCcw, Music } from 'lucide-react';
 import { cn, formatDateForOrg } from '@/lib/utils';
 import { InviteMemberDialog } from '@/components/settings/InviteMemberDialog';
 import { PendingInvitesList } from '@/components/settings/PendingInvitesList';
@@ -121,6 +121,8 @@ export default function Teachers() {
 
   const [search, setSearch] = useState('');
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
+  const [selfAddDismissed, setSelfAddDismissed] = useState(false);
+  const [isSelfAdding, setIsSelfAdding] = useState(false);
 
   // Pre-check validation dialog
   const [preCheckDialog, setPreCheckDialog] = useState<{
@@ -180,6 +182,32 @@ export default function Teachers() {
 
   const linkedCount = activeTeachers.filter(t => t.isLinked).length;
   const unlinkedCount = activeTeachers.filter(t => !t.isLinked).length;
+
+  // Check if the current owner/admin has a teacher record in this org
+  const userHasTeacherRecord = teachers.some(t => t.user_id === user?.id);
+  const showSelfAddBanner = isOrgAdmin && !userHasTeacherRecord && !selfAddDismissed && !isLoading && currentOrg?.org_type !== 'agency';
+
+  const handleSelfAdd = async () => {
+    if (!user || !currentOrg) return;
+    setIsSelfAdding(true);
+    try {
+      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
+      const { error } = await supabase.from('teachers').insert({
+        org_id: currentOrg.id,
+        user_id: user.id,
+        display_name: profile?.full_name || user.email?.split('@')[0] || 'Owner',
+        email: user.email?.toLowerCase() || null,
+        status: 'active',
+      });
+      if (error) throw error;
+      await refetch();
+      toast({ title: 'You\'ve been added as a teacher', description: 'You can now be assigned to lessons on the calendar.' });
+    } catch (err: any) {
+      toast({ title: 'Failed to add yourself as a teacher', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsSelfAdding(false);
+    }
+  };
 
   const FILTER_PILLS: { value: FilterTab; label: string; count: number }[] = [
     { value: 'all', label: 'All', count: activeTeachers.length },
@@ -420,6 +448,26 @@ export default function Teachers() {
               usage.isTeacherAtLimit && '[&>div]:bg-destructive'
             )} 
           />
+        </div>
+      )}
+
+      {/* Self-add banner for owners/admins who also teach */}
+      {showSelfAddBanner && (
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+          <Music className="h-5 w-5 text-primary shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium">Do you also teach?</p>
+            <p className="text-xs text-muted-foreground">Add yourself as a teacher to appear on the calendar and be assigned to lessons.</p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button variant="ghost" size="sm" onClick={() => setSelfAddDismissed(true)}>
+              Dismiss
+            </Button>
+            <Button size="sm" onClick={handleSelfAdd} disabled={isSelfAdding}>
+              {isSelfAdding ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+              Add Myself
+            </Button>
+          </div>
         </div>
       )}
 

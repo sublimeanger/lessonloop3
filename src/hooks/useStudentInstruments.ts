@@ -30,7 +30,7 @@ export function useStudentInstruments(studentId: string | undefined) {
   return useQuery({
     queryKey: ['student-instruments', studentId, currentOrg?.id],
     queryFn: async (): Promise<StudentInstrumentRow[]> => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('student_instruments')
         .select(`
           *,
@@ -70,14 +70,14 @@ export function useAddStudentInstrument() {
     mutationFn: async (data: AddStudentInstrumentData) => {
       // If marking as primary, un-primary the others first
       if (data.is_primary) {
-        await (supabase as any)
+        await supabase
           .from('student_instruments')
           .update({ is_primary: false })
           .eq('student_id', data.student_id)
           .eq('org_id', currentOrg!.id);
       }
 
-      const { data: result, error } = await (supabase as any)
+      const { data: result, error } = await supabase
         .from('student_instruments')
         .insert({
           student_id: data.student_id,
@@ -131,7 +131,7 @@ export function useUpdateStudentInstrument() {
       // If grade is being changed, fetch the old value for history
       let oldGradeId: string | null = null;
       if (updates.current_grade_id !== undefined) {
-        const { data: existing } = await (supabase as any)
+        const { data: existing } = await supabase
           .from('student_instruments')
           .select('current_grade_id')
           .eq('id', id)
@@ -141,7 +141,7 @@ export function useUpdateStudentInstrument() {
 
       // If marking as primary, un-primary the others first
       if (updates.is_primary) {
-        await (supabase as any)
+        await supabase
           .from('student_instruments')
           .update({ is_primary: false })
           .eq('student_id', student_id)
@@ -149,7 +149,7 @@ export function useUpdateStudentInstrument() {
           .neq('id', id);
       }
 
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('student_instruments')
         .update(updates)
         .eq('id', id)
@@ -194,7 +194,7 @@ export function useRemoveStudentInstrument() {
 
   return useMutation({
     mutationFn: async ({ id, student_id }: { id: string; student_id: string }) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('student_instruments')
         .delete()
         .eq('id', id)

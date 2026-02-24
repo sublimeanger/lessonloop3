@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,6 +13,7 @@ import { LogoHorizontal } from '@/components/brand/Logo';
 import { Loader2, LogOut, User, Building2, Users, Network, CheckCircle2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlanSelector, getRecommendedPlan } from '@/components/onboarding/PlanSelector';
+import { PLAN_DISPLAY_NAMES } from '@/lib/pricing-config';
 import { OnboardingProgress } from '@/components/onboarding/OnboardingProgress';
 
 type OrgType = 'solo_teacher' | 'studio' | 'academy' | 'agency';
@@ -61,6 +63,7 @@ export default function Onboarding() {
   const hasEditedOrgName = useRef(!!saved.current?.orgName);
   const isSubmitting = useRef(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>(saved.current?.selectedPlan || 'academy');
+  const [alsoTeaches, setAlsoTeaches] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profileReady, setProfileReady] = useState(false);
   const [loadingStage, setLoadingStage] = useState(0);
@@ -141,9 +144,12 @@ export default function Onboarding() {
     }
   }, [user, profile]);
 
-  // Update recommended plan when org type changes
+  // Update recommended plan when org type changes and reset alsoTeaches for non-applicable types
   useEffect(() => {
     setSelectedPlan(getRecommendedPlan(orgType));
+    if (orgType !== 'studio' && orgType !== 'academy') {
+      setAlsoTeaches(false);
+    }
   }, [orgType]);
 
   // Auto-generate org name when name or type changes (unless manually edited)
@@ -254,6 +260,7 @@ export default function Onboarding() {
                 full_name: fullName.trim(),
                 subscription_plan: selectedPlan,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/London',
+                also_teaches: alsoTeaches,
               }),
               signal: controller.signal,
             });
@@ -383,7 +390,7 @@ export default function Onboarding() {
 
   // Success screen with clear next steps
   if (step === 'success') {
-    const planName = selectedPlan === 'solo_teacher' ? 'Teacher' : selectedPlan === 'academy' ? 'Studio' : 'Agency';
+    const planName = PLAN_DISPLAY_NAMES[selectedPlan] || 'LessonLoop';
     
     // Org-type specific first action
     const getFirstAction = (): { action: string; description: string; href: string } => {
@@ -602,6 +609,26 @@ export default function Onboarding() {
                         })}
                       </div>
                     </div>
+
+                    {/* Also teaches checkbox — only for studio/academy */}
+                    {(orgType === 'studio' || orgType === 'academy') && (
+                      <div className="flex items-start gap-3 rounded-lg border border-border p-4">
+                        <Checkbox
+                          id="alsoTeaches"
+                          checked={alsoTeaches}
+                          onCheckedChange={(checked) => setAlsoTeaches(checked === true)}
+                          className="mt-0.5"
+                        />
+                        <div className="space-y-1">
+                          <Label htmlFor="alsoTeaches" className="cursor-pointer font-medium leading-none">
+                            I also teach lessons
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Add yourself as a teacher so you can be assigned to lessons on the calendar.
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Organisation name */}
                     <div className="space-y-2">
