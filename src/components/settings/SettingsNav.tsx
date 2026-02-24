@@ -123,7 +123,7 @@ export function SettingsSidebar({ activeTab, onTabChange, isOrgAdmin }: Settings
   return (
     <nav
       aria-label="Settings navigation"
-      className="hidden md:block w-56 shrink-0 border-r pr-4 py-2"
+      className="hidden md:block w-56 shrink-0 border-r border-border/60 pr-4 py-2"
     >
       <div className="sticky top-4 space-y-6">
         {groups.map((group) => (
