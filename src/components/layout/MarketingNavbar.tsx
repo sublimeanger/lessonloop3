@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, ChevronRight } from "lucide-react";
+import { Menu, X, ChevronRight, LayoutDashboard } from "lucide-react";
 import { LogoHorizontal } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navLinks = [
   { name: "Features", href: "/features" },
@@ -18,6 +19,9 @@ export function MarketingNavbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { user, isInitialised, isParent } = useAuth();
+  const isLoggedIn = isInitialised && !!user;
+  const dashboardHref = isParent ? "/portal/home" : "/dashboard";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -82,27 +86,45 @@ export function MarketingNavbar() {
 
             {/* Desktop CTAs */}
             <div className="hidden lg:flex items-center gap-3">
-              <Link to="/login">
-                <Button
-                  variant="ghost"
-                  className="font-medium text-foreground hover:bg-accent"
-                >
-                  Sign in
-                </Button>
-              </Link>
-              <Link to="/signup">
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Button
-                    className="font-semibold px-6 shadow-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/25"
+              {isLoggedIn ? (
+                <Link to={dashboardHref}>
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                     Start free
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </motion.div>
-              </Link>
+                    <Button
+                      className="font-semibold px-6 shadow-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/25"
+                    >
+                      <LayoutDashboard className="w-4 h-4 mr-2" />
+                      Dashboard
+                    </Button>
+                  </motion.div>
+                </Link>
+              ) : (
+                <>
+                  <Link to="/login">
+                    <Button
+                      variant="ghost"
+                      className="font-medium text-foreground hover:bg-accent"
+                    >
+                      Sign in
+                    </Button>
+                  </Link>
+                  <Link to="/signup">
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Button
+                        className="font-semibold px-6 shadow-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/25"
+                      >
+                        Start free
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    </motion.div>
+                  </Link>
+                </>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -176,17 +198,28 @@ export function MarketingNavbar() {
                   transition={{ delay: 0.4 }}
                   className="space-y-3 pt-6 border-t border-border"
                 >
-                  <Link to="/login" className="block">
-                    <Button variant="outline" className="w-full h-12 font-medium">
-                      Sign in
-                    </Button>
-                  </Link>
-                  <Link to="/signup" className="block">
-                    <Button className="w-full h-12 font-semibold shadow-lg shadow-primary/25">
-                      Start free trial
-                      <ChevronRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </Link>
+                  {isLoggedIn ? (
+                    <Link to={dashboardHref} className="block">
+                      <Button className="w-full h-12 font-semibold shadow-lg shadow-primary/25">
+                        <LayoutDashboard className="w-4 h-4 mr-2" />
+                        Dashboard
+                      </Button>
+                    </Link>
+                  ) : (
+                    <>
+                      <Link to="/login" className="block">
+                        <Button variant="outline" className="w-full h-12 font-medium">
+                          Sign in
+                        </Button>
+                      </Link>
+                      <Link to="/signup" className="block">
+                        <Button className="w-full h-12 font-semibold shadow-lg shadow-primary/25">
+                          Start free trial
+                          <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                      </Link>
+                    </>
+                  )}
                 </motion.div>
               </div>
             </motion.div>

@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Check, Shield, Clock, CreditCard } from "lucide-react";
+import { ChevronRight, Check, Shield, Clock, CreditCard, LayoutDashboard } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const guarantees = [
   { icon: Clock, text: "30-day free trial" },
@@ -10,6 +11,10 @@ const guarantees = [
 ];
 
 export function CTASection() {
+  const { user, isInitialised, isParent } = useAuth();
+  const isLoggedIn = isInitialised && !!user;
+  const dashboardHref = isParent ? "/portal/home" : "/dashboard";
+
   return (
     <section className="py-24 lg:py-32 relative overflow-hidden">
       {/* Background */}
@@ -99,34 +104,62 @@ export function CTASection() {
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl p-8 lg:p-10">
-                <h3 className="text-2xl font-bold text-white mb-2">
-                  Start your 30-day trial
-                </h3>
-                <p className="text-white/60 mb-6">
-                  Try free for 30 days. Cancel anytime.
-                </p>
+                {isLoggedIn ? (
+                  <>
+                    <h3 className="text-2xl font-bold text-white mb-2">
+                      Welcome back
+                    </h3>
+                    <p className="text-white/60 mb-6">
+                      Pick up where you left off.
+                    </p>
 
-                <Link to="/signup" className="block">
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Button 
-                      size="xl" 
-                      className="w-full bg-gradient-to-r from-teal to-teal-dark text-white hover:from-teal-dark hover:to-teal font-bold shadow-xl h-14 text-lg"
-                    >
-                      Start free trial
-                      <ChevronRight className="w-5 h-5 ml-1" />
-                    </Button>
-                  </motion.div>
-                </Link>
+                    <Link to={dashboardHref} className="block">
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <Button
+                          size="xl"
+                          className="w-full bg-gradient-to-r from-teal to-teal-dark text-white hover:from-teal-dark hover:to-teal font-bold shadow-xl h-14 text-lg"
+                        >
+                          <LayoutDashboard className="w-5 h-5 mr-2" />
+                          Go to Dashboard
+                        </Button>
+                      </motion.div>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-2xl font-bold text-white mb-2">
+                      Start your 30-day trial
+                    </h3>
+                    <p className="text-white/60 mb-6">
+                      Try free for 30 days. Cancel anytime.
+                    </p>
 
-                <p className="text-center text-white/40 text-sm mt-4">
-                  By signing up, you agree to our{" "}
-                  <a href="/terms" className="underline hover:text-white/60">Terms</a>
-                  {" "}and{" "}
-                  <a href="/privacy" className="underline hover:text-white/60">Privacy Policy</a>
-                </p>
+                    <Link to="/signup" className="block">
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <Button
+                          size="xl"
+                          className="w-full bg-gradient-to-r from-teal to-teal-dark text-white hover:from-teal-dark hover:to-teal font-bold shadow-xl h-14 text-lg"
+                        >
+                          Start free trial
+                          <ChevronRight className="w-5 h-5 ml-1" />
+                        </Button>
+                      </motion.div>
+                    </Link>
+
+                    <p className="text-center text-white/40 text-sm mt-4">
+                      By signing up, you agree to our{" "}
+                      <a href="/terms" className="underline hover:text-white/60">Terms</a>
+                      {" "}and{" "}
+                      <a href="/privacy" className="underline hover:text-white/60">Privacy Policy</a>
+                    </p>
+                  </>
+                )}
               </div>
 
             </motion.div>
