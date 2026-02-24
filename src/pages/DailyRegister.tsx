@@ -147,14 +147,14 @@ export default function DailyRegister() {
       />
 
       {/* Date Navigation */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={goToPrevDay}>
+      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="flex w-full items-center gap-2 lg:w-auto">
+          <Button variant="outline" size="icon" className="h-11 w-11 sm:h-9 sm:w-9" onClick={goToPrevDay}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="min-w-[200px] justify-start gap-2">
+              <Button variant="outline" className="h-11 min-w-0 flex-1 justify-start gap-2 text-left sm:h-9 sm:min-w-[200px]">
                 <CalendarIcon className="h-4 w-4" />
                 {dateLabel}
               </Button>
@@ -168,13 +168,13 @@ export default function DailyRegister() {
               />
             </PopoverContent>
           </Popover>
-          <Button variant="outline" size="icon" onClick={goToNextDay}>
+          <Button variant="outline" size="icon" className="h-11 w-11 sm:h-9 sm:w-9" onClick={goToNextDay}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 
         {!isToday(selectedDate) && (
-          <Button variant="ghost" size="sm" onClick={goToToday}>
+          <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-9" onClick={goToToday}>
             Go to Today
           </Button>
         )}
@@ -185,7 +185,7 @@ export default function DailyRegister() {
             value={teacherFilter ?? 'all'}
             onValueChange={(value) => setTeacherFilter(value === 'all' ? null : value)}
           >
-            <SelectTrigger className="w-[180px] h-9 text-sm">
+            <SelectTrigger className="h-11 w-full text-sm sm:h-9 sm:w-[220px]">
               <SelectValue placeholder="All Teachers" />
             </SelectTrigger>
             <SelectContent>
@@ -199,10 +199,10 @@ export default function DailyRegister() {
           </Select>
         )}
 
-        <div className="flex-1" />
+        <div className="hidden flex-1 lg:block" />
 
         {/* Batch Mode Link */}
-        <Button variant="outline" size="sm" asChild>
+        <Button variant="outline" size="sm" className="min-h-11 sm:min-h-9" asChild>
           <Link to="/batch-attendance" className="gap-2">
             <UserCheck className="h-4 w-4" />
             Batch Mode

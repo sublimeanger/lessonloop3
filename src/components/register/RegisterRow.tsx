@@ -155,9 +155,9 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
         isCancelled && "opacity-60"
       )}>
         {/* Main Row */}
-        <div className="flex items-center gap-4 p-4">
+        <div className="flex flex-wrap items-start gap-3 p-4 sm:flex-nowrap sm:items-center sm:gap-4">
           {/* Time */}
-          <div className="w-28 shrink-0">
+          <div className="w-full shrink-0 sm:w-28">
             <div className="text-sm font-medium tabular-nums">{timeDisplay}</div>
           </div>
 
@@ -166,7 +166,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
             <div className="font-medium truncate">{lesson.title}</div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               {lesson.location_name && (
-                <span className="flex items-center gap-1">
+                <span className="flex w-full flex-wrap items-center gap-1 sm:w-auto">
                   <MapPin className="h-3 w-3" />
                   {lesson.location_name}
                   {lesson.room_name && ` • ${lesson.room_name}`}
@@ -185,7 +185,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
 
           {/* Expand Button */}
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="icon" className="shrink-0">
+            <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 sm:h-9 sm:w-9">
               <ChevronDown className={cn(
                 "h-4 w-4 transition-transform",
                 isExpanded && "rotate-180"
@@ -205,7 +205,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
               return (
               <div
                 key={participant.student_id}
-                className="py-2 border-b last:border-b-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 group/row"
+                className="group/row rounded-md border-b py-2 last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                 tabIndex={0}
                 role="row"
                 aria-label={`${participant.student_name} — ${currentStatus ? statusConfig[currentStatus]?.label ?? 'unmarked' : 'unmarked'}. Press P, A, L, T, or S to set status.`}
@@ -222,10 +222,10 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
                   }
                 }}
               >
-                  <div className="flex items-center justify-between gap-4">
-                     <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                     <div className="flex flex-wrap items-center gap-2">
                        <span className="font-medium">{participant.student_name}</span>
-                       <span className="hidden group-focus-visible/row:inline text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">P / A / L / T / S</span>
+                       <span className="hidden group-focus-visible/row:inline text-micro text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">P / A / L / T / S</span>
                       {needsAbsenceReason(currentStatus) && !participant.absence_reason_category && !absenceReasons[participant.student_id] && (
                         <span title="Absence reason missing" className="text-warning">
                           <AlertCircle className="h-3.5 w-3.5" />
@@ -233,11 +233,11 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
                       )}
                     </div>
                     
-                    <div className="flex flex-col items-end gap-1">
+                    <div className="flex w-full flex-col items-start gap-1 sm:w-auto sm:items-end">
                       {isSaving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                       
                       {/* Primary statuses row */}
-                      <div className="flex items-center gap-1">
+                      <div className="flex w-full flex-wrap items-center gap-1 sm:w-auto">
                         {primaryStatuses.map((status) => {
                           const config = statusConfig[status];
                           const isActive = currentStatus === status;
@@ -264,7 +264,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
                       </div>
 
                       {/* Cancellation statuses row */}
-                      <div className="flex items-center gap-1">
+                      <div className="flex w-full flex-wrap items-center gap-1 sm:w-auto">
                         {cancellationStatuses.map((status) => {
                           const config = statusConfig[status];
                           const isActive = currentStatus === status;
@@ -326,7 +326,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
                   size="sm"
                   onClick={handleMarkComplete}
                   disabled={markComplete.isPending}
-                  className="gap-2"
+                  className="min-h-11 gap-2 sm:min-h-9"
                 >
                   {markComplete.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

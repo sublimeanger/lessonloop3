@@ -138,7 +138,7 @@ export function InstallmentTimeline({ invoice, onEditPlan, onRecordPayment }: In
                         size="sm"
                         variant="outline"
                         className={cn(
-                          'flex-shrink-0 gap-1 text-xs h-7 print:hidden',
+                          'flex-shrink-0 gap-1 text-xs min-h-11 px-3 sm:h-7 sm:min-h-0 print:hidden',
                           inst.status === 'overdue' && 'border-destructive/30 text-destructive hover:bg-destructive/10',
                         )}
                         onClick={() => onRecordPayment(inst.amount_minor)}
@@ -162,8 +162,8 @@ export function InstallmentTimeline({ invoice, onEditPlan, onRecordPayment }: In
           </div>
 
           {/* Actions — hidden when printing */}
-          <div className="flex gap-2 pt-1 print:hidden">
-            <Button variant="outline" size="sm" className="gap-1" onClick={onEditPlan}>
+          <div className="flex flex-col gap-2 pt-1 print:hidden sm:flex-row">
+            <Button variant="outline" size="sm" className="min-h-11 gap-1 sm:min-h-9" onClick={onEditPlan}>
               <Pencil className="h-3 w-3" />
               Edit Plan
             </Button>
@@ -171,7 +171,7 @@ export function InstallmentTimeline({ invoice, onEditPlan, onRecordPayment }: In
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1 text-destructive hover:text-destructive"
+                className="min-h-11 gap-1 text-destructive hover:text-destructive sm:min-h-9"
                 onClick={() => setRemoveConfirmOpen(true)}
               >
                 <Trash2 className="h-3 w-3" />

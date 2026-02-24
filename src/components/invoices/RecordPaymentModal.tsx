@@ -91,7 +91,7 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="h-screen w-screen max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-w-md sm:rounded-lg sm:border sm:p-6">
         <DialogHeader>
           <DialogTitle>Record Payment</DialogTitle>
           <DialogDescription>
@@ -176,11 +176,11 @@ export function RecordPaymentModal({ invoice, open, onOpenChange }: RecordPaymen
             />
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button type="button" variant="outline" className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={recordPayment.isPending || !amount}>
+            <Button className="min-h-11 w-full sm:min-h-9 sm:w-auto" type="submit" disabled={recordPayment.isPending || !amount}>
               {recordPayment.isPending
                 ? 'Recording...'
                 : confirmOverpay

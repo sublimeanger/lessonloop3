@@ -10,7 +10,7 @@ interface InvoiceFiltersBarWithHelpProps {
 export function InvoiceFiltersBarWithHelp(props: InvoiceFiltersBarWithHelpProps) {
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium">Filters</span>
         <HelpTooltip 
           content="Filter invoices by status or due date. Use 'Overdue' to find unpaid invoices past their due date." 

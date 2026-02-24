@@ -99,7 +99,7 @@ export function ShareResourceModal({ open, onOpenChange, resource }: ShareResour
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px]">
+      <DialogContent className="h-screen w-screen max-w-none overflow-y-auto rounded-none border-0 p-4 sm:max-h-[90vh] sm:max-w-[450px] sm:rounded-lg sm:border sm:p-6">
         <DialogHeader>
           <DialogTitle>Share Resource</DialogTitle>
           <DialogDescription>
@@ -133,7 +133,7 @@ export function ShareResourceModal({ open, onOpenChange, resource }: ShareResour
                 <span className="text-muted-foreground">
                   {selectedStudents.length} selected ({filteredStudents.filter(s => selectedStudents.includes(s.id)).length} shown)
                 </span>
-                <Button variant="ghost" size="sm" onClick={handleSelectAll}>
+                <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-9" onClick={handleSelectAll}>
                   {filteredStudents.every(s => selectedStudents.includes(s.id)) ? 'Deselect all' : 'Select all'}
                 </Button>
               </div>
@@ -160,11 +160,12 @@ export function ShareResourceModal({ open, onOpenChange, resource }: ShareResour
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
+          <Button variant="outline" className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
+            className="min-h-11 w-full sm:min-h-9 sm:w-auto"
             onClick={handleSubmit}
             disabled={shareMutation.isPending}
           >

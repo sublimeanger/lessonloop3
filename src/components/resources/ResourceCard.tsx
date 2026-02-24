@@ -191,7 +191,7 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
             {!selectionMode && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="shrink-0" aria-label="Resource actions">
+                  <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 sm:h-9 sm:w-9" aria-label="Resource actions">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>

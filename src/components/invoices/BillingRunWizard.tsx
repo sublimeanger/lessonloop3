@@ -197,7 +197,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-xl mx-4 sm:mx-auto">
+      <DialogContent className="h-screen w-screen max-w-none overflow-y-auto rounded-none border-0 p-4 sm:h-auto sm:max-w-xl sm:rounded-lg sm:border sm:p-6">
         <DialogHeader>
           <DialogTitle>Billing Run</DialogTitle>
           <DialogDescription>
@@ -337,11 +337,12 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
               )}
             </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={handleClose}>
+            <DialogFooter className="flex-col gap-2 sm:flex-row">
+              <Button variant="outline" className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={handleClose}>
                 Cancel
               </Button>
               <Button
+                className="min-h-11 w-full sm:min-h-9 sm:w-auto"
                 ref={step === 'config' ? stepFocusRef : undefined}
                 onClick={() => setStep('preview')}
                 disabled={
@@ -443,11 +444,12 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
               </div>
             )}
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setStep('config')}>
+            <DialogFooter className="flex-col gap-2 sm:flex-row">
+              <Button variant="outline" className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={() => setStep('config')}>
                 Back
               </Button>
               <Button
+                className="min-h-11 w-full sm:min-h-9 sm:w-auto"
                 ref={step === 'preview' ? stepFocusRef : undefined}
                 onClick={handleGenerate}
                 disabled={createBillingRun.isPending || payerGroups.size === 0}
@@ -515,10 +517,11 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
               </div>
             )}
 
-            <DialogFooter className="gap-2">
+            <DialogFooter className="flex-col gap-2 sm:flex-row">
               {billingResult?.summary.failedPayers && billingResult.summary.failedPayers.length > 0 && (
                 <Button
                   variant="outline"
+                  className="min-h-11 w-full sm:min-h-9 sm:w-auto"
                   onClick={handleRetry}
                   disabled={retryPayers.isPending}
                 >
@@ -529,7 +532,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                   )}
                 </Button>
               )}
-              <Button ref={step === 'complete' ? stepFocusRef : undefined} onClick={handleClose}>Done</Button>
+              <Button className="min-h-11 w-full sm:min-h-9 sm:w-auto" ref={step === 'complete' ? stepFocusRef : undefined} onClick={handleClose}>Done</Button>
             </DialogFooter>
           </div>
         )}

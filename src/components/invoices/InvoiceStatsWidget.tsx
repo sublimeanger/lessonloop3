@@ -23,7 +23,7 @@ export function InvoiceStatsWidget({ onFilterStatus }: InvoiceStatsWidgetProps =
 
   if (isLoading || !stats) {
     return (
-      <div className="flex items-center gap-4 py-1">
+      <div className="grid grid-cols-1 gap-2 py-1 sm:flex sm:items-center sm:gap-4">
         <Skeleton className="h-5 w-24" />
         <Skeleton className="h-5 w-24" />
         <Skeleton className="h-5 w-24" />
@@ -65,10 +65,10 @@ export function InvoiceStatsWidget({ onFilterStatus }: InvoiceStatsWidgetProps =
   ].filter(Boolean) as Array<{ value: string; label: string; color: string; filterStatus: string }>;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-1 text-sm text-muted-foreground">
+    <div className="grid grid-cols-1 gap-1 text-sm text-muted-foreground sm:flex sm:flex-wrap sm:items-center sm:gap-x-1">
       {statItems.map((stat, i) => (
         <span key={stat.label} className="inline-flex items-center">
-          {i > 0 && <span className="mx-1.5">·</span>}
+          {i > 0 && <span className="mx-1.5 hidden sm:inline">·</span>}
           {isClickable ? (
             <button
               onClick={() => onFilterStatus?.(stat.filterStatus)}

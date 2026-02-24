@@ -3,10 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { STALE_STABLE } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { TrendingUp } from 'lucide-react';
-import { startOfWeek, subWeeks, format, parseISO, addDays } from 'date-fns';
+import { startOfWeek, subWeeks, format, addDays } from 'date-fns';
 
 interface PracticeTrendsChartProps {
   studentId: string;
@@ -16,6 +17,7 @@ interface PracticeTrendsChartProps {
 export function PracticeTrendsChart({ studentId, targetMinutesPerWeek }: PracticeTrendsChartProps) {
   const { currentOrg } = useOrg();
   const weeksBack = 8;
+  const isMobile = useIsMobile();
   const weekStart = startOfWeek(subWeeks(new Date(), weeksBack - 1), { weekStartsOn: 1 });
 
   const { data: logs = [], isLoading } = useQuery({
@@ -97,18 +99,19 @@ export function PracticeTrendsChart({ studentId, targetMinutesPerWeek }: Practic
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+        <div className="h-[180px] w-full sm:h-[220px]">
+          <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={isMobile ? { top: 5, right: 4, left: 0, bottom: 0 } : { top: 5, right: 8, left: -12, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
             <XAxis
               dataKey="weekLabel"
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: isMobile ? 10 : 11 }}
               className="fill-muted-foreground"
             />
             <YAxis
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: isMobile ? 10 : 11 }}
               className="fill-muted-foreground"
-              label={{ value: 'min', position: 'insideTopLeft', offset: 15, fontSize: 10, className: 'fill-muted-foreground' }}
+              label={isMobile ? undefined : { value: 'min', position: 'insideTopLeft', offset: 15, fontSize: 10, className: 'fill-muted-foreground' }}
             />
             <Tooltip
               contentStyle={{
@@ -141,7 +144,8 @@ export function PracticeTrendsChart({ studentId, targetMinutesPerWeek }: Practic
               />
             )}
           </BarChart>
-        </ResponsiveContainer>
+          </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );
