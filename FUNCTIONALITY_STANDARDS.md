@@ -1,146 +1,200 @@
-# LessonLoop Functionality Standards
+# LessonLoop Functionality Standards — World-Class Standard
 
-> These are the rules for how every feature should work. Read this before building or fixing any functionality.
+> These are the rules for how every feature must work. Read before building or fixing any functionality. Every interaction must be predictable, fast, and graceful.
 
-## Error Handling
+---
 
-### API Calls (Supabase)
-- Every Supabase query must handle the error case: `const { data, error } = await supabase...`
-- Errors are passed to the centralised handler in `src/lib/error-handler.ts`
-- User-facing errors show a toast with `variant: 'destructive'`
-- Errors are logged via `src/lib/logger.ts` and reported to Sentry via `src/lib/sentry.ts`
-- **Never** show raw database errors to users — map to friendly messages
+## 1. Error Handling
+
+### Supabase API Calls
+```tsx
+const { data, error } = await supabase.from('students').select('*');
+if (error) {
+  logger.error('Failed to load students:', error);
+  Sentry.captureException(error);
+  toast({ title: 'Failed to load students', description: 'Please try again.', variant: 'destructive' });
+  return;
+}
+```
+- Every query: destructure `{ data, error }`, check error case
+- Errors → `src/lib/error-handler.ts` → `src/lib/logger.ts` → `src/lib/sentry.ts`
+- User-facing: friendly toast, NEVER raw database errors
+- Log original error for debugging
 
 ### React Query
-- All data fetching uses React Query (`@tanstack/react-query`) via custom hooks in `src/hooks/`
-- Stale times are configured in `src/config/query-stale-times.ts` — respect these
-- Loading states come from `isLoading` / `isPending`
-- Error states come from `isError` / `error`
-- Mutations use `useMutation` with `onSuccess` and `onError` handlers
-- Optimistic updates via `onMutate` where the user expects instant feedback (e.g., toggling attendance)
-- Invalidate relevant queries in `onSuccess` — never leave stale data visible
+- ALL data fetching via custom hooks in `src/hooks/` using `@tanstack/react-query`
+- Stale times from `src/config/query-stale-times.ts` — never override without reason
+- `isLoading` / `isPending` → drives skeleton/loading UI
+- `isError` → drives error UI
+- Mutations use `useMutation` with `onSuccess`, `onError`, and `onMutate` (for optimistic)
+- `onSuccess` → invalidate relevant queries, show success toast, close modal
+- `onError` → show error toast, keep form open with user data intact
+- **NEVER leave stale data visible after a mutation**
 
-### Form Submission
-- Disable the submit button during submission
-- Show `Loader2` spinner inside the button during submission
-- On success: show success toast, close modal/navigate, invalidate queries
-- On error: show error toast, keep form open with data intact
-- **Never** lose user input on error
+### Form Submission Pattern
+```tsx
+const [saving, setSaving] = useState(false);
 
-## Validation
+async function handleSubmit() {
+  setSaving(true);
+  try {
+    await mutation.mutateAsync(formData);
+    toast({ title: 'Student created' });
+    onClose();
+  } catch (err) {
+    toast({ title: 'Failed to create student', variant: 'destructive' });
+    // Form stays open, data preserved
+  } finally {
+    setSaving(false);
+  }
+}
+
+<Button disabled={saving}>
+  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+  Save
+</Button>
+```
+
+---
+
+## 2. Validation
 
 ### Client-Side
-- Use Zod schemas from `src/lib/schemas.ts` for all form validation
-- Additional validation utilities in `src/lib/validation.ts`
-- Validate on blur and on submit — not on every keystroke
-- Show inline validation errors below the relevant field in `text-destructive text-sm`
-- Required fields must be marked (asterisk or explicit label)
+- Zod schemas from `src/lib/schemas.ts` for all form validation
+- Additional utils in `src/lib/validation.ts`
+- Validate on **blur** AND on **submit** — not on every keystroke
+- Inline errors below the field: `<p className="text-sm text-destructive mt-1">Name is required</p>`
+- Required fields marked with visual indicator
 
 ### Sanitisation
-- All user text input goes through `src/lib/sanitize.ts` before storage
-- File uploads validated via `src/lib/resource-validation.ts` (type, size, name)
-- Never trust client-side validation alone — Supabase RLS is the real guard
+- All user text → `src/lib/sanitize.ts` before storage
+- File uploads → `src/lib/resource-validation.ts` (type, size, name)
+- Never trust client-side only — Supabase RLS is the real guard
 
-### Common Validation Rules
-- **Email:** Valid format, not empty
-- **Names:** Not empty, reasonable length (2-100 chars), sanitised
-- **Phone:** Optional but if provided, basic format check
-- **Dates:** Valid date, logical ranges (end after start, not in past where inappropriate)
-- **Currency:** Non-negative, reasonable amounts, stored in minor units (pence)
-- **Files:** Max size enforced, allowed MIME types only
+### Common Rules
+| Field | Validation |
+|-------|-----------|
+| Email | Valid format, not empty |
+| Names | 2-100 chars, sanitised, not whitespace-only |
+| Phone | Optional, basic format if provided |
+| Dates | Valid date, logical ranges (end > start) |
+| Currency | Non-negative, stored in minor units (pence) |
+| Files | Max size enforced, allowed MIME types only |
 
-## Authentication & Authorisation
+---
 
-### Auth Context
-- Auth state managed by `src/contexts/AuthContext.tsx`
-- `useAuth()` provides: `user`, `profile`, `signOut`, `isLoading`
-- Routes protected by `RouteGuard` component in `src/components/auth/RouteGuard.tsx`
+## 3. Authentication & Authorisation
 
-### Organisation Context
-- Multi-tenant state managed by `src/contexts/OrgContext.tsx`
-- `useOrg()` provides: `currentOrg`, `currentRole`, `hasOrgs`, `isLoading`
-- Roles: `owner`, `admin`, `teacher`, `finance`, `parent`
-- **Every** data query must scope to `currentOrg.id` — never leak data across orgs
+### Auth System
+- State: `src/contexts/AuthContext.tsx` → `useAuth()` provides `user`, `profile`, `signOut`, `isLoading`
+- Routes: `RouteGuard` in `src/components/auth/RouteGuard.tsx`
+- Multi-tenant: `src/contexts/OrgContext.tsx` → `useOrg()` provides `currentOrg`, `currentRole`, `hasOrgs`
+- **EVERY data query MUST scope to `currentOrg.id`** — zero tolerance for data leakage
 
-### Route Protection
-- Admin pages → `AppLayout` + role check
-- Parent pages → `PortalLayout` + parent role check
-- Marketing pages → `MarketingLayout` (public)
-- Feature-gated content → `FeatureGate` component from `src/components/subscription/`
-- If a user doesn't have permission, show a clear message — don't silently hide or 404
+### Roles & Access
+| Role | Access |
+|------|--------|
+| `owner` | Everything |
+| `admin` | Everything except billing/subscription management |
+| `teacher` | Dashboard, Calendar, their students, Register, Practice, Resources, Messages |
+| `finance` | Dashboard, Invoices, Reports, limited Student view |
+| `parent` | Portal only (Home, Schedule, Invoices, Practice, Resources, Messages, Profile) |
 
-### Permission Rules
-| Role | Can Access |
-|------|-----------|
-| Owner | Everything |
-| Admin | Everything except billing/subscription management |
-| Teacher | Dashboard, Calendar, their own students, Register, Practice, Resources, Messages |
-| Finance | Dashboard, Invoices, Reports, limited Student view |
-| Parent | Portal only (PortalHome, PortalSchedule, PortalInvoices, PortalPractice, PortalResources, PortalMessages, PortalProfile) |
+### Route Protection Rules
+- Admin pages → `AppLayout` + role check in component
+- Portal pages → `PortalLayout` + parent role check
+- Marketing → `MarketingLayout` (public)
+- Feature-gated → `FeatureGate` component
+- No permission → clear message explaining why, never silent hide or 404
+- Parent accessing admin route → redirect to `/portal/home`
 
-## Data Integrity
+---
+
+## 4. Data Integrity
 
 ### Deletion
-- All deletions use `DeleteValidationDialog` from `src/components/shared/DeleteValidationDialog.tsx`
-- The `useDeleteValidation` hook checks dependencies before allowing deletion
-- **Blocked deletions:** Entity has active dependencies that would break (e.g., teacher with future lessons)
-- **Warned deletions:** Entity has historical data that will be affected (shows what will be impacted)
-- **Never** allow cascade deletes without explicit user confirmation
-- Soft deletes preferred where data has historical significance (e.g., students → inactive, not deleted)
+- ALL deletions → `DeleteValidationDialog` → `useDeleteValidation` hook
+- **Blocked:** Active dependencies that would break (teacher with future lessons)
+- **Warned:** Historical data affected (shows impact before confirming)
+- **NEVER** cascade delete without explicit confirmation
+- Soft deletes preferred: students → inactive, not deleted
 
 ### Recurring Events
-- Editing recurring lessons always asks: "This event only" or "All future events" via `RecurringActionDialog` / `RecurringEditDialog`
-- Deleting recurring lessons: same pattern
-- Calendar sync must respect recurring event changes
+- Edit/delete → ALWAYS ask: "This event only" or "All future events"
+- Via `RecurringActionDialog` / `RecurringEditDialog`
+- Calendar sync must respect recurring changes
 
 ### Currency
-- All money stored in **minor units** (pence) as integers
-- Display using `formatCurrencyMinor()` from `src/lib/utils.ts`
-- Never use floating point for money calculations
+- Stored in **minor units** (pence) as integers — NEVER float
+- Display via `formatCurrencyMinor()` from `src/lib/utils.ts`
+- Format: `new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' })`
 
-### Dates & Times
-- All dates stored in UTC in the database
-- Display using org timezone from `useOrgTimezone` hook
-- UK format: `dd/MM/yyyy`, `HH:mm` (24-hour)
-- Use `date-fns` and `date-fns-tz` for all date manipulation
-- `formatDateUK` and `formatTimeUK` from utils for consistent formatting
+### Dates & Timezones
+- Database: UTC always
+- Display: org timezone from `useOrgTimezone` hook
+- Format: `formatDateUK()`, `formatTimeUK()`, `formatDateTimeForOrg()` from utils
+- UK format: dd/MM/yyyy, HH:mm (24-hour)
+- Libraries: `date-fns` + `date-fns-tz` only
 
-## Real-Time Features
+---
 
-- Invoice updates use `useRealtimeInvoices` for live status changes
-- Internal messages update in real-time
-- Calendar data refreshes on focus/reconnect via React Query
-- Offline state detected by `useOnlineStatus` hook, shown via `OfflineBanner`
-- **Never** assume connectivity — always handle the offline case
+## 5. Real-Time & Connectivity
 
-## Subscription & Feature Gating
+- Invoice updates: `useRealtimeInvoices` for live status changes
+- Internal messages: real-time updates
+- Calendar: refreshes on focus/reconnect via React Query
+- Offline: `useOnlineStatus` hook → `OfflineBanner` component
+- **NEVER assume connectivity** — handle offline gracefully
 
-- Subscription state managed by `useSubscription` hook
-- Features gated by `useFeatureGate` hook and `FeatureGate` component
-- Usage limits tracked by `useUsageCounts` hook
-- When a user hits a limit: show `UpgradeBanner`, not a generic error
-- Trial expiry handled by `TrialExpiredModal`
-- **Never** silently fail on a gated feature — always explain why and how to upgrade
+---
 
-## Navigation & Routing
+## 6. Subscription & Feature Gating
 
-- Routes defined in `src/config/routes.ts` and `src/App.tsx`
-- Auto-breadcrumbs via `AutoBreadcrumbs` component
-- Scroll to top on navigation via `ScrollToTop` component
-- Page metadata (title) set by `usePageMeta` hook
-- Back navigation should work sensibly — never trap users
-- 404 handled by `NotFound` page
+- State: `useSubscription` hook
+- Feature checks: `useFeatureGate` hook, `FeatureGate` component
+- Usage limits: `useUsageCounts` hook
+- Hit limit → `UpgradeBanner` with clear explanation — NOT a generic error
+- Trial expiry → `TrialExpiredModal`
+- **NEVER silently fail on a gated feature**
 
-## Audit Logging
+---
 
-- Security-sensitive actions logged via `src/lib/auditLog.ts`
-- Viewable in Settings → Audit Log tab
-- Actions to log: login, role changes, deletion of entities, settings changes, data exports
-- Logs include: who, what, when, and relevant entity IDs
+## 7. Navigation
 
-## Testing Standards
+- Routes: `src/config/routes.ts` + `src/App.tsx`
+- Breadcrumbs: `AutoBreadcrumbs` component
+- Scroll reset: `ScrollToTop` component
+- Page title: `usePageMeta` hook → format: `[Page] | LessonLoop`
+- Back nav: always works sensibly, never traps users
+- 404: `NotFound` page
+- Deep links: every page loads correctly on direct URL visit
 
-- Test files in `src/test/` mirror the feature structure
-- Use test helpers from `src/test/helpers/` (mockAuth, mockOrg, mockSupabase, testWrappers)
-- Every bug fix should include a verification step (test or manual checklist)
-- Key areas with existing tests: auth flows, billing calculations, calendar operations, permissions, portal, practice streaks
+---
+
+## 8. Audit Logging
+
+- Via `src/lib/auditLog.ts`
+- View in Settings → Audit Log tab
+- Log: login, role changes, deletions, settings changes, data exports
+- Format: who, what, when, entity IDs
+
+---
+
+## 9. Testing
+
+- Tests in `src/test/` mirror feature structure
+- Helpers: `src/test/helpers/` (mockAuth, mockOrg, mockSupabase, testWrappers)
+- Every bug fix → verification step (test or manual checklist)
+- Key test areas: auth, billing calculations, calendar ops, permissions, portal, practice streaks
+
+---
+
+## 10. Performance
+
+- React Query caching prevents redundant fetches
+- Lazy loading for heavy pages (already in App.tsx with `React.lazy`)
+- Images: `loading="lazy"` attribute
+- Lists with >50 items: pagination or virtual scrolling
+- Bundle: code-split by route
+- No console.log spam in production
+- No unnecessary re-renders from unstable references

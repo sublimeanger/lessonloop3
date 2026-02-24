@@ -1,161 +1,293 @@
-# LessonLoop Functionality Checklist
+# LessonLoop Functionality Checklist — World-Class Standard
 
-> Run this checklist against every page. For each item, test manually or verify in code. If it fails, fix it.
+> Test EVERY item on EVERY page at BOTH 375px mobile AND 1280px desktop. Test with real interactions — click, type, submit, delete, navigate. Not just visual inspection.
 
-## Forms & Input
+---
 
-- [ ] Every form field has visible label text
-- [ ] Required fields are marked or validated with clear error messages
+## Forms & Input (test at BOTH viewports)
+
+### Validation
+- [ ] Every required field shows error if empty on submit
 - [ ] Validation fires on blur AND on submit
-- [ ] Inline errors appear below the specific field, not just as a toast
-- [ ] Submit button disables during submission with a Loader2 spinner
-- [ ] On error: form stays open, user data preserved, error toast shown
-- [ ] On success: toast shown, modal closes or page navigates, queries invalidated
-- [ ] Date pickers default to sensible dates (today, start of term, etc.)
-- [ ] Select/dropdown fields have a placeholder or default selection
-- [ ] No form submits empty/whitespace-only for required fields
-- [ ] Text inputs are sanitised via `sanitize.ts` before storage
+- [ ] Inline errors appear below the specific field in `text-sm text-destructive`
+- [ ] Email fields reject invalid formats
+- [ ] Name fields reject whitespace-only
+- [ ] Date pickers prevent impossible selections (end before start)
+- [ ] Currency inputs prevent negative values
+- [ ] File uploads enforce size and type limits via `resource-validation.ts`
+- [ ] Text inputs sanitised via `sanitize.ts`
 
-## API & Data
+### Submission
+- [ ] Submit button disables during async with `Loader2` spinner
+- [ ] On success: toast shown, modal closes, queries invalidated, UI updates immediately
+- [ ] On error: toast with `variant: 'destructive'`, form stays open, user data preserved
+- [ ] No double-submit possible — rapid clicking doesn't create duplicates
+- [ ] Form doesn't lose data on network error
 
-- [ ] Every Supabase query scopes to `currentOrg.id` — no data leakage between orgs
+### Mobile-Specific Form Checks
+- [ ] Text inputs don't trigger iOS zoom (must be `text-base` / 16px minimum)
+- [ ] Keyboard doesn't obscure submit button (can scroll to it)
+- [ ] Date pickers work with native mobile input or custom picker
+- [ ] Select dropdowns are usable on touch (large enough targets)
+- [ ] Modal forms scroll properly when content exceeds screen height
+
+---
+
+## API & Data Integrity (test at BOTH viewports)
+
+### Scoping
+- [ ] EVERY Supabase query includes `org_id` filter — verify in code, not just visually
+- [ ] Parent users can ONLY see their own children's data
+- [ ] Teachers can ONLY see their assigned students and lessons
+- [ ] No data leaks across organisations
+
+### Query Handling
 - [ ] Every `{ data, error }` destructure checks the error case
-- [ ] React Query `isLoading` drives skeleton/loading UI
-- [ ] React Query `isError` drives error UI (not just silent failure)
+- [ ] `isLoading` → correct skeleton UI
+- [ ] `isError` → error UI, not blank screen
 - [ ] Mutations invalidate relevant queries on success
-- [ ] No stale data visible after a mutation (check the UI updates immediately)
-- [ ] Pagination works correctly with large datasets (students, invoices, lessons)
-- [ ] Filters and search don't break when combined
-- [ ] Sorting works correctly on all sortable columns
+- [ ] No stale data visible after create/update/delete
+- [ ] Pagination works with 1 item, 10 items, 100+ items
+- [ ] Filters + search + sort work in all combinations without breaking
+- [ ] Empty result set shows EmptyState, not broken UI
 
-## Destructive Actions
+---
 
-- [ ] Every delete uses `DeleteValidationDialog` with dependency checking
-- [ ] Blocked deletions show clear explanation of what's preventing deletion
-- [ ] Warned deletions show what will be affected before confirming
-- [ ] Recurring event edits/deletes ask "This event" vs "All future events"
-- [ ] No irreversible action happens without explicit confirmation
-- [ ] Cancel/undo is available where feasible
-- [ ] Destructive buttons use `variant="destructive"` — visually distinct from safe actions
+## Destructive Actions (test at BOTH viewports)
 
-## Authentication & Permissions
+- [ ] Every delete → `DeleteValidationDialog` with dependency check
+- [ ] Blocked deletions: clear explanation of blocking dependencies
+- [ ] Warned deletions: shows what will be affected, requires explicit confirm
+- [ ] Recurring event edit/delete → "This event" vs "All future events" dialog
+- [ ] No irreversible action without confirmation
+- [ ] Destructive buttons use `variant="destructive"` — visually distinct
+- [ ] Cancel/undo available where feasible
+- [ ] Bulk delete (if applicable) confirms with count of affected items
 
-- [ ] Unauthenticated users are redirected to login
-- [ ] Parents accessing admin routes are redirected to `/portal/home`
-- [ ] Teachers can only see their own assigned students and lessons
-- [ ] Finance role can access invoices and reports but not full student management
-- [ ] Feature-gated content shows `FeatureGate` / `UpgradeBanner`, not a blank page
-- [ ] Usage limits (e.g., max students) show a clear upgrade prompt when hit
-- [ ] Session expiry is handled gracefully (redirect to login with friendly message)
-- [ ] Password reset flow works end-to-end
+### Mobile-Specific
+- [ ] Confirmation dialogs are full-screen or large bottom-sheet
+- [ ] Confirm/Cancel buttons are large enough to tap accurately
+- [ ] No accidental delete possible from small tap targets
 
-## Double-Submit Prevention
+---
 
-- [ ] Buttons disable during async operations
-- [ ] Form submissions debounced or guarded against rapid double-clicks
-- [ ] Bulk actions (e.g., bulk send invoices) can't be triggered twice
-- [ ] Navigation during submission doesn't create duplicate records
+## Authentication & Permissions (test at BOTH viewports)
 
-## Navigation & Routing
+### Access Control
+- [ ] Unauthenticated → redirect to `/login`
+- [ ] Parent accessing admin route → redirect to `/portal/home`
+- [ ] Teacher accessing owner-only features → clear "no permission" message
+- [ ] Finance role: can access invoices/reports, blocked from full student management
+- [ ] Feature-gated content → `FeatureGate` / `UpgradeBanner`, never blank page
+- [ ] Usage limit hit → clear upgrade prompt with current count
 
-- [ ] Every link/route goes to a real page (no 404s from internal links)
-- [ ] Back button behaves sensibly on every page
-- [ ] Breadcrumbs (where present) are accurate and clickable
+### Auth Flows
+- [ ] Login: email + password works, error messages are helpful
+- [ ] Signup: creates account, redirects to onboarding
+- [ ] Forgot password: sends email, reset flow works end-to-end
+- [ ] Session expiry: redirect to login with friendly message, no crash
+- [ ] Accept invite: creates account or links existing, joins org
+- [ ] Social login (Google/Apple): works on both viewports
+
+### Mobile-Specific
+- [ ] Login form: fields full-width, keyboard doesn't obscure
+- [ ] Social login buttons: full-width, large tap targets
+- [ ] Password field: show/hide toggle accessible
+
+---
+
+## Navigation & Routing (test at BOTH viewports)
+
+- [ ] Every internal link goes to a real page (no 404s)
+- [ ] Browser back button works sensibly on every page
+- [ ] Deep links work: `/students/[id]`, `/invoices/[id]` load on direct visit
 - [ ] Page title updates via `usePageMeta` on every page
-- [ ] Deep links work (e.g., `/students/[id]` loads correctly on direct visit)
-- [ ] Scroll position resets on page navigation via `ScrollToTop`
-- [ ] No redirect loops (especially around auth/onboarding)
+- [ ] Scroll resets on navigation via `ScrollToTop`
+- [ ] No redirect loops (especially auth/onboarding edge cases)
+- [ ] Breadcrumbs (where present) are accurate and clickable
 
-## Calendar-Specific
+### Mobile Navigation
+- [ ] Portal: `PortalBottomNav` highlights correct item on every page
+- [ ] Admin: sidebar collapses, hamburger/mobile nav accessible
+- [ ] Back gesture (iOS swipe) doesn't break anything
+- [ ] Tab switching is instant (no loading delay for cached pages)
 
-- [ ] Lessons display correctly in Day, Week, Stacked, and Agenda views
-- [ ] Creating a lesson via modal saves correctly and appears on calendar
-- [ ] Editing a lesson (single or recurring) updates correctly
-- [ ] Deleting a lesson (single or series) removes it cleanly
-- [ ] Drag to reschedule works on desktop (`useDragLesson`)
-- [ ] Resize to change duration works on desktop (`useResizeLesson`)
-- [ ] Conflict detection warns before double-booking (`useConflictDetection`)
-- [ ] Filters (teacher, location, room, instrument) all work
-- [ ] Calendar navigation (prev/next week/day) works correctly
-- [ ] Quick create popover works from time grid click
-- [ ] Lesson detail side panel opens with full info
-- [ ] Teacher colour coding is consistent via `teacherColours.ts`
-- [ ] Calendar sync (Google) creates/updates/deletes external events
+---
 
-## Students-Specific
+## Calendar (test at BOTH viewports)
 
-- [ ] Student creation wizard completes all steps (info → guardian → teaching defaults)
-- [ ] Student import (CSV) handles mapping, preview, and execution
-- [ ] Student detail page loads all tabs without errors
-- [ ] Guardian management (add, edit, remove) works correctly
-- [ ] Instrument/grade assignment works with the grade frameworks
-- [ ] Status toggle (active/inactive) works with proper confirmation
-- [ ] Search filters correctly across name, instrument, status
-- [ ] Make-up credit balance displays and updates correctly
+### Desktop (1280px+)
+- [ ] Day, Week, Stacked, Agenda views all render correctly
+- [ ] Lesson creation modal saves and appears on calendar
+- [ ] Edit single lesson: updates correctly
+- [ ] Edit recurring: "This event" vs "All future events" works
+- [ ] Delete single and series: removes cleanly
+- [ ] Drag to reschedule: `useDragLesson` works, snaps to grid
+- [ ] Resize to change duration: `useResizeLesson` works
+- [ ] Conflict detection: `useConflictDetection` warns before double-booking
+- [ ] Filters (teacher, location, room, instrument) all work independently and combined
+- [ ] Calendar nav (prev/next week/day) works with keyboard arrows
+- [ ] Quick create popover from time grid click
+- [ ] Lesson detail side panel opens with complete info
+- [ ] Teacher colour coding consistent across all views
 
-## Invoices & Billing
+### Mobile (375px)
+- [ ] `CalendarMobileLayout` renders with `MobileWeekView` / `MobileDayView`
+- [ ] Lesson cards are readable and tappable
+- [ ] `MobileLessonSheet` opens with full detail
+- [ ] Filter bar doesn't overflow — collapses or scrolls
+- [ ] Date navigation is touch-friendly (swipe or large arrows)
+- [ ] Quick create works on mobile (tap on time slot)
+- [ ] No horizontal overflow on any view
 
-- [ ] Invoice creation modal calculates amounts correctly (minor units / pence)
-- [ ] Billing run wizard generates invoices for the correct students/period
-- [ ] Invoice status transitions: draft → sent → paid / overdue
-- [ ] Recording payment updates status and amount correctly
-- [ ] Sending invoice triggers email and updates status
-- [ ] Payment plans (`PaymentPlanSetup`, `InstallmentTimeline`) calculate correctly
-- [ ] Stripe Connect integration works for online payments
-- [ ] Bulk actions (select multiple → send/mark paid) work correctly
-- [ ] Invoice PDF generation via `useInvoicePdf` produces correct output
-- [ ] Currency always displayed via `formatCurrencyMinor()` — never raw numbers
+---
 
-## Portal (Parent Experience)
+## Students (test at BOTH viewports)
 
-- [ ] Parent sees only their own children's data
-- [ ] Child switcher works when parent has multiple children
-- [ ] Upcoming lessons display correctly with reschedule/cancel options
-- [ ] Invoice list shows correct balances with online payment option
-- [ ] Practice timer and history work correctly
-- [ ] Resources shared by teachers are accessible and downloadable
-- [ ] Messages/requests create properly and reach the admin
-- [ ] Portal feature toggles respect org settings (`usePortalFeatures`)
-- [ ] Disabled features show `PortalFeatureDisabled` component, not empty pages
+### Desktop
+- [ ] Search + StatusPills filter work together
+- [ ] Student rows show: avatar, name, instrument, status, actions
+- [ ] StudentWizard: all steps complete (info → guardian → teaching defaults → success)
+- [ ] Import flow: upload → mapping → preview → importing → complete
+- [ ] Student detail: all tabs load without errors
+- [ ] Guardian CRUD works (add, edit, remove)
+- [ ] Instrument/grade assignment works
+- [ ] Active/inactive toggle with confirmation
 
-## Messages & Communication
+### Mobile
+- [ ] Students display as cards, not cramped table
+- [ ] Search is prominent and easy to access
+- [ ] StudentWizard is full-screen with clear step progress
+- [ ] Student detail: tabs work via swipe or scroll
+- [ ] Cards are tappable with clear touch targets
 
-- [ ] Compose modal sends to correct recipients
-- [ ] Bulk compose works for multiple recipients
-- [ ] Internal messages (staff-to-staff) work separately from parent messages
-- [ ] Message threads display in correct order
-- [ ] Unread count badge updates correctly on read
-- [ ] Message requests from parents appear in admin view
-- [ ] Reply functionality works within threads
-- [ ] Notification bell shows unread count
+---
 
-## Reports
+## Invoices & Billing (test at BOTH viewports)
 
-- [ ] All report pages load data correctly
+### Desktop
+- [ ] Invoice creation: amounts calculated correctly in minor units
+- [ ] Billing run wizard: generates correct invoices for correct period
+- [ ] Status transitions: draft → sent → paid / overdue
+- [ ] Record payment: updates status and amount correctly
+- [ ] Send invoice: triggers email, updates status to "sent"
+- [ ] Payment plans: `PaymentPlanSetup` calculates instalments correctly
+- [ ] Stripe Connect: online payment works end-to-end
+- [ ] Bulk actions: select multiple → send/mark paid works
+- [ ] Invoice PDF: `useInvoicePdf` generates correct output
+- [ ] All currency via `formatCurrencyMinor()` — never raw numbers
+
+### Mobile
+- [ ] Invoice list as scannable cards with amount and status prominent
+- [ ] Filters collapse or are accessible via dropdown
+- [ ] Create/send modals are full-screen
+- [ ] Payment button is primary CTA, large and prominent
+- [ ] Currency is large and readable
+
+---
+
+## Portal — Parent Experience (MOBILE-FIRST — test 375px before anything)
+
+### Portal Home
+- [ ] Shows only this parent's children's data
+- [ ] `ChildSwitcher` works with 1 child and multiple children
+- [ ] Next lesson card: prominent, shows date/time/teacher/location
+- [ ] Quick action links to Schedule, Invoices, Practice
+- [ ] `PortalWelcomeDialog` shows for first-time users
+
+### Portal Schedule
+- [ ] Upcoming lessons: clear cards with reschedule/cancel options
+- [ ] Request modal: works on mobile keyboard
+- [ ] Reschedule slot picker: large tappable time slots
+- [ ] Past lessons visible with history view
+- [ ] Calendar feed export (ICS/Google) works
+
+### Portal Invoices
+- [ ] Invoice cards show amount, status, due date clearly
+- [ ] Pay button: primary CTA, full-width on mobile, large and obvious
+- [ ] Payment plans show instalment timeline
+- [ ] Stripe payment flow works on mobile browser
+
+### Portal Practice
+- [ ] Timer: large start/stop button, works with screen lock
+- [ ] Practice history scrolls cleanly
+- [ ] Streak badges are motivating and visible
+- [ ] Weekly progress card is scannable
+- [ ] Assignments from teacher are clear
+
+### Portal Resources
+- [ ] Resources stack single-column on mobile
+- [ ] Download/preview works on mobile
+- [ ] Audio player is touch-friendly
+- [ ] File type clearly indicated
+
+### Portal Messages
+- [ ] Message list is full-width and scannable
+- [ ] Compose is full-screen on mobile
+- [ ] Send button reachable above keyboard
+- [ ] Thread navigation clear
+
+### Portal Profile
+- [ ] Form is single-column on mobile
+- [ ] Save button reachable
+- [ ] Notification toggles are large enough to tap
+
+### Portal Universal
+- [ ] Feature-disabled pages → `PortalFeatureDisabled` not blank
+- [ ] Error states → `PortalErrorState` not generic error
+- [ ] `usePortalFeatures` correctly reflects org settings
+
+---
+
+## Messages & Communication (test at BOTH viewports)
+
+- [ ] Compose sends to correct recipients
+- [ ] Bulk compose works
+- [ ] Internal (staff-to-staff) messages work separately
+- [ ] Threads display in correct chronological order
+- [ ] Unread count badge updates on read
+- [ ] Parent message requests appear in admin view
+- [ ] Reply works within threads
+- [ ] Notification bell shows correct unread count
+- [ ] Mobile: messages full-width, compose full-screen
+
+---
+
+## Reports (test at BOTH viewports)
+
+- [ ] All 6 report pages load data correctly
 - [ ] Date range filters work and update results
-- [ ] Sorting works on all table columns
-- [ ] Pagination works for large result sets
-- [ ] Numbers/currency formatted correctly throughout
-- [ ] Reports respect the user's role (finance vs owner)
+- [ ] Sorting works on all columns via `SortableTableHead`
+- [ ] Pagination via `ReportPagination` works
+- [ ] Numbers/currency formatted correctly
+- [ ] Reports respect user role (finance vs owner)
+- [ ] Mobile: tables scroll horizontally or convert to cards
 
-## Settings
+---
 
-- [ ] Organisation settings save correctly
+## Settings (test at BOTH viewports)
+
+- [ ] Every tab saves correctly and shows success toast
+- [ ] Organisation settings persist across sessions
 - [ ] Profile settings save correctly
-- [ ] Calendar integrations (Google) connect and sync
-- [ ] Invoice settings (default terms, payment details) persist
-- [ ] Rate cards create, edit, and apply correctly
-- [ ] Term management (create, edit terms) works
-- [ ] Member invitations send and accept correctly
+- [ ] Calendar integrations connect and sync
+- [ ] Invoice settings (terms, payment details) persist
+- [ ] Rate cards CRUD works
+- [ ] Term management works
+- [ ] Member invitations send and accept
 - [ ] Notification preferences save per-user
-- [ ] Branding settings (if present) apply across the app
-- [ ] LoopAssist preferences save correctly
+- [ ] LoopAssist preferences save
+- [ ] Mobile: tabs scroll horizontally, forms single-column
 
-## Offline & Edge Cases
+---
 
-- [ ] `OfflineBanner` appears when connection is lost
-- [ ] Actions attempted offline show appropriate error
-- [ ] Reconnection refreshes stale data automatically
-- [ ] Very long names/text truncate gracefully (don't break layouts)
-- [ ] Empty org (brand new signup) shows onboarding flow, not errors
+## Edge Cases (test at BOTH viewports)
+
+- [ ] `OfflineBanner` appears when connection lost
+- [ ] Reconnection refreshes stale data
+- [ ] Very long names (50+ chars) truncate, don't break layout
+- [ ] Empty org (new signup) → onboarding flow, not errors
 - [ ] Timezone differences handled correctly (org timezone, not browser)
+- [ ] Multiple browser tabs: data stays in sync
+- [ ] Session timeout: graceful redirect to login
+- [ ] Rapid navigation: no race conditions or flash of wrong content

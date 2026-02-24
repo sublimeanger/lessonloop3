@@ -1,143 +1,238 @@
-# LessonLoop UX Checklist
+# LessonLoop UX Checklist — World-Class Standard
 
-> Run this checklist against every page and component. If any item fails, fix it before moving on.
+> Run EVERY item on EVERY page. Check at both **375px mobile** AND **1280px desktop**. If any item fails at either viewport, fix it before moving on. No exceptions.
+
+---
 
 ## Visual Hierarchy
 
-- [ ] Page title uses `PageHeader` component (or `DashboardHero` on the dashboard)
-- [ ] The most important content/action is visually dominant — users know where to look first
-- [ ] Secondary information uses `text-muted-foreground` or `text-caption`
-- [ ] No two elements compete for attention at the same visual weight
-- [ ] CTAs are clearly distinguishable from surrounding content
-- [ ] Status indicators (badges, dots, icons) are immediately scannable
+### Desktop (1280px+)
+- [ ] Page title uses `PageHeader` component (or `DashboardHero` on dashboard)
+- [ ] Primary CTA is top-right of PageHeader and visually dominant
+- [ ] Content follows Z-pattern reading flow: header → stats → main content → secondary
+- [ ] No two elements compete at the same visual weight
+- [ ] Stat cards use 4-column grid (`sm:grid-cols-2 lg:grid-cols-4`)
+- [ ] Secondary info uses `text-muted-foreground` or `text-caption`
+- [ ] Status badges are immediately scannable without reading surrounding text
+
+### Mobile (375px)
+- [ ] Page title is legible and doesn't wrap awkwardly
+- [ ] Primary CTA is either: in PageHeader (icon-only with `aria-label`), or prominent full-width button below header
+- [ ] Stat cards stack to 2-col (`sm:grid-cols-2`) then 1-col on smallest screens
+- [ ] No content is hidden that's essential on mobile — only secondary details collapse
+- [ ] Touch targets are minimum 44×44px — verify with browser dev tools
+
+---
 
 ## Spacing & Alignment
 
-- [ ] Page uses consistent padding: `p-4 md:p-6`
-- [ ] Major sections separated by `space-y-6`
-- [ ] Cards use `p-4` or `p-5` internal padding — consistent within the page
-- [ ] Grid gaps are `gap-4` throughout
-- [ ] No orphaned elements floating with inconsistent margins
-- [ ] Content doesn't touch edges — everything has breathing room
-- [ ] On mobile, nothing overflows the viewport horizontally
+### Desktop
+- [ ] Page uses `p-4 md:p-6 lg:p-8` (from AppLayout) — no custom overrides
+- [ ] Major sections: `space-y-6`
+- [ ] Cards: `p-4` or `p-5` internal padding, `gap-4` between cards
+- [ ] No orphaned elements with inconsistent margins
+- [ ] Content columns align to the same grid
+
+### Mobile
+- [ ] Portal pages: `p-6 pb-24` (bottom padding for nav bar)
+- [ ] Nothing overflows viewport horizontally — check with `overflow: hidden` test
+- [ ] Cards are full-width with comfortable side padding
+- [ ] Spacing between elements doesn't feel cramped OR excessive
+- [ ] Form buttons are reachable without scrolling past all content
+
+---
 
 ## Loading States
 
-- [ ] Uses appropriate skeleton from `LoadingState.tsx`:
-  - `DashboardSkeleton` for dashboard
-  - `CalendarSkeleton` for calendar views
-  - `ListSkeleton` for list pages (students, invoices, etc.)
-  - `DetailSkeleton` for detail pages (student detail, invoice detail)
-  - `FormSkeleton` for form-heavy dialogs
-  - `PortalHomeSkeleton` for portal home
-  - `GridSkeleton` for stat card grids
-- [ ] Skeletons match the actual layout shape (not generic spinners for content areas)
-- [ ] Spinner (`LoadingState`) only used for full-page initial loads
-- [ ] Buttons show `Loader2` spinner + disabled state during async actions
-- [ ] No layout shift when content loads in (skeleton matches content dimensions)
+### Skeleton Selection (MUST use the correct variant)
+| Page Type | Component | File |
+|-----------|-----------|------|
+| Dashboard | `DashboardSkeleton` | `shared/LoadingState.tsx` |
+| Calendar | `CalendarSkeleton` | `shared/LoadingState.tsx` |
+| List pages | `ListSkeleton` | `shared/LoadingState.tsx` |
+| Detail pages | `DetailSkeleton` | `shared/LoadingState.tsx` |
+| Form dialogs | `FormSkeleton` | `shared/LoadingState.tsx` |
+| Portal home | `PortalHomeSkeleton` | `shared/LoadingState.tsx` |
+| Stat grids | `GridSkeleton` | `shared/LoadingState.tsx` |
+
+### Desktop Checks
+- [ ] Skeletons match actual layout shape (not generic spinners for content)
+- [ ] No layout shift when real content loads (skeleton dimensions match content)
+- [ ] Shimmer blocks use `animate-pulse rounded-xl bg-muted`
+- [ ] Multiple skeletons load simultaneously (no sequential loading appearance)
+
+### Mobile Checks
+- [ ] Skeletons are adapted for mobile layout (single column, not desktop grid at mobile width)
+- [ ] Loading state doesn't push content below the fold unnecessarily
+- [ ] Full-page spinner (`LoadingState`) only for initial app shell load
+
+### Action Loading
+- [ ] Every async button shows `Loader2` spinner + disabled state during action
+- [ ] Save/Submit buttons: `<Button disabled><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</Button>`
+- [ ] No double-submit possible (button disabled during async)
+
+---
 
 ## Empty States
 
-- [ ] Uses `EmptyState` component from `shared/EmptyState.tsx`
-- [ ] Has a relevant icon (from lucide-react)
-- [ ] Has a clear, helpful title (not just "No data")
-- [ ] Has a description explaining what this area is for
-- [ ] Has a primary CTA to create/add the first item (where applicable)
-- [ ] Inline lists use `InlineEmptyState` for lighter treatment
-- [ ] Empty states feel encouraging, not like errors
+### Content Checks
+- [ ] Uses `EmptyState` component (full page) or `InlineEmptyState` (within lists)
+- [ ] Has relevant lucide-react icon (not generic)
+- [ ] Title tells user what this area IS, not just "No data"
+- [ ] Description tells user HOW to get started (encouraging tone)
+- [ ] Primary CTA to create/add the first item where applicable
+- [ ] Tone is warm and helpful: "No students yet" → "Add your first student to start building your schedule"
 
-## Error States
+### Desktop Checks
+- [ ] Empty state is vertically centred in the available space
+- [ ] Icon is `h-12 w-12 text-muted-foreground/30`
+- [ ] Max width of description is constrained (`max-w-sm mx-auto`)
 
-- [ ] API errors show a toast via `useToast` hook
-- [ ] Success toasts have a clear `title` (and optional `description`)
-- [ ] Error toasts use `variant: 'destructive'`
-- [ ] Form validation errors appear inline below the relevant field
-- [ ] Network failures show the `OfflineBanner` component
-- [ ] Component-level errors caught by `SectionErrorBoundary`
-- [ ] Full page errors caught by `ErrorBoundary`
-- [ ] No silent failures — every error is communicated to the user
+### Mobile Checks
+- [ ] Empty state fits on screen without scrolling
+- [ ] CTA button is full-width or at least prominently tappable
+- [ ] Icon scales down appropriately (not oversized on small screen)
 
-## Hover & Focus States
+---
 
-- [ ] All clickable elements have a visible hover state
-- [ ] Buttons use built-in shadcn hover states (no custom overrides needed)
-- [ ] Interactive cards have `hover:shadow-card-hover transition-shadow`
-- [ ] Links have `hover:underline` or a colour change
-- [ ] Focus rings visible for keyboard navigation (`ring` token from design system)
-- [ ] Dropdown triggers have clear hover/active states
-- [ ] Table rows have `hover:bg-muted/50` if clickable
+## Error Handling
+
+- [ ] API errors → toast with `variant: 'destructive'` and friendly message
+- [ ] Success → toast with clear past-tense title ("Student created", "Invoice sent")
+- [ ] Form validation → inline below the specific field in `text-sm text-destructive`
+- [ ] Network loss → `OfflineBanner` component appears
+- [ ] Component crash → `SectionErrorBoundary` catches and shows recovery UI
+- [ ] Full page crash → `ErrorBoundary` with "Try Again" and "Go to Dashboard" buttons
+- [ ] Portal errors → `PortalErrorState` component (not generic ErrorBoundary)
+- [ ] No silent failures — every error communicates something to the user
+- [ ] Error messages never expose raw database/API error strings
+
+---
+
+## Hover, Focus & Active States
+
+### Desktop
+- [ ] All clickable elements have visible hover state
+- [ ] Interactive cards: `hover:shadow-card-hover transition-shadow`
+- [ ] Links: colour change or underline on hover
+- [ ] Table rows (if clickable): `hover:bg-muted/50`
+- [ ] Dropdown triggers: clear hover/active visual change
+- [ ] StatCards: `whileHover={{ y: -2 }}` spring animation
+
+### Keyboard / Accessibility
+- [ ] Focus rings visible: `ring` token from design system
+- [ ] Tab order is logical (top to bottom, left to right)
+- [ ] Skip to main content link in layout
+- [ ] Modals trap focus and close with Escape
+- [ ] Dropdown menus navigable with arrow keys
+- [ ] Icon-only buttons have `aria-label`
+- [ ] Decorative icons have `aria-hidden="true"`
+- [ ] Loading states have `role="status"` and `aria-live="polite"`
+- [ ] Form inputs have associated `<label>` elements
+
+### Mobile
+- [ ] No hover-only interactions — everything works with tap
+- [ ] Active/pressed states provide tactile feedback
+- [ ] Touch targets: 44×44px minimum
+- [ ] No tiny icon-only buttons without adequate tap area
+
+---
 
 ## Transitions & Animations
 
-- [ ] Page wraps content in a `motion.div` with `animate-page-enter` or equivalent
-- [ ] Modals/dialogs use `animate-scale-fade` (built into shadcn)
-- [ ] Lists animate in with staggered `itemVariants` (opacity + translateY)
+### Desktop
+- [ ] Page content wraps in `animate-page-enter` (via AppLayout) or framer-motion equivalent
+- [ ] Portal pages use framer-motion `opacity: 0→1` with 0.15s
+- [ ] Dashboard sections use staggered `itemVariants` entrance
+- [ ] Modals/dialogs use `animate-scale-fade`
+- [ ] Side panels slide in from right
 - [ ] No content pops in without any transition
-- [ ] No animation longer than 400ms (keep things snappy)
-- [ ] Transitions don't block interaction
+- [ ] No animation exceeds 400ms
 
-## Responsiveness
+### Mobile
+- [ ] Same page transition animations as desktop (they're handled by layout)
+- [ ] Bottom sheet / full-screen modals animate up from bottom
+- [ ] No janky scroll-related animations
+- [ ] Transitions don't block interaction or feel sluggish
 
-- [ ] Tested at mobile width (375px) — nothing overflows
-- [ ] Tested at tablet width (768px) — layout adapts sensibly
-- [ ] Tables either scroll horizontally or convert to card layout on mobile
-- [ ] Modals are full-screen or bottom-sheet on mobile
-- [ ] Touch targets are minimum 44×44px on mobile
-- [ ] Sidebar collapses to bottom nav or hamburger on mobile
-- [ ] Text doesn't truncate in a way that hides critical info
+---
 
-## Accessibility
+## Responsiveness — Critical Checks
 
-- [ ] All images have `alt` text (or `aria-hidden="true"` if decorative)
-- [ ] Loading states have `role="status"` and `aria-live="polite"` (already in `LoadingState`)
-- [ ] Empty states have `role="status"` (already in `EmptyState`)
-- [ ] Form inputs have associated `<label>` elements
-- [ ] Modals trap focus and can be closed with Escape
-- [ ] Icon-only buttons have `aria-label`
-- [ ] Colour is not the only indicator of state (pair with icons or text)
-- [ ] Skip to main content link present in layout
+### At 375px (iPhone SE)
+- [ ] Nothing overflows horizontally
+- [ ] All text is readable without zooming
+- [ ] No overlapping elements
+- [ ] Bottom nav doesn't obscure content
+- [ ] Modals are full-screen or near-full-screen
+- [ ] Tables convert to cards or scroll horizontally with clear affordance
 
-## Typography
+### At 768px (iPad)
+- [ ] Layout uses 2-column where appropriate
+- [ ] Sidebar may be collapsed but accessible
+- [ ] Modals are appropriately sized (not full-screen like phone, not tiny)
 
-- [ ] Page titles use `text-page-title` or equivalent semantic class
-- [ ] Section headers use `text-section-title`
-- [ ] Body text uses `text-body` (0.875rem)
-- [ ] Metadata/captions use `text-caption` or `text-micro`
-- [ ] No arbitrary `text-[13px]` or similar — use the defined scale
-- [ ] Line heights are comfortable — text never feels cramped
-- [ ] Long text truncates with `truncate` class or has proper overflow handling
+### At 1280px (Desktop)
+- [ ] Full sidebar visible
+- [ ] Multi-column layouts utilised
+- [ ] No content is stretched uncomfortably wide
+- [ ] Modals are properly constrained in width
 
-## Page-Specific Quick Checks
+### At 1920px+ (Wide Desktop)
+- [ ] Content doesn't stretch to fill the entire width
+- [ ] Portal pages respect `max-w-4xl mx-auto`
+- [ ] Admin pages have sensible max-widths on content areas
 
-### Dashboard
-- [ ] `DashboardHero` greeting is personalised with first name
-- [ ] Stat cards load with `GridSkeleton` then animate in
-- [ ] `TodayTimeline` shows relevant lessons or encouraging empty state
-- [ ] `UrgentActionsBar` only shows when there are actual urgent items
-- [ ] `LoopAssistWidget` is present and functional
+---
 
-### Calendar
-- [ ] Day/Week/Stacked/Agenda views all work
-- [ ] Lesson cards show teacher colour coding via `teacherColours.ts`
-- [ ] Drag to reschedule works (desktop)
-- [ ] Quick create popover works
-- [ ] Filters bar collapses gracefully on mobile
+## Typography Checks
 
-### Students
-- [ ] Search and filter (status pills) work together
-- [ ] Student cards/rows show avatar, name, instrument, status
-- [ ] Add Student wizard opens cleanly
-- [ ] Student detail page loads all tabs without errors
+- [ ] Page titles: `text-page-title` or equivalent
+- [ ] Section headers: `text-section-title`
+- [ ] Body text: `text-body` (14px)
+- [ ] Metadata: `text-caption` or `text-micro`
+- [ ] No arbitrary `text-[13px]` — only the defined scale
+- [ ] Line heights are comfortable on both viewports
+- [ ] Long text truncates with `truncate` — never breaks layouts
+- [ ] Numbers in tables use tabular-nums for alignment (`font-variant-numeric: tabular-nums` or `tabular-nums` Tailwind class)
 
-### Invoices
-- [ ] Stats widget shows key financial summary
-- [ ] Filters bar works with all filter combinations
-- [ ] Bulk actions bar appears when items selected
-- [ ] Invoice status badges use consistent colours
+---
 
-### Portal (Parent)
-- [ ] `PortalLayout` with `PortalSidebar` / `PortalBottomNav` works
-- [ ] Child switcher (`ChildSwitcher`) works when multiple children
-- [ ] All portal pages use `PortalLayout`, not `AppLayout`
-- [ ] Feature disabled states use `PortalFeatureDisabled`
-- [ ] Error states use `PortalErrorState`
+## Page-Specific Checks
+
+### Dashboard (Desktop + Mobile)
+- [ ] `DashboardHero` greeting personalised with first name, time-appropriate scene
+- [ ] Stat pills in hero link to relevant pages
+- [ ] Stat cards animate in with staggered variants
+- [ ] `TodayTimeline` shows lessons or encouraging empty state
+- [ ] `UrgentActionsBar` only renders when items exist
+- [ ] `LoopAssistWidget` accessible and functional
+- [ ] Mobile: hero is compact, stat cards 2-col, timeline full-width
+
+### Calendar (Desktop + Mobile)
+- [ ] Desktop: Week grid, side panel, drag/resize, popover positioning all work
+- [ ] Mobile: `CalendarMobileLayout` with `MobileWeekView`/`MobileDayView`, `MobileLessonSheet`
+- [ ] Teacher colour coding via `teacherColours.ts` consistent across views
+- [ ] Filters bar collapses or scrolls on mobile
+- [ ] Quick create popover doesn't overflow on mobile
+- [ ] Lesson cards readable at all viewport sizes
+
+### Students (Desktop + Mobile)
+- [ ] Desktop: table/grid with search + StatusPills filter
+- [ ] Mobile: cards not cramped table, search prominent, filters accessible
+- [ ] StudentWizard: desktop modal, mobile full-screen
+- [ ] Import flow: each step works at both viewports
+
+### Invoices (Desktop + Mobile)
+- [ ] Desktop: table with bulk selection, stats widget grid
+- [ ] Mobile: invoice cards, stats stack, filters collapse
+- [ ] Modals full-screen on mobile
+- [ ] Currency always via `formatCurrencyMinor()` — never raw numbers
+
+### Portal — ALL Pages (Mobile Priority)
+- [ ] `PortalLayout` with `PortalBottomNav` on mobile, `PortalSidebar` on desktop
+- [ ] `ChildSwitcher` prominent on mobile (sits above content)
+- [ ] Feature-disabled pages use `PortalFeatureDisabled` component
+- [ ] Error states use `PortalErrorState` component
+- [ ] Every page exceptional at 375px FIRST, then scale up
+- [ ] Bottom nav: correct item highlighted, badge counts visible, safe-area respected
