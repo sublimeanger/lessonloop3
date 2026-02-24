@@ -975,6 +975,61 @@ export type Database = {
           },
         ]
       }
+      guardian_payment_preferences: {
+        Row: {
+          auto_pay_enabled: boolean | null
+          created_at: string
+          default_payment_method_id: string | null
+          guardian_id: string
+          id: string
+          org_id: string
+          stripe_customer_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_pay_enabled?: boolean | null
+          created_at?: string
+          default_payment_method_id?: string | null
+          guardian_id: string
+          id?: string
+          org_id: string
+          stripe_customer_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_pay_enabled?: boolean | null
+          created_at?: string
+          default_payment_method_id?: string | null
+          guardian_id?: string
+          id?: string
+          org_id?: string
+          stripe_customer_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guardian_payment_preferences_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guardian_payment_preferences_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guardian_payment_preferences_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guardians: {
         Row: {
           created_at: string
@@ -2547,6 +2602,7 @@ export type Database = {
       }
       organisations: {
         Row: {
+          accent_color: string | null
           address: string | null
           ai_preferences: Json | null
           auto_pause_lessons_after_days: number | null
@@ -2556,6 +2612,7 @@ export type Database = {
           bank_sort_code: string | null
           billing_approach: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures: boolean
+          brand_color: string | null
           buffer_minutes_between_locations: number | null
           cancellation_notice_hours: number
           cancels_at: string | null
@@ -2575,6 +2632,8 @@ export type Database = {
           invoice_from_country: string | null
           invoice_from_name: string | null
           invoice_from_postcode: string | null
+          invoice_number_digits: number | null
+          invoice_number_prefix: string | null
           logo_url: string | null
           make_up_waitlist_expiry_weeks: number | null
           max_credits_per_term: number | null
@@ -2606,6 +2665,7 @@ export type Database = {
           vat_registration_number: string | null
         }
         Insert: {
+          accent_color?: string | null
           address?: string | null
           ai_preferences?: Json | null
           auto_pause_lessons_after_days?: number | null
@@ -2615,6 +2675,7 @@ export type Database = {
           bank_sort_code?: string | null
           billing_approach?: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures?: boolean
+          brand_color?: string | null
           buffer_minutes_between_locations?: number | null
           cancellation_notice_hours?: number
           cancels_at?: string | null
@@ -2634,6 +2695,8 @@ export type Database = {
           invoice_from_country?: string | null
           invoice_from_name?: string | null
           invoice_from_postcode?: string | null
+          invoice_number_digits?: number | null
+          invoice_number_prefix?: string | null
           logo_url?: string | null
           make_up_waitlist_expiry_weeks?: number | null
           max_credits_per_term?: number | null
@@ -2665,6 +2728,7 @@ export type Database = {
           vat_registration_number?: string | null
         }
         Update: {
+          accent_color?: string | null
           address?: string | null
           ai_preferences?: Json | null
           auto_pause_lessons_after_days?: number | null
@@ -2674,6 +2738,7 @@ export type Database = {
           bank_sort_code?: string | null
           billing_approach?: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures?: boolean
+          brand_color?: string | null
           buffer_minutes_between_locations?: number | null
           cancellation_notice_hours?: number
           cancels_at?: string | null
@@ -2693,6 +2758,8 @@ export type Database = {
           invoice_from_country?: string | null
           invoice_from_name?: string | null
           invoice_from_postcode?: string | null
+          invoice_number_digits?: number | null
+          invoice_number_prefix?: string | null
           logo_url?: string | null
           make_up_waitlist_expiry_weeks?: number | null
           max_credits_per_term?: number | null
@@ -3086,6 +3153,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      push_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          platform?: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       rate_cards: {
         Row: {
