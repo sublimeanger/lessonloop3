@@ -2597,6 +2597,8 @@ export type Database = {
           stripe_subscription_id: string | null
           subscription_plan: Database["public"]["Enums"]["subscription_plan"]
           subscription_status: Database["public"]["Enums"]["subscription_status"]
+          teacher_payment_analytics_enabled: boolean
+          teacher_payment_notifications_enabled: boolean
           timezone: string
           trial_ends_at: string | null
           vat_enabled: boolean
@@ -2654,6 +2656,8 @@ export type Database = {
           stripe_subscription_id?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
+          teacher_payment_analytics_enabled?: boolean
+          teacher_payment_notifications_enabled?: boolean
           timezone?: string
           trial_ends_at?: string | null
           vat_enabled?: boolean
@@ -2711,6 +2715,8 @@ export type Database = {
           stripe_subscription_id?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
+          teacher_payment_analytics_enabled?: boolean
+          teacher_payment_notifications_enabled?: boolean
           timezone?: string
           trial_ends_at?: string | null
           vat_enabled?: boolean
