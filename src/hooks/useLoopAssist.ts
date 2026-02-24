@@ -7,6 +7,16 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useToast } from '@/hooks/use-toast';
 import { parseActionsFromResponse, ActionProposalData } from '@/components/loopassist/ActionCard';
 import { VALID_ACTION_TYPES } from '@/lib/action-registry';
+import { dismissBannerForSession } from '@/hooks/useBannerDismissals';
+
+/** Maps executed action types to banner keys that should be auto-dismissed. */
+const ACTION_DISMISS_MAP: Record<string, string[]> = {
+  bulk_complete_lessons: ['unmarked', 'unmarked_lessons', 'calendar_unmarked'],
+  complete_lessons: ['unmarked', 'unmarked_lessons', 'calendar_unmarked'],
+  mark_attendance: ['unmarked', 'unmarked_lessons', 'calendar_unmarked'],
+  send_invoice_reminders: ['overdue', 'overdue_invoices', 'invoices_overdue', 'students_overdue'],
+  send_bulk_reminders: ['overdue', 'overdue_invoices', 'invoices_overdue', 'students_overdue'],
+};
 
 export type ActionType =
   | 'create_invoice'
@@ -466,13 +476,26 @@ export function useLoopAssist(externalPageContext?: PageContext) {
     onSuccess: (data, variables) => {
       if (variables.action === 'confirm') {
         toast({ title: data.result?.message || 'Action executed successfully' });
+
+        // Auto-dismiss related banners based on the executed action type
+        if (currentOrg?.id) {
+          const proposal = pendingProposals.find(p => p.id === variables.proposalId);
+          const actionType = proposal?.proposal?.action_type;
+          if (actionType) {
+            const bannerKeys = ACTION_DISMISS_MAP[actionType];
+            if (bannerKeys) {
+              bannerKeys.forEach(key => dismissBannerForSession(currentOrg.id, key));
+            }
+          }
+        }
       } else {
         toast({ title: 'Action cancelled' });
       }
       queryClient.invalidateQueries({ queryKey: ['ai-proposals'] });
       queryClient.invalidateQueries({ queryKey: ['ai-messages', currentConversationId] });
-      // Refresh proactive alerts so banners update after actions (e.g. bulk complete)
+      // Refresh proactive alerts and urgent actions so all banners update
       queryClient.invalidateQueries({ queryKey: ['proactive-alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['urgent-actions'] });
       setTimeout(() => {
         const messagesContainer = document.querySelector('[data-loop-assist-messages]');
         if (messagesContainer) {

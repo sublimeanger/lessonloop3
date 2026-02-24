@@ -367,6 +367,9 @@ export function useMarkLessonComplete() {
     onSuccess: (_data, lessonId) => {
       queryClient.invalidateQueries({ queryKey: ['register-lessons'] });
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
+      // Refresh dashboard banners so counts update
+      queryClient.invalidateQueries({ queryKey: ['proactive-alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['urgent-actions'] });
       // Fire-and-forget calendar sync
       syncLesson(lessonId, 'update');
       toast({
@@ -583,6 +586,9 @@ export function useSaveBatchAttendance(dateKey: string) {
       queryClient.invalidateQueries({ queryKey: ['batch-attendance-lessons', currentOrg?.id, dateKey] });
       queryClient.invalidateQueries({ queryKey: ['register-lessons'] });
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
+      // Refresh dashboard banners so counts update
+      queryClient.invalidateQueries({ queryKey: ['proactive-alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['urgent-actions'] });
     },
   });
 }
