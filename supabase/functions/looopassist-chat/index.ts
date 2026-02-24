@@ -1566,6 +1566,7 @@ AI tier: ${isPro ? "Pro (Sonnet)" : "Standard (Haiku)"}`
     // Sanitize all preference values to prevent prompt injection via org settings
     const sanitisePref = (val: string, maxLen = 200) =>
       String(val)
+        // eslint-disable-next-line no-control-regex
         .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
         .replace(/```/g, "'''")
         .replace(/^(system|assistant|user|human):\s*/gim, "")
