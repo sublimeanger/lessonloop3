@@ -51,6 +51,14 @@ export function WaitlistTable({
   const findMatches = useFindMatches();
   const [matchResults, setMatchResults] = useState<Record<string, WaitlistMatchResult[]>>({});
 
+  const teacherOptions = Array.from(
+    new Map(
+      entries
+        .filter((entry) => entry.teacher?.id && entry.teacher?.display_name)
+        .map((entry) => [entry.teacher!.id, entry.teacher!.display_name])
+    ).entries()
+  );
+
   const handleFindMatch = async (entry: WaitlistEntry) => {
     const result = await findMatches.mutateAsync({
       lessonId: entry.missed_lesson_id,
@@ -68,6 +76,7 @@ export function WaitlistTable({
               <Button
                 variant="outline"
                 size="sm"
+                className="min-h-11 sm:min-h-9"
                 onClick={() => handleFindMatch(entry)}
                 disabled={findMatches.isPending}
               >
@@ -105,18 +114,18 @@ export function WaitlistTable({
         );
       case 'matched':
         return (
-          <div className="flex gap-1">
-            <Button size="sm" onClick={() => offerMutation.mutate(entry.id)} disabled={offerMutation.isPending}>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" className="min-h-11 sm:min-h-9" onClick={() => offerMutation.mutate(entry.id)} disabled={offerMutation.isPending}>
               Offer
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => dismissMutation.mutate(entry.id)} disabled={dismissMutation.isPending}>
+            <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-9" onClick={() => dismissMutation.mutate(entry.id)} disabled={dismissMutation.isPending}>
               Dismiss
             </Button>
           </div>
         );
       case 'offered':
         return (
-          <Button variant="outline" size="sm" onClick={() => offerMutation.mutate(entry.id)} disabled={offerMutation.isPending}>
+          <Button variant="outline" size="sm" className="min-h-11 sm:min-h-9" onClick={() => offerMutation.mutate(entry.id)} disabled={offerMutation.isPending}>
             Resend
           </Button>
         );
@@ -130,12 +139,12 @@ export function WaitlistTable({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-lg">Waitlist</CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <Select
               value={statusFilter ?? 'all'}
               onValueChange={(v) => onStatusFilterChange(v === 'all' ? undefined : v)}
             >
-              <SelectTrigger className="w-[140px] h-8 text-xs">
+              <SelectTrigger className="h-11 w-full text-xs sm:h-8 sm:w-[140px]">
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>
@@ -145,6 +154,20 @@ export function WaitlistTable({
                 <SelectItem value="offered">Offered</SelectItem>
                 <SelectItem value="booked">Booked</SelectItem>
                 <SelectItem value="expired">Expired</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={teacherFilter ?? 'all'}
+              onValueChange={(v) => onTeacherFilterChange(v === 'all' ? undefined : v)}
+            >
+              <SelectTrigger className="h-11 w-full text-xs sm:h-8 sm:w-[180px]">
+                <SelectValue placeholder="All teachers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All teachers</SelectItem>
+                {teacherOptions.map(([id, name]) => (
+                  <SelectItem key={id} value={id}>{name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -195,7 +218,7 @@ export function WaitlistTable({
                         <TableCell className="text-sm text-muted-foreground">
                           {waitingSince(entry.created_at)}
                         </TableCell>
-                        <TableCell className="text-right">{renderAction(entry)}</TableCell>
+                        <TableCell className="text-right"><div className="inline-flex justify-end">{renderAction(entry)}</div></TableCell>
                       </TableRow>
                     );
                   })}

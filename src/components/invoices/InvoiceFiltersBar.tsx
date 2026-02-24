@@ -51,7 +51,7 @@ export function InvoiceFiltersBar({
   return (
     <div className="space-y-3">
       {/* Status pills */}
-      <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-0.5 overflow-x-auto">
+      <div className="flex items-center gap-1 overflow-x-auto rounded-lg bg-muted/50 p-0.5">
         {STATUS_PILLS.map((pill) => {
           const count = statusCounts?.[pill.value];
           return (
@@ -64,7 +64,7 @@ export function InvoiceFiltersBar({
                 })
               }
               className={cn(
-                'rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all',
+                'min-h-11 rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all sm:min-h-9',
                 currentStatus === pill.value ||
                   (pill.value === 'all' && !filters.status)
                   ? 'bg-background text-foreground shadow-sm'
@@ -82,9 +82,9 @@ export function InvoiceFiltersBar({
 
       {/* Secondary filters row — only show when needed */}
       {(hasDateOrTermFilters || terms.length > 0) && (
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-wrap items-end gap-3 overflow-x-auto pb-1">
           {terms.length > 0 && (
-            <div className="space-y-1">
+            <div className="min-w-[160px] space-y-1">
               <Label htmlFor="term" className="text-xs">
                 Term
               </Label>
@@ -94,7 +94,7 @@ export function InvoiceFiltersBar({
                   onFiltersChange({ ...filters, termId: value === 'all' ? undefined : value })
                 }
               >
-                <SelectTrigger id="term" className="w-full sm:w-[160px] h-8 text-xs">
+                <SelectTrigger id="term" className="h-11 w-full text-xs sm:h-8 sm:w-[160px]">
                   <SelectValue placeholder="All Terms" />
                 </SelectTrigger>
                 <SelectContent>
@@ -109,7 +109,7 @@ export function InvoiceFiltersBar({
             </div>
           )}
 
-          <div className="space-y-1">
+          <div className="min-w-[150px] space-y-1">
             <Label htmlFor="dueDateFrom" className="text-xs">
               Due From
             </Label>
@@ -120,11 +120,11 @@ export function InvoiceFiltersBar({
               onChange={(e) =>
                 onFiltersChange({ ...filters, dueDateFrom: e.target.value || undefined })
               }
-              className="w-full sm:w-[150px] h-8 text-xs"
+              className="h-11 w-full text-xs sm:h-8 sm:w-[150px]"
             />
           </div>
 
-          <div className="space-y-1">
+          <div className="min-w-[150px] space-y-1">
             <Label htmlFor="dueDateTo" className="text-xs">
               Due To
             </Label>
@@ -135,12 +135,12 @@ export function InvoiceFiltersBar({
               onChange={(e) =>
                 onFiltersChange({ ...filters, dueDateTo: e.target.value || undefined })
               }
-              className="w-full sm:w-[150px] h-8 text-xs"
+              className="h-11 w-full text-xs sm:h-8 sm:w-[150px]"
             />
           </div>
 
           {hasDateOrTermFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 h-8 text-xs">
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-11 gap-1 text-xs sm:h-8">
               <X className="h-3 w-3" />
               Clear
             </Button>

@@ -89,7 +89,7 @@ export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionPro
             <div key={entry.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
               {/* Match info */}
               <div className="space-y-1">
-                <div className="flex items-start justify-between">
+                <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="font-semibold text-foreground">
                       🔔 Match Found
@@ -124,9 +124,10 @@ export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionPro
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex flex-col gap-2 pt-1 sm:flex-row">
                 <Button
                   size="sm"
+                  className="min-h-11 sm:min-h-9"
                   onClick={() => setConfirmEntry(entry)}
                   disabled={offerMutation.isPending}
                 >
@@ -135,6 +136,7 @@ export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionPro
                 <Button
                   variant="outline"
                   size="sm"
+                  className="min-h-11 sm:min-h-9"
                   onClick={() => dismissMutation.mutate(entry.id)}
                   disabled={dismissMutation.isPending}
                 >

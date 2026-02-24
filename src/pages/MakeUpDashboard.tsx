@@ -27,12 +27,12 @@ const MakeUpDashboard = () => {
         title="Make-Up Lessons"
         description="Manage waitlist, match open slots, and offer make-up lessons"
         actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" className="min-h-11 sm:min-h-9" onClick={() => refetch()}>
               <RefreshCw className="h-4 w-4 mr-1" />
               Refresh
             </Button>
-            <Button size="sm" onClick={() => setShowAddDialog(true)}>
+            <Button size="sm" className="min-h-11 sm:min-h-9" onClick={() => setShowAddDialog(true)}>
               <Plus className="h-4 w-4 mr-1" />
               Add to Waitlist
             </Button>
