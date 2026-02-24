@@ -83,7 +83,7 @@ serve(async (req) => {
         if (session.mode === "subscription") {
           await handleSubscriptionCheckoutCompleted(supabase, stripe, session);
         } else {
-          await handleInvoiceCheckoutCompleted(supabase, session);
+          await handleInvoiceCheckoutCompleted(supabase, stripe, session);
         }
         break;
       }
@@ -132,6 +132,36 @@ serve(async (req) => {
       case "payment_intent.payment_failed": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         console.error(`Payment failed: ${truncate(paymentIntent.id)}`, paymentIntent.last_payment_error?.message);
+        break;
+      }
+
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+        await handleChargeRefunded(supabase, charge);
+        break;
+      }
+
+      case "charge.dispute.created": {
+        const dispute = event.data.object as Stripe.Dispute;
+        await handleDisputeCreated(supabase, dispute);
+        break;
+      }
+
+      case "charge.dispute.closed": {
+        const dispute = event.data.object as Stripe.Dispute;
+        await handleDisputeClosed(supabase, dispute);
+        break;
+      }
+
+      case "payment_intent.processing": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        await handlePaymentIntentProcessing(supabase, pi);
+        break;
+      }
+
+      case "payment_intent.succeeded": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        await handlePaymentIntentSucceeded(supabase, pi);
         break;
       }
 
@@ -206,7 +236,7 @@ async function handleSubscriptionCheckoutCompleted(
 }
 
 // Handle invoice payment checkout completion
-async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Checkout.Session) {
+async function handleInvoiceCheckoutCompleted(supabase: any, stripe: Stripe, session: Stripe.Checkout.Session) {
   const invoiceId = session.metadata?.lessonloop_invoice_id;
   const installmentId = session.metadata?.lessonloop_installment_id || null;
   const payRemaining = session.metadata?.lessonloop_pay_remaining === "true";
@@ -255,6 +285,19 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
     .eq("stripe_session_id", session.id)
     .single();
 
+  // Determine actual payment method from the PaymentIntent
+  let paymentMethod = "card";
+  if (paymentIntentId) {
+    try {
+      const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+      const pmType = pi.charges?.data?.[0]?.payment_method_details?.type;
+      if (pmType === "bacs_debit") paymentMethod = "bacs_debit";
+      else if (pmType === "bank_transfer") paymentMethod = "bank_transfer";
+    } catch (e) {
+      log(`Could not retrieve PI for method detection: ${e}`);
+    }
+  }
+
   // Record the payment
   const { error: paymentError } = await supabase
     .from("payments")
@@ -262,7 +305,7 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
       invoice_id: invoiceId,
       org_id: checkoutSession?.org_id,
       amount_minor: checkoutSession?.amount_minor || session.amount_total,
-      method: "card",
+      method: paymentMethod,
       provider: "stripe",
       provider_reference: paymentIntentId,
       paid_at: new Date().toISOString(),
@@ -585,4 +628,246 @@ async function handleSubscriptionPaymentFailed(supabase: any, invoice: Stripe.In
     throw new Error(`DB update failed for payment failure: ${error.message}`);
   }
   log(`Org ${truncate(org.id)} marked past_due`);
+}
+
+// ── Refund & Dispute Handlers ──────────────────────────────
+
+async function handleChargeRefunded(supabase: any, charge: Stripe.Charge) {
+  const paymentIntentId = charge.payment_intent as string;
+  if (!paymentIntentId) {
+    log("Refunded charge has no payment_intent, skipping");
+    return;
+  }
+
+  // Find the payment by provider_reference
+  const { data: payment } = await supabase
+    .from("payments")
+    .select("id, invoice_id, org_id")
+    .eq("provider_reference", paymentIntentId)
+    .maybeSingle();
+
+  if (!payment) {
+    log(`No payment found for PI ${truncate(paymentIntentId)} on charge.refunded`);
+    return;
+  }
+
+  // Update any pending refund records to succeeded
+  for (const refund of charge.refunds?.data || []) {
+    const { error } = await supabase
+      .from("refunds")
+      .update({
+        status: "succeeded",
+        completed_at: new Date().toISOString(),
+        stripe_charge_id: charge.id,
+      })
+      .eq("stripe_refund_id", refund.id)
+      .eq("status", "pending");
+
+    if (error) {
+      console.error(`Failed to update refund ${truncate(refund.id)}:`, error);
+    }
+  }
+
+  // Recalculate invoice paid_minor
+  await reconcileInvoiceAfterRefund(supabase, payment.invoice_id);
+  log(`Charge refunded for PI ${truncate(paymentIntentId)}, invoice reconciled`);
+}
+
+async function handleDisputeCreated(supabase: any, dispute: Stripe.Dispute) {
+  const chargeId = dispute.charge as string;
+  const paymentIntentId = dispute.payment_intent as string;
+
+  // Find the payment
+  const { data: payment } = await supabase
+    .from("payments")
+    .select("id, invoice_id, org_id")
+    .eq("provider_reference", paymentIntentId)
+    .maybeSingle();
+
+  if (!payment) {
+    log(`No payment found for dispute PI ${truncate(paymentIntentId)}`);
+    return;
+  }
+
+  // Insert dispute record
+  const { error } = await supabase
+    .from("disputes")
+    .insert({
+      org_id: payment.org_id,
+      payment_id: payment.id,
+      invoice_id: payment.invoice_id,
+      stripe_dispute_id: dispute.id,
+      stripe_charge_id: chargeId,
+      amount_minor: dispute.amount,
+      currency_code: (dispute.currency || "gbp").toUpperCase(),
+      reason: dispute.reason || null,
+      status: dispute.status || "needs_response",
+      evidence_due_by: dispute.evidence_details?.due_by
+        ? new Date(dispute.evidence_details.due_by * 1000).toISOString()
+        : null,
+    });
+
+  if (error) {
+    if (error.code === "23505") {
+      log(`Duplicate dispute ${truncate(dispute.id)}, skipping`);
+      return;
+    }
+    console.error("Failed to insert dispute:", error);
+    throw new Error(`DB insert failed for dispute: ${error.message}`);
+  }
+  log(`Dispute created: ${truncate(dispute.id)} for org ${truncate(payment.org_id)}`);
+}
+
+async function handleDisputeClosed(supabase: any, dispute: Stripe.Dispute) {
+  const { error } = await supabase
+    .from("disputes")
+    .update({
+      status: dispute.status,
+      resolved_at: new Date().toISOString(),
+    })
+    .eq("stripe_dispute_id", dispute.id);
+
+  if (error) {
+    console.error("Failed to update dispute:", error);
+    return;
+  }
+
+  // If the dispute was lost, adjust the invoice
+  if (dispute.status === "lost") {
+    const paymentIntentId = dispute.payment_intent as string;
+    const { data: payment } = await supabase
+      .from("payments")
+      .select("invoice_id")
+      .eq("provider_reference", paymentIntentId)
+      .maybeSingle();
+
+    if (payment?.invoice_id) {
+      await reconcileInvoiceAfterRefund(supabase, payment.invoice_id);
+    }
+  }
+
+  log(`Dispute ${truncate(dispute.id)} closed with status: ${dispute.status}`);
+}
+
+// ── BACS / Delayed Payment Handlers ────────────────────────
+
+async function handlePaymentIntentProcessing(supabase: any, pi: Stripe.PaymentIntent) {
+  const invoiceId = pi.metadata?.lessonloop_invoice_id;
+  if (!invoiceId) return;
+
+  // Check if payment already recorded (from checkout.session.completed)
+  const { data: existing } = await supabase
+    .from("payments")
+    .select("id, status")
+    .eq("provider_reference", pi.id)
+    .maybeSingle();
+
+  if (existing) {
+    // Update status to processing if it exists
+    await supabase
+      .from("payments")
+      .update({ status: "processing" })
+      .eq("id", existing.id);
+    log(`Payment ${truncate(existing.id)} marked processing (BACS)`);
+    return;
+  }
+
+  // Create a new payment record in processing state
+  const orgId = pi.metadata?.lessonloop_org_id;
+  const pmType = pi.payment_method_types?.[0];
+  const method = pmType === "bacs_debit" ? "bacs_debit" : "card";
+
+  await supabase.from("payments").insert({
+    invoice_id: invoiceId,
+    org_id: orgId,
+    amount_minor: pi.amount,
+    method,
+    provider: "stripe",
+    provider_reference: pi.id,
+    status: "processing",
+    paid_at: new Date().toISOString(),
+  });
+
+  log(`Payment created in processing state for PI ${truncate(pi.id)}`);
+}
+
+async function handlePaymentIntentSucceeded(supabase: any, pi: Stripe.PaymentIntent) {
+  // Only relevant for delayed payment methods (BACS)
+  // Card payments are handled via checkout.session.completed
+  const { data: payment } = await supabase
+    .from("payments")
+    .select("id, invoice_id, status")
+    .eq("provider_reference", pi.id)
+    .maybeSingle();
+
+  if (!payment) return;
+
+  // Only transition from processing → succeeded
+  if (payment.status !== "processing") return;
+
+  await supabase
+    .from("payments")
+    .update({ status: "succeeded" })
+    .eq("id", payment.id);
+
+  // Update invoice paid_minor and check if fully paid
+  const { data: payments } = await supabase
+    .from("payments")
+    .select("amount_minor")
+    .eq("invoice_id", payment.invoice_id)
+    .eq("status", "succeeded");
+
+  const totalPaid = payments?.reduce(
+    (sum: number, p: { amount_minor: number }) => sum + p.amount_minor, 0
+  ) || 0;
+
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select("total_minor")
+    .eq("id", payment.invoice_id)
+    .single();
+
+  const updateData: Record<string, unknown> = { paid_minor: totalPaid };
+  if (invoice && totalPaid >= invoice.total_minor) {
+    updateData.status = "paid";
+  }
+
+  await supabase.from("invoices").update(updateData).eq("id", payment.invoice_id);
+  log(`BACS payment ${truncate(payment.id)} succeeded, invoice updated`);
+}
+
+// ── Shared Helpers ─────────────────────────────────────────
+
+async function reconcileInvoiceAfterRefund(supabase: any, invoiceId: string) {
+  const { data: payments } = await supabase
+    .from("payments")
+    .select("amount_minor")
+    .eq("invoice_id", invoiceId);
+  const totalPaid = payments?.reduce(
+    (sum: number, p: { amount_minor: number }) => sum + p.amount_minor, 0
+  ) || 0;
+
+  const { data: refunds } = await supabase
+    .from("refunds")
+    .select("amount_minor")
+    .eq("invoice_id", invoiceId)
+    .eq("status", "succeeded");
+  const totalRefunded = refunds?.reduce(
+    (sum: number, r: { amount_minor: number }) => sum + r.amount_minor, 0
+  ) || 0;
+
+  const netPaid = totalPaid - totalRefunded;
+
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select("total_minor, status")
+    .eq("id", invoiceId)
+    .single();
+
+  const updateData: Record<string, unknown> = { paid_minor: netPaid };
+  if (invoice?.status === "paid" && netPaid < invoice.total_minor) {
+    updateData.status = "sent";
+  }
+
+  await supabase.from("invoices").update(updateData).eq("id", invoiceId);
 }

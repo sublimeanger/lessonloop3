@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2, Loader2, Gift, Building2, SplitSquareHorizontal } from 'lucide-react';
+import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2, Loader2, Gift, Building2, SplitSquareHorizontal, RotateCcw, Banknote, Clock } from 'lucide-react';
 import { PaymentPlanSetup } from '@/components/invoices/PaymentPlanSetup';
 import { useOrg } from '@/contexts/OrgContext';
 import { useInvoice, useUpdateInvoiceStatus } from '@/hooks/useInvoices';
@@ -20,6 +20,8 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
 import { SendInvoiceModal } from '@/components/invoices/SendInvoiceModal';
 import { InstallmentTimeline } from '@/components/invoices/InstallmentTimeline';
+import { RefundModal } from '@/components/invoices/RefundModal';
+import { useRefunds } from '@/hooks/useRefunds';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,7 +81,11 @@ export default function InvoiceDetail() {
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
   const [voidConfirmOpen, setVoidConfirmOpen] = useState(false);
   const [paymentPlanOpen, setPaymentPlanOpen] = useState(false);
+  const [refundPayment, setRefundPayment] = useState<{
+    id: string; amount_minor: number; invoice_id: string; provider: string;
+  } | null>(null);
   const { data: orgPaymentPrefs } = useOrgPaymentPreferences();
+  const { data: refunds } = useRefunds(id);
 
   const onlinePaymentsEnabled = orgPaymentPrefs?.online_payments_enabled !== false;
   const hasBankDetails = !!(orgPaymentPrefs?.bank_account_name && orgPaymentPrefs?.bank_sort_code && orgPaymentPrefs?.bank_account_number);
@@ -365,18 +371,80 @@ export default function InvoiceDetail() {
                       className="flex items-center justify-between rounded-lg border p-3"
                     >
                       <div className="flex items-center gap-3">
-                        <CheckCircle2 className="h-5 w-5 text-success" />
+                        {payment.method === 'bacs_debit' || payment.method === 'bank_transfer' ? (
+                          <Banknote className="h-5 w-5 text-success" />
+                        ) : payment.status === 'processing' ? (
+                          <Clock className="h-5 w-5 text-warning" />
+                        ) : (
+                          <CheckCircle2 className="h-5 w-5 text-success" />
+                        )}
                         <div>
                           <div className="font-medium">
                             {formatCurrencyMinor(payment.amount_minor, currency)}
+                            {payment.status === 'processing' && (
+                              <span className="ml-2 text-xs text-warning font-normal">Processing</span>
+                            )}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {formatDateUK(parseISO(payment.paid_at), 'dd MMM yyyy')} {formatTimeUK(parseISO(payment.paid_at))} •{' '}
-                            {payment.method.replace('_', ' ')}
-                            {payment.provider_reference && ` • ${payment.provider_reference}`}
+                            {payment.method === 'bacs_debit' ? 'BACS Direct Debit' : payment.method.replace('_', ' ')}
                           </div>
                         </div>
                       </div>
+                      {!isParent && payment.provider === 'stripe' && payment.status !== 'processing' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={() => setRefundPayment({
+                            id: payment.id,
+                            amount_minor: payment.amount_minor,
+                            invoice_id: invoice.id,
+                            provider: payment.provider,
+                          })}
+                        >
+                          <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                          Refund
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Refund History */}
+          {refunds && refunds.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Refund History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {refunds.map((refund) => (
+                    <div
+                      key={refund.id}
+                      className="flex items-center justify-between rounded-lg border border-destructive/20 bg-destructive/5 p-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <RotateCcw className="h-5 w-5 text-destructive" />
+                        <div>
+                          <div className="font-medium">
+                            -{formatCurrencyMinor(refund.amount_minor, currency)}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatDateUK(parseISO(refund.created_at), 'dd MMM yyyy')}
+                            {refund.reason && ` • ${refund.reason}`}
+                          </div>
+                        </div>
+                      </div>
+                      <Badge
+                        variant={refund.status === 'succeeded' ? 'secondary' : refund.status === 'failed' ? 'destructive' : 'outline'}
+                        className={refund.status === 'succeeded' ? 'bg-destructive/10 text-destructive' : undefined}
+                      >
+                        {refund.status}
+                      </Badge>
                     </div>
                   ))}
                 </div>
@@ -499,6 +567,15 @@ export default function InvoiceDetail() {
         isReminder
       />
 
+
+      {/* Refund Modal */}
+      {refundPayment && (
+        <RefundModal
+          open={!!refundPayment}
+          onOpenChange={(open) => { if (!open) setRefundPayment(null); }}
+          payment={refundPayment}
+        />
+      )}
 
       {/* Payment Plan Setup */}
       <PaymentPlanSetup
