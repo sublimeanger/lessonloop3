@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-explicit-any
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 export type NotifPrefKey =
@@ -12,7 +13,7 @@ export type NotifPrefKey =
  * Returns true if no preference row exists (opt-in by default).
  */
 export async function isNotificationEnabled(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<any, any, any>,
   orgId: string,
   userId: string,
   prefKey: NotifPrefKey
@@ -25,5 +26,5 @@ export async function isNotificationEnabled(
     .maybeSingle();
 
   if (!data) return true; // No prefs row = defaults (all enabled except marketing)
-  return !!data[prefKey];
+  return !!(data as Record<string, unknown>)[prefKey];
 }
