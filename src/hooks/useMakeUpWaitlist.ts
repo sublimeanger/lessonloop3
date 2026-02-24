@@ -38,6 +38,7 @@ export interface WaitlistEntry {
   guardian?: { id: string; full_name: string; email: string | null } | null;
   matched_lesson?: { id: string; title: string; start_at: string; end_at: string; location_id: string | null; teacher_id: string | null } | null;
   missed_lesson?: { id: string; title: string; start_at: string } | null;
+  teacher?: { id: string; display_name: string } | null;
 }
 
 export interface WaitlistFilters {
@@ -75,7 +76,8 @@ export function useWaitlist(filters?: WaitlistFilters) {
           student:students!make_up_waitlist_student_id_fkey(id, first_name, last_name),
           guardian:guardians!make_up_waitlist_guardian_id_fkey(id, full_name, email),
           matched_lesson:lessons!make_up_waitlist_matched_lesson_id_fkey(id, title, start_at, end_at, location_id, teacher_id),
-          missed_lesson:lessons!make_up_waitlist_missed_lesson_id_fkey(id, title, start_at)
+          missed_lesson:lessons!make_up_waitlist_missed_lesson_id_fkey(id, title, start_at),
+          teacher:teachers!make_up_waitlist_teacher_id_fkey(id, display_name)
         `)
         .eq('org_id', currentOrg.id)
         .order('created_at', { ascending: false });
