@@ -246,44 +246,44 @@ export function generateCompetitiveReport() {
   body('Each cell represents an independent grade for that platform\'s implementation of the feature. "F" means the feature is absent or non-functional.');
   spacer(4);
 
-  const compCols = ['Feature', 'LessonLoop', 'MusicStaff', 'TutorBird', 'Teachworks', 'Opus1', 'Fons'];
-  const colW = [36, 26, 24, 24, 26, 20, 18];
+  const compCols = ['Feature', 'LessonLoop', 'MusicStaff', 'TutorBird', 'Teachworks'];
+  const colW = [44, 34, 32, 32, 32];
   tableRow(compCols, colW, true, colors.brand);
 
-  // Fairly graded — LessonLoop gets Fs and Ds where warranted
+  // Grades verified via competitor websites, feature pages, and third-party reviews (Feb 2026)
   const features: string[][] = [
-    ['Smart Scheduling',      'A',  'B',  'B',  'B',  'B',  'B'],
-    ['Conflict Detection',    'A',  'C',  'C',  'B',  'F',  'F'],
-    ['UK Term Dates',         'A',  'F',  'F',  'F',  'F',  'F'],
-    ['Recurring Lessons',     'A',  'B',  'B',  'B',  'B',  'C'],
-    ['Auto Invoicing',        'A',  'B',  'B',  'B',  'C',  'B'],
-    ['Bulk Billing Runs',     'A',  'C',  'F',  'C',  'F',  'F'],
-    ['VAT Support',           'A',  'F',  'F',  'F',  'F',  'F'],
-    ['Payment Plans',         'B',  'F',  'F',  'F',  'F',  'F'],
-    ['Online Payments',       'B',  'F',  'F',  'B',  'B',  'B'],
-    ['Parent Portal',         'A',  'C',  'F',  'C',  'F',  'F'],
-    ['Practice Tracking',     'A',  'F',  'F',  'F',  'F',  'F'],
-    ['AI Copilot',            'B',  'F',  'F',  'F',  'F',  'F'],
-    ['Make-Up Credits',       'A',  'F',  'F',  'C',  'F',  'F'],
-    ['SMS/MMS Messaging',     'C',  'B',  'C',  'B',  'F',  'F'],
-    ['Multi-Location',        'A',  'F',  'F',  'B',  'F',  'F'],
-    ['Room Management',       'A',  'F',  'F',  'C',  'F',  'F'],
-    ['Attendance Tracking',   'B',  'C',  'F',  'B',  'F',  'F'],
-    ['Calendar Sync',         'B',  'B',  'B',  'B',  'C',  'B'],
-    ['Custom Branding',       'B',  'F',  'F',  'C',  'F',  'F'],
-    ['API Access',            'C',  'F',  'F',  'C',  'F',  'F'],
-    ['GDPR Compliance',       'A',  'F',  'F',  'F',  'F',  'F'],
-    ['Audit Logging',         'A',  'F',  'F',  'F',  'F',  'F'],
-    ['Role-Based Access',     'A',  'C',  'C',  'B',  'F',  'F'],
-    ['Mobile App (Native)',   'F',  'C',  'B',  'B',  'B',  'B'],
-    ['Mobile PWA',            'B',  'C',  'B',  'B',  'B',  'B'],
+    ['Smart Scheduling',      'A',  'B',  'B',  'B'],
+    ['Conflict Detection',    'A',  'C',  'C',  'B'],
+    ['UK Term Dates',         'A',  'F',  'F',  'F'],
+    ['Recurring Lessons',     'A',  'B',  'B',  'B'],
+    ['Auto Invoicing',        'A',  'B',  'B',  'B'],
+    ['Bulk Billing Runs',     'A',  'C',  'F',  'C'],
+    ['VAT Support',           'A',  'F',  'F',  'F'],
+    ['Payment Plans',         'B',  'F',  'F',  'F'],
+    ['Online Payments',       'B',  'B',  'B',  'B'],
+    ['Parent/Student Portal', 'A',  'B',  'B',  'C'],
+    ['Practice Tracking',     'A',  'F',  'F',  'F'],
+    ['AI Copilot',            'B',  'F',  'F',  'F'],
+    ['Make-Up Credits',       'A',  'F',  'F',  'C'],
+    ['SMS/MMS Messaging',     'C',  'B',  'C',  'B'],
+    ['Multi-Location',        'A',  'F',  'F',  'B'],
+    ['Room Management',       'A',  'F',  'F',  'C'],
+    ['Attendance Tracking',   'B',  'B',  'B',  'B'],
+    ['Calendar Sync',         'B',  'B',  'B',  'B'],
+    ['Custom Branding',       'B',  'F',  'F',  'C'],
+    ['API Access',            'C',  'F',  'F',  'C'],
+    ['GDPR Compliance',       'A',  'F',  'F',  'F'],
+    ['Audit Logging',         'A',  'F',  'F',  'F'],
+    ['Role-Based Access',     'A',  'C',  'C',  'B'],
+    ['Mobile App (Native)',   'F',  'F',  'F',  'F'],
+    ['Mobile PWA',            'B',  'C',  'B',  'B'],
+    ['Learning Management',   'C',  'B',  'B',  'C'],
+    ['Website Builder',       'F',  'B',  'B',  'F'],
     // Areas where LessonLoop is weak or missing
-    ['Xero/QuickBooks Sync',  'F',  'F',  'F',  'C',  'F',  'F'],
-    ['Zoom/Meet Integration', 'F',  'F',  'F',  'C',  'F',  'C'],
-    ['Student Marketplace',   'F',  'F',  'F',  'F',  'A',  'F'],
-    ['White-Label / Reseller','F',  'F',  'F',  'C',  'F',  'F'],
-    ['Multi-Currency',        'F',  'F',  'F',  'B',  'C',  'C'],
-    ['Zapier/Webhooks',       'F',  'F',  'F',  'C',  'F',  'F'],
+    ['Xero/QuickBooks Sync',  'F',  'F',  'F',  'C'],
+    ['Zoom/Meet Integration', 'F',  'F',  'F',  'C'],
+    ['Multi-Currency',        'F',  'F',  'F',  'B'],
+    ['Zapier/Webhooks',       'F',  'C',  'F',  'C'],
   ];
 
   for (let i = 0; i < features.length; i++) {
@@ -292,7 +292,7 @@ export function generateCompetitiveReport() {
   }
 
   spacer(4);
-  body('Note: LessonLoop receives "F" grades in 6 feature areas, reflecting genuine gaps versus market expectations. These are detailed in Section 7.');
+  body('Note: LessonLoop receives "F" grades in 6 feature areas, reflecting genuine gaps versus market expectations. These are detailed in Section 7. Competitor grades were verified against official feature pages and third-party reviews (Feb 2026).');
 
   // ── 5. HEAD-TO-HEAD ──
   doc.addPage();
@@ -301,39 +301,25 @@ export function generateCompetitiveReport() {
 
   const competitors = [
     {
-      name: 'vs MyMusicStaff (Canada)',
-      price: '$14.95 USD/mo flat',
-      strengths: 'Established brand, simple UI, good for solo teachers. Has native mobile app and SMS.',
-      weaknesses: 'No UK localisation, no VAT, no multi-location, no AI, no practice tracking, no make-up system, no payment plans. Single-user only — no team features. No meaningful innovation in 5+ years.',
-      verdict: 'LessonLoop is stronger on features but MMS has brand recognition and a native mobile app that LessonLoop lacks.',
+      name: 'vs My Music Staff (Canada)',
+      price: '$14.95 USD/mo flat (+$4.95/extra teacher)',
+      strengths: 'Established brand (10+ years), simple UI, good for solo teachers. Has Stripe + PayPal online payments, student portal, SMS messaging, calendar-based billing, multi-teacher support, Zapier integration, website builder, and learning management tools (repertoire, resources).',
+      weaknesses: 'No UK localisation, no VAT support, no multi-location/room management, no AI features, no practice tracking with gamification, no make-up credit system, no payment plans, no GDPR tools, no audit logging. No native mobile app (web-only). Canadian-centric defaults. Limited innovation in recent years.',
+      verdict: 'MMS is a solid, mature product for solo teachers. LessonLoop is stronger on UK localisation, scheduling intelligence, AI, practice tracking, and multi-site management. MMS wins on brand recognition and learning management breadth.',
     },
     {
       name: 'vs TutorBird (Canada)',
-      price: '$15.49 USD/mo',
-      strengths: 'Clean interface, good calendar, native mobile app.',
-      weaknesses: 'No parent portal, no billing runs, no VAT, no multi-location, no AI, no attendance tracking, no make-up system, no GDPR tools. Very basic reporting.',
-      verdict: 'LessonLoop is significantly more capable but TutorBird has a simpler onboarding experience and mobile app.',
+      price: '$14.95 USD/mo (+$4.95/extra tutor)',
+      strengths: 'Clean interface, good calendar with availability-based booking, student portal with homework submission, Stripe + PayPal payments, attendance tracking, multi-tutor support, learning management tools, website builder. Affordable flat pricing.',
+      weaknesses: 'No UK localisation or VAT, no bulk billing runs, no multi-location/room management, no AI features, no practice tracking with gamification, no make-up credit system, no payment plans, no GDPR tools, no audit logging, no Zapier/webhooks. Tutoring-focused rather than music-specific. Canadian-centric.',
+      verdict: 'TutorBird is a clean, affordable competitor with broader student portal features (homework). LessonLoop is significantly more capable for UK music education with scheduling intelligence, billing runs, AI, and multi-site support.',
     },
     {
       name: 'vs Teachworks (Canada)',
-      price: '$15-49 USD/mo (per-teacher scaling)',
-      strengths: 'Good for tutoring agencies, reasonable feature set, Stripe integration, Zapier webhooks, Zoom integration, multi-currency. Closest competitor on breadth.',
-      weaknesses: 'Per-teacher pricing gets expensive fast. No AI, no practice tracking, no UK terms, no make-up engine. US-centric default settings.',
-      verdict: 'Closest competitor. LessonLoop wins on UK focus, AI, and pricing; Teachworks wins on integrations ecosystem.',
-    },
-    {
-      name: 'vs Opus1.io',
-      price: '5-8% per transaction',
-      strengths: 'Student marketplace model — helps teachers find students. Good mobile experience.',
-      weaknesses: 'Transaction-based pricing is expensive for established teachers. No standalone business management. No invoicing control, no team features, no AI, no parent portal.',
-      verdict: 'Different model entirely. LessonLoop is for teachers who have students; Opus1 is for finding them. Not directly comparable.',
-    },
-    {
-      name: 'vs Fons',
-      price: '$25-45 USD/mo',
-      strengths: 'Modern UI, good booking flow, native mobile app, Zoom integration.',
-      weaknesses: 'No multi-teacher, no locations/rooms, no billing runs, no AI, no make-up system, no practice tracking, no UK localisation, no GDPR, no audit log.',
-      verdict: 'Fons is a polished solo-teacher tool. LessonLoop serves solos AND scales to agencies, but Fons has better third-party integrations.',
+      price: '$15.99-49.99 USD/mo (tiered by features + per-teacher)',
+      strengths: 'Broadest feature set among competitors. Stripe integration, Zoom/Google Meet integration, Zapier webhooks, 2-way Google Calendar sync, multi-currency support, basic Xero integration, reporting/analytics, multi-location. Good for tutoring agencies. 60+ free integrations/add-ons.',
+      weaknesses: 'Per-teacher pricing gets expensive at scale. No AI features, no practice tracking with gamification, no UK term dates, no make-up credit engine, no VAT support, no GDPR-specific tools, no audit logging. US/Canadian-centric default settings. No native mobile app.',
+      verdict: 'Closest competitor on feature breadth. LessonLoop wins on UK focus, AI copilot, practice gamification, make-up credits, and flat pricing. Teachworks wins on integration ecosystem (Zapier, Zoom, Xero, multi-currency).',
     },
   ];
 
@@ -522,55 +508,55 @@ export function generateCompetitiveReport() {
       feature: 'Native Mobile App (iOS/Android)',
       grade: 'F',
       impact: 'High',
-      detail: 'LessonLoop is a Progressive Web App (PWA) which works on mobile browsers but is not available in the App Store or Google Play. Competitors like TutorBird, Fons, and Opus1 all offer native apps. For parents and students logging practice, a native app with push notifications is a significant UX advantage.',
+      detail: 'LessonLoop is a Progressive Web App (PWA) which works on mobile browsers but is not available in the App Store or Google Play. None of the three reviewed competitors (My Music Staff, TutorBird, Teachworks) offer native apps either - they are all web-based. However, a native app with push notifications would be a significant UX advantage for practice logging.',
     },
     {
       feature: 'Accounting Software Integration (Xero/QuickBooks)',
       grade: 'F',
       impact: 'High',
-      detail: 'No integration with Xero, QuickBooks, FreeAgent, or any accounting package. UK music academies with 50+ students typically use accounting software and need invoice/payment data to flow automatically. Manual re-entry is a dealbreaker for some buyers. Teachworks offers basic Xero integration.',
+      detail: 'No integration with Xero, QuickBooks, FreeAgent, or any accounting package. UK music academies with 50+ students typically use accounting software and need invoice/payment data to flow automatically. Teachworks offers basic Xero integration. My Music Staff and TutorBird do not.',
     },
     {
       feature: 'Video Conferencing Integration (Zoom/Google Meet)',
       grade: 'F',
       impact: 'Medium',
-      detail: 'No native Zoom or Google Meet integration. Online lessons require manually copying meeting URLs. Post-COVID, approximately 20-30% of music lessons are delivered online. Competitors Teachworks and Fons offer basic Zoom integration.',
+      detail: 'No native Zoom or Google Meet integration. Online lessons require manually copying meeting URLs. Post-COVID, approximately 20-30% of music lessons are delivered online. Teachworks offers Zoom integration. My Music Staff and TutorBird do not.',
     },
     {
-      feature: 'Student Marketplace',
+      feature: 'Website Builder',
       grade: 'F',
-      impact: 'Low-Medium',
-      detail: 'No discovery mechanism for new students to find teachers. Opus1 is built entirely around this concept. While LessonLoop targets teachers who already have students, a marketplace feature could drive growth.',
+      impact: 'Medium',
+      detail: 'No built-in website builder. Both My Music Staff and TutorBird offer website builders that let teachers create professional studio websites with scheduling widgets. This is a notable gap for solo teachers who need an online presence.',
     },
     {
       feature: 'Multi-Currency Support',
       grade: 'F',
       impact: 'Medium (for international expansion)',
-      detail: 'Currently GBP-only. Invoices, rate cards, and payments are all denominated in pounds sterling. Teachworks and Fons support multiple currencies. This limits international adoption.',
+      detail: 'Currently GBP-only. Invoices, rate cards, and payments are all denominated in pounds sterling. Teachworks supports multiple currencies. My Music Staff and TutorBird are USD/CAD-centric. This limits international adoption.',
     },
     {
       feature: 'Zapier / Webhook Integrations',
       grade: 'F',
       impact: 'Medium',
-      detail: 'No Zapier integration, no outgoing webhooks, no public API documentation. Power users cannot connect LessonLoop to other tools in their workflow (email marketing, CRM, etc.). Teachworks offers Zapier and webhooks.',
+      detail: 'No Zapier integration, no outgoing webhooks, no public API documentation. Power users cannot connect LessonLoop to other tools in their workflow. Both Teachworks and My Music Staff offer Zapier integrations. TutorBird does not.',
     },
     {
-      feature: 'White-Label / Reseller Programme',
-      grade: 'F',
-      impact: 'Low',
-      detail: 'No white-label option for agencies or larger organisations wanting fully branded portals. Custom branding is limited to logo and colours within the existing UI.',
+      feature: 'Learning Management Tools',
+      grade: 'C',
+      impact: 'Medium',
+      detail: 'Basic practice tracking exists but no repertoire management, resource library, or homework submission. My Music Staff has repertoire and resource features. TutorBird recently added homework submission. LessonLoop\'s practice gamification is unique but the broader learning tools lag behind.',
     },
     {
       feature: 'SMS/MMS Messaging',
       grade: 'C (In Development)',
       impact: 'Medium',
-      detail: 'SMS capability is built but not yet fully deployed. When live, this will move to a B grade. MyMusicStaff and Teachworks both have mature SMS features.',
+      detail: 'SMS capability is built but not yet fully deployed. When live, this will move to a B grade. My Music Staff and Teachworks both have mature SMS features.',
     },
     {
       feature: 'Online Payments (Stripe Connect)',
       grade: 'B (Deploying)',
       impact: 'High',
-      detail: 'Stripe Connect integration is built and in deployment. When fully live with parent-facing "Pay Now" in the portal, this will be an A-grade feature. Currently marked B as it is not yet in production use.',
+      detail: 'Stripe Connect integration is built and in deployment. All three competitors already support Stripe/PayPal payments. When fully live with parent-facing "Pay Now" in the portal, this will match competitor parity.',
     },
   ];
 
@@ -689,11 +675,13 @@ export function generateCompetitiveReport() {
     ['Communication/Messaging', 'B-'],
     ['Calendar Integration', 'B'],
     ['Online Payments', 'B (deploying)'],
+    ['Learning Management', 'C'],
     ['Mobile Experience', 'C (PWA only)'],
     ['API & Developer Access', 'D'],
     ['Third-Party Integrations', 'F'],
     ['Native Mobile App', 'F'],
     ['Accounting Integration', 'F'],
+    ['Website Builder', 'F'],
   ];
 
   const sumColW = [60, 40];
@@ -717,12 +705,13 @@ export function generateCompetitiveReport() {
   spacer();
 
   subheading('Recommendations for Improvement');
-  bullet('Priority 1: Ship Stripe Connect to production — removes the biggest blocker for revenue.');
-  bullet('Priority 2: Build Xero/QuickBooks integration — essential for the academy segment.');
-  bullet('Priority 3: Submit PWA to app stores (or build React Native wrapper) for native mobile presence.');
-  bullet('Priority 4: Add Zapier integration or public webhooks for power users.');
-  bullet('Priority 5: Implement Zoom/Google Meet integration for online lessons.');
-  bullet('Priority 6: Publish API documentation for developer ecosystem.');
+  bullet('Priority 1: Ship Stripe Connect to production - all three competitors already support online payments.');
+  bullet('Priority 2: Build Xero/QuickBooks integration - essential for the academy segment. Only Teachworks offers this currently.');
+  bullet('Priority 3: Add website builder or embeddable booking widget - both My Music Staff and TutorBird offer this.');
+  bullet('Priority 4: Expand learning management tools (repertoire, homework submission) to match MMS and TutorBird.');
+  bullet('Priority 5: Add Zapier integration or public webhooks - MMS and Teachworks both offer this.');
+  bullet('Priority 6: Implement Zoom/Google Meet integration for online lessons (Teachworks already has this).');
+  bullet('Priority 7: Submit PWA to app stores or build React Native wrapper for native mobile presence.');
 
   // ── Footer on every page ──
   const totalPages = doc.getNumberOfPages();
