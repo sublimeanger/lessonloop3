@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DateRangeFilter } from '@/components/reports/DateRangeFilter';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -64,7 +64,7 @@ export default function CancellationReport() {
         ]}
         actions={
           data && data.totalScheduled > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap">
               <Button onClick={() => window.print()} variant="outline" className="gap-2 print:hidden">
                 <Printer className="h-4 w-4" />
                 Print

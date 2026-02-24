@@ -145,9 +145,10 @@ export function DateRangeFilter({
 
   return (
     <Card className="mb-6">
-      <CardContent className="pt-6">
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="space-y-2">
+      <CardContent className="p-4 md:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="grid gap-4 sm:grid-cols-2 lg:flex lg:items-end lg:gap-4">
+            <div className="space-y-2">
             <Label htmlFor="start-date">Start Date</Label>
             <Input
               id="start-date"
@@ -155,10 +156,10 @@ export function DateRangeFilter({
               value={localStart}
               max={localEnd}
               onChange={(e) => setLocalStart(e.target.value)}
-              className="w-[180px]"
+              className="w-full sm:w-[180px]"
             />
-          </div>
-          <div className="space-y-2">
+            </div>
+            <div className="space-y-2">
             <Label htmlFor="end-date">End Date</Label>
             <Input
               id="end-date"
@@ -167,16 +168,18 @@ export function DateRangeFilter({
               min={localStart}
               max={today}
               onChange={(e) => setLocalEnd(e.target.value)}
-              className="w-[180px]"
+              className="w-full sm:w-[180px]"
             />
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {allPresets.map((preset) => (
               <Button
                 key={preset.label}
                 variant="outline"
                 size="sm"
                 onClick={() => applyPreset(preset)}
+                className="w-full justify-center sm:w-auto"
               >
                 {preset.label}
               </Button>

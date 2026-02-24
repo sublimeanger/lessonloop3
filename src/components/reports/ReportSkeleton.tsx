@@ -11,7 +11,7 @@ function SummaryCards() {
   return (
     <div className="mb-6 grid gap-4 md:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i}>
+        <Card key={i} className="rounded-xl border bg-card">
           <CardHeader className="pb-2">
             <Skeleton className="h-4 w-24" />
           </CardHeader>
@@ -27,7 +27,7 @@ function SummaryCards() {
 
 function ChartSkeleton() {
   return (
-    <Card className="mb-6">
+    <Card className="mb-6 rounded-xl border bg-card">
       <CardHeader>
         <Skeleton className="h-5 w-40 mb-1" />
         <Skeleton className="h-4 w-64" />
@@ -41,7 +41,7 @@ function ChartSkeleton() {
 
 function TableSkeleton() {
   return (
-    <Card>
+    <Card className="rounded-xl border bg-card">
       <CardHeader>
         <Skeleton className="h-5 w-32" />
       </CardHeader>

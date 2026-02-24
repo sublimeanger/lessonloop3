@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -10,12 +10,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { SortableTableHead } from '@/components/reports/SortableTableHead';
 import { usePayroll, exportPayrollToCSV, type TeacherPayrollSummary } from '@/hooks/usePayroll';
 import { ReportPagination, paginateArray } from '@/components/reports/ReportPagination';
 import { useSortableTable } from '@/hooks/useSortableTable';
 import { useOrg } from '@/contexts/OrgContext';
-import { formatCurrency, formatDateUK } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { useTerms } from '@/hooks/useTerms';
 import { Download, ChevronDown, ChevronRight, Banknote, Clock, Users, FileSpreadsheet, AlertTriangle, Printer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -82,7 +81,7 @@ export default function PayrollReport() {
         ]}
         actions={
           data && data.teachers.length > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap">
               <Button onClick={() => window.print()} variant="outline" className="gap-2 print:hidden">
                 <Printer className="h-4 w-4" />
                 Print

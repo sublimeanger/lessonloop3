@@ -1,5 +1,5 @@
 import { TableHead } from '@/components/ui/table';
-import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import type { SortDir } from '@/hooks/useSortableTable';
 
 interface SortableTableHeadProps<F extends string> {
@@ -22,22 +22,24 @@ export function SortableTableHead<F extends string>({
   const isActive = currentField === field;
 
   return (
-    <TableHead
-      className={`cursor-pointer select-none hover:text-foreground ${className}`}
-      onClick={() => onToggle(field)}
-    >
-      <span className="inline-flex items-center gap-1">
-        {label}
+    <TableHead className={className}>
+      <button
+        type="button"
+        onClick={() => onToggle(field)}
+        className="inline-flex min-h-11 items-center gap-1 text-left text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        aria-label={`Sort by ${label}`}
+      >
+        <span>{label}</span>
         {isActive ? (
           currentDir === 'asc' ? (
-            <ArrowUp className="h-3 w-3" />
+            <ArrowUp className="h-4 w-4" />
           ) : (
-            <ArrowDown className="h-3 w-3" />
+            <ArrowDown className="h-4 w-4" />
           )
         ) : (
-          <ArrowUpDown className="h-3 w-3 opacity-30" />
+          <ArrowUpDown className="h-4 w-4 opacity-30" />
         )}
-      </span>
+      </button>
     </TableHead>
   );
 }
