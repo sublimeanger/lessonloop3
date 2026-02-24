@@ -202,7 +202,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           setCreditOfferOpen(true);
         }
       }
-    } catch (_error: any) {
+    } catch {
       // Error toast is handled by the hook
     } finally {
       setSavingAttendance(null);
@@ -372,7 +372,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
       setCancellationReason('');
       onUpdated();
       onClose();
-    } catch (_error: any) {
+    } catch (error: any) {
       toast({ title: 'Error cancelling lesson', description: error.message, variant: 'destructive' });
     } finally {
       setActionInProgress(false);
@@ -425,7 +425,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
       }
       onUpdated();
       onClose();
-    } catch (_error: any) {
+    } catch (error: any) {
       toast({ title: 'Error deleting lesson', description: error.message, variant: 'destructive' });
     } finally {
       setActionInProgress(false);
