@@ -79,22 +79,54 @@ export function generateCompetitiveReport() {
     }
   }
 
+  // Status label helpers — replace emoji with ASCII-safe colored text
+  const STATUS = {
+    YES: 'Yes',
+    NO: 'No',
+    PARTIAL: 'Partial',
+  } as const;
+
+  function statusColor(val: string): [number, number, number] {
+    const v = val.toLowerCase();
+    if (v.startsWith('yes') || v === 'yes') return colors.green;
+    if (v.startsWith('no') || v === 'no') return colors.red;
+    if (v.startsWith('partial') || v === 'partial') return colors.amber;
+    return colors.dark;
+  }
+
   function tableRow(cols: string[], widths: number[], isHeader = false, rowColor?: [number, number, number]) {
-    checkPage(8);
+    const rowH = 7;
+    checkPage(rowH + 2);
     if (rowColor) {
       doc.setFillColor(...rowColor);
-      doc.rect(margin, y - 4, contentW, 7, 'F');
+      doc.rect(margin, y - 4.5, contentW, rowH, 'F');
     }
+    // Draw cell borders
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.2);
+    let bx = margin;
+    for (let i = 0; i < widths.length; i++) {
+      doc.rect(bx, y - 4.5, widths[i], rowH);
+      bx += widths[i];
+    }
+
     doc.setFont('helvetica', isHeader ? 'bold' : 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor(isHeader ? 255 : colors.dark[0], isHeader ? 255 : colors.dark[1], isHeader ? 255 : colors.dark[2]);
+    doc.setFontSize(7.5);
     let x = margin;
     for (let i = 0; i < cols.length; i++) {
-      const cellLines = doc.splitTextToSize(cols[i], widths[i] - 2);
-      doc.text(cellLines[0] || '', x + 1, y);
+      if (isHeader) {
+        doc.setTextColor(255, 255, 255);
+      } else if (i > 0) {
+        // Color-code status cells
+        doc.setTextColor(...statusColor(cols[i]));
+      } else {
+        doc.setTextColor(...colors.dark);
+      }
+      const cellText = doc.splitTextToSize(cols[i], widths[i] - 3);
+      doc.text(cellText[0] || '', x + 1.5, y);
       x += widths[i];
     }
-    y += 6;
+    y += rowH - 1;
   }
 
   function spacer(h = 4) { y += h; }
@@ -188,35 +220,35 @@ export function generateCompetitiveReport() {
   heading('3. Competitive Comparison Matrix');
   spacer(2);
 
-  const compCols = ['Feature', 'LessonLoop', 'MyMusicStaff', 'TutorBird', 'Teachworks', 'Opus1', 'Fons'];
-  const colW = [38, 22, 25, 22, 24, 18, 20];
+  const compCols = ['Feature', 'LessonLoop', 'MusicStaff', 'TutorBird', 'Teachworks', 'Opus1', 'Fons'];
+  const colW = [36, 26, 24, 24, 26, 20, 18];
   tableRow(compCols, colW, true, colors.brand);
 
   const features = [
-    ['Smart Scheduling', '✅', '✅', '✅', '✅', '✅', '✅'],
-    ['Conflict Detection', '✅ 5-way', '⚠️ Basic', '⚠️ Basic', '✅', '❌', '❌'],
-    ['UK Term Dates', '✅ Native', '❌', '❌', '❌', '❌', '❌'],
-    ['Recurring Lessons', '✅ Flexible', '✅', '✅', '✅', '✅', '⚠️'],
-    ['Automated Invoicing', '✅', '✅', '✅', '✅', '⚠️', '✅'],
-    ['Billing Runs', '✅ Bulk', '⚠️ Manual', '❌', '⚠️', '❌', '❌'],
-    ['VAT Support', '✅ Native', '❌', '❌', '❌', '❌', '❌'],
-    ['Payment Plans', '✅ Flexible', '❌', '❌', '❌', '❌', '❌'],
-    ['Stripe Connect', '✅', '❌', '❌', '✅', '✅', '✅'],
-    ['Parent Portal', '✅ Full', '✅ Basic', '❌', '⚠️', '❌', '❌'],
-    ['Practice Tracking', '✅ Gamified', '❌', '❌', '❌', '❌', '❌'],
-    ['AI Copilot', '✅ LoopAssist', '❌', '❌', '❌', '❌', '❌'],
-    ['Make-Up Credits', '✅ Auto', '❌', '❌', '⚠️ Manual', '❌', '❌'],
-    ['SMS/MMS', '✅', '✅', '⚠️', '✅', '❌', '❌'],
-    ['Multi-Location', '✅', '❌', '❌', '✅', '❌', '❌'],
-    ['Room Management', '✅', '❌', '❌', '⚠️', '❌', '❌'],
-    ['Attendance Register', '✅', '⚠️', '❌', '✅', '❌', '❌'],
-    ['Calendar Sync', '✅ Bi-dir', '✅', '✅', '✅', '⚠️', '✅'],
-    ['Custom Branding', '✅', '❌', '❌', '⚠️', '❌', '❌'],
-    ['API Access', '✅', '❌', '❌', '⚠️', '❌', '❌'],
-    ['GDPR Compliance', '✅ Full', '❌', '❌', '❌', '❌', '❌'],
-    ['Audit Logging', '✅ Complete', '❌', '❌', '❌', '❌', '❌'],
-    ['RBAC (5 roles)', '✅', '⚠️ 2', '⚠️ 2', '✅ 3', '❌', '❌'],
-    ['Mobile Responsive', '✅ PWA', '⚠️', '✅', '✅', '✅', '✅'],
+    ['Smart Scheduling', 'Yes', 'Yes', 'Yes', 'Yes', 'Yes', 'Yes'],
+    ['Conflict Detection', 'Yes (5-way)', 'Partial', 'Partial', 'Yes', 'No', 'No'],
+    ['UK Term Dates', 'Yes', 'No', 'No', 'No', 'No', 'No'],
+    ['Recurring Lessons', 'Yes', 'Yes', 'Yes', 'Yes', 'Yes', 'Partial'],
+    ['Auto Invoicing', 'Yes', 'Yes', 'Yes', 'Yes', 'Partial', 'Yes'],
+    ['Billing Runs', 'Yes (Bulk)', 'Partial', 'No', 'Partial', 'No', 'No'],
+    ['VAT Support', 'Yes', 'No', 'No', 'No', 'No', 'No'],
+    ['Payment Plans', 'Yes', 'No', 'No', 'No', 'No', 'No'],
+    ['Stripe Connect', 'Yes', 'No', 'No', 'Yes', 'Yes', 'Yes'],
+    ['Parent Portal', 'Yes (Full)', 'Partial', 'No', 'Partial', 'No', 'No'],
+    ['Practice Track', 'Yes', 'No', 'No', 'No', 'No', 'No'],
+    ['AI Copilot', 'Yes', 'No', 'No', 'No', 'No', 'No'],
+    ['Make-Up Credits', 'Yes (Auto)', 'No', 'No', 'Partial', 'No', 'No'],
+    ['SMS/MMS', 'Yes', 'Yes', 'Partial', 'Yes', 'No', 'No'],
+    ['Multi-Location', 'Yes', 'No', 'No', 'Yes', 'No', 'No'],
+    ['Room Mgmt', 'Yes', 'No', 'No', 'Partial', 'No', 'No'],
+    ['Attendance', 'Yes', 'Partial', 'No', 'Yes', 'No', 'No'],
+    ['Calendar Sync', 'Yes (Bi-dir)', 'Yes', 'Yes', 'Yes', 'Partial', 'Yes'],
+    ['Branding', 'Yes', 'No', 'No', 'Partial', 'No', 'No'],
+    ['API Access', 'Yes', 'No', 'No', 'Partial', 'No', 'No'],
+    ['GDPR', 'Yes (Full)', 'No', 'No', 'No', 'No', 'No'],
+    ['Audit Log', 'Yes', 'No', 'No', 'No', 'No', 'No'],
+    ['RBAC', 'Yes (5)', 'Partial (2)', 'Partial (2)', 'Yes (3)', 'No', 'No'],
+    ['Mobile PWA', 'Yes', 'Partial', 'Yes', 'Yes', 'Yes', 'Yes'],
   ];
 
   for (let i = 0; i < features.length; i++) {
@@ -283,7 +315,7 @@ export function generateCompetitiveReport() {
 
   const featureAudit = [
     {
-      category: '📅 Smart Scheduling Engine',
+      category: 'Smart Scheduling Engine',
       features: [
         {
           name: 'Drag-and-Drop Calendar',
@@ -323,7 +355,7 @@ export function generateCompetitiveReport() {
       ],
     },
     {
-      category: '💷 Invoicing & Billing',
+      category: 'Invoicing & Billing',
       features: [
         {
           name: 'One-Click Invoice Generation',
@@ -368,7 +400,7 @@ export function generateCompetitiveReport() {
       ],
     },
     {
-      category: '👨‍👩‍👧 Parent Portal',
+      category: 'Parent Portal',
       features: [
         {
           name: 'Secure Parent Login',
@@ -383,7 +415,7 @@ export function generateCompetitiveReport() {
         {
           name: 'Invoice Viewing & Payment',
           desc: 'All invoices displayed with status indicators. Payment plans show installment breakdowns. "Pay Now" button for Stripe Connect payments.',
-          scenario: 'A parent sees 3 invoices: Jan (Paid ✅), Feb (Due in 5 days ⏳), and a payment plan with 2/3 installments paid. They click "Pay Now" on the February invoice and complete payment in 30 seconds.',
+          scenario: 'A parent sees 3 invoices: Jan (Paid), Feb (Due in 5 days), and a payment plan with 2/3 installments paid. They click "Pay Now" on the February invoice and complete payment in 30 seconds.',
         },
         {
           name: 'Practice Monitoring',
@@ -398,7 +430,7 @@ export function generateCompetitiveReport() {
       ],
     },
     {
-      category: '🤖 LoopAssist AI Copilot',
+      category: 'LoopAssist AI Copilot',
       features: [
         {
           name: 'Natural Language Data Queries',
@@ -413,7 +445,7 @@ export function generateCompetitiveReport() {
         {
           name: 'Proactive Insights',
           desc: 'Automatically identifies at-risk students (2+ absences in 30 days, overdue invoices) and practice engagement drops.',
-          scenario: 'LoopAssist surfaces: "⚠️ 3 students may be at risk of leaving: Emma (3 absences + overdue invoice), Jack (cancelled last 2 lessons), Mia (practice dropped from 5x to 1x per week)."',
+          scenario: 'LoopAssist surfaces: "WARNING: 3 students may be at risk of leaving: Emma (3 absences + overdue invoice), Jack (cancelled last 2 lessons), Mia (practice dropped from 5x to 1x per week)."',
         },
         {
           name: 'Email & Communication Drafting',
@@ -428,7 +460,7 @@ export function generateCompetitiveReport() {
       ],
     },
     {
-      category: '🔄 Make-Up Credit System',
+      category: 'Make-Up Credit System',
       features: [
         {
           name: 'Policy-Based Credit Issuance',
@@ -448,7 +480,7 @@ export function generateCompetitiveReport() {
       ],
     },
     {
-      category: '🎵 Practice Tracking & Gamification',
+      category: 'Practice Tracking & Gamification',
       features: [
         {
           name: 'Practice Timer',
@@ -473,7 +505,7 @@ export function generateCompetitiveReport() {
       ],
     },
     {
-      category: '👥 Student & Guardian Management',
+      category: 'Student & Guardian Management',
       features: [
         {
           name: 'Student Profiles',
@@ -498,7 +530,7 @@ export function generateCompetitiveReport() {
       ],
     },
     {
-      category: '🏢 Multi-Location & Room Management',
+      category: 'Multi-Location & Room Management',
       features: [
         {
           name: 'Location Management',
@@ -513,7 +545,7 @@ export function generateCompetitiveReport() {
       ],
     },
     {
-      category: '📊 Reporting & Analytics',
+      category: 'Reporting & Analytics',
       features: [
         {
           name: 'Revenue Reports',
@@ -538,7 +570,7 @@ export function generateCompetitiveReport() {
       ],
     },
     {
-      category: '🔐 Security & Compliance',
+      category: 'Security & Compliance',
       features: [
         {
           name: 'Row-Level Security (Multi-Tenant)',
@@ -563,7 +595,7 @@ export function generateCompetitiveReport() {
       ],
     },
     {
-      category: '💬 Communication & Messaging',
+      category: 'Communication & Messaging',
       features: [
         {
           name: 'Internal Messaging',
@@ -583,7 +615,7 @@ export function generateCompetitiveReport() {
       ],
     },
     {
-      category: '📚 Resource Library',
+      category: 'Resource Library',
       features: [
         {
           name: 'Teaching Material Sharing',
@@ -738,7 +770,7 @@ export function generateCompetitiveReport() {
   y = margin;
   heading('9. Strengths, Gaps & Roadmap');
 
-  subheading('✅ Core Strengths');
+  subheading('Core Strengths');
   bullet('Only AI-powered music education platform in the UK market');
   bullet('Disruptive pricing — unlimited students/teachers at every tier');
   bullet('Full UK localisation: GBP, VAT, term dates, GDPR, DD/MM/YYYY');
@@ -749,12 +781,12 @@ export function generateCompetitiveReport() {
   bullet('60+ Edge Functions powering background automation');
   spacer();
 
-  subheading('🔶 Shipping Soon');
+  subheading('Shipping Soon');
   bullet('Stripe Connect — parent-facing "Pay Now" for invoices (code built, deploying)');
   bullet('SMS/MMS messaging — lesson reminders and announcements (code built, deploying)');
   spacer();
 
-  subheading('🗺️ Future Roadmap');
+  subheading('Future Roadmap');
   bullet('Xero / QuickBooks integration for accounting sync');
   bullet('Zoom / Google Meet integration for online lesson links');
   bullet('Native mobile app (iOS + Android)');
