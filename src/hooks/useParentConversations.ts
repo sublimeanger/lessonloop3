@@ -78,16 +78,58 @@ export function useParentConversations(onNewMessage?: () => void) {
     queryFn: async () => {
       if (!currentOrg || !guardianId) return [];
 
-      // Fetch all messages where this guardian is the recipient OR the sender
-      const { data, error } = await supabase
+      // Fetch messages where this guardian is the recipient
+      const { data: inbound, error: inboundErr } = await supabase
         .from('message_log')
         .select('id, subject, body, created_at, sender_user_id, recipient_id, recipient_type, message_type, status, read_at, thread_id, parent_message_id')
         .eq('org_id', currentOrg.id)
+        .eq('recipient_id', guardianId)
         .order('created_at', { ascending: true })
         .limit(500);
 
-      if (error) throw error;
-      return (data || []) as ConversationMessage[];
+      if (inboundErr) throw inboundErr;
+
+      // Fetch parent replies sent by this guardian
+      const { data: outbound, error: outboundErr } = await supabase
+        .from('message_log')
+        .select('id, subject, body, created_at, sender_user_id, recipient_id, recipient_type, message_type, status, read_at, thread_id, parent_message_id')
+        .eq('org_id', currentOrg.id)
+        .eq('message_type', 'parent_reply')
+        .eq('recipient_type', 'guardian')
+        .eq('recipient_id', guardianId)
+        .order('created_at', { ascending: true })
+        .limit(500);
+
+      // For outbound, we actually need messages where the guardian is the SENDER.
+      // parent_reply messages store the guardian as context, but sender_user_id is the guardian's user_id.
+      // Let's also get replies by thread_id for threads this guardian is part of.
+      const threadIds = new Set((inbound || []).map(m => m.thread_id || m.id));
+      
+      let allMessages = [...(inbound || [])];
+      
+      if (threadIds.size > 0) {
+        const { data: threadReplies, error: threadErr } = await supabase
+          .from('message_log')
+          .select('id, subject, body, created_at, sender_user_id, recipient_id, recipient_type, message_type, status, read_at, thread_id, parent_message_id')
+          .eq('org_id', currentOrg.id)
+          .eq('message_type', 'parent_reply')
+          .in('thread_id', Array.from(threadIds))
+          .order('created_at', { ascending: true })
+          .limit(500);
+
+        if (!threadErr && threadReplies) {
+          // Deduplicate by id
+          const existingIds = new Set(allMessages.map(m => m.id));
+          for (const msg of threadReplies) {
+            if (!existingIds.has(msg.id)) {
+              allMessages.push(msg);
+              existingIds.add(msg.id);
+            }
+          }
+        }
+      }
+
+      return allMessages as ConversationMessage[];
     },
     enabled: !!currentOrg && !!guardianId,
   });

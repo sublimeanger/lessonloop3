@@ -91,6 +91,7 @@ export function useMarkMessagesAsRead() {
       queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
       queryClient.invalidateQueries({ queryKey: ['parent-summary'] });
       queryClient.invalidateQueries({ queryKey: ['parent-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['parent-conversations'] });
     },
   });
 }

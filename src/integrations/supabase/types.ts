@@ -2556,7 +2556,6 @@ export type Database = {
           bank_sort_code: string | null
           billing_approach: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures: boolean
-          brand_color: string | null
           buffer_minutes_between_locations: number | null
           cancellation_notice_hours: number
           cancels_at: string | null
@@ -2568,11 +2567,8 @@ export type Database = {
           default_exam_board_id: string | null
           default_lesson_length_mins: number
           default_payment_terms_days: number | null
-          accent_color: string | null
           id: string
           invoice_footer_note: string | null
-          invoice_number_digits: number | null
-          invoice_number_prefix: string | null
           invoice_from_address_line1: string | null
           invoice_from_address_line2: string | null
           invoice_from_city: string | null
@@ -2619,7 +2615,6 @@ export type Database = {
           bank_sort_code?: string | null
           billing_approach?: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures?: boolean
-          brand_color?: string | null
           buffer_minutes_between_locations?: number | null
           cancellation_notice_hours?: number
           cancels_at?: string | null
@@ -2631,11 +2626,8 @@ export type Database = {
           default_exam_board_id?: string | null
           default_lesson_length_mins?: number
           default_payment_terms_days?: number | null
-          accent_color?: string | null
           id?: string
           invoice_footer_note?: string | null
-          invoice_number_digits?: number | null
-          invoice_number_prefix?: string | null
           invoice_from_address_line1?: string | null
           invoice_from_address_line2?: string | null
           invoice_from_city?: string | null
@@ -2682,7 +2674,6 @@ export type Database = {
           bank_sort_code?: string | null
           billing_approach?: Database["public"]["Enums"]["billing_approach"]
           block_scheduling_on_closures?: boolean
-          brand_color?: string | null
           buffer_minutes_between_locations?: number | null
           cancellation_notice_hours?: number
           cancels_at?: string | null
@@ -2694,11 +2685,8 @@ export type Database = {
           default_exam_board_id?: string | null
           default_lesson_length_mins?: number
           default_payment_terms_days?: number | null
-          accent_color?: string | null
           id?: string
           invoice_footer_note?: string | null
-          invoice_number_digits?: number | null
-          invoice_number_prefix?: string | null
           invoice_from_address_line1?: string | null
           invoice_from_address_line2?: string | null
           invoice_from_city?: string | null
