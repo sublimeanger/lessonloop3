@@ -358,7 +358,7 @@ export default function Teachers() {
 
       toast({ title: 'Teacher removed', description: parts.join(' ') });
     } catch (err: any) {
-      toast({ title: 'Error removing teacher', description: err.message, variant: 'destructive' });
+      toast({ title: 'Failed to remove teacher', description: err.message, variant: 'destructive' });
     }
 
     setRemoval(prev => ({ ...prev, open: false, isProcessing: false }));
@@ -373,12 +373,12 @@ export default function Teachers() {
         breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Teachers' }]}
         actions={
           isOrgAdmin && (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button 
                 variant="outline"
                 size="sm"
                 onClick={() => setIsCreateDialogOpen(true)} 
-                className="gap-1.5"
+                className="gap-1.5 min-h-11 sm:min-h-9"
                 disabled={!canAddTeacher}
               >
                 <Plus className="h-4 w-4" />
@@ -432,17 +432,18 @@ export default function Teachers() {
               placeholder="Search teachers..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9"
+              className="h-11 pl-9 sm:h-9"
             />
           </div>
 
-          <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-0.5 w-fit">
+          <div className="flex w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted/50 p-0.5 sm:w-fit" role="tablist" aria-label="Teacher filters">
             {FILTER_PILLS.map((pill) => (
               <button
                 key={pill.value}
+                type="button"
                 onClick={() => setFilterTab(pill.value)}
                 className={cn(
-                  'rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all',
+                  'min-h-11 rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all',
                   filterTab === pill.value
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground',
@@ -469,7 +470,7 @@ export default function Teachers() {
           onSecondaryAction={isOrgAdmin ? () => setIsInviteDialogOpen(true) : undefined}
         />
       ) : (
-        <div className="space-y-2">
+        <div className="grid gap-4 md:grid-cols-2">
           {filteredTeachers.length === 0 ? (
             <div className="rounded-lg border bg-card p-8 text-center">
               <p className="text-muted-foreground">No teachers match your search</p>
@@ -511,7 +512,7 @@ export default function Teachers() {
 
       {/* Create Teacher Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) resetCreateForm(); }}>
-        <DialogContent>
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-lg sm:p-6">
           <DialogHeader>
             <DialogTitle>Add Teacher</DialogTitle>
             <DialogDescription>
@@ -521,7 +522,7 @@ export default function Teachers() {
           <Form {...createForm}>
             <form onSubmit={createForm.handleSubmit(handleCreateTeacher)}>
               <TeacherFormFields />
-              <DialogFooter>
+              <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button variant="outline" type="button" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={isSaving}>
                   {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</> : 'Add Teacher'}
@@ -534,7 +535,7 @@ export default function Teachers() {
 
       {/* Edit Teacher Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-lg sm:p-6">
           <DialogHeader>
             <DialogTitle>Edit Teacher</DialogTitle>
             <DialogDescription>
@@ -544,7 +545,7 @@ export default function Teachers() {
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit(handleEditTeacher)}>
               <TeacherFormFields />
-              <DialogFooter>
+              <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button variant="outline" type="button" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={isEditing}>
                   {isEditing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
@@ -703,7 +704,7 @@ function TeacherCard({ teacher, studentCount, isAdmin, onRemove, onEdit, onReact
   return (
     <div 
       className={cn(
-        "group flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md cursor-pointer",
+        "group flex flex-col items-start gap-3 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md cursor-pointer sm:flex-row sm:items-center sm:gap-4",
         isInactiveView && "opacity-60"
       )}
       onClick={() => onQuickView(teacher)}
@@ -718,23 +719,23 @@ function TeacherCard({ teacher, studentCount, isAdmin, onRemove, onEdit, onReact
         {teacher.display_name?.[0]?.toUpperCase() || '?'}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold truncate">{teacher.display_name}</span>
           {isInactiveView ? (
-            <Badge variant="destructive" className="text-[10px] shrink-0">Inactive</Badge>
+            <Badge variant="destructive" className="text-micro shrink-0">Inactive</Badge>
           ) : teacher.isLinked ? (
-            <Badge variant="outline" className="text-[10px] gap-1 shrink-0">
+            <Badge variant="outline" className="text-micro gap-1 shrink-0">
               <Link2 className="h-3 w-3" />
               Linked
             </Badge>
           ) : (
-            <Badge variant="secondary" className="text-[10px] gap-1 shrink-0">
+            <Badge variant="secondary" className="text-micro gap-1 shrink-0">
               <Link2Off className="h-3 w-3" />
               Unlinked
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+        <div className="mt-0.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           {teacher.email && <span className="hidden sm:inline truncate">{teacher.email}</span>}
           {teacher.phone && (
             <span className="items-center gap-1 hidden sm:flex">
@@ -749,7 +750,7 @@ function TeacherCard({ teacher, studentCount, isAdmin, onRemove, onEdit, onReact
         </div>
       </div>
       {isAdmin && (
-        <div className="flex items-center gap-1 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+        <div className="flex w-full items-center justify-end gap-1 shrink-0 transition-opacity sm:w-auto sm:opacity-0 sm:group-hover:opacity-100">
           {isInactiveView ? (
             <Button
               variant="outline"
@@ -767,7 +768,7 @@ function TeacherCard({ teacher, studentCount, isAdmin, onRemove, onEdit, onReact
             <>
               <Button
                 variant="ghost"
-                size="icon"
+                size="icon" className="h-11 w-11 sm:h-9 sm:w-9"
                 onClick={(e) => {
                   e.stopPropagation();
                   onEdit(teacher);
@@ -777,7 +778,7 @@ function TeacherCard({ teacher, studentCount, isAdmin, onRemove, onEdit, onReact
               </Button>
               <Button
                 variant="ghost"
-                size="icon"
+                size="icon" className="h-11 w-11 sm:h-9 sm:w-9"
                 onClick={(e) => {
                   e.stopPropagation();
                   onRemove(teacher);

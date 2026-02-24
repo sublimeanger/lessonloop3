@@ -34,7 +34,7 @@ export default function Practice() {
         title="Practice"
         description="Manage practice assignments and review student progress"
         actions={
-          <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+          <Button onClick={() => setShowCreateModal(true)} className="min-h-11 gap-2 sm:min-h-9">
             <Plus className="h-4 w-4" />
             New Assignment
           </Button>
@@ -42,7 +42,7 @@ export default function Practice() {
       />
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4 mb-6">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -137,7 +137,7 @@ export default function Practice() {
                   {onTrack.length > 0 && (
                     <div>
                       <p className="text-xs font-medium text-muted-foreground mb-2">On track ({onTrack.length})</p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
                         {onTrack.map(p => (
                           <StatusChip key={p.studentId} name={p.studentName} color="text-success" />
                         ))}
@@ -147,7 +147,7 @@ export default function Practice() {
                   {falling.length > 0 && (
                     <div>
                       <p className="text-xs font-medium text-muted-foreground mb-2">Falling behind ({falling.length})</p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
                         {falling.map(p => (
                           <StatusChip key={p.studentId} name={p.studentName} percent={p.percentComplete} color="text-warning" />
                         ))}
@@ -157,7 +157,7 @@ export default function Practice() {
                   {notStarted.length > 0 && (
                     <div>
                       <p className="text-xs font-medium text-muted-foreground mb-2">Not started ({notStarted.length})</p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
                         {notStarted.map(p => (
                           <StatusChip key={p.studentId} name={p.studentName} color="text-destructive" />
                         ))}
@@ -194,7 +194,7 @@ export default function Practice() {
                 <div className="space-y-4">
                   {weeklyProgress.map(progress => (
                     <div key={progress.studentId} className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-1 text-sm">
                         <span className="font-medium">{progress.studentName}</span>
                         <span className="text-muted-foreground">
                           {progress.actualMinutes} / {progress.targetMinutes} min
@@ -235,7 +235,7 @@ export default function Practice() {
                   <h3 className="mt-4 text-lg font-semibold text-foreground">No practice logged</h3>
                   <p className="mt-2 max-w-sm mx-auto text-sm text-muted-foreground">Students can log practice from their portal</p>
                   <Button 
-                    className="mt-6"
+                    className="mt-6 min-h-11 sm:min-h-9"
                     onClick={() => setShowCreateModal(true)}
                   >
                     Create Assignment
@@ -249,7 +249,7 @@ export default function Practice() {
                     .map(assignment => (
                       <div 
                         key={assignment.id} 
-                        className="flex items-center justify-between p-3 border rounded-lg"
+                        className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
                       >
                         <div>
                           <p className="font-medium">{assignment.title}</p>
@@ -257,7 +257,7 @@ export default function Practice() {
                             {assignment.student?.first_name} {assignment.student?.last_name}
                           </p>
                         </div>
-                        <div className="text-right text-sm text-muted-foreground">
+                        <div className="text-sm text-muted-foreground sm:text-right">
                           <p>{assignment.target_minutes_per_day} min/day</p>
                           <p>{assignment.target_days_per_week} days/week</p>
                         </div>

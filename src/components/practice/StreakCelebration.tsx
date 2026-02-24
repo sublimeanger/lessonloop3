@@ -110,7 +110,7 @@ export function StreakCelebration({ streak, onDismiss }: StreakCelebrationProps)
 
           {/* Content */}
           <motion.div
-            className="relative z-10 text-center space-y-4 p-8 max-w-sm"
+            className="relative z-10 max-w-[calc(100vw-2rem)] space-y-4 overflow-hidden text-center p-5 sm:max-w-sm sm:p-8"
             initial={{ scale: 0.5, opacity: 0, y: 30 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.8, opacity: 0, y: 20 }}

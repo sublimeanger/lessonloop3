@@ -74,7 +74,7 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="flex items-center gap-2">
             <Gift className="h-5 w-5" />
             Make-Up Credits
@@ -87,14 +87,14 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
         <CardContent>
           {/* Summary */}
           <div className="bg-primary/5 rounded-lg p-4 mb-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Available Balance</p>
                 <p className="text-2xl font-bold text-primary">
                   {formatCurrency(totalAvailableValue)}
                 </p>
               </div>
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <p className="text-sm text-muted-foreground">Available Credits</p>
                 <p className="text-2xl font-bold">{availableCredits.length}</p>
               </div>
@@ -110,7 +110,7 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
               <div className="space-y-1">
                 <p className="font-medium text-sm">No make-up credits</p>
                 <p className="text-xs text-muted-foreground max-w-xs">
-                  Credits are issued when a lesson is cancelled by the teacher or when the academy grants a make-up for an eligible absence.
+                  Credits are issued when a lesson is cancelled by the teacher or when the organisation grants a make-up for an eligible absence.
                 </p>
               </div>
               <Button size="sm" variant="outline" onClick={() => setIssueModalOpen(true)}>
@@ -125,10 +125,10 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
                 return (
                   <div 
                     key={credit.id} 
-                    className="border rounded-lg p-3 flex items-start justify-between gap-3"
+                    className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-start sm:justify-between"
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="mb-1 flex flex-wrap items-center gap-2">
                         <span className="font-medium">{formatCurrency(credit.credit_value_minor)}</span>
                         <Badge variant={status.variant}>{status.label}</Badge>
                       </div>
@@ -154,7 +154,7 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
                         )}
                         
                         {credit.redeemed_at && credit.redeemed_lesson && (
-                          <div className="flex items-center gap-1.5 text-green-600">
+                          <div className="flex items-center gap-1.5 text-success">
                             <CheckCircle2 className="h-3.5 w-3.5 text-success" />
                             Used for {credit.redeemed_lesson.title} on{' '}
                             {format(parseISO(credit.redeemed_lesson.start_at), 'dd MMM')}

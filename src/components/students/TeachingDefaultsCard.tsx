@@ -79,7 +79,7 @@ export function TeachingDefaultsCard({
       .eq('org_id', currentOrg!.id);
     
     if (error) {
-      toast({ title: 'Error saving defaults', description: error.message, variant: 'destructive' });
+      toast({ title: 'Failed to save teaching defaults', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Teaching defaults updated' });
       if (currentOrg && user) {
@@ -194,7 +194,7 @@ export function TeachingDefaultsCard({
               </Select>
             </div>
             
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
               <Button variant="ghost" size="sm" onClick={handleCancel} disabled={isSaving}>
                 <X className="h-4 w-4 mr-1" />
                 Cancel
