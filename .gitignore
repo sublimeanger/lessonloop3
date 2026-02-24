@@ -30,3 +30,5 @@ dist-ssr
 
 # Vite temp files
 vite.config.ts.timestamp-*
+tsconfig.app.tsbuildinfo
+tsconfig.node.tsbuildinfo
