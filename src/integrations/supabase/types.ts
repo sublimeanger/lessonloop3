@@ -1637,7 +1637,6 @@ export type Database = {
           created_by: string
           end_at: string
           id: string
-          is_online: boolean
           is_series_exception: boolean
           lesson_type: Database["public"]["Enums"]["lesson_type"]
           location_id: string | null
@@ -1663,7 +1662,6 @@ export type Database = {
           created_by: string
           end_at: string
           id?: string
-          is_online?: boolean
           is_series_exception?: boolean
           lesson_type?: Database["public"]["Enums"]["lesson_type"]
           location_id?: string | null
@@ -1689,7 +1687,6 @@ export type Database = {
           created_by?: string
           end_at?: string
           id?: string
-          is_online?: boolean
           is_series_exception?: boolean
           lesson_type?: Database["public"]["Enums"]["lesson_type"]
           location_id?: string | null

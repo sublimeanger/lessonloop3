@@ -17,6 +17,7 @@ import { TeacherAvailabilityTab } from '@/components/settings/TeacherAvailabilit
 import { BillingTab } from '@/components/settings/BillingTab';
 import { HelpToursTab } from '@/components/settings/HelpToursTab';
 import { CalendarIntegrationsTab } from '@/components/settings/CalendarIntegrationsTab';
+import { ZoomIntegrationTab } from '@/components/settings/ZoomIntegrationTab';
 import { LoopAssistPreferencesTab } from '@/components/settings/LoopAssistPreferencesTab';
 import { MusicSettingsTab } from '@/components/settings/MusicSettingsTab';
 import { MessagingSettingsTab } from '@/components/settings/MessagingSettingsTab';
@@ -91,6 +92,8 @@ function SettingsContent({ activeTab, isOrgAdmin }: { activeTab: string; isOrgAd
       return <AvailabilityTabWithSelector isOrgAdmin={isOrgAdmin} />;
     case 'calendar':
       return <CalendarIntegrationsTab />;
+    case 'zoom':
+      return <ZoomIntegrationTab />;
     case 'billing':
       return (
         <div className="space-y-8">
