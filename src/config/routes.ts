@@ -49,6 +49,11 @@ const FeatureMessaging = lazy(() => import('@/pages/marketing/features/FeatureMe
 const FeatureReports = lazy(() => import('@/pages/marketing/features/FeatureReports'));
 const FeatureLocations = lazy(() => import('@/pages/marketing/features/FeatureLocations'));
 const FeatureResources = lazy(() => import('@/pages/marketing/features/FeatureResources'));
+const VsMyMusicStaff = lazy(() => import('@/pages/marketing/compare/VsMyMusicStaff'));
+const VsTeachworks = lazy(() => import('@/pages/marketing/compare/VsTeachworks'));
+const VsOpus1 = lazy(() => import('@/pages/marketing/compare/VsOpus1'));
+const VsJackrabbitMusic = lazy(() => import('@/pages/marketing/compare/VsJackrabbitMusic'));
+const VsFons = lazy(() => import('@/pages/marketing/compare/VsFons'));
 
 // ─── Lazy: Auth ──────────────────────────────────────────
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
@@ -188,6 +193,11 @@ export const marketingRoutes: RouteConfig[] = [
   { path: '/features/reports', component: FeatureReports, auth: 'public', label: 'Reports' },
   { path: '/features/locations', component: FeatureLocations, auth: 'public', label: 'Locations' },
   { path: '/features/resources', component: FeatureResources, auth: 'public', label: 'Resources' },
+  { path: '/compare/lessonloop-vs-my-music-staff', component: VsMyMusicStaff, auth: 'public', label: 'vs My Music Staff' },
+  { path: '/compare/lessonloop-vs-teachworks', component: VsTeachworks, auth: 'public', label: 'vs Teachworks' },
+  { path: '/compare/lessonloop-vs-opus1', component: VsOpus1, auth: 'public', label: 'vs Opus 1' },
+  { path: '/compare/lessonloop-vs-jackrabbit-music', component: VsJackrabbitMusic, auth: 'public', label: 'vs Jackrabbit Music' },
+  { path: '/compare/lessonloop-vs-fons', component: VsFons, auth: 'public', label: 'vs Fons' },
 ];
 
 /** 404 route */
