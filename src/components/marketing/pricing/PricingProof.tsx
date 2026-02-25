@@ -29,7 +29,7 @@ const highlights = [
 export function PricingProof() {
   return (
     <section className="py-16 lg:py-20 border-y border-border bg-muted/20">
-      <div className="container mx-auto px-6 lg:px-8">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8">
         {/* Founder quote */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

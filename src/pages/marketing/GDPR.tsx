@@ -56,7 +56,7 @@ export default function GDPR() {
       <section className="pt-32 pb-16 lg:pt-40 lg:pb-24 relative overflow-hidden">
         <div className="absolute inset-0 gradient-hero-light" />
         
-        <div className="container mx-auto px-6 lg:px-8 relative">
+        <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -65,7 +65,7 @@ export default function GDPR() {
           >
             <div className="flex items-center gap-3 mb-6">
               <Shield className="w-10 h-10 text-primary" />
-              <h1 className="text-4xl lg:text-5xl font-bold text-foreground">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground">
                 GDPR Compliance
               </h1>
             </div>

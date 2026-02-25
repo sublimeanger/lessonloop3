@@ -49,7 +49,7 @@ function HeroCalendar() {
           <div className="flex gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-destructive/50" />
             <div className="w-2.5 h-2.5 rounded-full bg-warning/50" />
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald/50" />
+            <div className="w-2.5 h-2.5 rounded-full bg-success/50" />
           </div>
           <span className="text-xs text-muted-foreground font-medium hidden sm:inline">LessonLoop — Calendar</span>
         </div>
@@ -196,7 +196,7 @@ export default function FeatureScheduling() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           HERO — Full-width immersive with calendar as centerpiece
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="relative pt-16 pb-24 lg:pt-24 lg:pb-36 overflow-hidden bg-background">
+      <section className="relative pt-28 sm:pt-32 lg:pt-40 pb-24 lg:pb-36 overflow-hidden bg-background">
         {/* Subtle grid pattern */}
         <div
           className="absolute inset-0 pointer-events-none opacity-[0.03]"
@@ -209,7 +209,7 @@ export default function FeatureScheduling() {
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/8 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-violet/8 rounded-full blur-[100px] pointer-events-none" />
 
-        <div className="container relative mx-auto px-6 lg:px-8">
+        <div className="container relative mx-auto px-5 sm:px-6 lg:px-8">
           {/* Text — centered, tight */}
           <div className="max-w-3xl mx-auto text-center mb-14 lg:mb-20">
             <motion.div
@@ -225,7 +225,7 @@ export default function FeatureScheduling() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08 }}
-              className="text-4xl sm:text-5xl lg:text-[3.5rem] font-bold text-foreground leading-[1.1] tracking-tight"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.5rem] font-bold text-foreground leading-[1.1] tracking-tight"
             >
               Your teaching week,{" "}
               <span className="relative">
@@ -282,8 +282,8 @@ export default function FeatureScheduling() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           SOCIAL PROOF — Metric strip
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="py-12 border-y border-border/50 bg-muted/20">
-        <div className="container mx-auto px-6 lg:px-8">
+      <section className="py-16 lg:py-20 border-y border-border/50 bg-muted/20">
+        <div className="container mx-auto px-5 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-16 lg:gap-24">
             {metrics.map((m, i) => (
               <motion.div
@@ -309,7 +309,7 @@ export default function FeatureScheduling() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_40%,hsl(var(--primary)/0.06),transparent_60%)] pointer-events-none" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_80%,hsl(var(--coral)/0.04),transparent_50%)] pointer-events-none" />
 
-        <div className="container relative mx-auto px-6 lg:px-8">
+        <div className="container relative mx-auto px-5 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
             {/* Left — editorial text */}
             <div>
@@ -371,7 +371,7 @@ export default function FeatureScheduling() {
           CAPABILITIES — Large cards with gradient left border
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="py-24 lg:py-32 bg-background">
-        <div className="container mx-auto px-6 lg:px-8">
+        <div className="container mx-auto px-5 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -421,7 +421,7 @@ export default function FeatureScheduling() {
       <section className="py-24 lg:py-32 bg-muted/30 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[150px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
 
-        <div className="container relative mx-auto px-6 lg:px-8">
+        <div className="container relative mx-auto px-5 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -474,7 +474,7 @@ export default function FeatureScheduling() {
           FAQ — Clean accordion style
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="py-24 lg:py-32 bg-background">
-        <div className="container mx-auto px-6 lg:px-8">
+        <div className="container mx-auto px-5 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-[1fr_2fr] gap-12 lg:gap-20 max-w-5xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -515,7 +515,7 @@ export default function FeatureScheduling() {
           RELATED FEATURES
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="py-20 lg:py-28 bg-muted/20 border-t border-border/50">
-        <div className="container mx-auto px-6 lg:px-8">
+        <div className="container mx-auto px-5 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -559,7 +559,7 @@ export default function FeatureScheduling() {
       <section className="relative py-28 lg:py-36 bg-ink overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_50%,hsl(var(--primary)/0.1),transparent_65%)] pointer-events-none" />
 
-        <div className="container relative mx-auto px-6 lg:px-8 text-center max-w-2xl">
+        <div className="container relative mx-auto px-5 sm:px-6 lg:px-8 text-center max-w-2xl">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}

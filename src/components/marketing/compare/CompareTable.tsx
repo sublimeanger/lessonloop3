@@ -40,8 +40,8 @@ export default function CompareTable({ competitorName, rows }: CompareTableProps
   const llWins = rows.filter(r => r.lessonloop === true && r.competitor !== true).length;
 
   return (
-    <section className="py-20 lg:py-28 bg-secondary/20">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="py-16 sm:py-20 lg:py-28 bg-secondary/20">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -79,9 +79,9 @@ export default function CompareTable({ competitorName, rows }: CompareTableProps
           viewport={{ once: true }}
           className="hidden lg:block max-w-3xl mx-auto"
         >
-          <div className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-lg">
+          <div className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-lg overflow-x-auto">
             {/* Header */}
-            <div className="grid grid-cols-3">
+            <div className="grid grid-cols-3 min-w-[480px]">
               <div className="px-6 py-5 border-b border-border/40">
                 <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Feature</p>
               </div>
@@ -99,7 +99,7 @@ export default function CompareTable({ competitorName, rows }: CompareTableProps
                 <div
                   key={row.feature}
                   className={cn(
-                    "grid grid-cols-3 border-b border-border/20 last:border-0 transition-colors",
+                    "grid grid-cols-3 min-w-[480px] border-b border-border/20 last:border-0 transition-colors",
                     index % 2 === 0 ? "bg-card" : "bg-secondary/20",
                     llBetter && "bg-[hsl(var(--emerald)/0.03)]"
                   )}
@@ -131,7 +131,7 @@ export default function CompareTable({ competitorName, rows }: CompareTableProps
               {visibleRows.map((row) => {
                 const llBetter = row.lessonloop === true && row.competitor !== true;
                 return (
-                  <div key={row.feature} className={cn("flex items-center justify-between px-5 py-3", llBetter && "bg-[hsl(var(--emerald)/0.03)]")}>
+                  <div key={row.feature} className={cn("flex items-center justify-between px-5 py-3.5 min-h-[44px]", llBetter && "bg-[hsl(var(--emerald)/0.03)]")}>
                     <span className="text-xs font-medium text-foreground flex-1 min-w-0 mr-3">{row.feature}</span>
                     <div className="flex items-center gap-4 flex-shrink-0">
                       <CellDisplay value={row.lessonloop} winner={llBetter} />
@@ -145,12 +145,12 @@ export default function CompareTable({ competitorName, rows }: CompareTableProps
             </div>
 
             {!showAll && rows.length > 10 && (
-              <button onClick={() => setShowAll(true)} className="w-full py-3 text-xs text-primary font-semibold hover:bg-primary/5 transition-colors border-t border-border/20">
+              <button onClick={() => setShowAll(true)} className="w-full py-3 min-h-[44px] text-sm text-primary font-semibold hover:bg-primary/5 transition-colors border-t border-border/20">
                 Show all {rows.length} features
               </button>
             )}
             {showAll && rows.length > 10 && (
-              <button onClick={() => setShowAll(false)} className="w-full py-3 text-xs text-muted-foreground font-semibold hover:bg-secondary/30 transition-colors border-t border-border/20">
+              <button onClick={() => setShowAll(false)} className="w-full py-3 min-h-[44px] text-sm text-muted-foreground font-semibold hover:bg-secondary/30 transition-colors border-t border-border/20">
                 Show less
               </button>
             )}

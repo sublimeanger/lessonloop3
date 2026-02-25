@@ -15,13 +15,13 @@ interface CompareWhySwitchProps {
 
 export default function CompareWhySwitch({ competitorName, reasons, migrationNote }: CompareWhySwitchProps) {
   return (
-    <section className="relative py-20 lg:py-28 bg-[hsl(var(--ink))] overflow-hidden">
+    <section className="relative py-16 sm:py-20 lg:py-28 bg-[hsl(var(--ink))] overflow-hidden">
       <motion.div
         className="absolute -top-32 -right-32 w-96 h-96 rounded-full opacity-20"
         style={{ background: "radial-gradient(circle, hsl(var(--teal)) 0%, transparent 70%)" }}
       />
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl relative z-10">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 max-w-4xl relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -45,7 +45,7 @@ export default function CompareWhySwitch({ competitorName, reasons, migrationNot
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.08 }}
-              className="flex gap-4 p-5 lg:p-6 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm hover:bg-white/[0.06] transition-colors"
+              className="flex gap-4 p-4 sm:p-5 lg:p-6 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm hover:bg-white/[0.06] transition-colors"
             >
               <div className="w-8 h-8 rounded-lg bg-[hsl(var(--emerald)/0.15)] flex items-center justify-center flex-shrink-0 mt-0.5">
                 <CheckCircle2 className="w-4 h-4 text-[hsl(var(--emerald))]" />
@@ -77,7 +77,7 @@ export default function CompareWhySwitch({ competitorName, reasons, migrationNot
         >
           <Link
             to="/signup"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
+            className="inline-flex items-center gap-2 px-6 py-3 min-h-[44px] rounded-xl bg-primary text-primary-foreground font-semibold shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
           >
             Start your free trial <ArrowRight className="w-4 h-4" />
           </Link>

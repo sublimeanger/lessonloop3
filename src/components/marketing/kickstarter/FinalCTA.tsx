@@ -62,7 +62,7 @@ export function FinalCTA() {
         style={{ background: "radial-gradient(circle, hsl(var(--coral) / 0.4) 0%, transparent 60%)", filter: "blur(80px)" }}
       />
 
-      <div className="container mx-auto px-6 lg:px-8 relative z-10">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative z-10">
         <div className="max-w-2xl mx-auto text-center">
           <motion.h2
             initial={{ opacity: 0, y: 30 }}

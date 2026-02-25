@@ -311,7 +311,7 @@ export default function FeatureLocations() {
       />
 
       {/* ═══ HERO ═══ */}
-      <section className="relative overflow-hidden bg-background pt-24 pb-20 lg:pt-32 lg:pb-28">
+      <section className="relative overflow-hidden bg-background pt-28 sm:pt-32 lg:pt-40 pb-20 lg:pb-28">
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: "radial-gradient(circle at 1px 1px, hsl(var(--foreground)) 1px, transparent 0)",
           backgroundSize: "32px 32px",
@@ -335,7 +335,7 @@ export default function FeatureLocations() {
                 <span className="text-sm font-semibold text-primary tracking-wide">Locations & Rooms</span>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-[1.1] tracking-tight">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-[1.1] tracking-tight">
                 Multiple locations,{" "}
                 <span className="bg-gradient-to-r from-[hsl(var(--teal))] to-[hsl(var(--teal-dark))] bg-clip-text text-transparent">
                   one platform

@@ -10,7 +10,7 @@ interface UseCaseTestimonialProps {
 export default function UseCaseTestimonial({ quote, author, role }: UseCaseTestimonialProps) {
   return (
     <section className="py-20 lg:py-28 bg-muted/30">
-      <div className="container mx-auto px-6 lg:px-8 max-w-3xl">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 max-w-3xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}

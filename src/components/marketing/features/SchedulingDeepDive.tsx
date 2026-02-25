@@ -51,7 +51,7 @@ export function SchedulingDeepDive() {
       {/* Subtle accent */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[1px] bg-gradient-to-r from-transparent via-teal/30 to-transparent" />
       
-      <div className="container mx-auto px-6 lg:px-8">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8">
         {/* Two-column: text left, screenshot right */}
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-8 items-center">
           {/* Left column - narrow text */}

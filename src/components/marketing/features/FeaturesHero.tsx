@@ -175,7 +175,7 @@ export function FeaturesHero({ activeCategory, onCategoryClick }: FeaturesHeroPr
 
         {/* Headline */}
         <motion.h1
-          className="text-4xl sm:text-5xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-5 lg:mb-7"
+          className="text-3xl sm:text-5xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-5 lg:mb-7"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.6 }}

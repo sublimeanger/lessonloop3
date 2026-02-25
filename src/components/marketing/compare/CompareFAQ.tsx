@@ -13,8 +13,8 @@ interface CompareFAQProps {
 
 export default function CompareFAQ({ competitorName, faqs }: CompareFAQProps) {
   return (
-    <section className="py-20 lg:py-28 bg-background">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl">
+    <section className="py-16 sm:py-20 lg:py-28 bg-background">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 max-w-3xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -39,11 +39,11 @@ export default function CompareFAQ({ competitorName, faqs }: CompareFAQProps) {
               transition={{ delay: i * 0.06 }}
               className="group border border-border/50 rounded-xl overflow-hidden"
             >
-              <summary className="flex items-center justify-between cursor-pointer p-5 text-foreground font-semibold hover:bg-secondary/30 transition-colors">
+              <summary className="flex items-center justify-between cursor-pointer p-4 sm:p-5 min-h-[44px] text-foreground font-semibold hover:bg-secondary/30 transition-colors">
                 {faq.question}
                 <ChevronRight className="w-4 h-4 text-muted-foreground group-open:rotate-90 transition-transform flex-shrink-0 ml-2" />
               </summary>
-              <div className="px-5 pb-5 text-sm text-muted-foreground leading-relaxed">
+              <div className="px-4 pb-4 sm:px-5 sm:pb-5 text-sm text-muted-foreground leading-relaxed">
                 {faq.answer}
               </div>
             </motion.details>

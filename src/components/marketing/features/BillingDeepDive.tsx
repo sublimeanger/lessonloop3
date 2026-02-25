@@ -40,7 +40,7 @@ export function BillingDeepDive() {
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-coral/10 to-transparent rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-teal/5 to-transparent rounded-full blur-3xl pointer-events-none" />
 
-      <div className="container mx-auto px-6 lg:px-8 relative">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative">
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
           {/* Left column: text */}
           <motion.div

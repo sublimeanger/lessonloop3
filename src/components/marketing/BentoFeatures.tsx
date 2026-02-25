@@ -139,7 +139,7 @@ function InvoiceDemo() {
       >
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold text-foreground">Invoice #247</span>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 font-medium">Pending</span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning font-medium">Pending</span>
         </div>
         {items.map((item, i) => (
           <div key={i} className="flex justify-between text-xs text-muted-foreground py-1">
@@ -272,7 +272,7 @@ export function BentoFeatures() {
           {/* Make-Up Matching — NEW */}
           <BentoCard>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet to-violet flex items-center justify-center">
                 <RefreshCw className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-lg font-bold text-foreground">Make-Up Matching</h3>
@@ -288,7 +288,7 @@ export function BentoFeatures() {
             <div className="flex flex-col md:flex-row md:items-center gap-6">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-coral to-coral-dark flex items-center justify-center">
                     <Users className="w-6 h-6 text-white" />
                   </div>
                   <h3 className="text-lg font-bold text-foreground">Parent Portal</h3>

@@ -66,7 +66,7 @@ export function PaymentPlansDeepDive() {
       <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-gradient-to-tl from-primary/8 to-transparent rounded-full blur-3xl pointer-events-none" />
       <div className="absolute top-0 left-0 w-[300px] h-[300px] bg-gradient-to-br from-teal/5 to-transparent rounded-full blur-3xl pointer-events-none" />
 
-      <div className="container mx-auto px-6 lg:px-8 relative">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

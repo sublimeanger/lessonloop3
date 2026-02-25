@@ -201,7 +201,7 @@ export function HeroSection() {
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-6 lg:px-8 relative z-10 pt-24 pb-12">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative z-10 pt-24 pb-12">
         <div className="max-w-5xl mx-auto text-center">
           {/* Badge */}
           <motion.div
@@ -224,13 +224,13 @@ export function HeroSection() {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-extrabold text-white leading-[1.05] tracking-tight perspective-1000"
+            className="text-4xl sm:text-6xl lg:text-7xl xl:text-8xl font-extrabold text-white leading-[1.05] tracking-tight perspective-1000"
           >
             {headlineWords.map((word, i) => (
               <motion.span
                 key={i}
                 variants={wordVariants}
-                className={`inline-block mr-4 ${word === "school" ? "text-transparent bg-clip-text bg-gradient-to-r from-teal-light via-teal to-teal-dark" : ""}`}
+                className={`inline-block mr-3 sm:mr-4 ${word === "school" ? "text-transparent bg-clip-text bg-gradient-to-r from-teal-light via-teal to-teal-dark" : ""}`}
                 style={{ transformStyle: "preserve-3d" }}
               >
                 {word}
@@ -243,7 +243,7 @@ export function HeroSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.8 }}
-            className="mt-8 text-xl sm:text-2xl text-white/60 max-w-2xl mx-auto leading-relaxed"
+            className="mt-6 sm:mt-8 text-lg sm:text-xl lg:text-2xl text-white/60 max-w-2xl mx-auto leading-relaxed"
           >
             Schedule lessons, automate invoicing, track attendance, and keep parents in the loop — all from one beautifully simple platform.
           </motion.p>
@@ -296,7 +296,7 @@ export function HeroSection() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 1.2 }}
-            className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-white/40"
+            className="mt-10 sm:mt-14 flex flex-wrap items-center justify-center gap-x-6 sm:gap-x-8 gap-y-3 sm:gap-y-4 text-white/40"
           >
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">

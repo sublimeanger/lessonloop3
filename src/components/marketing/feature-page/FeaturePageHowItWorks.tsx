@@ -16,7 +16,7 @@ interface FeaturePageHowItWorksProps {
 export default function FeaturePageHowItWorks({ eyebrow = "HOW IT WORKS", headline, subtitle, steps }: FeaturePageHowItWorksProps) {
   return (
     <section className="py-20 lg:py-28 bg-muted/30">
-      <div className="container mx-auto px-6 lg:px-8">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -24,7 +24,7 @@ export default function FeaturePageHowItWorks({ eyebrow = "HOW IT WORKS", headli
           className="text-center mb-16"
         >
           <span className="inline-block text-sm font-semibold text-primary mb-4 uppercase tracking-wide">{eyebrow}</span>
-          <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-4">{headline}</h2>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4">{headline}</h2>
           {subtitle && <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{subtitle}</p>}
         </motion.div>
 

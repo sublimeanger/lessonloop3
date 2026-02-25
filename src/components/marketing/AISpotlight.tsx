@@ -83,7 +83,7 @@ export function AISpotlight() {
                 <div>
                   <div className="text-white text-sm font-semibold">LoopAssist</div>
                   <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald" />
                     <span className="text-white/40 text-xs">Online</span>
                   </div>
                 </div>

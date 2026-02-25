@@ -10,14 +10,14 @@ const plans = [
 export function UKPricing() {
   return (
     <section className="py-24 lg:py-32">
-      <div className="container mx-auto px-6 lg:px-8">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           className="text-center max-w-3xl mx-auto mb-12"
         >
-          <h2 className="text-3xl lg:text-4xl font-bold text-foreground">
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
             Simple pricing in pounds — no surprises
           </h2>
         </motion.div>

@@ -15,12 +15,12 @@ const stats = [
   { 
     value: "24/7",
     label: "Parent portal access for families",
-    color: "from-violet-500 to-violet-600"
+    color: "from-violet to-violet"
   },
   { 
     value: "Zero",
     label: "Spreadsheets needed",
-    color: "from-emerald-500 to-emerald-600"
+    color: "from-emerald to-emerald"
   },
 ];
 
@@ -59,7 +59,7 @@ export function StatsCounter() {
         ))}
       </div>
 
-      <div className="container mx-auto px-6 lg:px-8 relative">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
           {stats.map((stat, i) => (
             <motion.div

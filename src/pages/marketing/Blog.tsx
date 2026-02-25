@@ -164,7 +164,7 @@ export default function Blog() {
   return (
     <MarketingLayout>
       {/* ═══ HERO ═══ */}
-      <section className="relative pt-24 pb-16 lg:pt-32 lg:pb-20 overflow-hidden">
+      <section className="relative pt-28 pb-16 sm:pt-32 lg:pt-40 lg:pb-20 overflow-hidden">
         {/* Dot grid */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: "radial-gradient(circle at 1px 1px, hsl(var(--foreground)) 1px, transparent 0)",
@@ -179,7 +179,7 @@ export default function Blog() {
           style={{ background: "radial-gradient(circle, hsl(var(--coral)) 0%, transparent 70%)" }}
         />
 
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
+        <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -191,7 +191,7 @@ export default function Blog() {
               Blog
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-[1.1] tracking-tight mb-6">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-[1.1] tracking-tight mb-6">
               Insights for{" "}
               <span className="bg-gradient-to-r from-[hsl(var(--teal))] to-[hsl(var(--teal-dark))] bg-clip-text text-transparent">
                 music educators
@@ -207,8 +207,8 @@ export default function Blog() {
       </section>
 
       {/* ═══ FILTERS ═══ */}
-      <section className="border-y border-border/40 bg-secondary/20 py-5 sticky top-16 z-20 backdrop-blur-xl">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="border-y border-border/40 bg-secondary/20 py-5 sticky top-20 z-20 backdrop-blur-xl">
+        <div className="container mx-auto px-5 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center gap-4 justify-between">
             <div className="flex flex-wrap gap-2 justify-center">
               {CATEGORIES.map((cat) => (
@@ -240,7 +240,7 @@ export default function Blog() {
 
       {/* ═══ POSTS ═══ */}
       <section className="py-16 lg:py-24 bg-background">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="container mx-auto px-5 sm:px-6 lg:px-8">
           {isLoading ? (
             <div className="space-y-12">
               <div className="grid lg:grid-cols-2 gap-0 rounded-3xl border border-border bg-card overflow-hidden">
@@ -303,7 +303,7 @@ export default function Blog() {
 
       {/* ═══ CTA STRIP ═══ */}
       <section className="border-t border-border/40 bg-[hsl(var(--ink))] py-16">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="container mx-auto px-5 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}

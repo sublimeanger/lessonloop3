@@ -224,7 +224,7 @@ export default function ForPerformingArts() {
       />
 
       {/* ═══ HERO ═══ */}
-      <section className="relative overflow-hidden bg-background pt-24 pb-20 lg:pt-32 lg:pb-28">
+      <section className="relative overflow-hidden bg-background pt-28 pb-20 sm:pt-32 lg:pt-40 lg:pb-28">
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: "radial-gradient(circle at 1px 1px, hsl(var(--foreground)) 1px, transparent 0)",
           backgroundSize: "32px 32px",
@@ -251,7 +251,7 @@ export default function ForPerformingArts() {
                 <span className="text-sm font-semibold text-[hsl(var(--violet))] tracking-wide">For Performing Arts Schools</span>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-[1.1] tracking-tight">
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-[1.1] tracking-tight">
                 Every discipline,{" "}
                 <span className="bg-gradient-to-r from-[hsl(var(--violet))] via-[hsl(var(--coral))] to-[hsl(var(--teal))] bg-clip-text text-transparent">
                   one stage
@@ -454,7 +454,7 @@ export default function ForPerformingArts() {
       {/* ═══ FAQ ═══ */}
       <section className="bg-background py-20 lg:py-28">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl">
-          <h2 className="text-3xl font-bold text-foreground text-center mb-12">Frequently asked questions</h2>
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground text-center mb-12">Frequently asked questions</h2>
           <div className="space-y-6">
             {FAQS.map((faq, i) => (
               <motion.details

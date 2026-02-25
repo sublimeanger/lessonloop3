@@ -35,7 +35,7 @@ export function BeforeAfter() {
         style={{ background: "radial-gradient(ellipse, hsl(var(--teal)) 0%, transparent 70%)" }}
       />
 
-      <div className="container mx-auto px-6 lg:px-8 relative">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -52,7 +52,7 @@ export function BeforeAfter() {
             <Zap className="w-3.5 h-3.5" />
             The Transformation
           </motion.span>
-          <h2 className="text-4xl lg:text-5xl font-bold text-white leading-tight">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight">
             From chaos to clarity
           </h2>
           <p className="mt-4 text-lg text-white/50 max-w-xl mx-auto">

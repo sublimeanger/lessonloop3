@@ -113,7 +113,7 @@ export function BackerTiers() {
         style={{ background: "radial-gradient(circle, hsl(var(--teal) / 0.3) 0%, transparent 70%)", filter: "blur(80px)" }}
       />
 
-      <div className="container mx-auto px-6 lg:px-8 relative z-10">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}

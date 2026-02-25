@@ -83,7 +83,7 @@ export function FeaturesSection() {
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-teal/5 to-transparent rounded-full blur-3xl" />
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-coral/5 to-transparent rounded-full blur-3xl" />
 
-      <div className="container mx-auto px-6 lg:px-8 relative">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative">
         {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
