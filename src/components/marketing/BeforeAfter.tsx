@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { X, Check, ArrowRight, Zap } from "lucide-react";
+import { X, Check, Zap, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -28,17 +28,11 @@ export function BeforeAfter() {
   const isMobile = useIsMobile();
 
   return (
-    <section className="py-24 lg:py-32 relative overflow-hidden">
-      {/* Split background — destructive-tinted left, teal-tinted right */}
-      <div className="absolute inset-0 flex">
-        <div className="w-full lg:w-1/2 bg-background" />
-        <div className="hidden lg:block w-1/2 bg-[hsl(var(--ink))]" />
-      </div>
-
-      {/* Subtle center glow */}
+    <section className="py-24 lg:py-32 bg-[hsl(var(--ink))] relative overflow-hidden">
+      {/* Ambient glow */}
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] opacity-[0.04] pointer-events-none hidden lg:block"
-        style={{ background: "radial-gradient(circle, hsl(var(--teal)) 0%, transparent 70%)", filter: "blur(100px)" }}
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] opacity-[0.06] pointer-events-none"
+        style={{ background: "radial-gradient(ellipse, hsl(var(--teal)) 0%, transparent 70%)" }}
       />
 
       <div className="container mx-auto px-6 lg:px-8 relative">
@@ -53,41 +47,36 @@ export function BeforeAfter() {
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[hsl(var(--coral)/0.1)] border border-[hsl(var(--coral)/0.15)] text-[hsl(var(--coral))] text-sm font-semibold mb-6"
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[hsl(var(--coral)/0.12)] border border-[hsl(var(--coral)/0.2)] text-[hsl(var(--coral))] text-sm font-semibold mb-6"
           >
             <Zap className="w-3.5 h-3.5" />
             The Transformation
           </motion.span>
-          <h2 className="text-4xl lg:text-5xl font-bold text-foreground leading-tight">
+          <h2 className="text-4xl lg:text-5xl font-bold text-white leading-tight">
             From chaos to clarity
           </h2>
-          <p className="mt-4 text-lg text-muted-foreground max-w-xl mx-auto">
+          <p className="mt-4 text-lg text-white/50 max-w-xl mx-auto">
             See how music educators across the UK are reclaiming their evenings.
           </p>
         </motion.div>
 
         {/* Two columns */}
-        <div className="grid lg:grid-cols-2 gap-0 max-w-6xl mx-auto">
-          {/* BEFORE — light background */}
+        <div className="grid lg:grid-cols-2 gap-6 lg:gap-8 max-w-6xl mx-auto">
+          {/* BEFORE */}
           <motion.div
             initial={{ opacity: 0, x: isMobile ? 0 : -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="relative p-8 lg:p-10 lg:pr-12"
+            className="relative p-8 lg:p-10 rounded-2xl border border-white/[0.06] bg-white/[0.03]"
           >
-            {/* Strikethrough decoration */}
-            <div className="absolute top-8 right-8 lg:right-12 w-16 h-16 opacity-[0.04] pointer-events-none">
-              <X className="w-full h-full text-destructive" strokeWidth={1} />
-            </div>
-
             <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-destructive/15 flex items-center justify-center">
                 <X className="w-5 h-5 text-destructive" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-foreground">Before LessonLoop</h3>
-                <p className="text-xs text-muted-foreground">The daily grind</p>
+                <h3 className="text-xl font-bold text-white">Before LessonLoop</h3>
+                <p className="text-xs text-white/40">The daily grind</p>
               </div>
             </div>
 
@@ -99,12 +88,12 @@ export function BeforeAfter() {
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.06, duration: 0.35 }}
-                  className="flex items-start gap-3 group"
+                  className="flex items-start gap-3"
                 >
-                  <div className="w-5 h-5 rounded-full bg-destructive/8 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <X className="w-3 h-3 text-destructive/60" />
+                  <div className="w-5 h-5 rounded-full bg-destructive/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <X className="w-3 h-3 text-destructive/70" />
                   </div>
-                  <span className="text-sm text-muted-foreground leading-relaxed line-through decoration-destructive/20 decoration-1">
+                  <span className="text-sm text-white/50 leading-relaxed line-through decoration-white/10 decoration-1">
                     {item}
                   </span>
                 </motion.div>
@@ -112,31 +101,16 @@ export function BeforeAfter() {
             </div>
           </motion.div>
 
-          {/* Mobile divider */}
-          <div className="lg:hidden">
-            <div className="relative py-6 flex items-center justify-center">
-              <div className="absolute inset-x-0 top-1/2 h-px bg-border" />
-              <motion.div
-                initial={{ scale: 0 }}
-                whileInView={{ scale: 1 }}
-                viewport={{ once: true }}
-                className="relative z-10 w-10 h-10 rounded-full bg-[hsl(var(--teal))] flex items-center justify-center shadow-lg"
-              >
-                <ArrowRight className="w-4 h-4 text-white rotate-90" />
-              </motion.div>
-            </div>
-          </div>
-
-          {/* AFTER — dark background */}
+          {/* AFTER */}
           <motion.div
             initial={{ opacity: 0, x: isMobile ? 0 : 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: isMobile ? 0 : 0.15 }}
-            className="relative p-8 lg:p-10 lg:pl-12 bg-[hsl(var(--ink))] rounded-2xl lg:rounded-none lg:rounded-r-3xl"
+            className="relative p-8 lg:p-10 rounded-2xl border border-[hsl(var(--teal)/0.15)] bg-[hsl(var(--teal)/0.04)]"
           >
             {/* Corner glow */}
-            <div className="absolute top-0 right-0 w-40 h-40 opacity-[0.08] pointer-events-none" style={{ background: "radial-gradient(circle, hsl(var(--teal)) 0%, transparent 70%)" }} />
+            <div className="absolute top-0 right-0 w-40 h-40 opacity-[0.1] pointer-events-none rounded-tr-2xl overflow-hidden" style={{ background: "radial-gradient(circle at top right, hsl(var(--teal)) 0%, transparent 70%)" }} />
 
             <div className="flex items-center gap-3 mb-8">
               <div className="w-10 h-10 rounded-xl bg-[hsl(var(--teal)/0.15)] flex items-center justify-center">
