@@ -45,6 +45,10 @@ const FeatureStudents = lazy(() => import('@/pages/marketing/features/FeatureStu
 const FeatureTeachers = lazy(() => import('@/pages/marketing/features/FeatureTeachers'));
 const FeatureAttendance = lazy(() => import('@/pages/marketing/features/FeatureAttendance'));
 const FeaturePracticeTracking = lazy(() => import('@/pages/marketing/features/FeaturePracticeTracking'));
+const FeatureMessaging = lazy(() => import('@/pages/marketing/features/FeatureMessaging'));
+const FeatureReports = lazy(() => import('@/pages/marketing/features/FeatureReports'));
+const FeatureLocations = lazy(() => import('@/pages/marketing/features/FeatureLocations'));
+const FeatureResources = lazy(() => import('@/pages/marketing/features/FeatureResources'));
 
 // ─── Lazy: Auth ──────────────────────────────────────────
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
@@ -180,6 +184,10 @@ export const marketingRoutes: RouteConfig[] = [
   { path: '/features/teachers', component: FeatureTeachers, auth: 'public', label: 'Teachers' },
   { path: '/features/attendance', component: FeatureAttendance, auth: 'public', label: 'Attendance' },
   { path: '/features/practice-tracking', component: FeaturePracticeTracking, auth: 'public', label: 'Practice Tracking' },
+  { path: '/features/messaging', component: FeatureMessaging, auth: 'public', label: 'Messaging' },
+  { path: '/features/reports', component: FeatureReports, auth: 'public', label: 'Reports' },
+  { path: '/features/locations', component: FeatureLocations, auth: 'public', label: 'Locations' },
+  { path: '/features/resources', component: FeatureResources, auth: 'public', label: 'Resources' },
 ];
 
 /** 404 route */
