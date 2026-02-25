@@ -9,8 +9,10 @@ import { LogoHorizontal } from '@/components/brand/Logo';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Lock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { PasswordStrengthIndicator, PASSWORD_MIN_LENGTH } from '@/components/auth/PasswordStrengthIndicator';
+import { usePageMeta } from '@/hooks/usePageMeta';
 
 export default function ResetPassword() {
+  usePageMeta('Reset Password | LessonLoop', 'Set a new password for your LessonLoop account');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

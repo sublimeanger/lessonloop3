@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DetailSkeleton } from '@/components/shared/LoadingState';
 import { Loader2, CheckCircle, XCircle, Music, Eye, EyeOff } from 'lucide-react';
 import { PasswordStrengthIndicator, PASSWORD_MIN_LENGTH } from '@/components/auth/PasswordStrengthIndicator';
+import { usePageMeta } from '@/hooks/usePageMeta';
 
 async function waitForProfile(userId: string): Promise<boolean> {
   for (let i = 0; i < 10; i++) {
@@ -52,6 +53,7 @@ function emailLikelyMatches(fullEmail: string, redactedEmail: string): boolean {
 }
 
 export default function AcceptInvite() {
+  usePageMeta('Accept Invite | LessonLoop', 'Accept your invitation to join a LessonLoop organisation');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, profile, refreshProfile } = useAuth();

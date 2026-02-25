@@ -112,6 +112,7 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
       <Button
         variant="ghost"
         size="icon"
+        aria-label={playing ? "Pause" : "Play"}
         className="h-11 w-11 shrink-0 sm:h-8 sm:w-8"
         onClick={togglePlay}
       >
@@ -141,6 +142,7 @@ export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
       <Button
         variant="ghost"
         size="icon"
+        aria-label={muted ? "Unmute" : "Mute"}
         className="h-11 w-11 shrink-0 sm:h-8 sm:w-8"
         onClick={() => setMuted(!muted)}
       >

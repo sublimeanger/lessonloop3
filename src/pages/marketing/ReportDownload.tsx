@@ -1,8 +1,10 @@
 import { generateCompetitiveReport } from '@/lib/generateCompetitiveReport';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 
 export default function ReportDownload() {
+  usePageMeta('Download Report | LessonLoop', 'Download the LessonLoop competitive analysis report');
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="text-center space-y-6 p-8">

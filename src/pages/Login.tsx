@@ -12,8 +12,10 @@ import { Separator } from '@/components/ui/separator';
 import { GoogleIcon } from '@/components/icons/GoogleIcon';
 import { AppleIcon } from '@/components/icons/AppleIcon';
 import { lovable } from '@/integrations/lovable';
+import { usePageMeta } from '@/hooks/usePageMeta';
 
 export default function Login() {
+  usePageMeta('Log In | LessonLoop', 'Sign in to your LessonLoop account');
   const { signIn } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('');

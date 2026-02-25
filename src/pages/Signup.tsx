@@ -14,8 +14,10 @@ import { AppleIcon } from '@/components/icons/AppleIcon';
 import { lovable } from '@/integrations/lovable';
 import { PasswordStrengthIndicator, PASSWORD_MIN_LENGTH } from '@/components/auth/PasswordStrengthIndicator';
 import { supabase } from '@/integrations/supabase/client';
+import { usePageMeta } from '@/hooks/usePageMeta';
 
 export default function Signup() {
+  usePageMeta('Sign Up | LessonLoop', 'Create your free LessonLoop account');
   const { signUp } = useAuth();
   const { toast } = useToast();
   const [fullName, setFullName] = useState('');

@@ -188,7 +188,7 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
 
           {/* Expand Button */}
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 sm:h-9 sm:w-9">
+            <Button variant="ghost" size="icon" aria-label="Toggle details" className="h-11 w-11 shrink-0 sm:h-9 sm:w-9">
               <ChevronDown className={cn(
                 "h-4 w-4 transition-transform",
                 isExpanded && "rotate-180"

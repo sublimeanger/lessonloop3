@@ -1,7 +1,9 @@
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { motion } from "framer-motion";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function Privacy() {
+  usePageMeta('Privacy Policy | LessonLoop', 'How LessonLoop collects, uses, and protects your data');
   return (
     <MarketingLayout>
       <section className="pt-32 pb-16 lg:pt-40 lg:pb-24 relative overflow-hidden">

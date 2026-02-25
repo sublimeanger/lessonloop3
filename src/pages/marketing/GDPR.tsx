@@ -1,6 +1,7 @@
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { motion } from "framer-motion";
 import { Shield, Download, Trash2, Eye, Lock, Mail } from "lucide-react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 const rights = [
   {
@@ -26,6 +27,7 @@ const rights = [
 ];
 
 export default function GDPR() {
+  usePageMeta('GDPR Compliance | LessonLoop', 'Your data rights and how LessonLoop complies with GDPR');
   return (
     <MarketingLayout>
       <section className="pt-32 pb-16 lg:pt-40 lg:pb-24 relative overflow-hidden">

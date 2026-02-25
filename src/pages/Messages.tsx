@@ -70,7 +70,7 @@ export default function Messages() {
   const [replyStudentId, setReplyStudentId] = useState<string | undefined>(undefined);
   const [messageFilters, setMessageFilters] = useState<MessageFilters>({});
 
-  const { data: messages, isLoading, hasMore, loadMore, isFetchingMore } = useMessageLog({
+  const { data: messages, isLoading, isError, hasMore, loadMore, isFetchingMore } = useMessageLog({
     channel: channelFilter === 'all' ? undefined : channelFilter,
   });
   const { data: pendingCount } = usePendingRequestsCount();
@@ -250,6 +250,10 @@ export default function Messages() {
             <ThreadedMessageList searchQuery={searchQuery} filters={messageFilters} />
           ) : isLoading ? (
             <ListSkeleton count={3} />
+          ) : isError ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <p className="text-muted-foreground">Failed to load messages. Please refresh the page.</p>
+            </div>
           ) : (
             <MessageList
               messages={filteredMessages || []}

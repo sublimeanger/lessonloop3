@@ -134,7 +134,7 @@ function InvoiceActions({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-        <Button variant="ghost" size="icon" className={cn('h-11 w-11 transition-opacity sm:h-7 sm:w-7', !alwaysVisible && 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100')}>
+        <Button variant="ghost" size="icon" aria-label="Invoice actions" className={cn('h-11 w-11 transition-opacity sm:h-7 sm:w-7', !alwaysVisible && 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100')}>
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>

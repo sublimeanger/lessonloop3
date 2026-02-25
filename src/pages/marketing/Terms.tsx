@@ -2,8 +2,10 @@ import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { TRIAL_DAYS } from "@/lib/pricing-config";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function Terms() {
+  usePageMeta('Terms of Service | LessonLoop', 'LessonLoop terms and conditions of use');
   return (
     <MarketingLayout>
       <section className="pt-32 pb-16 lg:pt-40 lg:pb-24 relative overflow-hidden">

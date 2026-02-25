@@ -8,8 +8,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { LogoHorizontal } from '@/components/brand/Logo';
 import { Separator } from '@/components/ui/separator';
+import { usePageMeta } from '@/hooks/usePageMeta';
 
 export default function VerifyEmail() {
+  usePageMeta('Verify Email | LessonLoop', 'Please verify your email address to continue');
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();

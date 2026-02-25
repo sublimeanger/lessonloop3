@@ -8,8 +8,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { LogoHorizontal } from '@/components/brand/Logo';
+import { usePageMeta } from '@/hooks/usePageMeta';
 
 export default function ForgotPassword() {
+  usePageMeta('Forgot Password | LessonLoop', 'Reset your LessonLoop password');
   const { resetPassword } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('');

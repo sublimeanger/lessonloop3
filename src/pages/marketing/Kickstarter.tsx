@@ -6,8 +6,10 @@ import { WhyKickstarter } from "@/components/marketing/kickstarter/WhyKickstarte
 import { RisksSection } from "@/components/marketing/kickstarter/RisksSection";
 import { KickstarterFAQ } from "@/components/marketing/kickstarter/KickstarterFAQ";
 import { FinalCTA } from "@/components/marketing/kickstarter/FinalCTA";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function Kickstarter() {
+  usePageMeta('Kickstarter | LessonLoop', 'Back LessonLoop on Kickstarter and get early access');
   return (
     <MarketingLayout>
       <KickstarterHero />
