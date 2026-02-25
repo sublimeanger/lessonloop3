@@ -103,12 +103,12 @@ export function useDataExport() {
       const { data, error } = await supabase
         .from('invoices')
         .select(`
-          invoice_number, status, total_minor, currency_code, due_date, issued_at,
+          invoice_number, status, total_minor, currency_code, due_date, issue_date,
           payer_guardian:guardians!invoices_payer_guardian_id_fkey(full_name),
           payer_student:students!invoices_payer_student_id_fkey(first_name, last_name)
         `)
         .eq('org_id', currentOrg.id)
-        .order('issued_at', { ascending: false });
+        .order('issue_date', { ascending: false });
 
       if (error) throw error;
       if (!data || data.length === 0) {
@@ -130,7 +130,7 @@ export function useDataExport() {
             ((inv.total_minor || 0) / 100).toFixed(2),
             inv.currency_code || '',
             inv.due_date || '',
-            inv.issued_at ? inv.issued_at.slice(0, 10) : '',
+            inv.issue_date ? inv.issue_date.slice(0, 10) : '',
             sanitiseCSVCell(payer || ''),
           ].join(','),
         );

@@ -42,20 +42,20 @@ export function useParentOnboardingProgress() {
       const hasVisitedSchedule = safeGetItem(`ll-parent-visited-schedule-${userId}`) === 'true';
       const hasViewedInvoices = safeGetItem(`ll-parent-visited-invoices-${userId}`) === 'true';
 
-      // Check practice sessions
+      // Check practice logs
       const { count: practiceCount } = await supabase
-        .from('practice_sessions')
+        .from('practice_logs')
         .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
+        .eq('logged_by_user_id', userId)
         .limit(1);
 
       const hasPracticed = (practiceCount ?? 0) > 0;
 
       // Check messages
       const { count: messageCount } = await supabase
-        .from('messages')
+        .from('internal_messages')
         .select('id', { count: 'exact', head: true })
-        .eq('sender_id', userId)
+        .eq('sender_user_id', userId)
         .limit(1);
 
       const hasSentMessage = (messageCount ?? 0) > 0;

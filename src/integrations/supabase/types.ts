@@ -1575,6 +1575,104 @@ export type Database = {
         }
         Relationships: []
       }
+      lesson_notes: {
+        Row: {
+          content_covered: string | null
+          created_at: string
+          engagement_rating: number | null
+          focus_areas: string | null
+          homework: string | null
+          id: string
+          lesson_id: string
+          org_id: string
+          parent_visible: boolean
+          student_id: string | null
+          teacher_id: string
+          teacher_private_notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          content_covered?: string | null
+          created_at?: string
+          engagement_rating?: number | null
+          focus_areas?: string | null
+          homework?: string | null
+          id?: string
+          lesson_id: string
+          org_id: string
+          parent_visible?: boolean
+          student_id?: string | null
+          teacher_id: string
+          teacher_private_notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          content_covered?: string | null
+          created_at?: string
+          engagement_rating?: number | null
+          focus_areas?: string | null
+          homework?: string | null
+          id?: string
+          lesson_id?: string
+          org_id?: string
+          parent_visible?: boolean
+          student_id?: string | null
+          teacher_id?: string
+          teacher_private_notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_notes_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_notes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_notes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_notes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_notes_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_notes_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_notes_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers_with_pay"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lesson_participants: {
         Row: {
           created_at: string
@@ -1637,6 +1735,7 @@ export type Database = {
           created_by: string
           end_at: string
           id: string
+          is_online: boolean
           is_series_exception: boolean
           lesson_type: Database["public"]["Enums"]["lesson_type"]
           location_id: string | null
@@ -1645,6 +1744,7 @@ export type Database = {
           notes_shared: string | null
           online_meeting_url: string | null
           org_id: string
+          recap_url: string | null
           recurrence_id: string | null
           room_id: string | null
           start_at: string
@@ -1662,6 +1762,7 @@ export type Database = {
           created_by: string
           end_at: string
           id?: string
+          is_online?: boolean
           is_series_exception?: boolean
           lesson_type?: Database["public"]["Enums"]["lesson_type"]
           location_id?: string | null
@@ -1670,6 +1771,7 @@ export type Database = {
           notes_shared?: string | null
           online_meeting_url?: string | null
           org_id: string
+          recap_url?: string | null
           recurrence_id?: string | null
           room_id?: string | null
           start_at: string
@@ -1687,6 +1789,7 @@ export type Database = {
           created_by?: string
           end_at?: string
           id?: string
+          is_online?: boolean
           is_series_exception?: boolean
           lesson_type?: Database["public"]["Enums"]["lesson_type"]
           location_id?: string | null
@@ -1695,6 +1798,7 @@ export type Database = {
           notes_shared?: string | null
           online_meeting_url?: string | null
           org_id?: string
+          recap_url?: string | null
           recurrence_id?: string | null
           room_id?: string | null
           start_at?: string
@@ -3306,6 +3410,63 @@ export type Database = {
           },
           {
             foreignKeyName: "recurrence_rules_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_invoice_templates: {
+        Row: {
+          active: boolean
+          auto_send: boolean
+          billing_mode: string
+          created_at: string
+          created_by: string
+          frequency: string
+          id: string
+          name: string
+          next_run_date: string | null
+          org_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          auto_send?: boolean
+          billing_mode?: string
+          created_at?: string
+          created_by: string
+          frequency?: string
+          id?: string
+          name: string
+          next_run_date?: string | null
+          org_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          auto_send?: boolean
+          billing_mode?: string
+          created_at?: string
+          created_by?: string
+          frequency?: string
+          id?: string
+          name?: string
+          next_run_date?: string | null
+          org_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_invoice_templates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_invoice_templates_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "parent_org_info"
