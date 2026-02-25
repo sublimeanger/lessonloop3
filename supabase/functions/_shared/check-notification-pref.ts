@@ -1,6 +1,4 @@
 // deno-lint-ignore-file no-explicit-any
-import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-
 export type NotifPrefKey =
   | "email_lesson_reminders"
   | "email_invoice_reminders"
@@ -13,7 +11,7 @@ export type NotifPrefKey =
  * Returns true if no preference row exists (opt-in by default).
  */
 export async function isNotificationEnabled(
-  supabase: SupabaseClient<any, any, any>,
+  supabase: any,
   orgId: string,
   userId: string,
   prefKey: NotifPrefKey

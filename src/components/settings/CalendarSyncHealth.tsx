@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { formatDistanceToNow } from 'date-fns';
-import { Activity, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Activity, Loader2 } from 'lucide-react';
 
 interface CalendarHealth {
   connection_id: string;

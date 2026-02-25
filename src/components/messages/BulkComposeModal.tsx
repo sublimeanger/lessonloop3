@@ -30,7 +30,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Send, Users, CheckCircle2, AlertTriangle, XCircle, Mail } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';

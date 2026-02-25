@@ -5,7 +5,6 @@ import {
   ChevronRight, 
   Reply,
   Loader2,
-  MessageSquare,
   Mail
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';

@@ -20,7 +20,7 @@ import {
   useInstruments, useExamBoards, useGradeLevels,
   getGradesForBoard, groupInstrumentsByCategory, getInstrumentCategoryIcon,
 } from '@/hooks/useInstruments';
-import type { Instrument, GradeLevel } from '@/hooks/useInstruments';
+// Types imported from hooks above
 import {
   useStudentInstruments, useAddStudentInstrument,
   useRemoveStudentInstrument,

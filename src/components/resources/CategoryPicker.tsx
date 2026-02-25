@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, Tag } from 'lucide-react';
-import { useResourceCategories, type ResourceCategory } from '@/hooks/useResourceCategories';
+import { useResourceCategories } from '@/hooks/useResourceCategories';
 import { cn } from '@/lib/utils';
 
 interface CategoryPickerProps {

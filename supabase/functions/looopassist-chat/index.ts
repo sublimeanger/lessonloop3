@@ -257,7 +257,7 @@ async function buildStudentContext(supabase: SupabaseClient, orgId: string, stud
   const guardianLinks = student.student_guardians || [];
   if (guardianLinks.length > 0 && userRole !== "finance") {
     context += "\n\nGuardians:";
-    guardianLinks.forEach((link: { guardians: Guardian | null; relationship: string }) => {
+    guardianLinks.forEach((link: any) => {
       if (link.guardians) {
         context += `\n  - [Guardian:${link.guardians.id}:${sanitiseForPrompt(link.guardians.full_name)}] (${link.relationship})`;
         if (userRole !== "teacher" && link.guardians.email) {
@@ -275,7 +275,7 @@ async function buildStudentContext(supabase: SupabaseClient, orgId: string, stud
 
   if (teacherAssignments && teacherAssignments.length > 0) {
     context += "\n\nAssigned Teachers:";
-    teacherAssignments.forEach((ta: { teachers: { id: string; display_name: string; instruments?: string[] | null } | null }) => {
+    teacherAssignments.forEach((ta: any) => {
       if (ta.teachers) {
         context += `\n  - ${ta.teachers.display_name}`;
         if (ta.teachers.instruments && ta.teachers.instruments.length > 0) {
@@ -294,10 +294,10 @@ async function buildStudentContext(supabase: SupabaseClient, orgId: string, stud
     .order("created_at", { ascending: true })
     .limit(15);
 
-  const upcoming = (upcomingLessons || []).filter((lp: { lessons: Lesson | null }) => lp.lessons);
+  const upcoming = (upcomingLessons || []).filter((lp: any) => lp.lessons);
   if (upcoming.length > 0) {
     context += `\n\nUpcoming Lessons (${upcoming.length}):`;
-    upcoming.forEach((lp: { lessons: Lesson }) => {
+    upcoming.forEach((lp: any) => {
       const date = new Date(lp.lessons.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
       context += `\n  - [Lesson:${lp.lessons.id}:${sanitiseForPrompt(lp.lessons.title)}] ${date}`;
       if ((lp.lessons as any).notes_shared) {
@@ -315,10 +315,10 @@ async function buildStudentContext(supabase: SupabaseClient, orgId: string, stud
     .order("created_at", { ascending: false })
     .limit(10);
 
-  const completed = (completedLessons || []).filter((lp: { lessons: Lesson | null }) => lp.lessons);
+  const completed = (completedLessons || []).filter((lp: any) => lp.lessons);
   if (completed.length > 0) {
     context += `\n\nRecent Lessons (last ${completed.length}):`;
-    completed.forEach((lp: { lessons: Lesson }) => {
+    completed.forEach((lp: any) => {
       const date = new Date(lp.lessons.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
       context += `\n  - [Lesson:${lp.lessons.id}:${sanitiseForPrompt(lp.lessons.title)}] ${date} (${lp.lessons.status})`;
       if ((lp.lessons as any).notes_shared) {
@@ -340,7 +340,7 @@ async function buildStudentContext(supabase: SupabaseClient, orgId: string, stud
 
   if (attendance && attendance.length > 0) {
     const statusCounts: Record<string, number> = {};
-    attendance.forEach((a: AttendanceRecord) => {
+    attendance.forEach((a: any) => {
       statusCounts[a.attendance_status] = (statusCounts[a.attendance_status] || 0) + 1;
     });
     context += `\n\nAttendance Summary (last ${attendance.length} records):`;

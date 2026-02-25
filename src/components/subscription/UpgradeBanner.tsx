@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Sparkles, Clock, AlertTriangle, ArrowRight, X, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSubscription } from '@/hooks/useSubscription';
-import { PLAN_NAMES } from '@/hooks/useFeatureGate';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { safeGetItem, safeSetItem } from '@/lib/storage';

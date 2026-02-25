@@ -27,7 +27,7 @@ import { useOrg } from '@/contexts/OrgContext';
 
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileWeekView } from './MobileWeekView';
-import { useDragLesson, DragLessonState } from './useDragLesson';
+import { useDragLesson } from './useDragLesson';
 import { useResizeLesson } from './useResizeLesson';
 
 import { HOUR_HEIGHT, DEFAULT_START_HOUR, DEFAULT_END_HOUR } from './calendarConstants';

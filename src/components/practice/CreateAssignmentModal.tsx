@@ -24,7 +24,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useStudentInstruments } from '@/hooks/useStudentInstruments';
-import { useGradeLevels, getGradesForBoard } from '@/hooks/useInstruments';
+import { useGradeLevels } from '@/hooks/useInstruments';
 
 interface CreateAssignmentModalProps {
   open: boolean;

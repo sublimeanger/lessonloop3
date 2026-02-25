@@ -15,7 +15,7 @@ export function WeekContextStrip({
   currentDate,
   onDayClick,
   lessonsByDay,
-  view,
+  view: _view,
 }: WeekContextStripProps) {
   const weekStartKey = format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
   const weekDays = useMemo(() => {

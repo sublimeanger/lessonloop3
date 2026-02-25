@@ -105,7 +105,6 @@ interface StreakDisplayProps {
 export function StreakDisplay({ 
   currentStreak, 
   longestStreak, 
-  lastPracticeDate,
   className 
 }: StreakDisplayProps) {
   const tier = getStreakTier(currentStreak);

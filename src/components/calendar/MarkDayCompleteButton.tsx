@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { format, startOfDay, endOfDay, isBefore } from 'date-fns';
+import { format, endOfDay, isBefore } from 'date-fns';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';

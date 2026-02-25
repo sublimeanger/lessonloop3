@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { format, addDays, eachDayOfInterval, parseISO } from 'date-fns';
+import { format, eachDayOfInterval, parseISO } from 'date-fns';
 import { getUKHolidayPresets } from '@/lib/holidayPresets';
 import { useClosureDateSettings } from '@/hooks/useClosureDateSettings';
 import { TermManagementCard } from '@/components/settings/TermManagementCard';
@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CalendarIcon, Plus, Trash2, Loader2, Upload, Calendar as CalendarIconSolid, Info, X } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Loader2, Calendar as CalendarIconSolid, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 
@@ -458,7 +458,7 @@ function MakeUpPolicySettings() {
 
 export function SchedulingSettingsTab() {
   const { currentOrg, refreshOrganisations } = useOrg();
-  const { user } = useAuth();
+  useAuth();
   const { toast } = useToast();
   const ukPresets = useMemo(() => getUKHolidayPresets(), []);
 
@@ -468,7 +468,7 @@ export function SchedulingSettingsTab() {
     isLoading,
     addClosureDates: addClosureDatesHook,
     addPreset: addPresetHook,
-    deleteClosure,
+    deleteClosure: _dc,
     deleteBulk,
     isSaving,
   } = useClosureDateSettings();

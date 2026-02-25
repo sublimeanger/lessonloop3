@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { logger } from '@/lib/logger';
 import { format, addMinutes, addDays, addWeeks, setHours, setMinutes, startOfDay, parseISO, eachDayOfInterval } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
@@ -33,7 +33,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
   const { teachers, locations, rooms, students } = useTeachersAndLocations();
   const { checkConflicts } = useConflictDetection();
   const { sendNotesNotification } = useNotesNotification();
-  const { syncLesson, syncLessons } = useCalendarSync();
+  const { syncLessons } = useCalendarSync();
   const { syncZoomMeetings } = useZoomSync();
   const { isOnline, guardOffline } = useOnlineStatus();
 

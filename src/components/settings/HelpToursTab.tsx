@@ -38,14 +38,9 @@ const tours: { name: TourName; title: string; description: string; icon: typeof 
 ];
 
 export function HelpToursTab() {
-  const { startTour, hasCompletedTour, resetTours, completedTours } = useTour();
+  const { hasCompletedTour, resetTours, completedTours } = useTour();
 
-  const handleStartTour = (tourName: TourName, path: string) => {
-    // Navigate to the page and start the tour
-    window.location.href = path;
-    // Tour will auto-trigger based on TourTrigger if not completed,
-    // or we could store a flag to force-start it
-  };
+  // Tour start is handled by TourTrigger components on each page
 
   return (
     <div className="space-y-6">
