@@ -3,146 +3,111 @@ import { Shield, Lock, Eye, FileText, Server, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const securityFeatures = [
-  {
-    icon: Shield,
-    title: "GDPR Compliant",
-    description: "Full compliance with UK and EU data protection regulations. Your data, your rights.",
-    color: "teal",
-  },
-  {
-    icon: Lock,
-    title: "Bank-Level Encryption",
-    description: "256-bit SSL encryption for all data in transit. AES-256 for data at rest.",
-    color: "coral",
-  },
-  {
-    icon: Server,
-    title: "UK Data Residency",
-    description: "All data stored in UK data centres. Never leaves the jurisdiction.",
-    color: "teal",
-  },
-  {
-    icon: Eye,
-    title: "Audit Logging",
-    description: "Complete history of who did what, when. Full transparency for compliance.",
-    color: "coral",
-  },
-  {
-    icon: Download,
-    title: "Data Export",
-    description: "Download all your data anytime. Full portability, no lock-in.",
-    color: "teal",
-  },
-  {
-    icon: FileText,
-    title: "Data Retention Controls",
-    description: "Configure retention policies. Automatic anonymisation of old records.",
-    color: "coral",
-  },
-];
-
-const certifications = [
-  { name: "GDPR", description: "UK & EU Compliant" },
-  { name: "Encryption", description: "AES-256 at rest, TLS in transit" },
-  { name: "Hosting", description: "Enterprise-grade hosting" },
+  { icon: Shield, title: "GDPR Compliant", description: "Full compliance with UK and EU data protection regulations. Your data, your rights." },
+  { icon: Lock, title: "Bank-Level Encryption", description: "256-bit SSL encryption for all data in transit. AES-256 for data at rest." },
+  { icon: Server, title: "UK Data Residency", description: "All data stored in UK data centres. Never leaves the jurisdiction." },
+  { icon: Eye, title: "Audit Logging", description: "Complete history of who did what, when. Full transparency for compliance." },
+  { icon: Download, title: "Data Export", description: "Download all your data anytime. Full portability, no lock-in." },
+  { icon: FileText, title: "Data Retention Controls", description: "Configure retention policies. Automatic anonymisation of old records." },
 ];
 
 export function SecuritySection() {
   return (
-    <section id="security" className="py-24 lg:py-32 bg-background">
-      <div className="container mx-auto px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
-          {/* Left: Content */}
+    <section id="security" className="py-24 lg:py-32 bg-background relative overflow-hidden">
+      {/* Dramatic radial gradient background */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-gradient-to-br from-teal/5 via-transparent to-primary/5 blur-3xl" />
+      </div>
+
+      <div className="container mx-auto px-6 lg:px-8 relative">
+        {/* Centered shield hero */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center max-w-3xl mx-auto mb-16"
+        >
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, scale: 0.5 }}
+            whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            className="w-20 h-20 rounded-3xl bg-gradient-to-br from-teal to-teal-dark flex items-center justify-center mx-auto mb-8 shadow-lg shadow-teal/20"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal to-teal-dark flex items-center justify-center">
-                <Shield className="w-6 h-6 text-white" />
+            <Shield className="w-10 h-10 text-white" />
+          </motion.div>
+
+          <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-4">
+            Your data is safe.{" "}
+            <span className="text-muted-foreground">We guarantee it.</span>
+          </h2>
+
+          <p className="text-lg text-muted-foreground">
+            LessonLoop is GDPR compliant and built with UK data protection 
+            at its core — from bank-level encryption to complete audit logging.
+          </p>
+        </motion.div>
+
+        {/* 3-column feature cards */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto mb-12">
+          {securityFeatures.map((feature, index) => (
+            <motion.div
+              key={feature.title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.08 }}
+              className="bg-card border border-border rounded-xl p-6 hover:border-teal/30 transition-colors text-center"
+            >
+              <div className="w-12 h-12 rounded-xl bg-teal/10 flex items-center justify-center mx-auto mb-4">
+                <feature.icon className="w-6 h-6 text-teal" />
               </div>
-              <span className="text-sm font-medium text-teal uppercase tracking-wider">
-                Security & Compliance
-              </span>
-            </div>
-
-            <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-6">
-              Your data is safe.
-              <br />
-              <span className="text-muted-foreground">We guarantee it.</span>
-            </h2>
-
-            <p className="text-lg text-muted-foreground mb-10">
-              We take security seriously. LessonLoop is GDPR compliant and built with UK data protection 
-              at its core — from bank-level encryption to complete audit logging, giving you total peace of mind.
-            </p>
-
-            {/* Certifications */}
-            <div className="flex flex-wrap gap-4 mb-8">
-              {certifications.map((cert) => (
-                <motion.div
-                  key={cert.name}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  className="flex items-center gap-3 px-4 py-3 bg-muted rounded-xl"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-success/20 flex items-center justify-center">
-                    <Shield className="w-5 h-5 text-success" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-foreground text-sm">{cert.name}</p>
-                    <p className="text-xs text-muted-foreground">{cert.description}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-
-            <p className="text-sm text-muted-foreground">
-              Questions about security? Contact our team at{" "}
-              <a href="mailto:security@lessonloop.net" className="text-primary hover:underline">
-                security@lessonloop.net
-              </a>
-            </p>
-          </motion.div>
-
-          {/* Right: Feature grid */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            <div className="grid sm:grid-cols-2 gap-4">
-              {securityFeatures.map((feature, index) => (
-                <motion.div
-                  key={feature.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                  className="bg-card border border-border rounded-xl p-5 hover:border-primary/30 transition-colors"
-                >
-                  <div className={cn(
-                    "w-10 h-10 rounded-lg flex items-center justify-center mb-3",
-                    feature.color === "teal" ? "bg-teal/10" : "bg-coral/10"
-                  )}>
-                    <feature.icon className={cn(
-                      "w-5 h-5",
-                      feature.color === "teal" ? "text-teal" : "text-coral"
-                    )} />
-                  </div>
-                  <h3 className="font-semibold text-foreground mb-1">{feature.title}</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {feature.description}
-                  </p>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
+              <h3 className="font-semibold text-foreground mb-2">{feature.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {feature.description}
+              </p>
+            </motion.div>
+          ))}
         </div>
+
+        {/* Trust badges */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="flex flex-wrap justify-center gap-6"
+        >
+          {[
+            { name: "GDPR", description: "UK & EU Compliant" },
+            { name: "Encryption", description: "AES-256 at rest, TLS in transit" },
+            { name: "Hosting", description: "Enterprise-grade hosting" },
+          ].map((cert) => (
+            <div
+              key={cert.name}
+              className="flex items-center gap-3 px-5 py-3 bg-muted rounded-full"
+            >
+              <div className="w-8 h-8 rounded-full bg-success/20 flex items-center justify-center">
+                <Shield className="w-4 h-4 text-success" />
+              </div>
+              <div>
+                <p className="font-bold text-foreground text-sm">{cert.name}</p>
+                <p className="text-xs text-muted-foreground">{cert.description}</p>
+              </div>
+            </div>
+          ))}
+        </motion.div>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="text-center mt-8 text-sm text-muted-foreground"
+        >
+          Questions about security? Contact our team at{" "}
+          <a href="mailto:security@lessonloop.net" className="text-primary hover:underline">
+            security@lessonloop.net
+          </a>
+        </motion.p>
       </div>
     </section>
   );

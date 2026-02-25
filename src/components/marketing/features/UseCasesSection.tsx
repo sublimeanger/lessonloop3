@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { User, Building2, Briefcase, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 const useCases = [
   {
@@ -48,6 +49,9 @@ const useCases = [
 ];
 
 export function UseCasesSection() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const active = useCases[activeIndex];
+
   return (
     <section className="py-24 lg:py-32 bg-muted/30">
       <div className="container mx-auto px-6 lg:px-8">
@@ -55,7 +59,7 @@ export function UseCasesSection() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-16"
+          className="text-center mb-12"
         >
           <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
             Built for You
@@ -70,63 +74,82 @@ export function UseCasesSection() {
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {useCases.map((useCase, index) => (
-            <motion.div
-              key={useCase.title}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.15 }}
-              className="bg-card border border-border rounded-2xl p-6 hover:border-primary/30 transition-colors"
+        {/* Tab selector */}
+        <div className="flex justify-center gap-2 mb-10">
+          {useCases.map((uc, index) => (
+            <button
+              key={uc.title}
+              onClick={() => setActiveIndex(index)}
+              className={cn(
+                "flex items-center gap-2 px-5 py-3 rounded-full text-sm font-medium transition-all border",
+                activeIndex === index
+                  ? "bg-primary text-primary-foreground border-primary shadow-lg"
+                  : "bg-card text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+              )}
             >
-              {/* Header */}
-              <div className="flex items-start gap-4 mb-6">
+              <uc.icon className="w-4 h-4" />
+              {uc.title}
+            </button>
+          ))}
+        </div>
+
+        {/* Active use case — horizontal card */}
+        <motion.div
+          key={activeIndex}
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="max-w-4xl mx-auto"
+        >
+          <div className="bg-card border border-border rounded-2xl p-8 lg:p-10">
+            <div className="lg:flex lg:gap-10">
+              {/* Left: info */}
+              <div className="lg:w-1/2 mb-8 lg:mb-0">
                 <div className={cn(
-                  "w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0",
-                  useCase.color === "teal" && "bg-gradient-to-br from-teal to-teal-dark",
-                  useCase.color === "coral" && "bg-gradient-to-br from-coral to-coral-dark",
-                  useCase.color === "primary" && "bg-gradient-to-br from-primary to-primary/80"
+                  "w-14 h-14 rounded-2xl flex items-center justify-center mb-4",
+                  active.color === "teal" && "bg-gradient-to-br from-teal to-teal-dark",
+                  active.color === "coral" && "bg-gradient-to-br from-coral to-coral-dark",
+                  active.color === "primary" && "bg-gradient-to-br from-primary to-primary/80"
                 )}>
-                  <useCase.icon className="w-7 h-7 text-white" />
+                  <active.icon className="w-7 h-7 text-white" />
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-foreground">{useCase.title}</h3>
-                  <p className="text-sm text-muted-foreground">{useCase.subtitle}</p>
+                <h3 className="text-2xl font-bold text-foreground mb-1">{active.title}</h3>
+                <p className="text-muted-foreground mb-6">{active.subtitle}</p>
+                <div className="bg-muted/50 rounded-xl p-4">
+                  <p className="text-sm font-medium text-foreground leading-relaxed">{active.benefit}</p>
                 </div>
               </div>
 
-              {/* Features */}
-              <div className="space-y-3 mb-6">
-                {useCase.features.map((feature) => (
-                  <div key={feature} className="flex items-center gap-3">
+              {/* Right: features */}
+              <div className="lg:w-1/2 space-y-3">
+                {active.features.map((feature, i) => (
+                  <motion.div
+                    key={feature}
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.06 }}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                  >
                     <div className={cn(
-                      "w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0",
-                      useCase.color === "teal" && "bg-teal/20",
-                      useCase.color === "coral" && "bg-coral/20",
-                      useCase.color === "primary" && "bg-primary/20"
+                      "w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0",
+                      active.color === "teal" && "bg-teal/20",
+                      active.color === "coral" && "bg-coral/20",
+                      active.color === "primary" && "bg-primary/20"
                     )}>
                       <ArrowRight className={cn(
                         "w-3 h-3",
-                        useCase.color === "teal" && "text-teal",
-                        useCase.color === "coral" && "text-coral",
-                        useCase.color === "primary" && "text-primary"
+                        active.color === "teal" && "text-teal",
+                        active.color === "coral" && "text-coral",
+                        active.color === "primary" && "text-primary"
                       )} />
                     </div>
-                    <span className="text-sm text-foreground">{feature}</span>
-                  </div>
+                    <span className="text-foreground text-sm">{feature}</span>
+                  </motion.div>
                 ))}
               </div>
-
-              {/* Key benefit */}
-              <div className="bg-muted/50 rounded-xl p-4">
-                <p className="text-sm font-medium text-foreground">
-                  {useCase.benefit}
-                </p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
