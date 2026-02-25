@@ -54,6 +54,11 @@ const VsTeachworks = lazy(() => import('@/pages/marketing/compare/VsTeachworks')
 const VsOpus1 = lazy(() => import('@/pages/marketing/compare/VsOpus1'));
 const VsJackrabbitMusic = lazy(() => import('@/pages/marketing/compare/VsJackrabbitMusic'));
 const VsFons = lazy(() => import('@/pages/marketing/compare/VsFons'));
+const ForMusicAcademies = lazy(() => import('@/pages/marketing/use-cases/ForMusicAcademies'));
+const ForSoloTeachers = lazy(() => import('@/pages/marketing/use-cases/ForSoloTeachers'));
+const ForPianoSchools = lazy(() => import('@/pages/marketing/use-cases/ForPianoSchools'));
+const ForGuitarSchools = lazy(() => import('@/pages/marketing/use-cases/ForGuitarSchools'));
+const ForPerformingArts = lazy(() => import('@/pages/marketing/use-cases/ForPerformingArts'));
 
 // ─── Lazy: Auth ──────────────────────────────────────────
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
@@ -198,6 +203,11 @@ export const marketingRoutes: RouteConfig[] = [
   { path: '/compare/lessonloop-vs-opus1', component: VsOpus1, auth: 'public', label: 'vs Opus 1' },
   { path: '/compare/lessonloop-vs-jackrabbit-music', component: VsJackrabbitMusic, auth: 'public', label: 'vs Jackrabbit Music' },
   { path: '/compare/lessonloop-vs-fons', component: VsFons, auth: 'public', label: 'vs Fons' },
+  { path: '/for/music-academies', component: ForMusicAcademies, auth: 'public', label: 'Music Academies' },
+  { path: '/for/solo-teachers', component: ForSoloTeachers, auth: 'public', label: 'Solo Teachers' },
+  { path: '/for/piano-schools', component: ForPianoSchools, auth: 'public', label: 'Piano Schools' },
+  { path: '/for/guitar-schools', component: ForGuitarSchools, auth: 'public', label: 'Guitar Schools' },
+  { path: '/for/performing-arts', component: ForPerformingArts, auth: 'public', label: 'Performing Arts' },
 ];
 
 /** 404 route */
