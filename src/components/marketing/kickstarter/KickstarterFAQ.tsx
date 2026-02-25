@@ -1,4 +1,6 @@
 import { motion } from "framer-motion";
+import { HelpCircle, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
   Accordion,
   AccordionContent,
@@ -37,21 +39,31 @@ const faqs = [
   },
   {
     q: "Do I need to pay for shipping?",
-    a: "No! All rewards are digital — software licenses, badges, and access. There's nothing to ship, so there are no shipping costs anywhere in the world.",
+    a: "No! All rewards are digital — software licences, badges, and access. There's nothing to ship, so there are no shipping costs anywhere in the world.",
   },
 ];
 
 export function KickstarterFAQ() {
   return (
-    <section className="py-24 lg:py-32 bg-background">
-      <div className="container mx-auto px-6 lg:px-8">
+    <section className="py-24 lg:py-32 bg-background relative overflow-hidden">
+      {/* Dot grid */}
+      <div className="absolute inset-0 opacity-[0.02]" style={{
+        backgroundImage: "radial-gradient(circle at 1px 1px, hsl(var(--foreground)) 1px, transparent 0)",
+        backgroundSize: "32px 32px",
+      }} />
+
+      <div className="container mx-auto px-6 lg:px-8 relative">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-16"
+          className="text-center mb-14"
         >
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-semibold mb-6">
+            <HelpCircle className="w-4 h-4" />
+            FAQ
+          </div>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4">
             Frequently Asked Questions
           </h2>
         </motion.div>
@@ -67,9 +79,9 @@ export function KickstarterFAQ() {
               <AccordionItem
                 key={i}
                 value={`faq-${i}`}
-                className="bg-card border border-border rounded-xl px-6 data-[state=open]:shadow-md transition-shadow"
+                className="bg-card border border-border/60 rounded-xl px-6 data-[state=open]:shadow-lg data-[state=open]:border-primary/20 transition-all"
               >
-                <AccordionTrigger className="text-left font-semibold text-foreground hover:no-underline py-5">
+                <AccordionTrigger className="text-left font-semibold text-foreground hover:no-underline py-5 [&[data-state=open]>svg]:rotate-180">
                   {faq.q}
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground leading-relaxed pb-5">
@@ -78,6 +90,26 @@ export function KickstarterFAQ() {
               </AccordionItem>
             ))}
           </Accordion>
+        </motion.div>
+
+        {/* Cross-links */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="flex flex-wrap items-center justify-center gap-6 mt-12 text-sm"
+        >
+          <Link to="/pricing" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">
+            View plans and pricing <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+          <span className="w-px h-4 bg-border hidden sm:block" />
+          <Link to="/features" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">
+            Explore all features <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+          <span className="w-px h-4 bg-border hidden sm:block" />
+          <Link to="/contact" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">
+            Contact us <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </motion.div>
       </div>
     </section>

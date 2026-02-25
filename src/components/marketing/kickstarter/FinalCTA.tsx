@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { CountdownTimer } from "./CountdownTimer";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Shield, Users, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export function FinalCTA() {
   const [email, setEmail] = useState("");
@@ -45,12 +46,20 @@ export function FinalCTA() {
 
   return (
     <section className="py-24 lg:py-32 relative overflow-hidden">
-      <div className="absolute inset-0 bg-ink" />
+      <div className="absolute inset-0 bg-[hsl(var(--ink))]" />
+
+      {/* Animated glows */}
       <motion.div
         animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
         transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] opacity-30"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] opacity-25"
         style={{ background: "radial-gradient(circle, hsl(var(--teal) / 0.3) 0%, transparent 60%)", filter: "blur(100px)" }}
+      />
+      <motion.div
+        animate={{ scale: [1.2, 1, 1.2] }}
+        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+        className="absolute top-0 right-0 w-[500px] h-[500px] opacity-15"
+        style={{ background: "radial-gradient(circle, hsl(var(--coral) / 0.4) 0%, transparent 60%)", filter: "blur(80px)" }}
       />
 
       <div className="container mx-auto px-6 lg:px-8 relative z-10">
@@ -68,7 +77,7 @@ export function FinalCTA() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="text-lg text-white/60 mb-10"
+            className="text-lg text-white/50 mb-10"
           >
             Join the waiting list and we'll email you the moment the campaign goes live.
           </motion.p>
@@ -89,26 +98,73 @@ export function FinalCTA() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
-            className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto"
+            className="max-w-md mx-auto"
           >
-            <input type="text" name="website" value={honeypot} onChange={e => setHoneypot(e.target.value)} style={{ position: 'absolute', left: '-9999px' }} tabIndex={-1} autoComplete="off" aria-hidden="true" />
-            <Input
-              type="email"
-              placeholder="Your email address"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="bg-white/10 border-white/20 text-white placeholder:text-white/40 h-12"
-            />
-            <Button
-              type="submit"
-              disabled={loading}
-              className="bg-gradient-to-r from-coral to-coral-dark text-white hover:from-coral-dark hover:to-coral font-bold h-12 px-6 shrink-0"
-            >
-              {loading ? "…" : "Notify Me"}
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
+            <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-2xl p-5">
+              <input type="text" name="website" value={honeypot} onChange={e => setHoneypot(e.target.value)} style={{ position: 'absolute', left: '-9999px' }} tabIndex={-1} autoComplete="off" aria-hidden="true" />
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Input
+                  type="email"
+                  placeholder="Your email address"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40 h-12"
+                />
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-gradient-to-r from-[hsl(var(--coral))] to-[hsl(var(--coral-dark))] text-white hover:from-[hsl(var(--coral-dark))] hover:to-[hsl(var(--coral))] font-bold h-12 px-6 shrink-0"
+                >
+                  {loading ? "…" : "Notify Me"}
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
           </motion.form>
+
+          {/* Trust badges */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4 }}
+            className="mt-8 flex flex-wrap items-center justify-center gap-5 text-white/30 text-xs"
+          >
+            <div className="flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5" />
+              <span>No spam, ever</span>
+            </div>
+            <div className="w-px h-4 bg-white/10 hidden sm:block" />
+            <div className="flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5" />
+              <span>Join fellow educators</span>
+            </div>
+            <div className="w-px h-4 bg-white/10 hidden sm:block" />
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Exclusive early access</span>
+            </div>
+          </motion.div>
+
+          {/* Cross-links */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.5 }}
+            className="mt-10 flex flex-wrap justify-center gap-4 text-sm"
+          >
+            <Link to="/features/scheduling" className="text-white/40 hover:text-white/70 transition-colors">
+              Music lesson scheduling →
+            </Link>
+            <Link to="/features/billing" className="text-white/40 hover:text-white/70 transition-colors">
+              Automated billing →
+            </Link>
+            <Link to="/uk" className="text-white/40 hover:text-white/70 transition-colors">
+              Built for UK music schools →
+            </Link>
+          </motion.div>
         </div>
       </div>
     </section>
