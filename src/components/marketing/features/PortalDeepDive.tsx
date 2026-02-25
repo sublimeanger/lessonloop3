@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { 
   Users, 
   Calendar, 
@@ -72,9 +73,9 @@ export function PortalDeepDive() {
             </h2>
 
             <p className="text-lg text-muted-foreground mb-10">
-              Give parents a beautiful, branded portal where they can view schedules, 
-              pay invoices, track practice, and communicate with teachers. 
-              No more chasing payments or answering "what time is the lesson?"
+              Give parents a beautiful, branded parent portal where they can view lesson schedules, 
+              make online payments, track practice with streak gamification, read lesson notes from teachers, 
+              and access shared resources. No more chasing payments or answering "what time is the lesson?"
             </p>
 
             <div className="grid sm:grid-cols-2 gap-4 mb-8">
@@ -117,6 +118,10 @@ export function PortalDeepDive() {
                 need — schedules, invoices, practice logs — so teachers can focus on teaching.
               </p>
             </motion.div>
+
+            <Link to="/features/parent-portal" className="inline-flex items-center gap-1.5 mt-8 text-sm font-semibold text-primary hover:gap-2.5 transition-all">
+              Explore the parent portal <span>→</span>
+            </Link>
           </motion.div>
 
           {/* Right: Real Screenshot */}

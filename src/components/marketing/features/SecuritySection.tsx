@@ -75,8 +75,8 @@ export function SecuritySection() {
             </h2>
 
             <p className="text-lg text-muted-foreground mb-10">
-              We take security seriously. From encryption to compliance, 
-              LessonLoop is built to protect your data and give you peace of mind.
+              We take security seriously. LessonLoop is GDPR compliant and built with UK data protection 
+              at its core — from bank-level encryption to complete audit logging, giving you total peace of mind.
             </p>
 
             {/* Certifications */}

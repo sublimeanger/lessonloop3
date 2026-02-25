@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { 
   Receipt, 
   CreditCard, 
@@ -215,8 +216,9 @@ export function BillingDeepDive() {
 
             <p className="text-lg text-muted-foreground mb-10">
               Turn teaching hours into revenue without the admin headache. 
-              Generate invoices in bulk, accept online payments, and let 
-              automatic reminders do the chasing for you.
+              LessonLoop's music school billing software generates invoices in bulk, 
+              accepts online Stripe payments, calculates UK VAT automatically, and sends 
+              automatic payment reminders — so you never have to chase a parent again.
             </p>
 
             <div className="grid sm:grid-cols-2 gap-4">
@@ -243,6 +245,10 @@ export function BillingDeepDive() {
                 </motion.div>
               ))}
             </div>
+
+            <Link to="/features/billing" className="inline-flex items-center gap-1.5 mt-8 text-sm font-semibold text-primary hover:gap-2.5 transition-all">
+              Explore billing features <span>→</span>
+            </Link>
           </motion.div>
         </div>
       </div>

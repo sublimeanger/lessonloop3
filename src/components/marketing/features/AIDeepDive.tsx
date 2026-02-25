@@ -1,4 +1,5 @@
 import { motion, useInView } from "framer-motion";
+import { Link } from "react-router-dom";
 import { 
   Sparkles, 
   Zap, 
@@ -258,9 +259,9 @@ export function AIDeepDive() {
             </h2>
 
             <p className="text-lg text-muted-foreground mb-10">
-              Ask questions about your business in plain English. Get instant answers, 
-              generate reports, draft messages, and execute actions—all from a simple chat interface. 
-              LoopAssist understands your data and helps you work smarter.
+              Ask questions about your music school in natural language. Get instant answers, 
+              generate reports, draft messages, and execute actions — all from a simple chat interface. 
+              LoopAssist is the AI assistant built into every LessonLoop plan, helping you work smarter.
             </p>
 
             <div className="grid sm:grid-cols-2 gap-4 mb-8">
@@ -306,6 +307,10 @@ export function AIDeepDive() {
                 ))}
               </div>
             </div>
+
+            <Link to="/features/loopassist" className="inline-flex items-center gap-1.5 mt-8 text-sm font-semibold text-primary hover:gap-2.5 transition-all">
+              Explore LoopAssist <span>→</span>
+            </Link>
           </motion.div>
         </div>
       </div>

@@ -15,7 +15,7 @@ const useCases = [
       "Practice tracking with streaks",
       "LoopAssist for quick answers",
     ],
-    benefit: "Set up billing once, and invoices generate themselves every term.",
+    benefit: "The ideal private music teacher software — set up billing once, and invoices generate themselves every term.",
   },
   {
     icon: Building2,
@@ -29,7 +29,7 @@ const useCases = [
       "Payroll reports by teacher",
       "Team permissions and roles",
     ],
-    benefit: "See every teacher's schedule, room booking, and payroll in one place.",
+    benefit: "The complete music academy management software — see every teacher's schedule, room booking, and payroll in one place.",
   },
   {
     icon: Briefcase,
@@ -43,7 +43,7 @@ const useCases = [
       "Comprehensive reporting",
       "White-label parent portal",
     ],
-    benefit: "Track every placement, teacher, and school from a single dashboard.",
+    benefit: "Purpose-built peripatetic music teacher scheduling — track every placement, teacher, and school from a single dashboard.",
   },
 ];
 
