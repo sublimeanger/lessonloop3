@@ -3365,6 +3365,71 @@ export type Database = {
           },
         ]
       }
+      payment_notifications: {
+        Row: {
+          amount_minor: number
+          created_at: string | null
+          id: string
+          invoice_id: string
+          invoice_number: string
+          org_id: string
+          payer_name: string
+          payment_id: string | null
+          read: boolean | null
+        }
+        Insert: {
+          amount_minor: number
+          created_at?: string | null
+          id?: string
+          invoice_id: string
+          invoice_number: string
+          org_id: string
+          payer_name: string
+          payment_id?: string | null
+          read?: boolean | null
+        }
+        Update: {
+          amount_minor?: number
+          created_at?: string | null
+          id?: string
+          invoice_id?: string
+          invoice_number?: string
+          org_id?: string
+          payer_name?: string
+          payment_id?: string | null
+          read?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_notifications_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_notifications_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_notifications_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_notifications_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount_minor: number
