@@ -63,11 +63,10 @@ export function EnterpriseCTA() {
               </h2>
               
               <p className="text-lg text-white/70 mb-8">
-                For large academies, agencies, and multi-location organisations, 
-                we offer tailored solutions with dedicated support, custom integrations, 
-                and enterprise-grade security.
+                For large music academies, peripatetic agencies, and multi-location music schools, 
+                we offer tailored solutions with a dedicated account manager, custom integrations, 
+                API access, and enterprise-grade security.
               </p>
-              
               <div className="flex flex-wrap gap-4">
                 <Link to="/contact">
                   <Button 
@@ -85,6 +84,9 @@ export function EnterpriseCTA() {
                   >
                     Book a Demo
                   </Button>
+                </Link>
+                <Link to="/features" className="inline-flex items-center gap-1.5 mt-4 text-sm font-semibold text-white/70 hover:text-white hover:gap-2.5 transition-all">
+                  See all features <span>→</span>
                 </Link>
               </div>
             </motion.div>

@@ -88,8 +88,7 @@ export function PricingHero({ isAnnual, onToggle }: PricingHeroProps) {
             transition={{ delay: 0.3, duration: 0.6 }}
             className="text-lg lg:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
           >
-            Start free for 30 days. No credit card required.
-            Cancel anytime, no hidden fees.
+            Music school software pricing that's simple and transparent. Start free for 30 days — no credit card required, no hidden fees, cancel anytime.
           </motion.p>
           
           {/* Billing toggle */}

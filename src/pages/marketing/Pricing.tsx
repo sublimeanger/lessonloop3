@@ -2,6 +2,7 @@ import { useState } from "react";
 import { User, Building2, Crown, Sparkles } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
+import { PricingSchema } from "@/components/marketing/pricing/PricingSchema";
 import { PricingHero } from "@/components/marketing/pricing/PricingHero";
 import { PricingCard } from "@/components/marketing/pricing/PricingCard";
 import { PricingProof } from "@/components/marketing/pricing/PricingProof";
@@ -46,11 +47,27 @@ const plans = PLAN_ORDER.map((key) => {
 });
 
 export default function Pricing() {
-  usePageMeta("Pricing — LessonLoop", "Simple pricing for solo teachers, studios & academies. Start free, no credit card required.");
+  usePageMeta(
+    "Pricing — Plans for Solo Teachers to Academies | LessonLoop",
+    "From £12/month for solo teachers to custom enterprise plans. All plans include LoopAssist AI, parent portal, and a 30-day free trial. No credit card required. Built for UK music schools.",
+    {
+      ogTitle: "Pricing — LessonLoop Music School Software",
+      ogDescription: "From £12/month for solo teachers to custom enterprise plans. LoopAssist AI included on every plan. 30-day free trial, no credit card required.",
+      ogType: "website",
+      ogUrl: "https://lessonloop.co.uk/pricing",
+      ogImage: "https://lessonloop.co.uk/og-pricing.png",
+      ogLocale: "en_GB",
+      ogSiteName: "LessonLoop",
+      twitterCard: "summary_large_image",
+      canonical: "https://lessonloop.co.uk/pricing",
+      robots: "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+    }
+  );
   const [isAnnual, setIsAnnual] = useState(false);
 
   return (
     <MarketingLayout>
+      <PricingSchema />
       {/* Hero with billing toggle */}
       <PricingHero isAnnual={isAnnual} onToggle={setIsAnnual} />
 
