@@ -35,6 +35,7 @@ const Terms = lazy(() => import('@/pages/marketing/Terms'));
 const GDPR = lazy(() => import('@/pages/marketing/GDPR'));
 const Cookies = lazy(() => import('@/pages/marketing/Cookies'));
 const Kickstarter = lazy(() => import('@/pages/marketing/Kickstarter'));
+const ZoomGuide = lazy(() => import('@/pages/marketing/ZoomGuide'));
 
 // ─── Lazy: Auth ──────────────────────────────────────────
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
@@ -149,6 +150,7 @@ export const marketingRoutes: RouteConfig[] = [
   { path: '/cookies', component: Cookies, auth: 'public', label: 'Cookie Policy' },
   { path: '/kickstarter', component: Kickstarter, auth: 'public', label: 'Kickstarter' },
   { path: '/report', component: ReportDownload, auth: 'public', label: 'Report' },
+  { path: '/integrations/zoom', component: ZoomGuide, auth: 'public', label: 'Zoom Guide' },
   { path: '/reset-password', component: ResetPassword, auth: 'public', label: 'Reset Password' },
 ];
 
