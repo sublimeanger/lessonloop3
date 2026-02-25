@@ -2,12 +2,12 @@ import { motion } from "framer-motion";
 import { PoundSterling, Receipt, Calendar, CalendarOff, Shield, Clock } from "lucide-react";
 
 const ukFeatures = [
-  { icon: PoundSterling, title: "GBP & Pence", desc: "No currency conversion headaches. Everything in pounds and pence." },
-  { icon: Receipt, title: "UK VAT", desc: "Calculated and displayed automatically on every invoice." },
-  { icon: Calendar, title: "Term Dates", desc: "Configure your own term structure. Lessons auto-skip breaks." },
-  { icon: CalendarOff, title: "Bank Holidays", desc: "UK public holidays built in. No manual blocking." },
-  { icon: Shield, title: "GDPR Compliant", desc: "UK data protection by design. Your data stays in the UK." },
-  { icon: Clock, title: "UK Time Zone", desc: "No confusing UTC offsets. Everything runs on London time." },
+  { icon: PoundSterling, title: "GBP & Pence", desc: "Everything in pounds and pence — no currency conversions." },
+  { icon: Receipt, title: "UK VAT", desc: "Auto-calculated on every invoice, HMRC-ready." },
+  { icon: Calendar, title: "Term Dates", desc: "Your term structure, auto-skipping breaks." },
+  { icon: CalendarOff, title: "Bank Holidays", desc: "UK public holidays built in from day one." },
+  { icon: Shield, title: "GDPR Compliant", desc: "UK data protection by design." },
+  { icon: Clock, title: "UK Time Zone", desc: "London time, always — no UTC confusion." },
 ];
 
 export function UKDifferentiator() {
@@ -59,8 +59,8 @@ export function UKDifferentiator() {
           className="max-w-2xl mx-auto mt-12 text-center"
         >
           <p className="text-lg italic text-muted-foreground leading-relaxed">
-            "Most music school software is built in North America and retrofitted for the UK.
-            LessonLoop was built here, for here."
+            "I spent years using American software that didn't understand terms, VAT, or bank holidays.
+            So I built something that does."
           </p>
           <footer className="mt-4 text-sm text-muted-foreground">
             — Lauren Twilley, Founder
