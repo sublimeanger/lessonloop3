@@ -3,9 +3,32 @@ import { motion } from "framer-motion";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function Privacy() {
-  usePageMeta('Privacy Policy | LessonLoop', 'How LessonLoop collects, uses, and protects your data');
+  usePageMeta(
+    'Privacy Policy — How LessonLoop Protects Your Data | UK GDPR Compliant',
+    'Read LessonLoop\'s privacy policy. Learn how we collect, use, and protect your personal data in compliance with UK GDPR and the Data Protection Act 2018.',
+    {
+      canonical: "https://lessonloop.co.uk/privacy",
+      ogTitle: "Privacy Policy | LessonLoop",
+      ogDescription: "How LessonLoop collects, uses, and protects your data. UK GDPR compliant.",
+      ogType: "website",
+      ogUrl: "https://lessonloop.co.uk/privacy",
+      ogSiteName: "LessonLoop",
+      robots: "index, follow, noarchive",
+    }
+  );
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://lessonloop.co.uk/" },
+      { "@type": "ListItem", position: 2, name: "Privacy Policy", item: "https://lessonloop.co.uk/privacy" },
+    ],
+  };
+
   return (
     <MarketingLayout>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       <section className="pt-32 pb-16 lg:pt-40 lg:pb-24 relative overflow-hidden">
         <div className="absolute inset-0 gradient-hero-light" />
         
