@@ -150,7 +150,7 @@ export const marketingRoutes: RouteConfig[] = [
   { path: '/cookies', component: Cookies, auth: 'public', label: 'Cookie Policy' },
   { path: '/kickstarter', component: Kickstarter, auth: 'public', label: 'Kickstarter' },
   { path: '/report', component: ReportDownload, auth: 'public', label: 'Report' },
-  { path: '/integrations/zoom', component: ZoomGuide, auth: 'public', label: 'Zoom Guide' },
+  { path: '/zoom-integration', component: ZoomGuide, auth: 'public', label: 'Zoom Guide' },
   { path: '/reset-password', component: ResetPassword, auth: 'public', label: 'Reset Password' },
 ];
 
