@@ -9,12 +9,22 @@ export function HomepageSchema() {
     description:
       "Music school management software for UK academies. Scheduling, billing, parent portal, attendance tracking, practice logs, and AI-powered insights.",
     url: "https://lessonloop.co.uk",
+    screenshot: "https://lessonloop.co.uk/og-home.png",
     offers: {
       "@type": "AggregateOffer",
       lowPrice: "0",
       highPrice: "79",
       priceCurrency: "GBP",
       offerCount: "3",
+      offers: [
+        {
+          "@type": "Offer",
+          name: "Free Trial",
+          price: "0",
+          priceCurrency: "GBP",
+          description: "30-day free trial with no credit card required",
+        },
+      ],
     },
     featureList: [
       "Drag-and-Drop Lesson Scheduling",
@@ -62,6 +72,7 @@ export function HomepageSchema() {
       availableLanguage: "English",
       url: "https://lessonloop.co.uk/contact",
     },
+    sameAs: [],
   };
 
   const faqPage = {

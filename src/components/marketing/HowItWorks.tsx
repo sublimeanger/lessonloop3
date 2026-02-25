@@ -132,7 +132,7 @@ export function HowItWorks() {
           className="mt-20 text-center"
         >
           <p className="text-muted-foreground mb-4">
-            Ready to simplify your teaching practice?
+            Ready to simplify your teaching admin?
           </p>
           <motion.a
             href="/signup"

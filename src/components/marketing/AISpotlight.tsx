@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { Sparkles, Shield, Lock, Bot } from "lucide-react";
+import { Sparkles, Shield, Lock, Bot, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const chatMessages = [
   { role: "user" as const, text: "Who has overdue invoices?" },
@@ -60,7 +61,7 @@ export function AISpotlight() {
             <span className="text-white/60">Your AI co-pilot.</span>
           </h2>
           <p className="text-lg text-white/60 max-w-2xl mx-auto">
-            Ask questions in plain English. Get instant answers about your schedule, finances, and students. Then let it take action — with your approval.
+            Ask questions about your school in plain English. LoopAssist analyses your data and takes action — with your permission. Included on every plan at no extra cost.
           </p>
         </motion.div>
 
@@ -189,15 +190,23 @@ export function AISpotlight() {
         </div>
 
         {/* Bottom statement */}
-        <motion.p
+        <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.5 }}
-          className="text-center text-white/40 text-sm mt-16"
+          className="text-center mt-16 space-y-3"
         >
-          LoopAssist is built into every LessonLoop plan at no extra cost.
-        </motion.p>
+          <p className="text-white/40 text-sm">
+            LoopAssist is built into every LessonLoop plan at no extra cost.
+          </p>
+          <Link
+            to="/features/loopassist"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-teal-light hover:gap-2.5 transition-all"
+          >
+            Explore LoopAssist <ArrowRight className="w-4 h-4" />
+          </Link>
+        </motion.div>
       </div>
     </section>
   );
