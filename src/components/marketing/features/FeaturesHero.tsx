@@ -207,8 +207,8 @@ export function FeaturesHero({ activeCategory, onCategoryClick }: FeaturesHeroPr
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.6 }}
         >
-          Purpose-built for music educators. From scheduling your first lesson
-          to managing a multi-location academy, we've got you covered.
+          Purpose-built music school management software. From scheduling your first lesson
+          to managing a multi-location academy with automated invoicing and an AI assistant — everything in one platform.
         </motion.p>
 
         {/* Stats */}

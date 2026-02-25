@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { 
   Calendar, 
   Repeat, 
@@ -71,9 +72,9 @@ export function SchedulingDeepDive() {
             </h2>
 
             <p className="text-lg text-muted-foreground mb-10">
-              Stop juggling spreadsheets and paper diaries. Our calendar is built 
-              specifically for music teachers, with every feature you need to manage 
-              a busy teaching schedule.
+              Stop juggling spreadsheets and paper diaries. LessonLoop's music lesson 
+              scheduling software is built specifically for music teachers, with drag-and-drop 
+              scheduling, conflict detection, and recurring lesson management to handle even the busiest teaching schedule.
             </p>
 
             <div className="grid sm:grid-cols-2 gap-4">
@@ -100,6 +101,10 @@ export function SchedulingDeepDive() {
                 </motion.div>
               ))}
             </div>
+
+            <Link to="/features/scheduling" className="inline-flex items-center gap-1.5 mt-8 text-sm font-semibold text-primary hover:gap-2.5 transition-all">
+              Explore scheduling features <span>→</span>
+            </Link>
           </motion.div>
 
           {/* Right: Real Screenshot */}

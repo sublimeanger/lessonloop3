@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
+import { FeaturesSchema } from "@/components/marketing/features/FeaturesSchema";
 import { FeaturesHero } from "@/components/marketing/features/FeaturesHero";
 import { SchedulingDeepDive } from "@/components/marketing/features/SchedulingDeepDive";
 import { BillingDeepDive } from "@/components/marketing/features/BillingDeepDive";
@@ -16,7 +17,22 @@ import { SecuritySection } from "@/components/marketing/features/SecuritySection
 import { FeatureCTA } from "@/components/marketing/features/FeatureCTA";
 
 export default function Features() {
-  usePageMeta("Features — LessonLoop Music School Software", "Smart scheduling, automated invoicing, parent portal, AI copilot & more. See every feature.");
+  usePageMeta(
+    "Features — Scheduling, Billing, Parent Portal & AI | LessonLoop",
+    "Explore LessonLoop's complete feature set: drag-and-drop scheduling, automated invoicing, parent portal, practice tracking, LoopAssist AI, and more. Built for UK music schools.",
+    {
+      ogTitle: "Features — LessonLoop Music School Software",
+      ogDescription: "Drag-and-drop scheduling, automated invoicing, parent portal, AI assistant, and 50+ features built for UK music schools.",
+      ogType: "website",
+      ogUrl: "https://lessonloop.co.uk/features",
+      ogImage: "https://lessonloop.co.uk/og-features.png",
+      ogLocale: "en_GB",
+      ogSiteName: "LessonLoop",
+      twitterCard: "summary_large_image",
+      canonical: "https://lessonloop.co.uk/features",
+      robots: "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+    }
+  );
   const [activeCategory, setActiveCategory] = useState("scheduling");
 
   // Update active category based on scroll position
@@ -42,6 +58,7 @@ export default function Features() {
 
   return (
     <MarketingLayout>
+      <FeaturesSchema />
       <FeaturesHero activeCategory={activeCategory} onCategoryClick={setActiveCategory} />
       <SchedulingDeepDive />
       <BillingDeepDive />

@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Check, Minus, Info } from "lucide-react";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -164,6 +165,26 @@ export function CompetitorComparison() {
           <Info className="w-3 h-3" />
           Comparison based on publicly available information as of February 2026. Features may have changed.
         </motion.p>
+
+        {/* Alternative links */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="text-center mt-6 lg:mt-8 space-y-2"
+        >
+          <p className="text-sm text-muted-foreground">
+            Looking for a My Music Staff alternative or Teachworks alternative?
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <Link to="/compare/lessonloop-vs-my-music-staff" className="text-sm font-semibold text-primary hover:underline">
+              LessonLoop vs My Music Staff →
+            </Link>
+            <Link to="/compare/lessonloop-vs-teachworks" className="text-sm font-semibold text-primary hover:underline">
+              LessonLoop vs Teachworks →
+            </Link>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
