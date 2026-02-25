@@ -45,6 +45,14 @@ export interface BookingPageWithRelations extends BookingPageConfig {
   booking_page_instruments: BookingPageInstrument[];
 }
 
+// ─── Helpers ─────────────────────────────────────────────
+
+function isMissingTableError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const msg = String((error as any).message || (error as any).details || '');
+  return msg.includes('schema cache') || msg.includes('relation') || msg.includes('does not exist');
+}
+
 // ─── Fetch booking page config ───────────────────────────
 
 export function useBookingPageConfig() {
@@ -55,7 +63,7 @@ export function useBookingPageConfig() {
     queryFn: async (): Promise<BookingPageWithRelations | null> => {
       if (!currentOrg) return null;
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('booking_pages')
         .select(`
           *,
@@ -65,7 +73,10 @@ export function useBookingPageConfig() {
         .eq('org_id', currentOrg.id)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        if (isMissingTableError(error)) return null;
+        throw error;
+      }
       return data as BookingPageWithRelations | null;
     },
     enabled: !!currentOrg,
@@ -92,7 +103,7 @@ export function useUpdateBookingPage() {
 
       if (data.id) {
         // Update existing
-        const { data: updated, error } = await (supabase as any)
+        const { data: updated, error } = await supabase
           .from('booking_pages')
           .update({
             ...data,
@@ -107,7 +118,7 @@ export function useUpdateBookingPage() {
         return updated;
       } else {
         // Insert new
-        const { data: inserted, error } = await (supabase as any)
+        const { data: inserted, error } = await supabase
           .from('booking_pages')
           .insert({
             org_id: currentOrg.id,
@@ -126,6 +137,14 @@ export function useUpdateBookingPage() {
       toast({ title: 'Booking page saved' });
     },
     onError: (error: Error) => {
+      if (isMissingTableError(error)) {
+        toast({
+          title: 'Database migration required',
+          description: 'The booking_pages table has not been created yet. Please run: npx supabase db push',
+          variant: 'destructive',
+        });
+        return;
+      }
       const msg = error.message.includes('duplicate') || error.message.includes('unique')
         ? 'This URL slug is already taken. Please choose a different one.'
         : error.message;
@@ -152,7 +171,7 @@ export function useBookingPageTeachers() {
       if (!currentOrg) throw new Error('No organisation selected');
 
       // Delete all existing teacher selections
-      const { error: deleteError } = await (supabase as any)
+      const { error: deleteError } = await supabase
         .from('booking_page_teachers')
         .delete()
         .eq('booking_page_id', bookingPageId)
@@ -168,7 +187,7 @@ export function useBookingPageTeachers() {
           org_id: currentOrg.id,
         }));
 
-        const { error: insertError } = await (supabase as any)
+        const { error: insertError } = await supabase
           .from('booking_page_teachers')
           .insert(rows);
 
@@ -202,7 +221,7 @@ export function useBookingPageInstruments() {
       if (!currentOrg) throw new Error('No organisation selected');
 
       // Delete all existing instrument selections
-      const { error: deleteError } = await (supabase as any)
+      const { error: deleteError } = await supabase
         .from('booking_page_instruments')
         .delete()
         .eq('booking_page_id', bookingPageId)
@@ -218,7 +237,7 @@ export function useBookingPageInstruments() {
           org_id: currentOrg.id,
         }));
 
-        const { error: insertError } = await (supabase as any)
+        const { error: insertError } = await supabase
           .from('booking_page_instruments')
           .insert(rows);
 
@@ -269,7 +288,7 @@ export function usePublicBookingPage(slug: string | undefined) {
     queryFn: async (): Promise<PublicBookingPage | null> => {
       if (!slug) return null;
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('booking_pages')
         .select(`
           *,
@@ -289,7 +308,10 @@ export function usePublicBookingPage(slug: string | undefined) {
         .eq('enabled', true)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        if (isMissingTableError(error)) return null;
+        throw error;
+      }
       return data as PublicBookingPage | null;
     },
     enabled: !!slug,

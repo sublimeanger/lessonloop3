@@ -215,7 +215,11 @@ export function useLeads(filters?: LeadFilters) {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        const msg = String((error as any).message || (error as any).details || '');
+        if (msg.includes('schema cache') || msg.includes('does not exist')) return [];
+        throw error;
+      }
 
       return (data || []).map((row: any) => {
         const activities = (row.lead_activities || []) as { created_at: string }[];

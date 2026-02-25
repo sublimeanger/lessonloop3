@@ -50,7 +50,7 @@ function isValidSlug(slug: string): boolean {
 
 export function BookingPageTab() {
   const { currentOrg } = useOrg();
-  const { data: config, isLoading: configLoading } = useBookingPageConfig();
+  const { data: config, isLoading: configLoading, isError: configError } = useBookingPageConfig();
   const { data: teachers = [] } = useTeachers();
   const { data: instruments = [] } = useInstruments();
   const updateMutation = useUpdateBookingPage();
@@ -170,6 +170,32 @@ export function BookingPageTab() {
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
+    );
+  }
+
+  if (configError) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Globe className="h-5 w-5 text-destructive" />
+            <CardTitle className="text-lg">Database Setup Required</CardTitle>
+          </div>
+          <CardDescription>
+            The booking page tables have not been created in your database yet.
+            Run the following command from your project root to apply the migration:
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <pre className="rounded-lg border bg-muted/50 p-3 text-sm font-mono overflow-x-auto">
+            npx supabase db push
+          </pre>
+          <p className="text-xs text-muted-foreground mt-3">
+            This will create the <code>booking_pages</code>, <code>booking_page_teachers</code>,
+            and <code>booking_page_instruments</code> tables with the correct schema and RLS policies.
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 
