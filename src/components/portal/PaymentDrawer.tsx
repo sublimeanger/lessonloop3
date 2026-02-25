@@ -16,9 +16,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { CreditCard, Loader2, CheckCircle, ShieldCheck, AlertCircle, X } from 'lucide-react';
+import { CreditCard, Loader2, CheckCircle, ShieldCheck, AlertCircle } from 'lucide-react';
 import { useEmbeddedPayment } from '@/hooks/useEmbeddedPayment';
 import { getStripePromise } from '@/hooks/useStripeElements';
 import { formatCurrencyMinor } from '@/lib/utils';
@@ -56,7 +54,7 @@ export function PaymentDrawer({
   const [paymentCurrency, setPaymentCurrency] = useState(currencyCode);
   const [paymentDescription, setPaymentDescription] = useState('');
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'loading' | 'ready' | 'processing' | 'success' | 'error'>('idle');
-  const { createPaymentIntent, isCreating } = useEmbeddedPayment();
+  const { createPaymentIntent } = useEmbeddedPayment();
   const isDesktop = useMediaQuery('(min-width: 640px)');
 
   // Create payment intent when drawer opens

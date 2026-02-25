@@ -14,7 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { FileText, ChevronDown, Loader2, Save, Lock, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EngagementRating } from './EngagementRating';
-import { useLessonNotes, useSaveLessonNote, LessonNote } from '@/hooks/useLessonNotes';
+import { useLessonNotes, useSaveLessonNote } from '@/hooks/useLessonNotes';
 
 interface Participant {
   id: string;

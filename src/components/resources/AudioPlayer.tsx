@@ -9,7 +9,7 @@ interface AudioPlayerProps {
   title?: string;
 }
 
-export function AudioPlayer({ filePath, title }: AudioPlayerProps) {
+export function AudioPlayer({ filePath }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

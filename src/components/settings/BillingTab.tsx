@@ -47,7 +47,7 @@ import { format } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, formatLimit, TRIAL_DAYS, DB_PLAN_MAP, PLAN_DISPLAY_NAMES } from '@/lib/pricing-config';
+import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, TRIAL_DAYS, PLAN_DISPLAY_NAMES } from '@/lib/pricing-config';
 
 // Database plan types
 type DbSubscriptionPlan = 'solo_teacher' | 'academy' | 'agency';
@@ -74,7 +74,7 @@ interface PlanCardProps {
 }
 
 function PlanCard({ 
-  plan, 
+  plan: _plan, 
   name, 
   price, 
   features, 

@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
-import { Loader2, LogOut, ShieldAlert, Mail, Eye, EyeOff, Lock, Upload, X, Camera } from 'lucide-react';
+import { Loader2, LogOut, ShieldAlert, Mail, Eye, EyeOff, Lock, X, Camera } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -171,12 +171,13 @@ export function ProfileTab() {
     },
   });
 
-  const passwordError = (() => {
+  // Password validation
+  const getPasswordError = () => {
     if (!newPassword) return null;
     if (newPassword.length < 8) return 'Password must be at least 8 characters';
     if (confirmPassword && newPassword !== confirmPassword) return 'Passwords do not match';
     return null;
-  })();
+  };
 
   const canSubmitPassword = newPassword.length >= 8 && newPassword === confirmPassword;
 

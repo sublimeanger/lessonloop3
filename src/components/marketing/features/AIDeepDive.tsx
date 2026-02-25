@@ -1,7 +1,6 @@
 import { motion, useInView } from "framer-motion";
 import { 
   Sparkles, 
-  MessageSquare, 
   Zap, 
   FileText,
   Search,

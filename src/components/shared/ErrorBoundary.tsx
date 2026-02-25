@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 import { Sentry } from '@/lib/sentry';
 import { logger } from '@/lib/logger';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';

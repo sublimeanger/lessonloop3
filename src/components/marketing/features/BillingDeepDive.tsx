@@ -7,7 +7,6 @@ import {
   Percent,
   Clock,
   Check,
-  ArrowRight,
   Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";

@@ -29,7 +29,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useCreateInvoice, useUnbilledLessons } from '@/hooks/useInvoices';
 import { useRateCards, findRateForDuration } from '@/hooks/useRateCards';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useAvailableCreditsForPayer, AvailableCredit } from '@/hooks/useAvailableCredits';
+import { useAvailableCreditsForPayer } from '@/hooks/useAvailableCredits';
 import { Badge } from '@/components/ui/badge';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { formatCurrencyMinor } from '@/lib/utils';
@@ -76,7 +76,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
     watch,
     setValue,
     reset,
-    formState: { errors },
+    formState: { },
   } = useForm<InvoiceFormData>({
     defaultValues: {
       payerType: 'guardian',

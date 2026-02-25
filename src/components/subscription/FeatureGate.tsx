@@ -120,7 +120,7 @@ interface LimitReachedProps {
 /**
  * Shows when a usage limit is reached.
  */
-export function LimitReached({ limitType, currentCount, maxCount, className }: LimitReachedProps) {
+export function LimitReached({ limitType, currentCount: _cc, maxCount, className }: LimitReachedProps) {
   const { plan, canUpgrade } = useSubscription();
   const limitName = limitType === 'students' ? 'students' : 'teachers';
 
