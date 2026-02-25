@@ -17,15 +17,16 @@ const actionItems = [
 
 const queryChips = [
   "What's my revenue this term?",
-  "Draft a cancellation policy email",
-  "Who cancelled lessons this week?",
-  "Schedule a make-up for Oliver",
+  "Who has overdue installments?",
+  "Draft a practice reminder for parents",
+  "Show attendance for this week",
 ];
 
 const features = [
   { icon: Shield, text: "Every action requires your confirmation" },
   { icon: Sparkles, text: "Included on every plan — no add-on fees" },
   { icon: Lock, text: "Your data never leaves your account" },
+  { icon: Bot, text: "Works across scheduling, billing, practice & attendance" },
 ];
 
 export function AISpotlight() {
@@ -195,7 +196,7 @@ export function AISpotlight() {
           transition={{ delay: 0.5 }}
           className="text-center text-white/40 text-sm mt-16"
         >
-          No competitors offer an AI assistant. LoopAssist is unique to LessonLoop.
+          LoopAssist is built into every LessonLoop plan at no extra cost.
         </motion.p>
       </div>
     </section>

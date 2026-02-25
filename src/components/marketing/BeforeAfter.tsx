@@ -6,18 +6,21 @@ const beforeItems = [
   "Spreadsheets for scheduling, paper diaries for lessons",
   "Chasing parents for payments via text and email",
   "'What time is the lesson?' messages every week",
-  "Manual invoices in Word or Excel",
+  "Printing invoices or using generic accounting software",
   "No idea who owes what without checking a notebook",
   "Cancellations = lost revenue, no make-up system",
+  "No way to track student practice between lessons",
 ];
 
 const afterItems = [
   "Drag-and-drop calendar with conflict detection",
   "Automated invoicing with online Stripe payments",
   "Parent portal answers every question 24/7",
-  "Bulk invoice generation in clicks, not hours",
+  "Termly billing runs with payment plans & installments",
   "'Who has outstanding invoices?' — just ask LoopAssist",
   "Automatic make-up matching fills cancelled slots",
+  "Practice assignments with streak tracking for students",
+  "Resource library for sharing materials with families",
 ];
 
 export function BeforeAfter() {
@@ -44,7 +47,7 @@ export function BeforeAfter() {
         {/* Two columns */}
         <div className="grid lg:grid-cols-2 gap-0">
           {/* Before */}
-          <div className="lg:border-r lg:border-dashed lg:border-border lg:pr-10">
+          <div className="lg:border-r lg:border-dashed lg:border-border lg:pr-10 rounded-2xl bg-destructive/[0.02] p-6 -m-6 lg:mr-0">
             <motion.div
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
@@ -80,7 +83,7 @@ export function BeforeAfter() {
           <div className="border-t border-dashed border-border my-8 lg:hidden" />
 
           {/* After */}
-          <div className="lg:pl-10">
+          <div className="lg:pl-10 rounded-2xl bg-teal/[0.02] p-6 -m-6 lg:ml-0">
             <motion.div
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}

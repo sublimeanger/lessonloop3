@@ -1,7 +1,7 @@
 import { motion, useMotionValue, useTransform, useSpring } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Play, Calendar, Clock, CheckCircle2, Bell, X, Globe, CreditCard, LayoutDashboard } from "lucide-react";
+import { ChevronRight, Play, Calendar, Clock, CheckCircle2, Bell, X, Globe, CreditCard, LayoutDashboard, PoundSterling } from "lucide-react";
 import { useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { dashboardHeroHd, dashboardHero } from "@/assets/marketing";
@@ -93,7 +93,7 @@ export function HeroSection() {
 
   return (
     <section 
-      className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden"
+      className="relative min-h-[85vh] flex flex-col items-center justify-center overflow-hidden"
       onMouseMove={isMobile ? undefined : handleMouseMove}
     >
       {/* 3D Gradient Mesh Background */}
@@ -215,7 +215,7 @@ export function HeroSection() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-teal"></span>
             </span>
             <span className="text-white/80 text-sm font-medium">
-              The UK's first AI-powered music school platform
+              Now with payment plans, practice tracking &amp; resource library
             </span>
           </motion.div>
 
@@ -245,7 +245,7 @@ export function HeroSection() {
             transition={{ duration: 0.6, delay: 0.8 }}
             className="mt-8 text-xl sm:text-2xl text-white/60 max-w-2xl mx-auto leading-relaxed"
           >
-            LessonLoop handles your scheduling, invoicing, and parent communication — with an AI assistant that actually understands your music school.
+            Scheduling, invoicing, parent portal, practice tracking, and an AI assistant — purpose-built for UK music educators.
           </motion.p>
 
           {/* CTA Buttons */}
@@ -318,6 +318,13 @@ export function HeroSection() {
                 <CreditCard className="w-3 h-3 text-white/60" />
               </div>
               <span className="text-sm">No credit card needed</span>
+            </div>
+            <div className="w-px h-5 bg-white/20 hidden sm:block" />
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
+                <PoundSterling className="w-3 h-3 text-white/60" />
+              </div>
+              <span className="text-sm">From £12/month</span>
             </div>
           </motion.div>
         </div>
