@@ -28,6 +28,7 @@ export function ProactiveWelcome({
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Dismiss"
             className="h-6 w-6 text-muted-foreground"
             onClick={onDismiss}
           >

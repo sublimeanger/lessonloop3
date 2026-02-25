@@ -221,7 +221,7 @@ export default function PortalHome() {
 
   const firstName = profile?.full_name?.split(' ')[0] || 'there';
   const currencyCode = currentOrg?.currency_code || 'GBP';
-  const tz = (currentOrg as any)?.timezone || 'Europe/London';
+  const tz = currentOrg?.timezone || 'Europe/London';
 
   const isLoading = summaryLoading || childrenLoading || guardianLoading;
   const isError = summaryError || childrenError || guardianError;

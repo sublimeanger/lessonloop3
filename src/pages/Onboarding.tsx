@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PlanSelector, getRecommendedPlan } from '@/components/onboarding/PlanSelector';
 import { PLAN_DISPLAY_NAMES } from '@/lib/pricing-config';
 import { OnboardingProgress } from '@/components/onboarding/OnboardingProgress';
+import { usePageMeta } from '@/hooks/usePageMeta';
 
 type OrgType = 'solo_teacher' | 'studio' | 'academy' | 'agency';
 type SubscriptionPlan = 'solo_teacher' | 'academy' | 'agency';
@@ -45,6 +46,7 @@ const STEPS = [
 ];
 
 export default function Onboarding() {
+  usePageMeta('Get Started | LessonLoop', 'Set up your LessonLoop account');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, session, signOut, refreshProfile, profile } = useAuth();

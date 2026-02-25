@@ -248,10 +248,10 @@ function MakeUpPolicySettings() {
   const { toast } = useToast();
   const [localExpiry, setLocalExpiry] = useState(expiryWeeks);
   const [localMaxCredits, setLocalMaxCredits] = useState<string>(
-    (currentOrg as any)?.max_credits_per_term != null ? String((currentOrg as any).max_credits_per_term) : ''
+    currentOrg?.max_credits_per_term != null ? String(currentOrg.max_credits_per_term) : ''
   );
   const [localExpiryDays, setLocalExpiryDays] = useState(
-    (currentOrg as any)?.credit_expiry_days ?? 90
+    currentOrg?.credit_expiry_days ?? 90
   );
   const [isSavingCredits, setIsSavingCredits] = useState(false);
 
@@ -261,10 +261,10 @@ function MakeUpPolicySettings() {
 
   useEffect(() => {
     setLocalMaxCredits(
-      (currentOrg as any)?.max_credits_per_term != null ? String((currentOrg as any).max_credits_per_term) : ''
+      currentOrg?.max_credits_per_term != null ? String(currentOrg.max_credits_per_term) : ''
     );
-    setLocalExpiryDays((currentOrg as any)?.credit_expiry_days ?? 90);
-  }, [(currentOrg as any)?.max_credits_per_term, (currentOrg as any)?.credit_expiry_days]);
+    setLocalExpiryDays(currentOrg?.credit_expiry_days ?? 90);
+  }, [currentOrg?.max_credits_per_term, currentOrg?.credit_expiry_days]);
 
   const handleSaveCreditSettings = async () => {
     if (!currentOrg) return;
@@ -293,8 +293,8 @@ function MakeUpPolicySettings() {
 
   const hasCreditsChanged =
     (localMaxCredits.trim() === '' ? null : parseInt(localMaxCredits)) !==
-      ((currentOrg as any)?.max_credits_per_term ?? null) ||
-    localExpiryDays !== ((currentOrg as any)?.credit_expiry_days ?? 90);
+      (currentOrg?.max_credits_per_term ?? null) ||
+    localExpiryDays !== (currentOrg?.credit_expiry_days ?? 90);
 
   if (isLoading) {
     return (

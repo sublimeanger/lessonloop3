@@ -5,7 +5,7 @@ import { PageTransitionFallback } from '@/components/shared/PageTransitionFallba
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Header } from './Header';
 import { AppSidebar } from './AppSidebar';
-import { LoopAssistProvider, useLoopAssistUI } from '@/contexts/LoopAssistContext';
+import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { LoopAssistDrawer } from '@/components/loopassist/LoopAssistDrawer';
 import { TrialExpiredModal, TrialExpiredBanner } from '@/components/subscription';
 import { TourTrigger } from '@/components/tours/TourTrigger';
@@ -83,9 +83,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
 export function AppLayout({ children }: AppLayoutProps) {
   return (
     <SidebarProvider>
-      <LoopAssistProvider>
-        <AppLayoutInner>{children}</AppLayoutInner>
-      </LoopAssistProvider>
+      <AppLayoutInner>{children}</AppLayoutInner>
     </SidebarProvider>
   );
 }

@@ -117,7 +117,7 @@ export default function Teachers() {
   const { toast } = useToast();
   const { limits, canAddTeacher, usage } = useUsageCounts();
   
-  const { data: teachers = [], isLoading, refetch } = useTeachers();
+  const { data: teachers = [], isLoading, isError, refetch } = useTeachers();
   const { exportTeachers } = useDataExport();
   const { createTeacher, updateTeacher, deleteTeacher, reactivateTeacher } = useTeacherMutations();
   const { data: studentCounts = {} } = useTeacherStudentCounts();
@@ -521,6 +521,14 @@ export default function Teachers() {
 
       {isLoading ? (
         <ListSkeleton count={3} />
+      ) : isError ? (
+        <EmptyState
+          icon={GraduationCap}
+          title="Failed to load teachers"
+          description="Something went wrong. Please try again."
+          actionLabel="Retry"
+          onAction={() => refetch()}
+        />
       ) : teachers.length === 0 ? (
         <EmptyState
           icon={GraduationCap}

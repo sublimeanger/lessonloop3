@@ -64,6 +64,7 @@ export function MessageFeedback({ messageId, conversationId, className }: Messag
       <Button
         variant="ghost"
         size="icon"
+        aria-label="Mark as helpful"
         className={cn(
           'h-6 w-6 rounded-full',
           feedback === 'helpful' && 'bg-success/10 text-success hover:bg-success/20 hover:text-success'
@@ -76,6 +77,7 @@ export function MessageFeedback({ messageId, conversationId, className }: Messag
       <Button
         variant="ghost"
         size="icon"
+        aria-label="Mark as not helpful"
         className={cn(
           'h-6 w-6 rounded-full',
           feedback === 'not_helpful' && 'bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive'

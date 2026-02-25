@@ -1,14 +1,13 @@
 import { motion } from "framer-motion";
 import { useEffect } from "react";
 import { Video, Plus, Settings, Trash2, Shield, HelpCircle } from "lucide-react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function ZoomGuide() {
-  useEffect(() => {
-    document.title = "Zoom Integration Guide | LessonLoop";
-    const desc = document.querySelector('meta[name="description"]');
-    if (desc) desc.setAttribute("content", "Learn how to connect, use, and remove the Zoom integration in LessonLoop for automatic online lesson meeting links.");
+  usePageMeta('Zoom Integration Guide | LessonLoop', 'Learn how to connect, use, and remove the Zoom integration in LessonLoop');
 
-    // noindex
+  useEffect(() => {
+    // noindex this guide page
     let robots = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
     if (!robots) {
       robots = document.createElement("meta");
@@ -18,8 +17,6 @@ export default function ZoomGuide() {
     robots.content = "noindex, nofollow";
 
     return () => {
-      document.title = "LessonLoop — AI-Powered Music School Management for UK Teachers";
-      if (desc) desc.setAttribute("content", "Scheduling, invoicing, parent portal & AI assistant built for UK music educators. Try free for 30 days.");
       if (robots) robots.content = "index, follow";
     };
   }, []);

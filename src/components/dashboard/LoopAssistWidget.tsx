@@ -79,6 +79,7 @@ export function LoopAssistWidget() {
               onClick={handleSend}
               disabled={!input.trim()}
               size="icon"
+              aria-label="Send message"
               className="h-11 w-11 shrink-0"
             >
               <Send className="h-3.5 w-3.5" />

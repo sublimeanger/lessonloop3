@@ -3,8 +3,10 @@ import { motion } from 'framer-motion';
 import { Home, Calendar, HelpCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LogoHorizontal } from '@/components/brand/Logo';
+import { usePageMeta } from '@/hooks/usePageMeta';
 
 const NotFound = () => {
+  usePageMeta('Page Not Found | LessonLoop', 'The page you are looking for does not exist');
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gradient-hero-light p-4">
       {/* Logo */}

@@ -44,7 +44,7 @@ export default function Invoices() {
   const isParent = currentRole === 'parent';
   const [filters, setFilters] = useState<InvoiceFilters>({});
   const [currentPage, setCurrentPage] = useState(1);
-  const { data: invoiceResult, isLoading } = useInvoices({ ...filters, page: currentPage });
+  const { data: invoiceResult, isLoading, isError, refetch } = useInvoices({ ...filters, page: currentPage });
   const invoices = invoiceResult?.data ?? [];
   const totalCount = invoiceResult?.totalCount ?? 0;
 
@@ -148,6 +148,20 @@ export default function Invoices() {
     return (
       <AppLayout>
         <LoadingState message="Loading invoices..." />
+      </AppLayout>
+    );
+  }
+
+  if (isError) {
+    return (
+      <AppLayout>
+        <EmptyState
+          icon={Receipt}
+          title="Failed to load invoices"
+          description="Something went wrong. Please try again."
+          actionLabel="Retry"
+          onAction={() => refetch()}
+        />
       </AppLayout>
     );
   }

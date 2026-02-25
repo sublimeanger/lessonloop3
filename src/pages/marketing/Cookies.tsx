@@ -1,6 +1,7 @@
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { motion } from "framer-motion";
 import { Cookie, Shield, Settings, BarChart3 } from "lucide-react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 const cookieTypes = [
   {
@@ -24,6 +25,7 @@ const cookieTypes = [
 ];
 
 export default function Cookies() {
+  usePageMeta('Cookie Policy | LessonLoop', 'How LessonLoop uses cookies and similar technologies');
   return (
     <MarketingLayout>
       <section className="pt-32 pb-16 lg:pt-40 lg:pb-24 relative overflow-hidden">

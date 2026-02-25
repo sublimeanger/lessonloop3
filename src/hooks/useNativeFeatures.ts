@@ -27,7 +27,7 @@ export function useNativeFeatures() {
     if (!platform.isNative) return;
     try {
       await Haptics.impact({ style: ImpactStyle.Medium });
-    } catch {}
+    } catch { /* native API unavailable */ }
   }, []);
 
   /** Success haptic pattern — use after successful operations */
@@ -35,7 +35,7 @@ export function useNativeFeatures() {
     if (!platform.isNative) return;
     try {
       await Haptics.notification({ type: 'SUCCESS' as any });
-    } catch {}
+    } catch { /* native API unavailable */ }
   }, []);
 
   /** Error haptic pattern */
@@ -43,7 +43,7 @@ export function useNativeFeatures() {
     if (!platform.isNative) return;
     try {
       await Haptics.notification({ type: 'ERROR' as any });
-    } catch {}
+    } catch { /* native API unavailable */ }
   }, []);
 
   /** Set status bar to dark content (for light backgrounds) */
@@ -51,7 +51,7 @@ export function useNativeFeatures() {
     if (!platform.isNative) return;
     try {
       await StatusBar.setStyle({ style: Style.Light });
-    } catch {}
+    } catch { /* native API unavailable */ }
   }, []);
 
   /** Set status bar to light content (for dark backgrounds like the dashboard hero) */
@@ -59,7 +59,7 @@ export function useNativeFeatures() {
     if (!platform.isNative) return;
     try {
       await StatusBar.setStyle({ style: Style.Dark });
-    } catch {}
+    } catch { /* native API unavailable */ }
   }, []);
 
   /** Hide keyboard programmatically */
@@ -67,7 +67,7 @@ export function useNativeFeatures() {
     if (!platform.isNative) return;
     try {
       await Keyboard.hide();
-    } catch {}
+    } catch { /* native API unavailable */ }
   }, []);
 
   /** Share content via native share sheet */
@@ -81,7 +81,7 @@ export function useNativeFeatures() {
     }
     try {
       await Share.share(options);
-    } catch {}
+    } catch { /* native API unavailable */ }
   }, []);
 
   /** Open URL in native in-app browser */
@@ -92,7 +92,7 @@ export function useNativeFeatures() {
     }
     try {
       await Browser.open({ url, toolbarColor: '#0a1628' });
-    } catch {}
+    } catch { /* native API unavailable */ }
   }, []);
 
   return {

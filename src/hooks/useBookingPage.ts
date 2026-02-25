@@ -312,50 +312,10 @@ export async function fetchBookingSlots(params: {
   instrument_id?: string;
   teacher_id?: string;
 }): Promise<TimeSlot[]> {
-  try {
-    const { data, error } = await supabase.functions.invoke('booking-get-slots', {
-      body: params,
-    });
+  const { data, error } = await supabase.functions.invoke('booking-get-slots', {
+    body: params,
+  });
 
-    if (error) throw error;
-    if (data?.slots) return data.slots as TimeSlot[];
-  } catch {
-    // TODO: Remove mock slots once edge function is deployed.
-    // For now, return simulated slots so the UI can be developed and tested.
-    return generateMockSlots(params.date, params.teacher_id);
-  }
-
-  return [];
-}
-
-function generateMockSlots(date: string, teacherId?: string): TimeSlot[] {
-  const slots: TimeSlot[] = [];
-  const morningTimes = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30'];
-  const afternoonTimes = ['13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30'];
-  const eveningTimes = ['17:00', '17:30', '18:00', '18:30', '19:00'];
-
-  const allTimes = [...morningTimes, ...afternoonTimes, ...eveningTimes];
-  const teacherNames = ['Ms. Johnson', 'Mr. Smith', 'Mrs. Davis'];
-
-  // Simulate some randomness based on the date string hash
-  let hash = 0;
-  for (let i = 0; i < date.length; i++) {
-    hash = ((hash << 5) - hash + date.charCodeAt(i)) | 0;
-  }
-
-  for (const time of allTimes) {
-    // Use hash to pseudo-randomly include/exclude slots
-    hash = ((hash << 5) - hash + time.charCodeAt(0)) | 0;
-    if (Math.abs(hash) % 3 === 0) continue; // skip ~1/3 of slots
-
-    const teacherIndex = Math.abs(hash) % teacherNames.length;
-    slots.push({
-      time,
-      teacher_id: teacherId || `mock-teacher-${teacherIndex}`,
-      teacher_name: teacherNames[teacherIndex],
-      date,
-    });
-  }
-
-  return slots;
+  if (error) throw error;
+  return (data?.slots as TimeSlot[]) ?? [];
 }

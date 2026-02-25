@@ -21,7 +21,7 @@ function isPostgrestError(error: unknown): error is { code: string; message: str
     typeof error === 'object' &&
     error !== null &&
     'code' in error &&
-    typeof (error as any).code === 'string'
+    typeof (error as Record<string, unknown>).code === 'string'
   );
 }
 
@@ -33,7 +33,7 @@ function isNetworkError(error: unknown): boolean {
 
 function isAuthError(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) return false;
-  const msg = ('message' in error ? String((error as any).message) : '').toLowerCase();
+  const msg = ('message' in error ? String((error as Record<string, unknown>).message) : '').toLowerCase();
   return (
     msg.includes('jwt expired') ||
     msg.includes('jwt') ||

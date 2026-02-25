@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Check, Music, User, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePageMeta } from '@/hooks/usePageMeta';
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -88,6 +89,11 @@ export default function BookingPage() {
   const isEmbed = searchParams.get('embed') === 'true';
 
   const { data: config, isLoading, error } = usePublicBookingPage(slug);
+
+  usePageMeta(
+    config?.organisation?.name ? `Book a Lesson | ${config.organisation.name}` : 'Book a Lesson | LessonLoop',
+    'Book a music lesson online'
+  );
 
   // ── State ──────────────────────────────────────────────
 

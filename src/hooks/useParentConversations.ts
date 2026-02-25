@@ -105,7 +105,7 @@ export function useParentConversations(onNewMessage?: () => void) {
       // Let's also get replies by thread_id for threads this guardian is part of.
       const threadIds = new Set((inbound || []).map(m => m.thread_id || m.id));
       
-      let allMessages = [...(inbound || [])];
+      const allMessages = [...(inbound || [])];
       
       if (threadIds.size > 0) {
         const { data: threadReplies, error: threadErr } = await supabase

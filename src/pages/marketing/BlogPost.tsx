@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Calendar, Clock, User, Share2, Twitter, Linkedin, Copy, Check } from "lucide-react";
 import type { BlogPost as BlogPostType } from "@/data/blogPosts";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function BlogPost() {
   const { slug } = useParams<{ slug: string }>();
@@ -32,11 +33,10 @@ export default function BlogPost() {
     });
   }, [slug, navigate]);
 
-  useEffect(() => {
-    if (post) {
-      document.title = `${post.title} | LessonLoop Blog`;
-    }
-  }, [post]);
+  usePageMeta(
+    post ? `${post.title} | LessonLoop Blog` : 'Blog | LessonLoop',
+    post?.excerpt || 'Music teaching tips, product updates, and industry insights'
+  );
 
   if (isLoading || !post) {
     return (

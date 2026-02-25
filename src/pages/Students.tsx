@@ -209,7 +209,7 @@ export default function Students() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { limits, canAddStudent } = useUsageCounts();
-  const { data: students = [], isLoading } = useStudents();
+  const { data: students = [], isLoading, isError, refetch } = useStudents();
   const { exportStudents } = useDataExport();
   const { data: primaryInstrumentMap = {} } = usePrimaryInstruments();
   const toggleMutation = useToggleStudentStatus();
@@ -338,6 +338,14 @@ export default function Students() {
 
       {isLoading ? (
         <ListSkeleton count={5} />
+      ) : isError ? (
+        <EmptyState
+          icon={Users}
+          title="Failed to load students"
+          description="Something went wrong. Please try again."
+          actionLabel="Retry"
+          onAction={() => refetch()}
+        />
       ) : filteredStudents.length === 0 ? (
         <EmptyState
           icon={Users}

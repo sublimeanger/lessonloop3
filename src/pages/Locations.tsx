@@ -48,6 +48,7 @@ interface Location {
   address_line_2: string | null;
   city: string | null;
   postcode: string | null;
+  country_code: string;
   notes: string | null;
   is_primary: boolean;
   is_archived: boolean;
@@ -268,7 +269,7 @@ export default function Locations() {
       setLocCity(location.city || '');
       setLocPostcode(location.postcode || '');
       setLocNotes(location.notes || '');
-      setLocCountry((location as any).country_code || currentOrg?.country_code || 'GB');
+      setLocCountry(location.country_code || currentOrg?.country_code || 'GB');
     } else {
       setEditingLocation(null);
       setLocName('');

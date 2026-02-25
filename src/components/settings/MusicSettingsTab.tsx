@@ -55,7 +55,7 @@ export function MusicSettingsTab() {
     (instruments || []).filter((i) => !i.is_custom),
   );
 
-  const currentDefaultBoard = (currentOrg as any)?.default_exam_board_id || null;
+  const currentDefaultBoard = currentOrg?.default_exam_board_id || null;
 
   const handleSetDefaultBoard = async (boardId: string) => {
     if (!currentOrg) return;
