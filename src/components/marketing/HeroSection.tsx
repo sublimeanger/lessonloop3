@@ -88,12 +88,12 @@ export function HeroSection() {
     mouseY.set((e.clientY - rect.top) / rect.height);
   };
 
-  const headlineWords = ["Teach", "more.", "Admin", "less."];
+  const headlineWords = ["The", "modern", "way", "to", "run", "your", "music", "school"];
   const [showVideoModal, setShowVideoModal] = useState(false);
 
   return (
     <section 
-      className="relative min-h-[85vh] flex flex-col items-center justify-center overflow-hidden"
+      className="relative min-h-[90vh] flex flex-col items-center justify-center overflow-hidden"
       onMouseMove={isMobile ? undefined : handleMouseMove}
     >
       {/* 3D Gradient Mesh Background */}
@@ -215,7 +215,7 @@ export function HeroSection() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-teal"></span>
             </span>
             <span className="text-white/80 text-sm font-medium">
-              Now with payment plans, practice tracking &amp; resource library
+              🇬🇧 Built for UK Music Schools
             </span>
           </motion.div>
 
@@ -230,7 +230,7 @@ export function HeroSection() {
               <motion.span
                 key={i}
                 variants={wordVariants}
-                className={`inline-block mr-4 ${word === "less." ? "text-transparent bg-clip-text bg-gradient-to-r from-teal-light via-teal to-teal-dark" : ""}`}
+                className={`inline-block mr-4 ${word === "school" ? "text-transparent bg-clip-text bg-gradient-to-r from-teal-light via-teal to-teal-dark" : ""}`}
                 style={{ transformStyle: "preserve-3d" }}
               >
                 {word}
@@ -245,7 +245,7 @@ export function HeroSection() {
             transition={{ duration: 0.6, delay: 0.8 }}
             className="mt-8 text-xl sm:text-2xl text-white/60 max-w-2xl mx-auto leading-relaxed"
           >
-            Scheduling, invoicing, parent portal, practice tracking, and an AI assistant — purpose-built for UK music educators.
+            Schedule lessons, automate invoicing, track attendance, and keep parents in the loop — all from one beautifully simple platform.
           </motion.p>
 
           {/* CTA Buttons */}
@@ -300,30 +300,23 @@ export function HeroSection() {
           >
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
-                <Globe className="w-3 h-3 text-white/60" />
-              </div>
-              <span className="text-sm">Built for UK music educators</span>
-            </div>
-            <div className="w-px h-5 bg-white/20 hidden sm:block" />
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
                 <Clock className="w-3 h-3 text-white/60" />
               </div>
-              <span className="text-sm">30-day free trial</span>
+              <span className="text-sm">Free for 30 days</span>
             </div>
             <div className="w-px h-5 bg-white/20 hidden sm:block" />
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
                 <CreditCard className="w-3 h-3 text-white/60" />
               </div>
-              <span className="text-sm">No credit card needed</span>
+              <span className="text-sm">No credit card required</span>
             </div>
             <div className="w-px h-5 bg-white/20 hidden sm:block" />
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
-                <PoundSterling className="w-3 h-3 text-white/60" />
+                <Globe className="w-3 h-3 text-white/60" />
               </div>
-              <span className="text-sm">From £12/month</span>
+              <span className="text-sm">Set up in under 5 minutes</span>
             </div>
           </motion.div>
         </div>
@@ -357,7 +350,7 @@ export function HeroSection() {
             src={dashboardHero} 
             srcSet={`${dashboardHero} 1280w, ${dashboardHeroHd} 1920w`}
             sizes="(max-width: 768px) 100vw, (max-width: 1280px) 80vw, 1200px"
-            alt="LessonLoop dashboard showing lessons, invoices, and student management" 
+            alt="LessonLoop music school management software dashboard showing lesson scheduling, invoices, and student management" 
             className="w-full" 
             loading="eager"
             fetchPriority="high"

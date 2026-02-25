@@ -25,7 +25,7 @@ export default function MarketingHome() {
       ogSiteName: "LessonLoop",
       twitterCard: "summary_large_image",
       canonical: "https://lessonloop.co.uk/",
-      robots: "index, follow",
+      robots: "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
     }
   );
 

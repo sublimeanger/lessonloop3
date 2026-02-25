@@ -10,8 +10,8 @@ const tabs = [
     id: "ai",
     label: "AI Assistant",
     icon: Sparkles,
-    description: "Your intelligent teaching assistant",
-    features: ["Natural language queries", "Smart actions with confirmation", "Draft messages & emails", "Revenue insights & attendance summaries"],
+    description: "Your intelligent music school co-pilot",
+    features: ["Natural language queries", "Smart actions with confirmation", "Draft messages & emails", "Revenue insights & attendance summaries", "Works across scheduling, billing, practice and attendance"],
     screenshot: loopassistChat,
     alt: "LoopAssist AI assistant interface",
     url: "/features/loopassist",
@@ -22,7 +22,7 @@ const tabs = [
     label: "Calendar",
     icon: Calendar,
     description: "Drag-and-drop scheduling with conflict detection",
-    features: ["Week & day views", "Recurring lessons", "Room booking", "Closure date management", "Teacher availability"],
+    features: ["Week & day views with drag-and-drop", "Recurring lessons with break skipping", "Room & location booking", "Closure date management", "Teacher availability matching"],
     screenshot: calendarWeek,
     alt: "Weekly calendar view with colour-coded lessons",
     url: "/features/scheduling",
@@ -33,7 +33,7 @@ const tabs = [
     label: "Invoicing",
     icon: Receipt,
     description: "Automated billing with online payments",
-    features: ["Termly bulk generation", "Payment plans & installments", "Stripe payments", "VAT support", "Overdue automation"],
+    features: ["Termly & monthly bulk generation", "Payment plans & installments", "Stripe online payments", "UK VAT support", "Overdue reminders & automation"],
     screenshot: invoicesList,
     alt: "Invoice management with status tracking and bulk actions",
     url: "/features/billing",
@@ -44,7 +44,7 @@ const tabs = [
     label: "Students",
     icon: Users,
     description: "Complete student and family management",
-    features: ["Student profiles", "Guardian linking", "Exam board tracking", "Instrument & grade management"],
+    features: ["Student profiles", "Guardian linking", "Exam board tracking", "Instrument & grade management", "Notes and lesson history"],
     screenshot: parentPortal,
     alt: "Student list with search, filters, and active badges",
     url: "/features/students",
@@ -54,7 +54,7 @@ const tabs = [
     id: "makeups",
     label: "Make-Ups",
     icon: RefreshCw,
-    description: "Automatic make-up lesson matching",
+    description: "Never lose revenue from cancellations",
     features: ["Automatic slot detection", "Parent notification", "One-click accept", "Make-up credits"],
     screenshot: studentsList,
     alt: "Make-up lesson matching and credit management",
@@ -66,7 +66,7 @@ const tabs = [
     label: "Practice",
     icon: Play,
     description: "Track and encourage student practice",
-    features: ["Create assignments", "Streak tracking", "Parent visibility", "Progress reports"],
+    features: ["Create practice assignments", "Streak tracking & gamification", "Parent visibility via portal", "Progress reports"],
     screenshot: parentPortal,
     alt: "Practice tracking with assignments and streaks",
     url: "/features/practice-tracking",
@@ -179,13 +179,13 @@ export function ProductShowcase() {
           className="text-center max-w-3xl mx-auto mb-16"
         >
           <span className="inline-block px-4 py-1.5 rounded-full bg-white/10 text-teal-light text-sm font-semibold mb-6">
-            Product Tour
+            The Platform
           </span>
           <h2 className="text-4xl lg:text-5xl font-bold text-white leading-tight">
-            See it in action
+            Everything you need. Nothing you don't.
           </h2>
           <p className="mt-6 text-lg text-white/60 max-w-2xl mx-auto">
-            Explore the key features that make LessonLoop purpose-built for UK music educators.
+            LessonLoop replaces your scheduling spreadsheet, invoicing software, messaging apps, and admin notebooks with one integrated music school management platform.
           </p>
         </motion.div>
 
