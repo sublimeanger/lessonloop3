@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, Receipt, Users, Sparkles, ChevronRight, RefreshCw, Play, X, Mail } from "lucide-react";
+import { Calendar, Receipt, Users, Sparkles, ChevronRight, RefreshCw, Play, X, Mail, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { calendarWeek, invoicesList, parentPortal, loopassistChat, studentsList } from "@/assets/marketing";
 
@@ -13,7 +14,8 @@ const tabs = [
     features: ["Natural language queries", "Smart actions with confirmation", "Draft messages & emails", "Revenue insights & attendance summaries"],
     screenshot: loopassistChat,
     alt: "LoopAssist AI assistant interface",
-    url: "app.lessonloop.net/loopassist",
+    url: "/features/loopassist",
+    browserUrl: "app.lessonloop.net/loopassist",
   },
   {
     id: "calendar",
@@ -23,7 +25,8 @@ const tabs = [
     features: ["Week & day views", "Recurring lessons", "Room booking", "Closure date management", "Teacher availability"],
     screenshot: calendarWeek,
     alt: "Weekly calendar view with colour-coded lessons",
-    url: "app.lessonloop.net/calendar",
+    url: "/features/scheduling",
+    browserUrl: "app.lessonloop.net/calendar",
   },
   {
     id: "invoices",
@@ -33,7 +36,8 @@ const tabs = [
     features: ["Termly bulk generation", "Payment plans & installments", "Stripe payments", "VAT support", "Overdue automation"],
     screenshot: invoicesList,
     alt: "Invoice management with status tracking and bulk actions",
-    url: "app.lessonloop.net/invoices",
+    url: "/features/billing",
+    browserUrl: "app.lessonloop.net/invoices",
   },
   {
     id: "students",
@@ -43,7 +47,8 @@ const tabs = [
     features: ["Student profiles", "Guardian linking", "Exam board tracking", "Instrument & grade management"],
     screenshot: parentPortal,
     alt: "Student list with search, filters, and active badges",
-    url: "app.lessonloop.net/students",
+    url: "/features/students",
+    browserUrl: "app.lessonloop.net/students",
   },
   {
     id: "makeups",
@@ -53,7 +58,8 @@ const tabs = [
     features: ["Automatic slot detection", "Parent notification", "One-click accept", "Make-up credits"],
     screenshot: studentsList,
     alt: "Make-up lesson matching and credit management",
-    url: "app.lessonloop.net/make-ups",
+    url: "/features/scheduling",
+    browserUrl: "app.lessonloop.net/make-ups",
   },
   {
     id: "practice",
@@ -63,7 +69,8 @@ const tabs = [
     features: ["Create assignments", "Streak tracking", "Parent visibility", "Progress reports"],
     screenshot: parentPortal,
     alt: "Practice tracking with assignments and streaks",
-    url: "app.lessonloop.net/practice",
+    url: "/features/practice-tracking",
+    browserUrl: "app.lessonloop.net/practice",
   },
   {
     id: "resources",
@@ -73,7 +80,8 @@ const tabs = [
     features: ["Upload audio, PDF & video", "Category organisation", "Share with students", "Resource library"],
     screenshot: parentPortal,
     alt: "Resource library for sharing teaching materials",
-    url: "app.lessonloop.net/resources",
+    url: "/features/resources",
+    browserUrl: "app.lessonloop.net/resources",
   },
 ];
 
@@ -156,7 +164,7 @@ export function ProductShowcase() {
   const activeTabData = tabs.find((t) => t.id === activeTab)!;
 
   return (
-    <section className="py-24 lg:py-32 bg-ink relative overflow-hidden">
+    <section id="product-showcase" className="py-24 lg:py-32 bg-ink relative overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-teal/10 to-transparent rounded-full blur-3xl" />
@@ -244,6 +252,13 @@ export function ProductShowcase() {
                 </motion.li>
               ))}
             </ul>
+
+            <Link
+              to={activeTabData.url}
+              className="inline-flex items-center gap-1.5 mt-6 text-sm font-semibold text-teal-light hover:gap-2.5 transition-all"
+            >
+              Learn more <ArrowRight className="w-4 h-4" />
+            </Link>
           </motion.div>
 
           {/* Screenshot Side */}
@@ -264,7 +279,7 @@ export function ProductShowcase() {
                   </div>
                   <div className="flex-1 flex justify-center">
                     <div className="bg-white/10 rounded-lg px-4 py-1 text-xs text-white/40 font-mono">
-                      {activeTabData.url}
+                      {activeTabData.browserUrl}
                     </div>
                   </div>
                 </div>

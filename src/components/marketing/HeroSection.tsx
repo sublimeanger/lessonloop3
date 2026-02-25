@@ -278,18 +278,17 @@ export function HeroSection() {
                 </Button>
               </motion.div>
             </Link>
-            <Link to="/features">
-              <motion.div
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-3 px-6 py-3.5 text-white/80 hover:text-white font-medium transition-colors group"
-              >
-                <span className="flex items-center justify-center w-12 h-12 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 group-hover:bg-white/10 group-hover:border-white/20 transition-all">
-                  <Play className="w-5 h-5 ml-0.5" fill="currentColor" />
-                </span>
-                See how it works
-              </motion.div>
-            </Link>
+            <motion.div
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => document.getElementById('product-showcase')?.scrollIntoView({ behavior: 'smooth' })}
+              className="flex items-center gap-3 px-6 py-3.5 text-white/80 hover:text-white font-medium transition-colors group cursor-pointer"
+            >
+              <span className="flex items-center justify-center w-12 h-12 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 group-hover:bg-white/10 group-hover:border-white/20 transition-all">
+                <Play className="w-5 h-5 ml-0.5" fill="currentColor" />
+              </span>
+              See how it works
+            </motion.div>
           </motion.div>
 
           {/* Trust Indicators */}
