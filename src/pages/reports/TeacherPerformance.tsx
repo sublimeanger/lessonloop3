@@ -127,7 +127,7 @@ export default function TeacherPerformanceReport() {
             ))}
 
             {/* Summary Cards */}
-            <div className="mb-6 grid gap-4 md:grid-cols-4">
+            <div className="mb-6 grid gap-4 grid-cols-2 md:grid-cols-4">
               <Card>
                 <CardHeader className="pb-2">
                   <CardDescription className="flex items-center gap-2">
@@ -201,7 +201,7 @@ export default function TeacherPerformanceReport() {
                   {data.teachers.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-12">No data available.</p>
                   ) : (
-                    <div className="h-[300px]" role="img" aria-label="Bar chart showing cancellation rate by teacher">
+                    <div className="h-[250px] sm:h-[300px]" role="img" aria-label="Bar chart showing cancellation rate by teacher">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                           data={data.teachers.map(t => ({
@@ -245,7 +245,7 @@ export default function TeacherPerformanceReport() {
                   {data.teachers.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-12">No data available.</p>
                   ) : (
-                    <div className="h-[300px]" role="img" aria-label="Bar chart showing revenue by teacher">
+                    <div className="h-[250px] sm:h-[300px]" role="img" aria-label="Bar chart showing revenue by teacher">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                           data={data.teachers.map((t, i) => ({

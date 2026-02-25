@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Check, Music, User, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Check, Music, User, Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ─── Types ───────────────────────────────────────────────
@@ -304,7 +304,7 @@ export default function BookingPage() {
           className="absolute top-3 right-3 z-10 rounded-full p-2 hover:bg-black/5 transition-colors"
           aria-label="Close"
         >
-          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          <X className="h-5 w-5 text-muted-foreground" />
         </button>
       )}
 
@@ -322,7 +322,7 @@ export default function BookingPage() {
         <div className="px-5 sm:px-6 pt-1 pb-2">
           <button
             onClick={goBack}
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors py-1.5 -ml-1 px-1 rounded-md touch-manipulation"
           >
             <ChevronLeft className="h-4 w-4" />
             Back
@@ -674,7 +674,7 @@ export default function BookingPage() {
                 <button
                   type="button"
                   onClick={addChild}
-                  className="text-xs font-medium hover:opacity-80 transition-opacity"
+                  className="text-xs font-medium hover:opacity-80 transition-opacity py-1.5 px-2 -mr-2 rounded-md touch-manipulation"
                   style={{ color: accentColor }}
                 >
                   + Add another student
@@ -686,10 +686,10 @@ export default function BookingPage() {
                   {children.length > 1 && (
                     <button
                       onClick={() => removeChild(index)}
-                      className="absolute top-2 right-2 p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      className="absolute top-2 right-2 p-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                       aria-label={`Remove student ${index + 1}`}
                     >
-                      <ChevronRight className="h-3.5 w-3.5 rotate-45" />
+                      <X className="h-3.5 w-3.5" />
                     </button>
                   )}
 
@@ -823,7 +823,7 @@ function PageShell({
 }) {
   if (isEmbed) {
     return (
-      <div className="relative flex flex-col min-h-screen bg-background">
+      <div className="relative flex flex-col min-h-dvh bg-background">
         {children}
       </div>
     );
@@ -831,7 +831,7 @@ function PageShell({
 
   return (
     <div
-      className="min-h-screen flex items-start justify-center px-4 py-8 sm:py-12"
+      className="min-h-dvh flex items-start justify-center px-4 py-8 sm:py-12"
       style={{
         background: `linear-gradient(135deg, ${accentColor || '#6366f1'}08 0%, ${accentColor || '#6366f1'}03 50%, transparent 100%)`,
       }}

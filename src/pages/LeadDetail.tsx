@@ -163,8 +163,15 @@ export default function LeadDetail() {
   return (
     <AppLayout>
       <PageHeader
-        title={lead.contact_name}
-        description={`${STAGE_LABELS[lead.stage]} · Source: ${SOURCE_LABELS[lead.source] || lead.source}${lead.source_detail ? ` (${lead.source_detail})` : ''}`}
+        title={
+          <div className="flex items-center gap-3 flex-wrap">
+            <span>{lead.contact_name}</span>
+            <Badge variant="secondary" className={cn('text-xs', STAGE_COLORS[lead.stage])}>
+              {STAGE_LABELS[lead.stage]}
+            </Badge>
+          </div>
+        }
+        description={`Source: ${SOURCE_LABELS[lead.source] || lead.source}${lead.source_detail ? ` (${lead.source_detail})` : ''}`}
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Leads', href: '/leads' },
@@ -175,13 +182,13 @@ export default function LeadDetail() {
             {lead.stage !== 'enrolled' && lead.stage !== 'lost' && !lead.trial_lesson_id && (
               <Button onClick={() => setShowBookTrial(true)} variant="outline" size="sm" className="gap-2">
                 <CalendarPlus className="h-4 w-4" />
-                Book Trial
+                <span className="hidden sm:inline">Book Trial</span>
               </Button>
             )}
             {lead.stage !== 'enrolled' && lead.stage !== 'lost' && (
               <Button onClick={() => setShowConvert(true)} size="sm" className="gap-2">
                 <UserCheck className="h-4 w-4" />
-                Convert
+                <span className="hidden sm:inline">Convert</span>
               </Button>
             )}
             <AlertDialog>

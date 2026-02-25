@@ -71,7 +71,7 @@ export default function Leads() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  const [view, setView] = useState<'kanban' | 'list'>('kanban');
+  const [view, setView] = useState<'kanban' | 'list'>(isMobile ? 'list' : 'kanban');
   const [showCreate, setShowCreate] = useState(false);
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState<string>('all');
@@ -132,7 +132,7 @@ export default function Leads() {
 
         {/* Filters bar */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <div className="relative w-full sm:flex-1 sm:w-auto min-w-[200px] max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search leads..."
@@ -143,7 +143,7 @@ export default function Leads() {
           </div>
 
           <Select value={stageFilter} onValueChange={setStageFilter}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-[130px] sm:w-[150px]">
               <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
               <SelectValue placeholder="Stage" />
             </SelectTrigger>
@@ -156,7 +156,7 @@ export default function Leads() {
           </Select>
 
           <Select value={sourceFilter} onValueChange={setSourceFilter}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-[130px] sm:w-[150px]">
               <SelectValue placeholder="Source" />
             </SelectTrigger>
             <SelectContent>
@@ -193,9 +193,9 @@ export default function Leads() {
 
         {/* Main content */}
         {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-48 rounded-xl bg-muted animate-pulse" />
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />
             ))}
           </div>
         ) : leads.length === 0 && !search && stageFilter === 'all' && sourceFilter === 'all' ? (
@@ -242,7 +242,7 @@ export default function Leads() {
                     <TableCell className="hidden sm:table-cell">
                       <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                         <Users className="h-3.5 w-3.5" />
-                        {(lead as any).student_count || 0}
+                        {lead.student_count || 0}
                       </div>
                     </TableCell>
                     <TableCell>

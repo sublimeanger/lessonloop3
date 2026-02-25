@@ -83,7 +83,7 @@ function KanbanColumn({ stage, leads, count, isFirst, onAddClick }: KanbanColumn
     <div
       ref={setNodeRef}
       className={cn(
-        'flex flex-col min-w-[260px] w-[280px] shrink-0 rounded-xl bg-muted/40 border border-border/50',
+        'flex flex-col min-w-[260px] w-[280px] shrink-0 rounded-xl bg-muted/40 border border-border/50 snap-start',
         isOver && 'ring-2 ring-primary/40 bg-primary/5',
       )}
     >
@@ -110,7 +110,7 @@ function KanbanColumn({ stage, leads, count, isFirst, onAddClick }: KanbanColumn
       </div>
 
       {/* Card list */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-[120px]">
+      <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-[120px] max-h-[60vh]">
         <SortableContext items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
           {leads.map((lead) => (
             <SortableLeadCard key={lead.id} lead={lead} />
