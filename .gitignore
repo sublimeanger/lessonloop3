@@ -39,5 +39,8 @@ android/.gradle/
 android/build/
 android/local.properties
 
+# Supabase
+supabase/.temp/
+
 # Generated icons
 play-store-icon.png
