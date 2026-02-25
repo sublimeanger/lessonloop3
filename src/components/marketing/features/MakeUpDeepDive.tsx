@@ -101,7 +101,7 @@ export function MakeUpDeepDive() {
       {/* Accent line */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[1px] bg-gradient-to-r from-transparent via-border to-transparent" />
       
-      <div className="container mx-auto px-6 lg:px-8">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           {/* Left: Content */}
           <motion.div

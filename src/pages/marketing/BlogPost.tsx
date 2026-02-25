@@ -42,7 +42,7 @@ export default function BlogPost() {
     return (
       <MarketingLayout>
         <section className="pt-28 pb-12 lg:pt-36 lg:pb-16">
-          <div className="container mx-auto px-6 lg:px-8 space-y-4">
+          <div className="container mx-auto px-5 sm:px-6 lg:px-8 space-y-4">
             <Skeleton className="h-8 w-32" />
             <Skeleton className="h-12 w-3/4" />
             <Skeleton className="h-6 w-1/2" />
@@ -249,10 +249,10 @@ export default function BlogPost() {
       }} />
 
       {/* Hero Section */}
-      <section className="pt-28 pb-12 lg:pt-36 lg:pb-16 relative overflow-hidden">
+      <section className="pt-28 pb-12 sm:pt-32 lg:pt-40 lg:pb-16 relative overflow-hidden">
         <div className="absolute inset-0 gradient-hero-light" />
-        
-        <div className="container mx-auto px-6 lg:px-8 relative">
+
+        <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -299,7 +299,7 @@ export default function BlogPost() {
 
       {/* Featured Image */}
       <section className="pb-8">
-        <div className="container mx-auto px-6 lg:px-8">
+        <div className="container mx-auto px-5 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -318,7 +318,7 @@ export default function BlogPost() {
 
       {/* Content */}
       <section className="py-8 lg:py-12">
-        <div className="container mx-auto px-6 lg:px-8">
+        <div className="container mx-auto px-5 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row gap-12">
             {/* Main Content */}
             <motion.article
@@ -365,7 +365,7 @@ export default function BlogPost() {
 
             {/* Sidebar */}
             <aside className="lg:w-80">
-              <div className="sticky top-24 space-y-8">
+              <div className="sticky top-28 space-y-8">
                 {/* Table of Contents */}
                 {headings.length > 0 && (
                   <motion.div
@@ -413,7 +413,7 @@ export default function BlogPost() {
       {/* Related Articles */}
       {relatedPosts.length > 0 && (
         <section className="py-16 lg:py-20 bg-muted/30">
-          <div className="container mx-auto px-6 lg:px-8">
+          <div className="container mx-auto px-5 sm:px-6 lg:px-8">
             <h2 className="text-2xl font-bold text-foreground mb-8">Related Articles</h2>
             <div className="grid md:grid-cols-2 gap-8">
               {relatedPosts.map((relatedPost, index) => (
@@ -454,7 +454,7 @@ export default function BlogPost() {
 
       {/* Final CTA */}
       <section className="py-16 lg:py-20">
-        <div className="container mx-auto px-6 lg:px-8 text-center">
+        <div className="container mx-auto px-5 sm:px-6 lg:px-8 text-center">
           <h2 className="text-2xl lg:text-3xl font-bold text-foreground mb-4">
             Ready to transform your teaching practice?
           </h2>

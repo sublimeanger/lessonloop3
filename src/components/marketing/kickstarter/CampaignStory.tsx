@@ -35,7 +35,7 @@ const screenshots = [
 export function CampaignStory() {
   return (
     <section className="py-24 lg:py-32 bg-background">
-      <div className="container mx-auto px-6 lg:px-8">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8">
         {/* Founder intro */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}

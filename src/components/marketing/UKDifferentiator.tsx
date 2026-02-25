@@ -41,7 +41,7 @@ export function UKDifferentiator() {
       <div className="absolute top-0 right-1/4 w-[500px] h-[500px] opacity-[0.06] pointer-events-none" style={{ background: "radial-gradient(circle, hsl(var(--teal)) 0%, transparent 70%)", filter: "blur(100px)" }} />
       <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] opacity-[0.05] pointer-events-none" style={{ background: "radial-gradient(circle, hsl(var(--coral)) 0%, transparent 70%)", filter: "blur(100px)" }} />
 
-      <div className="container mx-auto px-6 lg:px-8 relative">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

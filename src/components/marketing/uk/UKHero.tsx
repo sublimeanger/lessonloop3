@@ -7,7 +7,7 @@ const trustItems = ["🇬🇧 UK-headquartered", "£ GBP native", "GDPR by desig
 
 export function UKHero() {
   return (
-    <section className="relative py-24 lg:py-36 overflow-hidden">
+    <section className="relative pt-28 sm:pt-32 lg:pt-40 pb-24 lg:pb-36 overflow-hidden">
       {/* Subtle background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-coral/5 pointer-events-none" />
       {/* Faint Union Jack accent */}
@@ -15,7 +15,7 @@ export function UKHero() {
         🇬🇧
       </div>
 
-      <div className="container relative mx-auto px-6 lg:px-8 text-center max-w-4xl">
+      <div className="container relative mx-auto px-5 sm:px-6 lg:px-8 text-center max-w-4xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-6">
             🇬🇧 Built in the UK, for the UK
@@ -26,7 +26,7 @@ export function UKHero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-tight"
+          className="text-3xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-tight"
         >
           Music school software that actually{" "}
           <span className="bg-gradient-to-r from-primary to-teal-dark bg-clip-text text-transparent">

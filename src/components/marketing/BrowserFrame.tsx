@@ -32,9 +32,9 @@ export function BrowserFrame({
       {/* Browser Top Bar */}
       <div className="flex items-center gap-2 px-4 py-3 bg-white/5 border-b border-white/10">
         <div className="flex gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-red-500/80" />
-          <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-          <div className="w-3 h-3 rounded-full bg-green-500/80" />
+          <div className="w-3 h-3 rounded-full bg-destructive/80" />
+          <div className="w-3 h-3 rounded-full bg-warning/80" />
+          <div className="w-3 h-3 rounded-full bg-success/80" />
         </div>
         <div className="flex-1 flex justify-center">
           <div className="bg-white/10 rounded-lg px-4 py-1 text-xs text-white/40 font-mono">
@@ -77,9 +77,9 @@ export function BrowserFrameLight({
       {/* Browser Top Bar */}
       <div className="flex items-center gap-2 px-4 py-3 bg-muted/50 border-b border-border">
         <div className="flex gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-red-500" />
-          <div className="w-3 h-3 rounded-full bg-yellow-500" />
-          <div className="w-3 h-3 rounded-full bg-green-500" />
+          <div className="w-3 h-3 rounded-full bg-destructive" />
+          <div className="w-3 h-3 rounded-full bg-warning" />
+          <div className="w-3 h-3 rounded-full bg-success" />
         </div>
         <div className="flex-1 flex justify-center">
           <div className="bg-background rounded-lg px-4 py-1 text-xs text-muted-foreground font-mono border border-border">

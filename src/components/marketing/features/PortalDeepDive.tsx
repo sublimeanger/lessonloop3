@@ -28,7 +28,7 @@ export function PortalDeepDive() {
       {/* Accent line */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[1px] bg-gradient-to-r from-transparent via-border to-transparent" />
       
-      <div className="container mx-auto px-6 lg:px-8 relative">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative">
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-8 items-center">
           {/* Left: Screenshot — wider */}
           <motion.div

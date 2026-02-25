@@ -173,7 +173,7 @@ export function ProductShowcase() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-teal/10 to-transparent rounded-full blur-3xl" />
       </div>
 
-      <div className="container mx-auto px-6 lg:px-8 relative">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative">
         {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -276,9 +276,9 @@ export function ProductShowcase() {
                 {/* Browser Bar */}
                 <div className="flex items-center gap-2 px-4 py-3 bg-white/5 border-b border-white/10">
                   <div className="flex gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-red-500/80" />
-                    <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-                    <div className="w-3 h-3 rounded-full bg-green-500/80" />
+                    <div className="w-3 h-3 rounded-full bg-destructive/80" />
+                    <div className="w-3 h-3 rounded-full bg-warning/80" />
+                    <div className="w-3 h-3 rounded-full bg-success/80" />
                   </div>
                   <div className="flex-1 flex justify-center">
                     <div className="bg-white/10 rounded-lg px-4 py-1 text-xs text-white/40 font-mono">

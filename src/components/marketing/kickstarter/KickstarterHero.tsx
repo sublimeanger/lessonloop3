@@ -87,7 +87,7 @@ export function KickstarterHero() {
         }}
       />
 
-      <div className="container mx-auto px-6 lg:px-8 relative z-10 pt-32 pb-20">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative z-10 pt-28 sm:pt-32 lg:pt-40 pb-20">
         <div className="max-w-4xl mx-auto text-center">
           {/* Badge */}
           <motion.div

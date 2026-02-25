@@ -20,13 +20,13 @@ export default function CompareCTA({
   otherComparisons = [],
 }: CompareCTAProps) {
   return (
-    <section className="relative py-20 lg:py-28 bg-[hsl(var(--ink))] overflow-hidden">
+    <section className="relative py-16 sm:py-20 lg:py-28 bg-[hsl(var(--ink))] overflow-hidden">
       <motion.div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] opacity-20 blur-3xl"
         style={{ background: "radial-gradient(ellipse, hsl(var(--teal)) 0%, transparent 70%)" }}
       />
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center max-w-3xl relative z-10">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 text-center max-w-3xl relative z-10">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight">
             {headline || `Ready to switch from ${competitorName}?`}{" "}
@@ -50,13 +50,13 @@ export default function CompareCTA({
         >
           <Link
             to="/signup"
-            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 min-h-[44px] rounded-xl bg-primary text-primary-foreground font-semibold shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
           >
             Start free trial <ArrowRight className="w-4 h-4" />
           </Link>
           <Link
             to="/pricing"
-            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 min-h-[44px] rounded-xl border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
           >
             View plans and pricing
           </Link>
@@ -67,7 +67,7 @@ export default function CompareCTA({
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.3 }}
-          className="mt-8 flex flex-wrap justify-center items-center gap-x-2 text-sm text-white/50"
+          className="mt-8 flex flex-wrap justify-center items-center gap-x-2 gap-y-1 text-sm text-white/50"
         >
           {trustItems.map((item, i) => (
             <span key={item} className="flex items-center">
@@ -91,7 +91,7 @@ export default function CompareCTA({
                 <Link
                   key={comp.to}
                   to={comp.to}
-                  className="px-4 py-2 rounded-xl border border-white/10 text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 transition-all"
+                  className="px-4 py-2.5 min-h-[44px] inline-flex items-center rounded-xl border border-white/10 text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 transition-all"
                 >
                   {comp.label} →
                 </Link>

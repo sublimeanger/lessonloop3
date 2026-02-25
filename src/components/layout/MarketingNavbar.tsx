@@ -241,7 +241,7 @@ export function MarketingNavbar() {
           isScrolled && "shadow-sm"
         )}
       >
-        <div className="container mx-auto px-6 lg:px-8">
+        <div className="container mx-auto px-5 sm:px-6 lg:px-8">
           <nav className="flex items-center justify-between h-20">
             {/* Logo */}
             <Link to="/" className="relative z-10 shrink-0">

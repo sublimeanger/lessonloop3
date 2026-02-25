@@ -14,8 +14,8 @@ const badges: { icon: LucideIcon | null; emoji?: string; label: string }[] = [
 export function SocialProofStrip() {
   return (
     <section className="py-5 border-y border-border bg-muted/30">
-      <div className="container mx-auto px-6 lg:px-8">
-        <div className="flex flex-wrap justify-center gap-x-6 gap-y-3">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8">
+        <div className="flex flex-wrap justify-center gap-x-4 sm:gap-x-6 gap-y-2.5 sm:gap-y-3">
           {badges.map((badge, i) => (
             <motion.div
               key={badge.label}

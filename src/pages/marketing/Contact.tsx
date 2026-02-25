@@ -112,7 +112,7 @@ export default function Contact() {
       <ContactSchema />
 
       {/* ═══ HERO ═══ */}
-      <section className="relative pt-24 pb-16 lg:pt-32 lg:pb-20 overflow-hidden">
+      <section className="relative pt-28 pb-16 sm:pt-32 lg:pt-40 lg:pb-20 overflow-hidden">
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: "radial-gradient(circle at 1px 1px, hsl(var(--foreground)) 1px, transparent 0)",
           backgroundSize: "32px 32px",
@@ -134,7 +134,7 @@ export default function Contact() {
               Get in Touch
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-[1.1] tracking-tight mb-6">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-[1.1] tracking-tight mb-6">
               We'd love to{" "}
               <span className="bg-gradient-to-r from-[hsl(var(--teal))] to-[hsl(var(--teal-dark))] bg-clip-text text-transparent">
                 hear from you

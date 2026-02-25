@@ -215,7 +215,7 @@ export default function FeatureLoopAssist() {
       {/* ════════════════════════════════════════════════════
           HERO — Split: headline left, interactive chat right
          ════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden bg-background pt-24 pb-20 lg:pt-32 lg:pb-28">
+      <section className="relative overflow-hidden bg-background pt-28 sm:pt-32 lg:pt-40 pb-20 lg:pb-28">
         {/* Background orb */}
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-violet/8 via-teal/5 to-transparent rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-teal/6 to-transparent rounded-full blur-3xl pointer-events-none" />
@@ -233,7 +233,7 @@ export default function FeatureLoopAssist() {
                 <span className="text-sm font-semibold text-violet tracking-wide">LoopAssist AI</span>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-bold tracking-tight text-foreground leading-[1.1] mb-6">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.5rem] font-bold tracking-tight text-foreground leading-[1.1] mb-6">
                 Your AI assistant that{" "}
                 <span className="bg-gradient-to-r from-violet to-teal bg-clip-text text-transparent">
                   knows your school

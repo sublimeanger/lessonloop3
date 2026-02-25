@@ -25,7 +25,7 @@ const steps = [
     time: "Stripe in 2 minutes",
     description: "Generate invoices in bulk, send automatic reminders, and accept online payments with Stripe.",
     icon: CreditCard,
-    color: "from-violet-500 to-violet-600",
+    color: "from-violet to-violet",
   },
   {
     number: "04",
@@ -33,7 +33,7 @@ const steps = [
     time: "built in, no setup",
     description: "Let LoopAssist handle reminders, reports, and routine tasks. Ask it anything about your schedule, finances, or students.",
     icon: Sparkles,
-    color: "from-amber-500 to-amber-600",
+    color: "from-coral to-coral-dark",
   },
 ];
 
@@ -77,7 +77,7 @@ export function HowItWorks() {
               initial={{ scaleX: 0 }}
               animate={isInView ? { scaleX: 1 } : { scaleX: 0 }}
               transition={{ duration: 1.5, ease: "easeOut" }}
-              className="h-full bg-gradient-to-r from-teal via-coral to-violet-500 origin-left"
+              className="h-full bg-gradient-to-r from-teal via-coral to-violet origin-left"
             />
           </div>
 

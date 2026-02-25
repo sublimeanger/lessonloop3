@@ -22,9 +22,9 @@ export default function FeaturePageCTA({
 }: FeaturePageCTAProps) {
   return (
     <section className="py-24 lg:py-32 bg-ink">
-      <div className="container mx-auto px-6 lg:px-8 text-center max-w-3xl">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 text-center max-w-3xl">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-          <h2 className="text-3xl lg:text-4xl font-bold text-white">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white">
             {headline}{" "}
             {headlineAccent && (
               <span className="bg-gradient-to-r from-primary to-teal-light bg-clip-text text-transparent">

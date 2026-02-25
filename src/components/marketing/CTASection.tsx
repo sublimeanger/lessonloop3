@@ -56,12 +56,12 @@ export function CTASection() {
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
             >
-              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
+              <h2 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
                 Ready to get your
                 <br />
                 evenings back?
               </h2>
-              <p className="text-xl text-white/70 mb-8">
+              <p className="text-lg sm:text-xl text-white/70 mb-8">
                 Join music educators across the UK who've swapped spreadsheets and chasing 
                 payments for a platform that handles it all.
               </p>

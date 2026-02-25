@@ -24,12 +24,12 @@ export default function FeaturePageHero({
   secondaryCTA = { label: "View pricing", to: "/pricing" },
 }: FeaturePageHeroProps) {
   return (
-    <section className="relative py-24 lg:py-36 overflow-hidden">
+    <section className="relative pt-28 pb-16 sm:pt-32 sm:pb-20 lg:pt-40 lg:pb-28 overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-teal/5 pointer-events-none" />
 
-      <div className="container relative mx-auto px-6 lg:px-8 text-center max-w-4xl">
+      <div className="container relative mx-auto px-5 sm:px-6 lg:px-8 text-center max-w-4xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-6">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-semibold mb-6">
             {BadgeIcon && <BadgeIcon className="w-4 h-4" />}
             {badge}
           </span>
@@ -39,7 +39,7 @@ export default function FeaturePageHero({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-tight"
+          className="text-3xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-[1.1] tracking-tight"
         >
           {title}{" "}
           <span className="bg-gradient-to-r from-primary to-teal-dark bg-clip-text text-transparent">
@@ -51,7 +51,7 @@ export default function FeaturePageHero({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto"
+          className="mt-5 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed"
         >
           {subtitle}
         </motion.p>
@@ -60,7 +60,7 @@ export default function FeaturePageHero({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className="mt-8 flex flex-col sm:flex-row gap-4 justify-center"
+          className="mt-8 flex flex-col sm:flex-row gap-3 justify-center"
         >
           <Button size="lg" asChild>
             <Link to={primaryCTA.to}>

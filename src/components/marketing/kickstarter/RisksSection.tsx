@@ -35,7 +35,7 @@ const risks = [
 
 const ACCENT = {
   teal: { icon: "text-[hsl(var(--teal))]", badge: "bg-[hsl(var(--teal)/0.1)] text-[hsl(var(--teal))]", border: "border-l-[hsl(var(--teal))]" },
-  amber: { icon: "text-amber-500", badge: "bg-amber-500/10 text-amber-600", border: "border-l-amber-500" },
+  amber: { icon: "text-warning", badge: "bg-warning/10 text-warning", border: "border-l-warning" },
   blue: { icon: "text-blue-500", badge: "bg-blue-500/10 text-blue-600", border: "border-l-blue-500" },
   coral: { icon: "text-[hsl(var(--coral))]", badge: "bg-[hsl(var(--coral)/0.1)] text-[hsl(var(--coral))]", border: "border-l-[hsl(var(--coral))]" },
 };
@@ -50,7 +50,7 @@ export function RisksSection() {
         style={{ background: "radial-gradient(circle, hsl(var(--teal)) 0%, transparent 70%)", filter: "blur(80px)" }}
       />
 
-      <div className="container mx-auto px-6 lg:px-8 relative z-10">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}

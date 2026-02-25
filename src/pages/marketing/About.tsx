@@ -29,7 +29,7 @@ const values = [
     icon: Lightbulb,
     title: "Honesty",
     description: "No fake metrics, no inflated claims. We'd rather under-promise and over-deliver than the other way around.",
-    color: "from-amber-500 to-orange-600",
+    color: "from-coral to-coral-dark",
   },
 ];
 
@@ -82,7 +82,7 @@ export default function About() {
     <MarketingLayout>
       <AboutSchema />
       {/* Hero Section */}
-      <section className="pt-28 pb-16 lg:pt-36 lg:pb-24 relative overflow-hidden">
+      <section className="pt-28 pb-16 sm:pt-32 lg:pt-40 lg:pb-24 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-muted/50 to-background" />
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-teal/5 rounded-full blur-[150px]" />
         <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-coral/5 rounded-full blur-[120px]" />
@@ -104,7 +104,7 @@ export default function About() {
               Our story
             </motion.span>
             
-            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-foreground leading-[1.1] mb-6">
+            <h1 className="text-3xl sm:text-5xl lg:text-7xl font-bold text-foreground leading-[1.1] mb-6">
               Built by a music teacher,
               <br />
               <span className="bg-gradient-to-r from-teal via-teal-dark to-ink bg-clip-text text-transparent">
@@ -281,7 +281,7 @@ export default function About() {
       </section>
 
       {/* What LessonLoop Solves */}
-      <section className="py-20 lg:py-28 bg-muted/30 relative overflow-hidden">
+      <section className="py-20 lg:py-28 bg-background relative overflow-hidden">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

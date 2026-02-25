@@ -9,7 +9,7 @@ export function FounderStory() {
       <div className="absolute top-1/2 left-0 w-[400px] h-[400px] bg-gradient-to-r from-teal/5 to-transparent rounded-full blur-3xl -translate-y-1/2" />
       <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-gradient-to-l from-coral/5 to-transparent rounded-full blur-3xl -translate-y-1/2" />
 
-      <div className="container mx-auto px-6 lg:px-8 relative">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative">
         {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

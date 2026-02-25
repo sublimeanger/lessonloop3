@@ -113,7 +113,7 @@ export const MarketingFooter = React.forwardRef<HTMLElement>(function MarketingF
 
       {/* Newsletter strip */}
       <div className="border-b border-white/[0.06]">
-        <div className="container mx-auto px-6 lg:px-8 py-12 lg:py-16">
+        <div className="container mx-auto px-5 sm:px-6 lg:px-8 py-10 lg:py-16">
           <div className="flex flex-col lg:flex-row items-center justify-between gap-8 max-w-5xl mx-auto">
             <div className="text-center lg:text-left">
               <h3 className="text-xl font-bold text-white mb-1">Stay in the loop</h3>
@@ -142,7 +142,7 @@ export const MarketingFooter = React.forwardRef<HTMLElement>(function MarketingF
       </div>
 
       {/* Main footer grid */}
-      <div className="container mx-auto px-6 lg:px-8 relative">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative">
         <motion.div
           variants={containerVariants}
           initial="hidden"

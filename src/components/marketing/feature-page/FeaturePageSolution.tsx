@@ -17,7 +17,7 @@ interface FeaturePageSolutionProps {
 export default function FeaturePageSolution({ eyebrow, headline, subtitle, features }: FeaturePageSolutionProps) {
   return (
     <section className="py-20 lg:py-28 bg-background">
-      <div className="container mx-auto px-6 lg:px-8">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -25,7 +25,7 @@ export default function FeaturePageSolution({ eyebrow, headline, subtitle, featu
           className="text-center mb-16"
         >
           <span className="inline-block text-sm font-semibold text-primary mb-4 uppercase tracking-wide">{eyebrow}</span>
-          <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-4">{headline}</h2>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4">{headline}</h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{subtitle}</p>
         </motion.div>
 

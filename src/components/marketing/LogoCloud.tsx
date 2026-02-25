@@ -12,7 +12,7 @@ const logos = [
 export function LogoCloud() {
   return (
     <section className="py-16 bg-background border-y border-border">
-      <div className="container mx-auto px-6 lg:px-8">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}

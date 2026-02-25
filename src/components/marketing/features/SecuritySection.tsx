@@ -20,7 +20,7 @@ export function SecuritySection() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] rounded-full bg-gradient-to-br from-teal/8 via-transparent to-primary/5 blur-3xl" />
       </div>
 
-      <div className="container mx-auto px-6 lg:px-8 relative">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 relative">
         {/* Centered shield hero */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

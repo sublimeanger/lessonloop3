@@ -31,8 +31,8 @@ export default function CompareDifferentiators({
   items,
 }: CompareDifferentiatorsProps) {
   return (
-    <section className="py-20 lg:py-28 bg-background">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
+    <section className="py-16 sm:py-20 lg:py-28 bg-background">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 max-w-6xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -46,7 +46,7 @@ export default function CompareDifferentiators({
           {subtitle && <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{subtitle}</p>}
         </motion.div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {items.map((item, i) => {
             const Icon = item.icon;
             const accent = ACCENT_MAP[ACCENT_CYCLE[i % ACCENT_CYCLE.length]];
