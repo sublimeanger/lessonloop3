@@ -238,8 +238,8 @@ function postProcess(html, routePath) {
     );
   }
 
-  // Remove all <script> tags (JS bundles) but KEEP <script type="application/ld+json">
-  html = html.replace(/<script(?![^>]*type\s*=\s*["']application\/ld\+json["'])[^>]*>[\s\S]*?<\/script>/gi, '');
+  // Remove all <script> tags (JS bundles) but KEEP ld+json and our SSG scripts
+  html = html.replace(/<script(?![^>]*type\s*=\s*["']application\/ld\+json["'])(?![^>]*data-ssg)[^>]*>[\s\S]*?<\/script>/gi, '');
   // Remove any remaining empty <script> self-closing or module-type tags
   html = html.replace(/<script[^>]*type\s*=\s*["']module["'][^>]*\/?\s*>/gi, '');
 
@@ -285,6 +285,60 @@ function postProcess(html, routePath) {
       '  <link rel="alternate icon" href="/favicon.ico">\n' +
       '  <link rel="apple-touch-icon" href="/pwa-192x192.png">\n  </head>');
   }
+
+  // ── Safety-net: fix any remaining Framer Motion opacity:0 inline styles ──
+  html = html.replace(/style="([^"]*)opacity:\s*0(?:;|\s|")([^"]*)"/g, (match, before, after) => {
+    let fixed = before + 'opacity: 1;' + after;
+    // Also neutralise animation transforms
+    fixed = fixed.replace(/transform:\s*(?!none)[^;"]+/g, 'transform: none');
+    return `style="${fixed}"`;
+  });
+
+  // ── Inject minimal vanilla JS for interactive elements ──
+  const tabScript = `<script data-ssg="tabs">
+(function(){
+  /* ProductShowcase tab switching */
+  var panels=document.querySelectorAll('[data-showcase-panel]');
+  var btns=document.querySelectorAll('[data-showcase-tab]');
+  if(panels.length&&btns.length){
+    var base='flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all flex-shrink-0';
+    btns.forEach(function(b){
+      b.addEventListener('click',function(){
+        var t=this.getAttribute('data-showcase-tab');
+        panels.forEach(function(p){p.style.display=p.getAttribute('data-showcase-panel')===t?'':'none'});
+        btns.forEach(function(x){
+          x.className=base+(x.getAttribute('data-showcase-tab')===t
+            ?' bg-white text-ink shadow-xl'
+            :' bg-white/10 text-white/70 hover:bg-white/15 hover:text-white');
+        });
+      });
+    });
+  }
+
+  /* FAQ / Accordion toggle (Radix-style data-state) */
+  document.querySelectorAll('[data-orientation="vertical"] > [data-state]').forEach(function(item){
+    var trigger=item.querySelector('button[data-state]');
+    if(!trigger)return;
+    trigger.addEventListener('click',function(){
+      var open=item.getAttribute('data-state')==='open';
+      item.setAttribute('data-state',open?'closed':'open');
+      trigger.setAttribute('data-state',open?'closed':'open');
+      var arrow=trigger.querySelector('.lucide-chevron-down');
+      if(arrow)arrow.style.transform=open?'rotate(0deg)':'rotate(180deg)';
+      var content=item.querySelector('[role="region"]');
+      if(content){content.hidden=open;content.setAttribute('data-state',open?'closed':'open');content.style.display=open?'none':''}
+    });
+  });
+
+  /* Radix NavigationMenu dropdowns for mobile: ensure closed menus stay hidden */
+  document.querySelectorAll('button[data-state="closed"][aria-expanded="false"]').forEach(function(b){
+    var id=b.getAttribute('aria-controls');
+    if(id){var p=document.getElementById(id);if(p)p.style.display='none'}
+  });
+})();
+</script>`;
+
+  html = html.replace('</body>', tabScript + '\n</body>');
 
   return html;
 }
@@ -346,6 +400,102 @@ async function main() {
 
       // Extra wait for animations / late-loading content
       await page.evaluate(() => new Promise(r => setTimeout(r, 500)));
+
+      // ── Fix Framer Motion: make all opacity:0 elements visible ──
+      await page.evaluate(() => {
+        document.querySelectorAll('[style]').forEach(el => {
+          const s = el.style;
+          if (s.opacity === '0') {
+            s.opacity = '1';
+            s.transform = 'none';
+          }
+        });
+      });
+
+      // ── Capture ProductShowcase tab panels for static rendering ──
+      await page.evaluate(async () => {
+        const showcase = document.getElementById('product-showcase');
+        if (!showcase) return;
+
+        // Find the scrollable tab-button container (has scrollbar-width: none)
+        const btnContainer = showcase.querySelector('[style*="scrollbar-width"]');
+        if (!btnContainer) return;
+
+        const buttons = Array.from(btnContainer.querySelectorAll('button'));
+        if (buttons.length < 2) return;
+
+        // The content grid is the .grid sibling after the .relative wrapper
+        const wrapperDiv = btnContainer.closest('.relative');
+        if (!wrapperDiv) return;
+        const contentGrid = wrapperDiv.nextElementSibling;
+        if (!contentGrid || !contentGrid.className.includes('grid')) return;
+
+        const gridClass = contentGrid.className;
+
+        // Click through every tab and capture the rendered panel HTML
+        const panels = [];
+        for (let i = 0; i < buttons.length; i++) {
+          buttons[i].click();
+          await new Promise(r => setTimeout(r, 500));
+
+          // Fix any new opacity:0 from entrance animations
+          document.querySelectorAll('#product-showcase [style]').forEach(el => {
+            if (el.style.opacity === '0') {
+              el.style.opacity = '1';
+              el.style.transform = 'none';
+            }
+          });
+          await new Promise(r => setTimeout(r, 200));
+
+          panels.push(contentGrid.innerHTML);
+        }
+
+        // Reset to first tab so buttons have correct active/inactive classes
+        buttons[0].click();
+        await new Promise(r => setTimeout(r, 500));
+        document.querySelectorAll('#product-showcase [style]').forEach(el => {
+          if (el.style.opacity === '0') {
+            el.style.opacity = '1';
+            el.style.transform = 'none';
+          }
+        });
+
+        // Tag buttons with data attributes for JS switching
+        buttons.forEach((btn, i) => btn.setAttribute('data-showcase-tab', String(i)));
+
+        // Build a container with all panels (only first visible)
+        const container = document.createElement('div');
+        container.setAttribute('data-showcase-panels', '');
+
+        panels.forEach((panelHtml, i) => {
+          const panel = document.createElement('div');
+          panel.className = gridClass;
+          panel.setAttribute('data-showcase-panel', String(i));
+          if (i !== 0) panel.style.display = 'none';
+          panel.innerHTML = panelHtml;
+          container.appendChild(panel);
+        });
+
+        // Replace the single-content grid with the multi-panel version
+        contentGrid.replaceWith(container);
+      });
+
+      // ── Final sweep: fix any remaining opacity:0 and animation transforms ──
+      await page.evaluate(() => {
+        document.querySelectorAll('[style]').forEach(el => {
+          const s = el.style;
+          if (s.opacity === '0') {
+            s.opacity = '1';
+            s.transform = 'none';
+          }
+          // Clean mid-animation transforms (skip decorative blobs with background/filter)
+          if (s.opacity !== '' && s.transform && s.transform !== 'none') {
+            if (!s.background && !s.backgroundImage && !s.filter) {
+              s.transform = 'none';
+            }
+          }
+        });
+      });
 
       // Extract the full rendered HTML
       const rawHtml = await page.content();
