@@ -2,23 +2,39 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "../_shared/rate-limit.ts";
+import { matchHeaderToField, detectSourceSoftware, type SourceSoftware } from "../_shared/csv-field-aliases.ts";
 
-// Target fields for import mapping
+// ─── Target fields for import mapping (expanded: 17 → 32) ───
+
 const STUDENT_FIELDS = [
   { name: "first_name", required: true, description: "Student's first name" },
   { name: "last_name", required: true, description: "Student's last name" },
   { name: "email", required: false, description: "Student email address" },
   { name: "phone", required: false, description: "Student phone number" },
-  { name: "dob", required: false, description: "Date of birth (YYYY-MM-DD or DD/MM/YYYY)" },
+  { name: "dob", required: false, description: "Date of birth (any format)" },
   { name: "notes", required: false, description: "Notes about the student" },
   { name: "status", required: false, description: "Student status (Active/Inactive)" },
+  { name: "gender", required: false, description: "Student gender" },
+  { name: "start_date", required: false, description: "Date student started lessons" },
+  { name: "tags", required: false, description: "Tags or categories (comma-separated)" },
 ];
 
 const GUARDIAN_FIELDS = [
-  { name: "guardian_name", required: false, description: "Full name of guardian/parent" },
+  { name: "guardian_name", required: false, description: "Full name of primary guardian/parent" },
+  { name: "guardian_first_name", required: false, description: "Guardian/parent first name (auto-combined with last name)" },
+  { name: "guardian_last_name", required: false, description: "Guardian/parent last name (auto-combined with first name)" },
   { name: "guardian_email", required: false, description: "Guardian email address" },
   { name: "guardian_phone", required: false, description: "Guardian phone number" },
   { name: "relationship", required: false, description: "Relationship (mother, father, guardian, other)" },
+];
+
+const GUARDIAN2_FIELDS = [
+  { name: "guardian2_name", required: false, description: "Second guardian/parent full name" },
+  { name: "guardian2_first_name", required: false, description: "Second guardian first name (auto-combined)" },
+  { name: "guardian2_last_name", required: false, description: "Second guardian last name (auto-combined)" },
+  { name: "guardian2_email", required: false, description: "Second guardian email address" },
+  { name: "guardian2_phone", required: false, description: "Second guardian phone number" },
+  { name: "guardian2_relationship", required: false, description: "Relationship of second guardian" },
 ];
 
 const TEACHING_FIELDS = [
@@ -27,6 +43,7 @@ const TEACHING_FIELDS = [
   { name: "teacher_name", required: false, description: "Teacher name for assignment" },
   { name: "location_name", required: false, description: "Location/school name" },
   { name: "price", required: false, description: "Lesson price (e.g., £24.50)" },
+  { name: "grade_level", required: false, description: "Skill level or exam grade (e.g., Grade 3, Beginner)" },
 ];
 
 const LESSON_FIELDS = [
@@ -34,61 +51,71 @@ const LESSON_FIELDS = [
   { name: "lesson_time", required: false, description: "Start time for lesson (HH:MM format)" },
 ];
 
-const ALL_TARGET_FIELDS = [...STUDENT_FIELDS, ...GUARDIAN_FIELDS, ...TEACHING_FIELDS, ...LESSON_FIELDS];
+const ADDRESS_FIELDS = [
+  { name: "address_line_1", required: false, description: "Street address line 1" },
+  { name: "address_line_2", required: false, description: "Street address line 2" },
+  { name: "city", required: false, description: "City or town" },
+  { name: "postcode", required: false, description: "Postal/zip code" },
+  { name: "country", required: false, description: "Country" },
+];
 
-const MAPPING_PROMPT = `You are an AI assistant that maps CSV column headers to database fields for a music lesson management system.
-This system is commonly used to import data from My Music Staff and similar platforms.
+const ALL_TARGET_FIELDS = [
+  ...STUDENT_FIELDS, ...GUARDIAN_FIELDS, ...GUARDIAN2_FIELDS,
+  ...TEACHING_FIELDS, ...LESSON_FIELDS, ...ADDRESS_FIELDS,
+];
 
-Given CSV headers and sample data, determine the best mapping to these target fields:
+// ─── AI Mapping Prompt (comprehensive) ───
 
-STUDENT FIELDS (primary):
-${STUDENT_FIELDS.map(f => `- ${f.name} (${f.required ? "REQUIRED" : "optional"}): ${f.description}`).join("\n")}
+const MAPPING_PROMPT = `You are an expert AI that maps CSV column headers to database fields for LessonLoop, a music lesson management system. You must handle exports from all major competitors.
 
-GUARDIAN FIELDS (optional - for linking parents/guardians):
-${GUARDIAN_FIELDS.map(f => `- ${f.name}: ${f.description}`).join("\n")}
+Given CSV headers, sample data, and optionally a source software identifier, determine the best mapping.
 
-TEACHING FIELDS (optional - for setting up teaching defaults):
-${TEACHING_FIELDS.map(f => `- ${f.name}: ${f.description}`).join("\n")}
+TARGET FIELDS:
+${ALL_TARGET_FIELDS.map(f => `- ${f.name} (${f.required ? "REQUIRED" : "optional"}): ${f.description}`).join("\n")}
 
-LESSON FIELDS (optional - for creating recurring lesson schedules):
-${LESSON_FIELDS.map(f => `- ${f.name}: ${f.description}`).join("\n")}
+KNOWN SOURCE SOFTWARE COLUMN FORMATS:
 
-KNOWN SOURCE MAPPINGS (My Music Staff):
-- "Last Name" → last_name
-- "First Name" → first_name
-- "Email" → email (student email, NOT parent)
-- "Mobile Phone" → phone
-- "Birthday" → dob
-- "Status" → status (Active/Inactive)
-- "Instrument" → instrument
-- "Default Duration" → lesson_duration
-- "School" → location_name
-- "Teacher" → teacher_name
-- "Price" → price
-- "Note" → notes
-- "Parent Contact 1 First Name" + "Parent Contact 1 Last Name" → guardian_name (combine if needed)
-- "Parent Contact 1 Email" → guardian_email
-- "Parent Contact 1 Mobile Phone" → guardian_phone
+[MyMusicStaff]
+First Name, Last Name, Email, Mobile Phone, Birthday, Status, Instrument, Default Duration, School, Teacher, Price, Note
+Parent Contact 1 First Name, Parent Contact 1 Last Name, Parent Contact 1 Email, Parent Contact 1 Mobile Phone
+Parent Contact 2 First Name, Parent Contact 2 Last Name, Parent Contact 2 Email, Parent Contact 2 Mobile Phone
 
-RULES:
-1. Each CSV header can map to at most ONE target field
-2. Each target field can be mapped from at most ONE CSV header
-3. first_name and last_name are REQUIRED for students
-4. For "Parent Contact 1 First Name" and "Parent Contact 1 Last Name", combine them into guardian_name
-5. Be conservative - if unsure, set target to null (user will map manually)
-6. Use UK date formats (DD/MM/YYYY) when interpreting dates
-7. Price columns contain UK currency (£ symbol)
-8. Prefer "Parent Contact 1" fields over "Parent" column for guardian data
+[Opus1]
+student_first_name, student_last_name, student_email, student_gender, student_birthdate
+student_full_address, student_street, student_zip, student_city, student_state, student_country
+student_phone_1, student_phone_2, student_note, student_status, student_start_date, student_end_date, student_tag
 
-Respond with a JSON object containing:
+[Teachworks]
+First Name, Last Name, Email, Phone, Family (combined guardian name)
+
+[Duet Partner]
+Contact info, Birthday, School, Skill level, Age
+
+CRITICAL RULES:
+1. Each CSV header maps to at most ONE target field
+2. Each target field can only be mapped from ONE CSV header
+3. first_name and last_name are REQUIRED
+4. COMBINED NAME: If you see "Student Name", "Name", "Full Name" — map to first_name with transform: "split_name". The system splits "John Smith" → first_name + last_name
+5. GUARDIAN NAMES: "Parent Contact 1 First Name" → guardian_first_name, "Parent Contact 1 Last Name" → guardian_last_name (system combines)
+6. SECOND GUARDIAN: "Parent Contact 2 *" fields → guardian2_* fields
+7. AMBIGUOUS EMAIL: Just "Email" → student email. Contains "parent"/"guardian"/"family" → guardian_email
+8. AMBIGUOUS PHONE: Same logic as email
+9. DATE DETECTION: Accept any format — DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD
+10. ADDRESS: street/city/postcode/country → address_* fields
+11. SKILL LEVEL: "Skill level", "Grade", "Level" → grade_level
+12. CONSERVATIVE: If genuinely unsure, set target to null. Better to skip than mis-map
+13. If sourceSoftware is provided, prioritize that platform's known format
+
+Respond with ONLY a JSON object:
 {
   "mappings": [
-    { "csv_header": "Column Name", "target_field": "first_name" | null, "confidence": 0.0-1.0 }
+    { "csv_header": "Column Name", "target_field": "field_name" | null, "confidence": 0.0-1.0, "transform": "split_name" | null }
   ],
   "warnings": ["Any issues or suggestions"],
   "has_guardian_data": true/false,
   "has_lesson_data": true/false,
-  "has_teaching_data": true/false
+  "has_teaching_data": true/false,
+  "detected_source": "mymusicstaff" | "opus1" | "teachworks" | null
 }`;
 
 serve(async (req) => {
@@ -127,7 +154,7 @@ serve(async (req) => {
       return rateLimitResponse(corsHeaders, rateLimitResult);
     }
 
-    const { headers, sampleRows, orgId } = await req.json();
+    const { headers, sampleRows, orgId, sourceSoftware } = await req.json();
 
     if (!orgId || !headers || !Array.isArray(headers)) {
       return new Response(JSON.stringify({ error: "Missing required parameters" }), {
@@ -152,6 +179,11 @@ serve(async (req) => {
       });
     }
 
+    // Auto-detect source software if not explicitly specified
+    const effectiveSource: SourceSoftware | undefined =
+      (sourceSoftware && sourceSoftware !== "auto" ? sourceSoftware : undefined) as SourceSoftware | undefined
+      || detectSourceSoftware(headers) || undefined;
+
     // Build context for AI
     const sampleDataContext = headers.map((header: string, idx: number) => {
       const samples = (sampleRows || [])
@@ -161,7 +193,8 @@ serve(async (req) => {
       return `"${header}": ${samples.length > 0 ? samples.map((s: string) => `"${s}"`).join(", ") : "(no samples)"}`;
     }).join("\n");
 
-    const userPrompt = `Map these CSV columns to target fields:
+    const userPrompt = `Map these CSV columns to target fields.
+${effectiveSource ? `Source software: ${effectiveSource}` : "Source software: auto-detect from headers and data."}
 
 CSV HEADERS AND SAMPLE DATA:
 ${sampleDataContext}
@@ -170,74 +203,60 @@ Analyze the headers and sample values to determine the best mapping.`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      // Fallback to simple heuristic mapping (optimized for My Music Staff)
+      // ─── Heuristic fallback using comprehensive alias dictionary ───
       const usedTargets = new Set<string>();
       const heuristicMappings = headers.map((header: string) => {
-        const h = header.toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, "");
-        const original = header.toLowerCase();
-        let target: string | null = null;
-        let confidence = 0;
-
-        // My Music Staff specific mappings
-        if (original === "first name" || h === "firstname") {
-          target = "first_name"; confidence = 0.95;
-        } else if (original === "last name" || h === "lastname" || h === "surname") {
-          target = "last_name"; confidence = 0.95;
-        } else if (original === "email" || (h.includes("email") && !h.includes("parent") && !h.includes("guardian") && !h.includes("contact"))) {
-          target = "email"; confidence = 0.85;
-        } else if (original === "mobile phone" || (h.includes("phone") && !h.includes("parent") && !h.includes("guardian") && !h.includes("contact"))) {
-          target = "phone"; confidence = 0.8;
-        } else if (original === "birthday" || h.includes("birthday") || h.includes("dob") || h.includes("dateofbirth")) {
-          target = "dob"; confidence = 0.9;
-        } else if (original === "status") {
-          target = "status"; confidence = 0.9;
-        } else if (original === "instrument") {
-          target = "instrument"; confidence = 0.95;
-        } else if (original === "default duration" || h === "defaultduration") {
-          target = "lesson_duration"; confidence = 0.95;
-        } else if (original === "school" || h === "school") {
-          target = "location_name"; confidence = 0.85;
-        } else if (original === "teacher") {
-          target = "teacher_name"; confidence = 0.9;
-        } else if (original === "price") {
-          target = "price"; confidence = 0.9;
-        } else if (original === "note" || h === "note") {
-          target = "notes"; confidence = 0.85;
-        } else if (original === "parent contact 1 email" || h === "parentcontact1email") {
-          target = "guardian_email"; confidence = 0.95;
-        } else if (original === "parent contact 1 mobile phone" || h === "parentcontact1mobilephone") {
-          target = "guardian_phone"; confidence = 0.9;
-        } else if (original === "parent contact 1 first name" || original === "parent contact 1 last name") {
-          // We'll combine these - only map first name to trigger combination
-          if (original === "parent contact 1 first name" && !usedTargets.has("guardian_name")) {
-            target = "guardian_name"; confidence = 0.85;
-          }
+        const match = matchHeaderToField(header, usedTargets, effectiveSource);
+        if (match.targetField) {
+          usedTargets.add(match.targetField);
         }
-        // Generic fallbacks
-        else if (h.includes("parentname") || h.includes("guardianname")) {
-          target = "guardian_name"; confidence = 0.8;
-        } else if ((h.includes("parent") || h.includes("guardian")) && h.includes("email")) {
-          target = "guardian_email"; confidence = 0.75;
-        } else if ((h.includes("parent") || h.includes("guardian")) && h.includes("phone")) {
-          target = "guardian_phone"; confidence = 0.7;
-        }
-
-        // Prevent duplicate target assignments
-        if (target && usedTargets.has(target)) {
-          target = null;
-          confidence = 0;
-        }
-        if (target) usedTargets.add(target);
-
-        return { csv_header: header, target_field: target, confidence };
+        return {
+          csv_header: header,
+          target_field: match.targetField,
+          confidence: match.confidence,
+          transform: match.transform || null,
+        };
       });
+
+      // Auto-combine split guardian first/last names into guardian_name
+      const g1First = heuristicMappings.find((m: any) => m.target_field === "guardian_first_name");
+      const g1Last = heuristicMappings.find((m: any) => m.target_field === "guardian_last_name");
+      if (g1First && g1Last) {
+        g1First.target_field = "guardian_name";
+        g1First.transform = "combine_guardian_name";
+        (g1First as any).combine_with = g1Last.csv_header;
+        g1Last.target_field = null;
+        g1Last.confidence = 0;
+        g1Last.transform = null;
+      }
+
+      // Same for guardian 2
+      const g2First = heuristicMappings.find((m: any) => m.target_field === "guardian2_first_name");
+      const g2Last = heuristicMappings.find((m: any) => m.target_field === "guardian2_last_name");
+      if (g2First && g2Last) {
+        g2First.target_field = "guardian2_name";
+        g2First.transform = "combine_guardian2_name";
+        (g2First as any).combine_with = g2Last.csv_header;
+        g2Last.target_field = null;
+        g2Last.confidence = 0;
+        g2Last.transform = null;
+      }
+
+      const warnings: string[] = [];
+      if (!LOVABLE_API_KEY) {
+        warnings.push("Using smart heuristic matching. Please verify mappings.");
+      }
+      if (effectiveSource) {
+        warnings.push(`Detected source format: ${effectiveSource}`);
+      }
 
       return new Response(JSON.stringify({
         mappings: heuristicMappings,
-        warnings: ["AI mapping unavailable - using heuristic matching. Please verify mappings."],
+        warnings,
         has_guardian_data: heuristicMappings.some((m: any) => m.target_field?.startsWith("guardian")),
         has_lesson_data: heuristicMappings.some((m: any) => m.target_field?.startsWith("lesson")),
-        has_teaching_data: heuristicMappings.some((m: any) => ["instrument", "lesson_duration", "teacher_name", "location_name", "price"].includes(m.target_field)),
+        has_teaching_data: heuristicMappings.some((m: any) => ["instrument", "lesson_duration", "teacher_name", "location_name", "price", "grade_level"].includes(m.target_field)),
+        detected_source: effectiveSource || null,
         target_fields: ALL_TARGET_FIELDS,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -273,7 +292,7 @@ Analyze the headers and sample values to determine the best mapping.`;
 
     const aiData = await response.json();
     const content = aiData.choices?.[0]?.message?.content || "";
-    
+
     // Extract JSON from response
     let mappingResult;
     try {
@@ -293,6 +312,7 @@ Analyze the headers and sample values to determine the best mapping.`;
 
     return new Response(JSON.stringify({
       ...mappingResult,
+      detected_source: mappingResult.detected_source || effectiveSource || null,
       target_fields: ALL_TARGET_FIELDS,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

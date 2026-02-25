@@ -15,6 +15,8 @@ export interface ColumnMapping {
   csv_header: string;
   target_field: string | null;
   confidence: number;
+  transform?: string | null;
+  combine_with?: string | null;
 }
 
 export interface RowStatus {
@@ -78,6 +80,8 @@ export function useStudentsImport() {
   const [dryRunResult, setDryRunResult] = useState<DryRunResult | null>(null);
   const [previewTab, setPreviewTab] = useState<"all" | "issues" | "ready">("all");
   const [skipDuplicates, setSkipDuplicates] = useState(true);
+  const [sourceSoftware, setSourceSoftware] = useState<string>("auto");
+  const [detectedSource, setDetectedSource] = useState<string | null>(null);
 
   const readFileAsText = useCallback(async (f: File): Promise<string> => {
     // Try UTF-8 first; if replacement chars appear, fall back to Windows-1252
@@ -173,6 +177,7 @@ export function useStudentsImport() {
             headers: csvHeaders,
             sampleRows: csvRows.slice(0, 5),
             orgId: currentOrg?.id,
+            sourceSoftware: sourceSoftware !== "auto" ? sourceSoftware : undefined,
           }),
         }
       );
@@ -187,6 +192,7 @@ export function useStudentsImport() {
       setTargetFields(mappingData.target_fields || []);
       setWarnings(mappingData.warnings || []);
       setImportLessons(mappingData.has_lesson_data || false);
+      setDetectedSource(mappingData.detected_source || null);
       setStep("mapping");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -194,7 +200,7 @@ export function useStudentsImport() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentOrg, parseCSV, readFileAsText, toast]);
+  }, [currentOrg, parseCSV, readFileAsText, toast, sourceSoftware]);
 
   const updateMapping = useCallback((csvHeader: string, targetField: string | null) => {
     setMappings(prev => prev.map(m =>
@@ -216,12 +222,29 @@ export function useStudentsImport() {
       const obj: Record<string, string> = {};
       mappings.forEach((mapping, idx) => {
         if (mapping.target_field && row[idx]) {
-          obj[mapping.target_field] = row[idx];
+          if (mapping.transform === "split_name") {
+            // Split "John Smith" into first_name + last_name
+            const parts = row[idx].trim().split(/\s+/);
+            obj["first_name"] = parts[0] || "";
+            obj["last_name"] = parts.slice(1).join(" ") || "";
+          } else if (mapping.transform === "combine_guardian_name" && mapping.combine_with) {
+            // Combine guardian first + last name
+            const lastIdx = headers.indexOf(mapping.combine_with);
+            const lastName = lastIdx >= 0 ? (row[lastIdx] || "") : "";
+            obj["guardian_name"] = `${row[idx]} ${lastName}`.trim();
+          } else if (mapping.transform === "combine_guardian2_name" && mapping.combine_with) {
+            // Combine guardian2 first + last name
+            const lastIdx = headers.indexOf(mapping.combine_with);
+            const lastName = lastIdx >= 0 ? (row[lastIdx] || "") : "";
+            obj["guardian2_name"] = `${row[idx]} ${lastName}`.trim();
+          } else {
+            obj[mapping.target_field] = row[idx];
+          }
         }
       });
       return obj;
     });
-  }, [rows, mappings]);
+  }, [rows, mappings, headers]);
 
   const requiredFieldsMapped = useMemo(() => {
     const required = targetFields.filter(f => f.required).map(f => f.name);
@@ -387,6 +410,8 @@ export function useStudentsImport() {
     setMappings([]);
     setImportResult(null);
     setDryRunResult(null);
+    setSourceSoftware("auto");
+    setDetectedSource(null);
   }, []);
 
   return {
@@ -411,6 +436,8 @@ export function useStudentsImport() {
     dryRunResult,
     previewTab, setPreviewTab,
     skipDuplicates, setSkipDuplicates,
+    sourceSoftware, setSourceSoftware,
+    detectedSource,
 
     // Handlers
     handleFileUpload,

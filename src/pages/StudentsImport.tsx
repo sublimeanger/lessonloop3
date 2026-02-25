@@ -51,7 +51,12 @@ export default function StudentsImport() {
         </div>
 
         {hook.step === "upload" && (
-          <UploadStep isLoading={hook.isLoading} handleFileUpload={hook.handleFileUpload} />
+          <UploadStep
+            isLoading={hook.isLoading}
+            handleFileUpload={hook.handleFileUpload}
+            sourceSoftware={hook.sourceSoftware}
+            setSourceSoftware={hook.setSourceSoftware}
+          />
         )}
 
         {hook.step === "mapping" && (
@@ -75,6 +80,7 @@ export default function StudentsImport() {
             setImportLessons={hook.setImportLessons}
             updateMapping={hook.updateMapping}
             getAvailableFields={hook.getAvailableFields}
+            detectedSource={hook.detectedSource}
             onNext={hook.executeDryRun}
             onBack={() => hook.setStep("upload")}
           />
