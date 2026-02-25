@@ -21,6 +21,7 @@ import { ZoomIntegrationTab } from '@/components/settings/ZoomIntegrationTab';
 import { LoopAssistPreferencesTab } from '@/components/settings/LoopAssistPreferencesTab';
 import { MusicSettingsTab } from '@/components/settings/MusicSettingsTab';
 import { MessagingSettingsTab } from '@/components/settings/MessagingSettingsTab';
+import { BookingPageTab } from '@/components/settings/BookingPageTab';
 import { SettingsLayout } from '@/components/settings/SettingsLayout';
 import { useOrg } from '@/contexts/OrgContext';
 import { useTeachers } from '@/hooks/useTeachers';
@@ -101,6 +102,8 @@ function SettingsContent({ activeTab, isOrgAdmin }: { activeTab: string; isOrgAd
           <InvoiceSettingsTab />
         </div>
       );
+    case 'booking-page':
+      return <BookingPageTab />;
     case 'looopassist':
       return <LoopAssistPreferencesTab />;
     case 'notifications':
@@ -116,7 +119,7 @@ export default function Settings() {
   usePageMeta('Settings | LessonLoop', 'Manage your account, organisation, and subscription settings');
   const [searchParams, setSearchParams] = useSearchParams();
   const { isOrgAdmin } = useOrg();
-  const adminTabs = ['members', 'scheduling', 'audit', 'privacy', 'rate-cards', 'music', 'messaging', 'billing', 'looopassist'];
+  const adminTabs = ['members', 'scheduling', 'audit', 'privacy', 'rate-cards', 'music', 'messaging', 'booking-page', 'billing', 'looopassist'];
 
   const rawTab = searchParams.get('tab');
   // On desktop, default to profile. On mobile, null means show nav list.

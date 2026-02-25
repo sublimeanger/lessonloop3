@@ -5,7 +5,7 @@ import { differenceInDays } from 'date-fns';
 
 const PAST_DUE_GRACE_DAYS = 7;
 
-export type Feature = 
+export type Feature =
   | 'advanced_reports'
   | 'multi_location'
   | 'custom_branding'
@@ -18,7 +18,10 @@ export type Feature =
   | 'resource_library'
   | 'practice_tracking'
   | 'parent_portal'
-  | 'calendar_sync';
+  | 'calendar_sync'
+  | 'lead_pipeline'
+  | 'public_booking'
+  | 'teacher_performance';
 
 // Define which features are available on each plan
 const FEATURE_MATRIX: Record<Feature, SubscriptionPlan[]> = {
@@ -36,6 +39,9 @@ const FEATURE_MATRIX: Record<Feature, SubscriptionPlan[]> = {
   practice_tracking: ['trial', 'solo_teacher', 'academy', 'agency', 'custom'],
   parent_portal: ['trial', 'solo_teacher', 'academy', 'agency', 'custom'],
   calendar_sync: ['solo_teacher', 'academy', 'agency', 'custom'],
+  lead_pipeline: ['solo_teacher', 'academy', 'agency', 'custom'],
+  public_booking: ['solo_teacher', 'academy', 'agency', 'custom'],
+  teacher_performance: ['academy', 'agency', 'custom'],
 };
 
 // Define minimum plan required for each feature (for upgrade prompts)
@@ -53,6 +59,9 @@ const FEATURE_MIN_PLAN: Record<Feature, SubscriptionPlan> = {
   practice_tracking: 'trial',
   parent_portal: 'trial',
   calendar_sync: 'solo_teacher',
+  lead_pipeline: 'solo_teacher',
+  public_booking: 'solo_teacher',
+  teacher_performance: 'academy',
 };
 
 // Human-readable feature names
@@ -70,6 +79,9 @@ export const FEATURE_NAMES: Record<Feature, string> = {
   practice_tracking: 'Practice Tracking',
   parent_portal: 'Parent Portal',
   calendar_sync: 'Calendar Sync',
+  lead_pipeline: 'Lead Pipeline',
+  public_booking: 'Public Booking',
+  teacher_performance: 'Teacher Performance',
 };
 
 // Human-readable plan names — delegates to canonical PLAN_DISPLAY_NAMES
