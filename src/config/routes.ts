@@ -37,6 +37,10 @@ const Cookies = lazy(() => import('@/pages/marketing/Cookies'));
 const Kickstarter = lazy(() => import('@/pages/marketing/Kickstarter'));
 const ZoomGuide = lazy(() => import('@/pages/marketing/ZoomGuide'));
 const UK = lazy(() => import('@/pages/marketing/UK'));
+const FeatureScheduling = lazy(() => import('@/pages/marketing/features/FeatureScheduling'));
+const FeatureBilling = lazy(() => import('@/pages/marketing/features/FeatureBilling'));
+const FeatureParentPortal = lazy(() => import('@/pages/marketing/features/FeatureParentPortal'));
+const FeatureLoopAssist = lazy(() => import('@/pages/marketing/features/FeatureLoopAssist'));
 
 // ─── Lazy: Auth ──────────────────────────────────────────
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
@@ -164,6 +168,10 @@ export const marketingRoutes: RouteConfig[] = [
   { path: '/reset-password', component: ResetPassword, auth: 'public', label: 'Reset Password' },
   { path: '/book/:slug', component: BookingPage, auth: 'public', label: 'Book' },
   { path: '/uk', component: UK, auth: 'public', label: 'UK' },
+  { path: '/features/scheduling', component: FeatureScheduling, auth: 'public', label: 'Scheduling' },
+  { path: '/features/billing', component: FeatureBilling, auth: 'public', label: 'Billing' },
+  { path: '/features/parent-portal', component: FeatureParentPortal, auth: 'public', label: 'Parent Portal' },
+  { path: '/features/loopassist', component: FeatureLoopAssist, auth: 'public', label: 'LoopAssist' },
 ];
 
 /** 404 route */
