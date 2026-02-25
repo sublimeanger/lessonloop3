@@ -8,6 +8,7 @@
 - Every marketing page must link to at least 3 other marketing pages (not counting nav/footer)
 - Every deep-dive section or feature block that has a corresponding dedicated page MUST include a contextual link to that page
 - Links should feel natural within the content flow — placed at the end of a section's content column, after the feature grid or description, never floating randomly
+- **ALWAYS implement internal links even if the destination route does not yet exist.** These routes are planned and will be created. The `<Link>` components must be added at build time regardless — never skip or defer a link because the target page hasn't been built yet.
 
 ### Link Hierarchy (follow this priority)
 1. Feature pages link to: related feature pages (2-3), relevant comparison pages (1-2), pricing page
