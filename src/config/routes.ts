@@ -41,6 +41,10 @@ const FeatureScheduling = lazy(() => import('@/pages/marketing/features/FeatureS
 const FeatureBilling = lazy(() => import('@/pages/marketing/features/FeatureBilling'));
 const FeatureParentPortal = lazy(() => import('@/pages/marketing/features/FeatureParentPortal'));
 const FeatureLoopAssist = lazy(() => import('@/pages/marketing/features/FeatureLoopAssist'));
+const FeatureStudents = lazy(() => import('@/pages/marketing/features/FeatureStudents'));
+const FeatureTeachers = lazy(() => import('@/pages/marketing/features/FeatureTeachers'));
+const FeatureAttendance = lazy(() => import('@/pages/marketing/features/FeatureAttendance'));
+const FeaturePracticeTracking = lazy(() => import('@/pages/marketing/features/FeaturePracticeTracking'));
 
 // ─── Lazy: Auth ──────────────────────────────────────────
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
@@ -172,6 +176,10 @@ export const marketingRoutes: RouteConfig[] = [
   { path: '/features/billing', component: FeatureBilling, auth: 'public', label: 'Billing' },
   { path: '/features/parent-portal', component: FeatureParentPortal, auth: 'public', label: 'Parent Portal' },
   { path: '/features/loopassist', component: FeatureLoopAssist, auth: 'public', label: 'LoopAssist' },
+  { path: '/features/students', component: FeatureStudents, auth: 'public', label: 'Students' },
+  { path: '/features/teachers', component: FeatureTeachers, auth: 'public', label: 'Teachers' },
+  { path: '/features/attendance', component: FeatureAttendance, auth: 'public', label: 'Attendance' },
+  { path: '/features/practice-tracking', component: FeaturePracticeTracking, auth: 'public', label: 'Practice Tracking' },
 ];
 
 /** 404 route */
