@@ -23,10 +23,21 @@ interface ImportRow {
   dob?: string;
   notes?: string;
   status?: string;
+  gender?: string;
+  start_date?: string;
+  tags?: string;
   guardian_name?: string;
+  guardian_first_name?: string;
+  guardian_last_name?: string;
   guardian_email?: string;
   guardian_phone?: string;
   relationship?: string;
+  guardian2_name?: string;
+  guardian2_first_name?: string;
+  guardian2_last_name?: string;
+  guardian2_email?: string;
+  guardian2_phone?: string;
+  guardian2_relationship?: string;
   lesson_day?: string;
   lesson_time?: string;
   lesson_duration?: string;
@@ -34,6 +45,12 @@ interface ImportRow {
   teacher_name?: string;
   location_name?: string;
   price?: string;
+  grade_level?: string;
+  address_line_1?: string;
+  address_line_2?: string;
+  city?: string;
+  postcode?: string;
+  country?: string;
 }
 
 interface DuplicateInfo {
@@ -92,23 +109,65 @@ interface ImportResult {
   details: { row: number; student: string; status: string; error?: string }[];
 }
 
-// Parse UK date format (DD/MM/YYYY) or ISO format
+// Smart date parser supporting DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD, written dates, etc.
 function parseDate(dateStr: string): string | null {
   if (!dateStr) return null;
-  
-  // Try UK format first (with or without time)
-  const ukMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (ukMatch) {
-    const [, day, month, year] = ukMatch;
-    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-  }
-  
-  // Try ISO format
-  const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const s = dateStr.trim();
+
+  // ISO: YYYY-MM-DD (with optional time)
+  const isoMatch = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (isoMatch) {
-    return dateStr.split("T")[0];
+    return `${isoMatch[1]}-${isoMatch[2].padStart(2, "0")}-${isoMatch[3].padStart(2, "0")}`;
   }
-  
+
+  // Numeric with separators: DD/MM/YYYY, MM/DD/YYYY, DD-MM-YYYY, DD.MM.YYYY
+  const numMatch = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  if (numMatch) {
+    let [, a, b, yearStr] = numMatch;
+    let year = parseInt(yearStr, 10);
+    if (year < 100) year += year > 50 ? 1900 : 2000;
+    const aNum = parseInt(a, 10);
+    const bNum = parseInt(b, 10);
+    // If first number > 12, it must be a day (DD/MM/YYYY)
+    // If second number > 12, it must be a day (MM/DD/YYYY)
+    // Default to DD/MM/YYYY (UK format) when ambiguous
+    let day: number, month: number;
+    if (aNum > 12) {
+      day = aNum; month = bNum;
+    } else if (bNum > 12) {
+      month = aNum; day = bNum;
+    } else {
+      // Ambiguous: default DD/MM/YYYY
+      day = aNum; month = bNum;
+    }
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+  }
+
+  // Written: "January 5, 2020", "5 January 2020", "Jan 5 2020", etc.
+  const months: Record<string, number> = {
+    january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,
+    july: 7, august: 8, september: 9, october: 10, november: 11, december: 12,
+    jan: 1, feb: 2, mar: 3, apr: 4, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+  };
+  // "Month Day, Year" or "Month Day Year"
+  const writtenMatch1 = s.match(/^([a-zA-Z]+)\s+(\d{1,2}),?\s+(\d{4})/);
+  if (writtenMatch1) {
+    const month = months[writtenMatch1[1].toLowerCase()];
+    if (month) {
+      return `${writtenMatch1[3]}-${String(month).padStart(2, "0")}-${writtenMatch1[2].padStart(2, "0")}`;
+    }
+  }
+  // "Day Month Year"
+  const writtenMatch2 = s.match(/^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/);
+  if (writtenMatch2) {
+    const month = months[writtenMatch2[2].toLowerCase()];
+    if (month) {
+      return `${writtenMatch2[3]}-${String(month).padStart(2, "0")}-${writtenMatch2[1].padStart(2, "0")}`;
+    }
+  }
+
   return null;
 }
 
@@ -164,10 +223,19 @@ function validateRow(row: ImportRow): string[] {
   if (row.guardian_email && !isValidEmail(row.guardian_email.trim())) {
     errors.push("Invalid guardian email format");
   }
+  if (row.guardian2_email && !isValidEmail(row.guardian2_email.trim())) {
+    errors.push("Invalid second guardian email format");
+  }
   if (row.dob) {
     const parsed = parseDate(row.dob);
     if (!parsed) {
-      errors.push("Invalid date format for DOB (use DD/MM/YYYY)");
+      errors.push("Invalid date format for DOB");
+    }
+  }
+  if (row.start_date) {
+    const parsed = parseDate(row.start_date);
+    if (!parsed) {
+      errors.push("Invalid date format for start date");
     }
   }
   if (row.lesson_time) {
@@ -372,9 +440,10 @@ serve(async (req) => {
       return rateLimitResponse(corsHeaders, rateLimitResult);
     }
 
-    const { rows, mappings, orgId, teacherUserId, dryRun, skipDuplicates, rowsToImport } = await req.json();
+    const { rows: rawRows, mappings, orgId, teacherId: reqTeacherId, teacherUserId, dryRun, skipDuplicates, rowsToImport } = await req.json();
+    const effectiveTeacherIdFromRequest = reqTeacherId || teacherUserId;
 
-    if (!orgId || !rows || !Array.isArray(rows) || !mappings) {
+    if (!orgId || !rawRows || !Array.isArray(rawRows) || !mappings) {
       return new Response(JSON.stringify({ error: "Missing required parameters" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -400,6 +469,27 @@ serve(async (req) => {
     // Use service role for inserts to bypass RLS during bulk import
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // PRE-PROCESS: normalize rows before validation
+    const rows: ImportRow[] = (rawRows as ImportRow[]).map((row) => {
+      const r = { ...row };
+      // Combine split guardian first+last names
+      if (r.guardian_first_name && !r.guardian_name) {
+        r.guardian_name = `${r.guardian_first_name} ${r.guardian_last_name || ""}`.trim();
+      }
+      if (r.guardian2_first_name && !r.guardian2_name) {
+        r.guardian2_name = `${r.guardian2_first_name} ${r.guardian2_last_name || ""}`.trim();
+      }
+      // Split combined student name if only first_name provided
+      if (r.first_name && !r.last_name) {
+        const parts = r.first_name.trim().split(/\s+/);
+        if (parts.length >= 2) {
+          r.first_name = parts[0];
+          r.last_name = parts.slice(1).join(" ");
+        }
+      }
+      return r;
+    });
+
     // Detect duplicates
     const { duplicates, validation } = await detectDuplicates(rows, orgId, supabase);
     const rowStatuses = buildRowStatuses(rows, duplicates, validation);
@@ -411,14 +501,20 @@ serve(async (req) => {
       const lessonsCount = rows.filter((row: ImportRow, idx: number) => {
         const status = rowStatuses[idx];
         if (status.status !== "ready") return false;
-        return row.lesson_day && row.lesson_time && teacherUserId;
+        return row.lesson_day && row.lesson_time && effectiveTeacherIdFromRequest;
       }).length;
-      
+
       rows.forEach((row: ImportRow, idx: number) => {
         const status = rowStatuses[idx];
-        if (status.status === "ready" && row.guardian_name?.trim()) {
-          const guardianKey = row.guardian_email?.toLowerCase().trim() || row.guardian_name.toLowerCase().trim();
-          guardiansToCreate.add(guardianKey);
+        if (status.status === "ready") {
+          if (row.guardian_name?.trim()) {
+            const guardianKey = row.guardian_email?.toLowerCase().trim() || row.guardian_name.toLowerCase().trim();
+            guardiansToCreate.add(guardianKey);
+          }
+          if (row.guardian2_name?.trim()) {
+            const guardian2Key = row.guardian2_email?.toLowerCase().trim() || row.guardian2_name.toLowerCase().trim();
+            guardiansToCreate.add(guardian2Key);
+          }
         }
       });
 
@@ -589,32 +685,41 @@ serve(async (req) => {
       rateCardByDuration.set(r.duration_minutes, r.id);
     });
     
-    // Helper: Find or create location
-    async function findOrCreateLocation(name: string): Promise<string | null> {
+    // Helper: Find or create location (with optional address enrichment)
+    async function findOrCreateLocation(
+      name: string,
+      address?: { line1?: string; line2?: string; city?: string; postcode?: string; country?: string }
+    ): Promise<string | null> {
       if (!name?.trim()) return null;
       const normalized = name.toLowerCase().trim();
-      
+
       // Check existing
       if (locationByName.has(normalized)) return locationByName.get(normalized)!;
       if (createdLocations.has(normalized)) return createdLocations.get(normalized)!;
-      
-      // Create new location
+
+      // Create new location with address data if available
+      const locationData: any = {
+        org_id: orgId,
+        name: name.trim(),
+        location_type: "school",
+        country_code: address?.country?.trim()?.substring(0, 2)?.toUpperCase() || "GB",
+      };
+      if (address?.line1) locationData.address_line_1 = address.line1.trim();
+      if (address?.line2) locationData.address_line_2 = address.line2.trim();
+      if (address?.city) locationData.city = address.city.trim();
+      if (address?.postcode) locationData.postcode = address.postcode.trim();
+
       const { data: location, error } = await supabase
         .from("locations")
-        .insert({
-          org_id: orgId,
-          name: name.trim(),
-          location_type: "school",
-          country_code: "GB",
-        })
+        .insert(locationData)
         .select("id")
         .single();
-      
+
       if (error) {
         console.error(`Failed to create location "${name}":`, error);
         return null;
       }
-      
+
       createdLocations.set(normalized, location.id);
       return location.id;
     }
@@ -708,9 +813,12 @@ serve(async (req) => {
 
         const studentName = `${row.first_name} ${row.last_name}`;
 
-        // Resolve teaching defaults (location, teacher, rate card)
-        const resolvedLocationId = row.location_name ? await findOrCreateLocation(row.location_name) : null;
-        const resolvedTeacherId = row.teacher_name ? await findOrCreateTeacher(row.teacher_name) : teacherUserId;
+        // Resolve teaching defaults (location with address enrichment, teacher, rate card)
+        const addressInfo = (row.address_line_1 || row.city || row.postcode)
+          ? { line1: row.address_line_1, line2: row.address_line_2, city: row.city, postcode: row.postcode, country: row.country }
+          : undefined;
+        const resolvedLocationId = row.location_name ? await findOrCreateLocation(row.location_name, addressInfo) : null;
+        const resolvedTeacherId = row.teacher_name ? await findOrCreateTeacher(row.teacher_name) : effectiveTeacherIdFromRequest;
         const lessonDuration = parseInt(row.lesson_duration || "30", 10) || 30;
         const priceMinor = row.price ? parsePriceToMinor(row.price) : null;
         const resolvedRateCardId = await findOrCreateRateCard(lessonDuration, priceMinor);
@@ -730,7 +838,27 @@ serve(async (req) => {
           if (parsedDob) studentData.dob = parsedDob;
         }
         if (row.notes) studentData.notes = row.notes.trim();
-        
+
+        // New import fields: gender, start_date, tags
+        if (row.gender) {
+          const genderMap: Record<string, string> = {
+            male: "male", m: "male", boy: "male",
+            female: "female", f: "female", girl: "female",
+            "non-binary": "non_binary", "non binary": "non_binary", nonbinary: "non_binary", nb: "non_binary",
+            other: "other",
+            "prefer not to say": "prefer_not_to_say", "not specified": "prefer_not_to_say",
+          };
+          const normalized = genderMap[row.gender.toLowerCase().trim()];
+          if (normalized) studentData.gender = normalized;
+        }
+        if (row.start_date) {
+          const parsedStart = parseDate(row.start_date);
+          if (parsedStart) studentData.start_date = parsedStart;
+        }
+        if (row.tags) {
+          studentData.tags = row.tags.split(",").map((t: string) => t.trim()).filter(Boolean);
+        }
+
         // Set teaching defaults (use new teacher_id column for teachers table)
         if (resolvedLocationId) studentData.default_location_id = resolvedLocationId;
         if (resolvedTeacherId) studentData.default_teacher_id = resolvedTeacherId;
@@ -777,6 +905,31 @@ serve(async (req) => {
             }
           }
           // If no match found, silently skip — don't fail the import
+        }
+
+        // 1c. Match grade_level to grade_levels table and set on student_instruments
+        if (row.grade_level?.trim() && row.instrument?.trim()) {
+          const { data: gradeLevels } = await supabase
+            .from("grade_levels")
+            .select("id, name")
+            .order("sort_order", { ascending: true });
+
+          if (gradeLevels) {
+            const gradeName = row.grade_level.trim().toLowerCase();
+            const matchedGrade = gradeLevels.find((g: any) =>
+              g.name.toLowerCase() === gradeName ||
+              g.name.toLowerCase().includes(gradeName) ||
+              gradeName.includes(g.name.toLowerCase())
+            );
+            if (matchedGrade) {
+              // Update the student_instruments record we just created
+              await supabase
+                .from("student_instruments")
+                .update({ current_grade_id: matchedGrade.id })
+                .eq("student_id", student.id)
+                .eq("org_id", orgId);
+            }
+          }
         }
 
         // 2. Create guardian if provided
@@ -842,6 +995,68 @@ serve(async (req) => {
           }
         }
 
+        // 3b. Create second guardian if provided
+        if (row.guardian2_name?.trim()) {
+          let guardian2Id: string | null = null;
+          const guardian2Data: any = {
+            org_id: orgId,
+            full_name: row.guardian2_name.trim(),
+          };
+          if (row.guardian2_email) guardian2Data.email = row.guardian2_email.trim();
+          if (row.guardian2_phone) guardian2Data.phone = row.guardian2_phone.trim();
+
+          // Check if guardian with same email exists
+          if (guardian2Data.email) {
+            const { data: existingGuardian2 } = await supabase
+              .from("guardians")
+              .select("id")
+              .eq("org_id", orgId)
+              .eq("email", guardian2Data.email)
+              .maybeSingle();
+
+            if (existingGuardian2) {
+              guardian2Id = existingGuardian2.id;
+            }
+          }
+
+          if (!guardian2Id) {
+            const { data: guardian2, error: guardian2Error } = await supabase
+              .from("guardians")
+              .insert(guardian2Data)
+              .select("id")
+              .single();
+
+            if (guardian2Error) {
+              result.errors.push(`Row ${rowIdx + 1}: Second guardian creation failed - ${guardian2Error.message}`);
+            } else {
+              guardian2Id = guardian2.id;
+              result.guardiansCreated++;
+            }
+          }
+
+          if (guardian2Id) {
+            const relationship2 = row.guardian2_relationship?.toLowerCase().trim() || "guardian";
+            const validRelationships2 = ["mother", "father", "guardian", "other"];
+            const finalRelationship2 = validRelationships2.includes(relationship2) ? relationship2 : "guardian";
+
+            const { error: link2Error } = await supabase
+              .from("student_guardians")
+              .insert({
+                org_id: orgId,
+                student_id: student.id,
+                guardian_id: guardian2Id,
+                relationship: finalRelationship2,
+                is_primary_payer: false,
+              });
+
+            if (link2Error) {
+              result.errors.push(`Row ${rowIdx + 1}: Second guardian link failed - ${link2Error.message}`);
+            } else {
+              result.linksCreated++;
+            }
+          }
+        }
+
         // 4. Create teacher assignment if we have a resolved teacher (use new teacher_id column)
         if (resolvedTeacherId && student.id) {
           const { error: assignError } = await supabase
@@ -858,7 +1073,7 @@ serve(async (req) => {
         }
 
         // 5. Create recurring lesson if provided
-        const effectiveTeacherId = resolvedTeacherId || teacherUserId;
+        const effectiveTeacherId = resolvedTeacherId || effectiveTeacherIdFromRequest;
         if (row.lesson_day && row.lesson_time && effectiveTeacherId) {
           const dayOfWeek = parseDayOfWeek(row.lesson_day);
           const lessonTime = parseTime(row.lesson_time);

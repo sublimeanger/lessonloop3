@@ -25,28 +25,39 @@ export function CompleteStep({ importResult, downloadFailedRows, onImportMore, o
           <Card>
             <CardContent className="pt-4 text-center">
               <div className="text-section-title text-primary">{importResult.studentsCreated}</div>
-              <div className="text-caption text-muted-foreground">Students Created</div>
+              <div className="text-caption text-muted-foreground">Students</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4 text-center">
               <div className="text-section-title text-primary">{importResult.guardiansCreated}</div>
-              <div className="text-caption text-muted-foreground">Guardians Created</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4 text-center">
-              <div className="text-section-title text-primary">{importResult.linksCreated}</div>
-              <div className="text-caption text-muted-foreground">Links Created</div>
+              <div className="text-caption text-muted-foreground">Guardians</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4 text-center">
               <div className="text-section-title text-primary">{importResult.lessonsCreated}</div>
-              <div className="text-caption text-muted-foreground">Lessons Created</div>
+              <div className="text-caption text-muted-foreground">Lessons</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 text-center">
+              <div className="text-section-title text-primary">{importResult.linksCreated}</div>
+              <div className="text-caption text-muted-foreground">Links</div>
             </CardContent>
           </Card>
         </div>
+
+        {((importResult as any).teachersCreated > 0 || (importResult as any).locationsCreated > 0 || (importResult as any).rateCardsCreated > 0) && (
+          <p className="text-sm text-muted-foreground text-center">
+            Also created:{" "}
+            {[
+              (importResult as any).teachersCreated > 0 && `${(importResult as any).teachersCreated} teacher${(importResult as any).teachersCreated !== 1 ? "s" : ""}`,
+              (importResult as any).locationsCreated > 0 && `${(importResult as any).locationsCreated} location${(importResult as any).locationsCreated !== 1 ? "s" : ""}`,
+              (importResult as any).rateCardsCreated > 0 && `${(importResult as any).rateCardsCreated} rate card${(importResult as any).rateCardsCreated !== 1 ? "s" : ""}`,
+            ].filter(Boolean).join(", ")}
+          </p>
+        )}
 
         {importResult.errors.length > 0 && (
           <Alert variant="destructive">

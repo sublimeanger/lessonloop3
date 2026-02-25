@@ -23,6 +23,7 @@ import {
   ChevronRight,
   ArrowLeft,
   Globe,
+  Upload,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -60,6 +61,7 @@ export const SETTINGS_NAV_GROUPS: NavGroup[] = [
       { value: 'organisation', label: 'Organisation', icon: Building2 },
       { value: 'branding', label: 'Branding', icon: Palette },
       { value: 'members', label: 'Members', icon: Users, adminOnly: true },
+      { value: 'data-import', label: 'Data & Import', icon: Upload, adminOnly: true },
     ],
   },
   {

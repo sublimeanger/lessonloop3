@@ -1,4 +1,4 @@
-import { Wand2, AlertCircle, AlertTriangle, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
+import { Wand2, AlertCircle, AlertTriangle, ArrowRight, Loader2, CheckCircle2, Scissors, Users, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -30,6 +30,7 @@ interface MappingStepProps {
   setImportLessons: (v: boolean) => void;
   updateMapping: (csvHeader: string, targetField: string | null) => void;
   getAvailableFields: (currentHeader: string) => TargetField[];
+  detectedSource?: string | null;
   onNext: () => void;
   onBack: () => void;
 }
@@ -60,12 +61,22 @@ function getConfidenceBadge(confidence: number, hasTarget: boolean) {
   );
 }
 
+const SOURCE_LABELS: Record<string, string> = {
+  mymusicstaff: "My Music Staff",
+  opus1: "Opus 1",
+  teachworks: "Teachworks",
+  duetpartner: "Duet Partner",
+  fons: "Fons",
+  jackrabbit: "Jackrabbit Music",
+};
+
 export function MappingStep({
   rows, mappings, warnings, isLoading, requiredFieldsMapped, canProceedWithImport,
   willExceedLimit, remainingCapacity, counts, limits,
   teachers, selectedTeacher, setSelectedTeacher, importLessons, setImportLessons,
-  updateMapping, getAvailableFields, onNext, onBack,
+  updateMapping, getAvailableFields, detectedSource, onNext, onBack,
 }: MappingStepProps) {
+  const hasGuardian2 = mappings.some(m => m.target_field?.startsWith("guardian2"));
   return (
     <Card>
       <CardHeader>
@@ -78,6 +89,16 @@ export function MappingStep({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {detectedSource && SOURCE_LABELS[detectedSource] && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Detected: {SOURCE_LABELS[detectedSource]} format</AlertTitle>
+            <AlertDescription>
+              Columns have been auto-mapped based on known {SOURCE_LABELS[detectedSource]} export format. Please verify the mappings below.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {warnings.length > 0 && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
@@ -90,6 +111,16 @@ export function MappingStep({
           </Alert>
         )}
 
+        {hasGuardian2 && (
+          <Alert>
+            <Users className="h-4 w-4" />
+            <AlertTitle>Two guardians detected</AlertTitle>
+            <AlertDescription>
+              Your CSV contains data for two parents/guardians per student. Both will be created and linked automatically.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>
@@ -97,7 +128,7 @@ export function MappingStep({
                 <TableHead>CSV Column</TableHead>
                 <TableHead>Sample Data</TableHead>
                 <TableHead>Map To</TableHead>
-                <TableHead className="w-28">Confidence</TableHead>
+                <TableHead className="w-36">Confidence</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -119,8 +150,13 @@ export function MappingStep({
                         <SelectItem value="none">— Skip column —</SelectItem>
                         {getAvailableFields(mapping.csv_header).map(field => (
                           <SelectItem key={field.name} value={field.name}>
-                            {field.name}
-                            {field.required && <span className="text-destructive ml-1">*</span>}
+                            <div className="flex flex-col">
+                              <span>
+                                {field.name}
+                                {field.required && <span className="text-destructive ml-1">*</span>}
+                              </span>
+                              <span className="text-xs text-muted-foreground">{field.description}</span>
+                            </div>
                           </SelectItem>
                         ))}
                         {mapping.target_field && (
@@ -132,7 +168,35 @@ export function MappingStep({
                     </Select>
                   </TableCell>
                   <TableCell>
-                    {getConfidenceBadge(mapping.confidence, !!mapping.target_field)}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {getConfidenceBadge(mapping.confidence, !!mapping.target_field)}
+                      {mapping.transform === "split_name" && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="text-xs">
+                              <Scissors className="h-3 w-3 mr-1" />
+                              Split
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Full name will be split into first + last name</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                      {mapping.transform?.startsWith("combine_guardian") && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="text-xs">
+                              <Users className="h-3 w-3 mr-1" />
+                              Merge
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>First + last name will be merged into guardian name</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
