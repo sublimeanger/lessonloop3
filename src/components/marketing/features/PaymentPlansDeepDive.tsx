@@ -31,7 +31,7 @@ function InstalmentCard({ instalment, index }: { instalment: typeof instalments[
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true }}
       transition={{ delay: 0.4 + index * 0.2 }}
-      className="relative bg-card border border-border rounded-xl p-4 flex flex-col gap-2"
+      className="relative bg-card border border-border rounded-xl p-4 flex flex-col gap-2 hover:border-primary/30 transition-colors"
     >
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">{instalment.label}</span>
@@ -60,8 +60,11 @@ function InstalmentCard({ instalment, index }: { instalment: typeof instalments[
 
 export function PaymentPlansDeepDive() {
   return (
-    <section id="payment-plans" className="py-24 lg:py-32 bg-muted/30 relative overflow-hidden">
-      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-gradient-to-tl from-primary/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+    <section id="payment-plans" className="py-24 lg:py-36 relative overflow-hidden">
+      {/* Dark cinematic background */}
+      <div className="absolute inset-0 bg-[hsl(var(--ink))]" />
+      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-gradient-to-tl from-primary/8 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-0 left-0 w-[300px] h-[300px] bg-gradient-to-br from-teal/5 to-transparent rounded-full blur-3xl pointer-events-none" />
 
       <div className="container mx-auto px-6 lg:px-8 relative">
         {/* Header */}
@@ -71,14 +74,14 @@ export function PaymentPlansDeepDive() {
           viewport={{ once: true }}
           className="text-center max-w-3xl mx-auto mb-16"
         >
-          <Badge variant="outline" className="mb-5 border-primary/30 text-primary">
+          <Badge variant="outline" className="mb-5 border-white/10 text-teal bg-white/[0.04]">
             <CreditCard className="w-3.5 h-3.5 mr-1.5" />
             Payment Plans
           </Badge>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white">
             Let families pay in instalments.
           </h2>
-          <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          <p className="mt-6 text-lg text-white/50 max-w-2xl mx-auto leading-relaxed">
             Split any invoice into monthly payments. Stripe handles the collection.
             You get paid on time, every time.
           </p>
@@ -88,24 +91,24 @@ export function PaymentPlansDeepDive() {
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-start max-w-6xl mx-auto">
           {/* Left: Animated invoice split visual */}
           <div className="space-y-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Invoice → Instalments</h3>
+            <h3 className="text-lg font-semibold text-white mb-4">Invoice → Instalments</h3>
 
             {/* Original invoice */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="bg-card border border-border rounded-xl p-5"
+              className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-5"
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold text-foreground">Invoice #INV-0042</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                <span className="text-sm font-semibold text-white">Invoice #INV-0042</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-teal/15 text-teal font-medium">
                   Term Fees
                 </span>
               </div>
               <div className="flex items-baseline justify-between">
-                <span className="text-sm text-muted-foreground">Autumn Term 2025</span>
-                <span className="text-2xl font-bold text-foreground">£120.00</span>
+                <span className="text-sm text-white/40">Autumn Term 2025</span>
+                <span className="text-2xl font-bold text-white">£120.00</span>
               </div>
             </motion.div>
 
@@ -117,8 +120,8 @@ export function PaymentPlansDeepDive() {
               transition={{ delay: 0.3 }}
               className="flex justify-center origin-top"
             >
-              <div className="w-px h-8 bg-border relative">
-                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 border-b border-r border-border rotate-45" />
+              <div className="w-px h-8 bg-white/10 relative">
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 border-b border-r border-white/20 rotate-45" />
               </div>
             </motion.div>
 
@@ -132,7 +135,7 @@ export function PaymentPlansDeepDive() {
 
           {/* Right: Feature list */}
           <div>
-            <h3 className="text-lg font-semibold text-foreground mb-6">What's included</h3>
+            <h3 className="text-lg font-semibold text-white mb-6">What's included</h3>
             <ul className="space-y-5">
               {features.map((feat, i) => (
                 <motion.li
@@ -143,10 +146,10 @@ export function PaymentPlansDeepDive() {
                   transition={{ delay: i * 0.08 }}
                   className="flex items-start gap-4"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <feat.icon className="w-4 h-4 text-primary" />
+                  <div className="w-9 h-9 rounded-xl bg-teal/15 flex items-center justify-center shrink-0 mt-0.5">
+                    <feat.icon className="w-4 h-4 text-teal" />
                   </div>
-                  <p className="text-muted-foreground text-sm leading-relaxed">{feat.text}</p>
+                  <p className="text-white/50 text-sm leading-relaxed">{feat.text}</p>
                 </motion.li>
               ))}
             </ul>

@@ -13,10 +13,11 @@ const securityFeatures = [
 
 export function SecuritySection() {
   return (
-    <section id="security" className="py-24 lg:py-32 bg-background relative overflow-hidden">
-      {/* Dramatic radial gradient background */}
+    <section id="security" className="py-24 lg:py-36 relative overflow-hidden">
+      {/* Dark cinematic background */}
+      <div className="absolute inset-0 bg-[hsl(var(--ink))]" />
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-gradient-to-br from-teal/5 via-transparent to-primary/5 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] rounded-full bg-gradient-to-br from-teal/8 via-transparent to-primary/5 blur-3xl" />
       </div>
 
       <div className="container mx-auto px-6 lg:px-8 relative">
@@ -32,17 +33,17 @@ export function SecuritySection() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ type: "spring", stiffness: 200, damping: 15 }}
-            className="w-20 h-20 rounded-3xl bg-gradient-to-br from-teal to-teal-dark flex items-center justify-center mx-auto mb-8 shadow-lg shadow-teal/20"
+            className="w-20 h-20 rounded-3xl bg-gradient-to-br from-teal to-teal-dark flex items-center justify-center mx-auto mb-8 shadow-xl shadow-teal/20"
           >
             <Shield className="w-10 h-10 text-white" />
           </motion.div>
 
-          <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-4">
+          <h2 className="text-3xl lg:text-5xl font-bold text-white mb-4">
             Your data is safe.{" "}
-            <span className="text-muted-foreground">We guarantee it.</span>
+            <span className="text-white/40">We guarantee it.</span>
           </h2>
 
-          <p className="text-lg text-muted-foreground">
+          <p className="text-lg text-white/50">
             LessonLoop is GDPR compliant and built with UK data protection 
             at its core — from bank-level encryption to complete audit logging.
           </p>
@@ -57,13 +58,13 @@ export function SecuritySection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.08 }}
-              className="bg-card border border-border rounded-xl p-6 hover:border-teal/30 transition-colors text-center"
+              className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-6 hover:border-teal/30 transition-all text-center group"
             >
-              <div className="w-12 h-12 rounded-xl bg-teal/10 flex items-center justify-center mx-auto mb-4">
+              <div className="w-12 h-12 rounded-xl bg-teal/15 flex items-center justify-center mx-auto mb-4 group-hover:bg-teal/20 transition-colors">
                 <feature.icon className="w-6 h-6 text-teal" />
               </div>
-              <h3 className="font-semibold text-foreground mb-2">{feature.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <h3 className="font-semibold text-white mb-2">{feature.title}</h3>
+              <p className="text-sm text-white/40 leading-relaxed">
                 {feature.description}
               </p>
             </motion.div>
@@ -75,7 +76,7 @@ export function SecuritySection() {
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="flex flex-wrap justify-center gap-6"
+          className="flex flex-wrap justify-center gap-4"
         >
           {[
             { name: "GDPR", description: "UK & EU Compliant" },
@@ -84,14 +85,14 @@ export function SecuritySection() {
           ].map((cert) => (
             <div
               key={cert.name}
-              className="flex items-center gap-3 px-5 py-3 bg-muted rounded-full"
+              className="flex items-center gap-3 px-5 py-3 bg-white/[0.04] border border-white/[0.06] rounded-full"
             >
               <div className="w-8 h-8 rounded-full bg-success/20 flex items-center justify-center">
                 <Shield className="w-4 h-4 text-success" />
               </div>
               <div>
-                <p className="font-bold text-foreground text-sm">{cert.name}</p>
-                <p className="text-xs text-muted-foreground">{cert.description}</p>
+                <p className="font-bold text-white text-sm">{cert.name}</p>
+                <p className="text-xs text-white/40">{cert.description}</p>
               </div>
             </div>
           ))}
@@ -101,10 +102,10 @@ export function SecuritySection() {
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="text-center mt-8 text-sm text-muted-foreground"
+          className="text-center mt-8 text-sm text-white/30"
         >
           Questions about security? Contact our team at{" "}
-          <a href="mailto:security@lessonloop.net" className="text-primary hover:underline">
+          <a href="mailto:security@lessonloop.net" className="text-teal hover:underline">
             security@lessonloop.net
           </a>
         </motion.p>

@@ -53,7 +53,10 @@ export function UseCasesSection() {
   const active = useCases[activeIndex];
 
   return (
-    <section className="py-24 lg:py-32 bg-muted/30">
+    <section className="py-24 lg:py-36 bg-background relative overflow-hidden">
+      {/* Accent line */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[1px] bg-gradient-to-r from-transparent via-border to-transparent" />
+      
       <div className="container mx-auto px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -83,7 +86,12 @@ export function UseCasesSection() {
               className={cn(
                 "flex items-center gap-2 px-5 py-3 rounded-full text-sm font-medium transition-all border",
                 activeIndex === index
-                  ? "bg-primary text-primary-foreground border-primary shadow-lg"
+                  ? cn(
+                      "text-white border-transparent shadow-lg",
+                      uc.color === "teal" && "bg-teal shadow-teal/20",
+                      uc.color === "coral" && "bg-coral shadow-coral/20",
+                      uc.color === "primary" && "bg-primary shadow-primary/20",
+                    )
                   : "bg-card text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
               )}
             >
@@ -93,7 +101,7 @@ export function UseCasesSection() {
           ))}
         </div>
 
-        {/* Active use case — horizontal card */}
+        {/* Active use case */}
         <motion.div
           key={activeIndex}
           initial={{ opacity: 0, y: 15 }}
@@ -101,21 +109,26 @@ export function UseCasesSection() {
           transition={{ duration: 0.35 }}
           className="max-w-4xl mx-auto"
         >
-          <div className="bg-card border border-border rounded-2xl p-8 lg:p-10">
+          <div className="bg-card border border-border rounded-2xl p-8 lg:p-10 shadow-lg">
             <div className="lg:flex lg:gap-10">
               {/* Left: info */}
               <div className="lg:w-1/2 mb-8 lg:mb-0">
                 <div className={cn(
-                  "w-14 h-14 rounded-2xl flex items-center justify-center mb-4",
-                  active.color === "teal" && "bg-gradient-to-br from-teal to-teal-dark",
-                  active.color === "coral" && "bg-gradient-to-br from-coral to-coral-dark",
-                  active.color === "primary" && "bg-gradient-to-br from-primary to-primary/80"
+                  "w-14 h-14 rounded-2xl flex items-center justify-center mb-4 shadow-lg",
+                  active.color === "teal" && "bg-gradient-to-br from-teal to-teal-dark shadow-teal/20",
+                  active.color === "coral" && "bg-gradient-to-br from-coral to-coral-dark shadow-coral/20",
+                  active.color === "primary" && "bg-gradient-to-br from-primary to-primary/80 shadow-primary/20"
                 )}>
                   <active.icon className="w-7 h-7 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold text-foreground mb-1">{active.title}</h3>
                 <p className="text-muted-foreground mb-6">{active.subtitle}</p>
-                <div className="bg-muted/50 rounded-xl p-4">
+                <div className={cn(
+                  "rounded-xl p-4 border",
+                  active.color === "teal" && "bg-teal/5 border-teal/15",
+                  active.color === "coral" && "bg-coral/5 border-coral/15",
+                  active.color === "primary" && "bg-primary/5 border-primary/15",
+                )}>
                   <p className="text-sm font-medium text-foreground leading-relaxed">{active.benefit}</p>
                 </div>
               </div>
@@ -132,9 +145,9 @@ export function UseCasesSection() {
                   >
                     <div className={cn(
                       "w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0",
-                      active.color === "teal" && "bg-teal/20",
-                      active.color === "coral" && "bg-coral/20",
-                      active.color === "primary" && "bg-primary/20"
+                      active.color === "teal" && "bg-teal/15",
+                      active.color === "coral" && "bg-coral/15",
+                      active.color === "primary" && "bg-primary/15"
                     )}>
                       <ArrowRight className={cn(
                         "w-3 h-3",
