@@ -1,0 +1,22 @@
+{
+  "name": "LessonLoop",
+  "short_name": "LessonLoop",
+  "description": "Music lesson scheduling & invoicing",
+  "theme_color": "#00c2b8",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/dashboard",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

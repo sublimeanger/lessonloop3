@@ -1,0 +1,72 @@
+<svg width="800" height="450" viewBox="0 0 800 450" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff5f4"/>
+      <stop offset="100%" style="stop-color:#ffe8e5"/>
+    </linearGradient>
+    <linearGradient id="tealGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00c2b8"/>
+      <stop offset="100%" style="stop-color:#009e96"/>
+    </linearGradient>
+    <linearGradient id="coralGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b5b"/>
+      <stop offset="100%" style="stop-color:#e55a4a"/>
+    </linearGradient>
+    <linearGradient id="inkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a2b3c"/>
+      <stop offset="100%" style="stop-color:#2d4356"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="800" height="450" fill="url(#bgGrad2)"/>
+  
+  <!-- Decorative elements -->
+  <circle cx="700" cy="350" r="100" fill="#00c2b8" opacity="0.1"/>
+  <circle cx="100" cy="100" r="60" fill="#ff6b5b" opacity="0.1"/>
+  
+  <!-- Pound symbol main -->
+  <g transform="translate(280, 100)">
+    <circle cx="120" cy="125" r="110" fill="white" stroke="url(#coralGrad2)" stroke-width="6"/>
+    <text x="120" y="165" font-family="Arial, sans-serif" font-size="140" font-weight="bold" fill="url(#coralGrad2)" text-anchor="middle">£</text>
+  </g>
+  
+  <!-- Rising chart -->
+  <g transform="translate(480, 150)">
+    <rect x="0" y="0" width="200" height="150" rx="12" fill="white" stroke="#e0e0e0" stroke-width="2"/>
+    
+    <!-- Chart bars -->
+    <rect x="25" y="100" width="25" height="30" rx="4" fill="url(#tealGrad2)" opacity="0.5"/>
+    <rect x="60" y="80" width="25" height="50" rx="4" fill="url(#tealGrad2)" opacity="0.7"/>
+    <rect x="95" y="55" width="25" height="75" rx="4" fill="url(#tealGrad2)" opacity="0.85"/>
+    <rect x="130" y="25" width="25" height="105" rx="4" fill="url(#tealGrad2)"/>
+    
+    <!-- Trend line -->
+    <path d="M35 100 L75 80 L110 55 L145 30" stroke="url(#coralGrad2)" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <circle cx="145" cy="30" r="6" fill="url(#coralGrad2)"/>
+  </g>
+  
+  <!-- Calculator icon -->
+  <g transform="translate(120, 260)">
+    <rect x="0" y="0" width="80" height="100" rx="10" fill="url(#inkGrad)"/>
+    <rect x="10" y="10" width="60" height="25" rx="4" fill="#4fd1c5"/>
+    <g fill="white" opacity="0.9">
+      <rect x="10" y="45" width="15" height="15" rx="3"/>
+      <rect x="32" y="45" width="15" height="15" rx="3"/>
+      <rect x="54" y="45" width="15" height="15" rx="3"/>
+      <rect x="10" y="68" width="15" height="15" rx="3"/>
+      <rect x="32" y="68" width="15" height="15" rx="3"/>
+      <rect x="54" y="68" width="37" height="15" rx="3"/>
+    </g>
+  </g>
+  
+  <!-- Coins -->
+  <g transform="translate(580, 320)">
+    <ellipse cx="30" cy="35" rx="28" ry="8" fill="#009e96"/>
+    <ellipse cx="30" cy="30" rx="28" ry="8" fill="url(#tealGrad2)"/>
+    <ellipse cx="60" cy="40" rx="28" ry="8" fill="#e55a4a"/>
+    <ellipse cx="60" cy="35" rx="28" ry="8" fill="url(#coralGrad2)"/>
+    <ellipse cx="45" cy="20" rx="28" ry="8" fill="#009e96"/>
+    <ellipse cx="45" cy="15" rx="28" ry="8" fill="url(#tealGrad2)"/>
+  </g>
+</svg>
