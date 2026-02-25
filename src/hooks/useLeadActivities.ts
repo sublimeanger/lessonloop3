@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any;
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -22,7 +24,7 @@ export function useLeadActivities(leadId: string | undefined) {
     queryFn: async (): Promise<LeadActivity[]> => {
       if (!currentOrg || !leadId) return [];
 
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('lead_activities')
         .select('*')
         .eq('lead_id', leadId)
@@ -51,7 +53,7 @@ export function useAddLeadNote() {
       if (!currentOrg) throw new Error('No organisation selected');
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('lead_activities')
         .insert({
           lead_id: leadId,
@@ -102,7 +104,7 @@ export function useLogLeadCall() {
       if (!currentOrg) throw new Error('No organisation selected');
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('lead_activities')
         .insert({
           lead_id: leadId,
@@ -145,7 +147,7 @@ export function useLeadFollowUps(leadId: string | undefined) {
     queryFn: async (): Promise<LeadFollowUp[]> => {
       if (!currentOrg || !leadId) return [];
 
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('lead_follow_ups')
         .select('*')
         .eq('lead_id', leadId)
@@ -174,7 +176,7 @@ export function useCreateFollowUp() {
       if (!currentOrg) throw new Error('No organisation selected');
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('lead_follow_ups')
         .insert({
           lead_id: leadId,
@@ -189,7 +191,7 @@ export function useCreateFollowUp() {
       if (error) throw error;
 
       // Also log an activity
-      await supabase
+      await db
         .from('lead_activities')
         .insert({
           lead_id: leadId,
@@ -226,7 +228,7 @@ export function useCompleteFollowUp() {
     mutationFn: async ({ followUpId, leadId }: { followUpId: string; leadId: string }) => {
       if (!currentOrg) throw new Error('No organisation selected');
 
-      const { error } = await supabase
+      const { error } = await db
         .from('lead_follow_ups')
         .update({ completed_at: new Date().toISOString() })
         .eq('id', followUpId)
@@ -235,7 +237,7 @@ export function useCompleteFollowUp() {
       if (error) throw error;
 
       // Log an activity
-      await supabase
+      await db
         .from('lead_activities')
         .insert({
           lead_id: leadId,

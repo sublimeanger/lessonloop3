@@ -102,32 +102,33 @@ export function BookTrialModal({ open, onOpenChange, lead }: BookTrialModalProps
         .from('lessons')
         .insert({
           org_id: currentOrg.id,
+          created_by: user.id,
           teacher_id: teacherId || null,
           title: `Trial - ${selectedStudent.first_name}`,
           start_at: startDateTime.toISOString(),
           end_at: endDateTime.toISOString(),
-          status: 'scheduled' as const,
-          lesson_type: 'trial' as const,
-        })
+          status: 'scheduled',
+          lesson_type: 'trial',
+        } as any)
         .select()
         .single();
 
       if (lessonError) throw lessonError;
 
       // 2. Update the lead with trial info
-      const { error: leadError } = await supabase
+      const { error: leadError } = await (supabase as any)
         .from('leads')
         .update({
           trial_lesson_id: lesson.id,
           trial_date: startDateTime.toISOString(),
-          stage: 'trial_booked' as const,
+          stage: 'trial_booked',
         })
         .eq('id', lead.id);
 
       if (leadError) throw leadError;
 
       // 3. Log a 'trial_booked' activity
-      await supabase.from('lead_activities').insert({
+      await (supabase as any).from('lead_activities').insert({
         lead_id: lead.id,
         org_id: currentOrg.id,
         activity_type: 'trial_booked',
