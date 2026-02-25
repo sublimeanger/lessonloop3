@@ -77,15 +77,7 @@ function TemplateCard({
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
           <span>Mode: {MODE_LABELS[template.billing_mode] || template.billing_mode}</span>
-          <span>Next run: {format(parseISO(template.next_run_date), 'd MMM yyyy')}</span>
-          {template.last_run_at && (
-            <span>
-              Last run: {format(parseISO(template.last_run_at), 'd MMM yyyy')} — {template.last_run_invoice_count} invoice{template.last_run_invoice_count !== 1 ? 's' : ''}
-              {template.last_run_status === 'failed' && (
-                <span className="text-destructive font-medium"> (failed)</span>
-              )}
-            </span>
-          )}
+          {template.next_run_date && <span>Next run: {format(parseISO(template.next_run_date), 'd MMM yyyy')}</span>}
         </div>
       </div>
       {canEdit && (
@@ -149,7 +141,7 @@ export function RecurringBillingTab() {
     setFormFrequency(template.frequency);
     setFormMode(template.billing_mode);
     setFormAutoSend(template.auto_send);
-    setFormNextRunDate(template.next_run_date);
+    setFormNextRunDate(template.next_run_date || '');
     setDialogOpen(true);
   };
 

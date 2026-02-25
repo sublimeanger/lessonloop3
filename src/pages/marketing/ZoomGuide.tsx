@@ -4,10 +4,10 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { Video, Plus, Settings, Trash2, Shield, HelpCircle } from "lucide-react";
 
 export default function ZoomGuide() {
-  usePageMeta({
-    title: "Zoom Integration Guide | LessonLoop",
-    description: "Learn how to connect, use, and remove the Zoom integration in LessonLoop for automatic online lesson meeting links.",
-  });
+  usePageMeta(
+    "Zoom Integration Guide | LessonLoop",
+    "Learn how to connect, use, and remove the Zoom integration in LessonLoop for automatic online lesson meeting links."
+  );
 
   return (
     <MarketingLayout>

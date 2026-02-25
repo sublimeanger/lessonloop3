@@ -129,6 +129,7 @@ export default function DailyRegister() {
     location_id: null,
     room_id: null,
     online_meeting_url: null,
+    recap_url: null,
     is_online: false,
     notes_shared: l.notes_shared,
     notes_private: l.notes_private,
