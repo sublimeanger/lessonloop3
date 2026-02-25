@@ -4,16 +4,20 @@
  *
  * Usage:  node scripts/prerender.mjs
  *
- * Starts the Vite dev server, visits every marketing route with Puppeteer,
- * captures the fully-rendered HTML (with inlined CSS, meta tags, structured
- * data) and writes self-contained HTML files to marketing-html/.
+ * 1. Runs `vite build` to generate the production CSS bundle.
+ * 2. Starts the Vite dev server, visits every marketing route with Puppeteer,
+ *    captures the fully-rendered HTML (meta tags, structured data, body).
+ * 3. Links a shared production CSS file instead of inlining dev styles.
+ * 4. Copies all static assets (images, SVGs, favicons) into marketing-html/.
+ * 5. Rewrites image paths so they resolve within the static output.
  */
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer-core';
-import { readFileSync, mkdirSync, writeFileSync, existsSync } from 'fs';
-import { resolve, dirname, join } from 'path';
+import { readFileSync, mkdirSync, writeFileSync, existsSync, readdirSync, copyFileSync, statSync } from 'fs';
+import { resolve, dirname, join, basename, extname } from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -27,6 +31,102 @@ const APP_PATHS = [
   '/practice', '/resources', '/help', '/register', '/make-ups', '/leads',
   '/portal', '/auth', '/forgot-password', '/batch-attendance',
 ];
+
+// ─── 0. Asset helpers ─────────────────────────────────────────────
+
+const CSS_FILENAME = 'styles.css';
+
+/** Copy a directory recursively. */
+function copyDirSync(src, dest) {
+  mkdirSync(dest, { recursive: true });
+  for (const entry of readdirSync(src)) {
+    const srcPath = join(src, entry);
+    const destPath = join(dest, entry);
+    if (statSync(srcPath).isDirectory()) {
+      copyDirSync(srcPath, destPath);
+    } else {
+      copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+/**
+ * Build production CSS via `vite build`, then copy the CSS bundle
+ * and all static assets into OUT_DIR.
+ */
+function copyStaticAssets() {
+  // 1. Find the production CSS from dist/assets/
+  const distAssets = join(ROOT, 'dist', 'assets');
+  if (!existsSync(distAssets)) {
+    throw new Error('dist/assets/ not found — run `npm run build` first.');
+  }
+
+  const cssFile = readdirSync(distAssets).find(f => f.endsWith('.css'));
+  if (!cssFile) {
+    throw new Error('No CSS file found in dist/assets/.');
+  }
+
+  // Copy production CSS → marketing-html/styles.css
+  copyFileSync(join(distAssets, cssFile), join(OUT_DIR, CSS_FILENAME));
+  console.log(`  ✓ Copied production CSS → ${CSS_FILENAME} (${(statSync(join(OUT_DIR, CSS_FILENAME)).size / 1024).toFixed(1)} KB)`);
+
+  // 2. Copy marketing images: src/assets/marketing/ → marketing-html/assets/marketing/
+  const marketingSrc = join(ROOT, 'src', 'assets', 'marketing');
+  const marketingDest = join(OUT_DIR, 'assets', 'marketing');
+  if (existsSync(marketingSrc)) {
+    mkdirSync(marketingDest, { recursive: true });
+    let count = 0;
+    for (const file of readdirSync(marketingSrc)) {
+      const ext = extname(file).toLowerCase();
+      // Only copy actual media files, not .ts index files
+      if (['.png', '.jpg', '.jpeg', '.svg', '.webp', '.avif', '.mp4', '.gif'].includes(ext)) {
+        copyFileSync(join(marketingSrc, file), join(marketingDest, file));
+        count++;
+      }
+    }
+    console.log(`  ✓ Copied ${count} marketing images → assets/marketing/`);
+  }
+
+  // 3. Copy public/ assets that pages reference
+  const publicDir = join(ROOT, 'public');
+  const publicFiles = [
+    'logo-horizontal.svg',
+    'favicon.svg',
+    'favicon.ico',
+    'og-image.png',
+    'placeholder.svg',
+  ];
+  for (const file of publicFiles) {
+    const src = join(publicDir, file);
+    if (existsSync(src)) {
+      copyFileSync(src, join(OUT_DIR, file));
+    }
+  }
+  console.log(`  ✓ Copied public assets (logo, favicons, OG image)`);
+
+  // 4. Copy public/blog/ SVGs → marketing-html/blog/
+  const blogSvgSrc = join(publicDir, 'blog');
+  if (existsSync(blogSvgSrc)) {
+    const blogDest = join(OUT_DIR, 'blog');
+    // blog/ dirs are created per-route, but we need the SVGs at the root of blog/
+    mkdirSync(blogDest, { recursive: true });
+    for (const file of readdirSync(blogSvgSrc)) {
+      if (file.endsWith('.svg')) {
+        copyFileSync(join(blogSvgSrc, file), join(blogDest, file));
+      }
+    }
+    console.log(`  ✓ Copied blog SVGs → blog/`);
+  }
+
+  // 5. Copy PWA icons if they exist
+  for (const file of readdirSync(publicDir)) {
+    if (file.startsWith('pwa-') && file.endsWith('.png')) {
+      copyFileSync(join(publicDir, file), join(OUT_DIR, file));
+    }
+  }
+
+  console.log('');
+}
 
 // ─── 1. Gather routes ──────────────────────────────────────────────
 
@@ -158,6 +258,9 @@ function postProcess(html, routePath) {
   // Also remove any empty container divs left behind by the widget
   // The chat widget is wrapped in AnimatePresence which may leave empty wrapper divs
 
+  // Rewrite /src/assets/marketing/ → /assets/marketing/ (production paths)
+  html = html.replace(/\/src\/assets\/marketing\//g, '/assets/marketing/');
+
   // Remove CSP meta tag (not needed for static site, can block resources)
   html = html.replace(/<meta http-equiv="Content-Security-Policy"[^>]*>/gi, '');
 
@@ -217,6 +320,10 @@ async function main() {
   }
   mkdirSync(OUT_DIR, { recursive: true });
 
+  // Copy production CSS and static assets
+  console.log('  Copying static assets...\n');
+  copyStaticAssets();
+
   const results = [];
   const errors = [];
 
@@ -240,50 +347,32 @@ async function main() {
       // Extra wait for animations / late-loading content
       await page.evaluate(() => new Promise(r => setTimeout(r, 500)));
 
-      // Extract the full HTML including <head> (with meta tags from usePageMeta)
-      const html = await page.content();
+      // Extract the full rendered HTML
+      const rawHtml = await page.content();
 
-      // Inline all styles from <style> and <link rel="stylesheet"> tags
-      const inlinedHtml = await page.evaluate(() => {
-        // Collect all CSS from stylesheets
-        let allCSS = '';
-        for (const sheet of document.styleSheets) {
-          try {
-            for (const rule of sheet.cssRules) {
-              allCSS += rule.cssText + '\n';
-            }
-          } catch (e) {
-            // Cross-origin sheets (like Google Fonts) can't be read — that's fine
-          }
-        }
-
-        // Remove all <link rel="stylesheet"> and <style> tags from head
-        const doc = document.documentElement.outerHTML;
-        return { css: allCSS, html: doc };
-      });
-
-      // Build the final HTML
+      // Build the final HTML — link to shared CSS instead of inlining
       let finalHtml = `<!DOCTYPE html>\n<html lang="en-GB">\n`;
 
       // Parse head and body from the captured HTML
-      const headMatch = inlinedHtml.html.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
-      const bodyMatch = inlinedHtml.html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      const headMatch = rawHtml.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+      const bodyMatch = rawHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
 
       if (headMatch && bodyMatch) {
         let head = headMatch[1];
 
-        // Remove existing <style> and <link rel="stylesheet"> from head — we'll inline CSS
+        // Remove all dev-mode <style> and <link rel="stylesheet"> tags
         head = head.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
         head = head.replace(/<link[^>]*rel=["']stylesheet["'][^>]*>/gi, '');
-        // Remove Vite client script
+        // Remove Vite client script and module scripts
         head = head.replace(/<script[^>]*@vite\/client[^>]*>[\s\S]*?<\/script>/gi, '');
         head = head.replace(/<script[^>]*type="module"[^>]*>[\s\S]*?<\/script>/gi, '');
 
-        finalHtml += `<head>\n${head}\n<style>\n${inlinedHtml.css}\n</style>\n</head>\n`;
+        // Add link to production CSS
+        finalHtml += `<head>\n${head}\n<link rel="stylesheet" href="/${CSS_FILENAME}">\n</head>\n`;
         finalHtml += `<body>\n${bodyMatch[1]}\n</body>\n`;
       } else {
         // Fallback: use raw HTML
-        finalHtml = html;
+        finalHtml = rawHtml;
       }
 
       finalHtml += '</html>';
