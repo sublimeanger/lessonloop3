@@ -68,6 +68,12 @@ const DailyRegister = lazy(() => import('@/pages/DailyRegister'));
 const BatchAttendance = lazy(() => import('@/pages/BatchAttendance'));
 const Help = lazy(() => import('@/pages/Help'));
 const MakeUpDashboard = lazy(() => import('@/pages/MakeUpDashboard'));
+const Leads = lazy(() => import('@/pages/Leads'));
+const LeadDetail = lazy(() => import('@/pages/LeadDetail'));
+const TeacherPerformanceReport = lazy(() => import('@/pages/reports/TeacherPerformance'));
+
+// ─── Lazy: Public ───────────────────────────────────────
+const BookingPage = lazy(() => import('@/pages/public/BookingPage'));
 
 // ─── Lazy: Portal ────────────────────────────────────────
 const PortalHome = lazy(() => import('@/pages/portal/PortalHome'));
@@ -130,6 +136,9 @@ export const appRoutes: RouteConfig[] = [
   { path: '/practice', component: Practice, auth: 'protected', allowedRoles: ['owner', 'admin', 'teacher'], label: 'Practice' },
   { path: '/resources', component: Resources, auth: 'protected', allowedRoles: ['owner', 'admin', 'teacher'], label: 'Resources' },
   { path: '/make-ups', component: MakeUpDashboard, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Make-Ups' },
+  { path: '/leads', component: Leads, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Leads' },
+  { path: '/leads/:id', component: LeadDetail, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Lead Detail' },
+  { path: '/reports/teacher-performance', component: TeacherPerformanceReport, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Teacher Performance' },
   { path: '/settings', component: Settings, auth: 'protected', allowedRoles: ['owner', 'admin', 'teacher', 'finance'], label: 'Settings' },
   { path: '/help', component: Help, auth: 'protected', label: 'Help' },
 ];
@@ -150,6 +159,7 @@ export const marketingRoutes: RouteConfig[] = [
   { path: '/kickstarter', component: Kickstarter, auth: 'public', label: 'Kickstarter' },
   { path: '/report', component: ReportDownload, auth: 'public', label: 'Report' },
   { path: '/reset-password', component: ResetPassword, auth: 'public', label: 'Reset Password' },
+  { path: '/book/:slug', component: BookingPage, auth: 'public', label: 'Book' },
 ];
 
 /** 404 route */

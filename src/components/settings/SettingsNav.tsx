@@ -22,6 +22,7 @@ import {
   FileText,
   ChevronRight,
   ArrowLeft,
+  Globe,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -79,6 +80,7 @@ export const SETTINGS_NAV_GROUPS: NavGroup[] = [
       { value: 'billing', label: 'Billing', icon: CreditCard, adminOnly: true },
       { value: 'rate-cards', label: 'Rate Cards', icon: Tags, adminOnly: true },
       { value: 'messaging', label: 'Messaging', icon: MessageSquare, adminOnly: true },
+      { value: 'booking-page', label: 'Booking Page', icon: Globe, adminOnly: true },
       { value: 'looopassist', label: 'LoopAssist AI', icon: Sparkles, adminOnly: true },
     ],
   },

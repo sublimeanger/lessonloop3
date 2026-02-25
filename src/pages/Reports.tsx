@@ -8,7 +8,7 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useOrg } from '@/contexts/OrgContext';
 import { useFeatureGate, Feature } from '@/hooks/useFeatureGate';
-import { Banknote, Clock, TrendingUp, ChevronRight, Calendar, XCircle, MapPin, Lock, Sparkles, FileBarChart } from 'lucide-react';
+import { Banknote, Clock, TrendingUp, ChevronRight, Calendar, XCircle, MapPin, Lock, Sparkles, FileBarChart, Users } from 'lucide-react';
 
 interface Report {
   id: string;
@@ -78,6 +78,16 @@ const reports: Report[] = [
     status: 'available',
     roles: ['owner', 'admin'],
     requiredFeature: 'multi_location',
+  },
+  {
+    id: 'teacher-performance',
+    title: 'Teacher Performance',
+    description: 'Retention, cancellations, revenue per teacher — benchmarked',
+    icon: Users,
+    href: '/reports/teacher-performance',
+    status: 'available',
+    roles: ['owner', 'admin'],
+    requiredFeature: 'teacher_performance',
   },
 ];
 
