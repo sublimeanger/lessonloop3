@@ -117,7 +117,7 @@ export default function LeadDetail() {
     return (
       <AppLayout>
         <PageHeader
-          title={<Skeleton className="h-8 w-48" />}
+          title="Loading..."
           breadcrumbs={[
             { label: 'Dashboard', href: '/dashboard' },
             { label: 'Leads', href: '/leads' },
@@ -163,15 +163,8 @@ export default function LeadDetail() {
   return (
     <AppLayout>
       <PageHeader
-        title={
-          <div className="flex items-center gap-3">
-            <span>{lead.contact_name}</span>
-            <Badge variant="secondary" className={cn('text-xs', STAGE_COLORS[lead.stage])}>
-              {STAGE_LABELS[lead.stage]}
-            </Badge>
-          </div>
-        }
-        description={`Source: ${SOURCE_LABELS[lead.source] || lead.source}${lead.source_detail ? ` (${lead.source_detail})` : ''}`}
+        title={lead.contact_name}
+        description={`${STAGE_LABELS[lead.stage]} · Source: ${SOURCE_LABELS[lead.source] || lead.source}${lead.source_detail ? ` (${lead.source_detail})` : ''}`}
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Leads', href: '/leads' },

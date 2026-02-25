@@ -203,12 +203,8 @@ export default function Leads() {
             icon={UserPlus}
             title="No leads yet"
             description="Start building your pipeline by adding your first lead, or set up a public booking page to receive enquiries automatically."
-            action={
-              <Button onClick={() => setShowCreate(true)} className="gap-2">
-                <UserPlus className="h-4 w-4" />
-                Add First Lead
-              </Button>
-            }
+            actionLabel="Add First Lead"
+            onAction={() => setShowCreate(true)}
           />
         ) : view === 'kanban' ? (
           <LeadKanbanBoard

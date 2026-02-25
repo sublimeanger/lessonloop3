@@ -35,7 +35,6 @@ export function BookingStepIndicator({ steps, currentStep, accentColor }: Bookin
                 backgroundColor: isCurrent || isCompleted
                   ? accentColor || 'hsl(var(--primary))'
                   : 'hsl(var(--muted-foreground) / 0.25)',
-                ringColor: isCurrent ? (accentColor || 'hsl(var(--primary))') : undefined,
                 boxShadow: isCurrent
                   ? `0 0 0 4px ${accentColor || 'hsl(var(--primary))'}33`
                   : undefined,

@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any;
 import { useOrg } from '@/contexts/OrgContext';
 import { STALE_REPORT } from '@/config/query-stale-times';
 import {
@@ -45,7 +47,7 @@ export function useLeadFunnelStats(startDate?: string, endDate?: string) {
     queryFn: async (): Promise<FunnelStageData[]> => {
       if (!currentOrg) return [];
 
-      let query = supabase
+      let query = db
         .from('leads')
         .select('stage, created_at')
         .eq('org_id', currentOrg.id);
@@ -108,7 +110,7 @@ export function useLeadSourceBreakdown(startDate?: string, endDate?: string) {
     queryFn: async (): Promise<SourceBreakdownItem[]> => {
       if (!currentOrg) return [];
 
-      let query = supabase
+      let query = db
         .from('leads')
         .select('source')
         .eq('org_id', currentOrg.id);

@@ -543,6 +543,195 @@ export type Database = {
           },
         ]
       }
+      booking_page_instruments: {
+        Row: {
+          booking_page_id: string
+          id: string
+          instrument_id: string
+          org_id: string
+        }
+        Insert: {
+          booking_page_id: string
+          id?: string
+          instrument_id: string
+          org_id: string
+        }
+        Update: {
+          booking_page_id?: string
+          id?: string
+          instrument_id?: string
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_page_instruments_booking_page_id_fkey"
+            columns: ["booking_page_id"]
+            isOneToOne: false
+            referencedRelation: "booking_pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_page_instruments_instrument_id_fkey"
+            columns: ["instrument_id"]
+            isOneToOne: false
+            referencedRelation: "instruments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_page_instruments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_page_instruments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_page_teachers: {
+        Row: {
+          booking_page_id: string
+          id: string
+          org_id: string
+          teacher_id: string
+        }
+        Insert: {
+          booking_page_id: string
+          id?: string
+          org_id: string
+          teacher_id: string
+        }
+        Update: {
+          booking_page_id?: string
+          id?: string
+          org_id?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_page_teachers_booking_page_id_fkey"
+            columns: ["booking_page_id"]
+            isOneToOne: false
+            referencedRelation: "booking_pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_page_teachers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_page_teachers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_page_teachers_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_page_teachers_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_page_teachers_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers_with_pay"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_pages: {
+        Row: {
+          accent_color: string | null
+          advance_booking_days: number
+          buffer_minutes: number
+          confirmation_message: string | null
+          created_at: string
+          description: string | null
+          enabled: boolean
+          id: string
+          lesson_duration_mins: number
+          logo_url: string | null
+          min_notice_hours: number
+          org_id: string
+          require_phone: boolean
+          slug: string
+          title: string | null
+          updated_at: string
+          welcome_message: string | null
+        }
+        Insert: {
+          accent_color?: string | null
+          advance_booking_days?: number
+          buffer_minutes?: number
+          confirmation_message?: string | null
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          lesson_duration_mins?: number
+          logo_url?: string | null
+          min_notice_hours?: number
+          org_id: string
+          require_phone?: boolean
+          slug: string
+          title?: string | null
+          updated_at?: string
+          welcome_message?: string | null
+        }
+        Update: {
+          accent_color?: string | null
+          advance_booking_days?: number
+          buffer_minutes?: number
+          confirmation_message?: string | null
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          lesson_duration_mins?: number
+          logo_url?: string | null
+          min_notice_hours?: number
+          org_id?: string
+          require_phone?: boolean
+          slug?: string
+          title?: string | null
+          updated_at?: string
+          welcome_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_pages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_pages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_connections: {
         Row: {
           access_token: string | null
@@ -1574,6 +1763,278 @@ export type Database = {
           name?: string | null
         }
         Relationships: []
+      }
+      lead_activities: {
+        Row: {
+          activity_type: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          lead_id: string
+          metadata: Json | null
+          org_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          lead_id: string
+          metadata?: Json | null
+          org_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          lead_id?: string
+          metadata?: Json | null
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_activities_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_activities_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_follow_ups: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          due_at: string
+          id: string
+          lead_id: string
+          note: string | null
+          org_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_at: string
+          id?: string
+          lead_id: string
+          note?: string | null
+          org_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_at?: string
+          id?: string
+          lead_id?: string
+          note?: string | null
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_follow_ups_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_follow_ups_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_follow_ups_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_students: {
+        Row: {
+          age: number | null
+          converted_student_id: string | null
+          created_at: string
+          experience_level: string | null
+          first_name: string
+          id: string
+          instrument: string | null
+          last_name: string | null
+          lead_id: string
+          notes: string | null
+          org_id: string
+        }
+        Insert: {
+          age?: number | null
+          converted_student_id?: string | null
+          created_at?: string
+          experience_level?: string | null
+          first_name: string
+          id?: string
+          instrument?: string | null
+          last_name?: string | null
+          lead_id: string
+          notes?: string | null
+          org_id: string
+        }
+        Update: {
+          age?: number | null
+          converted_student_id?: string | null
+          created_at?: string
+          experience_level?: string | null
+          first_name?: string
+          id?: string
+          instrument?: string | null
+          last_name?: string | null
+          lead_id?: string
+          notes?: string | null
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_students_converted_student_id_fkey"
+            columns: ["converted_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_students_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_students_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_students_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          assigned_to: string | null
+          contact_email: string | null
+          contact_name: string
+          contact_phone: string | null
+          converted_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          lost_reason: string | null
+          notes: string | null
+          org_id: string
+          preferred_day: string | null
+          preferred_instrument: string | null
+          preferred_time: string | null
+          source: Database["public"]["Enums"]["lead_source"]
+          source_detail: string | null
+          stage: Database["public"]["Enums"]["lead_stage"]
+          trial_date: string | null
+          trial_lesson_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          contact_email?: string | null
+          contact_name: string
+          contact_phone?: string | null
+          converted_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lost_reason?: string | null
+          notes?: string | null
+          org_id: string
+          preferred_day?: string | null
+          preferred_instrument?: string | null
+          preferred_time?: string | null
+          source?: Database["public"]["Enums"]["lead_source"]
+          source_detail?: string | null
+          stage?: Database["public"]["Enums"]["lead_stage"]
+          trial_date?: string | null
+          trial_lesson_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          contact_email?: string | null
+          contact_name?: string
+          contact_phone?: string | null
+          converted_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lost_reason?: string | null
+          notes?: string | null
+          org_id?: string
+          preferred_day?: string | null
+          preferred_instrument?: string | null
+          preferred_time?: string | null
+          source?: Database["public"]["Enums"]["lead_source"]
+          source_detail?: string | null
+          stage?: Database["public"]["Enums"]["lead_stage"]
+          trial_date?: string | null
+          trial_lesson_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_trial_lesson_id_fkey"
+            columns: ["trial_lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lesson_notes: {
         Row: {
@@ -4991,6 +5452,22 @@ export type Database = {
         | "sunday"
       employment_type: "employee" | "contractor"
       invoice_status: "draft" | "sent" | "paid" | "overdue" | "void"
+      lead_source:
+        | "manual"
+        | "booking_page"
+        | "widget"
+        | "referral"
+        | "website"
+        | "phone"
+        | "walk_in"
+        | "other"
+      lead_stage:
+        | "enquiry"
+        | "contacted"
+        | "trial_booked"
+        | "trial_completed"
+        | "enrolled"
+        | "lost"
       lesson_status: "scheduled" | "completed" | "cancelled"
       lesson_type: "private" | "group"
       location_type: "school" | "studio" | "home" | "online"
@@ -5179,6 +5656,24 @@ export const Constants = {
       ],
       employment_type: ["employee", "contractor"],
       invoice_status: ["draft", "sent", "paid", "overdue", "void"],
+      lead_source: [
+        "manual",
+        "booking_page",
+        "widget",
+        "referral",
+        "website",
+        "phone",
+        "walk_in",
+        "other",
+      ],
+      lead_stage: [
+        "enquiry",
+        "contacted",
+        "trial_booked",
+        "trial_completed",
+        "enrolled",
+        "lost",
+      ],
       lesson_status: ["scheduled", "completed", "cancelled"],
       lesson_type: ["private", "group"],
       location_type: ["school", "studio", "home", "online"],
