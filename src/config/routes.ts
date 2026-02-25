@@ -36,6 +36,7 @@ const GDPR = lazy(() => import('@/pages/marketing/GDPR'));
 const Cookies = lazy(() => import('@/pages/marketing/Cookies'));
 const Kickstarter = lazy(() => import('@/pages/marketing/Kickstarter'));
 const ZoomGuide = lazy(() => import('@/pages/marketing/ZoomGuide'));
+const UK = lazy(() => import('@/pages/marketing/UK'));
 
 // ─── Lazy: Auth ──────────────────────────────────────────
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
@@ -162,6 +163,7 @@ export const marketingRoutes: RouteConfig[] = [
   { path: '/zoom-integration', component: ZoomGuide, auth: 'public', label: 'Zoom Guide' },
   { path: '/reset-password', component: ResetPassword, auth: 'public', label: 'Reset Password' },
   { path: '/book/:slug', component: BookingPage, auth: 'public', label: 'Book' },
+  { path: '/uk', component: UK, auth: 'public', label: 'UK' },
 ];
 
 /** 404 route */
