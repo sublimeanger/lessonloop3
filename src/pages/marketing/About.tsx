@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { Heart, Target, Users, Lightbulb, MapPin, Mail, Music, Calendar, Receipt, MessageSquare, ArrowRight, Clock, ExternalLink, Quote, Repeat, Scale } from "lucide-react";
+import AboutSchema from "@/components/marketing/about/AboutSchema";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
@@ -61,10 +62,25 @@ const painPoints = [
 ];
 
 export default function About() {
-  usePageMeta("About LessonLoop — Built by a Music Teacher", "Lauren Twilley built LessonLoop after 20 years of music teaching. Read our story.");
+  usePageMeta(
+    "About LessonLoop — Music School Management Software Built by a UK Teacher",
+    "Lauren Twilley built LessonLoop after 20 years of music teaching in the UK. Discover the story behind the scheduling, billing, and communication platform designed for music educators.",
+    {
+      canonical: "https://lessonloop.co.uk/about",
+      ogTitle: "About LessonLoop — Built by a Music Teacher, for Music Teachers",
+      ogDescription: "Lauren Twilley built LessonLoop after 20 years of music teaching. Discover the music school management software designed for UK educators.",
+      ogType: "website",
+      ogUrl: "https://lessonloop.co.uk/about",
+      ogSiteName: "LessonLoop",
+      ogLocale: "en_GB",
+      twitterCard: "summary_large_image",
+      robots: "index, follow, max-snippet:-1, max-image-preview:large",
+    }
+  );
 
   return (
     <MarketingLayout>
+      <AboutSchema />
       {/* Hero Section */}
       <section className="pt-28 pb-16 lg:pt-36 lg:pb-24 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-muted/50 to-background" />
@@ -97,8 +113,8 @@ export default function About() {
             </h1>
             
             <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
-              LessonLoop was created from 20 years of lived experience in music teaching — 
-              not dreamed up in a boardroom.
+              LessonLoop is music school management software created from 20 years of lived experience 
+              teaching in the UK — not dreamed up in a boardroom.
             </p>
           </motion.div>
         </div>
@@ -275,8 +291,8 @@ export default function About() {
           >
             <span className="inline-block text-sm font-semibold text-primary mb-4">WHAT WE SOLVE</span>
             <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-4">
-              Designed to reduce friction
-              <br />and restore flow
+              Designed to solve the real problems
+              <br />music teachers face
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Every part of LessonLoop was built from the daily reality of running a music teaching business.
@@ -300,9 +316,24 @@ export default function About() {
                   <h3 className="text-xl font-bold text-foreground mb-3">
                     {point.title}
                   </h3>
-                  <p className="text-muted-foreground">
+                  <p className="text-muted-foreground mb-3">
                     {point.description}
                   </p>
+                  {point.title === "Scheduling that makes sense" && (
+                    <Link to="/features/scheduling" className="text-sm font-medium text-primary hover:underline inline-flex items-center gap-1">
+                      Explore music lesson scheduling <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  )}
+                  {point.title === "Billing that just works" && (
+                    <Link to="/features/billing" className="text-sm font-medium text-primary hover:underline inline-flex items-center gap-1">
+                      Explore invoicing and billing <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  )}
+                  {point.title === "Clear communication" && (
+                    <Link to="/features/parent-portal" className="text-sm font-medium text-primary hover:underline inline-flex items-center gap-1">
+                      Explore the parent portal <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  )}
                 </div>
               </motion.div>
             ))}
@@ -436,7 +467,7 @@ export default function About() {
                 we're here to help you get started.
               </p>
               
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-12">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-8">
                 <Link to="/contact">
                   <Button size="lg" className="bg-teal hover:bg-teal-dark text-white h-14 px-8 text-lg">
                     Get in Touch
@@ -447,6 +478,15 @@ export default function About() {
                   <Button size="lg" className="border border-white/30 bg-transparent text-white hover:bg-white/10 h-14 px-8 text-lg">
                     Start free trial
                   </Button>
+                </Link>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-6 mb-12">
+                <Link to="/pricing" className="text-teal-light hover:underline font-medium">
+                  View plans and pricing →
+                </Link>
+                <Link to="/uk" className="text-teal-light hover:underline font-medium">
+                  Built for UK music schools →
                 </Link>
               </div>
 

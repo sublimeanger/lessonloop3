@@ -27,9 +27,32 @@ const rights = [
 ];
 
 export default function GDPR() {
-  usePageMeta('GDPR Compliance | LessonLoop', 'Your data rights and how LessonLoop complies with GDPR');
+  usePageMeta(
+    'GDPR Compliance — How LessonLoop Protects Your Data Rights | UK GDPR',
+    'Learn how LessonLoop complies with UK GDPR. Understand your data rights including access, portability, erasure, and restriction of processing.',
+    {
+      canonical: "https://lessonloop.co.uk/gdpr",
+      ogTitle: "GDPR Compliance | LessonLoop",
+      ogDescription: "Your data rights and how LessonLoop complies with UK GDPR and the Data Protection Act 2018.",
+      ogType: "website",
+      ogUrl: "https://lessonloop.co.uk/gdpr",
+      ogSiteName: "LessonLoop",
+      robots: "index, follow, noarchive",
+    }
+  );
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://lessonloop.co.uk/" },
+      { "@type": "ListItem", position: 2, name: "GDPR Compliance", item: "https://lessonloop.co.uk/gdpr" },
+    ],
+  };
+
   return (
     <MarketingLayout>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       <section className="pt-32 pb-16 lg:pt-40 lg:pb-24 relative overflow-hidden">
         <div className="absolute inset-0 gradient-hero-light" />
         

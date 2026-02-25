@@ -3,6 +3,7 @@ import { logger } from "@/lib/logger";
 import { motion } from "framer-motion";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
+import ContactSchema from "@/components/marketing/contact/ContactSchema";
 import { MessageSquare, Clock, HelpCircle, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +35,21 @@ const contactSchema = z.object({
 type ContactFormData = z.infer<typeof contactSchema>;
 
 export default function Contact() {
-  usePageMeta("Contact — LessonLoop", "Get in touch. We'd love to hear from you.");
+  usePageMeta(
+    "Contact LessonLoop — Get in Touch With Our Music School Software Team",
+    "Have a question about LessonLoop? Contact our UK-based team for help with scheduling, billing, or getting started. We respond within 24 hours.",
+    {
+      canonical: "https://lessonloop.co.uk/contact",
+      ogTitle: "Contact LessonLoop — We'd Love to Hear From You",
+      ogDescription: "Get in touch with the LessonLoop team. Questions about music school management software? We typically respond within 24 hours.",
+      ogType: "website",
+      ogUrl: "https://lessonloop.co.uk/contact",
+      ogSiteName: "LessonLoop",
+      ogLocale: "en_GB",
+      twitterCard: "summary",
+      robots: "index, follow",
+    }
+  );
   const [formData, setFormData] = useState<ContactFormData>({
     firstName: "",
     lastName: "",
@@ -95,6 +110,7 @@ export default function Contact() {
 
   return (
     <MarketingLayout>
+      <ContactSchema />
       {/* Header Section */}
       <section className="pt-32 pb-16 lg:pt-40 lg:pb-24 relative overflow-hidden">
         <div className="absolute inset-0 gradient-hero-light" />

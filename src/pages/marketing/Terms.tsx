@@ -5,9 +5,32 @@ import { TRIAL_DAYS } from "@/lib/pricing-config";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function Terms() {
-  usePageMeta('Terms of Service | LessonLoop', 'LessonLoop terms and conditions of use');
+  usePageMeta(
+    'Terms of Service — LessonLoop Music School Software',
+    'Read LessonLoop\'s terms of service. Understand your rights and obligations when using our music school management platform.',
+    {
+      canonical: "https://lessonloop.co.uk/terms",
+      ogTitle: "Terms of Service | LessonLoop",
+      ogDescription: "LessonLoop terms and conditions of use for music school management software.",
+      ogType: "website",
+      ogUrl: "https://lessonloop.co.uk/terms",
+      ogSiteName: "LessonLoop",
+      robots: "index, follow, noarchive",
+    }
+  );
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://lessonloop.co.uk/" },
+      { "@type": "ListItem", position: 2, name: "Terms of Service", item: "https://lessonloop.co.uk/terms" },
+    ],
+  };
+
   return (
     <MarketingLayout>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       <section className="pt-32 pb-16 lg:pt-40 lg:pb-24 relative overflow-hidden">
         <div className="absolute inset-0 gradient-hero-light" />
         
