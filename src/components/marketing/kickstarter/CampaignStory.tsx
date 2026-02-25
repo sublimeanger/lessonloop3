@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { BrowserFrameLight } from "@/components/marketing/BrowserFrame";
-import { calendarWeek, invoicesList, parentPortal, loopassistChat, dashboardHero } from "@/assets/marketing";
+import { calendarReal, revenueReal, messagesReal, loopassistReal, dashboardReal } from "@/assets/marketing";
 import { Music, Users, GraduationCap } from "lucide-react";
 
 const stats = [
@@ -25,11 +25,11 @@ const acts = [
 ];
 
 const screenshots = [
-  { src: dashboardHero, alt: "Dashboard overview", url: "app.lessonloop.net/dashboard" },
-  { src: calendarWeek, alt: "Weekly calendar", url: "app.lessonloop.net/calendar" },
-  { src: invoicesList, alt: "Invoice management", url: "app.lessonloop.net/invoices" },
-  { src: parentPortal, alt: "Parent portal", url: "app.lessonloop.net/portal" },
-  { src: loopassistChat, alt: "LoopAssist AI", url: "app.lessonloop.net/loopassist" },
+  { src: dashboardReal, alt: "Dashboard overview", url: "app.lessonloop.net/dashboard" },
+  { src: calendarReal, alt: "Weekly calendar", url: "app.lessonloop.net/calendar" },
+  { src: revenueReal, alt: "Revenue reporting", url: "app.lessonloop.net/reports" },
+  { src: messagesReal, alt: "Parent messaging", url: "app.lessonloop.net/messages" },
+  { src: loopassistReal, alt: "LoopAssist AI", url: "app.lessonloop.net/loopassist" },
 ];
 
 export function CampaignStory() {

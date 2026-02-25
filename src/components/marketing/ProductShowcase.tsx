@@ -3,7 +3,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, Receipt, Users, Sparkles, ChevronRight, RefreshCw, Play, X, Mail, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { calendarWeek, invoicesList, parentPortal, loopassistChat, studentsList } from "@/assets/marketing";
+import { 
+  loopassistReal, calendarReal, revenueReal, messagesReal, 
+  makeupsReal, practiceReal, teachersReal, attendanceReal 
+} from "@/assets/marketing";
 
 const tabs = [
   {
@@ -12,8 +15,8 @@ const tabs = [
     icon: Sparkles,
     description: "Your intelligent music school co-pilot",
     features: ["Natural language queries", "Smart actions with confirmation", "Draft messages & emails", "Revenue insights & attendance summaries", "Works across scheduling, billing, practice and attendance"],
-    screenshot: loopassistChat,
-    alt: "LoopAssist AI assistant interface",
+    screenshot: loopassistReal,
+    alt: "LoopAssist AI assistant interface showing smart suggestions and conversation history",
     url: "/features/loopassist",
     browserUrl: "app.lessonloop.net/loopassist",
   },
@@ -23,8 +26,8 @@ const tabs = [
     icon: Calendar,
     description: "Drag-and-drop scheduling with conflict detection",
     features: ["Week & day views with drag-and-drop", "Recurring lessons with break skipping", "Room & location booking", "Closure date management", "Teacher availability matching"],
-    screenshot: calendarWeek,
-    alt: "Weekly calendar view with colour-coded lessons",
+    screenshot: calendarReal,
+    alt: "Weekly calendar view with colour-coded lessons across multiple teachers",
     url: "/features/scheduling",
     browserUrl: "app.lessonloop.net/calendar",
   },
@@ -34,21 +37,21 @@ const tabs = [
     icon: Receipt,
     description: "Automated billing with online payments",
     features: ["Termly & monthly bulk generation", "Payment plans & installments", "Stripe online payments", "UK VAT support", "Overdue reminders & automation"],
-    screenshot: invoicesList,
-    alt: "Invoice management with status tracking and bulk actions",
+    screenshot: revenueReal,
+    alt: "Revenue report showing £55,195 total revenue with monthly breakdown chart",
     url: "/features/billing",
-    browserUrl: "app.lessonloop.net/invoices",
+    browserUrl: "app.lessonloop.net/reports/revenue",
   },
   {
     id: "students",
-    label: "Students",
+    label: "Messages",
     icon: Users,
-    description: "Complete student and family management",
-    features: ["Student profiles", "Guardian linking", "Exam board tracking", "Instrument & grade management", "Notes and lesson history"],
-    screenshot: parentPortal,
-    alt: "Student list with search, filters, and active badges",
-    url: "/features/students",
-    browserUrl: "app.lessonloop.net/students",
+    description: "Parent communication made easy",
+    features: ["Threaded conversations", "Cancellation & reschedule requests", "Internal staff messaging", "Search & filter", "Read status tracking"],
+    screenshot: messagesReal,
+    alt: "Message threads with parent conversations about lessons and scheduling",
+    url: "/features/messaging",
+    browserUrl: "app.lessonloop.net/messages",
   },
   {
     id: "makeups",
@@ -56,8 +59,8 @@ const tabs = [
     icon: RefreshCw,
     description: "Never lose revenue from cancellations",
     features: ["Automatic slot detection", "Parent notification", "One-click accept", "Make-up credits"],
-    screenshot: studentsList,
-    alt: "Make-up lesson matching and credit management",
+    screenshot: makeupsReal,
+    alt: "Make-up lesson management with waitlist and credit tracking",
     url: "/features/scheduling",
     browserUrl: "app.lessonloop.net/make-ups",
   },
@@ -67,21 +70,21 @@ const tabs = [
     icon: Play,
     description: "Track and encourage student practice",
     features: ["Create practice assignments", "Streak tracking & gamification", "Parent visibility via portal", "Progress reports"],
-    screenshot: parentPortal,
-    alt: "Practice tracking with assignments and streaks",
+    screenshot: practiceReal,
+    alt: "Practice tracking dashboard with assignments, review queue, and weekly progress",
     url: "/features/practice-tracking",
     browserUrl: "app.lessonloop.net/practice",
   },
   {
-    id: "resources",
-    label: "Resources",
+    id: "teachers",
+    label: "Teachers",
     icon: Mail,
-    description: "Share teaching materials with families",
-    features: ["Upload audio, PDF & video", "Category organisation", "Share with students", "Resource library"],
-    screenshot: parentPortal,
-    alt: "Resource library for sharing teaching materials",
-    url: "/features/resources",
-    browserUrl: "app.lessonloop.net/resources",
+    description: "Manage your teaching team",
+    features: ["Teacher profiles & linking", "Student assignments", "Payroll tracking", "Availability management"],
+    screenshot: teachersReal,
+    alt: "Teachers list showing 19 linked teachers with student counts",
+    url: "/features/teachers",
+    browserUrl: "app.lessonloop.net/teachers",
   },
 ];
 
