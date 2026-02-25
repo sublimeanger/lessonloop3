@@ -11,6 +11,7 @@ import {
   ArrowDown,
   Check,
   Users,
+  ArrowRight,
 } from "lucide-react";
 import { useRef } from "react";
 
@@ -54,6 +55,7 @@ const flowSteps = [
     detail: "Oliver — Piano, Wed 3pm",
     color: "text-destructive",
     bg: "bg-destructive/10",
+    border: "border-destructive/20",
   },
   {
     icon: CalendarCheck,
@@ -61,6 +63,7 @@ const flowSteps = [
     detail: "Wed 3pm now available",
     color: "text-teal",
     bg: "bg-teal/10",
+    border: "border-teal/20",
   },
   {
     icon: Users,
@@ -68,6 +71,7 @@ const flowSteps = [
     detail: "2 eligible students found",
     color: "text-primary",
     bg: "bg-primary/10",
+    border: "border-primary/20",
     names: ["Emma S.", "James T."],
   },
   {
@@ -76,6 +80,7 @@ const flowSteps = [
     detail: "Email + portal notification sent",
     color: "text-coral",
     bg: "bg-coral/10",
+    border: "border-coral/20",
   },
   {
     icon: Check,
@@ -83,6 +88,7 @@ const flowSteps = [
     detail: "Emma accepted — confirmed",
     color: "text-success",
     bg: "bg-success/10",
+    border: "border-success/20",
   },
 ];
 
@@ -91,7 +97,10 @@ export function MakeUpDeepDive() {
   const isInView = useInView(flowRef, { once: true, margin: "-100px" });
 
   return (
-    <section id="makeups" className="py-24 lg:py-32 bg-muted/30">
+    <section id="makeups" className="py-24 lg:py-36 bg-background relative overflow-hidden">
+      {/* Accent line */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[1px] bg-gradient-to-r from-transparent via-border to-transparent" />
+      
       <div className="container mx-auto px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           {/* Left: Content */}
@@ -102,7 +111,7 @@ export function MakeUpDeepDive() {
             transition={{ duration: 0.6 }}
           >
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal to-teal-dark flex items-center justify-center">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal to-teal-dark flex items-center justify-center shadow-lg shadow-teal/20">
                 <RefreshCw className="w-6 h-6 text-white" />
               </div>
               <span className="text-sm font-medium text-teal uppercase tracking-wider">
@@ -110,13 +119,13 @@ export function MakeUpDeepDive() {
               </span>
             </div>
 
-            <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-6">
+            <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-6 leading-[1.1]">
               Cancellations handled.
               <br />
               <span className="text-muted-foreground">Automatically.</span>
             </h2>
 
-            <p className="text-lg text-muted-foreground mb-10">
+            <p className="text-lg text-muted-foreground mb-10 leading-relaxed">
               When a student cancels, LessonLoop finds matching available slots, 
               notifies eligible families, and fills the gap — without you lifting a finger.
             </p>
@@ -128,7 +137,7 @@ export function MakeUpDeepDive() {
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
+                  transition={{ delay: index * 0.08 }}
                   className="flex gap-3"
                 >
                   <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-teal/10 flex items-center justify-center">
@@ -156,58 +165,48 @@ export function MakeUpDeepDive() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="relative"
           >
-            <div className="space-y-0">
+            {/* Vertical connector line */}
+            <div className="absolute left-[24px] top-[20px] bottom-[20px] w-px bg-gradient-to-b from-destructive/20 via-border to-success/20 pointer-events-none" />
+            
+            <div className="space-y-3">
               {flowSteps.map((step, i) => (
-                <div key={step.label}>
-                  {/* Step Card */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-                    transition={{ delay: i * 0.4, duration: 0.5 }}
-                    className="bg-card border border-border rounded-xl p-4 relative"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg ${step.bg} flex items-center justify-center flex-shrink-0`}>
-                        <step.icon className={`w-5 h-5 ${step.color}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground">{step.label}</p>
-                        <p className="text-xs text-muted-foreground">{step.detail}</p>
-                      </div>
+                <motion.div
+                  key={step.label}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: 20 }}
+                  transition={{ delay: i * 0.3, duration: 0.5 }}
+                  className={`bg-card border ${step.border} rounded-xl p-4 relative ml-6`}
+                >
+                  {/* Step dot on the line */}
+                  <div className={`absolute -left-[30px] top-1/2 -translate-y-1/2 w-[13px] h-[13px] rounded-full ${step.bg} border-2 border-card z-10`}>
+                    <div className={`w-full h-full rounded-full ${step.bg}`} />
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg ${step.bg} flex items-center justify-center flex-shrink-0`}>
+                      <step.icon className={`w-5 h-5 ${step.color}`} />
                     </div>
-                    {/* Waitlist names */}
-                    {step.names && (
-                      <div className="mt-3 ml-[52px] space-y-1">
-                        {step.names.map((name) => (
-                          <div
-                            key={name}
-                            className="flex items-center gap-2 text-xs text-muted-foreground"
-                          >
-                            <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium text-foreground">
-                              {name[0]}
-                            </div>
-                            {name}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{step.label}</p>
+                      <p className="text-xs text-muted-foreground">{step.detail}</p>
+                    </div>
+                  </div>
+                  {step.names && (
+                    <div className="mt-3 ml-[52px] space-y-1">
+                      {step.names.map((name) => (
+                        <div
+                          key={name}
+                          className="flex items-center gap-2 text-xs text-muted-foreground"
+                        >
+                          <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium text-foreground">
+                            {name[0]}
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </motion.div>
-
-                  {/* Connecting Arrow */}
-                  {i < flowSteps.length - 1 && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-                      transition={{ delay: i * 0.4 + 0.25, duration: 0.3 }}
-                      className="flex justify-center py-1"
-                    >
-                      <div className="flex flex-col items-center">
-                        <div className="w-px h-3 border-l border-dashed border-border" />
-                        <ArrowDown className="w-3 h-3 text-muted-foreground" />
-                      </div>
-                    </motion.div>
+                          {name}
+                        </div>
+                      ))}
+                    </div>
                   )}
-                </div>
+                </motion.div>
               ))}
             </div>
           </motion.div>

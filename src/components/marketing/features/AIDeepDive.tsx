@@ -7,7 +7,8 @@ import {
   Search,
   Shield,
   Check,
-  Send
+  Send,
+  ArrowRight
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 
@@ -20,12 +21,12 @@ const features = [
   {
     icon: Zap,
     title: "Smart Actions",
-    description: "Propose invoice runs, send reminders, reschedule lessons—with one command.",
+    description: "Propose invoice runs, send reminders, reschedule — with one command.",
   },
   {
     icon: FileText,
     title: "Message Drafting",
-    description: "Generate professional emails to parents with context-aware suggestions.",
+    description: "Generate professional emails with context-aware suggestions.",
   },
   {
     icon: Shield,
@@ -58,7 +59,6 @@ export function AIDeepDive() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: "-100px" });
 
-  // Only start animation sequence when section comes into view
   useEffect(() => {
     if (isInView && !hasStarted) {
       setHasStarted(true);
@@ -88,8 +88,15 @@ export function AIDeepDive() {
   }, [visibleMessages, hasStarted]);
 
   return (
-    <section id="ai" className="py-24 lg:py-32 bg-background" ref={sectionRef}>
-      <div className="container mx-auto px-6 lg:px-8">
+    <section id="ai" className="py-24 lg:py-36 relative overflow-hidden" ref={sectionRef}>
+      {/* Dramatic dark background with violet accent */}
+      <div className="absolute inset-0 bg-[hsl(var(--ink))]" />
+      <div className="absolute inset-0 opacity-[0.03]" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+      }} />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] rounded-full bg-gradient-to-br from-coral/8 via-transparent to-violet/5 blur-3xl pointer-events-none" />
+
+      <div className="container mx-auto px-6 lg:px-8 relative">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           {/* Left: Chat Demo */}
           <motion.div
@@ -99,20 +106,19 @@ export function AIDeepDive() {
             transition={{ duration: 0.6 }}
             className="relative order-2 lg:order-1"
           >
-            {/* Chat window */}
-            <div className="relative bg-card rounded-2xl border border-border shadow-2xl overflow-hidden">
+            <div className="relative bg-white/[0.04] backdrop-blur-sm rounded-2xl border border-white/[0.08] shadow-2xl overflow-hidden">
               {/* Header */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-muted/50">
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] bg-white/[0.02]">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-coral to-coral-dark flex items-center justify-center">
                   <Sparkles className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <p className="font-medium text-foreground text-sm">LoopAssist</p>
-                  <p className="text-xs text-muted-foreground">AI-powered assistant</p>
+                  <p className="font-medium text-white text-sm">LoopAssist</p>
+                  <p className="text-xs text-white/40">AI-powered assistant</p>
                 </div>
                 <div className="ml-auto flex items-center gap-1">
                   <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                  <span className="text-xs text-muted-foreground">Online</span>
+                  <span className="text-xs text-white/40">Online</span>
                 </div>
               </div>
 
@@ -127,29 +133,24 @@ export function AIDeepDive() {
                   >
                     <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm ${
                       message.role === "user"
-                        ? "bg-primary text-primary-foreground rounded-br-md"
-                        : "bg-muted text-foreground rounded-bl-md"
+                        ? "bg-teal text-white rounded-br-md"
+                        : "bg-white/[0.06] text-white/80 rounded-bl-md"
                     }`}>
                       {message.content.split("**").map((part, i) =>
-                        i % 2 === 1 ? <strong key={i}>{part}</strong> : part
+                        i % 2 === 1 ? <strong key={i} className="text-white">{part}</strong> : part
                       )}
                     </div>
                   </motion.div>
                 ))}
 
-                {/* Typing indicator */}
                 {isTyping && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex justify-start"
-                  >
-                    <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
+                    <div className="bg-white/[0.06] rounded-2xl rounded-bl-md px-4 py-3">
                       <div className="flex gap-1">
                         {[0, 1, 2].map((i) => (
                           <motion.div
                             key={i}
-                            className="w-2 h-2 rounded-full bg-muted-foreground/50"
+                            className="w-2 h-2 rounded-full bg-white/30"
                             animate={{ y: [0, -5, 0] }}
                             transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.1 }}
                           />
@@ -159,16 +160,15 @@ export function AIDeepDive() {
                   </motion.div>
                 )}
 
-                {/* Action proposal card */}
                 {showAction && (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-coral/5 border border-coral/30 rounded-xl p-4"
+                    className="bg-coral/10 border border-coral/20 rounded-xl p-4"
                   >
                     <div className="flex items-center gap-2 mb-3">
                       <Zap className="w-4 h-4 text-coral" />
-                      <span className="font-medium text-sm text-foreground">{actionProposal.title}</span>
+                      <span className="font-medium text-sm text-white">{actionProposal.title}</span>
                     </div>
                     <div className="space-y-2 mb-4">
                       {actionProposal.items.map((item, i) => (
@@ -177,26 +177,26 @@ export function AIDeepDive() {
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: i * 0.1 }}
-                          className="flex items-center justify-between py-2 border-b border-border last:border-0"
+                          className="flex items-center justify-between py-2 border-b border-white/[0.06] last:border-0"
                         >
                           <div>
-                            <p className="text-sm text-foreground">{item.name}</p>
-                            <p className="text-xs text-muted-foreground">{item.days}</p>
+                            <p className="text-sm text-white/80">{item.name}</p>
+                            <p className="text-xs text-white/40">{item.days}</p>
                           </div>
-                          <span className="font-medium text-foreground">{item.amount}</span>
+                          <span className="font-medium text-white">{item.amount}</span>
                         </motion.div>
                       ))}
                     </div>
                     <div className="flex gap-2">
                       <motion.button
-                        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-coral text-white text-sm font-medium"
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-coral text-white text-sm font-medium"
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
                         <Check className="w-4 h-4" />
                         Confirm & Send
                       </motion.button>
-                      <button className="px-4 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground transition-colors">
+                      <button className="px-4 py-2.5 rounded-lg border border-white/10 text-sm text-white/50 hover:text-white/80 transition-colors">
                         Cancel
                       </button>
                     </div>
@@ -205,16 +205,16 @@ export function AIDeepDive() {
               </div>
 
               {/* Input */}
-              <div className="border-t border-border p-3">
-                <div className="flex items-center gap-2 bg-muted rounded-xl px-4 py-2.5">
+              <div className="border-t border-white/[0.06] p-3">
+                <div className="flex items-center gap-2 bg-white/[0.04] rounded-xl px-4 py-2.5">
                   <input
                     type="text"
                     placeholder="Ask LoopAssist anything..."
-                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-white/30 text-white"
                     disabled
                   />
-                  <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                    <Send className="w-4 h-4 text-primary-foreground" />
+                  <div className="w-8 h-8 rounded-lg bg-teal flex items-center justify-center">
+                    <Send className="w-4 h-4 text-white" />
                   </div>
                 </div>
               </div>
@@ -228,9 +228,9 @@ export function AIDeepDive() {
               viewport={{ once: true }}
               transition={{ delay: 1.5 }}
             >
-              <div className="bg-card border border-border rounded-xl p-3 shadow-lg flex items-center gap-2">
+              <div className="bg-white/[0.06] backdrop-blur-xl border border-white/[0.1] rounded-xl p-3 shadow-lg flex items-center gap-2">
                 <Shield className="w-4 h-4 text-success" />
-                <span className="text-xs text-muted-foreground">Actions require confirmation</span>
+                <span className="text-xs text-white/50">Actions require confirmation</span>
               </div>
             </motion.div>
           </motion.div>
@@ -244,7 +244,7 @@ export function AIDeepDive() {
             className="order-1 lg:order-2"
           >
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-coral to-coral-dark flex items-center justify-center">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-coral to-coral-dark flex items-center justify-center shadow-lg shadow-coral/20">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <span className="text-sm font-medium text-coral uppercase tracking-wider">
@@ -252,19 +252,18 @@ export function AIDeepDive() {
               </span>
             </div>
 
-            <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-6">
+            <h2 className="text-3xl lg:text-5xl font-bold text-white mb-6 leading-[1.1]">
               Meet LoopAssist.
               <br />
-              <span className="text-muted-foreground">Your AI co-pilot.</span>
+              <span className="text-white/40">Your AI co-pilot.</span>
             </h2>
 
-            <p className="text-lg text-muted-foreground mb-10">
+            <p className="text-lg text-white/50 mb-10 leading-relaxed">
               Ask questions about your music school in natural language. Get instant answers, 
-              generate reports, draft messages, and execute actions — all from a simple chat interface. 
-              LoopAssist is the AI assistant built into every LessonLoop plan, helping you work smarter.
+              generate reports, draft messages, and execute actions — all from a simple chat interface.
             </p>
 
-            <div className="grid sm:grid-cols-2 gap-4 mb-8">
+            <div className="grid sm:grid-cols-2 gap-4 mb-10">
               {features.map((feature, index) => (
                 <motion.div
                   key={feature.title}
@@ -274,14 +273,14 @@ export function AIDeepDive() {
                   transition={{ delay: index * 0.1 }}
                   className="flex gap-3"
                 >
-                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-coral/10 flex items-center justify-center">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-coral/15 flex items-center justify-center">
                     <feature.icon className="w-5 h-5 text-coral" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground text-sm mb-1">
+                    <h3 className="font-semibold text-white/90 text-sm mb-1">
                       {feature.title}
                     </h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
+                    <p className="text-xs text-white/40 leading-relaxed">
                       {feature.description}
                     </p>
                   </div>
@@ -290,8 +289,8 @@ export function AIDeepDive() {
             </div>
 
             {/* Example queries */}
-            <div className="bg-muted/50 rounded-xl p-4">
-              <p className="text-xs font-medium text-muted-foreground mb-3">Try asking:</p>
+            <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-4 mb-8">
+              <p className="text-xs font-medium text-white/40 mb-3">Try asking:</p>
               <div className="flex flex-wrap gap-2">
                 {[
                   "What's my revenue this month?",
@@ -300,7 +299,7 @@ export function AIDeepDive() {
                 ].map((query) => (
                   <span
                     key={query}
-                    className="px-3 py-1.5 bg-card rounded-full text-xs text-muted-foreground border border-border"
+                    className="px-3 py-1.5 bg-white/[0.04] rounded-full text-xs text-white/50 border border-white/[0.06]"
                   >
                     "{query}"
                   </span>
@@ -308,8 +307,9 @@ export function AIDeepDive() {
               </div>
             </div>
 
-            <Link to="/features/loopassist" className="inline-flex items-center gap-1.5 mt-8 text-sm font-semibold text-primary hover:gap-2.5 transition-all">
-              Explore LoopAssist <span>→</span>
+            <Link to="/features/loopassist" className="inline-flex items-center gap-2 text-sm font-semibold text-coral hover:gap-3 transition-all group">
+              Explore LoopAssist AI
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </Link>
           </motion.div>
         </div>

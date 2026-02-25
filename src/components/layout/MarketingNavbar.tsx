@@ -1,4 +1,5 @@
-import { useState, useEffect, type LucideIcon } from "react";
+import { useState, useEffect } from "react";
+import type { LucideIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {

@@ -25,9 +25,9 @@ const rows: { feature: string; values: [CellValue, CellValue, CellValue] }[] = [
   { feature: "Free Trial", values: ["30 days", "30 days", "Free trial"] },
 ];
 
-function CellValue({ value }: { value: CellValue }) {
+function CellDisplay({ value }: { value: CellValue }) {
   if (value === true) return <Check className="w-4 h-4 lg:w-5 lg:h-5 text-success mx-auto" />;
-  if (value === false) return <Minus className="w-4 h-4 lg:w-5 lg:h-5 text-muted-foreground/40 mx-auto" />;
+  if (value === false) return <Minus className="w-4 h-4 lg:w-5 lg:h-5 text-muted-foreground/30 mx-auto" />;
   return <span className="text-xs lg:text-sm text-muted-foreground text-center block">{value}</span>;
 }
 
@@ -36,7 +36,10 @@ export function CompetitorComparison() {
   const visibleRows = showAll ? rows : rows.slice(0, 8);
 
   return (
-    <section className="py-16 lg:py-32 bg-muted/30">
+    <section className="py-16 lg:py-36 bg-background relative overflow-hidden">
+      {/* Accent line */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[1px] bg-gradient-to-r from-transparent via-border to-transparent" />
+      
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -62,7 +65,7 @@ export function CompetitorComparison() {
           viewport={{ once: true }}
           className="hidden lg:block max-w-4xl mx-auto"
         >
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-lg">
             {/* Header */}
             <div className="grid grid-cols-4 border-b border-border">
               <div className="p-4 lg:p-6">
@@ -71,9 +74,9 @@ export function CompetitorComparison() {
               {competitors.map((name, i) => (
                 <div
                   key={name}
-                  className={cn("p-4 lg:p-6 text-center", i === 0 && "bg-primary/5")}
+                  className={cn("p-4 lg:p-6 text-center", i === 0 && "bg-teal/5")}
                 >
-                  <h3 className={cn("text-lg font-bold", i === 0 ? "text-primary" : "text-foreground")}>
+                  <h3 className={cn("text-lg font-bold", i === 0 ? "text-teal" : "text-foreground")}>
                     {name}
                   </h3>
                 </div>
@@ -86,7 +89,7 @@ export function CompetitorComparison() {
                 key={row.feature}
                 className={cn(
                   "grid grid-cols-4 border-b border-border last:border-0",
-                  index % 2 === 0 && "bg-muted/30"
+                  index % 2 === 0 && "bg-muted/20"
                 )}
               >
                 <div className="p-3 lg:p-4 flex items-center">
@@ -95,9 +98,9 @@ export function CompetitorComparison() {
                 {row.values.map((val, i) => (
                   <div
                     key={i}
-                    className={cn("p-3 lg:p-4 flex items-center justify-center", i === 0 && "bg-primary/5")}
+                    className={cn("p-3 lg:p-4 flex items-center justify-center", i === 0 && "bg-teal/5")}
                   >
-                    <CellValue value={val} />
+                    <CellDisplay value={val} />
                   </div>
                 ))}
               </div>
@@ -107,8 +110,8 @@ export function CompetitorComparison() {
 
         {/* Mobile cards */}
         <div className="lg:hidden max-w-md mx-auto">
-          <div className="bg-card border border-primary ring-1 ring-primary/20 rounded-xl p-4 sm:p-5">
-            <h3 className="text-lg font-bold text-primary mb-1">LessonLoop</h3>
+          <div className="bg-card border border-teal/30 ring-1 ring-teal/10 rounded-xl p-4 sm:p-5">
+            <h3 className="text-lg font-bold text-teal mb-1">LessonLoop</h3>
             <p className="text-xs text-muted-foreground mb-4">vs My Music Staff & Teachworks</p>
 
             <div className="space-y-2">
@@ -117,13 +120,13 @@ export function CompetitorComparison() {
                   <span className="text-muted-foreground">{row.feature}</span>
                   <div className="flex items-center gap-3">
                     <div className="w-12 flex justify-center">
-                      <CellValue value={row.values[0]} />
+                      <CellDisplay value={row.values[0]} />
                     </div>
                     <div className="w-8 flex justify-center opacity-50">
-                      <CellValue value={row.values[1]} />
+                      <CellDisplay value={row.values[1]} />
                     </div>
                     <div className="w-8 flex justify-center opacity-50">
-                      <CellValue value={row.values[2]} />
+                      <CellDisplay value={row.values[2]} />
                     </div>
                   </div>
                 </div>
@@ -133,7 +136,7 @@ export function CompetitorComparison() {
             {!showAll && rows.length > 8 && (
               <button
                 onClick={() => setShowAll(true)}
-                className="w-full mt-4 py-2 text-xs text-primary font-medium hover:underline"
+                className="w-full mt-4 py-2 text-xs text-teal font-medium hover:underline"
               >
                 Show all {rows.length} features
               </button>
@@ -148,7 +151,7 @@ export function CompetitorComparison() {
             )}
 
             <div className="mt-3 flex gap-3 text-[10px] text-muted-foreground/60 justify-center">
-              <span className="font-semibold text-primary/60">LL</span>
+              <span className="font-semibold text-teal/60">LL</span>
               <span>MMS</span>
               <span>TW</span>
             </div>
@@ -177,10 +180,10 @@ export function CompetitorComparison() {
             Looking for a My Music Staff alternative or Teachworks alternative?
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <Link to="/compare/lessonloop-vs-my-music-staff" className="text-sm font-semibold text-primary hover:underline">
+            <Link to="/compare/lessonloop-vs-my-music-staff" className="text-sm font-semibold text-teal hover:underline">
               LessonLoop vs My Music Staff →
             </Link>
-            <Link to="/compare/lessonloop-vs-teachworks" className="text-sm font-semibold text-primary hover:underline">
+            <Link to="/compare/lessonloop-vs-teachworks" className="text-sm font-semibold text-teal hover:underline">
               LessonLoop vs Teachworks →
             </Link>
           </div>
