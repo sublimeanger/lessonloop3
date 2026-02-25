@@ -12,6 +12,7 @@ import {
   Shield, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { calendarReal } from "@/assets/marketing";
 
 const faqs = [
   { question: "Can I set up recurring weekly lessons?", answer: "Yes. Create a lesson once and LessonLoop generates every occurrence across the term automatically, respecting closure dates and holidays." },
@@ -37,91 +38,37 @@ const LESSONS = [
 ];
 
 function HeroCalendar() {
-  const days = ["Mon 12", "Tue 13", "Wed 14", "Thu 15", "Fri 16"];
-  const hours = ["9:00", "10:00", "11:00", "12:00", "1:00", "2:00", "3:00"];
-  const CELL_H = 44;
-
   return (
     <div className="relative">
       {/* Outer glow */}
       <div className="absolute -inset-8 bg-gradient-to-b from-primary/20 via-primary/5 to-transparent rounded-3xl blur-2xl pointer-events-none" />
 
       <div className="relative rounded-2xl border border-border/60 bg-card shadow-2xl shadow-ink/10 overflow-hidden">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border/60 bg-muted/40">
-          <div className="flex items-center gap-3">
-            <div className="flex gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-destructive/50" />
-              <div className="w-2.5 h-2.5 rounded-full bg-warning/50" />
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald/50" />
-            </div>
-            <span className="text-xs text-muted-foreground font-medium hidden sm:inline">Week of 12 Jan 2026</span>
+        {/* Browser chrome */}
+        <div className="flex items-center gap-3 px-5 py-3 border-b border-border/60 bg-muted/40">
+          <div className="flex gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-destructive/50" />
+            <div className="w-2.5 h-2.5 rounded-full bg-warning/50" />
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald/50" />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">Week view</span>
-          </div>
+          <span className="text-xs text-muted-foreground font-medium hidden sm:inline">LessonLoop — Calendar</span>
         </div>
 
-        {/* Grid */}
-        <div className="p-2 sm:p-3">
-          {/* Day headers */}
-          <div className="grid grid-cols-[36px_repeat(5,1fr)] gap-px mb-px">
-            <div />
-            {days.map(d => (
-              <div key={d} className="text-center py-2">
-                <span className="text-[10px] sm:text-xs font-semibold text-foreground">{d.split(" ")[0]}</span>
-                <span className="text-[10px] sm:text-xs text-muted-foreground ml-1">{d.split(" ")[1]}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Time grid */}
-          <div className="grid grid-cols-[36px_repeat(5,1fr)] gap-px relative">
-            {hours.map((h, ri) => (
-              <div key={h} className="contents">
-                <div className="flex items-start justify-end pr-2 -mt-1.5">
-                  <span className="text-[9px] text-muted-foreground/50 tabular-nums">{h}</span>
-                </div>
-                {days.map((_, ci) => (
-                  <div
-                    key={ci}
-                    className="border-t border-border/30"
-                    style={{ height: CELL_H }}
-                  />
-                ))}
-              </div>
-            ))}
-
-            {/* Lesson blocks */}
-            {LESSONS.map((l, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ delay: 0.5 + i * 0.06, duration: 0.35, ease: "easeOut" }}
-                className={cn(
-                  "absolute rounded-lg text-[8px] sm:text-[10px] font-medium text-primary-foreground px-1.5 py-1 leading-tight overflow-hidden cursor-default",
-                  l.colour
-                )}
-                style={{
-                  left: `calc(36px + ${l.day} * (100% - 36px) / 5 + 2px)`,
-                  top: `${l.start * CELL_H + 24 + 2}px`,
-                  width: `calc((100% - 36px) / 5 - 4px)`,
-                  height: `${l.dur * CELL_H - 4}px`,
-                }}
-              >
-                {l.label}
-              </motion.div>
-            ))}
-          </div>
-        </div>
+        <img
+          src={calendarReal}
+          alt="LessonLoop drag-and-drop music lesson calendar showing a full week of scheduled piano, guitar, and vocal lessons"
+          className="w-full h-auto block"
+          width={1920}
+          height={1080}
+          loading="eager"
+        />
       </div>
 
       {/* Floating conflict badge */}
       <motion.div
         initial={{ opacity: 0, scale: 0.8, x: 20 }}
         animate={{ opacity: 1, scale: 1, x: 0 }}
-        transition={{ delay: 1.6, type: "spring", stiffness: 200 }}
+        transition={{ delay: 1.0, type: "spring", stiffness: 200 }}
         className="absolute -bottom-5 -left-3 sm:-left-6 z-10"
       >
         <div className="flex items-center gap-2.5 bg-card border border-emerald/30 rounded-xl px-4 py-2.5 shadow-xl shadow-emerald/5">
@@ -139,7 +86,7 @@ function HeroCalendar() {
       <motion.div
         initial={{ opacity: 0, scale: 0.8, x: -20 }}
         animate={{ opacity: 1, scale: 1, x: 0 }}
-        transition={{ delay: 1.8, type: "spring", stiffness: 200 }}
+        transition={{ delay: 1.2, type: "spring", stiffness: 200 }}
         className="absolute -top-4 -right-3 sm:-right-6 z-10"
       >
         <div className="flex items-center gap-2 bg-card border border-primary/30 rounded-xl px-3 py-2 shadow-xl shadow-primary/5">
