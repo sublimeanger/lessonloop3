@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronRight, Play, Calendar, Clock, CheckCircle2, Bell, X, Globe, CreditCard, LayoutDashboard, PoundSterling } from "lucide-react";
 import { useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { dashboardHeroHd, dashboardHero } from "@/assets/marketing";
+import { dashboardReal } from "@/assets/marketing";
 import { useAuth } from "@/contexts/AuthContext";
 
 // Word-by-word animation variants
@@ -347,9 +347,7 @@ export function HeroSection() {
 
           {/* Real Dashboard Screenshot */}
           <img 
-            src={dashboardHero} 
-            srcSet={`${dashboardHero} 1280w, ${dashboardHeroHd} 1920w`}
-            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 80vw, 1200px"
+            src={dashboardReal} 
             alt="LessonLoop music school management software dashboard showing lesson scheduling, invoices, and student management" 
             className="w-full" 
             loading="eager"

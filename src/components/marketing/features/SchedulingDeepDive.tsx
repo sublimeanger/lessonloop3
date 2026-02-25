@@ -9,7 +9,7 @@ import {
   CalendarX,
   ArrowRight
 } from "lucide-react";
-import { calendarWeek } from "@/assets/marketing";
+import { calendarReal } from "@/assets/marketing";
 import { BrowserFrameLight } from "@/components/marketing/BrowserFrame";
 
 const features = [
@@ -113,7 +113,7 @@ export function SchedulingDeepDive() {
           >
             <BrowserFrameLight url="app.lessonloop.net/calendar">
               <img 
-                src={calendarWeek} 
+                src={calendarReal} 
                 alt="Weekly calendar view with colour-coded lessons and teacher filters" 
                 className="w-full" 
                 loading="lazy" 

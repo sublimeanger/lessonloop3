@@ -10,7 +10,7 @@ import {
   Bell,
   ArrowRight
 } from "lucide-react";
-import { parentPortal } from "@/assets/marketing";
+import { messagesReal } from "@/assets/marketing";
 import { BrowserFrameLight } from "@/components/marketing/BrowserFrame";
 
 const features = [
@@ -40,7 +40,7 @@ export function PortalDeepDive() {
           >
             <BrowserFrameLight url="app.lessonloop.net/portal">
               <img 
-                src={parentPortal} 
+                src={messagesReal} 
                 alt="Student list with search, active badges, and avatar initials" 
                 className="w-full" 
                 loading="lazy" 
