@@ -1,21 +1,28 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { Quote, Calendar, Receipt, MessageSquare } from "lucide-react";
 
 const highlights = [
   {
     icon: Calendar,
     title: "Scheduling that makes sense",
-    description: "Recurring lessons, term dates, conflict detection, and room booking — all in one calendar.",
+    description: "Drag-and-drop scheduling with recurring lessons, UK term dates, conflict detection, and room booking — all included on every plan.",
+    linkTo: "/features/scheduling",
+    linkText: "Explore scheduling features",
   },
   {
     icon: Receipt,
     title: "Billing that just works",
-    description: "Automated billing runs, professional invoices, payment tracking, and UK VAT support.",
+    description: "Automated invoicing with Stripe payments, bulk billing runs, payment tracking, UK VAT calculation, and payment plans — all included.",
+    linkTo: "/features/billing",
+    linkText: "Explore invoicing features",
   },
   {
     icon: MessageSquare,
     title: "Communication sorted",
-    description: "Built-in parent portal, messaging, and practice tracking. No more endless chasing.",
+    description: "Parent portal with self-service access, in-app messaging, practice tracking with streaks, and automatic lesson reminders.",
+    linkTo: "/features/parent-portal",
+    linkText: "Explore the parent portal",
   },
 ];
 
@@ -67,6 +74,9 @@ export function PricingProof() {
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {item.description}
               </p>
+              <Link to={item.linkTo} className="inline-flex items-center gap-1 mt-3 text-xs font-semibold text-primary hover:gap-2 transition-all">
+                {item.linkText} <span>→</span>
+              </Link>
             </motion.div>
           ))}
         </div>

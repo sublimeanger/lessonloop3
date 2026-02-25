@@ -26,8 +26,9 @@ export function FinalCTA() {
           </h2>
           
           <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
-            Join a growing community of music educators who've reclaimed their time 
-            and simplified their admin with LessonLoop.
+            Join music educators across the UK who've reclaimed their time 
+            and simplified their admin with LessonLoop. Every plan includes scheduling, 
+            invoicing, parent portal, and LoopAssist AI.
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
@@ -65,6 +66,11 @@ export function FinalCTA() {
               <Shield className="w-4 h-4 text-success" />
               <span>Cancel anytime</span>
             </div>
+          </div>
+          <div className="mt-6">
+            <Link to="/features" className="text-sm font-semibold text-primary hover:underline">
+              Compare with other music school software →
+            </Link>
           </div>
         </motion.div>
       </div>

@@ -31,10 +31,10 @@ export function ValueCalculator() {
             Value Calculator
           </span>
           <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">
-            How much time will you save?
+            How much time will LessonLoop save you?
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            See the real impact LessonLoop has on your teaching practice
+            Drag the slider to your student count and see the real impact on your music school's admin time and costs
           </p>
         </motion.div>
         
