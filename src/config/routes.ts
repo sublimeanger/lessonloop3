@@ -2,6 +2,7 @@ import { lazy, type LazyExoticComponent, type ComponentType } from 'react';
 import type { AppRole } from '@/contexts/AuthContext';
 import { ExternalRedirect } from '@/components/shared/ExternalRedirect';
 import { AuthRedirect } from '@/components/shared/AuthRedirect';
+import { logger } from '@/lib/logger';
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -97,15 +98,32 @@ function makeExternalRedirect(path: string) {
   return () => ExternalRedirect({ to: `${MARKETING_BASE}${path}` });
 }
 
+/**
+ * Wrap a dynamic import so that if it fails (e.g. stale cache, module
+ * resolution issues on Lovable preview), we fall back to the provided
+ * fallback component instead of letting React.lazy crash the app.
+ */
+function safeLazy(
+  importFn: () => Promise<{ default: ComponentType<any> }>,
+  fallback: ComponentType<any>,
+): LazyExoticComponent<ComponentType<any>> {
+  return lazy(() =>
+    importFn().catch((err) => {
+      logger.warn('[safeLazy] Dynamic import failed, using fallback:', err);
+      return { default: fallback };
+    }),
+  );
+}
+
 /** In SSG mode, create a lazy component for the marketing page; otherwise redirect externally. */
 function makeMarketingRoute(path: string, importFn: () => Promise<{ default: ComponentType<any> }>): ComponentType<any> {
-  if (isSSG) return lazy(importFn);
+  if (isSSG) return safeLazy(importFn, makeExternalRedirect(path));
   return makeExternalRedirect(path);
 }
 
 /** Like makeMarketingRoute but uses a custom fallback component instead of an external redirect. */
 function makeMarketingRouteWithFallback(importFn: () => Promise<{ default: ComponentType<any> }>, fallback: ComponentType<any>): ComponentType<any> {
-  if (isSSG) return lazy(importFn);
+  if (isSSG) return safeLazy(importFn, fallback);
   return fallback;
 }
 
