@@ -166,11 +166,23 @@ function addResponsiveImagesAndDimensions() {
 /** Download Google Fonts CSS + woff2 files and save locally. */
 async function selfHostGoogleFonts() {
   const FONTS_DIR = join(OUT_DIR, 'fonts');
+  const cachedCss = join(FONTS_DIR, 'fonts.css');
+
+  // If fonts are already cached from a previous build, reuse them
+  if (existsSync(cachedCss)) {
+    const woff2s = existsSync(FONTS_DIR) ? readdirSync(FONTS_DIR).filter(f => f.endsWith('.woff2')) : [];
+    if (woff2s.length > 0) {
+      console.log(`  ✓ Using cached Google Fonts (${woff2s.length} files in fonts/)`);
+      return woff2s.length;
+    }
+  }
+
   mkdirSync(FONTS_DIR, { recursive: true });
   const fontsUrl = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap';
   try {
     const res = await fetch(fontsUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     let css = await res.text();
@@ -180,17 +192,17 @@ async function selfHostGoogleFonts() {
     while ((m = urlRegex.exec(css)) !== null) urls.push(m[1]);
     for (const url of urls) {
       const filename = basename(new URL(url).pathname);
-      const fontRes = await fetch(url);
+      const fontRes = await fetch(url, { signal: AbortSignal.timeout(10000) });
       if (!fontRes.ok) continue;
       writeFileSync(join(FONTS_DIR, filename), Buffer.from(await fontRes.arrayBuffer()));
       css = css.split(url).join(`/fonts/${filename}`);
     }
     // Ensure font-display: swap in every @font-face
     css = css.replace(/@font-face\s*\{(?![^}]*font-display)/g, '@font-face {\n  font-display: swap;');
-    writeFileSync(join(FONTS_DIR, 'fonts.css'), css, 'utf-8');
+    writeFileSync(cachedCss, css, 'utf-8');
     return urls.length;
   } catch (err) {
-    console.warn(`  ⚠ Could not self-host Google Fonts: ${err.message}`);
+    console.warn(`  ⚠ Could not self-host Google Fonts: ${err.message} (keeping external link)`);
     return 0;
   }
 }
@@ -1018,12 +1030,26 @@ async function main() {
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
   });
 
-  // Clean output directory
+  // Clean output directory (preserve cached fonts)
+  const fontsCache = join(OUT_DIR, 'fonts');
+  let savedFonts = null;
+  if (existsSync(fontsCache)) {
+    savedFonts = join(ROOT, '.font-cache-tmp');
+    const { cpSync, rmSync: rmTmp } = await import('fs');
+    if (existsSync(savedFonts)) rmTmp(savedFonts, { recursive: true, force: true });
+    cpSync(fontsCache, savedFonts, { recursive: true });
+  }
   if (existsSync(OUT_DIR)) {
     const { rmSync } = await import('fs');
     rmSync(OUT_DIR, { recursive: true, force: true });
   }
   mkdirSync(OUT_DIR, { recursive: true });
+  // Restore cached fonts
+  if (savedFonts && existsSync(savedFonts)) {
+    const { cpSync, rmSync: rmTmp } = await import('fs');
+    cpSync(savedFonts, fontsCache, { recursive: true });
+    rmTmp(savedFonts, { recursive: true, force: true });
+  }
 
   // Copy production CSS and static assets
   console.log('  Copying static assets...\n');
@@ -1039,6 +1065,11 @@ async function main() {
 
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 900 });
+
+    // Set SSG flag BEFORE any scripts run so routes render marketing components
+    await page.evaluateOnNewDocument(() => {
+      window.__SSG_MODE__ = true;
+    });
 
     try {
       await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
