@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { STALE_VOLATILE } from '@/config/query-stale-times';
 import { useToast } from '@/hooks/use-toast';
+import { platform } from '@/lib/platform';
 
 interface ConnectStatus {
   connected: boolean;
@@ -45,6 +46,10 @@ export function useStripeConnect() {
   });
 
   const startOnboarding = useCallback(async () => {
+    if (platform.isNative) {
+      toast({ title: 'Not available in app', description: 'Please visit lessonloop.net in your browser to set up Stripe.' });
+      return;
+    }
     if (!org?.id) return;
     setIsOnboarding(true);
     try {

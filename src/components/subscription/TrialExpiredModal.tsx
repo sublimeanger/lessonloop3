@@ -13,6 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Sparkles, ArrowRight, Clock } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PRICING_CONFIG, PLAN_ORDER, formatLimit } from '@/lib/pricing-config';
+import { platform } from '@/lib/platform';
+import { NativePaymentNotice } from '@/components/shared/NativePaymentNotice';
 
 export function TrialExpiredModal() {
   const { isTrialExpired } = useSubscription();
@@ -113,15 +115,29 @@ export function TrialExpiredModal() {
         </div>
 
         <div className="flex flex-col gap-2 pt-2">
-          <Button asChild size="lg">
-            <Link to="/settings?tab=billing">
-              Choose a Plan
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleDismiss}>
-            Continue in read-only mode
-          </Button>
+          {platform.isNative ? (
+            <>
+              <NativePaymentNotice
+                variant="inline"
+                message="Visit lessonloop.net in your browser to choose a plan and continue using LessonLoop."
+              />
+              <Button variant="ghost" size="sm" onClick={handleDismiss}>
+                Continue in read-only mode
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button asChild size="lg">
+                <Link to="/settings?tab=billing">
+                  Choose a Plan
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Link>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleDismiss}>
+                Continue in read-only mode
+              </Button>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -147,12 +163,18 @@ export function TrialExpiredBanner() {
             <Clock className="h-4 w-4" />
             <span>Your trial has expired. Upgrade to continue using LessonLoop.</span>
           </div>
-          <Button asChild variant="secondary" size="sm">
-            <Link to="/settings?tab=billing">
-              Upgrade Now
-              <ArrowRight className="h-3 w-3 ml-1" />
-            </Link>
-          </Button>
+          {platform.isNative ? (
+            <span className="text-sm font-medium text-destructive-foreground">
+              Visit lessonloop.net to upgrade
+            </span>
+          ) : (
+            <Button asChild variant="secondary" size="sm">
+              <Link to="/settings?tab=billing">
+                Upgrade Now
+                <ArrowRight className="h-3 w-3 ml-1" />
+              </Link>
+            </Button>
+          )}
         </div>
       </motion.div>
     </AnimatePresence>

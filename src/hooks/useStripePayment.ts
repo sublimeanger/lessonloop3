@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { platform } from '@/lib/platform';
 
 export function useStripePayment() {
   const [isLoading, setIsLoading] = useState(false);
@@ -13,6 +14,13 @@ export function useStripePayment() {
       payRemaining?: boolean;
     }
   ) => {
+    if (platform.isNative) {
+      toast({
+        title: 'Not available in app',
+        description: 'Please visit lessonloop.net in your browser to pay invoices.',
+      });
+      return;
+    }
     if (isLoading) return; // Prevent double-clicks
     setIsLoading(true);
     try {

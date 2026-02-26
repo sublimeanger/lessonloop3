@@ -11,6 +11,8 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { platform } from '@/lib/platform';
+import { NativePaymentNotice } from '@/components/shared/NativePaymentNotice';
 
 const brandIcons: Record<string, string> = {
   visa: 'Visa',
@@ -72,6 +74,22 @@ export function PaymentMethodsCard() {
           <div className="flex items-center justify-center py-6">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (platform.isNative) {
+    return (
+      <Card className="rounded-2xl">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <CreditCard className="h-4 w-4" />
+            Payment Methods
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <NativePaymentNotice message="To manage your payment methods and auto-pay preferences, please visit lessonloop.net in your browser." />
         </CardContent>
       </Card>
     );

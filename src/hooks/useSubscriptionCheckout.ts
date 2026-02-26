@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
+import { platform } from '@/lib/platform';
 
 export type BillingInterval = 'monthly' | 'yearly';
 
@@ -14,6 +15,14 @@ export function useSubscriptionCheckout() {
     plan: 'solo_teacher' | 'academy' | 'agency',
     billingInterval: BillingInterval = 'monthly'
   ) => {
+    if (platform.isNative) {
+      toast({
+        title: 'Not available in app',
+        description: 'Please visit lessonloop.net in your browser to manage your subscription.',
+      });
+      return;
+    }
+
     if (!currentOrg) {
       toast({
         title: 'Error',
@@ -57,6 +66,14 @@ export function useSubscriptionCheckout() {
   };
 
   const openCustomerPortal = async () => {
+    if (platform.isNative) {
+      toast({
+        title: 'Not available in app',
+        description: 'Please visit lessonloop.net in your browser to manage your billing.',
+      });
+      return;
+    }
+
     if (!currentOrg) {
       toast({
         title: 'Error',

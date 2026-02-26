@@ -34,6 +34,8 @@ import { PaymentPlanInvoiceCard } from '@/components/portal/PaymentPlanInvoiceCa
 import { PaymentDrawer } from '@/components/portal/PaymentDrawer';
 import { useRealtimePortalPayments } from '@/hooks/useRealtimePortalPayments';
 import { useSavedPaymentMethods } from '@/hooks/useSavedPaymentMethods';
+import { platform } from '@/lib/platform';
+import { NativePaymentNotice } from '@/components/shared/NativePaymentNotice';
 
 export default function PortalInvoices() {
   usePageMeta('Invoices | Parent Portal', 'View and pay invoices');
@@ -531,7 +533,7 @@ function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, i
             )}
             Download PDF
           </Button>
-          {isPayable && (
+          {isPayable && !platform.isNative && (
             <Button
               onClick={() => onPay(invoice.id)}
               disabled={isPaying}
@@ -544,6 +546,12 @@ function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, i
               )}
               {isPaying ? 'Processing...' : `Pay ${formatCurrencyMinor(invoice.total_minor, currencyCode)}`}
             </Button>
+          )}
+          {isPayable && platform.isNative && (
+            <NativePaymentNotice
+              variant="inline"
+              message="To pay this invoice, please visit lessonloop.net in your browser or use the payment link sent to your email."
+            />
           )}
         </div>
       </CardContent>
