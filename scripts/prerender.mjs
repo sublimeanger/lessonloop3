@@ -387,8 +387,16 @@ function copyStaticAssets() {
   }
 
   // Copy production CSS → marketing-html/styles.css
+  // IMPORTANT: Always use the FULL production CSS (no purging). The full Tailwind build
+  // is ~186KB and contains all utility classes needed by the marketing HTML. A purged/
+  // truncated CSS (e.g. 87KB) will be missing arbitrary-value classes for backgrounds,
+  // gradients, borders, and shadows, causing the site to look broken.
   copyFileSync(join(distAssets, cssFile), join(OUT_DIR, CSS_FILENAME));
-  console.log(`  ✓ Copied production CSS → ${CSS_FILENAME} (${(statSync(join(OUT_DIR, CSS_FILENAME)).size / 1024).toFixed(1)} KB)`);
+  const cssSizeKB = statSync(join(OUT_DIR, CSS_FILENAME)).size / 1024;
+  console.log(`  ✓ Copied production CSS → ${CSS_FILENAME} (${cssSizeKB.toFixed(1)} KB)`);
+  if (cssSizeKB < 150) {
+    console.warn(`  ⚠ WARNING: CSS is only ${cssSizeKB.toFixed(1)} KB — expected ~186 KB. The CSS may have been purged or truncated. Marketing pages will look broken.`);
+  }
 
   // 2. Copy marketing images: src/assets/marketing/ → marketing-html/assets/marketing/
   const marketingSrc = join(ROOT, 'src', 'assets', 'marketing');
