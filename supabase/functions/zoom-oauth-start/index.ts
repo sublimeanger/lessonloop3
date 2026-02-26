@@ -92,8 +92,8 @@ Deno.serve(async (req) => {
     };
     const state = btoa(JSON.stringify(stateData));
 
-    // Build Zoom OAuth URL
-    const callbackUrl = `${supabaseUrl}/functions/v1/zoom-oauth-callback`;
+    // Build Zoom OAuth URL — redirect through app domain for Zoom domain verification
+    const callbackUrl = `${FRONTEND_URL}/auth/zoom/callback`;
 
     const authUrl = new URL('https://zoom.us/oauth/authorize');
     authUrl.searchParams.set('response_type', 'code');

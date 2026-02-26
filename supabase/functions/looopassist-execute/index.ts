@@ -37,7 +37,10 @@ interface BasicLesson {
   end_at?: string;
   status?: string;
   notes_shared?: string | null;
-  lesson_participants?: Array<{ students: { id: string; first_name: string; last_name: string } | null }>;
+  lesson_participants?: Array<{ student_id?: any; students: any }>;
+  teacher_id?: any;
+  teacher_user_id?: any;
+  teacher?: any;
 }
 
 interface BasicInvoice {
@@ -46,8 +49,8 @@ interface BasicInvoice {
   status: string;
   total_minor: number;
   due_date: string;
-  guardians?: { id: string; full_name: string; email: string | null } | null;
-  students?: { id: string; first_name: string; last_name: string; email: string | null } | null;
+  guardians?: any;
+  students?: any;
 }
 
 serve(async (req) => {
@@ -530,7 +533,7 @@ async function executeGenerateBillingRun(
 
     // 2. Match by lesson duration
     const startMs = new Date(lesson.start_at).getTime();
-    const endMs = new Date(lesson.end_at).getTime();
+    const endMs = new Date(lesson.end_at || lesson.start_at).getTime();
     const durationMins = Math.round((endMs - startMs) / 60000);
     const durationRate = rateByDuration.get(durationMins);
     if (durationRate !== undefined) return durationRate;

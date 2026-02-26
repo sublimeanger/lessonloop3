@@ -38,7 +38,9 @@ Deno.serve(async (req) => {
     }
 
     // Exchange code for tokens (Zoom uses Basic auth)
-    const callbackUrl = `${supabaseUrl}/functions/v1/zoom-oauth-callback`;
+    // Must match the redirect_uri registered with Zoom (app domain proxy)
+    const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.lessonloop.net';
+    const callbackUrl = `${frontendUrl}/auth/zoom/callback`;
     const basicAuth = btoa(`${clientId}:${clientSecret}`);
 
     const tokenResponse = await fetch('https://zoom.us/oauth/token', {
