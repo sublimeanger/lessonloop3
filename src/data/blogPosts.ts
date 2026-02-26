@@ -707,6 +707,162 @@ The transition typically takes 1–2 hours for initial setup (importing student 
 
 Of course. Many school owners keep a spreadsheet for ad-hoc analysis, planning or budgeting. The goal isn't to eliminate spreadsheets entirely — it's to stop using them as your operational backbone. Let software handle the things it does better (scheduling, billing, communication, reporting) and use spreadsheets for what they're actually good at (one-off calculations and planning).`,
   },
+  {
+    slug: "music-school-kpis",
+    title: "8 Music School KPIs Every Owner Should Track",
+    excerpt: "Track the right metrics and grow faster. These 8 KPIs — from retention rate to revenue per teacher — help UK music school owners make smarter decisions.",
+    date: "",
+    category: "Music Business",
+    readTime: "7 min",
+    author: {
+      name: "LessonLoop",
+      role: "Music School Management Platform",
+    },
+    featuredImage: "/images/blog/music-school-kpis.jpg",
+    tags: ["KPIs", "metrics", "data", "retention", "revenue", "music school", "UK"],
+    relatedPosts: ["guide-to-running-a-music-school", "grow-music-school-students", "music-school-spreadsheets-hidden-cost"],
+    content: `Most music school owners know when things feel busy. They know when a term feels strong or when something feels off. But feeling and knowing are different things, and the schools that grow consistently are the ones that replace gut instinct with data.
+
+You don't need a business analytics degree. You need eight numbers, reviewed once per term, that tell you whether your school is healthy and where to focus your attention. Here they are — with benchmarks so you know what good looks like.
+
+## 1. Student retention rate
+
+**What it measures:** The percentage of students who re-enrol from one term to the next.
+
+**How to calculate it:** (Students continuing next term ÷ Students at end of current term) × 100
+
+**Benchmark:** Above 85% is healthy. 80–85% is typical. Below 75% is a warning sign.
+
+**Why it matters:** Retention is the foundation of sustainable growth. Acquiring a new student costs 5–10x more (in time and money) than keeping an existing one. A school with 90% retention and 5 new students per term grows steadily. A school with 70% retention and 10 new students per term barely holds even.
+
+**What to do if it's low:** Dig into *why* students are leaving. Common causes are schedule inconvenience (the slot changed and the new one doesn't work), perceived lack of progress (the parent doesn't see improvement), communication gaps (the parent feels uninformed), and price sensitivity. Survey departing families — a simple "we're sorry to see you go, could you tell us why?" email is enormously informative.
+
+**How to track it:** Your [music school management software](/features) should calculate this automatically. In [LessonLoop](/features/reports), it's on your dashboard.
+
+## 2. Attendance rate
+
+**What it measures:** The percentage of scheduled lessons that students actually attend.
+
+**How to calculate it:** (Lessons attended ÷ Lessons scheduled) × 100
+
+**Benchmark:** Above 90% is excellent. 85–90% is healthy. Below 80% indicates a problem.
+
+**Why it matters:** Attendance is the leading indicator of retention. A student whose attendance drops from 95% to 70% over two terms is very likely to leave. Catch this pattern early and intervene — a personal check-in from the teacher or school owner can prevent the loss.
+
+Attendance also directly affects revenue in per-lesson billing models and creates operational waste in all models (the teacher is present and paid, but the student isn't there).
+
+**What to do if it's low:** Investigate whether the issue is concentrated on specific days, specific teachers, or specific students. A school-wide attendance problem suggests a systemic issue (perhaps your cancellation policy is too lenient, or term dates aren't communicated clearly). A student-specific problem is easier to address individually.
+
+**How to track it:** [Attendance tracking](/features/attendance) generates this data automatically. Look for trends over time, not individual weeks.
+
+## 3. Revenue per student per term
+
+**What it measures:** Your average income from each enrolled student per term.
+
+**How to calculate it:** Total lesson revenue in the term ÷ Number of enrolled students
+
+**Benchmark:** This varies enormously by location and pricing. For a UK school charging £22/lesson on 30-minute one-to-one lessons across a 12-week term, the theoretical maximum is £264 per student. Actual revenue per student is typically 80–90% of the theoretical maximum due to mid-term starters, credits and make-ups.
+
+**Why it matters:** This metric tells you whether your pricing is working and whether you're losing revenue to credits, discounts, cancellations or late joiners. If your revenue per student is significantly below the theoretical rate, something in your billing or attendance workflow needs attention.
+
+**What to do if it's low:** Check three things. First, are you billing correctly for every enrolled student? ([Automated invoicing](/blog/automate-music-school-invoicing) eliminates missed bills.) Second, are you giving away too many free lessons through overly generous make-up or trial policies? Third, are discounts (sibling, promotional, staff) eroding your average? Discounts should be strategic and tracked, not habitual.
+
+## 4. Revenue per teacher per month
+
+**What it measures:** How much revenue each teacher generates relative to their cost.
+
+**How to calculate it:** Total revenue from a teacher's students in a month ÷ 1
+
+**Benchmark:** A full-time teacher (25 teaching hours/week) should generate £2,000–£4,000/month in student revenue depending on your lesson rates. A healthy school retains 25–40% of this after paying the teacher.
+
+**Why it matters:** This is your profitability metric. A teacher with a half-empty timetable costs you in room hire and admin overhead without proportional revenue. A teacher whose students consistently cancel is generating less revenue than their schedule suggests.
+
+**What to do if it's low:** Either the teacher's timetable has too many empty slots (a scheduling/marketing problem) or their students aren't attending or paying consistently (a retention/billing problem). Address the root cause — don't just blame the teacher.
+
+## 5. Enquiry-to-enrolment conversion rate
+
+**What it measures:** The percentage of people who enquire about lessons and actually sign up.
+
+**How to calculate it:** (New enrolments in a period ÷ Enquiries received in the same period) × 100
+
+**Benchmark:** 40–60% is good. Above 60% is excellent. Below 30% suggests your response time, trial process, or pricing is turning people away.
+
+**Why it matters:** If you're getting enquiries but not converting them, your marketing is working but your sales process isn't. This is often more impactful to fix than generating more enquiries — doubling your conversion rate is equivalent to doubling your marketing spend.
+
+**What to do if it's low:** The three most common fixes are speed (respond to every enquiry within 2 hours — ideally within 30 minutes), a free or low-cost trial lesson (removes risk for the family), and a clear and easy enrolment process (online sign-up, not a paper form). Track how long you take to respond to enquiries and how many steps it takes to enrol.
+
+## 6. Outstanding invoice rate
+
+**What it measures:** The percentage of billed revenue that hasn't been collected.
+
+**How to calculate it:** (Total unpaid invoices ÷ Total billed invoices) × 100
+
+**Benchmark:** Below 5% is excellent. 5–10% is normal. Above 15% means your collection process is broken.
+
+**Why it matters:** Unpaid invoices are revenue that exists on paper but not in your bank account. In a school of 100 students at £264/term, a 10% outstanding rate means £2,640 sitting uncollected. Over a year, that's nearly £8,000.
+
+**What to do if it's high:** Implement automated payment reminders (before due date, on due date, and 7 days after). Offer online payment via [Stripe](/features/billing) to remove friction. Send invoices earlier — at least two weeks before term starts. For persistent late payers, offer a payment plan rather than tolerating ongoing lateness.
+
+## 7. Teacher utilisation rate
+
+**What it measures:** The percentage of a teacher's available teaching time that is actually filled with lessons.
+
+**How to calculate it:** (Hours of lessons taught ÷ Hours of teaching time available) × 100
+
+**Benchmark:** 75–85% is healthy. Above 85% means you may need another teacher soon. Below 65% suggests overstaffing or poor schedule management.
+
+**Why it matters:** An underutilised teacher is an overhead problem. You're paying for availability that isn't generating revenue. An over-utilised teacher is at burnout risk and you're probably turning away students. This metric helps you time your hiring decisions correctly.
+
+**What to do if it's low:** Either you need more students (a marketing problem) or the teacher's available hours don't align with student demand (a scheduling problem). Sometimes the fix is as simple as shifting a teacher's hours to match peak demand rather than hiring someone new.
+
+## 8. Net Promoter Score (NPS)
+
+**What it measures:** How likely your families are to recommend your school to others.
+
+**How to calculate it:** Ask families one question: "On a scale of 0–10, how likely are you to recommend our school to a friend?" Scores of 9–10 are "promoters", 7–8 are "passives", 0–6 are "detractors". NPS = % promoters – % detractors.
+
+**Benchmark:** Above +50 is excellent. +20 to +50 is good. Below +20 suggests significant dissatisfaction.
+
+**Why it matters:** NPS predicts referral behaviour, which is the primary growth engine for music schools. A high NPS means families are actively recommending you. A low NPS means they're not — or worse, they're warning others away.
+
+**What to do if it's low:** Follow up with specific questions. What do promoters love? What would passives need to see improved? What's driving detractors away? The answers will point you toward the most impactful changes.
+
+**When to survey:** Once per term is sufficient. Send it mid-term (not at the end when re-enrolment is on parents' minds) via a simple online form.
+
+## How to review these metrics
+
+Don't try to optimise all eight simultaneously. Here's a practical cadence:
+
+**Weekly:** Glance at outstanding invoices and attendance for the current week. These need timely action.
+
+**Monthly:** Review revenue per teacher and teacher utilisation. These help with near-term operational decisions.
+
+**Termly:** Do a full review of all eight KPIs. Compare against the previous term. Identify one or two areas that need focused improvement and make them a priority for the next term.
+
+The best way to access these numbers is through a [reporting dashboard](/features/reports) that calculates them automatically. If you're still doing this manually, it won't happen consistently. [LoopAssist AI](/features/loopassist) can surface these insights conversationally — just ask "what's my retention rate this term?" and get an immediate answer.
+
+## The metric you should never optimise
+
+One final thought. The most important thing in your music school can't be measured with a number: the quality of the musical education you provide. If you optimise for metrics at the expense of teaching quality — rushing lessons to fit more students in, hiring cheaper teachers to improve margins, cutting lesson length to improve utilisation — you'll see the KPIs improve in the short term and collapse in the long term.
+
+The metrics exist to serve the mission, not the other way around. Use them to spot problems early, make better decisions, and free up time for what matters: helping students fall in love with music.
+
+---
+
+## Frequently Asked Questions
+
+### How do I track these KPIs if I don't have music school software?
+
+You can track most of these in a spreadsheet, but it requires significant manual effort — expect to spend 1–2 hours per month gathering and calculating the data. The attendance rate, retention rate and outstanding invoice rate are the three most important to track manually if you're not ready for software. [Purpose-built software](/features) calculates all eight automatically and continuously.
+
+### Which KPI should I focus on first?
+
+Retention rate. It's the single most impactful metric for music school growth. Improving retention from 75% to 85% adds more students to your school than doubling your marketing spend, and it happens without any additional acquisition cost. Once retention is healthy (above 85%), shift focus to enquiry conversion and then teacher utilisation.
+
+### How do I benchmark against other UK music schools?
+
+Published benchmarks for private music schools are limited. The ranges provided in this article are based on conversations with UK music school owners and operators. The most useful benchmarking is against your own historical performance — tracking your metrics term-over-term shows you whether you're improving, and that's what matters most.`,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
