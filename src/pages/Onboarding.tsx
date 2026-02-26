@@ -1,96 +1,54 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import { LogoHorizontal } from '@/components/brand/Logo';
-import { Loader2, LogOut, User, Building2, Users, Network, CheckCircle2, ArrowLeft, ArrowRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { PlanSelector, getRecommendedPlan } from '@/components/onboarding/PlanSelector';
-import { PLAN_DISPLAY_NAMES } from '@/lib/pricing-config';
-import { OnboardingProgress } from '@/components/onboarding/OnboardingProgress';
+import { Loader2 } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 import { usePageMeta } from '@/hooks/usePageMeta';
-
-type OrgType = 'solo_teacher' | 'studio' | 'academy' | 'agency';
-type SubscriptionPlan = 'solo_teacher' | 'academy' | 'agency';
-type Step = 'profile' | 'plan' | 'loading' | 'success' | 'error';
-
-const STORAGE_KEY = 'lessonloop-onboarding-state';
-interface SavedState { fullName: string; orgName: string; orgType: OrgType; selectedPlan: SubscriptionPlan; step: Step; }
-function saveOnboardingState(state: SavedState) {
-  try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* storage unavailable */ }
-}
-function loadOnboardingState(): SavedState | null {
-  try { const s = sessionStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : null; } catch { return null; }
-}
-function clearOnboardingState() {
-  try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* storage unavailable */ }
-}
-
-const ORG_TYPES = [
-  { value: 'solo_teacher' as const, label: 'Solo Teacher', description: 'Independent music teacher', icon: User },
-  { value: 'studio' as const, label: 'Music Studio', description: 'Small studio with a few teachers', icon: Building2 },
-  { value: 'academy' as const, label: 'Music Academy', description: 'Larger school with multiple locations', icon: Users },
-  { value: 'agency' as const, label: 'Teaching Agency', description: 'Agency managing peripatetic teachers', icon: Network },
-];
-
-const STEPS = [
-  { id: 'profile', label: 'Your Details' },
-  { id: 'plan', label: 'Choose Plan' },
-];
+import { useOnboardingState, clearOnboardingState } from '@/hooks/useOnboardingState';
+import { getSmartRecommendation } from '@/lib/plan-recommendation';
+import { OnboardingLayout } from '@/components/onboarding/OnboardingLayout';
+import { WelcomeStep } from '@/components/onboarding/WelcomeStep';
+import { TeachingProfileStep } from '@/components/onboarding/TeachingProfileStep';
+import { MigrationStep } from '@/components/onboarding/MigrationStep';
+import { PlanRecommendationStep } from '@/components/onboarding/PlanRecommendationStep';
+import { SetupStep } from '@/components/onboarding/SetupStep';
+import type { ImportResult } from '@/hooks/useOnboardingState';
 
 export default function Onboarding() {
   usePageMeta('Get Started | LessonLoop', 'Set up your LessonLoop account');
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { user, session, signOut, refreshProfile, profile } = useAuth();
   const { toast } = useToast();
-  
-  const saved = useRef(loadOnboardingState());
-  const [step, setStep] = useState<Step>(() => {
-    const urlStep = searchParams.get('step');
-    if (urlStep === 'plan') return 'plan';
-    const s = saved.current?.step;
-    return s === 'loading' || s === 'error' ? 'plan' : s || 'profile';
-  });
-  const [orgType, setOrgType] = useState<OrgType>(saved.current?.orgType || 'solo_teacher');
-  const [fullName, setFullName] = useState(saved.current?.fullName || '');
-  const [orgName, setOrgName] = useState(saved.current?.orgName || '');
-  const hasEditedOrgName = useRef(!!saved.current?.orgName);
+
+  // Derive initial name from auth context
+  const initialName = profile?.full_name || user?.user_metadata?.full_name || '';
+  const { state, updateField, updateFields, setOrgNameManual, goToStep, visibleStepIndex } = useOnboardingState(initialName);
+
   const isSubmitting = useRef(false);
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>(saved.current?.selectedPlan || 'academy');
-  const [alsoTeaches, setAlsoTeaches] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [profileReady, setProfileReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [loadingStage, setLoadingStage] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
-  // Self-healing: ensure profile exists on mount
-  // Note: We allow users who have completed onboarding to access this page
-  // if they explicitly navigate here (e.g. to create additional orgs in future)
-  // Only redirect if they arrive here without explicit intent (e.g. from RouteGuard)
+  // ── Self-healing: ensure profile exists on mount ──
+
   useEffect(() => {
     async function ensureProfile() {
       if (!user || !session) return;
-      
-      // Check if user was explicitly sent here or navigated directly
+
       const urlParams = new URLSearchParams(window.location.search);
       const isNewOrg = urlParams.get('new') === 'true';
-      
-      // If profile exists and onboarding is complete, and user didn't explicitly request new org
-      // redirect them to dashboard (they probably hit this page accidentally)
+
       if (profile?.has_completed_onboarding && !isNewOrg) {
         logger.debug('[Onboarding] Already completed - redirecting to dashboard');
         navigate('/dashboard', { replace: true });
         return;
       }
-      
+
       if (profile) {
         setProfileReady(true);
         return;
@@ -109,19 +67,14 @@ export default function Onboarding() {
         });
 
         if (response.ok) {
-          const data = await response.json();
-          logger.debug('[Onboarding] Profile ensure result:', data.created ? 'created' : 'exists');
           await refreshProfile();
-          
-          // After refresh, re-fetch profile to check if onboarding was already completed
           const { data: freshProfile } = await supabase
             .from('profiles')
             .select('has_completed_onboarding')
             .eq('id', user.id)
             .single();
-          
+
           if (freshProfile?.has_completed_onboarding && !isNewOrg) {
-            logger.debug('[Onboarding] Already completed after refresh - redirecting to dashboard');
             navigate('/dashboard', { replace: true });
             return;
           }
@@ -129,140 +82,133 @@ export default function Onboarding() {
       } catch (err) {
         logger.warn('[Onboarding] Profile ensure failed:', err);
       }
-      
+
       setProfileReady(true);
     }
-    
+
     ensureProfile();
   }, [user, session, profile, refreshProfile, navigate]);
 
-  // Pre-fill name from user metadata or profile
-  useEffect(() => {
-    if (saved.current?.fullName) return; // Don't overwrite restored state
-    if (profile?.full_name) {
-      setFullName(profile.full_name);
-    } else if (user?.user_metadata?.full_name) {
-      setFullName(user.user_metadata.full_name);
-    }
-  }, [user, profile]);
+  // ── Update recommended plan when relevant data changes ──
 
-  // Update recommended plan when org type changes and reset alsoTeaches for non-applicable types
   useEffect(() => {
-    setSelectedPlan(getRecommendedPlan(orgType));
-    if (orgType !== 'studio' && orgType !== 'academy') {
-      setAlsoTeaches(false);
+    const rec = getSmartRecommendation({
+      orgType: state.orgType,
+      teamSize: state.teamSize || undefined,
+      locationCount: state.locationCount || undefined,
+      studentCount: state.studentCount || undefined,
+      isSwitching: state.migrationChoice === 'switching',
+    });
+    if (rec.plan !== state.selectedPlan && state.currentStep !== 'plan') {
+      updateField('selectedPlan', rec.plan);
     }
-  }, [orgType]);
+  }, [state.orgType, state.teamSize, state.locationCount, state.studentCount, state.migrationChoice]);
 
-  // Auto-generate org name when name or type changes (unless manually edited)
+  // ── Loading progress animation ──
+
   useEffect(() => {
-    if (hasEditedOrgName.current) return;
-    const name = fullName.trim();
-    if (!name) {
-      setOrgName('');
+    if (state.currentStep !== 'loading') {
+      setLoadingStage(0);
+      setLoadingProgress(0);
       return;
     }
-    const firstName = name.split(' ')[0];
-    switch (orgType) {
-      case 'solo_teacher':
-        setOrgName(`${firstName}'s Teaching`);
-        break;
-      case 'studio':
-        setOrgName(`${firstName}'s Music Studio`);
-        break;
-      case 'academy':
-        setOrgName(`${firstName}'s Music Academy`);
-        break;
-      case 'agency':
-        setOrgName(`${firstName}'s Teaching Agency`);
-        break;
-    }
-  }, [fullName, orgType]);
+    const hasImport = !!state.importData;
+    const t1 = setTimeout(() => setLoadingStage(1), 600);
+    const t2 = setTimeout(() => setLoadingStage(2), hasImport ? 2000 : 1500);
+    const t3 = hasImport ? setTimeout(() => setLoadingStage(3), 3500) : undefined;
+    const start = Date.now();
+    const maxDuration = hasImport ? 8000 : 5000;
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - start;
+      setLoadingProgress(Math.min(90, (elapsed / maxDuration) * 90));
+    }, 50);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      if (t3) clearTimeout(t3);
+      clearInterval(interval);
+    };
+  }, [state.currentStep, state.importData]);
 
-  // Sync browser back/forward with wizard step
   useEffect(() => {
-    const urlStep = searchParams.get('step');
-    if (step === 'loading' || step === 'success' || step === 'error') return;
-    if (urlStep === 'plan' && step !== 'plan') {
-      setStep('plan');
-    } else if (urlStep !== 'plan' && step === 'plan') {
-      setStep('profile');
+    if (state.currentStep === 'success' || state.currentStep === 'error') {
+      setLoadingProgress(100);
     }
-  }, [searchParams]);
+  }, [state.currentStep]);
+
+  // ── Navigation handlers ──
 
   const handleLogout = async () => {
     await signOut();
     navigate('/login');
   };
 
-  const handleNext = () => {
-    if (isSubmitting.current) return;
-    if (step === 'profile') {
-      if (!fullName.trim()) {
-        toast({ title: 'Please enter your name', variant: 'destructive' });
-        return;
-      }
-      if (!orgName.trim()) {
-        toast({ title: 'Please enter an organisation name', variant: 'destructive' });
-        return;
-      }
-      if (fullName.trim().length > 100 || orgName.trim().length > 100) {
-        toast({ title: 'Name must be 100 characters or fewer', variant: 'destructive' });
-        return;
-      }
-      saveOnboardingState({ fullName, orgName, orgType, selectedPlan, step: 'plan' });
-      setSearchParams({ step: 'plan' }, { replace: false });
-      setStep('plan');
-    } else if (step === 'plan') {
-      handleSubmit();
+  const handleWelcomeNext = () => {
+    if (!state.fullName.trim()) {
+      toast({ title: 'Please enter your name', variant: 'destructive' });
+      return;
     }
+    goToStep('teaching');
   };
 
-  const handleBack = () => {
-    if (step === 'plan') {
-      saveOnboardingState({ fullName, orgName, orgType, selectedPlan, step: 'profile' });
-      setSearchParams({}, { replace: false });
-      setStep('profile');
+  const handleTeachingNext = () => {
+    if (state.orgType !== 'solo_teacher' && !state.orgName.trim()) {
+      toast({ title: 'Please enter your organisation name', variant: 'destructive' });
+      return;
     }
+    if (state.orgName.trim().length > 100) {
+      toast({ title: 'Name must be 100 characters or fewer', variant: 'destructive' });
+      return;
+    }
+    goToStep('migration');
   };
 
-  const handleSubmit = async () => {
+  const handleMigrationNext = () => {
+    goToStep('plan');
+  };
+
+  const handlePlanNext = () => {
+    handleSubmit();
+  };
+
+  // ── Submission ──
+
+  const handleSubmit = useCallback(async () => {
     if (isSubmitting.current) return;
     isSubmitting.current = true;
-    setStep('loading');
+    goToStep('loading');
     setError(null);
+    setImportResult(null);
 
     try {
       const [, result] = await Promise.all([
-        // Minimum display time so loading screen doesn't flash
         new Promise(resolve => setTimeout(resolve, 1500)),
         (async () => {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (!currentSession) {
             throw new Error('Not logged in. Please refresh and try again.');
           }
 
-          const finalOrgName = orgName.trim();
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-          
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 30000);
-          
-          let response: Response;
+
+          // ── Step 1: Create org via onboarding-setup ──
+          let onboardingResponse: Response;
           try {
-            response = await fetch(`${supabaseUrl}/functions/v1/onboarding-setup`, {
+            onboardingResponse = await fetch(`${supabaseUrl}/functions/v1/onboarding-setup`, {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${session.access_token}`,
+                'Authorization': `Bearer ${currentSession.access_token}`,
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                org_name: finalOrgName,
-                org_type: orgType,
-                full_name: fullName.trim(),
-                subscription_plan: selectedPlan,
+                org_name: state.orgName.trim() || `${state.fullName.trim().split(' ')[0]}'s Teaching`,
+                org_type: state.orgType,
+                full_name: state.fullName.trim(),
+                subscription_plan: state.selectedPlan,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/London',
-                also_teaches: alsoTeaches,
+                also_teaches: state.alsoTeaches,
               }),
               signal: controller.signal,
             });
@@ -280,424 +226,225 @@ export default function Onboarding() {
             clearTimeout(timeoutId);
           }
 
-          if (!response.ok) {
-            const data = await response.json().catch(() => ({}));
-            throw new Error(data.error || `Server error (${response.status}). Please try again.`);
+          if (!onboardingResponse.ok) {
+            const data = await onboardingResponse.json().catch(() => ({}));
+            throw new Error(data.error || `Server error (${onboardingResponse.status}). Please try again.`);
           }
 
-          const res = await response.json();
-          logger.debug('[Onboarding] Setup complete:', res);
-          // Signal completion immediately
+          const onboardingResult = await onboardingResponse.json();
+          logger.debug('[Onboarding] Setup complete:', onboardingResult);
+          const orgId = onboardingResult.org_id;
+
+          // ── Step 2: Execute import if data prepared ──
+          if (state.importData && orgId) {
+            logger.debug('[Onboarding] Starting import for org:', orgId);
+            setLoadingStage(2);
+
+            try {
+              // Build transformed rows from mappings
+              const transformedRows = state.importData.rows.map(row => {
+                const obj: Record<string, string> = {};
+                state.importData!.mappings.forEach((mapping, idx) => {
+                  if (mapping.target_field && row[idx]) {
+                    if (mapping.transform === 'split_name') {
+                      const parts = row[idx].trim().split(/\s+/);
+                      obj['first_name'] = parts[0] || '';
+                      obj['last_name'] = parts.slice(1).join(' ') || '';
+                    } else if (mapping.transform === 'combine_guardian_name' && mapping.combine_with) {
+                      const lastIdx = state.importData!.headers.indexOf(mapping.combine_with);
+                      const lastName = lastIdx >= 0 ? (row[lastIdx] || '') : '';
+                      obj['guardian_name'] = `${row[idx]} ${lastName}`.trim();
+                    } else if (mapping.transform === 'combine_guardian2_name' && mapping.combine_with) {
+                      const lastIdx = state.importData!.headers.indexOf(mapping.combine_with);
+                      const lastName = lastIdx >= 0 ? (row[lastIdx] || '') : '';
+                      obj['guardian2_name'] = `${row[idx]} ${lastName}`.trim();
+                    } else {
+                      obj[mapping.target_field!] = row[idx];
+                    }
+                  }
+                });
+                return obj;
+              });
+
+              const mappingsMap = Object.fromEntries(
+                state.importData.mappings
+                  .filter(m => m.target_field)
+                  .map(m => [m.csv_header, m.target_field])
+              );
+
+              const importResponse = await fetch(
+                `${supabaseUrl}/functions/v1/csv-import-execute`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentSession.access_token}`,
+                  },
+                  body: JSON.stringify({
+                    rows: transformedRows,
+                    mappings: mappingsMap,
+                    orgId,
+                    sourceSoftware: state.importData.sourceSoftware !== 'auto' ? state.importData.sourceSoftware : undefined,
+                    importLessons: state.importData.importLessons,
+                    skipDuplicates: true,
+                  }),
+                }
+              );
+
+              if (importResponse.ok) {
+                const importData = await importResponse.json();
+                logger.debug('[Onboarding] Import complete:', importData);
+                setImportResult({
+                  studentsCreated: importData.studentsCreated || 0,
+                  guardiansCreated: importData.guardiansCreated || 0,
+                  linksCreated: importData.linksCreated || 0,
+                  lessonsCreated: importData.lessonsCreated || 0,
+                  errors: importData.errors || [],
+                });
+              } else {
+                const err = await importResponse.json().catch(() => ({}));
+                logger.warn('[Onboarding] Import failed (non-fatal):', err);
+                setImportResult({
+                  studentsCreated: 0,
+                  guardiansCreated: 0,
+                  linksCreated: 0,
+                  lessonsCreated: 0,
+                  errors: [err.error || 'Import failed — you can retry from Settings > Data Import.'],
+                });
+              }
+            } catch (importErr) {
+              logger.warn('[Onboarding] Import error (non-fatal):', importErr);
+              setImportResult({
+                studentsCreated: 0,
+                guardiansCreated: 0,
+                linksCreated: 0,
+                lessonsCreated: 0,
+                errors: ['Import failed — you can retry from Settings > Data Import.'],
+              });
+            }
+          }
+
           setLoadingProgress(100);
-          return res;
+          return onboardingResult;
         })(),
       ]);
 
       await refreshProfile();
       clearOnboardingState();
       isSubmitting.current = false;
-      setStep('success');
+      goToStep('success');
     } catch (err) {
       logger.error('[Onboarding] Error:', err);
       const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
       setError(message);
-      setStep('error');
+      goToStep('error');
       isSubmitting.current = false;
     }
-  };
+  }, [state, goToStep, refreshProfile, toast]);
 
-  const handleGoToDashboard = () => {
-    navigate('/dashboard');
-  };
-
-  const handleRetry = () => {
-    // Don't reset the form - just go back to plan step so they can retry
-    setStep('plan');
-    setError(null);
-  };
-
-  const handleRetrySubmit = () => {
-    // Retry the submission directly without going back to the form
-    setError(null);
-    handleSubmit();
-  };
-
-  const currentStepIndex = step === 'profile' ? 0 : step === 'plan' ? 1 : 0;
-
-  // Loading screen staged progress
-  const LOADING_STAGES = ['Creating your organisation...', 'Configuring your plan...', 'Almost there...'];
-
-  useEffect(() => {
-    if (step !== 'loading') {
-      setLoadingStage(0);
-      setLoadingProgress(0);
-      return;
-    }
-    const t1 = setTimeout(() => setLoadingStage(1), 500);
-    const t2 = setTimeout(() => setLoadingStage(2), 1500);
-    const start = Date.now();
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - start;
-      setLoadingProgress(Math.min(90, (elapsed / 5000) * 90));
-    }, 50);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearInterval(interval); };
-  }, [step]);
-
-  useEffect(() => {
-    if (step === 'success' || step === 'error') {
-      setLoadingProgress(100);
-    }
-  }, [step]);
+  // ── Render ──
 
   // Initial loading while ensuring profile exists
   if (!profileReady) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
         <p className="text-lg font-medium">Preparing your account...</p>
       </div>
     );
   }
 
-  if (step === 'loading') {
+  // Loading / success / error screens (full-screen, no layout chrome)
+  if (state.currentStep === 'loading' || state.currentStep === 'success' || state.currentStep === 'error') {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <div className="w-full max-w-xs space-y-4">
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={loadingStage}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25 }}
-              className="text-center text-lg font-medium"
-            >
-              {LOADING_STAGES[loadingStage]}
-            </motion.p>
-          </AnimatePresence>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-            <motion.div
-              className="h-full rounded-full bg-primary"
-              initial={{ width: '0%' }}
-              animate={{ width: `${loadingProgress}%` }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-            />
-          </div>
-          <p className="text-center text-sm text-muted-foreground">This should only take a moment</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Success screen with clear next steps
-  if (step === 'success') {
-    const planName = PLAN_DISPLAY_NAMES[selectedPlan] || 'LessonLoop';
-    
-    // Org-type specific first action
-    const getFirstAction = (): { action: string; description: string; href: string } => {
-      switch (orgType) {
-        case 'solo_teacher':
-          return { action: 'Add your first student', description: 'Start by adding a student to your roster', href: '/students' };
-        case 'studio':
-          return { action: 'Set up your studio', description: 'Add your teaching location and rooms', href: '/locations' };
-        case 'academy':
-          return { action: 'Add your locations', description: 'Set up your teaching venues first', href: '/locations' };
-        case 'agency':
-          return { action: 'Add client schools', description: 'Set up the schools where your teachers work', href: '/locations' };
-        default:
-          return { action: 'Explore your dashboard', description: 'We\'ll guide you through the next steps', href: '/dashboard' };
-      }
-    };
-    
-    const firstAction = getFirstAction();
-    
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-4">
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', duration: 0.5 }}
-          className="relative"
-        >
-          <CheckCircle2 className="h-20 w-20 text-primary" />
-          <motion.div
-            initial={{ opacity: 0, scale: 0 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.3, type: 'spring' }}
-            className="absolute -right-1 -top-1"
-          >
-            <span className="text-2xl">🎉</span>
-          </motion.div>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="text-center max-w-md"
-        >
-          <h1 className="text-3xl font-bold">Welcome to LessonLoop!</h1>
-          <p className="mt-2 text-muted-foreground">
-            Hey {fullName.split(' ')[0]}, your account is ready.
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Your 30-day {planName} trial has started — no card required.
-          </p>
-        </motion.div>
-        
-        {/* Clear next step guidance */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="rounded-xl bg-primary/5 border border-primary/20 p-4 text-center max-w-sm"
-        >
-          <p className="text-sm font-medium text-primary">What's next?</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            {firstAction.description}
-          </p>
-        </motion.div>
-        
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="flex flex-col gap-3 w-full max-w-xs"
-        >
-          <Button size="lg" onClick={() => navigate(firstAction.href)} className="w-full">
-            {firstAction.action} →
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate('/dashboard')} className="w-full">
-            Go to Dashboard
-          </Button>
-          <p className="text-xs text-center text-muted-foreground">
-            Don't worry, we'll guide you every step of the way
-          </p>
-        </motion.div>
-      </div>
-    );
-  }
-
-  // Error screen
-  if (step === 'error') {
-    const isNetworkError = error?.includes('Network') || error?.includes('connection') || error?.includes('timeout');
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-4">
-        <div className="text-center max-w-sm">
-          <h1 className="text-2xl font-bold text-destructive">Setup Failed</h1>
-          <p className="mt-2 text-muted-foreground">{error || 'Something went wrong'}</p>
-          {isNetworkError && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Tip: Make sure you have a stable internet connection.
-            </p>
-          )}
-        </div>
-        <div className="flex flex-col gap-3 w-full max-w-xs">
-          <Button onClick={handleRetrySubmit} className="w-full">
-            Try Again
-          </Button>
-          <Button variant="outline" onClick={handleRetry} className="w-full">
-            Edit Details
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleLogout} className="w-full">
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
-        </div>
+      <div className="min-h-[100dvh] bg-background">
+        <SetupStep
+          step={state.currentStep}
+          fullName={state.fullName}
+          orgType={state.orgType}
+          selectedPlan={state.selectedPlan}
+          hasImport={!!state.importData}
+          importResult={importResult}
+          error={error}
+          loadingProgress={loadingProgress}
+          loadingStage={loadingStage}
+          onNavigate={(path) => navigate(path)}
+          onRetry={() => {
+            setError(null);
+            handleSubmit();
+          }}
+          onEdit={() => {
+            goToStep('plan');
+            setError(null);
+          }}
+          onLogout={handleLogout}
+        />
       </div>
     );
   }
 
   // Multi-step form
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <LogoHorizontal className="h-8" />
-        <Button variant="ghost" size="sm" onClick={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          Logout
-        </Button>
-      </header>
+    <OnboardingLayout
+      currentStepIndex={visibleStepIndex}
+      onLogout={handleLogout}
+    >
+      <AnimatePresence mode="wait">
+        {state.currentStep === 'welcome' && (
+          <WelcomeStep
+            fullName={state.fullName}
+            orgType={state.orgType}
+            onNameChange={(name) => updateField('fullName', name)}
+            onOrgTypeChange={(type) => updateField('orgType', type)}
+            onNext={handleWelcomeNext}
+          />
+        )}
 
-      {/* Main content */}
-      <main className="mx-auto max-w-3xl px-4 py-8">
-        {/* Progress indicator */}
-        <OnboardingProgress 
-          steps={STEPS} 
-          currentStep={currentStepIndex} 
-        />
+        {state.currentStep === 'teaching' && (
+          <TeachingProfileStep
+            orgType={state.orgType}
+            orgName={state.orgName}
+            studentCount={state.studentCount}
+            teamSize={state.teamSize}
+            locationCount={state.locationCount}
+            instruments={state.instruments}
+            alsoTeaches={state.alsoTeaches}
+            onOrgNameChange={setOrgNameManual}
+            onStudentCountChange={(v) => updateField('studentCount', v)}
+            onTeamSizeChange={(v) => updateField('teamSize', v)}
+            onLocationCountChange={(v) => updateField('locationCount', v)}
+            onInstrumentsChange={(v) => updateField('instruments', v)}
+            onAlsoTeachesChange={(v) => updateField('alsoTeaches', v)}
+            onNext={handleTeachingNext}
+            onBack={() => goToStep('welcome')}
+          />
+        )}
 
-        <AnimatePresence mode="wait">
-          {step === 'profile' && (
-            <motion.div
-              key="profile"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="mb-8 text-center">
-                <h1 className="text-3xl font-bold">Welcome to LessonLoop</h1>
-                <p className="mt-2 text-muted-foreground">
-                  Let's get your account set up in just a few seconds.
-                </p>
-              </div>
+        {state.currentStep === 'migration' && (
+          <MigrationStep
+            migrationChoice={state.migrationChoice}
+            importData={state.importData}
+            onMigrationChoiceChange={(choice) => updateField('migrationChoice', choice)}
+            onImportDataChange={(data) => updateField('importData', data)}
+            onNext={handleMigrationNext}
+            onBack={() => goToStep('teaching')}
+          />
+        )}
 
-              <form onSubmit={(e) => { e.preventDefault(); handleNext(); }}>
-                <Card>
-                  <CardContent className="space-y-6 pt-6">
-                    {/* Name input */}
-                    <div className="space-y-2">
-                      <Label htmlFor="fullName">Your Name</Label>
-                      <Input
-                        id="fullName"
-                        placeholder="Enter your full name"
-                        value={fullName}
-                        maxLength={100}
-                        onChange={(e) => setFullName(e.target.value)}
-                        autoFocus
-                        autoComplete="name"
-                      />
-                    </div>
-
-                    {/* Org type selection */}
-                    <div className="space-y-2">
-                      <Label>How do you teach?</Label>
-                      <div 
-                        className="grid gap-3 sm:grid-cols-2" 
-                        role="radiogroup" 
-                        aria-label="Teaching type"
-                        onKeyDown={(e) => {
-                          if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
-                          e.preventDefault();
-                          const radios = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]'));
-                          const idx = radios.findIndex(r => r === document.activeElement);
-                          if (idx === -1) return;
-                          const next = ['ArrowDown', 'ArrowRight'].includes(e.key)
-                            ? (idx + 1) % radios.length
-                            : (idx - 1 + radios.length) % radios.length;
-                          radios[next].focus();
-                          setOrgType(ORG_TYPES[next].value);
-                        }}
-                      >
-                        {ORG_TYPES.map((type, i) => {
-                          const Icon = type.icon;
-                          const isSelected = orgType === type.value;
-                          return (
-                            <button
-                              key={type.value}
-                              type="button"
-                              role="radio"
-                              aria-checked={isSelected}
-                              tabIndex={isSelected ? 0 : -1}
-                              aria-label={`Select ${type.label}: ${type.description}`}
-                              onClick={() => setOrgType(type.value)}
-                              className={`flex items-center gap-4 rounded-lg border p-4 text-left transition-colors ${
-                                isSelected
-                                  ? 'border-primary bg-primary/5'
-                                  : 'border-border hover:border-primary/50'
-                              }`}
-                            >
-                              <div className={`rounded-full p-2 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                                <Icon className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <div className="font-medium">{type.label}</div>
-                                <div className="text-sm text-muted-foreground">{type.description}</div>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Also teaches checkbox — only for studio/academy */}
-                    {(orgType === 'studio' || orgType === 'academy') && (
-                      <div className="flex items-start gap-3 rounded-lg border border-border p-4">
-                        <Checkbox
-                          id="alsoTeaches"
-                          checked={alsoTeaches}
-                          onCheckedChange={(checked) => setAlsoTeaches(checked === true)}
-                          className="mt-0.5"
-                        />
-                        <div className="space-y-1">
-                          <Label htmlFor="alsoTeaches" className="cursor-pointer font-medium leading-none">
-                            I also teach lessons
-                          </Label>
-                          <p className="text-xs text-muted-foreground">
-                            Add yourself as a teacher so you can be assigned to lessons on the calendar.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Organisation name */}
-                    <div className="space-y-2">
-                      <Label htmlFor="orgName">Organisation Name</Label>
-                      <Input
-                        id="orgName"
-                        placeholder="e.g. Jamie's Music Studio"
-                        value={orgName}
-                        maxLength={100}
-                        onChange={(e) => {
-                          hasEditedOrgName.current = true;
-                          setOrgName(e.target.value);
-                        }}
-                        autoComplete="organization"
-                      />
-                      <p className="text-xs text-muted-foreground">You can change this later in Settings.</p>
-                    </div>
-
-                    <div className="flex justify-end pt-4">
-                      <Button type="submit">
-                        Continue
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </form>
-            </motion.div>
-          )}
-
-          {step === 'plan' && (
-            <motion.div
-              key="plan"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleNext(); }}
-            >
-              <div className="mb-8 text-center">
-                <h1 className="text-3xl font-bold">Choose Your Plan</h1>
-                <p className="mt-2 text-muted-foreground">
-                  Start your 30-day free trial. Cancel anytime.
-                </p>
-              </div>
-
-              <PlanSelector
-                selectedPlan={selectedPlan}
-                onSelectPlan={setSelectedPlan}
-                recommendedPlan={getRecommendedPlan(orgType)}
-              />
-
-              {/* Navigation */}
-              <div className="mt-8 flex justify-between">
-                <Button variant="outline" onClick={handleBack}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                <Button onClick={handleNext}>
-                  Start Free Trial
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
-    </div>
+        {state.currentStep === 'plan' && (
+          <PlanRecommendationStep
+            orgType={state.orgType}
+            teamSize={state.teamSize}
+            locationCount={state.locationCount}
+            studentCount={state.studentCount}
+            migrationChoice={state.migrationChoice}
+            selectedPlan={state.selectedPlan}
+            onSelectPlan={(plan) => updateField('selectedPlan', plan)}
+            onNext={handlePlanNext}
+            onBack={() => goToStep('migration')}
+          />
+        )}
+      </AnimatePresence>
+    </OnboardingLayout>
   );
 }
