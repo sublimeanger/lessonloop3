@@ -230,25 +230,23 @@ function updateFontReferences() {
   }
 }
 
-/** Run PurgeCSS on styles.css. Returns { before, after } sizes. */
+/**
+ * PurgeCSS is DISABLED — it cannot reliably handle Tailwind's arbitrary
+ * value syntax (e.g. bg-[hsl(var(--ink))], w-[680px]) and strips critical
+ * classes. The full production CSS (~186KB) is small enough for a marketing
+ * site. Returns { before, after } sizes for logging.
+ */
 async function purgeProductionCss() {
   const cssPath = join(OUT_DIR, CSS_FILENAME);
   if (!existsSync(cssPath)) return null;
-  const beforeSize = statSync(cssPath).size;
-  const result = await new PurgeCSS().purge({
-    content: [join(OUT_DIR, '**/*.html')],
-    css: [cssPath],
-    safelist: {
-      standard: [/^is-/, /^animate-/, /^nav-dropdown/, /^mobile-menu/, /^mobile-section/, 'sr-only-focus'],
-      greedy: [/data-state/, /data-orientation/],
-    },
-  });
-  if (result.length > 0) {
+  const size = statSync(cssPath).size;
+  // Append sr-only-focus utility if not already present
+  const css = readFileSync(cssPath, 'utf-8');
+  if (!css.includes('sr-only-focus')) {
     const srOnly = '\n.sr-only-focus{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.sr-only-focus:focus{position:static;width:auto;height:auto;padding:inherit;margin:inherit;overflow:visible;clip:auto;white-space:normal}';
-    writeFileSync(cssPath, result[0].css + srOnly, 'utf-8');
+    writeFileSync(cssPath, css + srOnly, 'utf-8');
   }
-  const afterSize = statSync(cssPath).size;
-  return { before: beforeSize, after: afterSize };
+  return { before: size, after: statSync(cssPath).size };
 }
 
 /** Remove all .mp4 files from OUT_DIR. */
@@ -1363,10 +1361,10 @@ async function main() {
     console.log(`  ✓ Self-hosted ${fontCount} Google Font files`);
   }
 
-  // 5. PurgeCSS on styles.css
+  // 5. CSS (purge disabled — full production CSS is kept as-is)
   const cssStats = await purgeProductionCss();
   if (cssStats) {
-    console.log(`  ✓ Purged CSS: ${(cssStats.before / 1024).toFixed(1)} KB → ${(cssStats.after / 1024).toFixed(1)} KB`);
+    console.log(`  ✓ Production CSS: ${(cssStats.after / 1024).toFixed(1)} KB (no purge)`);
   }
 
   // 6. Remove unreferenced .mp4 files
