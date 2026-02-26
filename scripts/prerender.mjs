@@ -686,6 +686,11 @@ function postProcess(html, routePath, blogSlugs) {
   // Replace all lessonloop.co.uk → lessonloop.net
   html = html.replace(/lessonloop\.co\.uk/g, 'lessonloop.net');
 
+  // Replace localhost dev-server URLs left behind by React (e.g. JSON-LD)
+  html = html.replace(/http:\/\/localhost:\d+/g, SITE_DOMAIN);
+  // Also handle URL-encoded variant (%3A = :, %2F = /)
+  html = html.replace(/http%3A%2F%2Flocalhost%3A\d+/gi, encodeURIComponent(SITE_DOMAIN));
+
   // Ensure canonical is correct for this page
   if (html.includes('<link rel="canonical"')) {
     html = html.replace(
