@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
@@ -23,6 +23,8 @@ import {
   appRoutes,
   marketingRoutes,
   notFoundRoute,
+  isSSG,
+  loadSSGRoutes,
   type RouteConfig,
 } from "@/config/routes";
 
@@ -141,58 +143,71 @@ function NativeInitializer() {
 
 // ─── App ─────────────────────────────────────────────────
 
-const App = () => (
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <BrowserRouter
-          future={{
-            v7_startTransition: true,
-            v7_relativeSplatPath: true,
-          }}
-        >
-          <AuthProvider>
-            <OrgProvider>
-              <NativeInitializer />
-              <LoopAssistProvider>
-                <TourProvider>
-                  <ScrollToTop />
-                  <OfflineBanner />
-                  <Toaster />
-                  
-                  <Suspense fallback={<AppShellSkeleton />}>
-                    <Routes>
-                      {/* Public auth routes (redirect if logged in) */}
-                      {renderRoutes(publicAuthRoutes)}
+const App = () => {
+  // In SSG mode (prerender script), dynamically load marketing page components
+  // before rendering. In normal mode isSSG is false so ready starts true (zero overhead).
+  const [ready, setReady] = useState(!isSSG);
+  useEffect(() => {
+    if (isSSG) {
+      loadSSGRoutes().then(() => setReady(true));
+    }
+  }, []);
 
-                      {/* Auth-only routes (onboarding, verify, accept-invite) */}
-                      {renderRoutes(authOnlyRoutes)}
+  if (!ready) return <AppShellSkeleton />;
 
-                      {/* Portal redirect */}
-                      <Route path="/portal" element={<Navigate to="/portal/home" replace />} />
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <BrowserRouter
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true,
+            }}
+          >
+            <AuthProvider>
+              <OrgProvider>
+                <NativeInitializer />
+                <LoopAssistProvider>
+                  <TourProvider>
+                    <ScrollToTop />
+                    <OfflineBanner />
+                    <Toaster />
 
-                      {/* Portal routes (parent) */}
-                      {renderRoutes(portalRoutes)}
+                    <Suspense fallback={<AppShellSkeleton />}>
+                      <Routes>
+                        {/* Public auth routes (redirect if logged in) */}
+                        {renderRoutes(publicAuthRoutes)}
 
-                      {/* Protected app routes (staff) */}
-                      {renderRoutes(appRoutes)}
+                        {/* Auth-only routes (onboarding, verify, accept-invite) */}
+                        {renderRoutes(authOnlyRoutes)}
 
-                      {/* Public/redirect routes (marketing redirects + public pages) */}
-                      <Route path="/demo" element={<Navigate to="/contact?subject=demo" replace />} />
-                      {renderRoutes(marketingRoutes)}
+                        {/* Portal redirect */}
+                        <Route path="/portal" element={<Navigate to="/portal/home" replace />} />
 
-                      {/* 404 */}
-                      <Route path={notFoundRoute.path} element={<notFoundRoute.component />} />
-                    </Routes>
-                  </Suspense>
-                </TourProvider>
-              </LoopAssistProvider>
-            </OrgProvider>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  </ErrorBoundary>
-);
+                        {/* Portal routes (parent) */}
+                        {renderRoutes(portalRoutes)}
+
+                        {/* Protected app routes (staff) */}
+                        {renderRoutes(appRoutes)}
+
+                        {/* Public/redirect routes (marketing redirects + public pages) */}
+                        <Route path="/demo" element={<Navigate to="/contact?subject=demo" replace />} />
+                        {renderRoutes(marketingRoutes)}
+
+                        {/* 404 */}
+                        <Route path={notFoundRoute.path} element={<notFoundRoute.component />} />
+                      </Routes>
+                    </Suspense>
+                  </TourProvider>
+                </LoopAssistProvider>
+              </OrgProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
+};
 
 export default App;

@@ -84,7 +84,7 @@ const MARKETING_BASE = 'https://lessonloop.net';
  * Everywhere else (production, Lovable preview, localhost) we use
  * simple redirect components with no dynamic imports.
  */
-const isSSG = typeof window !== 'undefined' && (window as any).__SSG_MODE__;
+export const isSSG = typeof window !== 'undefined' && (window as any).__SSG_MODE__;
 
 function makeExternalRedirect(path: string) {
   return () => ExternalRedirect({ to: `${MARKETING_BASE}${path}` });
@@ -203,22 +203,25 @@ const productionMarketingRoutes: RouteConfig[] = [
   { path: '/for/performing-arts', component: makeExternalRedirect('/for/performing-arts'), auth: 'public', label: 'Performing Arts' },
 ];
 
-/**
- * In SSG mode (prerender script), call buildSSGMarketingRoutes() to create
- * lazy-loaded marketing page components. The marketing page import() calls
- * are inside the function body in routes-ssg.ts — they are NEVER executed
- * unless this function is called.
- *
- * In non-SSG mode (production, Lovable, localhost), we use
- * productionMarketingRoutes which has zero import() calls.
- */
-import { buildSSGMarketingRoutes } from './routes-ssg';
-
-/** Marketing routes — SSG renders real pages; production redirects to static site */
+/** Marketing routes — always starts with production (redirect) routes.
+ *  In SSG mode, loadSSGRoutes() replaces the contents with real components. */
 export const marketingRoutes: RouteConfig[] = [
   ...sharedPublicRoutes,
-  ...(isSSG ? buildSSGMarketingRoutes() : productionMarketingRoutes),
+  ...productionMarketingRoutes,
 ];
+
+/**
+ * Dynamically import routes-ssg.ts and replace marketingRoutes contents
+ * with real marketing page components. Called ONLY by App.tsx in SSG mode.
+ *
+ * Because this uses dynamic import(), Vite never processes routes-ssg.ts
+ * during normal dev/build — the marketing page imports are invisible.
+ */
+export async function loadSSGRoutes(): Promise<void> {
+  const { buildSSGMarketingRoutes } = await import('./routes-ssg');
+  marketingRoutes.length = 0;
+  marketingRoutes.push(...sharedPublicRoutes, ...buildSSGMarketingRoutes());
+}
 
 /** 404 route */
 export const notFoundRoute: RouteConfig = {
