@@ -48,8 +48,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style data-ssg="animations">
-.animate-on-scroll is-visible{opacity:0;transform:translateY(20px);transition:opacity .6s ease-out,transform .6s ease-out}
-.animate-on-scroll is-visible.is-visible{opacity:1;transform:translateY(0)}
+.animate-on-scroll{opacity:0;transform:translateY(20px);transition:opacity .6s ease-out,transform .6s ease-out}
+.animate-on-scroll.is-visible{opacity:1;transform:translateY(0)}
 .nav-dropdown-panel{display:none;position:absolute;left:0;top:100%;z-index:50;padding-top:6px}
 .nav-dropdown-panel.is-open{display:block}
 .nav-dropdown-inner{background:hsl(var(--popover));color:hsl(var(--popover-foreground));border:1px solid hsl(var(--border));border-radius:calc(var(--radius) - 2px);box-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);overflow:hidden;animation:navDropIn .15s ease-out}
@@ -307,7 +307,7 @@
   });
 
   /* ─── 5. Scroll Animations (IntersectionObserver) ─── */
-  var els=document.querySelectorAll('.animate-on-scroll is-visible');
+  var els=document.querySelectorAll('.animate-on-scroll');
   if(els.length&&'IntersectionObserver' in window){
     var obs=new IntersectionObserver(function(entries){
       entries.forEach(function(entry){
