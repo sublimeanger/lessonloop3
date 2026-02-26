@@ -14,10 +14,12 @@
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer-core';
-import { readFileSync, mkdirSync, writeFileSync, existsSync, readdirSync, copyFileSync, statSync } from 'fs';
+import { readFileSync, mkdirSync, writeFileSync, existsSync, readdirSync, copyFileSync, statSync, unlinkSync } from 'fs';
 import { resolve, dirname, join, basename, extname } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
+import sharp from 'sharp';
+import { PurgeCSS } from 'purgecss';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -48,6 +50,314 @@ function copyDirSync(src, dest) {
       copyFileSync(srcPath, destPath);
     }
   }
+}
+
+// ─── 0b. Optimization helpers ───────────────────────────────────────
+
+const RESPONSIVE_WIDTHS = [400, 800, 1400];
+const BUILD_DATE = new Date().toISOString().split('T')[0];
+const imageMetadata = new Map(); // src path → { width, height, srcset }
+
+/** Recursively collect files matching given extensions from a directory. */
+function collectFiles(dir, extensions) {
+  const results = [];
+  if (!existsSync(dir)) return results;
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) {
+      results.push(...collectFiles(full, extensions));
+    } else if (extensions.some(ext => full.toLowerCase().endsWith(ext))) {
+      results.push(full);
+    }
+  }
+  return results;
+}
+
+/** Convert all PNG/JPG images to WebP and generate responsive variants (400w, 800w, 1400w). */
+async function convertImagesToWebP() {
+  const images = collectFiles(OUT_DIR, ['.png', '.jpg', '.jpeg']);
+  let converted = 0;
+  for (const img of images) {
+    const fileName = basename(img);
+    // Skip OG image and PWA icons — they must remain PNG
+    if (fileName === 'og-image.png' || fileName.startsWith('pwa-')) continue;
+
+    const name = fileName.replace(/\.(png|jpe?g)$/i, '');
+    const imgDir = dirname(img);
+    const relPath = imgDir.substring(OUT_DIR.length).replace(/\\/g, '/');
+
+    try {
+      const meta = await sharp(img).metadata();
+      const origW = meta.width || 1400;
+      const origH = meta.height || 900;
+      const srcsetParts = [];
+
+      // Generate responsive variants for widths smaller than original
+      for (const w of RESPONSIVE_WIDTHS) {
+        if (w < origW) {
+          const h = Math.round(origH * (w / origW));
+          await sharp(img).resize({ width: w }).webp({ quality: 80 })
+            .toFile(join(imgDir, `${name}-${w}w.webp`));
+          srcsetParts.push({ w, h, src: `${relPath}/${name}-${w}w.webp` });
+        }
+      }
+
+      // Generate main version (capped at 1400px)
+      const mainW = Math.min(origW, 1400);
+      const mainH = origW > 1400 ? Math.round(origH * (1400 / origW)) : origH;
+      let pipeline = sharp(img);
+      if (origW > 1400) pipeline = pipeline.resize({ width: 1400 });
+      await pipeline.webp({ quality: 80 }).toFile(join(imgDir, `${name}.webp`));
+      srcsetParts.push({ w: mainW, h: mainH, src: `${relPath}/${name}.webp` });
+
+      srcsetParts.sort((a, b) => a.w - b.w);
+      imageMetadata.set(`${relPath}/${name}.webp`, {
+        width: mainW,
+        height: mainH,
+        srcset: srcsetParts.length > 1
+          ? srcsetParts.map(s => `${s.src} ${s.w}w`).join(', ')
+          : null,
+      });
+
+      unlinkSync(img);
+      converted++;
+    } catch (err) {
+      console.warn(`  ⚠ Failed to convert ${fileName}: ${err.message}`);
+    }
+  }
+  return converted;
+}
+
+/** Update all <img> src attributes in HTML files to use .webp instead of .png/.jpg. */
+function updateHtmlImageRefs() {
+  const htmlFiles = collectFiles(OUT_DIR, ['.html']);
+  for (const file of htmlFiles) {
+    let html = readFileSync(file, 'utf-8');
+    html = html.replace(/(<img\s[^>]*src=["'][^"']*)\.(png|jpe?g)(["'])/gi, '$1.webp$3');
+    writeFileSync(file, html, 'utf-8');
+  }
+}
+
+/** Add responsive srcset, width, and height to all <img> tags. */
+function addResponsiveImagesAndDimensions() {
+  const htmlFiles = collectFiles(OUT_DIR, ['.html']);
+  for (const file of htmlFiles) {
+    let html = readFileSync(file, 'utf-8');
+    html = html.replace(/<img\s([^>]*)>/gi, (match, attrs) => {
+      const srcMatch = attrs.match(/src=["']([^"']+)["']/);
+      if (!srcMatch) return match;
+      const meta = imageMetadata.get(srcMatch[1]);
+      if (!meta) return match;
+      let a = attrs;
+      if (!/\bwidth\s*=/.test(a)) a += ` width="${meta.width}"`;
+      if (!/\bheight\s*=/.test(a)) a += ` height="${meta.height}"`;
+      if (meta.srcset && !/\bsrcset\s*=/.test(a)) {
+        a += ` srcset="${meta.srcset}"`;
+        if (!/\bsizes\s*=/.test(a)) {
+          a += ` sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 800px"`;
+        }
+      }
+      return `<img ${a}>`;
+    });
+    writeFileSync(file, html, 'utf-8');
+  }
+}
+
+/** Download Google Fonts CSS + woff2 files and save locally. */
+async function selfHostGoogleFonts() {
+  const FONTS_DIR = join(OUT_DIR, 'fonts');
+  mkdirSync(FONTS_DIR, { recursive: true });
+  const fontsUrl = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap';
+  try {
+    const res = await fetch(fontsUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    let css = await res.text();
+    const urlRegex = /url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/g;
+    let m;
+    const urls = [];
+    while ((m = urlRegex.exec(css)) !== null) urls.push(m[1]);
+    for (const url of urls) {
+      const filename = basename(new URL(url).pathname);
+      const fontRes = await fetch(url);
+      if (!fontRes.ok) continue;
+      writeFileSync(join(FONTS_DIR, filename), Buffer.from(await fontRes.arrayBuffer()));
+      css = css.split(url).join(`/fonts/${filename}`);
+    }
+    // Ensure font-display: swap in every @font-face
+    css = css.replace(/@font-face\s*\{(?![^}]*font-display)/g, '@font-face {\n  font-display: swap;');
+    writeFileSync(join(FONTS_DIR, 'fonts.css'), css, 'utf-8');
+    return urls.length;
+  } catch (err) {
+    console.warn(`  ⚠ Could not self-host Google Fonts: ${err.message}`);
+    return 0;
+  }
+}
+
+/** Replace external Google Fonts links with self-hosted version in all HTML. */
+function updateFontReferences() {
+  if (!existsSync(join(OUT_DIR, 'fonts', 'fonts.css'))) return;
+  const htmlFiles = collectFiles(OUT_DIR, ['.html']);
+  for (const file of htmlFiles) {
+    let html = readFileSync(file, 'utf-8');
+    html = html.replace(/<link[^>]*rel=["']preconnect["'][^>]*href=["']https:\/\/fonts\.googleapis\.com["'][^>]*>\n?/gi, '');
+    html = html.replace(/<link[^>]*href=["']https:\/\/fonts\.googleapis\.com["'][^>]*rel=["']preconnect["'][^>]*>\n?/gi, '');
+    html = html.replace(/<link[^>]*rel=["']preconnect["'][^>]*href=["']https:\/\/fonts\.gstatic\.com["'][^>]*>\n?/gi, '');
+    html = html.replace(/<link[^>]*href=["']https:\/\/fonts\.gstatic\.com["'][^>]*rel=["']preconnect["'][^>]*>\n?/gi, '');
+    html = html.replace(/<link[^>]*href=["']https:\/\/fonts\.googleapis\.com\/css2[^"']*["'][^>]*>/gi,
+      '<link rel="stylesheet" href="/fonts/fonts.css">');
+    writeFileSync(file, html, 'utf-8');
+  }
+  // Remove @import from styles.css
+  const cssPath = join(OUT_DIR, CSS_FILENAME);
+  if (existsSync(cssPath)) {
+    let css = readFileSync(cssPath, 'utf-8');
+    css = css.replace(/@import\s+url\(['"]?https:\/\/fonts\.googleapis\.com[^)]*['"]?\)\s*;?/gi, '');
+    writeFileSync(cssPath, css, 'utf-8');
+  }
+}
+
+/** Run PurgeCSS on styles.css. Returns { before, after } sizes. */
+async function purgeProductionCss() {
+  const cssPath = join(OUT_DIR, CSS_FILENAME);
+  if (!existsSync(cssPath)) return null;
+  const beforeSize = statSync(cssPath).size;
+  const result = await new PurgeCSS().purge({
+    content: [join(OUT_DIR, '**/*.html')],
+    css: [cssPath],
+    safelist: {
+      standard: [/^is-/, /^animate-/, /^nav-dropdown/, /^mobile-menu/, /^mobile-section/, 'sr-only-focus'],
+      greedy: [/data-state/, /data-orientation/],
+    },
+  });
+  if (result.length > 0) {
+    const srOnly = '\n.sr-only-focus{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.sr-only-focus:focus{position:static;width:auto;height:auto;padding:inherit;margin:inherit;overflow:visible;clip:auto;white-space:normal}';
+    writeFileSync(cssPath, result[0].css + srOnly, 'utf-8');
+  }
+  const afterSize = statSync(cssPath).size;
+  return { before: beforeSize, after: afterSize };
+}
+
+/** Remove all .mp4 files from OUT_DIR. */
+function removeMp4Files() {
+  const mp4s = collectFiles(OUT_DIR, ['.mp4']);
+  for (const f of mp4s) unlinkSync(f);
+  return mp4s.length;
+}
+
+/** Fix non-descriptive links by adding aria-label attributes. */
+function fixNonDescriptiveLinks() {
+  const generic = ['learn more', 'read more', 'get started', 'start free trial', 'try it free', 'sign up', '→', ''];
+  const htmlFiles = collectFiles(OUT_DIR, ['.html']);
+  for (const file of htmlFiles) {
+    let html = readFileSync(file, 'utf-8');
+    html = html.replace(/<a\s([^>]*)>([\s\S]*?)<\/a>/gi, (match, attrs, content) => {
+      if (/aria-label/i.test(attrs)) return match;
+      const text = content.replace(/<[^>]+>/g, '').trim();
+      if (!generic.includes(text.toLowerCase())) return match;
+      const hrefMatch = attrs.match(/href=["']([^"']+)["']/);
+      if (!hrefMatch) return match;
+      const href = hrefMatch[1];
+      let label;
+      if (href.startsWith('/features/')) label = `Learn more about ${href.replace('/features/', '').replace(/-/g, ' ')}`;
+      else if (href.startsWith('/compare/')) label = `Read comparison: ${href.replace('/compare/', '').replace(/-/g, ' ')}`;
+      else if (href.startsWith('/for/')) label = `Learn more about LessonLoop for ${href.replace('/for/', '').replace(/-/g, ' ')}`;
+      else if (href.startsWith('/blog/')) label = 'Read blog post';
+      else if (href.includes('signup') || href.includes('register')) label = 'Start your free trial of LessonLoop';
+      else if (href.includes('login')) label = 'Sign in to LessonLoop';
+      else if (href === '/pricing') label = 'View LessonLoop pricing';
+      else if (href === '/features') label = 'Explore all LessonLoop features';
+      else if (href === '/blog') label = 'Read the LessonLoop blog';
+      else if (href === '/contact') label = 'Contact LessonLoop';
+      else label = `Navigate to ${href.replace(/^\//,'').replace(/\//g, ' ').replace(/-/g, ' ') || 'page'}`;
+      return `<a ${attrs} aria-label="${label}">${content}</a>`;
+    });
+    writeFileSync(file, html, 'utf-8');
+  }
+}
+
+/** Clean up React artifacts from HTML. */
+function cleanupHtml() {
+  const htmlFiles = collectFiles(OUT_DIR, ['.html']);
+  for (const file of htmlFiles) {
+    let html = readFileSync(file, 'utf-8');
+    html = html.replace(/<ol[^>]*aria-label="Notifications"[^>]*>[\s\S]*?<\/ol>/gi, '');
+    html = html.replace(/<div[^>]*aria-label="Notifications"[^>]*>[\s\S]*?<\/div>/gi, '');
+    html = html.replace(/\s*data-radix-[a-z-]*="[^"]*"/gi, '');
+    html = html.replace(/<style>\s*<\/style>/gi, '');
+    html = html.replace(/<script>\s*<\/script>/gi, '');
+    html = html.replace(/<meta[^>]*name=["']apple-mobile-web-app[^"]*["'][^>]*>\n?/gi, '');
+    html = html.replace(/<meta[^>]*name=["']mobile-web-app[^"]*["'][^>]*>\n?/gi, '');
+    html = html.replace(/\n{3,}/g, '\n\n');
+    writeFileSync(file, html, 'utf-8');
+  }
+}
+
+/** Extract FAQ Q&A pairs from compare pages and inject FAQPage schema. */
+function addFaqSchemaToComparePages() {
+  const compareDir = join(OUT_DIR, 'compare');
+  if (!existsSync(compareDir)) return;
+  const htmlFiles = collectFiles(compareDir, ['.html']);
+  for (const file of htmlFiles) {
+    let html = readFileSync(file, 'utf-8');
+    const pairs = [];
+    const re = /<div[^>]*data-state="(?:open|closed)"[^>]*>\s*(?:<h3[^>]*>)?\s*<button[^>]*>([\s\S]*?)<\/button>[\s\S]*?<div[^>]*role="region"[^>]*>([\s\S]*?)<\/div>/gi;
+    let fm;
+    while ((fm = re.exec(html)) !== null) {
+      const q = fm[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+      const a = fm[2].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+      if (q.length > 5 && a.length > 5) pairs.push({ q, a });
+    }
+    if (pairs.length > 0) {
+      const schema = JSON.stringify({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: pairs.map(p => ({
+          '@type': 'Question', name: p.q,
+          acceptedAnswer: { '@type': 'Answer', text: p.a },
+        })),
+      });
+      html = html.replace('</head>', `<script type="application/ld+json">${schema}</script>\n</head>`);
+      writeFileSync(file, html, 'utf-8');
+    }
+  }
+}
+
+/** Generate sitemap.xml. */
+function generateSitemap(routes) {
+  const legalPages = ['/privacy', '/terms', '/gdpr', '/cookies'];
+  const entries = routes.map(route => {
+    const loc = route === '/' ? SITE_DOMAIN + '/' : SITE_DOMAIN + route;
+    let priority, changefreq;
+    if (route === '/') { priority = '1.0'; changefreq = 'weekly'; }
+    else if (['/features', '/pricing'].includes(route)) { priority = '0.9'; changefreq = 'weekly'; }
+    else if (route.startsWith('/features/') || route.startsWith('/compare/') || route.startsWith('/for/')) { priority = '0.8'; changefreq = 'weekly'; }
+    else if (route.startsWith('/blog')) { priority = '0.7'; changefreq = 'daily'; }
+    else if (legalPages.includes(route)) { priority = '0.5'; changefreq = 'monthly'; }
+    else { priority = '0.6'; changefreq = 'weekly'; }
+    return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${BUILD_DATE}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+  }).join('\n');
+  writeFileSync(join(OUT_DIR, 'sitemap.xml'),
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries}\n</urlset>\n`, 'utf-8');
+}
+
+/** Generate robots.txt. */
+function generateRobotsTxt() {
+  writeFileSync(join(OUT_DIR, 'robots.txt'),
+    `User-agent: *\nAllow: /\n\nSitemap: ${SITE_DOMAIN}/sitemap.xml\n`, 'utf-8');
+}
+
+/** Calculate total size of a directory recursively (bytes). */
+function dirSizeBytes(dir) {
+  let total = 0;
+  if (!existsSync(dir)) return total;
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    const st = statSync(full);
+    if (st.isDirectory()) total += dirSizeBytes(full);
+    else total += st.size;
+  }
+  return total;
 }
 
 /**
@@ -353,7 +663,7 @@ function injectNavAndMobile(html) {
 
 // ─── 3b. Post-process HTML ──────────────────────────────────────────
 
-function postProcess(html, routePath) {
+function postProcess(html, routePath, blogSlugs) {
   const canonical = routePath === '/'
     ? SITE_DOMAIN + '/'
     : SITE_DOMAIN + routePath;
@@ -417,6 +727,12 @@ function postProcess(html, routePath) {
   // Remove manifest link (PWA not needed for static marketing)
   html = html.replace(/<link rel="manifest"[^>]*>/gi, '');
 
+  // Fix viewport: remove app-specific restrictions that Google penalises
+  html = html.replace(
+    /<meta\s+name=["']viewport["'][^>]*>/gi,
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+  );
+
   // Ensure Google Fonts link is present
   const fontsLink = '<link rel="preconnect" href="https://fonts.googleapis.com">\n  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">';
   if (!html.includes('fonts.googleapis.com/css2')) {
@@ -449,6 +765,81 @@ function postProcess(html, routePath) {
   // server-side from the known navigation data rather than trying to capture it
   // from Puppeteer (which crashes React state).
   html = injectNavAndMobile(html);
+
+  // ── SEO: Hreflang tags ──
+  const hreflangUrl = routePath === '/' ? SITE_DOMAIN + '/' : SITE_DOMAIN + routePath;
+  html = html.replace('</head>',
+    `  <link rel="alternate" hreflang="en-gb" href="${hreflangUrl}">\n` +
+    `  <link rel="alternate" hreflang="en" href="${hreflangUrl}">\n` +
+    `  <link rel="alternate" hreflang="x-default" href="${hreflangUrl}">\n</head>`);
+
+  // ── SEO: DNS prefetch hints ──
+  if (!html.includes('dns-prefetch')) {
+    html = html.replace('</head>',
+      '  <link rel="dns-prefetch" href="https://fonts.googleapis.com">\n' +
+      '  <link rel="dns-prefetch" href="https://fonts.gstatic.com">\n' +
+      '  <meta http-equiv="x-dns-prefetch-control" content="on">\n</head>');
+  }
+
+  // ── SEO: BreadcrumbList schema for nested pages ──
+  const pathParts = routePath.split('/').filter(Boolean);
+  if (pathParts.length >= 2) {
+    const crumbs = [{ name: 'Home', item: SITE_DOMAIN + '/' }];
+    let acc = '';
+    for (let i = 0; i < pathParts.length; i++) {
+      acc += '/' + pathParts[i];
+      const isLast = i === pathParts.length - 1;
+      let crumbName;
+      if (isLast) {
+        const titleMatch = html.match(/<title>([^<]*)<\/title>/i);
+        crumbName = titleMatch ? titleMatch[1].replace(/\s*[|–-]\s*LessonLoop\s*$/i, '').trim() : pathParts[i];
+      } else {
+        crumbName = pathParts[i].charAt(0).toUpperCase() + pathParts[i].slice(1).replace(/-/g, ' ');
+      }
+      crumbs.push({ name: crumbName, item: SITE_DOMAIN + acc });
+    }
+    const breadcrumbSchema = JSON.stringify({
+      '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+      itemListElement: crumbs.map((c, idx) => ({
+        '@type': 'ListItem', position: idx + 1, name: c.name, item: c.item,
+      })),
+    });
+    html = html.replace('</head>', `<script type="application/ld+json">${breadcrumbSchema}</script>\n</head>`);
+  }
+
+  // ── SEO: Blog post pagination (prev/next) ──
+  if (routePath.startsWith('/blog/') && routePath !== '/blog' && blogSlugs) {
+    const currentSlug = routePath.replace('/blog/', '');
+    const slugIdx = blogSlugs.indexOf(currentSlug);
+    if (slugIdx > 0) {
+      html = html.replace('</head>', `  <link rel="prev" href="${SITE_DOMAIN}/blog/${blogSlugs[slugIdx - 1]}">\n</head>`);
+    }
+    if (slugIdx >= 0 && slugIdx < blogSlugs.length - 1) {
+      html = html.replace('</head>', `  <link rel="next" href="${SITE_DOMAIN}/blog/${blogSlugs[slugIdx + 1]}">\n</head>`);
+    }
+  }
+
+  // ── SEO: Blog listing page schema ──
+  if (routePath === '/blog') {
+    const blogSchemas = [
+      { '@context': 'https://schema.org', '@type': 'WebSite', name: 'LessonLoop', url: SITE_DOMAIN },
+      { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'LessonLoop Blog',
+        url: SITE_DOMAIN + '/blog', description: 'Tips, guides, and insights for music teachers and school owners.' },
+    ];
+    for (const s of blogSchemas) {
+      html = html.replace('</head>', `<script type="application/ld+json">${JSON.stringify(s)}</script>\n</head>`);
+    }
+  }
+
+  // ── SEO: Cookies page schema ──
+  if (routePath === '/cookies') {
+    const cookieSchema = JSON.stringify({
+      '@context': 'https://schema.org', '@type': 'WebPage',
+      name: 'Cookie Policy', url: SITE_DOMAIN + '/cookies',
+      description: 'LessonLoop cookie policy and tracking information.',
+    });
+    html = html.replace('</head>', `<script type="application/ld+json">${cookieSchema}</script>\n</head>`);
+  }
 
   // ── Inject CSS for scroll animations ──
   const animCSS = `<style data-ssg="animations">
@@ -606,6 +997,7 @@ function postProcess(html, routePath) {
 
 async function main() {
   const routes = getAllRoutes();
+  const blogSlugs = getBlogSlugs();
   console.log(`\n🚀 Pre-rendering ${routes.length} marketing pages...\n`);
 
   // Start Vite dev server on a random port
@@ -865,7 +1257,7 @@ async function main() {
       finalHtml += '</html>';
 
       // Post-process
-      finalHtml = postProcess(finalHtml, route);
+      finalHtml = postProcess(finalHtml, route, blogSlugs);
 
       // Determine output path
       const outPath = route === '/'
@@ -887,22 +1279,83 @@ async function main() {
     }
   }
 
-  // Shut down
+  // Shut down browser & dev server
   await browser.close();
   await vite.close();
 
-  // Summary
-  console.log('\n' + '─'.repeat(60));
-  console.log(`\n✅ Pre-rendered ${results.filter(r => r.status === 'ok').length} / ${routes.length} pages`);
-  console.log(`   Output directory: ${OUT_DIR}\n`);
+  // ─── Optimization steps ─────────────────────────────────────────
 
-  if (errors.length > 0) {
-    console.log('⚠️  Pages with errors:');
-    for (const e of errors) console.log(`   ${e.route}: ${e.error}`);
-    console.log('');
+  console.log('\n  Optimizing output...\n');
+
+  // 1. Convert PNG/JPG → WebP + generate responsive sizes
+  const imagesConverted = await convertImagesToWebP();
+  console.log(`  ✓ Converted ${imagesConverted} images to WebP (with responsive variants)`);
+
+  // 2. Update <img> src references in HTML to .webp
+  updateHtmlImageRefs();
+  console.log('  ✓ Updated HTML image references to .webp');
+
+  // 3. Add responsive srcset + width/height to images
+  addResponsiveImagesAndDimensions();
+  console.log('  ✓ Added srcset, width, and height to images');
+
+  // 4. Self-host Google Fonts
+  const fontCount = await selfHostGoogleFonts();
+  if (fontCount > 0) {
+    updateFontReferences();
+    console.log(`  ✓ Self-hosted ${fontCount} Google Font files`);
   }
 
-  // Table
+  // 5. PurgeCSS on styles.css
+  const cssStats = await purgeProductionCss();
+  if (cssStats) {
+    console.log(`  ✓ Purged CSS: ${(cssStats.before / 1024).toFixed(1)} KB → ${(cssStats.after / 1024).toFixed(1)} KB`);
+  }
+
+  // 6. Remove unreferenced .mp4 files
+  const mp4sRemoved = removeMp4Files();
+  if (mp4sRemoved > 0) console.log(`  ✓ Removed ${mp4sRemoved} unreferenced .mp4 file(s)`);
+
+  // 7. Fix non-descriptive links (add aria-labels)
+  fixNonDescriptiveLinks();
+  console.log('  ✓ Added aria-labels to non-descriptive links');
+
+  // 8. Clean up React artifacts
+  cleanupHtml();
+  console.log('  ✓ Cleaned up React artifacts');
+
+  // 9. FAQ schema for compare pages
+  addFaqSchemaToComparePages();
+  console.log('  ✓ Added FAQ schema to compare pages');
+
+  // 10. Generate sitemap.xml and robots.txt
+  generateSitemap(routes);
+  generateRobotsTxt();
+  console.log('  ✓ Generated sitemap.xml and robots.txt');
+
+  // ─── Summary ────────────────────────────────────────────────────
+
+  const pagesOk = results.filter(r => r.status === 'ok').length;
+  const totalDirSize = dirSizeBytes(OUT_DIR);
+
+  console.log('\n' + '─'.repeat(60));
+  console.log('\n  Build Summary\n');
+  console.log(`  Total pages generated:    ${pagesOk} / ${routes.length}`);
+  console.log(`  Total size of output:     ${(totalDirSize / 1024 / 1024).toFixed(2)} MB`);
+  if (cssStats) {
+    console.log(`  styles.css before purge:  ${(cssStats.before / 1024).toFixed(1)} KB`);
+    console.log(`  styles.css after purge:   ${(cssStats.after / 1024).toFixed(1)} KB`);
+  }
+  console.log(`  Images converted to WebP: ${imagesConverted}`);
+  if (fontCount > 0) console.log(`  Google Fonts self-hosted: ${fontCount} files`);
+
+  if (errors.length > 0) {
+    console.log('\n  ⚠ Pages with errors:');
+    for (const e of errors) console.log(`    ${e.route}: ${e.error}`);
+  }
+
+  // Detailed page table
+  console.log('\n' + '─'.repeat(65));
   console.log('Page'.padEnd(55) + 'Size');
   console.log('─'.repeat(65));
   let totalKB = 0;
@@ -915,7 +1368,7 @@ async function main() {
     }
   }
   console.log('─'.repeat(65));
-  console.log(`${'Total'.padEnd(55)} ${totalKB.toFixed(1)} KB\n`);
+  console.log(`${'Total HTML'.padEnd(55)} ${totalKB.toFixed(1)} KB\n`);
 }
 
 main().catch((err) => {
