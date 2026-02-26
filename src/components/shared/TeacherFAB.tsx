@@ -1,10 +1,13 @@
 import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, X, ClipboardList, FileText, CalendarPlus } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useOrg } from '@/contexts/OrgContext';
 import { cn } from '@/lib/utils';
+
+/** Routes that provide their own contextual FAB — hide the global one */
+const HIDDEN_ROUTES = ['/calendar'];
 
 const FAB_ACTIONS = [
   { id: 'register', label: 'Register', icon: ClipboardList, href: '/register', color: 'bg-blue-500' },
@@ -16,6 +19,7 @@ export function TeacherFAB() {
   const isMobile = useIsMobile();
   const { currentRole } = useOrg();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [isOpen, setIsOpen] = useState(false);
 
   const isStaffRole = currentRole === 'owner' || currentRole === 'admin' || currentRole === 'teacher';
@@ -32,7 +36,9 @@ export function TeacherFAB() {
     } catch { /* ignore */ }
   }, []);
 
+  // Hide on non-mobile, non-staff, or routes with their own FAB
   if (!isMobile || !isStaffRole) return null;
+  if (HIDDEN_ROUTES.some(r => pathname.startsWith(r))) return null;
 
   return (
     <>
@@ -49,8 +55,8 @@ export function TeacherFAB() {
         )}
       </AnimatePresence>
 
-      {/* Action buttons */}
-      <div className="fixed bottom-20 right-4 z-50 flex flex-col-reverse items-end gap-3">
+      {/* Action buttons — positioned above the bottom nav + safe area */}
+      <div className="fixed right-4 z-[60] flex flex-col-reverse items-end gap-3" style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
         <AnimatePresence>
           {isOpen && FAB_ACTIONS.map((action, index) => (
             <motion.button

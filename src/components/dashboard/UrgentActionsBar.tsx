@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, EyeOff } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUrgentActions } from '@/hooks/useUrgentActions';
 import { useBannerDismissals } from '@/hooks/useBannerDismissals';
@@ -10,8 +10,9 @@ const BAR_KEY = 'urgent_actions_bar';
 
 export function UrgentActionsBar() {
   const { actions, isLoading, hasActions } = useUrgentActions();
-  const { isDismissed, dismissForSession, dismissPermanently } = useBannerDismissals();
+  const { isDismissed, dismissPermanently } = useBannerDismissals();
 
+  // Auto-hide when no actions; honour permanent dismiss
   if (isLoading || !hasActions || isDismissed(BAR_KEY)) return null;
 
   const summaryParts = actions.map(
@@ -42,20 +43,12 @@ export function UrgentActionsBar() {
               ))}
             </span>
           </div>
-          <button
-            onClick={() => dismissPermanently(BAR_KEY)}
-            className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-micro text-warning/70 transition-colors hover:bg-warning/20 hover:text-warning-foreground"
-            aria-label="Don't show again"
-          >
-            <EyeOff className="h-3 w-3" />
-            <span>Don't show</span>
-          </button>
           <Button
             variant="ghost"
             size="icon"
             className="h-11 w-11 shrink-0 text-warning hover:bg-warning/20 hover:text-warning-foreground"
-            onClick={() => dismissForSession(BAR_KEY)}
-            aria-label="Dismiss"
+            onClick={() => dismissPermanently(BAR_KEY)}
+            aria-label="Dismiss permanently"
           >
             <X className="h-3.5 w-3.5" />
           </Button>

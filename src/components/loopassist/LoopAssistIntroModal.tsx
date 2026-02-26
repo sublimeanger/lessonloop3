@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, MessageSquare, Zap, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface LoopAssistIntroModalProps {
   open: boolean;
@@ -21,17 +22,30 @@ export function LoopAssistIntroModal({ open, onOpenChange }: LoopAssistIntroModa
   const { user } = useAuth();
   const [hasSeenIntro, setHasSeenIntro] = useState(true);
 
-  // Check if user has seen the intro
+  // Check if user has seen the intro — localStorage first (fast), then user metadata (cross-device)
   useEffect(() => {
     if (user) {
-      const seen = safeGetItem(`lessonloop_loopassist_intro_${user.id}`);
-      setHasSeenIntro(!!seen);
+      const seenLocal = safeGetItem(`lessonloop_loopassist_intro_${user.id}`);
+      const seenMeta = user.user_metadata?.loopassist_intro_seen;
+      if (seenLocal || seenMeta) {
+        // Sync localStorage if only metadata flag is set (new device)
+        if (!seenLocal && seenMeta) {
+          safeSetItem(`lessonloop_loopassist_intro_${user.id}`, 'true');
+        }
+        setHasSeenIntro(true);
+      } else {
+        setHasSeenIntro(false);
+      }
     }
   }, [user]);
 
   const handleDismiss = () => {
     if (user) {
       safeSetItem(`lessonloop_loopassist_intro_${user.id}`, 'true');
+      // Persist to user metadata so flag survives across devices/browsers
+      supabase.auth.updateUser({
+        data: { loopassist_intro_seen: true },
+      });
     }
     setHasSeenIntro(true);
     onOpenChange(false);
@@ -141,8 +155,9 @@ export function useLoopAssistIntro() {
 
   const checkAndShowIntro = () => {
     if (user) {
-      const seen = safeGetItem(`lessonloop_loopassist_intro_${user.id}`);
-      if (!seen) {
+      const seenLocal = safeGetItem(`lessonloop_loopassist_intro_${user.id}`);
+      const seenMeta = user.user_metadata?.loopassist_intro_seen;
+      if (!seenLocal && !seenMeta) {
         setShowIntro(true);
       }
     }

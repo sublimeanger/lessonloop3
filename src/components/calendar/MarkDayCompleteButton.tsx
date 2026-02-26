@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { format, endOfDay, isBefore } from 'date-fns';
+import { useQueryClient } from '@tanstack/react-query';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +20,7 @@ export function MarkDayCompleteButton({ currentDate, lessons, onComplete }: Mark
   const { currentOrg } = useOrg();
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -90,7 +92,11 @@ export function MarkDayCompleteButton({ currentDate, lessons, onComplete }: Mark
         title: 'Lessons marked complete',
         description: `${eligibleLessons.length} lesson${eligibleLessons.length > 1 ? 's' : ''} completed with ${newRecords.length} attendance record${newRecords.length !== 1 ? 's' : ''} created.`,
       });
-      
+
+      // Immediately refresh notification counts so dashboard alerts update
+      queryClient.invalidateQueries({ queryKey: ['urgent-actions'] });
+      queryClient.invalidateQueries({ queryKey: ['proactive-alerts'] });
+
       onComplete();
     } catch (error: any) {
       toast({
