@@ -29,7 +29,7 @@ export const blogPosts: BlogPost[] = [
     },
     featuredImage: "/images/blog/guide-running-music-school.jpg",
     tags: ["music school", "UK", "management", "guide", "business", "scheduling", "billing"],
-    relatedPosts: ["starting-a-music-school-uk"],
+    relatedPosts: ["starting-a-music-school-uk", "music-school-pricing-strategies"],
     content: `Running a music school is one of the most rewarding things you can do with a life in music. You get to watch students fall in love with an instrument, build something genuinely yours, and — if you get the business side right — earn a very good living from it.
 
 But here's the truth that nobody tells you at music college: running a music school is only about 30% music. The rest is scheduling, invoicing, chasing payments, managing teachers, communicating with parents, tracking attendance, handling cancellations, and a hundred other admin tasks that have nothing to do with crotchets and quavers.
@@ -228,7 +228,7 @@ Most school owners find that spreadsheets become unmanageable somewhere between 
     },
     featuredImage: "/images/blog/starting-music-school-uk.jpg",
     tags: ["music school", "startup", "UK", "business registration", "DBS", "pricing"],
-    relatedPosts: ["guide-to-running-a-music-school"],
+    relatedPosts: ["guide-to-running-a-music-school", "music-school-pricing-strategies"],
     content: `You've been teaching music for a while. Maybe you've got a full diary of private students, or perhaps you've been teaching at someone else's school and you know you could do it better. Either way, the idea of starting your own music school has been growing louder than a Year 3 drumming class.
 
 Good news: the UK is an excellent market for private music education. Demand for lessons is consistently strong, parents value music highly (particularly for ABRSM and Trinity exam pathways), and there's no dominant national chain — the market is made up of thousands of independent schools and solo teachers. There's space for you.
@@ -355,6 +355,118 @@ Music tuition is VAT-exempt in the UK under HMRC Notice 701/30, provided the tui
 ### How long does it take to build a full-time music school?
 
 Most solo teachers can build a diary of 20–25 students within 3–6 months through local marketing and referrals. Reaching 50+ students typically takes 12–18 months. Growing to 100+ usually requires hiring additional teachers and may take 2–3 years. The timeline depends heavily on your local market, your marketing efforts, and the quality of your teaching and service.`,
+  },
+  {
+    slug: "music-school-pricing-strategies",
+    title: "Music School Pricing Strategies: Per Lesson vs Termly vs Packages",
+    excerpt: "Should you charge per lesson, termly, or offer packages? Compare music school pricing models used by UK academies and find what works for your school.",
+    date: "",
+    category: "Music Business",
+    readTime: "7 min",
+    author: {
+      name: "LessonLoop",
+      role: "Music School Management Platform",
+    },
+    featuredImage: "/images/blog/music-school-pricing-strategies.jpg",
+    tags: ["pricing", "billing", "UK", "termly", "music school", "revenue"],
+    relatedPosts: ["guide-to-running-a-music-school", "starting-a-music-school-uk"],
+    content: `Pricing is one of those decisions that music school owners agonise over and then never revisit. They pick a number when they start teaching, add a pound or two every couple of years, and wonder why their margins feel tight.
+
+Good pricing isn't just about the number on the invoice. It's about the billing *model* — how you structure payment, when you collect it, and what expectations it creates. The right model can double your cash flow predictability, cut your admin time significantly, and improve student retention. The wrong one can leave you chasing payments every week and dealing with constant cancellations.
+
+Here are the three models used by UK music schools, with an honest assessment of each.
+
+## Per-lesson billing
+
+Per-lesson billing is exactly what it sounds like: students pay for each lesson individually, either in advance or on the day. It's the simplest model to explain and the one most parents expect when they first enquire about music lessons.
+
+**When it works well.** Per-lesson billing suits casual adult learners who can't commit to a fixed weekly slot, students on a trial period before committing to a full term, and schools in the very early stages where you're still building a regular timetable. It's also the norm for teachers who work through platform marketplaces or aggregator websites.
+
+**Where it falls apart.** Per-lesson billing creates three problems that compound as you grow. First, your revenue is unpredictable — if five students cancel in one week, your income drops by £100–£200 with no notice. Second, cancellations are far more frequent because there's no financial commitment beyond the next lesson. Third, your admin workload is higher because you're processing individual payments constantly rather than a batch at the start of term.
+
+**Typical UK rates (2026).** 30-minute lessons range from £15–£25 outside London and £25–£40 in London and the South East. 45-minute lessons typically add 40–50% to the 30-minute rate. 60-minute lessons are roughly double the 30-minute rate.
+
+**Best for:** Solo teachers just starting out, adult learner programmes, trial periods.
+
+## Termly billing
+
+Termly billing is the UK standard for established music schools, and for good reason. Students commit to a full term of lessons (typically 10–13 weeks depending on term length), and the parent pays the full amount either upfront or in instalments at the start of term.
+
+**When it works well.** Termly billing works for almost every UK music school with a regular timetable of children's lessons. It mirrors the school term structure that parents already understand, it gives you a predictable revenue lump at the start of each term, and it dramatically reduces casual cancellations because the student has already committed financially.
+
+**Why it's the best model for most schools.** The numbers tell the story. Schools that switch from per-lesson to termly billing typically see a 15–25% increase in effective revenue — not because they charge more per lesson, but because cancellation rates drop, attendance improves, and payment collection becomes a batch process rather than a weekly chase.
+
+Termly billing also improves retention. When a parent has paid for 12 weeks of lessons, they're far more likely to maintain attendance through the inevitable patches where the child's motivation dips. That sustained attendance often carries them through to the point where motivation returns.
+
+**How to implement it.** Calculate your term rate by multiplying your per-lesson rate by the number of lessons in the term. A school charging £22 per 30-minute lesson in a 12-week term would bill £264 per student per term. Offer a payment plan for families who can't pay upfront — two or three monthly instalments work well. Specify in your terms that the commitment is for the full term regardless of individual lesson attendance.
+
+Use [automated billing software](/features/billing) to generate and send all invoices in a single batch at the start of term. LessonLoop's termly billing runs generate every invoice in seconds, and families can pay online via Stripe.
+
+**The catch.** You need very clear terms and conditions, particularly around what happens when a student joins mid-term, when they want to leave mid-term, and how make-up lessons work for absences. Ambiguity here creates disputes, so get your policy in writing before you bill your first term.
+
+**Best for:** The majority of UK music schools with regular weekly lessons for children.
+
+## Package billing
+
+Package billing offers a fixed number of lessons (typically 5, 10 or 20) that the student can use within a defined period. It's a hybrid between per-lesson flexibility and the revenue predictability of termly billing.
+
+**When it works well.** Packages are ideal for adult learners who want flexibility, students preparing for specific events (an exam, audition or performance), and schools that run workshops, masterclasses or intensive courses alongside their regular programme. They also work well as a "gateway" — a 5-lesson taster package is lower commitment than a full term and can convert casual enquiries into ongoing students.
+
+**Where it gets complicated.** Package billing creates tracking overhead. You need to monitor how many lessons each student has used, when their package expires, and what happens to unused lessons. Without software to track this, it becomes an administrative headache quickly. There's also a cash flow timing issue — if a student buys a 10-lesson package but spreads lessons over 5 months, your revenue per month is lower than if they were on a termly plan.
+
+**How to price it.** Packages should offer a slight discount compared to per-lesson rates to incentivise commitment. A common structure is: single lesson at £25, 5-pack at £115 (£23/lesson, 8% discount), 10-pack at £210 (£21/lesson, 16% discount). The discount should be meaningful enough to encourage the package purchase without significantly eroding your per-lesson economics.
+
+**Best for:** Adult programmes, workshops, taster courses, flexible scheduling environments.
+
+## Setting your rate: what the UK market looks like
+
+Pricing varies significantly by region, instrument, teacher experience and lesson format. Here's a realistic picture of the UK market in 2026:
+
+**Solo teacher, 30-minute one-to-one lesson:** £15–£22 (regions), £22–£35 (London/SE), £35–£50+ (specialist/advanced, London)
+
+**Multi-teacher academy, 30-minute one-to-one lesson:** £18–£28 (regions), £28–£42 (London/SE)
+
+**Group lessons (3–4 students, 45–60 minutes):** £8–£15 per student per session
+
+**Theory classes (group, 45–60 minutes):** £8–£12 per student per session
+
+These are guidelines, not rules. If you offer something exceptional — outstanding teaching, an excellent parent experience, beautiful facilities, strong exam results — you can charge at the top of the range or above it. Parents pay for value and trust, not just for 30 minutes with an instrument.
+
+## Discounts: when they help and when they hurt
+
+**Sibling discounts** are extremely common in UK music schools (typically 5–10% off the second child, sometimes more for three or more). They're an easy retention tool for multi-child families and reduce the risk of a parent choosing which child gets lessons if budget is tight.
+
+**Upfront payment discounts** (e.g., 5% off for paying the full term in advance) improve your cash flow and reduce payment chasing. They work well for schools using termly billing.
+
+**Multi-lesson discounts** (e.g., discount for booking two instruments) encourage higher spend per family and improve retention.
+
+**Introductory discounts** (e.g., first month at 50% off) can drive trial but can also attract price-sensitive families who churn once the discount ends. Use them cautiously and with a clear conversion path to full-rate billing.
+
+Avoid discounting to compete on price. A well-run school with excellent communication, modern systems and a professional parent experience can charge a premium. Race-to-the-bottom pricing attracts the wrong families and makes your business unsustainable.
+
+## The billing model matters more than the rate
+
+Here's the insight most music school owners miss: a school charging £20/lesson on a termly basis with 90% attendance will earn more per student than a school charging £25/lesson on a per-lesson basis with 70% attendance. The billing model drives the behaviour, and the behaviour drives the revenue.
+
+Get the model right first. Then set a competitive rate. Then [automate the billing process](/features/billing) so you spend your time teaching and growing, not chasing payments.
+
+For the complete guide to billing operations — invoicing, payment collection, automation, refunds and tax — read our [music school billing guide](/blog/guide-to-music-school-billing).
+
+---
+
+## Frequently Asked Questions
+
+### How often should I raise my music lesson prices?
+
+Most successful UK music schools review prices annually and raise them every 1–2 years. An annual increase of 3–5% (roughly in line with inflation) is considered standard and rarely causes pushback if you communicate it clearly. Give parents at least one term's notice before a price increase takes effect. Never apologise for raising prices — frame it as investing in teaching quality, better facilities, or improved technology.
+
+### Should I charge the same rate for all instruments?
+
+Most schools charge the same base rate for all instruments at a given lesson length. Exceptions include drum lessons (which may command a premium due to equipment and space requirements) and vocal coaching (which is sometimes priced higher for advanced students working with a specialist coach). Keeping a uniform rate simplifies your billing and avoids awkward conversations.
+
+### How do I handle students who want to pay late?
+
+Be clear about your payment terms from day one. Termly billing with a clear due date (e.g., "invoices due before the first lesson of term") sets the expectation. [Automated payment reminders](/features/billing) sent 7 days before, on the due date, and 7 days after significantly reduce late payment. For persistent late payers, offer an instalment plan rather than tolerating ongoing lateness — it preserves the relationship while protecting your cash flow.`,
   },
 ];
 
