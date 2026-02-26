@@ -28,6 +28,7 @@ const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const Onboarding = lazy(() => import('@/pages/Onboarding'));
 const AcceptInvite = lazy(() => import('@/pages/AcceptInvite'));
 const VerifyEmail = lazy(() => import('@/pages/VerifyEmail'));
+const ZoomOAuthCallback = lazy(() => import('@/pages/ZoomOAuthCallback'));
 
 // ─── Lazy: App ───────────────────────────────────────────
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
@@ -93,6 +94,7 @@ export const authOnlyRoutes: RouteConfig[] = [
   { path: '/onboarding', component: Onboarding, auth: 'auth-only', requireOnboarding: false, label: 'Onboarding' },
   { path: '/verify-email', component: VerifyEmail, auth: 'auth-only', requireOnboarding: false, label: 'Verify Email' },
   { path: '/accept-invite', component: AcceptInvite, auth: 'public', label: 'Accept Invite' },
+  { path: '/auth/zoom/callback', component: ZoomOAuthCallback, auth: 'public', label: 'Zoom OAuth Callback' },
 ];
 
 /** Portal routes (parent role) */
