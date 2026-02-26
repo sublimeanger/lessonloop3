@@ -76,11 +76,18 @@ const PortalProfile = lazy(() => import('@/pages/portal/PortalProfile'));
 const MARKETING_BASE = 'https://lessonloop.net';
 
 /**
- * When window.__SSG_MODE__ is set (by the prerender script), we render the
- * actual marketing page component so Puppeteer can capture the content.
- * In normal production, we redirect to the external static site.
+ * When window.__SSG_MODE__ is set (by the prerender script), or the app is
+ * running on a Lovable preview domain, we render the actual marketing page
+ * components so they can be previewed. In production (app.lessonloop.net),
+ * we redirect to the external static site.
  */
-const isSSG = typeof window !== 'undefined' && (window as any).__SSG_MODE__;
+const isPreviewDomain =
+  typeof window !== 'undefined' &&
+  (window.location.hostname.endsWith('.lovable.app') ||
+   window.location.hostname.endsWith('.lovableproject.com') ||
+   window.location.hostname === 'localhost');
+
+const isSSG = typeof window !== 'undefined' && ((window as any).__SSG_MODE__ || isPreviewDomain);
 
 // Lazy-loaded marketing page components (chunks only fetched in SSG mode)
 const MktHome = lazy(() => import('@/pages/marketing/Home'));
