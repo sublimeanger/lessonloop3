@@ -1007,6 +1007,27 @@ function postProcess(html, routePath, blogSlugs) {
 
   html = html.replace('</body>', interactiveScript + '\n</body>');
 
+  // ── Force all animate-on-scroll elements visible in static HTML ──
+  // Without JS, these elements are stuck at opacity:0. Mark them as
+  // already-visible so the content is readable on first paint; the
+  // IntersectionObserver script above will still re-animate on scroll.
+  html = html.replace(/class="([^"]*)\banimate-on-scroll\b([^"]*)"/g, 'class="$1animate-on-scroll is-visible$2"');
+
+  // Force inline opacity:0 (from Framer Motion) to opacity:1
+  html = html.replace(/opacity:\s*0([;"])/g, 'opacity: 1$1');
+
+  // Fix standalone style="opacity: 0" attributes
+  html = html.replace(/style="opacity:\s*0;?\s*"/g, 'style="opacity: 1"');
+
+  // Fix opacity:0 paired with transform
+  html = html.replace(/opacity:\s*0;\s*transform:/g, 'opacity: 1; transform:');
+
+  // Neutralise translateY(20px) left over from scroll-in animations
+  html = html.replace(/transform:\s*translateY\(20px\)/g, 'transform: translateY(0)');
+
+  // Fix scale(0) hidden states (step icons etc)
+  html = html.replace(/transform:\s*scale\(0\)/g, 'transform: scale(1)');
+
   return html;
 }
 
