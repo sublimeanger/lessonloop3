@@ -204,21 +204,20 @@ const productionMarketingRoutes: RouteConfig[] = [
 ];
 
 /**
- * In SSG mode, dynamically load the SSG routes from a separate file.
- * This uses top-level await so the module fully resolves before exports
- * are consumed. In non-SSG mode (the common case), this block is skipped
- * entirely — routes-ssg.ts is never loaded by Vite.
+ * In SSG mode (prerender script), call buildSSGMarketingRoutes() to create
+ * lazy-loaded marketing page components. The marketing page import() calls
+ * are inside the function body in routes-ssg.ts — they are NEVER executed
+ * unless this function is called.
+ *
+ * In non-SSG mode (production, Lovable, localhost), we use
+ * productionMarketingRoutes which has zero import() calls.
  */
-let ssgMarketingRoutes: RouteConfig[] | null = null;
-if (isSSG) {
-  const { buildSSGMarketingRoutes } = await import('./routes-ssg');
-  ssgMarketingRoutes = buildSSGMarketingRoutes();
-}
+import { buildSSGMarketingRoutes } from './routes-ssg';
 
 /** Marketing routes — SSG renders real pages; production redirects to static site */
 export const marketingRoutes: RouteConfig[] = [
   ...sharedPublicRoutes,
-  ...(ssgMarketingRoutes ?? productionMarketingRoutes),
+  ...(isSSG ? buildSSGMarketingRoutes() : productionMarketingRoutes),
 ];
 
 /** 404 route */
