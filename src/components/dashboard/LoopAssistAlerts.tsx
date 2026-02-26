@@ -1,4 +1,4 @@
-import { AlertTriangle, CircleAlert, Sparkles, X, EyeOff } from 'lucide-react';
+import { AlertTriangle, CircleAlert, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProactiveAlerts, ProactiveAlert } from '@/hooks/useProactiveAlerts';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 export function LoopAssistAlerts() {
   const { alerts } = useProactiveAlerts();
   const { openDrawerWithMessage } = useLoopAssistUI();
-  const { isDismissed, dismissForSession, dismissPermanently } = useBannerDismissals();
+  const { isDismissed, dismissPermanently } = useBannerDismissals();
 
   const actionableAlerts = alerts
     .filter(a => a.severity === 'urgent' || a.severity === 'warning')
@@ -25,13 +25,11 @@ export function LoopAssistAlerts() {
           alert={alert}
           onAction={() => {
             if (alert.suggestedAction) {
-              // Auto-dismiss this alert when the user takes action
-              dismissForSession(alert.type);
+              dismissPermanently(alert.type);
               openDrawerWithMessage(alert.suggestedAction);
             }
           }}
-          onDismiss={() => dismissForSession(alert.type)}
-          onDismissForever={() => dismissPermanently(alert.type)}
+          onDismiss={() => dismissPermanently(alert.type)}
         />
       ))}
     </div>
@@ -42,12 +40,10 @@ function AlertRow({
   alert,
   onAction,
   onDismiss,
-  onDismissForever,
 }: {
   alert: ProactiveAlert;
   onAction: () => void;
   onDismiss: () => void;
-  onDismissForever: () => void;
 }) {
   const isUrgent = alert.severity === 'urgent';
 
@@ -80,15 +76,6 @@ function AlertRow({
           <span className="sm:hidden">Fix</span>
         </Button>
       )}
-
-      <button
-        onClick={onDismissForever}
-        className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-micro text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        aria-label="Don't show again"
-      >
-        <EyeOff className="h-3 w-3" />
-        <span>Don't show</span>
-      </button>
 
       <button
         onClick={onDismiss}

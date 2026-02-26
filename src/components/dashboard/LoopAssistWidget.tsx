@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Sparkles, Send, AlertTriangle } from 'lucide-react';
+import { Sparkles, Send, AlertTriangle, CircleAlert, Calendar } from 'lucide-react';
+import type { ProactiveAlert } from '@/hooks/useProactiveAlerts';
 import { Button } from '@/components/ui/button';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { useProactiveAlerts } from '@/hooks/useProactiveAlerts';
@@ -12,6 +13,17 @@ const SUGGESTED_PROMPTS = [
   "Show outstanding invoices",
   "How's my completion rate?",
 ];
+
+function alertIcon(severity: ProactiveAlert['severity']) {
+  switch (severity) {
+    case 'urgent':
+      return <CircleAlert className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />;
+    case 'warning':
+      return <AlertTriangle className="h-3.5 w-3.5 text-warning mt-0.5 shrink-0" />;
+    default:
+      return <Calendar className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />;
+  }
+}
 
 export function LoopAssistWidget() {
   const [input, setInput] = useState('');
@@ -59,8 +71,8 @@ export function LoopAssistWidget() {
 
           {/* Top alert if present */}
           {topAlert && (
-            <div className="flex items-start gap-2 rounded-xl bg-muted/60 px-3 py-2.5 text-body">
-              <AlertTriangle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+            <div className="flex items-start gap-2 rounded-xl bg-muted/60 px-2.5 py-2 sm:px-3 sm:py-2.5 text-body">
+              {alertIcon(topAlert.severity)}
               <span className="text-muted-foreground line-clamp-2">{topAlert.message}</span>
             </div>
           )}
@@ -86,15 +98,15 @@ export function LoopAssistWidget() {
             </Button>
           </div>
 
-          {/* Suggested prompts */}
-          <div className="flex flex-wrap gap-2">
+          {/* Suggested prompts — horizontal scroll on mobile, wrap on desktop */}
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x scrollbar-hide sm:flex-wrap sm:overflow-visible sm:pb-0 sm:mx-0 sm:px-0">
             {SUGGESTED_PROMPTS.map((prompt) => (
               <Button
                 key={prompt}
                 type="button"
                 variant="outline"
                 size="sm"
-                className="min-h-11 text-body font-normal"
+                className="min-h-11 text-body font-normal whitespace-nowrap snap-start shrink-0 sm:whitespace-normal sm:shrink"
                 onClick={() => handlePromptClick(prompt)}
               >
                 {prompt}

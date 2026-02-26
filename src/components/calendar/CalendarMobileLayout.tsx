@@ -117,7 +117,8 @@ export function CalendarMobileLayout({
             d.setHours(9, 0, 0, 0);
             actions.openNewLessonModal(d);
           }}
-          className="fixed right-6 bottom-6 z-40 h-14 w-14 rounded-full bg-foreground text-background shadow-lg flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+          className="fixed right-6 z-[60] h-14 w-14 rounded-full bg-foreground text-background shadow-lg flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
           aria-label="New Lesson"
           disabled={!isOnline}
         >
