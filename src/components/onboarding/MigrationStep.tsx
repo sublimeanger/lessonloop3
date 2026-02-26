@@ -294,14 +294,14 @@ export function MigrationStep({
   return (
     <motion.div
       key="migration"
-      initial={{ opacity: 0, x: 20 }}
+      initial={{ opacity: 0, x: 30 }}
       animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3 }}
+      exit={{ opacity: 0, x: -30 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div className="mb-8 text-center">
-        <h1 className="text-2xl sm:text-3xl font-bold">Bring Your Data</h1>
-        <p className="mt-2 text-muted-foreground">
+      <div className="mb-8 sm:mb-10 text-center">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Bring Your Data</h1>
+        <p className="mt-2 text-sm sm:text-base text-muted-foreground">
           Already using music teaching software? We'll import your students in seconds.
         </p>
       </div>
@@ -319,58 +319,61 @@ export function MigrationStep({
             {/* Switching option */}
             <motion.button
               type="button"
+              whileHover={{ y: -2, transition: { duration: 0.2 } }}
               whileTap={{ scale: 0.98 }}
               onClick={handleChoiceSwitching}
-              className="w-full flex items-center gap-4 rounded-xl border-2 border-border p-5 text-left transition-all hover:border-primary/40 hover:bg-muted/30"
+              className="group w-full flex items-center gap-4 rounded-xl border-2 border-border p-4 sm:p-5 text-left transition-all duration-200 hover:border-primary/40 hover:shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <div className="rounded-xl bg-primary/10 p-3">
+              <div className="shrink-0 rounded-xl bg-primary/10 p-3 transition-colors group-hover:bg-primary/15">
                 <ArrowDownToLine className="h-5 w-5 text-primary" />
               </div>
-              <div className="flex-1">
-                <div className="font-semibold">Yes, import my data</div>
-                <div className="text-sm text-muted-foreground">
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-sm sm:text-base">Yes, import my data</div>
+                <div className="text-xs sm:text-sm text-muted-foreground">
                   Upload a CSV from My Music Staff, Opus 1, Teachworks, and more
                 </div>
               </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
             </motion.button>
 
             {/* Fresh start */}
             <motion.button
               type="button"
+              whileHover={{ y: -2, transition: { duration: 0.2 } }}
               whileTap={{ scale: 0.98 }}
               onClick={() => handleChoiceSkip('fresh')}
-              className="w-full flex items-center gap-4 rounded-xl border-2 border-border p-5 text-left transition-all hover:border-primary/40 hover:bg-muted/30"
+              className="group w-full flex items-center gap-4 rounded-xl border-2 border-border p-4 sm:p-5 text-left transition-all duration-200 hover:border-primary/40 hover:shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <div className="rounded-xl bg-muted p-3">
+              <div className="shrink-0 rounded-xl bg-muted p-3 transition-colors group-hover:bg-muted/80">
                 <Rocket className="h-5 w-5 text-muted-foreground" />
               </div>
-              <div className="flex-1">
-                <div className="font-semibold">No, starting fresh</div>
-                <div className="text-sm text-muted-foreground">
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-sm sm:text-base">No, starting fresh</div>
+                <div className="text-xs sm:text-sm text-muted-foreground">
                   I'll add my students manually
                 </div>
               </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
             </motion.button>
 
             {/* Later */}
             <motion.button
               type="button"
+              whileHover={{ y: -2, transition: { duration: 0.2 } }}
               whileTap={{ scale: 0.98 }}
               onClick={() => handleChoiceSkip('later')}
-              className="w-full flex items-center gap-4 rounded-xl border-2 border-border p-5 text-left transition-all hover:border-primary/40 hover:bg-muted/30"
+              className="group w-full flex items-center gap-4 rounded-xl border-2 border-border p-4 sm:p-5 text-left transition-all duration-200 hover:border-primary/40 hover:shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <div className="rounded-xl bg-muted p-3">
+              <div className="shrink-0 rounded-xl bg-muted p-3 transition-colors group-hover:bg-muted/80">
                 <Clock className="h-5 w-5 text-muted-foreground" />
               </div>
-              <div className="flex-1">
-                <div className="font-semibold">I'll import later</div>
-                <div className="text-sm text-muted-foreground">
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-sm sm:text-base">I'll import later</div>
+                <div className="text-xs sm:text-sm text-muted-foreground">
                   You can always import from Settings
                 </div>
               </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
             </motion.button>
 
             {/* Supported platforms badge row */}
@@ -406,13 +409,13 @@ export function MigrationStep({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
           >
-            <Card>
-              <CardContent className="space-y-5 pt-6">
+            <Card className="shadow-card">
+              <CardContent className="space-y-5 p-5 sm:p-6">
                 {/* Source selector */}
                 <div className="space-y-2">
-                  <Label className="font-medium">Importing from</Label>
+                  <Label className="text-sm font-medium">Importing from</Label>
                   <Select value={sourceSoftware} onValueChange={setSourceSoftware}>
-                    <SelectTrigger className="w-full sm:w-[320px]">
+                    <SelectTrigger className="w-full sm:w-[320px] h-10 sm:h-11">
                       <SelectValue placeholder="Select source..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -435,12 +438,12 @@ export function MigrationStep({
                   onDragOver={handleDrag}
                   onDrop={handleDrop}
                   className={`
-                    relative rounded-xl border-2 border-dashed p-6 text-center transition-all duration-200 sm:p-10
+                    relative rounded-xl border-2 border-dashed p-6 text-center transition-all duration-300 sm:p-10
                     ${isLoading
                       ? 'border-primary/40 bg-primary/5'
                       : isDragging
-                        ? 'border-primary bg-primary/10 scale-[1.01] shadow-lg'
-                        : 'border-muted-foreground/20 hover:border-primary/40 hover:bg-muted/30'
+                        ? 'border-primary bg-primary/10 scale-[1.02] shadow-elevated ring-4 ring-primary/10'
+                        : 'border-muted-foreground/20 hover:border-primary/40 hover:bg-muted/20'
                     }
                   `}
                 >
@@ -540,7 +543,7 @@ export function MigrationStep({
                 )}
 
                 {/* Compact mapping table */}
-                <div className="max-h-[320px] overflow-y-auto rounded-lg border">
+                <div className="max-h-[300px] sm:max-h-[400px] overflow-y-auto rounded-lg border" aria-label="Column mapping table">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -554,15 +557,20 @@ export function MigrationStep({
                         const available = getAvailableFields(mapping.csv_header);
                         return (
                           <TableRow key={mapping.csv_header}>
-                            <TableCell className="font-mono text-xs truncate max-w-[150px]">
-                              {mapping.csv_header}
+                            <TableCell className="font-mono text-xs max-w-[150px]">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="block truncate cursor-default">{mapping.csv_header}</span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top"><p className="font-mono text-xs">{mapping.csv_header}</p></TooltipContent>
+                              </Tooltip>
                             </TableCell>
                             <TableCell>
                               <Select
                                 value={mapping.target_field || 'none'}
                                 onValueChange={(v) => updateMapping(mapping.csv_header, v)}
                               >
-                                <SelectTrigger className="h-8 text-xs">
+                                <SelectTrigger className="h-9 text-xs">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -624,44 +632,46 @@ export function MigrationStep({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
           >
-            <Card className="overflow-hidden">
-              <CardContent className="pt-8 pb-8 text-center space-y-4">
+            <Card className="overflow-hidden shadow-card">
+              <CardContent className="pt-8 pb-8 text-center space-y-5">
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 15 }}
-                  className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-success/10"
+                  transition={{ type: 'spring', stiffness: 350, damping: 18 }}
+                  className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-success/15 to-success/5 ring-1 ring-success/10"
                 >
-                  <CheckCircle2 className="h-7 w-7 text-success" />
+                  <CheckCircle2 className="h-8 w-8 text-success" />
                 </motion.div>
 
-                <div>
-                  <h2 className="text-xl font-bold">Data Ready to Import</h2>
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                >
+                  <h2 className="text-xl font-bold tracking-tight">Data Ready to Import</h2>
                   <p className="text-sm text-muted-foreground mt-1">
                     We'll import everything when your account is set up.
                   </p>
-                </div>
+                </motion.div>
 
                 {summary && (
-                  <div className="flex justify-center gap-6 py-2">
-                    {summary.students > 0 && (
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-primary">{summary.students}</div>
-                        <div className="text-xs text-muted-foreground">Students</div>
-                      </div>
-                    )}
-                    {summary.guardians > 0 && (
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-primary">{summary.guardians}</div>
-                        <div className="text-xs text-muted-foreground">Guardians</div>
-                      </div>
-                    )}
-                    {summary.lessons > 0 && (
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-primary">{summary.lessons}</div>
-                        <div className="text-xs text-muted-foreground">Lessons</div>
-                      </div>
-                    )}
+                  <div className="flex justify-center gap-6 sm:gap-8 py-2">
+                    {[
+                      { count: summary.students, label: 'Students' },
+                      { count: summary.guardians, label: 'Guardians' },
+                      { count: summary.lessons, label: 'Lessons' },
+                    ].filter(s => s.count > 0).map((stat, i) => (
+                      <motion.div
+                        key={stat.label}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.25 + i * 0.1 }}
+                        className="text-center"
+                      >
+                        <div className="text-2xl sm:text-3xl font-bold text-primary">{stat.count}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{stat.label}</div>
+                      </motion.div>
+                    ))}
                   </div>
                 )}
 

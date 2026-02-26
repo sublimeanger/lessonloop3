@@ -50,50 +50,50 @@ export function WelcomeStep({ fullName, orgType, onNameChange, onOrgTypeChange, 
   return (
     <motion.div
       key="welcome"
-      initial={{ opacity: 0, x: 20 }}
+      initial={{ opacity: 0, x: 30 }}
       animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3 }}
+      exit={{ opacity: 0, x: -30 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
     >
       {/* Hero */}
-      <div className="mb-8 text-center">
+      <div className="mb-8 sm:mb-10 text-center">
         <motion.div
           initial={{ scale: 0, rotate: -20 }}
           animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
-          className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10"
+          transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.1 }}
+          className="mx-auto mb-5 flex h-16 w-16 sm:h-[72px] sm:w-[72px] items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 shadow-sm ring-1 ring-primary/10"
         >
-          <Music className="h-8 w-8 text-primary" />
+          <Music className="h-8 w-8 sm:h-9 sm:w-9 text-primary" />
         </motion.div>
         <motion.h1
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="text-2xl sm:text-3xl font-bold"
+          transition={{ delay: 0.2, duration: 0.4 }}
+          className="text-2xl sm:text-3xl font-bold tracking-tight"
         >
           Welcome to LessonLoop
         </motion.h1>
         <motion.p
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mt-2 text-muted-foreground"
+          transition={{ delay: 0.3, duration: 0.4 }}
+          className="mt-2 text-muted-foreground text-sm sm:text-base"
         >
           Let's get you set up — it only takes a minute.
         </motion.p>
       </div>
 
       <form onSubmit={handleSubmit}>
-        <Card>
-          <CardContent className="space-y-6 pt-6">
+        <Card className="shadow-card">
+          <CardContent className="space-y-6 p-5 sm:p-6">
             {/* Name input */}
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35 }}
+              transition={{ delay: 0.35, duration: 0.4 }}
               className="space-y-2"
             >
-              <Label htmlFor="fullName">Your Name</Label>
+              <Label htmlFor="fullName" className="text-sm font-medium">Your Name</Label>
               <Input
                 id="fullName"
                 placeholder="Enter your full name"
@@ -102,22 +102,22 @@ export function WelcomeStep({ fullName, orgType, onNameChange, onOrgTypeChange, 
                 onChange={(e) => onNameChange(e.target.value)}
                 autoFocus
                 autoComplete="name"
-                className="h-11"
+                className="h-11 sm:h-12 text-base"
               />
             </motion.div>
 
             {/* Org type selection */}
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="space-y-2"
+              transition={{ delay: 0.4, duration: 0.4 }}
+              className="space-y-3"
             >
-              <Label>How do you teach?</Label>
+              <Label className="text-sm font-medium">How do you teach?</Label>
               <div
-                className="grid gap-3 sm:grid-cols-2"
+                className="grid gap-2.5 sm:gap-3 sm:grid-cols-2"
                 role="radiogroup"
-                aria-label="Teaching type"
+                aria-label="Select your teaching type"
                 onKeyDown={(e) => {
                   if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
                   e.preventDefault();
@@ -143,24 +143,27 @@ export function WelcomeStep({ fullName, orgType, onNameChange, onOrgTypeChange, 
                       tabIndex={isSelected ? 0 : -1}
                       aria-label={`${type.label}: ${type.description}`}
                       onClick={() => onOrgTypeChange(type.value)}
-                      initial={{ opacity: 0, y: 10 }}
+                      initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.45 + i * 0.05 }}
-                      whileTap={{ scale: 0.98 }}
-                      className={`flex items-center gap-4 rounded-xl border-2 p-4 text-left transition-all duration-200 ${
+                      transition={{ delay: 0.45 + i * 0.06, duration: 0.35 }}
+                      whileHover={{ y: -2, transition: { duration: 0.2 } }}
+                      whileTap={{ scale: 0.97 }}
+                      className={`group flex items-center gap-3.5 rounded-xl border-2 p-3.5 sm:p-4 text-left transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                         isSelected
-                          ? 'border-primary bg-primary/5 shadow-sm'
-                          : 'border-border hover:border-primary/40 hover:bg-muted/30'
+                          ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
+                          : 'border-border hover:border-primary/30 hover:shadow-card'
                       }`}
                     >
-                      <div className={`rounded-xl p-2.5 transition-colors ${
-                        isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                      <div className={`shrink-0 rounded-lg p-2.5 transition-all duration-200 ${
+                        isSelected
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'
                       }`}>
                         <Icon className="h-5 w-5" />
                       </div>
-                      <div>
-                        <div className="font-medium">{type.label}</div>
-                        <div className="text-sm text-muted-foreground">{type.description}</div>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm sm:text-base leading-tight">{type.label}</div>
+                        <div className="text-xs sm:text-sm text-muted-foreground leading-snug">{type.description}</div>
                       </div>
                     </motion.button>
                   );
@@ -174,9 +177,14 @@ export function WelcomeStep({ fullName, orgType, onNameChange, onOrgTypeChange, 
               transition={{ delay: 0.7 }}
               className="flex justify-end pt-2"
             >
-              <Button type="submit" size="lg">
+              <Button
+                type="submit"
+                size="lg"
+                disabled={!fullName.trim()}
+                className="min-w-[140px] shadow-sm hover:shadow-md transition-shadow"
+              >
                 Continue
-                <ArrowRight className="ml-2 h-4 w-4" />
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Button>
             </motion.div>
           </CardContent>

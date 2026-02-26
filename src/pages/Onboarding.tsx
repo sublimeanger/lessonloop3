@@ -347,9 +347,12 @@ export default function Onboarding() {
   // Initial loading while ensuring profile exists
   if (!profileReady) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-background">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-lg font-medium">Preparing your account...</p>
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-gradient-to-b from-background via-background to-muted/30">
+        <div className="relative">
+          <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl" />
+          <Loader2 className="relative h-10 w-10 animate-spin text-primary" />
+        </div>
+        <p className="text-lg font-semibold tracking-tight">Preparing your account...</p>
       </div>
     );
   }
@@ -357,7 +360,7 @@ export default function Onboarding() {
   // Loading / success / error screens (full-screen, no layout chrome)
   if (state.currentStep === 'loading' || state.currentStep === 'success' || state.currentStep === 'error') {
     return (
-      <div className="min-h-[100dvh] bg-background">
+      <div className="min-h-[100dvh] bg-gradient-to-b from-background via-background to-muted/30">
         <SetupStep
           step={state.currentStep}
           fullName={state.fullName}
