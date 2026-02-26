@@ -114,6 +114,18 @@ function buildSpriteSheet() {
     }
   }
 
+  // Ensure nav-dropdown icons are present (not found in page body since dropdowns are injected server-side)
+  const navExtras = {
+    'house': '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>',
+    'piano': '<path d="M18.5 8c-1.4 0-2.6-.8-3.2-2A6.87 6.87 0 0 0 2 9v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-8.5C22 9.6 20.4 8 18.5 8"></path><path d="M2 14h20"></path><path d="M6 14v4"></path><path d="M10 14v4"></path><path d="M14 14v4"></path><path d="M18 14v4"></path>',
+    'flag': '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" x2="4" y1="22" y2="15"></line>',
+  };
+  for (const [name, inner] of Object.entries(navExtras)) {
+    if (!icons.has(name)) {
+      icons.set(name, { viewBox: '0 0 24 24', inner });
+    }
+  }
+
   // Build sprite file
   let sprite = '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">\n';
   for (const [name, { viewBox, inner }] of icons) {
