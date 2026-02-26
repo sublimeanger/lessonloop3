@@ -315,9 +315,9 @@ export default function Signup() {
             </div>
             <p className="text-xs text-muted-foreground text-center">
               By creating an account, you agree to our{' '}
-              <Link to="/terms" className="font-medium text-primary hover:underline">Terms of Service</Link>{' '}
+              <a href="https://lessonloop.net/terms" className="font-medium text-primary hover:underline" target="_blank" rel="noopener noreferrer">Terms of Service</a>{' '}
               and{' '}
-              <Link to="/privacy" className="font-medium text-primary hover:underline">Privacy Policy</Link>.
+              <a href="https://lessonloop.net/privacy" className="font-medium text-primary hover:underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
             </p>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">

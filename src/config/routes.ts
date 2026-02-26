@@ -1,5 +1,7 @@
 import { lazy, type LazyExoticComponent, type ComponentType } from 'react';
 import type { AppRole } from '@/contexts/AuthContext';
+import { ExternalRedirect } from '@/components/shared/ExternalRedirect';
+import { AuthRedirect } from '@/components/shared/AuthRedirect';
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -20,45 +22,6 @@ export interface RouteConfig {
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
 import ForgotPassword from '@/pages/ForgotPassword';
-
-// ─── Lazy: Marketing ─────────────────────────────────────
-const MarketingHome = lazy(() => import('@/pages/marketing/Home'));
-const ReportDownload = lazy(() => import('@/pages/marketing/ReportDownload'));
-const Features = lazy(() => import('@/pages/marketing/Features'));
-const Pricing = lazy(() => import('@/pages/marketing/Pricing'));
-const About = lazy(() => import('@/pages/marketing/About'));
-const Blog = lazy(() => import('@/pages/marketing/Blog'));
-const BlogPost = lazy(() => import('@/pages/marketing/BlogPost'));
-const Contact = lazy(() => import('@/pages/marketing/Contact'));
-const Privacy = lazy(() => import('@/pages/marketing/Privacy'));
-const Terms = lazy(() => import('@/pages/marketing/Terms'));
-const GDPR = lazy(() => import('@/pages/marketing/GDPR'));
-const Cookies = lazy(() => import('@/pages/marketing/Cookies'));
-const Kickstarter = lazy(() => import('@/pages/marketing/Kickstarter'));
-const ZoomGuide = lazy(() => import('@/pages/marketing/ZoomGuide'));
-const UK = lazy(() => import('@/pages/marketing/UK'));
-const FeatureScheduling = lazy(() => import('@/pages/marketing/features/FeatureScheduling'));
-const FeatureBilling = lazy(() => import('@/pages/marketing/features/FeatureBilling'));
-const FeatureParentPortal = lazy(() => import('@/pages/marketing/features/FeatureParentPortal'));
-const FeatureLoopAssist = lazy(() => import('@/pages/marketing/features/FeatureLoopAssist'));
-const FeatureStudents = lazy(() => import('@/pages/marketing/features/FeatureStudents'));
-const FeatureTeachers = lazy(() => import('@/pages/marketing/features/FeatureTeachers'));
-const FeatureAttendance = lazy(() => import('@/pages/marketing/features/FeatureAttendance'));
-const FeaturePracticeTracking = lazy(() => import('@/pages/marketing/features/FeaturePracticeTracking'));
-const FeatureMessaging = lazy(() => import('@/pages/marketing/features/FeatureMessaging'));
-const FeatureReports = lazy(() => import('@/pages/marketing/features/FeatureReports'));
-const FeatureLocations = lazy(() => import('@/pages/marketing/features/FeatureLocations'));
-const FeatureResources = lazy(() => import('@/pages/marketing/features/FeatureResources'));
-const VsMyMusicStaff = lazy(() => import('@/pages/marketing/compare/VsMyMusicStaff'));
-const VsTeachworks = lazy(() => import('@/pages/marketing/compare/VsTeachworks'));
-const VsOpus1 = lazy(() => import('@/pages/marketing/compare/VsOpus1'));
-const VsJackrabbitMusic = lazy(() => import('@/pages/marketing/compare/VsJackrabbitMusic'));
-const VsFons = lazy(() => import('@/pages/marketing/compare/VsFons'));
-const ForMusicAcademies = lazy(() => import('@/pages/marketing/use-cases/ForMusicAcademies'));
-const ForSoloTeachers = lazy(() => import('@/pages/marketing/use-cases/ForSoloTeachers'));
-const ForPianoSchools = lazy(() => import('@/pages/marketing/use-cases/ForPianoSchools'));
-const ForGuitarSchools = lazy(() => import('@/pages/marketing/use-cases/ForGuitarSchools'));
-const ForPerformingArts = lazy(() => import('@/pages/marketing/use-cases/ForPerformingArts'));
 
 // ─── Lazy: Auth ──────────────────────────────────────────
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
@@ -107,6 +70,13 @@ const PortalResources = lazy(() => import('@/pages/portal/PortalResources'));
 const PortalInvoices = lazy(() => import('@/pages/portal/PortalInvoices'));
 const PortalMessages = lazy(() => import('@/pages/portal/PortalMessages'));
 const PortalProfile = lazy(() => import('@/pages/portal/PortalProfile'));
+
+// ─── External redirect helper ───────────────────────────
+const MARKETING_BASE = 'https://lessonloop.net';
+
+function makeExternalRedirect(path: string) {
+  return () => ExternalRedirect({ to: `${MARKETING_BASE}${path}` });
+}
 
 // ─── Route definitions ──────────────────────────────────
 
@@ -167,47 +137,52 @@ export const appRoutes: RouteConfig[] = [
   { path: '/help', component: Help, auth: 'protected', label: 'Help' },
 ];
 
-/** Public marketing routes */
+/** Marketing routes — redirect to external static site */
 export const marketingRoutes: RouteConfig[] = [
-  { path: '/', component: MarketingHome, auth: 'public', label: 'Home' },
-  { path: '/features', component: Features, auth: 'public', label: 'Features' },
-  { path: '/pricing', component: Pricing, auth: 'public', label: 'Pricing' },
-  { path: '/about', component: About, auth: 'public', label: 'About' },
-  { path: '/blog', component: Blog, auth: 'public', label: 'Blog' },
-  { path: '/blog/:slug', component: BlogPost, auth: 'public', label: 'Blog Post' },
-  { path: '/contact', component: Contact, auth: 'public', label: 'Contact' },
-  { path: '/privacy', component: Privacy, auth: 'public', label: 'Privacy Policy' },
-  { path: '/terms', component: Terms, auth: 'public', label: 'Terms of Service' },
-  { path: '/gdpr', component: GDPR, auth: 'public', label: 'GDPR' },
-  { path: '/cookies', component: Cookies, auth: 'public', label: 'Cookie Policy' },
-  { path: '/kickstarter', component: Kickstarter, auth: 'public', label: 'Kickstarter' },
-  { path: '/report', component: ReportDownload, auth: 'public', label: 'Report' },
-  { path: '/zoom-integration', component: ZoomGuide, auth: 'public', label: 'Zoom Guide' },
+  // Root: auth-aware redirect
+  { path: '/', component: AuthRedirect, auth: 'public', label: 'Home' },
+
+  // Public pages that stay in-app
   { path: '/reset-password', component: ResetPassword, auth: 'public', label: 'Reset Password' },
   { path: '/book/:slug', component: BookingPage, auth: 'public', label: 'Book' },
-  { path: '/uk', component: UK, auth: 'public', label: 'UK' },
-  { path: '/features/scheduling', component: FeatureScheduling, auth: 'public', label: 'Scheduling' },
-  { path: '/features/billing', component: FeatureBilling, auth: 'public', label: 'Billing' },
-  { path: '/features/parent-portal', component: FeatureParentPortal, auth: 'public', label: 'Parent Portal' },
-  { path: '/features/loopassist', component: FeatureLoopAssist, auth: 'public', label: 'LoopAssist' },
-  { path: '/features/students', component: FeatureStudents, auth: 'public', label: 'Students' },
-  { path: '/features/teachers', component: FeatureTeachers, auth: 'public', label: 'Teachers' },
-  { path: '/features/attendance', component: FeatureAttendance, auth: 'public', label: 'Attendance' },
-  { path: '/features/practice-tracking', component: FeaturePracticeTracking, auth: 'public', label: 'Practice Tracking' },
-  { path: '/features/messaging', component: FeatureMessaging, auth: 'public', label: 'Messaging' },
-  { path: '/features/reports', component: FeatureReports, auth: 'public', label: 'Reports' },
-  { path: '/features/locations', component: FeatureLocations, auth: 'public', label: 'Locations' },
-  { path: '/features/resources', component: FeatureResources, auth: 'public', label: 'Resources' },
-  { path: '/compare/lessonloop-vs-my-music-staff', component: VsMyMusicStaff, auth: 'public', label: 'vs My Music Staff' },
-  { path: '/compare/lessonloop-vs-teachworks', component: VsTeachworks, auth: 'public', label: 'vs Teachworks' },
-  { path: '/compare/lessonloop-vs-opus1', component: VsOpus1, auth: 'public', label: 'vs Opus 1' },
-  { path: '/compare/lessonloop-vs-jackrabbit-music', component: VsJackrabbitMusic, auth: 'public', label: 'vs Jackrabbit Music' },
-  { path: '/compare/lessonloop-vs-fons', component: VsFons, auth: 'public', label: 'vs Fons' },
-  { path: '/for/music-academies', component: ForMusicAcademies, auth: 'public', label: 'Music Academies' },
-  { path: '/for/solo-teachers', component: ForSoloTeachers, auth: 'public', label: 'Solo Teachers' },
-  { path: '/for/piano-schools', component: ForPianoSchools, auth: 'public', label: 'Piano Schools' },
-  { path: '/for/guitar-schools', component: ForGuitarSchools, auth: 'public', label: 'Guitar Schools' },
-  { path: '/for/performing-arts', component: ForPerformingArts, auth: 'public', label: 'Performing Arts' },
+
+  // External redirects to lessonloop.net
+  { path: '/features', component: makeExternalRedirect('/features'), auth: 'public', label: 'Features' },
+  { path: '/pricing', component: makeExternalRedirect('/pricing'), auth: 'public', label: 'Pricing' },
+  { path: '/about', component: makeExternalRedirect('/about'), auth: 'public', label: 'About' },
+  { path: '/blog', component: makeExternalRedirect('/blog'), auth: 'public', label: 'Blog' },
+  { path: '/blog/:slug', component: makeExternalRedirect('/blog/:slug'), auth: 'public', label: 'Blog Post' },
+  { path: '/contact', component: makeExternalRedirect('/contact'), auth: 'public', label: 'Contact' },
+  { path: '/privacy', component: makeExternalRedirect('/privacy'), auth: 'public', label: 'Privacy Policy' },
+  { path: '/terms', component: makeExternalRedirect('/terms'), auth: 'public', label: 'Terms of Service' },
+  { path: '/gdpr', component: makeExternalRedirect('/gdpr'), auth: 'public', label: 'GDPR' },
+  { path: '/cookies', component: makeExternalRedirect('/cookies'), auth: 'public', label: 'Cookie Policy' },
+  { path: '/kickstarter', component: makeExternalRedirect('/kickstarter'), auth: 'public', label: 'Kickstarter' },
+  { path: '/report', component: makeExternalRedirect('/report'), auth: 'public', label: 'Report' },
+  { path: '/zoom-integration', component: makeExternalRedirect('/zoom-integration'), auth: 'public', label: 'Zoom Guide' },
+  { path: '/uk', component: makeExternalRedirect('/uk'), auth: 'public', label: 'UK' },
+  { path: '/features/scheduling', component: makeExternalRedirect('/features/scheduling'), auth: 'public', label: 'Scheduling' },
+  { path: '/features/billing', component: makeExternalRedirect('/features/billing'), auth: 'public', label: 'Billing' },
+  { path: '/features/parent-portal', component: makeExternalRedirect('/features/parent-portal'), auth: 'public', label: 'Parent Portal' },
+  { path: '/features/loopassist', component: makeExternalRedirect('/features/loopassist'), auth: 'public', label: 'LoopAssist' },
+  { path: '/features/students', component: makeExternalRedirect('/features/students'), auth: 'public', label: 'Students' },
+  { path: '/features/teachers', component: makeExternalRedirect('/features/teachers'), auth: 'public', label: 'Teachers' },
+  { path: '/features/attendance', component: makeExternalRedirect('/features/attendance'), auth: 'public', label: 'Attendance' },
+  { path: '/features/practice-tracking', component: makeExternalRedirect('/features/practice-tracking'), auth: 'public', label: 'Practice Tracking' },
+  { path: '/features/messaging', component: makeExternalRedirect('/features/messaging'), auth: 'public', label: 'Messaging' },
+  { path: '/features/reports', component: makeExternalRedirect('/features/reports'), auth: 'public', label: 'Reports' },
+  { path: '/features/locations', component: makeExternalRedirect('/features/locations'), auth: 'public', label: 'Locations' },
+  { path: '/features/resources', component: makeExternalRedirect('/features/resources'), auth: 'public', label: 'Resources' },
+  { path: '/compare/lessonloop-vs-my-music-staff', component: makeExternalRedirect('/compare/lessonloop-vs-my-music-staff'), auth: 'public', label: 'vs My Music Staff' },
+  { path: '/compare/lessonloop-vs-teachworks', component: makeExternalRedirect('/compare/lessonloop-vs-teachworks'), auth: 'public', label: 'vs Teachworks' },
+  { path: '/compare/lessonloop-vs-opus1', component: makeExternalRedirect('/compare/lessonloop-vs-opus1'), auth: 'public', label: 'vs Opus 1' },
+  { path: '/compare/lessonloop-vs-jackrabbit-music', component: makeExternalRedirect('/compare/lessonloop-vs-jackrabbit-music'), auth: 'public', label: 'vs Jackrabbit Music' },
+  { path: '/compare/lessonloop-vs-fons', component: makeExternalRedirect('/compare/lessonloop-vs-fons'), auth: 'public', label: 'vs Fons' },
+  { path: '/for/music-academies', component: makeExternalRedirect('/for/music-academies'), auth: 'public', label: 'Music Academies' },
+  { path: '/for/solo-teachers', component: makeExternalRedirect('/for/solo-teachers'), auth: 'public', label: 'Solo Teachers' },
+  { path: '/for/piano-schools', component: makeExternalRedirect('/for/piano-schools'), auth: 'public', label: 'Piano Schools' },
+  { path: '/for/guitar-schools', component: makeExternalRedirect('/for/guitar-schools'), auth: 'public', label: 'Guitar Schools' },
+  { path: '/for/performing-arts', component: makeExternalRedirect('/for/performing-arts'), auth: 'public', label: 'Performing Arts' },
 ];
 
 /** 404 route */

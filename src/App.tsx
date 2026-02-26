@@ -177,7 +177,7 @@ const App = () => (
                       {/* Protected app routes (staff) */}
                       {renderRoutes(appRoutes)}
 
-                      {/* Public marketing routes */}
+                      {/* Public/redirect routes (marketing redirects + public pages) */}
                       <Route path="/demo" element={<Navigate to="/contact?subject=demo" replace />} />
                       {renderRoutes(marketingRoutes)}
 
