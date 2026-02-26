@@ -95,30 +95,33 @@ function makeExternalRedirect(path: string) {
  * Wrap a dynamic import so it retries once on failure, then falls back to
  * `fallbackComponent` instead of crashing the app.  This guards against
  * transient chunk-fetch failures (stale Vite cache, Lovable env issues, etc.).
+ *
+ * Handles both async rejections AND synchronous throws from import().
  */
 function safeLazy(
   importFn: () => Promise<{ default: ComponentType<any> }>,
   fallbackComponent: ComponentType<any>,
 ): LazyExoticComponent<ComponentType<any>> {
-  return lazy(() =>
-    importFn().catch(
-      () => new Promise<{ default: ComponentType<any> }>((resolve) =>
-        setTimeout(() => resolve(importFn().catch(() => ({ default: fallbackComponent }))), 200),
-      ),
-    ),
-  );
-}
-
-/** In SSG mode, create a lazy component for the marketing page; otherwise redirect externally. */
-function makeMarketingRoute(path: string, importFn: () => Promise<{ default: ComponentType<any> }>): ComponentType<any> {
-  if (isSSG) return safeLazy(importFn, makeExternalRedirect(path));
-  return makeExternalRedirect(path);
-}
-
-/** Like makeMarketingRoute but uses a custom fallback component instead of an external redirect. */
-function makeMarketingRouteWithFallback(importFn: () => Promise<{ default: ComponentType<any> }>, fallback: ComponentType<any>): ComponentType<any> {
-  if (isSSG) return safeLazy(importFn, fallback);
-  return fallback;
+  return lazy(() => {
+    const fallbackModule = { default: fallbackComponent };
+    try {
+      return importFn().catch(() => {
+        // First attempt failed — retry once after a short delay
+        return new Promise<{ default: ComponentType<any> }>((resolve) =>
+          setTimeout(() => {
+            try {
+              resolve(importFn().catch(() => fallbackModule));
+            } catch {
+              resolve(fallbackModule);
+            }
+          }, 200),
+        );
+      });
+    } catch {
+      // import() threw synchronously (shouldn't happen, but be safe)
+      return Promise.resolve(fallbackModule);
+    }
+  });
 }
 
 // ─── Route definitions ──────────────────────────────────
@@ -181,52 +184,111 @@ export const appRoutes: RouteConfig[] = [
   { path: '/help', component: Help, auth: 'protected', label: 'Help' },
 ];
 
-/** Marketing routes — SSG renders real pages; production redirects to static site */
-export const marketingRoutes: RouteConfig[] = [
-  // Root: SSG renders marketing home, production does auth-aware redirect
-  { path: '/', component: makeMarketingRouteWithFallback(() => import('@/pages/marketing/Home'), AuthRedirect), auth: 'public', label: 'Home' },
-
-  // Public pages that stay in-app
+/**
+ * Non-marketing public pages — always present regardless of mode.
+ */
+const sharedPublicRoutes: RouteConfig[] = [
   { path: '/reset-password', component: ResetPassword, auth: 'public', label: 'Reset Password' },
   { path: '/book/:slug', component: BookingPage, auth: 'public', label: 'Book' },
+];
 
-  // Marketing pages (SSG: lazy-loaded real component, production: external redirect)
-  { path: '/features', component: makeMarketingRoute('/features', () => import('@/pages/marketing/Features')), auth: 'public', label: 'Features' },
-  { path: '/pricing', component: makeMarketingRoute('/pricing', () => import('@/pages/marketing/Pricing')), auth: 'public', label: 'Pricing' },
-  { path: '/about', component: makeMarketingRoute('/about', () => import('@/pages/marketing/About')), auth: 'public', label: 'About' },
-  { path: '/blog', component: makeMarketingRoute('/blog', () => import('@/pages/marketing/Blog')), auth: 'public', label: 'Blog' },
-  { path: '/blog/:slug', component: makeMarketingRoute('/blog/:slug', () => import('@/pages/marketing/BlogPost')), auth: 'public', label: 'Blog Post' },
-  { path: '/contact', component: makeMarketingRoute('/contact', () => import('@/pages/marketing/Contact')), auth: 'public', label: 'Contact' },
-  { path: '/privacy', component: makeMarketingRoute('/privacy', () => import('@/pages/marketing/Privacy')), auth: 'public', label: 'Privacy Policy' },
-  { path: '/terms', component: makeMarketingRoute('/terms', () => import('@/pages/marketing/Terms')), auth: 'public', label: 'Terms of Service' },
-  { path: '/gdpr', component: makeMarketingRoute('/gdpr', () => import('@/pages/marketing/GDPR')), auth: 'public', label: 'GDPR' },
-  { path: '/cookies', component: makeMarketingRoute('/cookies', () => import('@/pages/marketing/Cookies')), auth: 'public', label: 'Cookie Policy' },
-  { path: '/kickstarter', component: makeMarketingRoute('/kickstarter', () => import('@/pages/marketing/Kickstarter')), auth: 'public', label: 'Kickstarter' },
-  { path: '/report', component: makeMarketingRoute('/report', () => import('@/pages/marketing/ReportDownload')), auth: 'public', label: 'Report' },
-  { path: '/zoom-integration', component: makeMarketingRoute('/zoom-integration', () => import('@/pages/marketing/ZoomGuide')), auth: 'public', label: 'Zoom Guide' },
-  { path: '/uk', component: makeMarketingRoute('/uk', () => import('@/pages/marketing/UK')), auth: 'public', label: 'UK' },
-  { path: '/features/scheduling', component: makeMarketingRoute('/features/scheduling', () => import('@/pages/marketing/features/FeatureScheduling')), auth: 'public', label: 'Scheduling' },
-  { path: '/features/billing', component: makeMarketingRoute('/features/billing', () => import('@/pages/marketing/features/FeatureBilling')), auth: 'public', label: 'Billing' },
-  { path: '/features/parent-portal', component: makeMarketingRoute('/features/parent-portal', () => import('@/pages/marketing/features/FeatureParentPortal')), auth: 'public', label: 'Parent Portal' },
-  { path: '/features/loopassist', component: makeMarketingRoute('/features/loopassist', () => import('@/pages/marketing/features/FeatureLoopAssist')), auth: 'public', label: 'LoopAssist' },
-  { path: '/features/students', component: makeMarketingRoute('/features/students', () => import('@/pages/marketing/features/FeatureStudents')), auth: 'public', label: 'Students' },
-  { path: '/features/teachers', component: makeMarketingRoute('/features/teachers', () => import('@/pages/marketing/features/FeatureTeachers')), auth: 'public', label: 'Teachers' },
-  { path: '/features/attendance', component: makeMarketingRoute('/features/attendance', () => import('@/pages/marketing/features/FeatureAttendance')), auth: 'public', label: 'Attendance' },
-  { path: '/features/practice-tracking', component: makeMarketingRoute('/features/practice-tracking', () => import('@/pages/marketing/features/FeaturePracticeTracking')), auth: 'public', label: 'Practice Tracking' },
-  { path: '/features/messaging', component: makeMarketingRoute('/features/messaging', () => import('@/pages/marketing/features/FeatureMessaging')), auth: 'public', label: 'Messaging' },
-  { path: '/features/reports', component: makeMarketingRoute('/features/reports', () => import('@/pages/marketing/features/FeatureReports')), auth: 'public', label: 'Reports' },
-  { path: '/features/locations', component: makeMarketingRoute('/features/locations', () => import('@/pages/marketing/features/FeatureLocations')), auth: 'public', label: 'Locations' },
-  { path: '/features/resources', component: makeMarketingRoute('/features/resources', () => import('@/pages/marketing/features/FeatureResources')), auth: 'public', label: 'Resources' },
-  { path: '/compare/lessonloop-vs-my-music-staff', component: makeMarketingRoute('/compare/lessonloop-vs-my-music-staff', () => import('@/pages/marketing/compare/VsMyMusicStaff')), auth: 'public', label: 'vs My Music Staff' },
-  { path: '/compare/lessonloop-vs-teachworks', component: makeMarketingRoute('/compare/lessonloop-vs-teachworks', () => import('@/pages/marketing/compare/VsTeachworks')), auth: 'public', label: 'vs Teachworks' },
-  { path: '/compare/lessonloop-vs-opus1', component: makeMarketingRoute('/compare/lessonloop-vs-opus1', () => import('@/pages/marketing/compare/VsOpus1')), auth: 'public', label: 'vs Opus 1' },
-  { path: '/compare/lessonloop-vs-jackrabbit-music', component: makeMarketingRoute('/compare/lessonloop-vs-jackrabbit-music', () => import('@/pages/marketing/compare/VsJackrabbitMusic')), auth: 'public', label: 'vs Jackrabbit Music' },
-  { path: '/compare/lessonloop-vs-fons', component: makeMarketingRoute('/compare/lessonloop-vs-fons', () => import('@/pages/marketing/compare/VsFons')), auth: 'public', label: 'vs Fons' },
-  { path: '/for/music-academies', component: makeMarketingRoute('/for/music-academies', () => import('@/pages/marketing/use-cases/ForMusicAcademies')), auth: 'public', label: 'Music Academies' },
-  { path: '/for/solo-teachers', component: makeMarketingRoute('/for/solo-teachers', () => import('@/pages/marketing/use-cases/ForSoloTeachers')), auth: 'public', label: 'Solo Teachers' },
-  { path: '/for/piano-schools', component: makeMarketingRoute('/for/piano-schools', () => import('@/pages/marketing/use-cases/ForPianoSchools')), auth: 'public', label: 'Piano Schools' },
-  { path: '/for/guitar-schools', component: makeMarketingRoute('/for/guitar-schools', () => import('@/pages/marketing/use-cases/ForGuitarSchools')), auth: 'public', label: 'Guitar Schools' },
-  { path: '/for/performing-arts', component: makeMarketingRoute('/for/performing-arts', () => import('@/pages/marketing/use-cases/ForPerformingArts')), auth: 'public', label: 'Performing Arts' },
+/**
+ * Marketing route definitions — path, label, and (for SSG) the lazy import.
+ * NOTE: The import() expressions are ONLY evaluated inside the `if (isSSG)`
+ * block below.  When isSSG is false this entire array is never created, so
+ * the import() calls never appear in the running JavaScript.
+ */
+function buildSSGMarketingRoutes(): RouteConfig[] {
+  return [
+    { path: '/', component: safeLazy(() => import('@/pages/marketing/Home'), AuthRedirect), auth: 'public', label: 'Home' },
+    { path: '/features', component: safeLazy(() => import('@/pages/marketing/Features'), makeExternalRedirect('/features')), auth: 'public', label: 'Features' },
+    { path: '/pricing', component: safeLazy(() => import('@/pages/marketing/Pricing'), makeExternalRedirect('/pricing')), auth: 'public', label: 'Pricing' },
+    { path: '/about', component: safeLazy(() => import('@/pages/marketing/About'), makeExternalRedirect('/about')), auth: 'public', label: 'About' },
+    { path: '/blog', component: safeLazy(() => import('@/pages/marketing/Blog'), makeExternalRedirect('/blog')), auth: 'public', label: 'Blog' },
+    { path: '/blog/:slug', component: safeLazy(() => import('@/pages/marketing/BlogPost'), makeExternalRedirect('/blog/:slug')), auth: 'public', label: 'Blog Post' },
+    { path: '/contact', component: safeLazy(() => import('@/pages/marketing/Contact'), makeExternalRedirect('/contact')), auth: 'public', label: 'Contact' },
+    { path: '/privacy', component: safeLazy(() => import('@/pages/marketing/Privacy'), makeExternalRedirect('/privacy')), auth: 'public', label: 'Privacy Policy' },
+    { path: '/terms', component: safeLazy(() => import('@/pages/marketing/Terms'), makeExternalRedirect('/terms')), auth: 'public', label: 'Terms of Service' },
+    { path: '/gdpr', component: safeLazy(() => import('@/pages/marketing/GDPR'), makeExternalRedirect('/gdpr')), auth: 'public', label: 'GDPR' },
+    { path: '/cookies', component: safeLazy(() => import('@/pages/marketing/Cookies'), makeExternalRedirect('/cookies')), auth: 'public', label: 'Cookie Policy' },
+    { path: '/kickstarter', component: safeLazy(() => import('@/pages/marketing/Kickstarter'), makeExternalRedirect('/kickstarter')), auth: 'public', label: 'Kickstarter' },
+    { path: '/report', component: safeLazy(() => import('@/pages/marketing/ReportDownload'), makeExternalRedirect('/report')), auth: 'public', label: 'Report' },
+    { path: '/zoom-integration', component: safeLazy(() => import('@/pages/marketing/ZoomGuide'), makeExternalRedirect('/zoom-integration')), auth: 'public', label: 'Zoom Guide' },
+    { path: '/uk', component: safeLazy(() => import('@/pages/marketing/UK'), makeExternalRedirect('/uk')), auth: 'public', label: 'UK' },
+    { path: '/features/scheduling', component: safeLazy(() => import('@/pages/marketing/features/FeatureScheduling'), makeExternalRedirect('/features/scheduling')), auth: 'public', label: 'Scheduling' },
+    { path: '/features/billing', component: safeLazy(() => import('@/pages/marketing/features/FeatureBilling'), makeExternalRedirect('/features/billing')), auth: 'public', label: 'Billing' },
+    { path: '/features/parent-portal', component: safeLazy(() => import('@/pages/marketing/features/FeatureParentPortal'), makeExternalRedirect('/features/parent-portal')), auth: 'public', label: 'Parent Portal' },
+    { path: '/features/loopassist', component: safeLazy(() => import('@/pages/marketing/features/FeatureLoopAssist'), makeExternalRedirect('/features/loopassist')), auth: 'public', label: 'LoopAssist' },
+    { path: '/features/students', component: safeLazy(() => import('@/pages/marketing/features/FeatureStudents'), makeExternalRedirect('/features/students')), auth: 'public', label: 'Students' },
+    { path: '/features/teachers', component: safeLazy(() => import('@/pages/marketing/features/FeatureTeachers'), makeExternalRedirect('/features/teachers')), auth: 'public', label: 'Teachers' },
+    { path: '/features/attendance', component: safeLazy(() => import('@/pages/marketing/features/FeatureAttendance'), makeExternalRedirect('/features/attendance')), auth: 'public', label: 'Attendance' },
+    { path: '/features/practice-tracking', component: safeLazy(() => import('@/pages/marketing/features/FeaturePracticeTracking'), makeExternalRedirect('/features/practice-tracking')), auth: 'public', label: 'Practice Tracking' },
+    { path: '/features/messaging', component: safeLazy(() => import('@/pages/marketing/features/FeatureMessaging'), makeExternalRedirect('/features/messaging')), auth: 'public', label: 'Messaging' },
+    { path: '/features/reports', component: safeLazy(() => import('@/pages/marketing/features/FeatureReports'), makeExternalRedirect('/features/reports')), auth: 'public', label: 'Reports' },
+    { path: '/features/locations', component: safeLazy(() => import('@/pages/marketing/features/FeatureLocations'), makeExternalRedirect('/features/locations')), auth: 'public', label: 'Locations' },
+    { path: '/features/resources', component: safeLazy(() => import('@/pages/marketing/features/FeatureResources'), makeExternalRedirect('/features/resources')), auth: 'public', label: 'Resources' },
+    { path: '/compare/lessonloop-vs-my-music-staff', component: safeLazy(() => import('@/pages/marketing/compare/VsMyMusicStaff'), makeExternalRedirect('/compare/lessonloop-vs-my-music-staff')), auth: 'public', label: 'vs My Music Staff' },
+    { path: '/compare/lessonloop-vs-teachworks', component: safeLazy(() => import('@/pages/marketing/compare/VsTeachworks'), makeExternalRedirect('/compare/lessonloop-vs-teachworks')), auth: 'public', label: 'vs Teachworks' },
+    { path: '/compare/lessonloop-vs-opus1', component: safeLazy(() => import('@/pages/marketing/compare/VsOpus1'), makeExternalRedirect('/compare/lessonloop-vs-opus1')), auth: 'public', label: 'vs Opus 1' },
+    { path: '/compare/lessonloop-vs-jackrabbit-music', component: safeLazy(() => import('@/pages/marketing/compare/VsJackrabbitMusic'), makeExternalRedirect('/compare/lessonloop-vs-jackrabbit-music')), auth: 'public', label: 'vs Jackrabbit Music' },
+    { path: '/compare/lessonloop-vs-fons', component: safeLazy(() => import('@/pages/marketing/compare/VsFons'), makeExternalRedirect('/compare/lessonloop-vs-fons')), auth: 'public', label: 'vs Fons' },
+    { path: '/for/music-academies', component: safeLazy(() => import('@/pages/marketing/use-cases/ForMusicAcademies'), makeExternalRedirect('/for/music-academies')), auth: 'public', label: 'Music Academies' },
+    { path: '/for/solo-teachers', component: safeLazy(() => import('@/pages/marketing/use-cases/ForSoloTeachers'), makeExternalRedirect('/for/solo-teachers')), auth: 'public', label: 'Solo Teachers' },
+    { path: '/for/piano-schools', component: safeLazy(() => import('@/pages/marketing/use-cases/ForPianoSchools'), makeExternalRedirect('/for/piano-schools')), auth: 'public', label: 'Piano Schools' },
+    { path: '/for/guitar-schools', component: safeLazy(() => import('@/pages/marketing/use-cases/ForGuitarSchools'), makeExternalRedirect('/for/guitar-schools')), auth: 'public', label: 'Guitar Schools' },
+    { path: '/for/performing-arts', component: safeLazy(() => import('@/pages/marketing/use-cases/ForPerformingArts'), makeExternalRedirect('/for/performing-arts')), auth: 'public', label: 'Performing Arts' },
+  ];
+}
+
+/**
+ * Production/non-SSG marketing routes — no import() calls at all.
+ * Root (/) does auth-aware redirect; all other marketing paths redirect
+ * to the external static site.
+ */
+const productionMarketingRoutes: RouteConfig[] = [
+  { path: '/', component: AuthRedirect, auth: 'public', label: 'Home' },
+  { path: '/features', component: makeExternalRedirect('/features'), auth: 'public', label: 'Features' },
+  { path: '/pricing', component: makeExternalRedirect('/pricing'), auth: 'public', label: 'Pricing' },
+  { path: '/about', component: makeExternalRedirect('/about'), auth: 'public', label: 'About' },
+  { path: '/blog', component: makeExternalRedirect('/blog'), auth: 'public', label: 'Blog' },
+  { path: '/blog/:slug', component: makeExternalRedirect('/blog/:slug'), auth: 'public', label: 'Blog Post' },
+  { path: '/contact', component: makeExternalRedirect('/contact'), auth: 'public', label: 'Contact' },
+  { path: '/privacy', component: makeExternalRedirect('/privacy'), auth: 'public', label: 'Privacy Policy' },
+  { path: '/terms', component: makeExternalRedirect('/terms'), auth: 'public', label: 'Terms of Service' },
+  { path: '/gdpr', component: makeExternalRedirect('/gdpr'), auth: 'public', label: 'GDPR' },
+  { path: '/cookies', component: makeExternalRedirect('/cookies'), auth: 'public', label: 'Cookie Policy' },
+  { path: '/kickstarter', component: makeExternalRedirect('/kickstarter'), auth: 'public', label: 'Kickstarter' },
+  { path: '/report', component: makeExternalRedirect('/report'), auth: 'public', label: 'Report' },
+  { path: '/zoom-integration', component: makeExternalRedirect('/zoom-integration'), auth: 'public', label: 'Zoom Guide' },
+  { path: '/uk', component: makeExternalRedirect('/uk'), auth: 'public', label: 'UK' },
+  { path: '/features/scheduling', component: makeExternalRedirect('/features/scheduling'), auth: 'public', label: 'Scheduling' },
+  { path: '/features/billing', component: makeExternalRedirect('/features/billing'), auth: 'public', label: 'Billing' },
+  { path: '/features/parent-portal', component: makeExternalRedirect('/features/parent-portal'), auth: 'public', label: 'Parent Portal' },
+  { path: '/features/loopassist', component: makeExternalRedirect('/features/loopassist'), auth: 'public', label: 'LoopAssist' },
+  { path: '/features/students', component: makeExternalRedirect('/features/students'), auth: 'public', label: 'Students' },
+  { path: '/features/teachers', component: makeExternalRedirect('/features/teachers'), auth: 'public', label: 'Teachers' },
+  { path: '/features/attendance', component: makeExternalRedirect('/features/attendance'), auth: 'public', label: 'Attendance' },
+  { path: '/features/practice-tracking', component: makeExternalRedirect('/features/practice-tracking'), auth: 'public', label: 'Practice Tracking' },
+  { path: '/features/messaging', component: makeExternalRedirect('/features/messaging'), auth: 'public', label: 'Messaging' },
+  { path: '/features/reports', component: makeExternalRedirect('/features/reports'), auth: 'public', label: 'Reports' },
+  { path: '/features/locations', component: makeExternalRedirect('/features/locations'), auth: 'public', label: 'Locations' },
+  { path: '/features/resources', component: makeExternalRedirect('/features/resources'), auth: 'public', label: 'Resources' },
+  { path: '/compare/lessonloop-vs-my-music-staff', component: makeExternalRedirect('/compare/lessonloop-vs-my-music-staff'), auth: 'public', label: 'vs My Music Staff' },
+  { path: '/compare/lessonloop-vs-teachworks', component: makeExternalRedirect('/compare/lessonloop-vs-teachworks'), auth: 'public', label: 'vs Teachworks' },
+  { path: '/compare/lessonloop-vs-opus1', component: makeExternalRedirect('/compare/lessonloop-vs-opus1'), auth: 'public', label: 'vs Opus 1' },
+  { path: '/compare/lessonloop-vs-jackrabbit-music', component: makeExternalRedirect('/compare/lessonloop-vs-jackrabbit-music'), auth: 'public', label: 'vs Jackrabbit Music' },
+  { path: '/compare/lessonloop-vs-fons', component: makeExternalRedirect('/compare/lessonloop-vs-fons'), auth: 'public', label: 'vs Fons' },
+  { path: '/for/music-academies', component: makeExternalRedirect('/for/music-academies'), auth: 'public', label: 'Music Academies' },
+  { path: '/for/solo-teachers', component: makeExternalRedirect('/for/solo-teachers'), auth: 'public', label: 'Solo Teachers' },
+  { path: '/for/piano-schools', component: makeExternalRedirect('/for/piano-schools'), auth: 'public', label: 'Piano Schools' },
+  { path: '/for/guitar-schools', component: makeExternalRedirect('/for/guitar-schools'), auth: 'public', label: 'Guitar Schools' },
+  { path: '/for/performing-arts', component: makeExternalRedirect('/for/performing-arts'), auth: 'public', label: 'Performing Arts' },
+];
+
+/** Marketing routes — SSG renders real pages; production redirects to static site */
+export const marketingRoutes: RouteConfig[] = [
+  ...sharedPublicRoutes,
+  ...(isSSG ? buildSSGMarketingRoutes() : productionMarketingRoutes),
 ];
 
 /** 404 route */
