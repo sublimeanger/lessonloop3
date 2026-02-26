@@ -1,4 +1,4 @@
-import { lazy, type ComponentType } from 'react';
+import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 import type { AppRole } from '@/contexts/AuthContext';
 import { ExternalRedirect } from '@/components/shared/ExternalRedirect';
 import { AuthRedirect } from '@/components/shared/AuthRedirect';
