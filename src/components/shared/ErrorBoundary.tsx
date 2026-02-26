@@ -39,16 +39,8 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     logger.error('ErrorBoundary caught an error:', error);
     logger.error('Error info:', errorInfo);
-
+    
     this.setState({ errorInfo });
-
-    // Auto-recover from failed dynamic imports (chunk load failures).
-    // These are non-fatal — redirect to dashboard instead of showing error page.
-    if (error?.message?.includes('Failed to fetch dynamically imported module')) {
-      logger.warn('Chunk load failure detected — redirecting to /dashboard');
-      window.location.href = '/dashboard';
-      return;
-    }
 
     Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } });
   }

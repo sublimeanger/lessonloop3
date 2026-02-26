@@ -289,39 +289,21 @@ function fixNonDescriptiveLinks() {
   }
 }
 
-/** Clean up React artifacts, strip all scripts (except JSON-LD), and remove localhost refs. */
+/** Clean up React artifacts from HTML. */
 function cleanupHtml() {
   const htmlFiles = collectFiles(OUT_DIR, ['.html']);
-  let totalScriptsStripped = 0;
-  let totalLocalhostRefs = 0;
   for (const file of htmlFiles) {
     let html = readFileSync(file, 'utf-8');
-
-    // ── Strip ALL <script> tags EXCEPT JSON-LD schema and data-ssg interactive scripts ──
-    // This removes React bundles, Vite HMR, module imports, and any other JS
-    const beforeLen = html.length;
-    html = html.replace(/<script(?![^>]*(?:type\s*=\s*["']application\/ld\+json["']|data-ssg\s*=))[^>]*>[\s\S]*?<\/script>\s*/gi, '');
-    // Also remove self-closing script tags that aren't JSON-LD or data-ssg
-    html = html.replace(/<script(?![^>]*(?:type\s*=\s*["']application\/ld\+json["']|data-ssg\s*=))[^>]*\/>\s*/gi, '');
-    if (html.length !== beforeLen) totalScriptsStripped++;
-
-    // ── Remove any localhost references that leaked from the dev server ──
-    const localhostBefore = html.length;
-    html = html.replace(/https?:\/\/localhost:\d+\/?/gi, '');
-    html = html.replace(/localhost:\d+/gi, '');
-    if (html.length !== localhostBefore) totalLocalhostRefs++;
-
-    // ── Standard React/Radix cleanup ──
     html = html.replace(/<ol[^>]*aria-label="Notifications"[^>]*>[\s\S]*?<\/ol>/gi, '');
     html = html.replace(/<div[^>]*aria-label="Notifications"[^>]*>[\s\S]*?<\/div>/gi, '');
     html = html.replace(/\s*data-radix-[a-z-]*="[^"]*"/gi, '');
     html = html.replace(/<style>\s*<\/style>/gi, '');
+    html = html.replace(/<script>\s*<\/script>/gi, '');
     html = html.replace(/<meta[^>]*name=["']apple-mobile-web-app[^"]*["'][^>]*>\n?/gi, '');
     html = html.replace(/<meta[^>]*name=["']mobile-web-app[^"]*["'][^>]*>\n?/gi, '');
     html = html.replace(/\n{3,}/g, '\n\n');
     writeFileSync(file, html, 'utf-8');
   }
-  return { scriptsStripped: totalScriptsStripped, localhostCleaned: totalLocalhostRefs };
 }
 
 /** Extract FAQ Q&A pairs from compare pages and inject FAQPage schema. */
@@ -1369,9 +1351,9 @@ async function main() {
   fixNonDescriptiveLinks();
   console.log('  ✓ Added aria-labels to non-descriptive links');
 
-  // 8. Clean up React artifacts, strip scripts, remove localhost refs
-  const cleanupStats = cleanupHtml();
-  console.log(`  ✓ Cleaned up React artifacts (stripped scripts from ${cleanupStats.scriptsStripped} files, removed localhost refs from ${cleanupStats.localhostCleaned} files)`);
+  // 8. Clean up React artifacts
+  cleanupHtml();
+  console.log('  ✓ Cleaned up React artifacts');
 
   // 9. FAQ schema for compare pages
   addFaqSchemaToComparePages();
