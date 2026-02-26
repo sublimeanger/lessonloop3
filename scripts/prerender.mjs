@@ -201,7 +201,157 @@ function findChrome() {
   throw new Error('Could not find a Chrome / Chromium binary. Install one or set CHROME_PATH.');
 }
 
-// ─── 3. Post-process HTML ──────────────────────────────────────────
+// ─── 3a. Static nav dropdown + mobile menu HTML ──────────────────
+
+// Navigation data (mirrors MarketingNavbar.tsx)
+const FEATURE_COLUMNS = [
+  { label: 'Core', items: [
+    { name: 'Scheduling', href: '/features/scheduling', icon: 'calendar', desc: 'Lessons, terms &amp; timetables' },
+    { name: 'Billing', href: '/features/billing', icon: 'credit-card', desc: 'Invoices &amp; online payments' },
+    { name: 'Students', href: '/features/students', icon: 'graduation-cap', desc: 'Profiles &amp; progress tracking' },
+    { name: 'Teachers', href: '/features/teachers', icon: 'users', desc: 'Staff management &amp; payroll' },
+    { name: 'Attendance', href: '/features/attendance', icon: 'clipboard-check', desc: 'Registers &amp; make-ups' },
+  ]},
+  { label: 'Engage', items: [
+    { name: 'Parent Portal', href: '/features/parent-portal', icon: 'home', desc: 'Self-serve for families' },
+    { name: 'Messaging', href: '/features/messaging', icon: 'message-square', desc: 'In-app communication' },
+    { name: 'Practice Tracking', href: '/features/practice-tracking', icon: 'music', desc: 'Assignments &amp; logs' },
+    { name: 'Resources', href: '/features/resources', icon: 'folder-open', desc: 'Sheet music &amp; files' },
+  ]},
+  { label: 'Insights', items: [
+    { name: 'Reports', href: '/features/reports', icon: 'bar-chart-3', desc: 'Revenue &amp; analytics' },
+    { name: 'Locations', href: '/features/locations', icon: 'map-pin', desc: 'Multi-venue management' },
+    { name: 'LoopAssist AI', href: '/features/loopassist', icon: 'sparkles', desc: 'AI-powered assistant' },
+  ]},
+];
+
+const USE_CASE_ITEMS = [
+  { name: 'Music Academies', href: '/for/music-academies', icon: 'building-2', desc: 'Multi-teacher schools' },
+  { name: 'Solo Teachers', href: '/for/solo-teachers', icon: 'user', desc: 'Independent educators' },
+  { name: 'Piano Schools', href: '/for/piano-schools', icon: 'piano', desc: 'Keyboard-focused studios' },
+  { name: 'Guitar Schools', href: '/for/guitar-schools', icon: 'guitar', desc: 'String instrument studios' },
+  { name: 'Performing Arts', href: '/for/performing-arts', icon: 'theater', desc: 'Dance, drama &amp; more' },
+];
+
+const COMPARE_ITEMS = [
+  { name: 'vs My Music Staff', href: '/compare/lessonloop-vs-my-music-staff' },
+  { name: 'vs Teachworks', href: '/compare/lessonloop-vs-teachworks' },
+  { name: 'vs Opus 1', href: '/compare/lessonloop-vs-opus1' },
+  { name: 'vs Jackrabbit Music', href: '/compare/lessonloop-vs-jackrabbit-music' },
+  { name: 'vs Fons', href: '/compare/lessonloop-vs-fons' },
+];
+
+const DIRECT_LINKS = [
+  { name: 'Pricing', href: '/pricing' },
+  { name: 'Blog', href: '/blog' },
+  { name: 'About', href: '/about' },
+  { name: 'Contact', href: '/contact' },
+];
+
+function iconSvg(name) {
+  return `<svg class="h-4 w-4" aria-hidden="true"><use href="/icons.svg#i-${name}"></use></svg>`;
+}
+
+function menuItem(item) {
+  return `<a href="${item.href}" class="group/item flex items-start gap-3 rounded-lg p-2.5 transition-colors hover:bg-accent">
+    <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors group-hover/item:bg-primary/10 group-hover/item:text-primary">${iconSvg(item.icon)}</div>
+    <div class="min-w-0"><div class="text-sm font-medium leading-tight">${item.name}</div><div class="mt-0.5 text-xs text-muted-foreground leading-snug">${item.desc}</div></div>
+  </a>`;
+}
+
+function buildFeaturesDropdown() {
+  const cols = FEATURE_COLUMNS.map(col => {
+    const items = col.items.map(menuItem).join('\n');
+    return `<div><div class="mb-2 px-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">${col.label}</div><div class="space-y-0.5">${items}</div></div>`;
+  }).join('\n');
+  return `<div class="nav-dropdown-panel" data-nav-panel="features"><div class="nav-dropdown-inner"><div class="w-[680px] p-5"><div class="grid grid-cols-3 gap-x-6">${cols}</div><div class="mt-4 border-t pt-3"><a href="/features" class="inline-flex items-center gap-1.5 px-2.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors">Explore all features ${iconSvg('arrow-right')}</a></div></div></div></div>`;
+}
+
+function buildSolutionsDropdown() {
+  const useCases = USE_CASE_ITEMS.map(menuItem).join('\n');
+  const compares = COMPARE_ITEMS.map(item =>
+    `<a href="${item.href}" class="flex items-center justify-between rounded-lg px-2.5 py-2.5 text-sm text-foreground/70 transition-colors hover:bg-accent hover:text-foreground">${item.name} ${iconSvg('chevron-right')}</a>`
+  ).join('\n');
+  return `<div class="nav-dropdown-panel" data-nav-panel="solutions"><div class="nav-dropdown-inner"><div class="w-[520px] p-5"><div class="grid grid-cols-2 gap-x-6">
+    <div><div class="mb-2 px-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Who it's for</div><div class="space-y-0.5">${useCases}</div><div class="mt-3 border-t pt-3"><a href="/uk" class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors hover:bg-accent">${iconSvg('flag')} Built for the UK</a></div></div>
+    <div><div class="mb-2 px-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Compare</div><div class="space-y-0.5">${compares}</div></div>
+  </div></div></div></div>`;
+}
+
+function buildMobileMenu() {
+  const featureItems = FEATURE_COLUMNS.map(col => {
+    const items = col.items.map(item =>
+      `<a href="${item.href}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-accent">${iconSvg(item.icon)} <span class="text-sm font-medium">${item.name}</span></a>`
+    ).join('\n');
+    return `<div class="mb-3"><div class="mb-1.5 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">${col.label}</div>${items}</div>`;
+  }).join('\n');
+
+  const useCaseItems = USE_CASE_ITEMS.map(item =>
+    `<a href="${item.href}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-accent">${iconSvg(item.icon)} <span class="text-sm font-medium">${item.name}</span></a>`
+  ).join('\n');
+
+  const compareItems = COMPARE_ITEMS.map(item =>
+    `<a href="${item.href}" class="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm text-foreground/70 transition-colors hover:bg-accent hover:text-foreground">${item.name} ${iconSvg('chevron-right')}</a>`
+  ).join('\n');
+
+  const directItems = DIRECT_LINKS.map(link =>
+    `<a href="${link.href}" class="flex items-center justify-between px-4 py-4 text-lg font-medium rounded-xl transition-colors text-foreground hover:bg-accent">${link.name} ${iconSvg('chevron-right')}</a>`
+  ).join('\n');
+
+  return `<div class="mobile-menu-backdrop"></div>
+<div class="mobile-menu-panel">
+  <div class="flex flex-col h-full px-2">
+    <nav class="flex-1 space-y-0.5">
+      <div>
+        <button data-mobile-section="features" class="flex w-full items-center justify-between px-4 py-4 text-lg font-medium text-foreground">Features <svg class="h-5 w-5 opacity-40 chevron-rotate transition-transform" aria-hidden="true"><use href="/icons.svg#i-chevron-down"></use></svg></button>
+        <div data-mobile-content="features" class="mobile-section-content"><div class="pb-3 pl-4 pr-4">${featureItems}<a href="/features" class="mt-1 flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-primary">All features ${iconSvg('arrow-right')}</a></div></div>
+      </div>
+      <div>
+        <button data-mobile-section="solutions" class="flex w-full items-center justify-between px-4 py-4 text-lg font-medium text-foreground">Solutions <svg class="h-5 w-5 opacity-40 chevron-rotate transition-transform" aria-hidden="true"><use href="/icons.svg#i-chevron-down"></use></svg></button>
+        <div data-mobile-content="solutions" class="mobile-section-content"><div class="pb-3 pl-4 pr-4">
+          <div class="mb-3"><div class="mb-1.5 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Who it's for</div>${useCaseItems}<a href="/uk" class="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-accent">${iconSvg('flag')} <span class="text-sm font-medium">Built for the UK</span></a></div>
+          <div><div class="mb-1.5 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Compare</div>${compareItems}</div>
+        </div></div>
+      </div>
+      ${directItems}
+    </nav>
+    <div class="space-y-3 pt-6 mx-2 border-t border-border">
+      <a href="https://app.lessonloop.net/login" class="block"><button class="inline-flex items-center justify-center w-full h-12 rounded-md border border-input bg-background font-medium hover:bg-accent hover:text-accent-foreground">Sign in</button></a>
+      <a href="https://app.lessonloop.net/signup" class="block"><button class="inline-flex items-center justify-center w-full h-12 rounded-md bg-primary text-primary-foreground font-semibold shadow-lg shadow-primary/25 hover:bg-primary/90">Start free trial ${iconSvg('chevron-right')}</button></a>
+    </div>
+  </div>
+</div>`;
+}
+
+function injectNavAndMobile(html) {
+  // The desktop nav ends with: </ul></div></nav>
+  // The Puppeteer step already removed the empty Radix viewport wrapper.
+  // We inject dropdown panels inside the position:relative wrapper (before </div></nav>).
+  // Find the desktop nav by its aria-label, then locate the </ul></div></nav> ending.
+  const desktopNavMarker = 'aria-label="Main"';
+  const idx = html.indexOf(desktopNavMarker);
+  if (idx !== -1) {
+    // Find the closing </nav> after the marker
+    const navClose = html.indexOf('</nav>', idx);
+    if (navClose !== -1) {
+      // The pattern before </nav> is: ...items...</ul></div></nav>
+      // Insert dropdown panels before </div></nav> (inside the position:relative div)
+      const insertPoint = html.lastIndexOf('</div>', navClose);
+      if (insertPoint !== -1 && insertPoint > idx) {
+        html = html.slice(0, insertPoint) +
+          buildFeaturesDropdown() + buildSolutionsDropdown() +
+          html.slice(insertPoint);
+      }
+    }
+  }
+
+  // Inject mobile menu after the header
+  html = html.replace(/<\/header>/, `</header>\n${buildMobileMenu()}`);
+
+  return html;
+}
+
+// ─── 3b. Post-process HTML ──────────────────────────────────────────
 
 function postProcess(html, routePath) {
   const canonical = routePath === '/'
@@ -294,10 +444,108 @@ function postProcess(html, routePath) {
     return `style="${fixed}"`;
   });
 
+  // ── Inject nav dropdown panels and mobile menu HTML ──
+  // Radix renders dropdown content lazily (only on hover/click), so we build it
+  // server-side from the known navigation data rather than trying to capture it
+  // from Puppeteer (which crashes React state).
+  html = injectNavAndMobile(html);
+
+  // ── Inject CSS for scroll animations ──
+  const animCSS = `<style data-ssg="animations">
+.animate-on-scroll{opacity:0;transform:translateY(20px);transition:opacity .6s ease-out,transform .6s ease-out}
+.animate-on-scroll.is-visible{opacity:1;transform:translateY(0)}
+.nav-dropdown-panel{display:none;position:absolute;left:0;top:100%;z-index:50;padding-top:6px}
+.nav-dropdown-panel.is-open{display:block}
+.nav-dropdown-inner{background:hsl(var(--popover));color:hsl(var(--popover-foreground));border:1px solid hsl(var(--border));border-radius:calc(var(--radius) - 2px);box-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);overflow:hidden;animation:navDropIn .15s ease-out}
+@keyframes navDropIn{from{opacity:0;transform:scale(.96) translateY(-4px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.mobile-menu-backdrop{display:none;position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.5);backdrop-filter:blur(4px)}
+.mobile-menu-backdrop.is-open{display:block}
+.mobile-menu-panel{position:fixed;right:0;top:0;bottom:0;width:85vw;max-width:24rem;background:hsl(var(--background));box-shadow:0 25px 50px -12px rgba(0,0,0,.25);transform:translateX(100%);transition:transform .3s ease;z-index:41;overflow-y:auto;padding-top:6rem;padding-bottom:2rem}
+.mobile-menu-panel.is-open{transform:translateX(0)}
+.mobile-section-content{display:none;overflow:hidden}
+.mobile-section-content.is-open{display:block}
+</style>`;
+  html = html.replace('</head>', animCSS + '\n</head>');
+
   // ── Inject minimal vanilla JS for interactive elements ──
-  const tabScript = `<script data-ssg="tabs">
+  const interactiveScript = `<script data-ssg="interactive">
 (function(){
-  /* ProductShowcase tab switching */
+  /* ─── 1. Desktop Nav Dropdowns ─── */
+  var navTriggers=document.querySelectorAll('[data-nav-trigger]');
+  var navPanels=document.querySelectorAll('[data-nav-panel]');
+  var openPanel=null;
+  function closeAllDropdowns(){
+    navTriggers.forEach(function(t){t.setAttribute('data-state','closed');t.setAttribute('aria-expanded','false')});
+    navPanels.forEach(function(p){p.classList.remove('is-open')});
+    openPanel=null;
+  }
+  navTriggers.forEach(function(trigger){
+    trigger.addEventListener('click',function(e){
+      e.stopPropagation();
+      var id=this.getAttribute('data-nav-trigger');
+      var panel=document.querySelector('[data-nav-panel="'+id+'"]');
+      if(!panel)return;
+      var wasOpen=panel.classList.contains('is-open');
+      closeAllDropdowns();
+      if(!wasOpen){
+        panel.classList.add('is-open');
+        this.setAttribute('data-state','open');
+        this.setAttribute('aria-expanded','true');
+        openPanel=id;
+      }
+    });
+  });
+  document.addEventListener('click',function(e){
+    if(openPanel&&!e.target.closest('[data-nav-panel]'))closeAllDropdowns();
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'&&openPanel)closeAllDropdowns();
+  });
+
+  /* ─── 2. Mobile Hamburger Menu ─── */
+  var mobileBtn=document.querySelector('[data-mobile-toggle]');
+  var backdrop=document.querySelector('.mobile-menu-backdrop');
+  var mobilePanel=document.querySelector('.mobile-menu-panel');
+  function closeMobile(){
+    if(backdrop)backdrop.classList.remove('is-open');
+    if(mobilePanel)mobilePanel.classList.remove('is-open');
+    if(mobileBtn)mobileBtn.setAttribute('aria-expanded','false');
+  }
+  function openMobile(){
+    if(backdrop)backdrop.classList.add('is-open');
+    if(mobilePanel)mobilePanel.classList.add('is-open');
+    if(mobileBtn)mobileBtn.setAttribute('aria-expanded','true');
+  }
+  if(mobileBtn){
+    mobileBtn.addEventListener('click',function(){
+      var isOpen=mobilePanel&&mobilePanel.classList.contains('is-open');
+      if(isOpen)closeMobile();else openMobile();
+    });
+  }
+  if(backdrop)backdrop.addEventListener('click',closeMobile);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMobile()});
+  /* Mobile accordion sections */
+  document.querySelectorAll('[data-mobile-section]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var target=this.getAttribute('data-mobile-section');
+      var content=document.querySelector('[data-mobile-content="'+target+'"]');
+      if(!content)return;
+      var isOpen=content.classList.contains('is-open');
+      /* Close all sections first */
+      document.querySelectorAll('[data-mobile-content]').forEach(function(c){c.classList.remove('is-open')});
+      document.querySelectorAll('[data-mobile-section]').forEach(function(b){
+        var arrow=b.querySelector('.chevron-rotate');if(arrow)arrow.style.transform='rotate(0deg)';
+      });
+      if(!isOpen){
+        content.classList.add('is-open');
+        var arrow=this.querySelector('.chevron-rotate');if(arrow)arrow.style.transform='rotate(180deg)';
+      }
+    });
+  });
+  /* Close mobile on link click */
+  if(mobilePanel)mobilePanel.querySelectorAll('a[href]').forEach(function(a){a.addEventListener('click',closeMobile)});
+
+  /* ─── 3. ProductShowcase tab switching ─── */
   var panels=document.querySelectorAll('[data-showcase-panel]');
   var btns=document.querySelectorAll('[data-showcase-tab]');
   if(panels.length&&btns.length){
@@ -315,7 +563,7 @@ function postProcess(html, routePath) {
     });
   }
 
-  /* FAQ / Accordion toggle (Radix-style data-state) */
+  /* ─── 4. FAQ / Accordion toggle ─── */
   document.querySelectorAll('[data-orientation="vertical"] > [data-state]').forEach(function(item){
     var trigger=item.querySelector('button[data-state]');
     if(!trigger)return;
@@ -330,15 +578,26 @@ function postProcess(html, routePath) {
     });
   });
 
-  /* Radix NavigationMenu dropdowns for mobile: ensure closed menus stay hidden */
-  document.querySelectorAll('button[data-state="closed"][aria-expanded="false"]').forEach(function(b){
-    var id=b.getAttribute('aria-controls');
-    if(id){var p=document.getElementById(id);if(p)p.style.display='none'}
-  });
+  /* ─── 5. Scroll Animations (IntersectionObserver) ─── */
+  var els=document.querySelectorAll('.animate-on-scroll');
+  if(els.length&&'IntersectionObserver' in window){
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          entry.target.classList.add('is-visible');
+          obs.unobserve(entry.target);
+        }
+      });
+    },{threshold:0.1,rootMargin:'0px 0px -40px 0px'});
+    els.forEach(function(el){obs.observe(el)});
+  }else{
+    /* Fallback: just show everything */
+    els.forEach(function(el){el.classList.add('is-visible')});
+  }
 })();
 </script>`;
 
-  html = html.replace('</body>', tabScript + '\n</body>');
+  html = html.replace('</body>', interactiveScript + '\n</body>');
 
   return html;
 }
@@ -412,16 +671,58 @@ async function main() {
         });
       });
 
+      // ── Prepare nav triggers for postProcess injection ──
+      // Radix NavigationMenu renders dropdown content lazily, so we can't capture it
+      // via Puppeteer clicks (it crashes React state). Instead, we tag the triggers
+      // with data attributes and inject the dropdown HTML in postProcess().
+      await page.evaluate(() => {
+        const triggers = document.querySelectorAll('button[data-state="closed"][aria-expanded="false"][aria-controls]');
+        triggers.forEach(b => {
+          const text = b.textContent.trim().replace(/\s+/g, ' ');
+          if (text.startsWith('Features')) b.setAttribute('data-nav-trigger', 'features');
+          else if (text.startsWith('Solutions')) b.setAttribute('data-nav-trigger', 'solutions');
+        });
+        // Tag mobile toggle button
+        const mobileBtn = document.querySelector('button[aria-label="Toggle menu"]');
+        if (mobileBtn) mobileBtn.setAttribute('data-mobile-toggle', '');
+        // Remove the empty Radix viewport wrapper
+        const viewport = document.querySelector('div.absolute.left-0.top-full.flex.justify-center');
+        if (viewport) viewport.remove();
+      });
+
       // ── Capture ProductShowcase tab panels for static rendering ──
       await page.evaluate(async () => {
         const showcase = document.getElementById('product-showcase');
         if (!showcase) return;
 
-        // Find the scrollable tab-button container (has scrollbar-width: none)
-        const btnContainer = showcase.querySelector('[style*="scrollbar-width"]');
+        // Find tab buttons — look for the scrollable button container
+        // It may use scrollbar-width:none style, or just be a flex container with buttons
+        let btnContainer = showcase.querySelector('[style*="scrollbar-width"]');
+        if (!btnContainer) {
+          // Fallback: find button group by structure — div with multiple buttons inside a .relative wrapper
+          const allDivs = showcase.querySelectorAll('.relative div');
+          for (const div of allDivs) {
+            const buttons = div.querySelectorAll(':scope > button');
+            if (buttons.length >= 3) {
+              btnContainer = div;
+              break;
+            }
+          }
+        }
+        if (!btnContainer) {
+          // Last resort: find any container with 3+ buttons that looks like tabs
+          const candidates = showcase.querySelectorAll('div');
+          for (const div of candidates) {
+            const buttons = div.querySelectorAll(':scope > button');
+            if (buttons.length >= 4 && div.className.includes('flex')) {
+              btnContainer = div;
+              break;
+            }
+          }
+        }
         if (!btnContainer) return;
 
-        const buttons = Array.from(btnContainer.querySelectorAll('button'));
+        const buttons = Array.from(btnContainer.querySelectorAll(':scope > button'));
         if (buttons.length < 2) return;
 
         // The content grid is the .grid sibling after the .relative wrapper
@@ -478,6 +779,42 @@ async function main() {
 
         // Replace the single-content grid with the multi-panel version
         contentGrid.replaceWith(container);
+      });
+
+      // ── Mark elements for scroll animation ──
+      // Elements that had Framer Motion animations will have style="opacity: 1; transform: none;"
+      // We mark them with .animate-on-scroll so the IntersectionObserver can reveal them
+      await page.evaluate(() => {
+        document.querySelectorAll('[style]').forEach(el => {
+          const s = el.style;
+          // Only target content elements, not layout/structural ones
+          const tag = el.tagName.toLowerCase();
+          const cls = el.className || '';
+
+          // Skip nav, header, footer, mobile menu, decorative elements
+          if (el.closest('header') || el.closest('footer') || el.closest('nav') ||
+              el.closest('.mobile-menu-panel') || el.closest('.mobile-menu-backdrop') ||
+              el.closest('[data-nav-panel]') || el.closest('[data-showcase-panels]') ||
+              el.closest('.nav-dropdown-panel')) return;
+
+          // Skip elements with background/filter (decorative blobs)
+          if (s.background || s.backgroundImage || s.filter) return;
+
+          // Target elements that had opacity:0 + transform animations (now fixed to opacity:1)
+          if (s.opacity === '1' && s.transform === 'none') {
+            // Only animate sizeable content blocks, not tiny inline elements
+            const rect = el.getBoundingClientRect();
+            if (rect.height < 10 || rect.width < 10) return;
+
+            // Don't animate things in the first viewport (hero area) — they should be visible immediately
+            if (rect.top < window.innerHeight * 0.8) return;
+
+            el.classList.add('animate-on-scroll');
+            // Clear the inline styles so CSS class takes over
+            el.style.opacity = '';
+            el.style.transform = '';
+          }
+        });
       });
 
       // ── Final sweep: fix any remaining opacity:0 and animation transforms ──
