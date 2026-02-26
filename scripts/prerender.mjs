@@ -238,9 +238,13 @@ async function purgeProductionCss() {
   const result = await new PurgeCSS().purge({
     content: [join(OUT_DIR, '**/*.html')],
     css: [cssPath],
+    // Custom extractor that understands Tailwind's escaped colons in class names
+    // (e.g. sm\:flex, lg\:grid-cols-3, hover\:bg-accent, group-hover\/item\:text-primary)
+    defaultExtractor: content => content.match(/[\w\-\/:%.]+/g) || [],
     safelist: {
       standard: [/^is-/, /^animate-/, /^nav-dropdown/, /^mobile-menu/, /^mobile-section/, 'sr-only-focus'],
       greedy: [/data-state/, /data-orientation/],
+      deep: [/^sm:/, /^md:/, /^lg:/, /^xl:/, /^2xl:/, /^hover:/, /^focus:/, /^group/, /^data-\[/],
     },
   });
   if (result.length > 0) {
