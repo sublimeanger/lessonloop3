@@ -97,15 +97,33 @@ function makeExternalRedirect(path: string) {
   return () => ExternalRedirect({ to: `${MARKETING_BASE}${path}` });
 }
 
+/**
+ * Wrap a dynamic import so it retries once on failure, then falls back to
+ * `fallbackComponent` instead of crashing the app.  This guards against
+ * transient chunk-fetch failures (stale Vite cache, Lovable env issues, etc.).
+ */
+function safeLazy(
+  importFn: () => Promise<{ default: ComponentType<any> }>,
+  fallbackComponent: ComponentType<any>,
+): LazyExoticComponent<ComponentType<any>> {
+  return lazy(() =>
+    importFn().catch(
+      () => new Promise<{ default: ComponentType<any> }>((resolve) =>
+        setTimeout(() => resolve(importFn().catch(() => ({ default: fallbackComponent }))), 200),
+      ),
+    ),
+  );
+}
+
 /** In SSG mode, create a lazy component for the marketing page; otherwise redirect externally. */
 function makeMarketingRoute(path: string, importFn: () => Promise<{ default: ComponentType<any> }>): ComponentType<any> {
-  if (isSSG) return lazy(importFn);
+  if (isSSG) return safeLazy(importFn, makeExternalRedirect(path));
   return makeExternalRedirect(path);
 }
 
 /** Like makeMarketingRoute but uses a custom fallback component instead of an external redirect. */
 function makeMarketingRouteWithFallback(importFn: () => Promise<{ default: ComponentType<any> }>, fallback: ComponentType<any>): ComponentType<any> {
-  if (isSSG) return lazy(importFn);
+  if (isSSG) return safeLazy(importFn, fallback);
   return fallback;
 }
 
