@@ -7,7 +7,7 @@ import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 import { logError } from "../_shared/log.ts";
 
 const BATCH_SIZE = 50;
-const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop.net";
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 const PORTAL_URL = `${FRONTEND_URL}/portal/messages`;
 
 interface BulkMessageRequest {

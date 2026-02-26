@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";
 
-const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop.net";
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
 Deno.serve(async (req) => {
   // Only allow scheduled/internal calls

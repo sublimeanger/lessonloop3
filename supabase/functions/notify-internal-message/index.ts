@@ -140,7 +140,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;" />
                 <p style="color: #999; font-size: 12px;">
                   This is an internal message from ${escapeHtml(orgName)}. 
-                  <a href="https://lessonloop.lovable.app/messages" style="color: #666;">View in LessonLoop</a>
+                  <a href="https://app.lessonloop.net/messages" style="color: #666;">View in LessonLoop</a>
                 </p>
               </div>
             `,

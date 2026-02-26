@@ -100,7 +100,7 @@ serve(async (req) => {
               </p>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="https://lessonloop.net/settings?tab=billing" 
+                <a href="https://app.lessonloop.net/settings?tab=billing" 
                    style="background: #7c3aed; color: white; padding: 14px 28px; 
                           text-decoration: none; border-radius: 8px; font-weight: bold;
                           font-size: 16px;">
