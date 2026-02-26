@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useFeatureGate, Feature, PLAN_NAMES } from '@/hooks/useFeatureGate';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
+import { platform } from '@/lib/platform';
 
 interface FeatureGateProps {
   feature: Feature;
@@ -58,13 +59,19 @@ export function FeatureGate({
               ? 'Your trial has expired. Upgrade to continue using this feature.'
               : `This feature requires the ${requiredPlanName} plan or higher.`}
           </p>
-          <Button asChild>
-            <Link to="/settings?tab=billing">
-              <Sparkles className="mr-2 h-4 w-4" />
-              Upgrade to {requiredPlanName}
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
+          {platform.isNative ? (
+            <p className="text-sm font-medium text-primary">
+              Visit lessonloop.net to upgrade to {requiredPlanName}
+            </p>
+          ) : (
+            <Button asChild>
+              <Link to="/settings?tab=billing">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Upgrade to {requiredPlanName}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          )}
         </CardContent>
       </Card>
     </motion.div>
@@ -99,11 +106,17 @@ export function FeatureLockedOverlay({ feature, children, className }: FeatureLo
             <Lock className="h-6 w-6 text-muted-foreground" />
           </div>
           <p className="mb-3 text-sm font-medium">{featureName}</p>
-          <Button asChild size="sm" variant="outline">
-            <Link to="/settings?tab=billing">
-              Upgrade to {requiredPlanName}
-            </Link>
-          </Button>
+          {platform.isNative ? (
+            <p className="text-xs font-medium text-primary">
+              Visit lessonloop.net to upgrade
+            </p>
+          ) : (
+            <Button asChild size="sm" variant="outline">
+              <Link to="/settings?tab=billing">
+                Upgrade to {requiredPlanName}
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -147,12 +160,18 @@ export function LimitReached({ limitType, currentCount: _cc, maxCount, className
           </p>
         </div>
         {canUpgrade && (
-          <Button asChild variant="outline" size="sm" className="border-warning text-warning hover:bg-warning/10">
-            <Link to="/settings?tab=billing">
-              Upgrade
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
+          platform.isNative ? (
+            <span className="shrink-0 text-sm font-medium text-warning">
+              Visit lessonloop.net to upgrade
+            </span>
+          ) : (
+            <Button asChild variant="outline" size="sm" className="border-warning text-warning hover:bg-warning/10">
+              <Link to="/settings?tab=billing">
+                Upgrade
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          )
         )}
       </div>
     </motion.div>

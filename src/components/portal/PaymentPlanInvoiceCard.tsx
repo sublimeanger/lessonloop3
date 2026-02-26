@@ -11,6 +11,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useInvoicePdf } from '@/hooks/useInvoicePdf';
 import type { Installment } from '@/hooks/useInvoiceInstallments';
+import { platform } from '@/lib/platform';
+import { NativePaymentNotice } from '@/components/shared/NativePaymentNotice';
 
 interface PaymentPlanInvoiceCardProps {
   invoice: {
@@ -152,7 +154,7 @@ export function PaymentPlanInvoiceCard({
                   })
                 </p>
               </div>
-              {showPayButton && (
+              {showPayButton && !platform.isNative && (
                 <Button
                   onClick={() => onPayInstallment(invoice.id, nextInstallment.id)}
                   disabled={isPaying}
@@ -222,9 +224,17 @@ export function PaymentPlanInvoiceCard({
           </div>
         )}
 
+        {/* Native payment notice */}
+        {platform.isNative && showPayButton && nextInstallment && invoice.status !== 'paid' && (
+          <NativePaymentNotice
+            variant="inline"
+            message="To pay this invoice, please visit lessonloop.net in your browser or use the payment link sent to your email."
+          />
+        )}
+
         {/* Pay remaining + bank reference */}
         <div className="flex items-center justify-between pt-1">
-          {remaining > 0 && showPayButton && paidCount > 0 && (
+          {remaining > 0 && showPayButton && paidCount > 0 && !platform.isNative && (
             <Button
               variant="link"
               size="sm"

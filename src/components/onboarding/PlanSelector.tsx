@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Check, Sparkles, Users, Building2, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, formatLimit, TRIAL_DAYS, DB_PLAN_MAP } from '@/lib/pricing-config';
+import { platform } from '@/lib/platform';
 
 // Database subscription plan type (what gets stored)
 type DbSubscriptionPlan = 'solo_teacher' | 'academy' | 'agency';
@@ -194,9 +195,15 @@ export function PlanSelector({ selectedPlan, onSelectPlan, recommendedPlan }: Pl
       {/* Plan comparison link */}
       <p className="text-center text-sm text-muted-foreground">
         All plans include LoopAssist AI, parent portal, and core features.{' '}
-        <a href="https://lessonloop.io/pricing" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-          Compare plans in detail →
-        </a>
+        {platform.isNative ? (
+          <span className="text-primary">
+            Visit lessonloop.net to compare plans in detail
+          </span>
+        ) : (
+          <a href="https://lessonloop.io/pricing" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+            Compare plans in detail →
+          </a>
+        )}
       </p>
     </div>
   );

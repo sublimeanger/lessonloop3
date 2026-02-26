@@ -17,6 +17,7 @@ import { useInvoice, useUpdateInvoiceStatus } from '@/hooks/useInvoices';
 import { useStripePayment } from '@/hooks/useStripePayment';
 import { useInvoicePdf } from '@/hooks/useInvoicePdf';
 import { useToast } from '@/hooks/use-toast';
+import { platform } from '@/lib/platform';
 
 import { DetailSkeleton } from '@/components/shared/LoadingState';
 import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
@@ -194,9 +195,9 @@ export default function InvoiceDetail() {
                   )}
                   {isPdfLoading ? 'Generating...' : 'Download PDF'}
                 </Button>
-                {invoice.status !== 'paid' && invoice.status !== 'void' && onlinePaymentsEnabled && (
-                  <Button 
-                    className="min-h-11 gap-2 sm:min-h-9" 
+                {invoice.status !== 'paid' && invoice.status !== 'void' && onlinePaymentsEnabled && !platform.isNative && (
+                  <Button
+                    className="min-h-11 gap-2 sm:min-h-9"
                     onClick={handlePayNow}
                     disabled={isPaymentLoading}
                   >

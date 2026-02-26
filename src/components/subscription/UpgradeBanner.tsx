@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { safeGetItem, safeSetItem } from '@/lib/storage';
 import { differenceInHours } from 'date-fns';
+import { platform } from '@/lib/platform';
+import { NativePaymentNotice } from '@/components/shared/NativePaymentNotice';
 
 interface UpgradeBannerProps {
   className?: string;
@@ -86,12 +88,18 @@ export function UpgradeBanner({
               Upgrade now to continue using LessonLoop and keep your data.
             </p>
           </div>
-          <Button asChild variant="destructive" size="sm">
-            <Link to="/settings?tab=billing">
-              Upgrade Now
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
+          {platform.isNative ? (
+            <span className="shrink-0 text-sm font-medium text-destructive">
+              Visit lessonloop.net to upgrade
+            </span>
+          ) : (
+            <Button asChild variant="destructive" size="sm">
+              <Link to="/settings?tab=billing">
+                Upgrade Now
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          )}
         </div>
       </motion.div>
     );
@@ -118,12 +126,18 @@ export function UpgradeBanner({
               Please update your payment method to avoid service interruption.
             </p>
           </div>
-          <Button asChild variant="outline" size="sm" className="border-warning text-warning hover:bg-warning/10">
-            <Link to="/settings?tab=billing">
-              Update Payment
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
+          {platform.isNative ? (
+            <span className="shrink-0 text-sm font-medium text-warning">
+              Visit lessonloop.net to update payment
+            </span>
+          ) : (
+            <Button asChild variant="outline" size="sm" className="border-warning text-warning hover:bg-warning/10">
+              <Link to="/settings?tab=billing">
+                Update Payment
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          )}
         </div>
       </motion.div>
     );
@@ -152,9 +166,15 @@ export function UpgradeBanner({
                 ? formatCountdown()
                 : `${trialDaysRemaining} day${trialDaysRemaining !== 1 ? 's' : ''} left in trial`}
           </span>
-          <Link to="/settings?tab=billing" className="font-medium text-primary hover:underline">
-            Upgrade
-          </Link>
+          {platform.isNative ? (
+            <span className="font-medium text-primary">
+              Visit lessonloop.net to upgrade
+            </span>
+          ) : (
+            <Link to="/settings?tab=billing" className="font-medium text-primary hover:underline">
+              Upgrade
+            </Link>
+          )}
         </motion.div>
       );
     }
@@ -197,9 +217,18 @@ export function UpgradeBanner({
               )}
             </span>
           </div>
-          <Button asChild variant={urgency === 'critical' || urgency === 'high' ? 'destructive' : 'outline'} size="sm">
-            <Link to="/settings?tab=billing">Upgrade Now</Link>
-          </Button>
+          {platform.isNative ? (
+            <span className={cn(
+              'shrink-0 text-sm font-medium',
+              (urgency === 'critical' || urgency === 'high') ? 'text-destructive' : 'text-primary'
+            )}>
+              Visit lessonloop.net to upgrade
+            </span>
+          ) : (
+            <Button asChild variant={urgency === 'critical' || urgency === 'high' ? 'destructive' : 'outline'} size="sm">
+              <Link to="/settings?tab=billing">Upgrade Now</Link>
+            </Button>
+          )}
           {dismissible && (
             <button onClick={handleDismiss} className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
@@ -262,18 +291,27 @@ export function UpgradeBanner({
                 : `You have ${trialDaysRemaining} days remaining. Choose a plan for unlimited access.`}
             </p>
           </div>
-          <Button 
-            asChild 
-            className={cn(
-              'shrink-0',
-              (urgency === 'critical' || urgency === 'high') && 'bg-destructive hover:bg-destructive/90'
-            )}
-          >
-            <Link to="/settings?tab=billing">
-              {urgency === 'critical' || urgency === 'high' ? 'Upgrade Now' : 'Choose Plan'}
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
+          {platform.isNative ? (
+            <span className={cn(
+              'shrink-0 text-sm font-medium',
+              (urgency === 'critical' || urgency === 'high') ? 'text-destructive' : 'text-primary'
+            )}>
+              Visit lessonloop.net to upgrade
+            </span>
+          ) : (
+            <Button
+              asChild
+              className={cn(
+                'shrink-0',
+                (urgency === 'critical' || urgency === 'high') && 'bg-destructive hover:bg-destructive/90'
+              )}
+            >
+              <Link to="/settings?tab=billing">
+                {urgency === 'critical' || urgency === 'high' ? 'Upgrade Now' : 'Choose Plan'}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          )}
         </div>
       </motion.div>
     );

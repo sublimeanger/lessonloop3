@@ -48,6 +48,8 @@ import { useSearchParams } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { PRICING_CONFIG, PLAN_ORDER, type PlanKey, TRIAL_DAYS, PLAN_DISPLAY_NAMES } from '@/lib/pricing-config';
+import { platform } from '@/lib/platform';
+import { NativePaymentNotice } from '@/components/shared/NativePaymentNotice';
 
 // Database plan types
 type DbSubscriptionPlan = 'solo_teacher' | 'academy' | 'agency';
@@ -377,9 +379,9 @@ export function BillingTab() {
                 Manage your LessonLoop subscription
               </CardDescription>
             </div>
-            {hasActiveSubscription && canManageBilling && (
-              <Button 
-                variant="outline" 
+            {hasActiveSubscription && canManageBilling && !platform.isNative && (
+              <Button
+                variant="outline"
                 onClick={openCustomerPortal}
                 disabled={isLoading}
               >
@@ -540,7 +542,7 @@ export function BillingTab() {
       )}
 
       {/* Plan Selection */}
-      {canManageBilling && (
+      {canManageBilling && !platform.isNative && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
@@ -556,8 +558,8 @@ export function BillingTab() {
                 aria-pressed={billingInterval === 'monthly'}
                 className={cn(
                   'px-4 py-2 text-sm font-medium rounded-md transition-colors',
-                  billingInterval === 'monthly' 
-                    ? 'bg-background shadow-sm' 
+                  billingInterval === 'monthly'
+                    ? 'bg-background shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -569,8 +571,8 @@ export function BillingTab() {
                 aria-pressed={billingInterval === 'yearly'}
                 className={cn(
                   'px-4 py-2 text-sm font-medium rounded-md transition-colors',
-                  billingInterval === 'yearly' 
-                    ? 'bg-background shadow-sm' 
+                  billingInterval === 'yearly'
+                    ? 'bg-background shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -602,8 +604,15 @@ export function BillingTab() {
         </div>
       )}
 
-      {/* Payment Collection (Stripe Connect) */}
-      {canManageBilling && (
+      {/* Native app subscription notice */}
+      {canManageBilling && platform.isNative && (
+        <NativePaymentNotice
+          message={`You're on the ${PLAN_DISPLAY_NAMES[plan] || plan} plan. To change your plan or update payment details, visit lessonloop.net in your browser.`}
+        />
+      )}
+
+      {/* Payment Collection (Stripe Connect) — hidden in native app */}
+      {canManageBilling && !platform.isNative && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -737,16 +746,16 @@ export function BillingTab() {
         </Card>
       )}
 
-      {/* Payment Preferences */}
-      {canManageBilling && <PaymentPreferencesCard orgId={currentOrg?.id} isConnected={isConnected} />}
+      {/* Payment Preferences — hidden in native app */}
+      {canManageBilling && !platform.isNative && <PaymentPreferencesCard orgId={currentOrg?.id} isConnected={isConnected} />}
 
-      {/* Billing History */}
-      {canManageBilling && hasActiveSubscription && currentOrg?.id && (
+      {/* Billing History — hidden in native app (contains Stripe links) */}
+      {canManageBilling && hasActiveSubscription && currentOrg?.id && !platform.isNative && (
         <BillingHistoryCard orgId={currentOrg.id} />
       )}
 
-      {/* Cancel Subscription */}
-      {canManageBilling && hasActiveSubscription && currentOrg?.id && (
+      {/* Cancel Subscription — hidden in native app (opens Stripe portal) */}
+      {canManageBilling && hasActiveSubscription && currentOrg?.id && !platform.isNative && (
         <CancellationFlowCard
           orgId={currentOrg.id}
           onConfirmCancel={openCustomerPortal}

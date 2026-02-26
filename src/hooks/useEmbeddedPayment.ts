@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { platform } from '@/lib/platform';
 
 interface PaymentIntentResponse {
   clientSecret: string;
@@ -25,6 +26,14 @@ export function useEmbeddedPayment() {
     invoiceId: string,
     options?: CreatePaymentIntentOptions,
   ): Promise<PaymentIntentResponse | null> => {
+    if (platform.isNative) {
+      toast({
+        title: 'Not available in app',
+        description: 'Please visit lessonloop.net in your browser to pay invoices.',
+      });
+      return null;
+    }
+
     setIsCreating(true);
     setError(null);
 

@@ -23,6 +23,8 @@ import { formatCurrencyMinor } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import { platform } from '@/lib/platform';
+import { NativePaymentNotice } from '@/components/shared/NativePaymentNotice';
 
 interface PaymentDrawerProps {
   open: boolean;
@@ -100,6 +102,69 @@ export function PaymentDrawer({
   const handleError = useCallback(() => {
     setPaymentStatus('error');
   }, []);
+
+  // In native Capacitor app, show notice instead of Stripe payment form
+  if (platform.isNative) {
+    const nativeContent = (
+      <div className="space-y-5 px-1">
+        <div className="rounded-xl bg-muted/50 p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">
+              {installmentLabel || invoiceNumber || 'Invoice'}
+            </span>
+            {dueDate && (
+              <span className="text-xs text-muted-foreground">Due: {dueDate}</span>
+            )}
+          </div>
+          <p className="text-3xl font-bold tracking-tight">
+            {formatCurrencyMinor(amount || 0, currencyCode.toUpperCase())}
+          </p>
+        </div>
+        <NativePaymentNotice
+          message="To pay this invoice, please visit lessonloop.net in your browser or use the payment link sent to your email."
+        />
+        <Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>
+          Close
+        </Button>
+      </div>
+    );
+
+    if (isDesktop) {
+      return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-primary" />
+                Pay Invoice
+              </DialogTitle>
+              <DialogDescription>
+                Online payment is not available in the app
+              </DialogDescription>
+            </DialogHeader>
+            {nativeContent}
+          </DialogContent>
+        </Dialog>
+      );
+    }
+
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="px-4 pb-6">
+          <DrawerHeader className="px-0">
+            <DrawerTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-primary" />
+              Pay Invoice
+            </DrawerTitle>
+            <DrawerDescription>
+              Online payment is not available in the app
+            </DrawerDescription>
+          </DrawerHeader>
+          {nativeContent}
+        </DrawerContent>
+      </Drawer>
+    );
+  }
 
   const content = (
     <div className="space-y-5 px-1">
