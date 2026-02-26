@@ -97,28 +97,15 @@ function makeExternalRedirect(path: string) {
   return () => ExternalRedirect({ to: `${MARKETING_BASE}${path}` });
 }
 
-/**
- * Wraps a dynamic import so that if it fails (e.g. stale cache on preview
- * domains), we fall back to `fallbackComponent` instead of crashing React.lazy.
- */
-function safeLazy(
-  importFn: () => Promise<{ default: ComponentType<any> }>,
-  fallbackComponent: ComponentType<any>,
-) {
-  return lazy(() =>
-    importFn().catch(() => ({ default: fallbackComponent })),
-  );
-}
-
 /** In SSG mode, create a lazy component for the marketing page; otherwise redirect externally. */
 function makeMarketingRoute(path: string, importFn: () => Promise<{ default: ComponentType<any> }>): ComponentType<any> {
-  if (isSSG) return safeLazy(importFn, makeExternalRedirect(path));
+  if (isSSG) return lazy(importFn);
   return makeExternalRedirect(path);
 }
 
 /** Like makeMarketingRoute but uses a custom fallback component instead of an external redirect. */
 function makeMarketingRouteWithFallback(importFn: () => Promise<{ default: ComponentType<any> }>, fallback: ComponentType<any>): ComponentType<any> {
-  if (isSSG) return safeLazy(importFn, fallback);
+  if (isSSG) return lazy(importFn);
   return fallback;
 }
 
