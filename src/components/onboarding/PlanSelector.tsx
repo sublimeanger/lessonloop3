@@ -96,25 +96,33 @@ export function PlanSelector({ selectedPlan, onSelectPlan, recommendedPlan }: Pl
               key={plan.value}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
+              transition={{ delay: index * 0.1, duration: 0.4 }}
+              whileHover={{ y: -3, transition: { duration: 0.2 } }}
+              whileTap={{ scale: 0.98 }}
               type="button"
               onClick={() => onSelectPlan(plan.dbValue)}
               className={cn(
                 'relative flex flex-col rounded-xl border-2 p-4 md:p-5 text-left transition-all duration-200',
                 'min-w-[260px] snap-center shrink-0 md:min-w-0 md:shrink',
+                'outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 isSelected
-                  ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10'
-                  : 'border-border hover:border-primary/50 hover:bg-muted/30',
+                  ? 'border-primary bg-primary/5 shadow-elevated shadow-primary/10'
+                  : 'border-border hover:border-primary/40 hover:shadow-card',
                 plan.highlighted && !isSelected && 'border-primary/30'
               )}
             >
               {/* Recommended badge */}
               {isRecommended && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 + index * 0.1 }}
+                  className="absolute -top-3 left-1/2 -translate-x-1/2"
+                >
+                  <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground shadow-sm">
                     Recommended
                   </span>
-                </div>
+                </motion.div>
               )}
 
               {/* Selection indicator */}

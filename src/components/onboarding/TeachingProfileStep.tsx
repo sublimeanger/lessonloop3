@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Plus, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,12 +21,14 @@ function ChipSelector({
   onToggle,
   allowCustom,
   customPlaceholder = 'Add other...',
+  ariaLabel,
 }: {
   options: ChipOption[];
   selected: string[];
   onToggle: (value: string) => void;
   allowCustom?: boolean;
   customPlaceholder?: string;
+  ariaLabel?: string;
 }) {
   const [customValue, setCustomValue] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -41,77 +43,90 @@ function ChipSelector({
   };
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2" role="group" aria-label={ariaLabel}>
       {options.map((opt) => {
         const isActive = selected.includes(opt.value);
         return (
           <motion.button
             key={opt.value}
             type="button"
+            aria-pressed={isActive}
+            whileHover={{ scale: 1.04, transition: { duration: 0.15 } }}
             whileTap={{ scale: 0.95 }}
             onClick={() => onToggle(opt.value)}
             className={`
-              inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium
-              transition-all duration-200
+              inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium
+              transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1
               ${isActive
                 ? 'border-primary bg-primary/10 text-primary shadow-sm'
-                : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-muted/40'
               }
             `}
           >
             {opt.label}
-            {isActive && <X className="h-3 w-3" />}
+            {isActive && <X className="h-3 w-3 ml-0.5" />}
           </motion.button>
         );
       })}
 
       {/* Custom entries that aren't in default options */}
-      {selected.filter(s => !options.some(o => o.value === s)).map(custom => (
-        <motion.button
-          key={custom}
-          type="button"
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => onToggle(custom)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 text-primary px-3.5 py-1.5 text-sm font-medium shadow-sm"
-        >
-          {custom}
-          <X className="h-3 w-3" />
-        </motion.button>
-      ))}
+      <AnimatePresence>
+        {selected.filter(s => !options.some(o => o.value === s)).map(custom => (
+          <motion.button
+            key={custom}
+            type="button"
+            aria-pressed={true}
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.6, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => onToggle(custom)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 text-primary px-3.5 py-2 text-sm font-medium shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {custom}
+            <X className="h-3 w-3 ml-0.5" />
+          </motion.button>
+        ))}
+      </AnimatePresence>
 
       {allowCustom && !showCustomInput && (
-        <button
+        <motion.button
           type="button"
+          whileHover={{ scale: 1.04, transition: { duration: 0.15 } }}
+          whileTap={{ scale: 0.95 }}
           onClick={() => setShowCustomInput(true)}
-          className="inline-flex items-center gap-1 rounded-full border border-dashed border-muted-foreground/30 px-3.5 py-1.5 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-1 rounded-full border border-dashed border-muted-foreground/30 px-3.5 py-2 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-muted/30 transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <Plus className="h-3 w-3" />
+          <Plus className="h-3.5 w-3.5" />
           {customPlaceholder}
-        </button>
+        </motion.button>
       )}
 
-      {showCustomInput && (
-        <motion.div
-          initial={{ width: 0, opacity: 0 }}
-          animate={{ width: 'auto', opacity: 1 }}
-          className="flex items-center gap-1"
-        >
-          <Input
-            autoFocus
-            value={customValue}
-            onChange={(e) => setCustomValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); handleAddCustom(); }
-              if (e.key === 'Escape') setShowCustomInput(false);
-            }}
-            onBlur={() => { if (customValue.trim()) handleAddCustom(); else setShowCustomInput(false); }}
-            placeholder="e.g. Harp"
-            className="h-8 w-28 text-sm"
-          />
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {showCustomInput && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 'auto', opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center"
+          >
+            <Input
+              autoFocus
+              value={customValue}
+              onChange={(e) => setCustomValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); handleAddCustom(); }
+                if (e.key === 'Escape') setShowCustomInput(false);
+              }}
+              onBlur={() => { if (customValue.trim()) handleAddCustom(); else setShowCustomInput(false); }}
+              placeholder="e.g. Harp"
+              className="h-9 w-full max-w-[130px] text-sm rounded-full"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -122,26 +137,32 @@ function RangeSelector({
   options,
   value,
   onChange,
+  ariaLabel,
 }: {
   options: { value: string; label: string }[];
   value: string;
   onChange: (value: string) => void;
+  ariaLabel?: string;
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={ariaLabel}>
       {options.map((opt) => {
         const isActive = value === opt.value;
         return (
           <motion.button
             key={opt.value}
             type="button"
+            role="radio"
+            aria-checked={isActive}
+            whileHover={{ scale: 1.04, y: -1, transition: { duration: 0.15 } }}
             whileTap={{ scale: 0.95 }}
             onClick={() => onChange(opt.value)}
             className={`
-              rounded-xl border-2 px-4 py-2 text-sm font-medium transition-all duration-200
+              rounded-xl border-2 px-5 py-2.5 text-sm font-semibold transition-all duration-200
+              outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
               ${isActive
                 ? 'border-primary bg-primary/10 text-primary shadow-sm'
-                : 'border-border bg-background text-muted-foreground hover:border-primary/40'
+                : 'border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground'
               }
             `}
           >
@@ -241,16 +262,16 @@ export function TeachingProfileStep({
   return (
     <motion.div
       key="teaching"
-      initial={{ opacity: 0, x: 20 }}
+      initial={{ opacity: 0, x: 30 }}
       animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3 }}
+      exit={{ opacity: 0, x: -30 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div className="mb-8 text-center">
-        <h1 className="text-2xl sm:text-3xl font-bold">
+      <div className="mb-8 sm:mb-10 text-center">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
           {isSolo ? 'About Your Teaching' : 'About Your Organisation'}
         </h1>
-        <p className="mt-2 text-muted-foreground">
+        <p className="mt-2 text-sm sm:text-base text-muted-foreground">
           {isSolo
             ? "Help us personalise your experience."
             : "A few details to set up your workspace."
@@ -259,17 +280,17 @@ export function TeachingProfileStep({
       </div>
 
       <form onSubmit={handleSubmit}>
-        <Card>
-          <CardContent className="space-y-6 pt-6">
+        <Card className="shadow-card">
+          <CardContent className="space-y-6 p-5 sm:p-6">
             {/* Org name (studio/academy/agency only) */}
             {!isSolo && (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
+                transition={{ delay: 0.1, duration: 0.4 }}
                 className="space-y-2"
               >
-                <Label htmlFor="orgName">
+                <Label htmlFor="orgName" className="text-sm font-medium">
                   {isAgency ? 'Agency Name' : isStudioOrAcademy ? 'Studio / School Name' : 'Organisation Name'}
                 </Label>
                 <Input
@@ -279,7 +300,7 @@ export function TeachingProfileStep({
                   maxLength={100}
                   onChange={(e) => onOrgNameChange(e.target.value)}
                   autoComplete="organization"
-                  className="h-11"
+                  className="h-11 sm:h-12 text-base"
                 />
                 <p className="text-xs text-muted-foreground">You can change this later in Settings.</p>
               </motion.div>
@@ -289,33 +310,37 @@ export function TeachingProfileStep({
             {isSolo && (
               <>
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
+                  transition={{ delay: 0.1, duration: 0.4 }}
                   className="space-y-3"
                 >
-                  <Label>How many students do you currently teach?</Label>
+                  <Label className="text-sm font-medium">How many students do you currently teach?</Label>
                   <RangeSelector
                     options={STUDENT_RANGES}
                     value={studentCount}
                     onChange={onStudentCountChange}
+                    ariaLabel="Number of students"
                   />
                 </motion.div>
 
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
+                  transition={{ delay: 0.2, duration: 0.4 }}
                   className="space-y-3"
                 >
-                  <Label>What instruments do you teach?</Label>
-                  <p className="text-xs text-muted-foreground -mt-1">Select all that apply — this helps us personalise your experience.</p>
+                  <div>
+                    <Label className="text-sm font-medium">What instruments do you teach?</Label>
+                    <p className="text-xs text-muted-foreground mt-1">Select all that apply — this helps us personalise your experience.</p>
+                  </div>
                   <ChipSelector
                     options={POPULAR_INSTRUMENTS}
                     selected={instruments}
                     onToggle={toggleInstrument}
                     allowCustom
                     customPlaceholder="Add other..."
+                    ariaLabel="Instruments taught"
                   />
                 </motion.div>
               </>
@@ -325,47 +350,51 @@ export function TeachingProfileStep({
             {isStudioOrAcademy && (
               <>
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 }}
+                  transition={{ delay: 0.15, duration: 0.4 }}
                   className="space-y-3"
                 >
-                  <Label>How many teachers work with you?</Label>
+                  <Label className="text-sm font-medium">How many teachers work with you?</Label>
                   <RangeSelector
                     options={TEAM_SIZES}
                     value={teamSize}
                     onChange={onTeamSizeChange}
+                    ariaLabel="Number of teachers"
                   />
                 </motion.div>
 
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
+                  transition={{ delay: 0.2, duration: 0.4 }}
                   className="space-y-3"
                 >
-                  <Label>How many teaching locations?</Label>
+                  <Label className="text-sm font-medium">How many teaching locations?</Label>
                   <RangeSelector
                     options={LOCATION_COUNTS}
                     value={locationCount}
                     onChange={onLocationCountChange}
+                    ariaLabel="Number of locations"
                   />
                 </motion.div>
 
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25 }}
-                  className="flex items-start gap-3 rounded-xl border border-border p-4"
+                  transition={{ delay: 0.25, duration: 0.4 }}
+                  className="flex items-start gap-3 rounded-xl border border-border p-4 sm:p-5 hover:bg-muted/20 transition-colors cursor-pointer"
+                  onClick={() => onAlsoTeachesChange(!alsoTeaches)}
                 >
                   <Checkbox
                     id="alsoTeaches"
                     checked={alsoTeaches}
                     onCheckedChange={(checked) => onAlsoTeachesChange(checked === true)}
                     className="mt-0.5"
+                    onClick={(e) => e.stopPropagation()}
                   />
                   <div className="space-y-1">
-                    <Label htmlFor="alsoTeaches" className="cursor-pointer font-medium leading-none">
+                    <Label htmlFor="alsoTeaches" className="cursor-pointer font-medium leading-none text-sm">
                       I also teach lessons
                     </Label>
                     <p className="text-xs text-muted-foreground">
@@ -380,30 +409,32 @@ export function TeachingProfileStep({
             {isAgency && (
               <>
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 }}
+                  transition={{ delay: 0.15, duration: 0.4 }}
                   className="space-y-3"
                 >
-                  <Label>How many teachers do you manage?</Label>
+                  <Label className="text-sm font-medium">How many teachers do you manage?</Label>
                   <RangeSelector
                     options={TEAM_SIZES}
                     value={teamSize}
                     onChange={onTeamSizeChange}
+                    ariaLabel="Number of teachers"
                   />
                 </motion.div>
 
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
+                  transition={{ delay: 0.2, duration: 0.4 }}
                   className="space-y-3"
                 >
-                  <Label>How many client schools?</Label>
+                  <Label className="text-sm font-medium">How many client schools?</Label>
                   <RangeSelector
                     options={SCHOOL_COUNTS}
                     value={locationCount}
                     onChange={onLocationCountChange}
+                    ariaLabel="Number of client schools"
                   />
                 </motion.div>
               </>
@@ -420,7 +451,7 @@ export function TeachingProfileStep({
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
-              <Button type="submit" size="lg">
+              <Button type="submit" size="lg" className="min-w-[140px] shadow-sm hover:shadow-md transition-shadow">
                 Continue
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
