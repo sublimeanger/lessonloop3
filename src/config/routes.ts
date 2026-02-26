@@ -103,6 +103,12 @@ function makeMarketingRoute(path: string, importFn: () => Promise<{ default: Com
   return makeExternalRedirect(path);
 }
 
+/** Like makeMarketingRoute but uses a custom fallback component instead of an external redirect. */
+function makeMarketingRouteWithFallback(importFn: () => Promise<{ default: ComponentType<any> }>, fallback: ComponentType<any>): ComponentType<any> {
+  if (isSSG) return lazy(importFn);
+  return fallback;
+}
+
 // ─── Route definitions ──────────────────────────────────
 
 /** Routes that redirect authenticated users away (login/signup) */
@@ -166,7 +172,7 @@ export const appRoutes: RouteConfig[] = [
 /** Marketing routes — SSG renders real pages; production redirects to static site */
 export const marketingRoutes: RouteConfig[] = [
   // Root: SSG renders marketing home, production does auth-aware redirect
-  { path: '/', component: isSSG ? lazy(() => import('@/pages/marketing/Home')) : AuthRedirect, auth: 'public', label: 'Home' },
+  { path: '/', component: makeMarketingRouteWithFallback(() => import('@/pages/marketing/Home'), AuthRedirect), auth: 'public', label: 'Home' },
 
   // Public pages that stay in-app
   { path: '/reset-password', component: ResetPassword, auth: 'public', label: 'Reset Password' },
