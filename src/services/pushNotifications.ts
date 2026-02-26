@@ -7,6 +7,11 @@ import { logger } from '@/lib/logger';
 /**
  * Initialise push notifications for native platforms.
  * Call this once after user authentication.
+ *
+ * - Android: uses FCM (Firebase Cloud Messaging)
+ * - iOS: uses APNs (Apple Push Notification service)
+ *
+ * The Capacitor PushNotifications plugin handles both transparently.
  */
 export async function initPushNotifications(userId: string, orgId: string) {
   if (!platform.isNative) return;
@@ -19,18 +24,18 @@ export async function initPushNotifications(userId: string, orgId: string) {
       return;
     }
 
-    // Register with the native push service (FCM for Android)
+    // Register with the native push service (FCM for Android, APNs for iOS)
     await PushNotifications.register();
 
     // Listen for registration success — save the token to Supabase
     PushNotifications.addListener('registration', async (token: Token) => {
-      logger.info('Push registration success');
+      logger.info(`Push registration success (${platform.getPlatform()})`);
       try {
         await supabase.from('push_tokens').upsert({
           user_id: userId,
           org_id: orgId,
           token: token.value,
-          platform: platform.getPlatform(),
+          platform: platform.getPlatform(), // 'ios' or 'android'
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'user_id,platform',
@@ -63,8 +68,20 @@ export async function initPushNotifications(userId: string, orgId: string) {
     PushNotifications.addListener('pushNotificationActionPerformed', (action: ActionPerformed) => {
       logger.info('Push notification action:', action);
       const data = action.notification.data;
+
       // Navigate based on notification type
-      if (data?.route) {
+      if (data?.type === 'new_message' && data?.conversationId) {
+        window.location.href = `/messages/${data.conversationId}`;
+      } else if (data?.type === 'invoice_overdue' && data?.invoiceId) {
+        window.location.href = `/invoices/${data.invoiceId}`;
+      } else if (data?.type === 'lesson_reminder' && data?.lessonId) {
+        window.location.href = `/calendar?lesson=${data.lessonId}`;
+      } else if (data?.type === 'attendance_needed') {
+        window.location.href = '/register';
+      } else if (data?.type === 'practice_reminder') {
+        window.location.href = '/portal/practice';
+      } else if (data?.route) {
+        // Fallback: navigate to a specific route if provided
         window.location.href = data.route;
       }
     });

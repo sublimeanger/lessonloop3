@@ -110,7 +110,21 @@ function NativeInitializer() {
   const { user } = useAuth();
   const { currentOrg } = useOrg();
   const pushInitRef = useRef(false);
+  const nativeInitRef = useRef(false);
 
+  // One-time native app init (status bar, keyboard, deep links, etc.)
+  useEffect(() => {
+    if (nativeInitRef.current) return;
+    nativeInitRef.current = true;
+    import('@/lib/native/init').then(({ initNativeApp }) => {
+      // Use window.location-based navigation as a fallback
+      initNativeApp((path: string) => {
+        window.location.href = path;
+      });
+    });
+  }, []);
+
+  // Push notification registration (after auth)
   useEffect(() => {
     if (user && currentOrg && !pushInitRef.current) {
       pushInitRef.current = true;

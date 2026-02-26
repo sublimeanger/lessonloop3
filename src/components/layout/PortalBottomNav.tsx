@@ -4,6 +4,7 @@ import { NavLink } from 'react-router-dom';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
 import { usePortalFeatures } from '@/hooks/usePortalFeatures';
 import { cn } from '@/lib/utils';
+import { haptics } from '@/lib/native/haptics';
 
 const allTabs = [
   { label: 'Home', path: '/portal/home', icon: Home, key: 'always' as const },
@@ -41,6 +42,7 @@ export function PortalBottomNav() {
             <NavLink
               key={tab.path}
               to={tab.path}
+              onClick={() => haptics.tap()}
               aria-label={badge ? `${tab.label}, ${badge} unread` : tab.label}
               className={({ isActive }) =>
                 cn(

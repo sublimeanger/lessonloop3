@@ -1,43 +1,54 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.lessonloop.app',
+  appId: 'net.lessonloop.app',
   appName: 'LessonLoop',
   webDir: 'dist',
 
   // Server config — use the web app URL in production
   // Comment this out for fully bundled/offline builds
   // server: {
-  //   url: 'https://app.lessonloop.com',
+  //   url: 'https://app.lessonloop.net',
   //   cleartext: false,
   // },
 
+  server: {
+    androidScheme: 'https',
+    iosScheme: 'https',
+  },
+
   android: {
-    // Allow mixed content for development
     allowMixedContent: false,
-    // Splash screen background
     backgroundColor: '#0a1628',
-    // Build options
     buildOptions: {
       keystorePath: undefined,
       keystoreAlias: undefined,
     },
   },
 
+  ios: {
+    contentInset: 'automatic',
+    preferredContentMode: 'mobile',
+    scrollEnabled: true,
+    backgroundColor: '#ffffff',
+    allowsLinkPreview: false,
+  },
+
   plugins: {
     SplashScreen: {
       launchAutoHide: true,
-      launchShowDuration: 1500,
-      backgroundColor: '#0a1628',
+      launchShowDuration: 2000,
+      launchFadeOutDuration: 300,
+      backgroundColor: '#ffffff',
       androidSplashResourceName: 'splash',
       androidScaleType: 'CENTER_CROP',
       showSpinner: false,
-      splashFullScreen: true,
-      splashImmersive: true,
+      splashFullScreen: false,
+      splashImmersive: false,
     },
     StatusBar: {
-      style: 'DARK',
-      backgroundColor: '#0a1628',
+      style: 'LIGHT',
+      backgroundColor: '#ffffff',
     },
     Keyboard: {
       resize: 'body',

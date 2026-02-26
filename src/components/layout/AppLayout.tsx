@@ -5,6 +5,7 @@ import { PageTransitionFallback } from '@/components/shared/PageTransitionFallba
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Header } from './Header';
 import { AppSidebar } from './AppSidebar';
+import { StaffBottomNav } from './StaffBottomNav';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 import { LoopAssistDrawer } from '@/components/loopassist/LoopAssistDrawer';
 import { TrialExpiredModal, TrialExpiredBanner } from '@/components/subscription';
@@ -15,6 +16,8 @@ import { KeyboardShortcutsDialog, CommandPalette } from '@/components/shared/Key
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { AutoBreadcrumbs } from '@/components/shared/AutoBreadcrumbs';
 import { TeacherFAB } from '@/components/shared/TeacherFAB';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { platform } from '@/lib/platform';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -25,30 +28,34 @@ function AppLayoutInner({ children }: AppLayoutProps) {
   const { currentRole } = useOrg();
   const location = useLocation();
   const prevPathRef = useRef(location.pathname);
-  
+  const isMobile = useIsMobile();
+
   // Initialize keyboard shortcuts
-  const { 
-    showShortcuts, 
-    setShowShortcuts, 
-    searchOpen, 
-    setSearchOpen, 
-    shortcuts 
+  const {
+    showShortcuts,
+    setShowShortcuts,
+    searchOpen,
+    setSearchOpen,
+    shortcuts
   } = useKeyboardShortcuts();
-  
+
   // Only show LoopAssist for staff roles (not parents)
   const showLoopAssist = currentRole && currentRole !== 'parent';
+
+  // Show mobile bottom nav when running natively on a phone
+  const showBottomNav = isMobile && platform.isNative;
 
   // Track if path actually changed for a subtle fade
   const pathChanged = prevPathRef.current !== location.pathname;
   if (pathChanged) prevPathRef.current = location.pathname;
-  
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <TrialExpiredBanner />
       <Header />
       <div className="flex flex-1">
         <AppSidebar />
-        <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
+        <main className={`flex-1 overflow-auto p-4 md:p-6 lg:p-8 ${showBottomNav ? 'pb-24' : ''}`}>
           <AutoBreadcrumbs />
           <SectionErrorBoundary name="Page" key={location.pathname}>
             <Suspense fallback={<PageTransitionFallback />}>
@@ -63,18 +70,19 @@ function AppLayoutInner({ children }: AppLayoutProps) {
         <LoopAssistDrawer open={isOpen} onOpenChange={setIsOpen} />
       )}
       <TeacherFAB />
+      {showBottomNav && <StaffBottomNav />}
       <TrialExpiredModal />
       <TourTrigger />
-      
+
       {/* Keyboard Shortcuts UI */}
-      <KeyboardShortcutsDialog 
-        open={showShortcuts} 
-        onOpenChange={setShowShortcuts} 
-        shortcuts={shortcuts} 
+      <KeyboardShortcutsDialog
+        open={showShortcuts}
+        onOpenChange={setShowShortcuts}
+        shortcuts={shortcuts}
       />
-      <CommandPalette 
-        open={searchOpen} 
-        onOpenChange={setSearchOpen} 
+      <CommandPalette
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
       />
     </div>
   );
