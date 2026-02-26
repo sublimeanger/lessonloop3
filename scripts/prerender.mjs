@@ -213,20 +213,20 @@ const FEATURE_COLUMNS = [
     { name: 'Attendance', href: '/features/attendance', icon: 'clipboard-check', desc: 'Registers &amp; make-ups' },
   ]},
   { label: 'Engage', items: [
-    { name: 'Parent Portal', href: '/features/parent-portal', icon: 'home', desc: 'Self-serve for families' },
+    { name: 'Parent Portal', href: '/features/parent-portal', icon: 'house', desc: 'Self-serve for families' },
     { name: 'Messaging', href: '/features/messaging', icon: 'message-square', desc: 'In-app communication' },
     { name: 'Practice Tracking', href: '/features/practice-tracking', icon: 'music', desc: 'Assignments &amp; logs' },
     { name: 'Resources', href: '/features/resources', icon: 'folder-open', desc: 'Sheet music &amp; files' },
   ]},
   { label: 'Insights', items: [
-    { name: 'Reports', href: '/features/reports', icon: 'bar-chart-3', desc: 'Revenue &amp; analytics' },
+    { name: 'Reports', href: '/features/reports', icon: 'chart-column', desc: 'Revenue &amp; analytics' },
     { name: 'Locations', href: '/features/locations', icon: 'map-pin', desc: 'Multi-venue management' },
     { name: 'LoopAssist AI', href: '/features/loopassist', icon: 'sparkles', desc: 'AI-powered assistant' },
   ]},
 ];
 
 const USE_CASE_ITEMS = [
-  { name: 'Music Academies', href: '/for/music-academies', icon: 'building-2', desc: 'Multi-teacher schools' },
+  { name: 'Music Academies', href: '/for/music-academies', icon: 'building2', desc: 'Multi-teacher schools' },
   { name: 'Solo Teachers', href: '/for/solo-teachers', icon: 'user', desc: 'Independent educators' },
   { name: 'Piano Schools', href: '/for/piano-schools', icon: 'piano', desc: 'Keyboard-focused studios' },
   { name: 'Guitar Schools', href: '/for/guitar-schools', icon: 'guitar', desc: 'String instrument studios' },
