@@ -106,7 +106,7 @@ serve(async (req: Request): Promise<Response> => {
     const inviterName = orgName; // Use org name as inviter
 
     // Build invite URL
-    const frontendUrl = Deno.env.get("FRONTEND_URL") || req.headers.get("origin") || "https://lessonloop.net";
+    const frontendUrl = Deno.env.get("FRONTEND_URL") || req.headers.get("origin") || "https://app.lessonloop.net";
     const inviteUrl = `${frontendUrl}/accept-invite?token=${inviteToken}`;
 
     // Sending invite email

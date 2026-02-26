@@ -22,7 +22,7 @@ interface SendMessageRequest {
   send_email?: boolean;
 }
 
-const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop.net";
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 const PORTAL_URL = `${FRONTEND_URL}/portal/messages`;
 
 const handler = async (req: Request): Promise<Response> => {

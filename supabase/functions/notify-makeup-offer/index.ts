@@ -4,7 +4,7 @@ import { escapeHtml } from "../_shared/escape-html.ts";
 import { isNotificationEnabled } from "../_shared/check-notification-pref.ts";
 import { log, logError } from "../_shared/log.ts";
 
-const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://lessonloop.net";
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net";
 
 Deno.serve(async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
