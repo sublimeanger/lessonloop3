@@ -72,26 +72,21 @@ const PortalInvoices = lazy(() => import('@/pages/portal/PortalInvoices'));
 const PortalMessages = lazy(() => import('@/pages/portal/PortalMessages'));
 const PortalProfile = lazy(() => import('@/pages/portal/PortalProfile'));
 
-// ─── SSG / External redirect helper ─────────────────────
+// ─── Marketing rendering / external redirect helper ──────
 const MARKETING_BASE = 'https://lessonloop.net';
 
 /**
- * When window.__SSG_MODE__ is set (by the prerender script), or the app is
- * running on a Lovable preview domain, we render the actual marketing page
- * components so they can be previewed. In production (app.lessonloop.net),
- * we redirect to the external static site.
- *
- * IMPORTANT: lazy() calls for marketing pages are deferred into
- * makeMarketingRoute so they are NEVER created in production — this avoids
- * Vite pre-fetching marketing chunks that aren't needed in the app.
+ * Render in-app marketing pages ONLY on Lovable preview/local environments.
+ * Everywhere else (including production app domain and any accidental embeds),
+ * use external redirects to the Cloudflare-hosted marketing site.
  */
 const isPreviewDomain =
   typeof window !== 'undefined' &&
   (window.location.hostname.endsWith('.lovable.app') ||
-   window.location.hostname.endsWith('.lovableproject.com') ||
-   window.location.hostname === 'localhost');
+    window.location.hostname.endsWith('.lovableproject.com') ||
+    window.location.hostname === 'localhost');
 
-const isSSG = typeof window !== 'undefined' && ((window as any).__SSG_MODE__ || isPreviewDomain);
+const shouldRenderMarketingInApp = isPreviewDomain;
 
 function makeExternalRedirect(path: string) {
   return () => ExternalRedirect({ to: `${MARKETING_BASE}${path}` });
@@ -115,15 +110,15 @@ function safeLazy(
   );
 }
 
-/** In SSG mode, create a lazy component for the marketing page; otherwise redirect externally. */
+/** In preview mode, create a lazy component for the marketing page; otherwise redirect externally. */
 function makeMarketingRoute(path: string, importFn: () => Promise<{ default: ComponentType<any> }>): ComponentType<any> {
-  if (isSSG) return safeLazy(importFn, makeExternalRedirect(path));
+  if (shouldRenderMarketingInApp) return safeLazy(importFn, makeExternalRedirect(path));
   return makeExternalRedirect(path);
 }
 
 /** Like makeMarketingRoute but uses a custom fallback component instead of an external redirect. */
 function makeMarketingRouteWithFallback(importFn: () => Promise<{ default: ComponentType<any> }>, fallback: ComponentType<any>): ComponentType<any> {
-  if (isSSG) return safeLazy(importFn, fallback);
+  if (shouldRenderMarketingInApp) return safeLazy(importFn, fallback);
   return fallback;
 }
 
