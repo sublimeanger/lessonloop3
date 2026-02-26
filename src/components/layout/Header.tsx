@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { NotificationBell } from './NotificationBell';
+import { platform } from '@/lib/platform';
 
 export function Header() {
   const { currentOrg, organisations, setCurrentOrg, currentRole } = useOrg();
@@ -22,7 +23,7 @@ export function Header() {
   const isStaff = currentRole && ['owner', 'admin', 'teacher', 'finance'].includes(currentRole);
 
   return (
-    <header className="sticky top-0 z-50 flex min-h-14 items-center justify-between border-b bg-background px-4">
+    <header className={cn('sticky top-0 z-50 flex min-h-14 items-center justify-between border-b bg-background px-4', platform.isNative && 'pt-[env(safe-area-inset-top)]')}>
       <div className="flex items-center gap-2">
         <SidebarTrigger className="h-11 w-11 md:hidden" />
 

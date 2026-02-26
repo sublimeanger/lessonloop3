@@ -4,6 +4,54 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Safe Area & Native App Styles ─────────────────────── */
+
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --keyboard-height: 0px;
+}
+
+/* Only apply when running in Capacitor */
+body.capacitor {
+  /* Prevent overscroll bounce revealing white background */
+  overscroll-behavior: none;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+
+  /* Prevent text selection on long press (feels more native) */
+  -webkit-user-select: none;
+  user-select: none;
+
+  /* No text selection highlight on tap */
+  -webkit-tap-highlight-color: transparent;
+
+  /* No callout on long press */
+  -webkit-touch-callout: none;
+}
+
+/* Re-enable text selection on inputs and text areas */
+body.capacitor input,
+body.capacitor textarea,
+body.capacitor [contenteditable="true"] {
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
+/* Prevent zoom on input focus (iOS auto-zooms inputs < 16px) */
+body.capacitor input,
+body.capacitor textarea,
+body.capacitor select {
+  font-size: 16px !important;
+}
+
+/* Adjust message composer when keyboard is open */
+body.keyboard-open .message-composer {
+  padding-bottom: var(--keyboard-height);
+}
+
 /* LessonLoop Design System
  * Brand Identity: "The Guide" - calm, capable, professional
  * All colors in HSL format

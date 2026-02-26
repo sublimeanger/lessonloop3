@@ -1,6 +1,8 @@
 import { useState, useEffect, useSyncExternalStore, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
+import { Network } from '@capacitor/network';
+import { platform } from '@/lib/platform';
 
 function subscribe(callback: () => void) {
   window.addEventListener('online', callback);
@@ -17,12 +19,32 @@ function getSnapshot() {
 
 /**
  * Reactive online/offline status hook.
+ * - Uses Capacitor Network plugin on native, browser events on web.
  * - Invalidates all queries when coming back online.
  * - Provides `guardOffline()` helper for mutation guards.
  */
 export function useOnlineStatus() {
-  const isOnline = useSyncExternalStore(subscribe, getSnapshot, () => true);
+  const webOnline = useSyncExternalStore(subscribe, getSnapshot, () => true);
+  const [nativeOnline, setNativeOnline] = useState(true);
   const queryClient = useQueryClient();
+
+  // Listen for native network changes on Capacitor
+  useEffect(() => {
+    if (!platform.isNative) return;
+
+    // Get initial status
+    Network.getStatus().then((status) => setNativeOnline(status.connected));
+
+    const listener = Network.addListener('networkStatusChange', (status) => {
+      setNativeOnline(status.connected);
+    });
+
+    return () => {
+      listener.then((l) => l.remove());
+    };
+  }, []);
+
+  const isOnline = platform.isNative ? nativeOnline : webOnline;
 
   // On reconnect → invalidate all queries to refresh stale data
   useEffect(() => {

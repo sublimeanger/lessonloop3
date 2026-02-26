@@ -1,10 +1,9 @@
 import { useCallback } from 'react';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Keyboard } from '@capacitor/keyboard';
 import { Share } from '@capacitor/share';
 import { Browser } from '@capacitor/browser';
-import { App } from '@capacitor/app';
 import { platform } from '@/lib/platform';
 
 /**
@@ -34,7 +33,15 @@ export function useNativeFeatures() {
   const hapticSuccess = useCallback(async () => {
     if (!platform.isNative) return;
     try {
-      await Haptics.notification({ type: 'SUCCESS' as any });
+      await Haptics.notification({ type: NotificationType.Success });
+    } catch { /* native API unavailable */ }
+  }, []);
+
+  /** Warning haptic pattern — overdue invoice, expiring credit */
+  const hapticWarning = useCallback(async () => {
+    if (!platform.isNative) return;
+    try {
+      await Haptics.notification({ type: NotificationType.Warning });
     } catch { /* native API unavailable */ }
   }, []);
 
@@ -42,7 +49,17 @@ export function useNativeFeatures() {
   const hapticError = useCallback(async () => {
     if (!platform.isNative) return;
     try {
-      await Haptics.notification({ type: 'ERROR' as any });
+      await Haptics.notification({ type: NotificationType.Error });
+    } catch { /* native API unavailable */ }
+  }, []);
+
+  /** Selection change — pickers, segment controls */
+  const hapticSelection = useCallback(async () => {
+    if (!platform.isNative) return;
+    try {
+      await Haptics.selectionStart();
+      await Haptics.selectionChanged();
+      await Haptics.selectionEnd();
     } catch { /* native API unavailable */ }
   }, []);
 
@@ -84,14 +101,18 @@ export function useNativeFeatures() {
     } catch { /* native API unavailable */ }
   }, []);
 
-  /** Open URL in native in-app browser */
+  /** Open URL in native in-app browser (use for Stripe payments etc.) */
   const openInAppBrowser = useCallback(async (url: string) => {
     if (!platform.isNative) {
       window.open(url, '_blank');
       return;
     }
     try {
-      await Browser.open({ url, toolbarColor: '#0a1628' });
+      await Browser.open({
+        url,
+        toolbarColor: '#0a1628',
+        presentationStyle: 'popover',
+      });
     } catch { /* native API unavailable */ }
   }, []);
 
@@ -99,7 +120,9 @@ export function useNativeFeatures() {
     hapticTap,
     hapticMedium,
     hapticSuccess,
+    hapticWarning,
     hapticError,
+    hapticSelection,
     setStatusBarLight,
     setStatusBarDark,
     hideKeyboard,
@@ -107,5 +130,6 @@ export function useNativeFeatures() {
     openInAppBrowser,
     isNative: platform.isNative,
     isAndroid: platform.isAndroid,
+    isIOS: platform.isIOS,
   };
 }
