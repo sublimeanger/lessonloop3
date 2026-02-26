@@ -227,7 +227,7 @@ export default function BlogPost() {
           "headline": post.title,
           "description": post.excerpt,
           "image": `https://lessonloop.net${post.featuredImage}`,
-          "datePublished": post.date,
+          "datePublished": new Date().toISOString().split('T')[0],
           "author": {
             "@type": "Person",
             "name": post.author.name,
@@ -274,10 +274,7 @@ export default function BlogPost() {
                 <Clock className="w-4 h-4" />
                 {post.readTime}
               </span>
-              <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Calendar className="w-4 h-4" />
-                {post.date}
-              </span>
+              {/* Date intentionally hidden — evergreen content */}
             </div>
 
             <h1 className="text-3xl lg:text-5xl font-bold text-foreground leading-tight mb-6 max-w-4xl">

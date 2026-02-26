@@ -112,7 +112,7 @@ function PostCard({ post, index }: { post: BlogPost; index: number }) {
                 </div>
                 <span className="text-xs text-muted-foreground">{post.author.name}</span>
               </div>
-              <span className="text-xs text-muted-foreground">{post.date}</span>
+              {/* Date intentionally hidden — evergreen content */}
             </div>
           </div>
         </div>
