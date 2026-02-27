@@ -3815,6 +3815,139 @@ There is no legal requirement to renew DBS checks at a set interval. However, be
 
 *Part of our [guide to UK music education](/blog/guide-to-music-education-uk) series. Related: [Hiring Music Teachers](/blog/hiring-music-teachers) · [GDPR for Music Schools](/blog/gdpr-music-schools-uk)*`,
   },
+  {
+    slug: "music-school-term-dates-planning",
+    title: "Planning Your Music School Academic Year: Term Dates, Holidays and Exam Seasons",
+    excerpt: "A well-planned academic year prevents chaos. Learn how to set term dates, handle holidays, plan around exam seasons and communicate your calendar to parents.",
+    date: "",
+    category: "Guides",
+    readTime: "6 min",
+    author: {
+      name: "LessonLoop",
+      role: "Music School Management Platform",
+    },
+    featuredImage: "/images/blog/music-school-term-dates-planning.jpg",
+    tags: ["term dates", "academic year", "calendar planning", "music school UK", "holidays", "exam seasons"],
+    relatedPosts: ["guide-to-music-education-uk", "abrsm-trinity-exam-preparation-music-school", "guide-to-music-lesson-scheduling"],
+    content: `Every September, music school owners across the UK face the same challenge: turning a blank calendar into a structured academic year that parents can rely on, teachers can plan around, and billing can be built on.
+
+Get the calendar right and everything downstream — scheduling, invoicing, exam preparation, holidays — falls into place with minimal friction. Get it wrong and you spend the year fielding questions, correcting mistakes, and managing confusion that you could have prevented in August.
+
+Here's how to plan your academic year so that it works for everyone.
+
+## Start with the local school calendar
+
+Your students attend other schools. Their availability is dictated by those schools' term dates. Your calendar needs to align with theirs — not perfectly, but closely enough that parents aren't navigating conflicting schedules.
+
+Most local authorities publish term dates 12–18 months in advance. Find the term dates for the schools your students attend (if you're in a single area, this is usually one local authority; if you serve multiple areas, check each one).
+
+Key dates to extract:
+
+- <span class="font-semibold">Term start and end dates</span> for autumn, spring and summer terms
+- <span class="font-semibold">Half-term weeks</span> (one per term, usually a week long)
+- <span class="font-semibold">Bank holidays</span> that fall on weekdays (particularly the early May and late May bank holidays)
+- <span class="font-semibold">Teacher training days</span> (INSET days) — these vary by school, so you may not be able to align with all of them, but be aware of them
+
+Your music school doesn't need to follow the local school calendar exactly. Many music schools start a week after state schools (to allow families to settle in) and end a week before (to avoid the end-of-term chaos). Some teach through half-term; others don't. The decision is yours, but it should be deliberate and communicated clearly.
+
+## Define your term structure
+
+Once you know the local school dates, define your own terms:
+
+<span class="font-semibold">How many teaching weeks per term?</span> Most UK music schools run 10–12 teaching weeks per term. Fewer than 10 feels too short for meaningful progress; more than 13 creates fatigue for students and teachers. Count the available weeks between your chosen start and end dates, minus any breaks.
+
+<span class="font-semibold">Do you teach during half-term?</span> If you don't, that's one week removed from each term. If you do, it becomes a scheduling option — some students take the week off while others appreciate the continuity. Whichever you choose, be consistent and communicate it in advance.
+
+<span class="font-semibold">What about bank holidays?</span> If a bank holiday falls on a regular teaching day, do you cancel those lessons (and adjust the term fee accordingly) or offer alternative days? Most schools cancel bank holiday lessons and factor the reduced week count into the termly price. If you have 11 teaching weeks but one contains a bank holiday, you're effectively billing for 10.5 weeks.
+
+<span class="font-semibold">When does the summer break fall?</span> The summer break is the longest gap in the year — typically 5–7 weeks. Some schools offer optional summer workshops, holiday courses, or catch-up lessons during July and August. These are separate from the term structure and billed separately.
+
+## Build the billing calendar around the term calendar
+
+In UK music schools, [termly billing](/features/billing) is the standard. Each term has a defined number of lessons, and the term fee is calculated accordingly:
+
+Term fee = number of teaching weeks × lesson rate
+
+For example: 11 weeks × £24 per lesson = £264 for the term.
+
+Publish the fee calculation alongside the term dates so parents understand exactly what they're paying for. "Autumn term: 11 weeks (4 September – 15 December, no lessons during half-term 23–27 October), fee: £264." This level of transparency eliminates 90% of billing queries.
+
+Set your invoice dates in relation to the term start. Most schools invoice 2–3 weeks before the term begins, with payment due before the first lesson. This ensures cash flow is healthy before teaching starts and gives parents time to arrange payment.
+
+For the complete billing framework, see our [guide to music school billing](/blog/guide-to-music-school-billing).
+
+## Layer in the exam calendar
+
+ABRSM and Trinity exam sessions should be marked on your calendar as soon as dates are published. The key dates to capture:
+
+<span class="font-semibold">Entry deadlines.</span> These typically fall 8–12 weeks before the exam session. Late entries incur surcharges. Mark the deadline and set a reminder 2 weeks before — this is when you should be finalising your entry list with teachers.
+
+<span class="font-semibold">Exam session windows.</span> The period during which exams take place (students receive specific date/time allocations within this window). During exam weeks, some students may need to miss or reschedule their regular lesson to attend their exam. Build flexibility into your [scheduling](/features/scheduling) for these periods.
+
+<span class="font-semibold">Theory exam dates.</span> ABRSM online theory (Grades 1–5) is available year-round, but Grades 6–8 written theory has set dates. If you run theory classes, align the class schedule with these dates.
+
+<span class="font-semibold">Results release dates.</span> Typically 4–6 weeks after the exam. Plan your newsletter and celebration communications around these dates.
+
+For the full exam management process, see our guide to [ABRSM and Trinity exam preparation](/blog/abrsm-trinity-exam-preparation-music-school).
+
+## Plan your events calendar
+
+Beyond lessons and exams, your year should include events that build community and showcase progress:
+
+<span class="font-semibold">End-of-term recitals</span> (one per term, ideally). These are the most effective retention and referral events your school can run. Students perform for family and friends, parents see tangible progress, and prospective families see what your school is about. Book venues early — church halls and community centres fill up quickly in December and July.
+
+<span class="font-semibold">Open days or taster sessions.</span> Schedule one at the start of each term, when enquiries from new families are highest. September and January are the strongest months for new enrolments.
+
+<span class="font-semibold">Workshops or masterclasses.</span> Holiday workshops (half-term, Easter, summer) offer additional revenue and keep students engaged during breaks. Visiting musician masterclasses add variety and prestige.
+
+<span class="font-semibold">Informal concerts or practice performances.</span> Lower-stakes performance opportunities mid-term — a casual "play what you've been working on" event — build performance confidence without exam pressure.
+
+Map these events onto your calendar at the start of the year. Even if details aren't finalised, placeholder dates ensure you're not scrambling to find a venue in November for a December recital.
+
+## Communicate the calendar early and clearly
+
+Parents want to see the full year's dates as early as possible — ideally before the first term begins. Publish:
+
+- <span class="font-semibold">Term dates</span> (start, end, half-term, closure days)
+- <span class="font-semibold">Invoice dates and payment deadlines</span> per term
+- <span class="font-semibold">Exam session windows and entry deadlines</span>
+- <span class="font-semibold">Events</span> (recitals, workshops, open days)
+- <span class="font-semibold">Key contact information and policies</span> (cancellation policy link, portal link)
+
+Publish this as a downloadable document and in your [parent portal](/features/parent-portal). Email it at the start of the academic year and re-send the relevant term's dates 2 weeks before each term starts.
+
+A clear, proactive calendar is one of the strongest signals of a well-run school. It tells parents: "We've thought about this. You can rely on us."
+
+## Using your scheduling system
+
+A [scheduling platform](/features/scheduling) designed for UK music schools understands the termly structure natively. When you set your term dates, the system should automatically generate the correct number of recurring lessons for each student, skip half-term weeks and bank holidays without manual intervention, calculate the term fee based on the actual number of lessons, and display the term calendar to parents through the portal.
+
+This is where UK-specific software earns its value. A system built for the US monthly billing model requires manual overrides for every half-term break, every bank holiday, and every term boundary. A system [built for UK music schools](/uk) handles it by design.
+
+---
+
+## Frequently Asked Questions
+
+### Should my music school follow the same term dates as local schools?
+
+You don't have to, but close alignment reduces friction. Parents manage one mental model of "term time" across all their children's activities. Starting within a week of the local school term and ending within a week creates alignment without requiring exact matching. Some flexibility is fine — just communicate your dates clearly.
+
+### How do I handle students who attend schools with different term dates?
+
+If you serve students from multiple local authorities (common in border areas or cities), you'll encounter conflicting term dates. The simplest approach is to set your own term dates that broadly align with the majority of your students and apply them consistently. Individual students who miss a lesson due to their school's different holiday pattern can be offered a make-up within your [cancellation policy](/blog/music-lesson-cancellation-policy).
+
+### What's the best way to handle the transition between academic years?
+
+Communicate next year's dates before the current year ends. Ideally, parents receive the full following year's calendar in June or July, so they can plan their family calendar over the summer. Include re-enrolment confirmation — ask parents to confirm their child's return for the autumn term by a specific date, so you know who's continuing and where you have capacity for new students.
+
+### How many lessons per year is normal for a UK music school?
+
+Most UK music schools deliver 33–36 teaching weeks per year across three terms, which translates to 33–36 lessons for a weekly student. This accounts for half-term breaks, bank holidays, Christmas and Easter holidays, and the summer break. Some schools offer slightly more (up to 38) by teaching through some half-terms.
+
+---
+
+*Part of our [guide to UK music education](/blog/guide-to-music-education-uk) series. Related: [Scheduling Guide](/blog/guide-to-music-lesson-scheduling) · [Billing Guide](/blog/guide-to-music-school-billing)*`,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
