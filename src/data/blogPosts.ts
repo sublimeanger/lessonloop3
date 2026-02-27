@@ -1629,6 +1629,124 @@ Self-booking for trial lessons and events typically involves the parent providin
 
 *Part of our [guide to music lesson scheduling](/blog/guide-to-music-lesson-scheduling) series. Related: [Cancellation Policies](/blog/music-lesson-cancellation-policy) · [Avoid Double-Booking](/blog/avoid-double-booking-music-school)*`,
   },
+  {
+    slug: "multi-location-music-school-scheduling",
+    title: "Managing Multi-Location Music School Timetables Without Losing Your Mind",
+    excerpt: "Running music lessons across multiple venues? Learn how to manage timetables, teacher travel time, room allocation and location-based calendars.",
+    date: "",
+    category: "Guides",
+    readTime: "6 min",
+    author: {
+      name: "LessonLoop",
+      role: "Music School Management Platform",
+    },
+    featuredImage: "/images/blog/multi-location-music-school-scheduling.jpg",
+    tags: ["multi-location", "scheduling", "music school", "room management", "venues"],
+    relatedPosts: ["guide-to-music-lesson-scheduling", "avoid-double-booking-music-school", "group-vs-private-music-lessons-scheduling"],
+    content: `Opening a second venue is one of the most exciting milestones in a music school's growth. It means demand is outstripping your current capacity, you're reaching new families, and your school is becoming a genuine local institution.
+
+It's also the moment when scheduling stops being a puzzle and starts being a rubik's cube in the dark.
+
+A single-location school has one timetable, one set of rooms, and teachers who stay put. A multi-location school has parallel timetables that need to be coordinated, teachers who may move between sites, rooms with different configurations at each venue, and parents who might not know (or care) that your school operates from more than one address. Everything that was manageable at one site becomes exponentially harder at two.
+
+Here's how to manage it without drowning in admin.
+
+## The golden rule: block scheduling by location
+
+The single most effective principle for multi-location scheduling is this: **assign teachers to locations in blocks, not individual lessons.**
+
+This means Teacher A teaches at Venue 1 every Monday and Tuesday, and at Venue 2 every Wednesday and Thursday. Not Monday morning at Venue 1, Monday afternoon at Venue 2, Tuesday at Venue 1 again.
+
+Block scheduling solves three problems simultaneously:
+
+**Travel time disappears within the teaching day.** A teacher who's at one venue all afternoon doesn't need transit time between lessons. They arrive, teach their full block, and leave. No rushing between sites, no late arrivals because of traffic, no dead time spent driving instead of teaching.
+
+**Room allocation is simpler.** If Teacher A is always at Venue 1 on Mondays, their room at Venue 1 can be allocated for the entire Monday. There's no need to juggle room assignments based on which teacher is at which venue at which hour.
+
+**Parents get consistency.** Families learn that their child's lesson is always at Venue 1 on Tuesdays. They don't need to check which venue this week — it's always the same place on the same day.
+
+The only exception to block scheduling should be specialist teachers who are only needed for a few hours at each location (e.g., a drum teacher who teaches 4 hours at Venue 1 on Monday and 3 hours at Venue 2 on Tuesday). Even then, keep them at one venue per day.
+
+## Teacher allocation across sites
+
+Deciding which teachers work at which locations involves balancing several factors:
+
+**Demand by instrument at each venue.** If Venue 1 has a long waitlist for piano but Venue 2 has spare piano capacity, you need more piano teaching time at Venue 1. Match teacher allocation to demand, not convenience.
+
+**Teacher preferences and proximity.** A teacher who lives 5 minutes from Venue 1 and 40 minutes from Venue 2 is a natural fit for Venue 1 as their primary site. Respecting proximity reduces travel costs (if you reimburse) and makes teachers more likely to stay.
+
+**Coverage and redundancy.** If only one teacher covers a particular instrument at each venue, a single illness wipes out that instrument's lessons for the day. Where possible, have at least two teachers who can cover each instrument across the school (even if they primarily teach at different sites). This gives you cover options without rearranging the entire timetable.
+
+**Student-teacher continuity.** Students who've been with a teacher for multiple terms shouldn't be reassigned to a different teacher just because the school opened a new venue. If a teacher moves their primary location, their existing students should have the option to follow them to the new site or transfer to a different teacher at the original location.
+
+## Venue-specific room management
+
+Each venue will have different room configurations, and your scheduling system needs to know about them.
+
+**Map every room at every location.** For each room, document its capacity (for individual and group lessons), the instruments it supports (a room with a piano is different from a room without), its availability (if you share the venue, certain rooms may be blocked at certain times), and any equipment stored there.
+
+**Treat rooms as a per-venue resource, not a global one.** "Room 1" at Venue 1 and "Room 1" at Venue 2 are entirely separate resources. Your [scheduling platform](/features/locations) needs to track them independently, so that booking a room at one venue doesn't affect availability at the other.
+
+**Account for setup and changeover.** If a room at Venue 2 is used for a toddler music group on Wednesday mornings and your lessons start at 3pm, check whether the room is cleared and ready before your first lesson. Shared venues often have overlapping users, and assumptions about room readiness cause disruptions.
+
+## The visibility problem
+
+The biggest operational challenge with multiple locations isn't scheduling — it's visibility. Can you see what's happening across all your venues at the same time?
+
+In a single-location school, the owner is physically present. They know who's teaching, which rooms are in use, whether a student hasn't arrived, and whether the schedule is running smoothly. At multiple locations, you can only be in one place.
+
+This makes your [management platform](/features) genuinely critical rather than just convenient. You need:
+
+**A unified calendar view** that shows all teachers, all rooms, and all lessons across all locations in one place. With location-based filtering so you can drill into a single venue when needed, but a combined view for overall awareness.
+
+**Real-time attendance visibility** across sites. If three students at Venue 2 haven't been marked present by 4:15pm, you want to know — whether you're at Venue 1, at home, or on the train.
+
+**Location-specific reporting.** Revenue per venue, teacher utilisation per venue, attendance rates per venue. These metrics help you understand whether each location is pulling its weight and where to invest or adjust.
+
+**Teacher and parent communication that's location-aware.** When you send a term-start message about schedule changes, parents at Venue 1 get information relevant to Venue 1. A blanket message about "room changes" that applies to only one of your venues creates confusion.
+
+[LessonLoop's multi-location management](/features/locations) is designed specifically for this — a single platform with per-venue visibility, location-filtered calendars, and reporting that breaks down by site. Combined with [drag-and-drop scheduling](/features/scheduling), managing parallel timetables across venues becomes manageable even for [growing music academies](/for/music-academies).
+
+## When to open a second location
+
+The decision to expand to a second venue should be driven by data, not ambition. The right signals:
+
+**A sustained waitlist of 10+ students** that you can't accommodate at your current venue. Not a seasonal spike in September enquiries — a persistent, term-over-term queue of families who want lessons and can't get in.
+
+**Teacher utilisation above 85%** at your current location. If your teachers' schedules are nearly full and you can't fit more lessons into the existing timetable, you've hit a ceiling.
+
+**Clear demand from a different geographical catchment.** If you're seeing enquiries from a town 15 minutes away that parents in that area would prefer not to travel from, a second venue closer to them captures demand that your primary venue can't.
+
+The wrong signals: wanting to feel bigger, having found a cheap room, or assuming that a second venue will automatically double your student numbers. It won't — it'll double your operational complexity and only grow revenue if there's genuine untapped demand.
+
+Before committing, test the market. Rent a room in the target area for one day per week and run a small programme (a teacher, 5–8 students). If it fills quickly and parents ask for more, expand. If it limps along for a term, reconsider.
+
+For the broader picture on scaling, see our guide to [growing your music school from 50 to 200+ students](/blog/grow-music-school-students).
+
+---
+
+## Frequently Asked Questions
+
+### How do I handle a teacher who works across two locations?
+
+Keep them at one location per day (block scheduling). On the days they travel between sites, build in at least 30 minutes of travel buffer between the last lesson at Venue A and the first lesson at Venue B — more if the venues are further apart or traffic is a factor. Never schedule a teacher at two venues on the same day with a gap of less than 20 minutes between their last and first lesson.
+
+### Should I set different pricing at different venues?
+
+It depends. If one venue is in a more affluent area, premium pricing may be justified. If both venues serve similar demographics, consistent pricing simplifies billing and avoids perceptions of unfairness (especially if students or teachers move between sites). Most multi-location UK music schools maintain consistent pricing across all venues.
+
+### How do I stop parents accidentally going to the wrong venue?
+
+Clear, repeated communication. Every schedule confirmation, reminder and portal view should include the venue name and address. Colour-code venues in your calendar (parents see "blue = High Street Studio, green = Park Road") so the location is visually obvious. Automated [lesson reminders](/features/messaging) that include the venue address eliminate almost all wrong-venue arrivals.
+
+### When should I consider a third location?
+
+Apply the same criteria as the second: sustained waitlist, high utilisation at existing venues, and clear geographical demand. Adding a third location before the second is fully established and profitable is a common mistake that stretches management capacity too thin. Ensure your systems, staffing and processes are solid at two before scaling further.
+
+---
+
+*Part of our [guide to music lesson scheduling](/blog/guide-to-music-lesson-scheduling) series. Related: [Multi-Location Music School Software](/features/locations) · [Growing to 200+ Students](/blog/grow-music-school-students)*`,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
