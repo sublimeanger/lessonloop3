@@ -4809,6 +4809,118 @@ No. The entire point of a conversational AI copilot is that you interact with it
 
 *Part of our [guide to music school software](/blog/best-music-school-software) series. Related: [Music School KPIs](/blog/music-school-kpis) · [LessonLoop LoopAssist](/features/loopassist)*`,
   },
+  {
+    slug: "software-performing-arts-schools",
+    title: "Music School Software for Performing Arts Schools",
+    excerpt: "Running a multi-discipline performing arts school? See which software handles dance, drama and music scheduling, billing and parent communication together.",
+    date: "",
+    category: "Guides",
+    readTime: "6 min",
+    author: {
+      name: "LessonLoop",
+      role: "Music School Management Platform",
+    },
+    featuredImage: "/images/blog/software-performing-arts-schools.jpg",
+    tags: ["performing arts", "dance school", "drama school", "multi-discipline", "scheduling", "billing"],
+    relatedPosts: ["best-music-school-software", "best-software-music-academies", "music-school-software-features"],
+    content: `If you run a school that teaches music alongside dance, drama, or other performing arts disciplines, you have a scheduling problem that pure music school software doesn't fully address.
+
+A music school with 80 piano students has a relatively uniform scheduling challenge: individual 30-minute lessons, one teacher per student, one room per lesson. A performing arts school with 80 students across piano, violin, contemporary dance, ballet, and musical theatre has a scheduling puzzle that involves individual lessons, small group sessions, large classes, ensemble rehearsals, different room requirements (a dance studio needs mirrors and a sprung floor; a piano studio needs an acoustic piano), and teachers with very different availability patterns.
+
+The billing model adds further complexity. A student taking individual piano lessons at £24/lesson and group contemporary dance at £12/session and musical theatre ensemble at £8/session needs an invoice that reflects all three — ideally on a single termly bill.
+
+Not every platform handles this well. Here's what to look for.
+
+## The multi-discipline scheduling challenge
+
+The fundamental requirement is a [scheduling system](/features/scheduling) that treats different lesson types as first-class citizens. Individual lessons, small groups (2–4 students), larger classes (8–20 students), and ensemble rehearsals each have different constraints:
+
+<span class="font-semibold">Individual lessons</span> need teacher-student matching, room allocation, and conflict prevention. Standard music school scheduling handles this.
+
+<span class="font-semibold">Small groups</span> need all the above plus minimum and maximum participant tracking, and the ability to enrol and unenrol students without disrupting the session.
+
+<span class="font-semibold">Large classes</span> (dance, drama, ensemble) need capacity management, waitlists, and often fixed-term enrolment rather than rolling. A contemporary dance class that runs every Saturday morning for the autumn term is a different scheduling object from a piano lesson that runs weekly.
+
+<span class="font-semibold">Room requirements differ by discipline.</span> A dance class needs a specific type of space. A drum lesson needs sound isolation. A musical theatre workshop needs a large open room with audio equipment. The scheduling system must understand room attributes, not just room availability. See how [location and room management](/features/locations) handles this.
+
+The system that handles all of these simultaneously — showing the owner a unified calendar across disciplines, showing each teacher their own schedule, and showing each parent their child's complete timetable — is the system that works for a performing arts school.
+
+For more on how group and individual lessons interact in scheduling, see our guide to [group vs private lesson scheduling](/blog/group-vs-private-music-lessons-scheduling).
+
+## Billing across disciplines
+
+Most UK performing arts schools bill termly, but the billing structure per discipline may differ. Piano lessons are billed per-student based on individual lesson count. Dance classes are billed as a class fee, often with a fixed term price regardless of individual attendance. Musical theatre might be billed as a membership or subscription.
+
+The billing system needs to handle multiple fee types per student and combine them into a single family invoice. A parent whose child takes piano (£264/term) and dance (£120/term) and musical theatre (£85/term) should receive one invoice for £469, not three separate bills.
+
+[LessonLoop's billing system](/features/billing) supports multiple lesson types per student with different rates, combined into a single termly invoice with per-line-item detail. The parent sees what each line covers; you collect one payment.
+
+Sibling discounts add another layer. A family with two children, each taking multiple disciplines, should be able to apply a percentage discount across the combined bill. The system should calculate this automatically.
+
+## Parent experience across disciplines
+
+For parents with children in multiple disciplines, the [parent portal](/features/parent-portal) experience matters enormously. They should see a unified family schedule: "Monday: Emma — Piano 4pm, Dance 5pm. Wednesday: Emma — Musical Theatre 4:30pm. Thursday: James — Violin 3:30pm." One view, all children, all disciplines.
+
+Lesson notes and progress tracking should work across all disciplines — the dance teacher writes a post-class note just as the piano teacher writes a post-lesson note. The parent sees all of them in one place.
+
+If the platform only handles one discipline well and treats others as afterthoughts (e.g., great for individual music lessons but no group class management), the parent experience fragments. They get detailed lesson notes for piano but nothing for dance. They see the piano schedule in the portal but the dance schedule comes via a separate email. The school feels disjointed even if the teaching is excellent.
+
+## The platform options
+
+### LessonLoop
+
+LessonLoop handles multi-discipline scheduling through its flexible lesson type system — individual, small group and class formats are all supported within the same calendar and billing engine. Room allocation with room-type attributes ensures dance classes go in dance studios and piano lessons go in piano rooms. Multi-location support handles schools with separate music and dance venues.
+
+The parent portal shows a unified family view across all disciplines. Billing combines all lesson types into a single termly invoice. Teacher permissions keep each discipline's staff focused on their own students while giving the owner a school-wide view.
+
+<span class="font-semibold">Best for:</span> UK performing arts schools that want a single platform for all disciplines, with native termly billing and UK compliance.
+
+See [LessonLoop for performing arts schools](/for/performing-arts).
+
+### Jackrabbit Music / Jackrabbit Dance
+
+Jackrabbit offers separate products for music and dance, with some overlap. If you use both, you get strong discipline-specific features but potentially fragmented data — student records, billing and parent communication may not unify as cleanly as a single-platform approach.
+
+<span class="font-semibold">Best for:</span> Large US performing arts organisations that need deep discipline-specific features and are willing to manage the integration between products.
+
+### Class Manager / ClassForKids
+
+These UK-based platforms are designed for children's activity providers and handle multi-discipline scheduling, termly billing, and online booking. They're broader than music-specific (covering sports, art, drama etc.) but shallower — no lesson notes, no progress tracking, no exam management, no practice tracking.
+
+<span class="font-semibold">Best for:</span> UK activity providers where booking and billing are the primary needs and music-specific features (ABRSM tracking, lesson notes) aren't required.
+
+## Making the decision
+
+For performing arts schools, the evaluation question is: **can one platform handle all your disciplines without compromising on any of them?**
+
+A platform that's excellent for individual music lessons but has no group class management forces you into either a second system for dance/drama or manual workarounds that grow increasingly painful as you add disciplines and students.
+
+The ideal is a single platform where scheduling, billing, parent communication and progress tracking work uniformly across individual lessons, small groups and large classes — with the flexibility to set different rates, room requirements and billing structures per discipline.
+
+Test this during your trial. Create a student who takes piano (individual), dance (group class), and ensemble (large class). Schedule all three, generate an invoice, check the parent portal view. If it works cleanly, the platform can handle your school. If it requires workarounds at the trial stage, those workarounds multiply at production scale.
+
+For a detailed look at the [features that matter most](/blog/music-school-software-features) across platforms, see our comprehensive comparison. And for the full software landscape, start with our [best music school software guide](/blog/best-music-school-software).
+
+---
+
+## Frequently Asked Questions
+
+### Can I use separate software for each discipline?
+
+You can, but the operational cost is high. Separate systems mean separate student databases, separate billing runs, separate parent communications, and no unified family view. Parents receive multiple invoices, check multiple portals, and contact different systems for different questions. As your school grows, the fragmentation becomes a significant drag on parent experience and administrative efficiency.
+
+### How do I handle students who switch between disciplines mid-term?
+
+The system should support adding or removing a student from a lesson type mid-term, with automatic pro-rata billing adjustment. If Emma drops dance halfway through the term and picks up musical theatre, her invoice should reflect the partial-term credit for dance and the partial-term charge for musical theatre — calculated automatically, not manually.
+
+### Should performing arts schools use dance-specific or music-specific software?
+
+Neither — if possible. Discipline-specific software will be excellent for that discipline and mediocre for others. A platform designed for multi-discipline performing arts schools (or one flexible enough to handle multiple lesson formats natively) gives you a consistent experience across all your offerings. The scheduling, billing and communication challenges are shared across disciplines; the solution should be too.
+
+---
+
+*Part of our [guide to music school software](/blog/best-music-school-software) series. Related: [Group vs Private Lesson Scheduling](/blog/group-vs-private-music-lessons-scheduling) · [LessonLoop for Performing Arts](/for/performing-arts)*`,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
