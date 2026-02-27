@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,8 +15,10 @@ import { GuardiansCard } from './GuardiansCard';
 import { MessageList } from '@/components/messages/MessageList';
 import { InlineEmptyState } from '@/components/shared/EmptyState';
 import { LoadingSpinner } from '@/components/shared/LoadingState';
+import { TermAdjustmentWizard } from '@/components/term-adjustments/TermAdjustmentWizard';
+import { AdjustmentHistoryPanel } from '@/components/term-adjustments/AdjustmentHistoryPanel';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
-import { Loader2, Calendar, Receipt, Music, MessageSquare, Send } from 'lucide-react';
+import { Loader2, Calendar, Receipt, Music, MessageSquare, Send, ArrowRightLeft } from 'lucide-react';
 import type { useStudentDetailPage } from '@/hooks/useStudentDetailPage';
 
 type PageHook = ReturnType<typeof useStudentDetailPage>;
@@ -27,6 +30,7 @@ interface StudentTabsSectionProps {
 export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
   const student = hook.student!;
   const fullName = hook.fullName;
+  const [termAdjustmentOpen, setTermAdjustmentOpen] = useState(false);
 
   return (
     <Tabs defaultValue="overview" className="space-y-6" onValueChange={() => hook.setIsEditing(false)}>
@@ -121,8 +125,20 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
         <SectionErrorBoundary name="Lessons">
           <Card>
             <CardHeader>
-              <CardTitle>Lesson History</CardTitle>
-              <CardDescription>Past and upcoming lessons</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Lesson History</CardTitle>
+                  <CardDescription>Past and upcoming lessons</CardDescription>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setTermAdjustmentOpen(true)}
+                >
+                  <ArrowRightLeft className="h-4 w-4 mr-1" />
+                  Term Adjustment
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {hook.lessonsLoading ? (
@@ -186,6 +202,12 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
               )}
             </CardContent>
           </Card>
+          <AdjustmentHistoryPanel studentId={student.id} />
+          <TermAdjustmentWizard
+            open={termAdjustmentOpen}
+            onOpenChange={setTermAdjustmentOpen}
+            prefillStudentId={student.id}
+          />
         </SectionErrorBoundary>
       </TabsContent>
 

@@ -82,7 +82,15 @@ interface InvoiceListProps {
   onPageChange: (page: number) => void;
 }
 
-function StatusBadge({ status, dueDate }: { status: InvoiceStatus; dueDate: string }) {
+function StatusBadge({ status, dueDate, isCreditNote }: { status: InvoiceStatus; dueDate: string; isCreditNote?: boolean }) {
+  if (isCreditNote) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
+        Credit Note
+      </span>
+    );
+  }
+
   const isOverdue = status === 'sent' && isBefore(parseISO(dueDate), startOfToday());
   const effectiveStatus = isOverdue ? 'overdue' : status;
 
@@ -218,14 +226,15 @@ const MobileInvoiceCard = React.memo(function MobileInvoiceCard({
           </div>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-base font-bold tabular-nums text-foreground">
-            {formatCurrencyMinor(invoice.total_minor, currency)}
+          <p className={cn('text-base font-bold tabular-nums', invoice.is_credit_note ? 'text-success' : 'text-foreground')}>
+            {invoice.is_credit_note && invoice.total_minor > 0 ? '-' : ''}
+            {formatCurrencyMinor(Math.abs(invoice.total_minor), currency)}
           </p>
         </div>
       </div>
       <div className="flex items-center justify-between mt-2 pl-7">
         <div className="flex items-center gap-2">
-          <StatusBadge status={invoice.status} dueDate={invoice.due_date} />
+          <StatusBadge status={invoice.status} dueDate={invoice.due_date} isCreditNote={invoice.is_credit_note} />
           <span className="text-xs text-muted-foreground">
             Due {formatDateUK(parseISO(invoice.due_date), 'dd MMM yyyy')}
           </span>
@@ -418,11 +427,12 @@ export function InvoiceList({
                 </span>
               </div>
               <div className="w-20 shrink-0">
-                <StatusBadge status={invoice.status} dueDate={invoice.due_date} />
+                <StatusBadge status={invoice.status} dueDate={invoice.due_date} isCreditNote={invoice.is_credit_note} />
               </div>
               <div className="w-24 text-right shrink-0">
-                <span className="text-sm font-semibold tabular-nums text-foreground">
-                  {formatCurrencyMinor(invoice.total_minor, currency)}
+                <span className={cn('text-sm font-semibold tabular-nums', invoice.is_credit_note ? 'text-success' : 'text-foreground')}>
+                  {invoice.is_credit_note && invoice.total_minor > 0 ? '-' : ''}
+                  {formatCurrencyMinor(Math.abs(invoice.total_minor), currency)}
                 </span>
               </div>
               <InvoiceActions

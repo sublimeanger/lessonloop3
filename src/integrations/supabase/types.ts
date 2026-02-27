@@ -1637,6 +1637,7 @@ export type Database = {
       }
       invoices: {
         Row: {
+          adjustment_id: string | null
           created_at: string
           credit_applied_minor: number
           currency_code: string
@@ -1644,6 +1645,7 @@ export type Database = {
           id: string
           installment_count: number | null
           invoice_number: string
+          is_credit_note: boolean
           issue_date: string
           notes: string | null
           org_id: string
@@ -1651,6 +1653,7 @@ export type Database = {
           payer_guardian_id: string | null
           payer_student_id: string | null
           payment_plan_enabled: boolean | null
+          related_invoice_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal_minor: number
           tax_minor: number
@@ -1660,6 +1663,7 @@ export type Database = {
           vat_rate: number
         }
         Insert: {
+          adjustment_id?: string | null
           created_at?: string
           credit_applied_minor?: number
           currency_code?: string
@@ -1667,6 +1671,7 @@ export type Database = {
           id?: string
           installment_count?: number | null
           invoice_number: string
+          is_credit_note?: boolean
           issue_date?: string
           notes?: string | null
           org_id: string
@@ -1674,6 +1679,7 @@ export type Database = {
           payer_guardian_id?: string | null
           payer_student_id?: string | null
           payment_plan_enabled?: boolean | null
+          related_invoice_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal_minor?: number
           tax_minor?: number
@@ -1683,6 +1689,7 @@ export type Database = {
           vat_rate?: number
         }
         Update: {
+          adjustment_id?: string | null
           created_at?: string
           credit_applied_minor?: number
           currency_code?: string
@@ -1690,6 +1697,7 @@ export type Database = {
           id?: string
           installment_count?: number | null
           invoice_number?: string
+          is_credit_note?: boolean
           issue_date?: string
           notes?: string | null
           org_id?: string
@@ -1697,6 +1705,7 @@ export type Database = {
           payer_guardian_id?: string | null
           payer_student_id?: string | null
           payment_plan_enabled?: boolean | null
+          related_invoice_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal_minor?: number
           tax_minor?: number
@@ -1739,6 +1748,20 @@ export type Database = {
             columns: ["term_id"]
             isOneToOne: false
             referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_adjustment_id_fkey"
+            columns: ["adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "term_adjustments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_related_invoice_id_fkey"
+            columns: ["related_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
         ]
@@ -4873,6 +4896,134 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      term_adjustments: {
+        Row: {
+          id: string
+          org_id: string
+          adjustment_type: string
+          student_id: string
+          term_id: string | null
+          original_recurrence_id: string | null
+          original_lessons_remaining: number
+          original_day_of_week: string | null
+          original_time: string | null
+          new_recurrence_id: string | null
+          new_lessons_count: number | null
+          new_day_of_week: string | null
+          new_time: string | null
+          new_teacher_id: string | null
+          new_location_id: string | null
+          lesson_rate_minor: number
+          lessons_difference: number
+          adjustment_amount_minor: number
+          currency_code: string
+          credit_note_invoice_id: string | null
+          cancelled_lesson_ids: string[]
+          created_lesson_ids: string[]
+          status: string
+          effective_date: string
+          notes: string | null
+          created_by: string
+          confirmed_by: string | null
+          confirmed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          adjustment_type: string
+          student_id: string
+          term_id?: string | null
+          original_recurrence_id?: string | null
+          original_lessons_remaining?: number
+          original_day_of_week?: string | null
+          original_time?: string | null
+          new_recurrence_id?: string | null
+          new_lessons_count?: number | null
+          new_day_of_week?: string | null
+          new_time?: string | null
+          new_teacher_id?: string | null
+          new_location_id?: string | null
+          lesson_rate_minor: number
+          lessons_difference: number
+          adjustment_amount_minor: number
+          currency_code?: string
+          credit_note_invoice_id?: string | null
+          cancelled_lesson_ids?: string[]
+          created_lesson_ids?: string[]
+          status?: string
+          effective_date: string
+          notes?: string | null
+          created_by: string
+          confirmed_by?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          adjustment_type?: string
+          student_id?: string
+          term_id?: string | null
+          original_recurrence_id?: string | null
+          original_lessons_remaining?: number
+          original_day_of_week?: string | null
+          original_time?: string | null
+          new_recurrence_id?: string | null
+          new_lessons_count?: number | null
+          new_day_of_week?: string | null
+          new_time?: string | null
+          new_teacher_id?: string | null
+          new_location_id?: string | null
+          lesson_rate_minor?: number
+          lessons_difference?: number
+          adjustment_amount_minor?: number
+          currency_code?: string
+          credit_note_invoice_id?: string | null
+          cancelled_lesson_ids?: string[]
+          created_lesson_ids?: string[]
+          status?: string
+          effective_date?: string
+          notes?: string | null
+          created_by?: string
+          confirmed_by?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "term_adjustments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_adjustments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_adjustments_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_adjustments_credit_note_invoice_id_fkey"
+            columns: ["credit_note_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
         ]
