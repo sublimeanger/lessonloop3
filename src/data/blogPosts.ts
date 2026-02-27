@@ -1277,6 +1277,129 @@ For very small schools (one teacher, one room, under 20 students), Google Calend
 
 This is where a single authoritative system becomes critical. If two people can independently add lessons without seeing each other's changes in real-time, conflicts are inevitable. Either use a shared system that updates instantly (cloud-based scheduling software) or designate a single person as the schedule gatekeeper who approves all changes.`,
   },
+  {
+    slug: "music-lesson-cancellation-policy",
+    title: "How to Handle Music Lesson Cancellations Without Losing Revenue",
+    excerpt: "A good cancellation policy keeps parents happy and protects your income. See real examples of UK music school cancellation and make-up lesson policies.",
+    date: "",
+    category: "Teaching Tips",
+    readTime: "7 min",
+    author: {
+      name: "LessonLoop",
+      role: "Music School Management Platform",
+    },
+    featuredImage: "/images/blog/music-lesson-cancellation-policy.jpg",
+    tags: ["cancellation policy", "make-up lessons", "music school", "revenue", "scheduling", "UK"],
+    relatedPosts: ["guide-to-music-lesson-scheduling", "avoid-double-booking-music-school", "music-school-pricing-strategies"],
+    content: `Cancellations are an unavoidable part of running a music school. Children get ill. Families go on holiday mid-term. School trips clash with lesson times. Parents forget. And occasionally, someone just doesn't feel like it.
+
+The question isn't whether cancellations will happen — it's how your policy handles them when they do. A well-designed cancellation policy protects your revenue, treats families fairly, keeps your timetable workable, and prevents the slow erosion of commitment that can hollow out a school from the inside.
+
+A bad policy — or worse, no policy at all — leaves you absorbing the cost of empty slots, rescheduling lessons ad hoc, and building resentment on both sides.
+
+Here's how to get it right.
+
+## Why you need a written policy
+
+An alarming number of UK music schools operate without a formal cancellation policy. The owner handles each cancellation individually, making judgment calls on whether to offer a refund, a credit, a make-up lesson, or nothing. This feels flexible and kind, but it creates three problems.
+
+First, **inconsistency breeds resentment.** When one family gets a make-up lesson and another doesn't, word gets around. Parents talk at the school gate. The perception of unfairness damages trust far more than a firm-but-fair policy ever would.
+
+Second, **ambiguity encourages cancellation.** If parents learn that cancelling without notice has no consequences, cancellation rates climb. You end up with 15–20% of lessons cancelled per term instead of 5–8%. That's a significant revenue gap and a scheduling nightmare.
+
+Third, **you can't enforce what isn't written.** The moment a parent disputes a charge for a missed lesson, the first question is: "What does your cancellation policy say?" If the answer is "we don't really have one," you have no ground to stand on.
+
+## The three components of a good policy
+
+### 1. Notice period for cancellations
+
+Define how much advance notice a family must give to cancel a lesson without penalty. The UK standard is 24 hours, though some schools require 48 hours.
+
+**24 hours** is the most common and generally the fairest. It gives the school enough time to potentially fill the slot (with a make-up student or a waiting-list trial) while being realistic about genuine illness and emergencies. A child who wakes up with a fever at 7am for a 4pm lesson can still give you adequate notice.
+
+**48 hours** provides more scheduling buffer and is appropriate for schools where make-up lessons involve significant coordination (multi-location schools, schools with limited make-up availability). It's harder to justify for straightforward illness, though.
+
+**Same-day cancellations (less than 24 hours)** should generally be treated as a no-show unless there are exceptional circumstances. This means the lesson fee is retained and no make-up is offered.
+
+### 2. What happens to the lesson fee
+
+There are four possible outcomes for a cancelled lesson, and your policy should be clear about which applies in which circumstances:
+
+**Full retention (no refund, no credit, no make-up).** The strictest approach. The lesson fee stands regardless of whether the student attends. This is the default for no-shows and late cancellations. It's also standard in termly billing models where the family has committed to the full term.
+
+**Make-up lesson offered.** The cancelled lesson is rescheduled to a different slot within the same term. This is the most common approach for cancellations with adequate notice. It's fair to families and preserves your revenue (the teacher still teaches a lesson, just at a different time). The challenge is finding a slot that works — see the make-up section below.
+
+**Credit applied to future billing.** The lesson fee is deducted from the next term's invoice. This works when a make-up slot can't be found. It's simple to administer but creates a revenue leak if used frequently.
+
+**Refund issued.** The lesson fee is returned to the family. This is the most generous option and the most expensive for you. It should be reserved for exceptional circumstances: teacher cancellations, school closures, or extended student illness (e.g., a student who misses three or more consecutive weeks).
+
+A balanced policy might look like this: "Cancellations with 24+ hours' notice receive a make-up lesson, subject to availability. If no make-up slot is available within the current term, a credit is applied to the following term. Cancellations with less than 24 hours' notice or no-shows are charged in full. Teacher cancellations are always made up or credited."
+
+### 3. Make-up lesson mechanics
+
+Offering make-up lessons is the fairest approach, but the logistics can be painful if you don't have a system. Here's how to make it manageable:
+
+**Designate specific make-up slots.** Rather than trying to squeeze make-ups into any available gap in the timetable, reserve specific times for them. A common approach is Saturday mornings or a weekday evening dedicated to make-ups. This limits the scheduling disruption to your regular timetable.
+
+**Set an expiry window.** Make-up lessons should be used within the current term or, at most, the first two weeks of the following term. Without an expiry, you accumulate a growing backlog of owed make-ups that becomes impossible to fulfil.
+
+**Limit the number of make-ups per student per term.** Two or three make-ups per term is reasonable. Beyond that, the student's attendance pattern suggests the lesson time doesn't actually work for the family, and the conversation should shift to finding a better slot or acknowledging that the commitment isn't there.
+
+**Automate the matching.** When a cancellation creates a slot, [LessonLoop's make-up matching](/features/scheduling) identifies the open slot, cross-references it with students who have outstanding make-up credits, and notifies eligible families automatically. The first family to accept gets the slot. This eliminates the manual back-and-forth that makes make-up scheduling a time sink.
+
+## Teacher cancellations: the other side
+
+When a teacher cancels — illness, family emergency, car breakdown — the impact multiplies. A single teacher cancellation affects 5–8 families in a typical afternoon.
+
+Your policy for teacher cancellations should be more generous than for student cancellations. Parents are paying for a service that you've failed to deliver, and they didn't choose the disruption. The standard approach:
+
+**Always offer a make-up lesson or a credit.** No exceptions. The family should never be out of pocket for a cancellation that wasn't their fault.
+
+**Notify families as early as possible.** The moment you know a teacher can't attend, notify all affected families. A 7am message about a 3pm lesson is vastly better than a 2pm message. Early notification lets parents adjust their plans.
+
+**Have a backup plan.** If you have multiple teachers who can cover the same instruments, arrange internal cover. The student gets their lesson with a different teacher, the timetable stays intact, and you avoid the make-up backlog. If cover isn't possible, be upfront and apologise.
+
+**Track teacher reliability.** A teacher who cancels once per term is human. A teacher who cancels once a month is a problem. Use your [management platform](/features/teachers) to track teacher cancellation rates and address patterns before they affect your reputation.
+
+## How your policy affects retention
+
+Here's the counterintuitive truth: a clear, firm cancellation policy *improves* parent satisfaction. Parents don't resent fair rules — they resent inconsistency, surprise charges, and feeling like they've been taken advantage of.
+
+When your policy is communicated upfront (at enrolment, not after the first dispute), applied consistently, and balanced (you offer make-ups, you don't just pocket the money), families respect it. They plan around it. They cancel less. And when they do cancel, the process is clean rather than awkward.
+
+The schools with the worst cancellation problems are almost always the ones without a policy — where every cancellation turns into a negotiation and neither side knows the rules.
+
+## Communicating the policy
+
+Share your cancellation policy at four touchpoints:
+
+1. **At enrolment.** Include it in your terms and conditions. Ask parents to acknowledge they've read it.
+2. **At the start of each term.** A brief reminder in your term-start communication: "As a reminder, our cancellation policy requires 24 hours' notice..."
+3. **In your parent portal.** Make it accessible at any time, not just when there's a dispute.
+4. **When a cancellation occurs.** When a parent cancels, acknowledge the cancellation and confirm what happens next according to the policy. "Thanks for letting us know. As this is within our 24-hour notice window, we'll arrange a make-up lesson for Oliver. You'll receive available slots shortly."
+
+For a detailed look at the financial side — refunds, credits, and how they affect your [billing](/features/billing) — see our guide to [handling refunds and credits in your music school](/blog/music-school-refunds-credits).
+
+---
+
+## Frequently Asked Questions
+
+### What's the average cancellation rate for a UK music school?
+
+Well-run schools with a clear policy and termly billing typically see cancellation rates of 5–8% of scheduled lessons. Schools without a policy or with per-lesson billing often see 15–20%. The policy itself is the biggest driver of the rate — not the students.
+
+### Should my cancellation policy be different for adults and children?
+
+The core policy can be the same, but the application often differs in practice. Adult learners cancelling their own lessons deserve the same notice expectations, but you might offer more flexibility on rescheduling (e.g., allowing them to self-book a make-up via a [parent portal](/features/parent-portal) without admin intervention). Children's lessons involve a parent intermediary, so communication needs to be clear to the person who actually manages the schedule.
+
+### Can I charge for a lesson if a student simply doesn't show up?
+
+Yes, and you should — provided your policy states this clearly. A no-show is a slot that could have been used by another student. The teacher was present, the room was booked, and the time was allocated. Most UK music schools charge in full for no-shows. If this feels harsh, remember that the alternative is absorbing the cost yourself, which isn't sustainable.
+
+### How many make-up lessons is reasonable per term?
+
+Two to three per student per term is the standard range. This covers genuine illness and the occasional scheduling conflict without creating an unmanageable backlog. If a student regularly exceeds this, the issue is usually that their lesson slot doesn't work for the family — and the better conversation is about finding a time that does.`,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
