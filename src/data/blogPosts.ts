@@ -4082,6 +4082,244 @@ Yes — and it's actually simpler than switching between platforms, because you 
 
 *Part of our [guide to UK music education](/blog/guide-to-music-education-uk) series. Related: [LessonLoop vs My Music Staff](/compare/lessonloop-vs-my-music-staff) · [LessonLoop Features](/features)*`,
   },
+  {
+    slug: "best-music-school-software",
+    title: "Best Music School Software in 2026: The Complete Guide",
+    excerpt: "An honest comparison of the best music school software in 2026 — features, pricing, pros and cons. Covers LessonLoop, My Music Staff, Teachworks, Opus1 and more.",
+    date: "",
+    category: "Guides",
+    readTime: "15 min",
+    author: {
+      name: "LessonLoop",
+      role: "Music School Management Platform",
+    },
+    featuredImage: "/images/blog/best-music-school-software.jpg",
+    tags: ["music school software", "software comparison", "management software", "2026", "reviews"],
+    relatedPosts: ["guide-to-running-a-music-school", "music-school-spreadsheets-hidden-cost", "switching-music-school-software"],
+    content: `Choosing music school software is one of those decisions that affects every part of your business for years. The right platform saves you 5–10 hours of admin per week, reduces billing errors to near zero, keeps parents happy with self-service access, and gives you data to make smarter decisions about your school. The wrong platform creates a different kind of admin — the kind where you're fighting your own tools instead of using them.
+
+This guide compares every serious option on the market in 2026. We've assessed each platform on the features that actually matter for music schools, with particular attention to the needs of UK schools — because that's where most platforms fall short.
+
+A disclosure before we start: this guide is published by LessonLoop, so we obviously have a perspective. We've tried to be scrupulously honest about every platform's strengths and weaknesses, including our own. If you think we've been unfair to anyone (ourselves included), we'd genuinely like to hear about it.
+
+## What to look for in music school software
+
+Before comparing specific platforms, it's worth establishing what "good" looks like. We've written a detailed breakdown of the [features that genuinely matter](/blog/music-school-software-features), but the essentials are:
+
+<span class="font-semibold">Scheduling that prevents conflicts.</span> The platform should make it impossible to double-book a teacher, room or student. It should handle recurring weekly lessons, one-off rescheduling, and cancellations without breaking the timetable. For UK schools, it must understand term-based scheduling — lessons that run for 11 weeks, skip half-term, and stop for holidays.
+
+<span class="font-semibold">Billing that matches your model.</span> UK music schools bill termly. The software should generate termly invoices based on the actual number of lessons in each term, handle pro-rata for mid-term starters and leavers, manage credits and refunds, integrate with a payment processor (Stripe, ideally), and send automated reminders for unpaid invoices.
+
+<span class="font-semibold">A parent portal worth using.</span> Parents should be able to log in and see their child's schedule, lesson notes, invoices, payment status, and practice assignments — without messaging you. A portal that only shows the calendar isn't enough; a portal that replaces WhatsApp, email and phone for 80% of parent queries is the goal.
+
+<span class="font-semibold">Student and teacher management.</span> Student profiles with lesson history, grade tracking (ABRSM, Trinity, Rockschool), attendance records, and family grouping. Teacher profiles with availability, teaching rooms, pay rates, and DBS check status tracking.
+
+<span class="font-semibold">Reporting and insights.</span> Revenue per student, retention rates, teacher utilisation, outstanding invoices, attendance patterns. These are the KPIs that drive growth, and your software should surface them without requiring a spreadsheet.
+
+<span class="font-semibold">Data security and compliance.</span> UK GDPR compliance, secure data storage, role-based access, and audit logging. If the software holds children's data — and it will — security isn't a nice-to-have.
+
+## The platforms compared
+
+### LessonLoop
+
+<span class="font-semibold">Built for:</span> UK music schools, from solo teachers to multi-location academies.
+
+<span class="font-semibold">Core strength:</span> LessonLoop was designed from the ground up for the UK market. Termly billing, ABRSM/Trinity grade tracking, UK GDPR compliance (soft delete, data export, deletion candidates), GBP currency, and British English throughout. It's not a US product with a pound sign bolted on.
+
+<span class="font-semibold">Scheduling</span> handles fixed weekly lessons with term boundaries, room allocation across multiple locations, teacher availability management, and conflict prevention. The calendar understands UK term dates — set your term start, end and half-term, and the system generates recurring lessons that skip the right weeks automatically.
+
+<span class="font-semibold">Billing</span> supports termly invoicing with automatic lesson count calculation, Stripe integration for card payments, automated payment reminders, credit management for cancelled or rescheduled lessons, and HMRC-friendly invoice formatting.
+
+<span class="font-semibold">Parent portal</span> includes schedule visibility, lesson notes, invoice access with one-click payment, practice tracking with streak gamification, and in-app messaging that replaces WhatsApp.
+
+<span class="font-semibold">LoopAssist AI copilot</span> provides natural-language insights ("Which students have declining attendance?"), automated report generation, and operational suggestions based on your school's data.
+
+<span class="font-semibold">Best for:</span> Any UK music school that wants software designed for how UK schools actually operate. Particularly strong for schools with 30–200+ students that need the full operational stack.
+
+<span class="font-semibold">Pricing:</span> See [plans and pricing](/pricing) for current plans.
+
+<span class="font-semibold">Detailed comparisons:</span> [vs My Music Staff](/compare/lessonloop-vs-my-music-staff) · [vs Teachworks](/compare/lessonloop-vs-teachworks) · [vs Opus1](/compare/lessonloop-vs-opus1)
+
+---
+
+### My Music Staff
+
+<span class="font-semibold">Built for:</span> North American music studios and schools.
+
+<span class="font-semibold">Core strength:</span> One of the longest-established music school platforms, with a solid feature set for student management, scheduling and invoicing. Mature product with a large user base.
+
+<span class="font-semibold">Scheduling</span> handles individual and group lessons with recurring patterns and calendar views. Room management is basic but functional.
+
+<span class="font-semibold">Billing</span> is built around the North American model — monthly billing is the default. Termly billing for UK schools requires workarounds (manually setting invoice periods, adjusting for half-terms). Not impossible, but not native.
+
+<span class="font-semibold">Parent portal</span> provides schedule access, account balance and basic communication. Less feature-rich than newer platforms — no practice tracking, limited lesson note display.
+
+<span class="font-semibold">Considerations for UK schools:</span> USD-centric pricing and interface. No native UK GDPR tools. No ABRSM/Trinity grade tracking. Date formats and terminology are American. Works adequately if you're willing to adapt your workflow to the software's assumptions.
+
+<span class="font-semibold">Best for:</span> Canadian and US music schools. UK schools that have used it for years and don't want to switch may find it adequate, but new UK schools should consider UK-built alternatives.
+
+<span class="font-semibold">Detailed comparison:</span> [LessonLoop vs My Music Staff](/compare/lessonloop-vs-my-music-staff)
+
+---
+
+### Teachworks
+
+<span class="font-semibold">Built for:</span> Music studios, tutoring centres and education businesses in North America.
+
+<span class="font-semibold">Core strength:</span> Robust scheduling and payroll features. Handles multi-teacher operations well, with strong teacher availability management and payroll calculations.
+
+<span class="font-semibold">Scheduling</span> is comprehensive — teacher availability, lesson types (private, group, package), recurring schedules, and decent conflict detection. Calendar views are functional.
+
+<span class="font-semibold">Billing</span> supports recurring invoicing, package billing, and payment tracking. Like My Music Staff, it's built for the monthly billing model. Termly billing requires manual configuration each term.
+
+<span class="font-semibold">Parent portal</span> (called Family Portal) provides schedule access and basic account information. Communication features are limited.
+
+<span class="font-semibold">Considerations for UK schools:</span> American-first design. No native termly billing. No ABRSM/Trinity integration. GDPR compliance is user-managed rather than platform-supported. Pricing in USD.
+
+<span class="font-semibold">Best for:</span> Multi-teacher studios in North America, particularly those that also offer non-music tutoring services. The platform's flexibility across subject types is genuinely useful for mixed-service businesses.
+
+<span class="font-semibold">Detailed comparison:</span> [LessonLoop vs Teachworks](/compare/lessonloop-vs-teachworks)
+
+---
+
+### Opus1
+
+<span class="font-semibold">Built for:</span> Music schools and teaching studios, primarily in the US market.
+
+<span class="font-semibold">Core strength:</span> Clean, modern interface with good visual design. Solid scheduling features with a user-friendly calendar. Marketing and website tools built in — some plans include a website builder.
+
+<span class="font-semibold">Scheduling</span> is well-designed — visually clear calendar, drag-and-drop scheduling, automated conflict detection. Handles both individual and group lessons.
+
+<span class="font-semibold">Billing</span> supports flexible invoicing and payment collection. Online payments via Stripe. Recurring billing is available. Termly billing is configurable but not the default workflow.
+
+<span class="font-semibold">Parent portal</span> provides schedule visibility, messaging, and basic account management. Practice tracking is available on some plans.
+
+<span class="font-semibold">Considerations for UK schools:</span> US-focused — no native UK term structure, no ABRSM/Trinity awareness, American date formatting. The marketing tools (website builder, lead capture) are useful but not essential if you already have a website. GDPR compliance tools are basic.
+
+<span class="font-semibold">Best for:</span> US music schools that want an all-in-one platform including marketing tools. UK schools may find the interface appealing but should expect to adapt their UK-specific workflows.
+
+<span class="font-semibold">Detailed comparison:</span> [LessonLoop vs Opus1](/compare/lessonloop-vs-opus1)
+
+---
+
+### Jackrabbit Music
+
+<span class="font-semibold">Built for:</span> Larger music schools, dance studios and performing arts organisations in North America.
+
+<span class="font-semibold">Core strength:</span> Enterprise-scale features for large organisations — multi-location management, staff permissions, detailed reporting, and integration with accounting software. Originally built for dance studios and expanded to music.
+
+<span class="font-semibold">Scheduling</span> handles complex scenarios — multiple locations, rooms, instructor types, and class formats. Good for large schools with 200+ students.
+
+<span class="font-semibold">Billing</span> is comprehensive — batch invoicing, automatic fee calculation, payment processing, and integration with QuickBooks and Xero.
+
+<span class="font-semibold">Parent portal</span> includes registration, schedule viewing, and communication tools. The portal design feels slightly dated compared to newer platforms but is functionally solid.
+
+<span class="font-semibold">Considerations for UK schools:</span> Very American — pricing in USD, US-centric terminology ("classes" rather than "lessons"), no UK term structure, no ABRSM/Trinity. The enterprise feature set is impressive but carries enterprise complexity. Onboarding is more involved than simpler platforms.
+
+<span class="font-semibold">Best for:</span> Large US performing arts schools with 200+ students across multiple disciplines. UK schools of this size would benefit more from a platform that understands UK operational patterns natively.
+
+<span class="font-semibold">Detailed comparison:</span> [LessonLoop vs Jackrabbit Music](/compare/lessonloop-vs-jackrabbit-music)
+
+---
+
+### Fons
+
+<span class="font-semibold">Built for:</span> Solo practitioners and small-business service providers (not music-specific).
+
+<span class="font-semibold">Core strength:</span> Simplicity. Fons is a lightweight scheduling and payment platform designed for individual service providers — tutors, coaches, therapists, and music teachers. It does scheduling, invoicing and client communication without the complexity of a full music school platform.
+
+<span class="font-semibold">Scheduling</span> is basic but clean — appointment booking, calendar management, automated reminders. No term-based scheduling or room management.
+
+<span class="font-semibold">Billing</span> supports simple invoicing and payment collection. No termly billing, no batch invoicing, no credit management. Adequate for a solo teacher billing per lesson; insufficient for a school billing termly across 50 students.
+
+<span class="font-semibold">No parent portal.</span> No student management beyond basic contact details. No lesson notes, practice tracking, or grade tracking.
+
+<span class="font-semibold">Considerations for UK schools:</span> Not designed for music schools specifically, so there's no subject-specific functionality. Works for a solo teacher with under 20 students who just needs basic scheduling and payment. Outgrown quickly as a school grows.
+
+<span class="font-semibold">Best for:</span> Solo music teachers at the very beginning of their career who need simple scheduling and payments before they outgrow it.
+
+<span class="font-semibold">Detailed comparison:</span> [LessonLoop vs Fons](/compare/lessonloop-vs-fons)
+
+---
+
+### Pembee
+
+<span class="font-semibold">Built for:</span> After-school activity providers, including music, sports and art schools.
+
+<span class="font-semibold">Core strength:</span> Designed for the UK market, with term-based scheduling and online booking. Covers a wide range of children's activities — not music-specific, but it understands the UK operational model.
+
+<span class="font-semibold">Scheduling</span> supports term-based class structures, online booking by parents, and basic calendar management. More oriented toward group classes than one-to-one lessons.
+
+<span class="font-semibold">Billing</span> handles termly and half-termly billing with online payments. Reasonably well-suited to the UK billing model.
+
+<span class="font-semibold">Parent-facing booking</span> is strong — the platform is designed for parents to find and book classes, making it partly a marketplace. Less suited for schools that manage their own enrolment.
+
+<span class="font-semibold">Considerations for music schools:</span> The platform's breadth (covering football, dance, art, etc.) means it lacks depth in music-specific features — no ABRSM/Trinity integration, no lesson notes or progress tracking, no practice tracking. It's good for the booking and billing layer but shallow on the music education layer.
+
+<span class="font-semibold">Best for:</span> UK activity providers offering group music classes alongside other subjects. Less suitable for dedicated music schools that need student progress tracking, lesson notes, and exam management.
+
+## How to choose: by school type
+
+The right software depends on who you are and what you need.
+
+<span class="font-semibold">Solo teacher (under 30 students):</span> You need scheduling, invoicing and basic parent communication. You don't need multi-teacher permissions, complex reporting or multi-location management. Fons works at the simplest level, but you'll outgrow it. LessonLoop's solo plan gives you the same simplicity with room to grow. See our [solo teacher software guide](/blog/best-software-solo-music-teachers).
+
+<span class="font-semibold">Growing school (30–80 students, 2–5 teachers):</span> This is where the right platform makes or breaks your growth. You need termly billing, a parent portal, teacher management, and the ability to delegate admin. Scheduling conflicts become a real risk at this size. LessonLoop, Teachworks and Opus1 all handle this size, but only LessonLoop does [termly billing](/features/billing) and UK compliance natively.
+
+<span class="font-semibold">Established academy (80–200+ students, 5+ teachers):</span> You need everything above plus multi-location scheduling, detailed reporting, role-based permissions, and the ability to manage your school at a strategic level. LessonLoop and Jackrabbit Music both serve this segment, with LessonLoop being the UK-specific choice and Jackrabbit being the US enterprise choice.
+
+<span class="font-semibold">Performing arts school (music + dance + drama):</span> Multi-discipline scheduling adds complexity. See our guide to [software for performing arts schools](/blog/software-performing-arts-schools).
+
+For detailed comparisons by school type, see [best software for solo teachers](/blog/best-software-solo-music-teachers) and [best software for music academies](/blog/best-software-music-academies).
+
+## The UK question
+
+Every platform comparison ultimately comes down to this: was the software built with [UK music schools](/uk) in mind?
+
+Termly billing isn't a billing "option" in the UK — it's how the entire industry works. ABRSM and Trinity aren't nice-to-have integrations — they're the backbone of student progression. UK GDPR isn't a checkbox — it's a legal obligation with specific technical requirements. GBP, UK date formats, British English, HMRC-friendly invoicing — these aren't preferences, they're operational necessities.
+
+If your school is in the UK, software that was designed for the UK eliminates an entire category of workarounds, adaptations and compromises that US-built platforms force on you. That's not a small advantage. It's the difference between a tool that fits your school and one you reshape your school to fit.
+
+## The AI dimension
+
+2026 is the year that AI copilots move from novelty to genuine utility in music school software. The relevant question is no longer "does it have AI?" but "does the AI actually help?"
+
+[LoopAssist AI](/features/loopassist) is the most developed AI copilot in the music school software space. It works on your actual school data — asking questions like "which students haven't been to a lesson in the last three weeks?" or "what's my revenue trend this term compared to last?" and getting instant, accurate answers.
+
+For a deeper look at where AI is headed in this space, see our piece on [how AI is changing music school management](/blog/ai-music-school-management).
+
+## Making the switch
+
+If you're currently using spreadsheets, a different platform, or a combination of ad hoc tools, switching is less painful than you think — especially if you time it between terms. Our step-by-step [software migration guide](/blog/switching-music-school-software) covers data export, import, teacher training and parent communication.
+
+---
+
+## Frequently Asked Questions
+
+### Is there free music school software?
+
+Some platforms offer free tiers with limited functionality — Fons has a basic free plan, and some platforms offer free trials. However, free tiers typically lack the features that save the most time (automated billing, parent portal, reporting). For most schools, the cost of paid software (typically £15–£50/month) is paid back many times over in time savings and reduced admin errors. The question isn't whether you can afford software — it's whether you can afford not to use it.
+
+### Can I use generic business software (like Google Calendar + Xero) instead?
+
+You can, but you're building a system from parts that weren't designed to work together. Google Calendar doesn't prevent double-bookings, Xero doesn't know what a termly invoice is, and neither of them provides a parent portal. The result is a fragile stack that requires you as the integration layer — manually keeping data consistent across multiple systems. For a solo teacher with 10 students, it's manageable. Beyond that, purpose-built software pays for itself in time saved and errors avoided.
+
+### How long does it take to switch music school software?
+
+For a school with 50–100 students, allow 2–3 weeks from starting setup to going live. The best time is between terms. See our [migration guide](/blog/switching-music-school-software) for the full process.
+
+### What's the most important feature to look for?
+
+If you could only have one feature, make it the [parent portal](/features/parent-portal). A good portal eliminates the majority of routine parent queries (schedule, billing, practice), freeing your time for work that actually grows the school. Everything else — scheduling, billing, reporting — is important but doesn't transform your daily workload the way a portal does.
+
+### Should I choose based on price or features?
+
+Features — specifically, the features you'll actually use. A cheaper platform that lacks termly billing, forcing you to spend 3 hours every term manually adjusting invoices, costs you far more than the price difference. Choose the platform that eliminates the most admin time and frustration, then evaluate whether the price is justified (it almost always is).
+
+---
+
+*Related reading: [Features That Actually Matter](/blog/music-school-software-features) · [Best for Solo Teachers](/blog/best-software-solo-music-teachers) · [Best for Academies](/blog/best-software-music-academies) · [All Comparisons](/compare/lessonloop-vs-my-music-staff)*`,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
