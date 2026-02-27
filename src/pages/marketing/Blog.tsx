@@ -19,8 +19,6 @@ import type { BlogPost } from "@/data/blogPosts";
 
 const POSTS_PER_PAGE = 9;
 
-const CATEGORIES = ["All", "Teaching Tips", "Product Updates", "Music Business", "Guides"] as const;
-
 function FeaturedPost({ post }: { post: BlogPost }) {
   return (
     <motion.article
@@ -210,7 +208,6 @@ export default function Blog() {
 
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -221,11 +218,13 @@ export default function Blog() {
   }, []);
 
   const filteredPosts = posts.filter(p => {
-    const matchesCategory = activeCategory === "All" || p.category === activeCategory;
-    const matchesSearch = !searchQuery ||
-      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      p.title.toLowerCase().includes(q) ||
+      p.excerpt.toLowerCase().includes(q) ||
+      p.tags?.some(t => t.toLowerCase().includes(q))
+    );
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredPosts.length / POSTS_PER_PAGE));
@@ -237,23 +236,25 @@ export default function Blog() {
   const remaining = safePage === 1 ? pagePosts.slice(1) : pagePosts;
 
   const goToPage = useCallback((page: number) => {
+    const next = new URLSearchParams(searchParams);
     if (page <= 1) {
-      searchParams.delete("page");
+      next.delete("page");
     } else {
-      searchParams.set("page", String(page));
+      next.set("page", String(page));
     }
-    setSearchParams(searchParams, { replace: true });
+    setSearchParams(next, { replace: true });
     document.getElementById("blog-posts")?.scrollIntoView({ behavior: "smooth" });
   }, [searchParams, setSearchParams]);
 
-  // Reset to page 1 when filters/search change
+  // Reset to page 1 when search changes
   useEffect(() => {
     if (currentPage > 1) {
-      searchParams.delete("page");
-      setSearchParams(searchParams, { replace: true });
+      const next = new URLSearchParams(searchParams);
+      next.delete("page");
+      setSearchParams(next, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCategory, searchQuery]);
+  }, [searchQuery]);
 
   // Add rel="next" / rel="prev" for SEO
   useEffect(() => {
@@ -331,26 +332,11 @@ export default function Blog() {
         </div>
       </section>
 
-      {/* ═══ FILTERS ═══ */}
+      {/* ═══ SEARCH ═══ */}
       <section className="border-y border-border/40 bg-secondary/20 py-5 sticky top-20 z-20 backdrop-blur-xl">
         <div className="container mx-auto px-5 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center gap-4 justify-between">
-            <div className="flex flex-wrap gap-2 justify-center">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                    activeCategory === cat
-                      ? "bg-primary text-primary-foreground shadow-md"
-                      : "bg-card text-muted-foreground hover:bg-muted border border-border/60"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-            <div className="relative w-full sm:w-64">
+          <div className="flex justify-center">
+            <div className="relative w-full max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search posts..."
@@ -400,12 +386,12 @@ export default function Blog() {
                 <Search className="w-7 h-7 text-muted-foreground" />
               </div>
               <h3 className="text-xl font-bold text-foreground mb-2">No posts found</h3>
-              <p className="text-muted-foreground mb-6">Try a different search term or category.</p>
+              <p className="text-muted-foreground mb-6">Try a different search term.</p>
               <button
-                onClick={() => { setSearchQuery(""); setActiveCategory("All"); }}
+                onClick={() => setSearchQuery("")}
                 className="text-sm font-semibold text-primary hover:underline"
               >
-                Clear filters
+                Clear search
               </button>
             </motion.div>
           ) : (
