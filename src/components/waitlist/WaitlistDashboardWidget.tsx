@@ -33,7 +33,7 @@ export function WaitlistDashboardWidget() {
               </div>
               <p className="text-xs text-muted-foreground">
                 {stats?.waiting ?? 0} waiting
-                {(stats?.offered ?? 0) > 0 && ` · ${stats.offered} offered`}
+                {(stats?.offered ?? 0) > 0 && ` · ${stats?.offered} offered`}
               </p>
               {byInstrument && byInstrument.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">

@@ -152,7 +152,7 @@ export function useTermAdjustments(studentId?: string) {
     queryFn: async () => {
       if (!currentOrg?.id) return [];
 
-      let query = supabase
+      let query = (supabase as any)
         .from('term_adjustments')
         .select(`
           *,
