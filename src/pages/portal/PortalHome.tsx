@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { useParentSummary, useChildrenWithDetails, useGuardianInfo } from '@/hooks/useParentPortal';
 import { useParentWaitlistEntries } from '@/hooks/useMakeUpWaitlist';
+import { useParentEnrolmentWaitlist, useRespondToOffer as useRespondToEnrolmentOffer } from '@/hooks/useEnrolmentWaitlist';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
 import { useParentCredits } from '@/hooks/useParentCredits';
 import { useParentChildInstruments } from '@/hooks/useParentInstruments';
@@ -135,6 +136,8 @@ export default function PortalHome() {
   const { data: waitlistEntries } = useParentWaitlistEntries();
   const { data: parentCredits } = useParentCredits();
   const { data: childInstruments } = useParentChildInstruments();
+  const { data: enrolmentWaitlistEntries } = useParentEnrolmentWaitlist();
+  const respondToEnrolmentOffer = useRespondToEnrolmentOffer();
 
   const activeWaitlist = (waitlistEntries ?? []).filter((e) =>
     ['waiting', 'matched', 'offered', 'accepted', 'booked'].includes(e.status)
@@ -607,6 +610,101 @@ export default function PortalHome() {
                       </Card>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* 3.7 Enrolment Waiting List */}
+            {enrolmentWaitlistEntries && enrolmentWaitlistEntries.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  Enrolment Waiting List
+                </h2>
+                <div className="space-y-3">
+                  {enrolmentWaitlistEntries.map((entry) => (
+                    <Card
+                      key={entry.id}
+                      className={
+                        entry.status === 'offered'
+                          ? 'border-green-300 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20'
+                          : ''
+                      }
+                    >
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold">
+                              {entry.child_first_name} {entry.child_last_name || ''} — {entry.instrument_name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Position #{entry.position} · Waiting {formatDistanceToNowStrict(parseISO(entry.created_at))}
+                            </p>
+                          </div>
+                        </div>
+
+                        {entry.status === 'waiting' && (
+                          <p className="text-xs text-muted-foreground">
+                            We'll contact you when a slot becomes available.
+                          </p>
+                        )}
+
+                        {entry.status === 'offered' && entry.offered_slot_day && (
+                          <div className="space-y-3 pt-1">
+                            <div className="rounded-lg border border-green-200 dark:border-green-800 bg-white dark:bg-background p-3 space-y-1 text-sm">
+                              <p className="font-medium">
+                                {entry.offered_slot_day.charAt(0).toUpperCase() + entry.offered_slot_day.slice(1)} at {entry.offered_slot_time}
+                              </p>
+                              {entry.offered_teacher?.display_name && (
+                                <p className="text-muted-foreground text-xs">
+                                  Teacher: {entry.offered_teacher.display_name}
+                                </p>
+                              )}
+                              {entry.offered_location?.name && (
+                                <p className="text-muted-foreground text-xs flex items-center gap-1.5">
+                                  <MapPin className="h-3 w-3" /> {entry.offered_location.name}
+                                </p>
+                              )}
+                              {entry.offered_rate_minor != null && (
+                                <p className="text-muted-foreground text-xs">
+                                  Rate: {formatCurrencyMinor(entry.offered_rate_minor, 'GBP')} per lesson
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                className="gap-1"
+                                disabled={respondToEnrolmentOffer.isPending}
+                                onClick={() => respondToEnrolmentOffer.mutate({ waitlist_id: entry.id, action: 'accept' })}
+                              >
+                                Accept
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={respondToEnrolmentOffer.isPending}
+                                onClick={() => respondToEnrolmentOffer.mutate({ waitlist_id: entry.id, action: 'decline' })}
+                              >
+                                Decline
+                              </Button>
+                            </div>
+                            {entry.offer_expires_at && isBefore(new Date(), parseISO(entry.offer_expires_at)) && (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                Please respond within {formatDistanceToNowStrict(parseISO(entry.offer_expires_at))}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {entry.status === 'accepted' && (
+                          <p className="text-xs text-muted-foreground">
+                            Offer accepted! The academy will complete your enrolment shortly.
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               </div>
             )}

@@ -19,6 +19,7 @@ import {
   Sparkles,
   RefreshCw,
   UserPlus,
+  ClipboardCheck,
   type LucideIcon,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -84,6 +85,7 @@ const ownerAdminGroups: NavGroup[] = [
     items: [
       { title: 'Invoices', url: '/invoices', icon: Receipt },
       { title: 'Leads', url: '/leads', icon: UserPlus },
+      { title: 'Waiting List', url: '/waitlist', icon: ClipboardCheck },
       { title: 'Make-Ups', url: '/make-ups', icon: RefreshCw },
       { title: 'Reports', url: '/reports', icon: BarChart3 },
       { title: 'Locations', url: '/locations', icon: MapPin },
