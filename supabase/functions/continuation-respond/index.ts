@@ -266,11 +266,27 @@ async function handlePortalResponse(
     );
   }
 
-  // Look up guardian for this user
+  // Get the run's org_id to scope the guardian lookup
+  const { data: runRow } = await client
+    .from("term_continuation_runs")
+    .select("org_id")
+    .eq("id", run_id)
+    .single();
+
+  if (!runRow) {
+    return jsonResponse(
+      { error: "Continuation run not found" },
+      cors,
+      404
+    );
+  }
+
+  // Look up guardian for this user, scoped to the run's organisation
   const { data: guardian } = await client
     .from("guardians")
     .select("id")
     .eq("user_id", userId)
+    .eq("org_id", runRow.org_id)
     .is("deleted_at", null)
     .maybeSingle();
 

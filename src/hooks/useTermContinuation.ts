@@ -475,6 +475,7 @@ export function useBulkProcessContinuation() {
     mutationFn: async (data: {
       run_id: string;
       next_term_end_date: string;
+      next_term_start_date: string;
       process_type: 'confirmed' | 'withdrawals' | 'all';
     }) => {
       if (!currentOrg?.id || !user?.id) {
@@ -528,11 +529,12 @@ export function useBulkProcessContinuation() {
         } else if (resp.response === 'withdrawing') {
           // For withdrawals, we create term adjustments via the edge function
           const lessons = resp.lesson_summary || [];
+          let anyWithdrawalSucceeded = false;
           for (const lesson of lessons) {
             if (!lesson.recurrence_id) continue;
 
             try {
-              // Preview
+              // Preview — use next term start date so cancellation begins from the correct boundary
               const { data: previewResult, error: prevError } =
                 await supabase.functions.invoke('process-term-adjustment', {
                   body: {
@@ -541,7 +543,7 @@ export function useBulkProcessContinuation() {
                     adjustment_type: 'withdrawal',
                     student_id: resp.student_id,
                     recurrence_id: lesson.recurrence_id,
-                    effective_date: data.next_term_end_date, // Use next term start
+                    effective_date: data.next_term_start_date,
                   },
                 });
 
@@ -556,13 +558,14 @@ export function useBulkProcessContinuation() {
                     adjustment_type: 'withdrawal',
                     student_id: resp.student_id,
                     recurrence_id: lesson.recurrence_id,
-                    effective_date: data.next_term_end_date,
+                    effective_date: data.next_term_start_date,
                     adjustment_id: previewResult.adjustment_id,
                     generate_credit_note: true,
                   },
                 });
 
               if (confirmResult?.adjustment_id) {
+                anyWithdrawalSucceeded = true;
                 // Store term_adjustment_id
                 await (supabase as any)
                   .from('term_continuation_responses')
@@ -570,9 +573,12 @@ export function useBulkProcessContinuation() {
                   .eq('id', resp.id);
               }
             } catch {
-              // Continue processing other responses
+              // Continue processing other lessons for this response
             }
           }
+
+          // Only count and mark processed if at least one withdrawal succeeded
+          if (!anyWithdrawalSucceeded && lessons.length > 0) continue;
           withdrawnCount++;
         }
 
