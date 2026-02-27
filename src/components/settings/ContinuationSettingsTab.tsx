@@ -37,8 +37,8 @@ export function ContinuationSettingsTab() {
 
   const parsedReminderDays = reminderDays
     .split(',')
-    .map((s) => parseInt(s.trim()))
-    .filter((n) => !isNaN(n) && n > 0);
+    .map((s: string) => parseInt(s.trim()))
+    .filter((n: number) => !isNaN(n) && n > 0);
 
   const hasChanges =
     noticeWeeks !== ((currentOrg as any)?.continuation_notice_weeks ?? 3) ||
