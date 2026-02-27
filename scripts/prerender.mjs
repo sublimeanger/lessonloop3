@@ -522,9 +522,16 @@ function getBlogSlugs() {
   return slugs;
 }
 
+const BLOG_POSTS_PER_PAGE = 9;
+
 function getAllRoutes() {
   const routes = [...STATIC_ROUTES];
   const slugs = getBlogSlugs();
+
+  // Add paginated blog listing pages: /blog/2, /blog/3, etc. (page 1 is /blog)
+  const totalBlogPages = Math.ceil(slugs.length / BLOG_POSTS_PER_PAGE);
+  for (let p = 2; p <= totalBlogPages; p++) routes.push(`/blog/${p}`);
+
   for (const slug of slugs) routes.push(`/blog/${slug}`);
   return routes;
 }
@@ -846,8 +853,8 @@ function postProcess(html, routePath, blogSlugs) {
     html = html.replace('</head>', `<script type="application/ld+json">${breadcrumbSchema}</script>\n</head>`);
   }
 
-  // ── SEO: Blog post pagination (prev/next) ──
-  if (routePath.startsWith('/blog/') && routePath !== '/blog' && blogSlugs) {
+  // ── SEO: Blog post pagination (prev/next between individual articles) ──
+  if (routePath.startsWith('/blog/') && routePath !== '/blog' && !/^\/blog\/\d+$/.test(routePath) && blogSlugs) {
     const currentSlug = routePath.replace('/blog/', '');
     const slugIdx = blogSlugs.indexOf(currentSlug);
     if (slugIdx > 0) {
@@ -855,6 +862,22 @@ function postProcess(html, routePath, blogSlugs) {
     }
     if (slugIdx >= 0 && slugIdx < blogSlugs.length - 1) {
       html = html.replace('</head>', `  <link rel="next" href="${SITE_DOMAIN}/blog/${blogSlugs[slugIdx + 1]}">\n</head>`);
+    }
+  }
+
+  // ── SEO: Blog listing pagination (prev/next for /blog and /blog/N) ──
+  const blogListingPageMatch = routePath.match(/^\/blog\/(\d+)$/);
+  const blogListingPage = routePath === '/blog' ? 1 : blogListingPageMatch ? Number(blogListingPageMatch[1]) : 0;
+  if (blogListingPage > 0 && blogSlugs) {
+    const totalBlogPages = Math.ceil(blogSlugs.length / BLOG_POSTS_PER_PAGE);
+    if (blogListingPage > 1) {
+      const prevUrl = blogListingPage === 2
+        ? `${SITE_DOMAIN}/blog/`
+        : `${SITE_DOMAIN}/blog/${blogListingPage - 1}/`;
+      html = html.replace('</head>', `  <link rel="prev" href="${prevUrl}">\n</head>`);
+    }
+    if (blogListingPage < totalBlogPages) {
+      html = html.replace('</head>', `  <link rel="next" href="${SITE_DOMAIN}/blog/${blogListingPage + 1}/">\n</head>`);
     }
   }
 
@@ -1107,7 +1130,11 @@ async function main() {
   const errors = [];
 
   for (const route of routes) {
-    const url = origin + route;
+    // For paginated blog pages like /blog/2, visit /blog?page=2 so React picks up the param
+    const blogPageMatch = route.match(/^\/blog\/(\d+)$/);
+    const url = blogPageMatch
+      ? `${origin}/blog?page=${blogPageMatch[1]}`
+      : origin + route;
     const label = route || '/';
     process.stdout.write(`  Rendering ${label} ... `);
 

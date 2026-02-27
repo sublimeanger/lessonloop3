@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
-import { Clock, ArrowRight, BookOpen, Sparkles, Search } from "lucide-react";
+import { Clock, ArrowRight, BookOpen, Sparkles, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import type { BlogPost } from "@/data/blogPosts";
+
+const POSTS_PER_PAGE = 9;
 
 function FeaturedPost({ post }: { post: BlogPost }) {
   return (
@@ -119,16 +121,92 @@ function PostCard({ post, index }: { post: BlogPost; index: number }) {
   );
 }
 
+/** Returns the clean URL for a given page number. Page 1 = /blog/, page N = /blog/N/ */
+function blogPageUrl(page: number) {
+  return page <= 1 ? "/blog/" : `/blog/${page}/`;
+}
+
+function BlogPagination({ currentPage, totalPages }: { currentPage: number; totalPages: number }) {
+  const pages: (number | "ellipsis")[] = [];
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+      pages.push(i);
+    } else if (pages[pages.length - 1] !== "ellipsis") {
+      pages.push("ellipsis");
+    }
+  }
+
+  return (
+    <nav aria-label="Blog pagination" className="flex items-center justify-center gap-2 mt-4">
+      {currentPage > 1 ? (
+        <a
+          href={blogPageUrl(currentPage - 1)}
+          className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" /> Previous
+        </a>
+      ) : (
+        <span className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-muted-foreground/40 pointer-events-none">
+          <ChevronLeft className="w-4 h-4" /> Previous
+        </span>
+      )}
+
+      <div className="flex items-center gap-1">
+        {pages.map((page, i) =>
+          page === "ellipsis" ? (
+            <span key={`e-${i}`} className="px-2 py-2 text-sm text-muted-foreground">...</span>
+          ) : (
+            <a
+              key={page}
+              href={blogPageUrl(page)}
+              aria-current={page === currentPage ? "page" : undefined}
+              className={`inline-flex items-center justify-center w-10 h-10 text-sm font-medium rounded-lg transition-colors ${
+                page === currentPage
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
+            >
+              {page}
+            </a>
+          )
+        )}
+      </div>
+
+      {currentPage < totalPages ? (
+        <a
+          href={blogPageUrl(currentPage + 1)}
+          className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors"
+        >
+          Next <ChevronRight className="w-4 h-4" />
+        </a>
+      ) : (
+        <span className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-muted-foreground/40 pointer-events-none">
+          Next <ChevronRight className="w-4 h-4" />
+        </span>
+      )}
+    </nav>
+  );
+}
+
 export default function Blog() {
+  const [searchParams] = useSearchParams();
+  const currentPage = Math.max(1, Number(searchParams.get("page")) || 1);
+
+  const canonical = currentPage > 1
+    ? `https://lessonloop.net/blog/${currentPage}/`
+    : "https://lessonloop.net/blog/";
+
   usePageMeta(
-    "Blog — Tips & Guides for UK Music Educators | LessonLoop",
+    currentPage > 1
+      ? `Blog — Page ${currentPage} | Tips & Guides for UK Music Educators | LessonLoop`
+      : "Blog — Tips & Guides for UK Music Educators | LessonLoop",
     "Expert tips, practical guides, and industry insights to help UK music teachers run thriving teaching practices. Scheduling, billing, and growth strategies.",
     {
-      canonical: "https://lessonloop.co.uk/blog",
+      canonical,
       ogTitle: "Blog — Tips & Guides for UK Music Educators",
       ogDescription: "Expert tips, practical guides, and industry insights for UK music teachers.",
       ogType: "website",
-      ogUrl: "https://lessonloop.co.uk/blog",
+      ogUrl: "https://lessonloop.net/blog/",
       ogSiteName: "LessonLoop",
       ogLocale: "en_GB",
       twitterCard: "summary_large_image",
@@ -147,18 +225,55 @@ export default function Blog() {
     });
   }, []);
 
-  const filteredPosts = posts.filter(p => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      p.title.toLowerCase().includes(q) ||
-      p.excerpt.toLowerCase().includes(q) ||
-      p.tags?.some(t => t.toLowerCase().includes(q))
-    );
-  });
+  const filteredPosts = searchQuery
+    ? posts.filter(p => {
+        const q = searchQuery.toLowerCase();
+        return (
+          p.title.toLowerCase().includes(q) ||
+          p.excerpt.toLowerCase().includes(q) ||
+          p.tags?.some(t => t.toLowerCase().includes(q))
+        );
+      })
+    : posts;
 
-  const featured = filteredPosts[0];
-  const remaining = filteredPosts.slice(1);
+  // When searching, show all results (no pagination). Otherwise paginate.
+  const isSearching = searchQuery.length > 0;
+  const totalPages = isSearching ? 1 : Math.max(1, Math.ceil(filteredPosts.length / POSTS_PER_PAGE));
+  const safePage = isSearching ? 1 : Math.min(currentPage, totalPages);
+  const startIdx = (safePage - 1) * POSTS_PER_PAGE;
+  const pagePosts = isSearching ? filteredPosts : filteredPosts.slice(startIdx, startIdx + POSTS_PER_PAGE);
+
+  const featured = safePage === 1 ? pagePosts[0] : undefined;
+  const gridPosts = safePage === 1 ? pagePosts.slice(1) : pagePosts;
+
+  // SEO: rel="prev" / rel="next"
+  useEffect(() => {
+    const head = document.head;
+    const cleanup = () => {
+      const p = head.querySelector('link[rel="prev"]');
+      const n = head.querySelector('link[rel="next"]');
+      if (p) head.removeChild(p);
+      if (n) head.removeChild(n);
+    };
+    cleanup();
+
+    if (safePage > 1) {
+      const prev = document.createElement("link");
+      prev.rel = "prev";
+      prev.href = safePage === 2
+        ? "https://lessonloop.net/blog/"
+        : `https://lessonloop.net/blog/${safePage - 1}/`;
+      head.appendChild(prev);
+    }
+    if (safePage < totalPages) {
+      const next = document.createElement("link");
+      next.rel = "next";
+      next.href = `https://lessonloop.net/blog/${safePage + 1}/`;
+      head.appendChild(next);
+    }
+
+    return cleanup;
+  }, [safePage, totalPages]);
 
   return (
     <MarketingLayout>
@@ -269,18 +384,22 @@ export default function Blog() {
             </motion.div>
           ) : (
             <div className="space-y-16">
-              {/* Featured */}
+              {/* Featured (page 1 only) */}
               {featured && <FeaturedPost post={featured} />}
 
               {/* Grid */}
-              {remaining.length > 0 && (
+              {gridPosts.length > 0 && (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {remaining.map((post, index) => (
+                  {gridPosts.map((post, index) => (
                     <PostCard key={post.slug} post={post} index={index} />
                   ))}
                 </div>
               )}
 
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <BlogPagination currentPage={safePage} totalPages={totalPages} />
+              )}
             </div>
           )}
         </div>
