@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2, Loader2, Gift, Building2, SplitSquareHorizontal, RotateCcw } from 'lucide-react';
+import { Download, Send, CreditCard, Bell, XCircle, ArrowLeft, CheckCircle2, Loader2, Gift, Building2, SplitSquareHorizontal, RotateCcw, Info, ArrowRightLeft } from 'lucide-react';
 import { PaymentPlanSetup } from '@/components/invoices/PaymentPlanSetup';
 import { RefundDialog } from '@/components/invoices/RefundDialog';
 import { useOrg } from '@/contexts/OrgContext';
@@ -34,6 +34,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { Database } from '@/integrations/supabase/types';
+import { cn } from '@/lib/utils';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
 
 type InvoiceStatus = Database['public']['Enums']['invoice_status'];
@@ -146,6 +147,9 @@ export default function InvoiceDetail() {
     );
   }
 
+  const isCreditNote = !!invoice.is_credit_note;
+  const invoiceLabel = isCreditNote ? 'Credit Note' : 'Invoice';
+
   const payerName = invoice.payer_guardian
     ? invoice.payer_guardian.full_name
     : invoice.payer_student
@@ -168,7 +172,7 @@ export default function InvoiceDetail() {
   return (
     <AppLayout>
       <PageHeader
-        title={`Invoice ${invoice.invoice_number}`}
+        title={`${invoiceLabel} ${invoice.invoice_number}`}
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: isParent ? 'Invoices & Payments' : 'Invoices', href: '/invoices' },
@@ -241,18 +245,36 @@ export default function InvoiceDetail() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>Invoice Details</CardTitle>
+                <CardTitle>{isCreditNote ? 'Credit Note Details' : 'Invoice Details'}</CardTitle>
                 <CardDescription>
                   Created on {formatDateUK(parseISO(invoice.created_at), 'dd MMMM yyyy')}
                 </CardDescription>
               </div>
-              {getStatusBadge(invoice.status, invoice.due_date)}
+              {isCreditNote ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">
+                  <ArrowRightLeft className="h-3 w-3" />
+                  Credit Note
+                </span>
+              ) : (
+                getStatusBadge(invoice.status, invoice.due_date)
+              )}
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
+                {isCreditNote && (
+                  <div className="rounded-lg border border-sky-200/50 bg-sky-50/50 p-3 flex items-start gap-2">
+                    <Info className="h-4 w-4 text-sky-600 mt-0.5 shrink-0" />
+                    <div className="text-sm text-muted-foreground">
+                      This credit note was generated from a term adjustment.
+                      {invoice.related_invoice_id && (
+                        <> It is linked to the original invoice.</>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <div className="text-sm font-medium text-muted-foreground">Bill To</div>
+                    <div className="text-sm font-medium text-muted-foreground">{isCreditNote ? 'Credit To' : 'Bill To'}</div>
                     <div className="mt-1">
                       <div className="font-medium">{payerName}</div>
                     </div>
@@ -327,7 +349,10 @@ export default function InvoiceDetail() {
                     <Separator />
                     <div className="flex justify-between font-medium">
                       <span>Total</span>
-                      <span>{formatCurrencyMinor(invoice.total_minor, currency)}</span>
+                      <span className={isCreditNote ? 'text-success' : ''}>
+                        {isCreditNote && invoice.total_minor > 0 ? '-' : ''}
+                        {formatCurrencyMinor(Math.abs(invoice.total_minor), currency)}
+                      </span>
                     </div>
                     {totalPaid > 0 && (
                       <>
@@ -434,15 +459,18 @@ export default function InvoiceDetail() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Payment Status</CardTitle>
+              <CardTitle>{isCreditNote ? 'Credit Amount' : 'Payment Status'}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-center">
-                <div className="text-3xl font-bold">
-                  {formatCurrencyMinor(amountDue, currency)}
+                <div className={cn('text-3xl font-bold', isCreditNote && 'text-success')}>
+                  {isCreditNote && invoice.total_minor > 0 ? '-' : ''}
+                  {formatCurrencyMinor(isCreditNote ? Math.abs(invoice.total_minor) : amountDue, currency)}
                 </div>
                 <div className="mt-1 text-sm text-muted-foreground">
-                  {amountDue > 0 ? 'Amount due' : 'Fully paid'}
+                  {isCreditNote
+                    ? 'Credit owed to parent'
+                    : amountDue > 0 ? 'Amount due' : 'Fully paid'}
                 </div>
               </div>
             </CardContent>
@@ -460,14 +488,14 @@ export default function InvoiceDetail() {
             />
           )}
 
-          {!isParent && invoice.status !== 'void' && invoice.status !== 'paid' && (
+          {!isParent && !isCreditNote && invoice.status !== 'void' && invoice.status !== 'paid' && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full gap-2"
                   onClick={handleDownloadPdf}
                   disabled={isPdfLoading}
@@ -496,6 +524,48 @@ export default function InvoiceDetail() {
                 >
                   <XCircle className="h-4 w-4" />
                   Void Invoice
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Credit note actions */}
+          {!isParent && isCreditNote && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={handleDownloadPdf}
+                  disabled={isPdfLoading}
+                >
+                  {isPdfLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  {isPdfLoading ? 'Generating...' : 'Download PDF'}
+                </Button>
+                {invoice.related_invoice_id && (
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => navigate(`/invoices/${invoice.related_invoice_id}`)}
+                  >
+                    <ArrowRightLeft className="h-4 w-4" />
+                    View Original Invoice
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 text-destructive hover:text-destructive"
+                  onClick={() => setVoidConfirmOpen(true)}
+                >
+                  <XCircle className="h-4 w-4" />
+                  Void Credit Note
                 </Button>
               </CardContent>
             </Card>

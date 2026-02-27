@@ -24,8 +24,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban, Gift, AlertTriangle, CalendarClock, StopCircle, Repeat, Video, ExternalLink, RefreshCw } from 'lucide-react';
+import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban, Gift, AlertTriangle, CalendarClock, StopCircle, Repeat, Video, ExternalLink, RefreshCw, ArrowRightLeft } from 'lucide-react';
 import { LessonNotesForm } from './LessonNotesForm';
+import { TermAdjustmentWizard } from '@/components/term-adjustments/TermAdjustmentWizard';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface LessonDetailPanelProps {
@@ -83,6 +84,9 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
     creditValue: number;
     hoursNotice: number;
   } | null>(null);
+
+  // Term adjustment wizard state
+  const [termAdjustmentOpen, setTermAdjustmentOpen] = useState(false);
 
   // Cancellation confirmation with reason
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -479,7 +483,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {isRecurring && (
-                  <Button 
+                  <Button
                     variant="outline"
                     onClick={() => {
                       setRecurringAction('cancel');
@@ -493,9 +497,20 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
                     End Series
                   </Button>
                 )}
-                <Button 
-                  variant="ghost" 
-                  onClick={handleDeleteClick} 
+                {isRecurring && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setTermAdjustmentOpen(true)}
+                    className="gap-2"
+                    disabled={actionInProgress}
+                  >
+                    <ArrowRightLeft className="h-4 w-4" />
+                    Adjust Term
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  onClick={handleDeleteClick}
                   className="gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                   disabled={actionInProgress}
                 >
@@ -821,6 +836,21 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Term Adjustment Wizard */}
+      {isRecurring && (
+        <TermAdjustmentWizard
+          open={termAdjustmentOpen}
+          onOpenChange={(open) => {
+            setTermAdjustmentOpen(open);
+            if (!open) {
+              onUpdated();
+            }
+          }}
+          prefillStudentId={lesson.participants?.[0]?.student?.id}
+          prefillRecurrenceId={lesson.recurrence_id ?? undefined}
+        />
+      )}
 
       {/* Credit Offer Dialog */}
       <Dialog open={creditOfferOpen} onOpenChange={setCreditOfferOpen}>
