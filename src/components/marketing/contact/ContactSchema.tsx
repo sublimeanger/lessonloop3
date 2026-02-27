@@ -10,10 +10,20 @@ export default function ContactSchema() {
       "@type": "Organization",
       name: "LessonLoop",
       email: "hello@lessonloop.net",
+      telephone: "+443300434973",
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "Tanglewood Offices, Burhill Road",
+        addressLocality: "Hersham",
+        addressRegion: "Surrey",
+        postalCode: "KT12 4BJ",
+        addressCountry: "GB",
+      },
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "customer support",
         email: "hello@lessonloop.net",
+        telephone: "+443300434973",
         availableLanguage: "English",
         hoursAvailable: {
           "@type": "OpeningHoursSpecification",

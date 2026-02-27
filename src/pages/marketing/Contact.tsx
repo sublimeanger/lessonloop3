@@ -6,7 +6,7 @@ import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import ContactSchema from "@/components/marketing/contact/ContactSchema";
 import {
   MessageSquare, Clock, HelpCircle, Loader2, CheckCircle,
-  ArrowRight, Mail, MapPin, Shield, Sparkles, ChevronRight,
+  ArrowRight, Mail, MapPin, Phone, Shield, Sparkles, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -152,10 +152,11 @@ export default function Contact() {
       {/* ═══ CONTACT INFO STRIP ═══ */}
       <section className="border-y border-border/40 bg-secondary/20 py-8">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap justify-center gap-8 max-w-3xl mx-auto">
+          <div className="flex flex-wrap justify-center gap-8 max-w-5xl mx-auto">
             {[
               { icon: Mail, label: "hello@lessonloop.net", sublabel: "Email us anytime" },
-              { icon: MapPin, label: "United Kingdom", sublabel: "UK-headquartered" },
+              { icon: Phone, label: "+44 330 043 4973", sublabel: "Call us", href: "tel:+443300434973" },
+              { icon: MapPin, label: "Tanglewood Offices, Burhill Road", sublabel: "Hersham, Surrey, KT12 4BJ" },
               { icon: Clock, label: "Within 24 hours", sublabel: "Typical response" },
             ].map((item, i) => (
               <motion.div
@@ -170,7 +171,13 @@ export default function Contact() {
                   <item.icon className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-foreground">{item.label}</p>
+                  <p className="text-sm font-bold text-foreground">
+                    {item.href ? (
+                      <a href={item.href} className="hover:text-primary transition-colors">{item.label}</a>
+                    ) : (
+                      item.label
+                    )}
+                  </p>
                   <p className="text-xs text-muted-foreground">{item.sublabel}</p>
                 </div>
               </motion.div>
