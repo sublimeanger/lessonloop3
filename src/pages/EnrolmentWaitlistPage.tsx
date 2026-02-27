@@ -255,12 +255,8 @@ export default function EnrolmentWaitlistPage() {
           icon={Users}
           title="No families on the waiting list"
           description="Add a family to start tracking interest for available lesson slots."
-          action={
-            <Button onClick={() => setShowAdd(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add to Waiting List
-            </Button>
-          }
+          actionLabel="Add to Waiting List"
+          onAction={() => setShowAdd(true)}
         />
       ) : isMobile ? (
         /* Mobile: card list */
