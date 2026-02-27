@@ -26,7 +26,7 @@ export function ContinuationWidget() {
     return null;
   }
 
-  const summary = activeRun.summary as Record<string, number> | null;
+  const summary = activeRun.summary as unknown as Record<string, number> | null;
   const continuing = (summary?.confirmed ?? 0) + (summary?.assumed_continuing ?? 0);
   const total = summary?.total_students ?? 0;
   const pending = summary?.pending ?? 0;
