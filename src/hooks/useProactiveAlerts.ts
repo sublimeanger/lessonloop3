@@ -2,15 +2,17 @@ import { useQuery } from '@tanstack/react-query';
 import { STALE_VOLATILE } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
-import { startOfDay, endOfDay, format } from 'date-fns';
+import { startOfDay, endOfDay } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 
 export interface ProactiveAlert {
-  type: 'overdue' | 'cancellation' | 'upcoming' | 'unmarked' | 'makeup_match' | 'unmarked_reason' | 'churn_risk' | 'practice_drop';
+  type: 'cancellation' | 'upcoming' | 'makeup_match' | 'unmarked_reason' | 'churn_risk' | 'practice_drop';
   severity: 'info' | 'warning' | 'urgent';
   message: string;
   suggestedAction?: string;
   count?: number;
+  /** When set, used instead of `type` for dismissal persistence. */
+  dismissalKey?: string;
 }
 
 export function useProactiveAlerts() {
@@ -23,57 +25,13 @@ export function useProactiveAlerts() {
 
       const tz = currentOrg.timezone || 'Europe/London';
       const now = new Date();
-      const todayStr = format(now, 'yyyy-MM-dd'); // for DATE column comparisons (due_date)
       const todayStartUtc = fromZonedTime(startOfDay(now), tz).toISOString();
       const todayEndUtc = fromZonedTime(endOfDay(now), tz).toISOString();
       const weekAgoUtc = fromZonedTime(startOfDay(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)), tz).toISOString();
       const alerts: ProactiveAlert[] = [];
 
-      // Check overdue invoices
-      const { data: overdueInvoices, count: overdueCount } = await supabase
-        .from('invoices')
-        .select('id, due_date', { count: 'exact' })
-        .eq('org_id', currentOrg.id)
-        .eq('status', 'overdue')
-        .limit(1);
-
-      if (overdueCount && overdueCount > 0) {
-        // Check for critical (30+ days overdue)
-        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        const { count: criticalCount } = await supabase
-          .from('invoices')
-          .select('id', { count: 'exact' })
-          .eq('org_id', currentOrg.id)
-          .eq('status', 'overdue')
-          .lt('due_date', thirtyDaysAgo);
-
-        alerts.push({
-          type: 'overdue',
-          severity: (criticalCount && criticalCount > 0) ? 'urgent' : 'warning',
-          message: `${overdueCount} invoice${overdueCount > 1 ? 's are' : ' is'} overdue`,
-          suggestedAction: 'Send payment reminders',
-          count: overdueCount,
-        });
-      }
-
-      // Check unmarked past lessons
-      const { count: unmarkedCount } = await supabase
-        .from('lessons')
-        .select('id', { count: 'exact' })
-        .eq('org_id', currentOrg.id)
-        .eq('status', 'scheduled')
-        .lt('start_at', todayStartUtc)
-        .gte('start_at', weekAgoUtc);
-
-      if (unmarkedCount && unmarkedCount > 0) {
-        alerts.push({
-          type: 'unmarked',
-          severity: 'warning',
-          message: `${unmarkedCount} past lesson${unmarkedCount > 1 ? 's need' : ' needs'} marking`,
-          suggestedAction: 'Mark lessons as complete',
-          count: unmarkedCount,
-        });
-      }
+      // Overdue invoices & unmarked lessons are handled by UrgentActionsBar —
+      // no duplicate alerts here.
 
       // Check recent cancellations without rescheduling
       const { count: cancellationCount } = await supabase
@@ -176,12 +134,16 @@ export function useProactiveAlerts() {
         });
         const atRiskStudents = Array.from(absentCounts.entries()).filter(([_, count]) => count >= 2);
         if (atRiskStudents.length > 0) {
+          // Build a stable dismissal key from the set of at-risk student IDs.
+          // Same students → same key → stays dismissed. New student → new key → re-surfaces.
+          const studentHash = atRiskStudents.map(([id]) => id).sort().join(',');
           alerts.push({
             type: 'churn_risk',
             severity: 'warning',
             message: `${atRiskStudents.length} student${atRiskStudents.length > 1 ? 's have' : ' has'} missed 2+ lessons this month`,
             suggestedAction: 'Which students are at risk of leaving?',
             count: atRiskStudents.length,
+            dismissalKey: `churn_risk_${studentHash}`,
           });
         }
       }

@@ -30,14 +30,16 @@ export function useUrgentActions() {
       const urgentActions: UrgentAction[] = [];
 
       try {
-        // Fetch unmarked lessons (for admins and teachers)
+        // Fetch unmarked lessons (for admins and teachers) — last 30 days only
         if (isAdmin || isTeacher) {
+          const thirtyDaysAgo = subDays(new Date(), 30);
           let query = supabase
             .from('lessons')
             .select('id', { count: 'exact', head: true })
             .eq('org_id', currentOrg.id)
             .eq('status', 'scheduled')
-            .lt('end_at', new Date().toISOString());
+            .lt('end_at', new Date().toISOString())
+            .gte('end_at', thirtyDaysAgo.toISOString());
 
           if (isTeacher && !isAdmin) {
             const { data: teacherRecord } = await supabase

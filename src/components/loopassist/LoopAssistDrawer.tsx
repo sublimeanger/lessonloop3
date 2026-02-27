@@ -792,14 +792,10 @@ function getSuggestedPrompts(contextType: string, alerts: ProactiveAlert[]): str
   const isEndOfMonth = dayOfMonth >= daysInMonth - 3;
   const isStartOfMonth = dayOfMonth <= 3;
 
-  const hasOverdue = alerts.some(a => a.type === 'overdue');
-  const hasUnmarked = alerts.some(a => a.type === 'unmarked');
-
   const prompts: string[] = [];
 
   switch (contextType) {
     case 'calendar':
-      if (hasUnmarked) prompts.push("Mark yesterday's lessons as complete");
       if (isMorning) prompts.push("What's on my schedule today?");
       else if (isEvening) prompts.push("What lessons do I have tomorrow?");
       else prompts.push("What's on my schedule today?");
@@ -810,7 +806,6 @@ function getSuggestedPrompts(contextType: string, alerts: ProactiveAlert[]): str
     case 'student':
       prompts.push("Draft a progress update for this student's parents");
       prompts.push("Show lesson history for this student");
-      if (hasOverdue) prompts.push("Send invoice reminder for this student");
       prompts.push("What is this student's practice streak?");
       break;
 
@@ -821,9 +816,6 @@ function getSuggestedPrompts(contextType: string, alerts: ProactiveAlert[]): str
       break;
 
     default:
-      if (hasOverdue) prompts.push("Send reminders for all overdue invoices");
-      if (hasUnmarked) prompts.push("Mark all past lessons as complete");
-
       if (isMonday && isMorning) {
         prompts.push("What's my week looking like?");
       } else if (isFriday) {
