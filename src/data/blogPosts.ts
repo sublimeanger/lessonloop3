@@ -1939,6 +1939,122 @@ Have a direct, private conversation. Most persistent late payers aren't delibera
 
 *Related reading: [How to Automate Music School Invoicing](/blog/automate-music-school-invoicing) · [Stripe for Music Schools](/blog/stripe-for-music-schools) · [Payment Terms for UK Schools](/blog/music-school-payment-terms-uk)*`,
   },
+  {
+    slug: "music-school-payment-terms-uk",
+    title: "Music School Payment Terms: What UK Schools Need to Know",
+    excerpt: "Set payment terms that protect your music school without alienating parents. Covers advance billing, late fees, notice periods and UK legal considerations.",
+    date: "",
+    category: "Music Business",
+    readTime: "6 min",
+    author: {
+      name: "LessonLoop",
+      role: "Music School Management Platform",
+    },
+    featuredImage: "/images/blog/music-school-payment-terms-uk.jpg",
+    tags: ["payment terms", "billing", "UK", "music school", "fees policy", "late payment"],
+    relatedPosts: ["guide-to-music-school-billing", "music-school-pricing-strategies", "guide-to-running-a-music-school"],
+    content: `Payment terms are the invisible architecture of your music school's finances. When they're well-designed and clearly communicated, money arrives on time, disputes are rare, and both you and your families know exactly where they stand. When they're vague, inconsistent, or missing entirely, you spend your term chasing invoices, negotiating ad hoc arrangements, and quietly resenting families who treat payment as optional.
+
+This isn't just about getting paid. Payment terms set the professional tone of your school. They signal that you run a serious operation, that your teachers' time has value, and that the service you provide deserves the same financial respect as any other professional engagement.
+
+Here's what your payment terms should cover and how to get them right.
+
+## The essential clauses
+
+### When payment is due
+
+Be specific. "Payment is due before lessons commence" is ambiguous — does that mean before the first lesson or the night before? "Payment is due by [specific date], at least 7 days before the first lesson of term" removes all doubt.
+
+For termly billing, the standard approach is to invoice 2–3 weeks before term starts with a due date 7 days before the first lesson. This gives parents time to budget and pay, while ensuring you know before term begins who has settled and who hasn't.
+
+If you offer payment plans, specify the instalment dates: "First instalment due by [date]. Second instalment due by [date]." Don't leave it to the parent to decide when to pay their instalments — that's a recipe for delay.
+
+### What happens when payment is late
+
+Your terms should state the consequences of late payment clearly enough that you never need to have an improvised conversation about it. A typical structure:
+
+"Invoices not paid by the due date will receive an automated reminder. Invoices remaining unpaid 14 days after the due date may incur a late fee of £[amount]. Lessons may be suspended for accounts overdue by more than 28 days."
+
+Two things matter here: the escalation is gradual (not punitive from day one), and the consequences are stated as possibilities ("may incur", "may be suspended") to give you discretion. You want the leverage of a policy without the obligation to apply it rigidly in every case — sometimes a family is going through a genuinely difficult period, and compassion is the right response.
+
+Whether you actually charge late fees is up to you. Many schools include them in the terms but rarely apply them, using the threat as a deterrent. Others apply them consistently as a matter of principle. Either approach works, as long as you're consistent within whichever you choose.
+
+### Notice period for withdrawals
+
+Without a clear notice period, families can disappear mid-term with no warning, leaving you with a teacher who's been paid, a room that's been booked, and a slot that you can't fill at three days' notice.
+
+The UK standard for private music schools is one full term's notice. This means:
+
+- If a family wants to leave at the end of Spring Term, they must give notice before Spring Term begins (or by a specific date you define, such as the first week of Spring Term)
+- If they give notice mid-term, they're committed (financially) until the end of the following term
+- Notice should be given in writing (email is fine) to a specified contact
+
+One term's notice isn't aggressive — it's aligned with how schools, clubs and extracurricular activities across the UK operate. Parents are accustomed to it. The key is communicating it at enrolment, not when a family tries to leave.
+
+### Commitment and billing scope
+
+Your terms should make clear what the termly fee covers and that it's a commitment to the full term, not a per-lesson arrangement:
+
+"Fees are charged termly and cover all scheduled lessons within the term. Fees are due in full regardless of individual lesson attendance. The commitment is for the full term from the date of enrolment."
+
+This single clause prevents the most common billing dispute: "We missed three lessons so we shouldn't pay for them." If the expectation is set from the start — you're paying for a term of lessons, not individual sessions — the dispute doesn't arise.
+
+## Additional clauses worth including
+
+### Trial lesson terms
+
+If you offer trial lessons (and you should — they're a powerful conversion tool), specify whether the trial is free or paid, whether it commits the family to anything, and how enrolment works if they want to continue. A clean structure: "A single trial lesson is offered at no charge. Enrolment for the remainder of the term is billed pro-rata and due within 7 days of the trial."
+
+### Sibling and multi-lesson discounts
+
+If you offer discounts, define them in your terms so they're applied consistently. "A 10% discount is applied to the second child enrolled from the same family. Discount applies to the lower fee where lesson rates differ." This prevents confusion when a family with three children and two instruments per child tries to work out what they owe.
+
+### Price changes
+
+Reserve the right to adjust pricing with notice: "Lesson fees are reviewed annually. Any changes to fees will be communicated at least one full term in advance." This protects your ability to raise prices without renegotiating with every family.
+
+### Circumstances beyond your control
+
+Include a clause covering situations like pandemic closures, venue unavailability, or severe weather: "In the event of circumstances beyond our control preventing lessons from taking place, we will endeavour to offer alternative arrangements (such as online lessons) or apply credits to future billing." This gives you flexibility without committing to refunds for situations you can't control.
+
+## How to communicate your payment terms
+
+The best payment terms in the world are useless if parents haven't seen them. Communicate them at four points:
+
+**At enrolment.** Include your full terms and conditions as part of the sign-up process. Ask parents to tick a box (digital or physical) confirming they've read and accepted them. This is your strongest legal foundation.
+
+**With every invoice.** Include a one-line reference: "Full payment terms available at [link]." This serves as a regular reminder without cluttering the invoice.
+
+**At the start of each academic year.** Send a brief summary of your key terms (payment deadlines, notice period, cancellation policy) alongside your term dates. Parents appreciate the clarity, and it refreshes their awareness.
+
+**In your [parent portal](/features/parent-portal).** Make the terms accessible at any time, so parents can refer to them without having to dig through old emails.
+
+LessonLoop's [automated billing](/features/billing) enforces your payment terms consistently — automated reminders go out on schedule, overdue notices escalate according to your rules, and the [parent portal](/features/parent-portal) keeps terms visible at all times. Built specifically for [UK music schools](/uk).
+
+---
+
+## Frequently Asked Questions
+
+### Are my music school payment terms legally enforceable in the UK?
+
+Payment terms form part of the contract between your school and the parent. When a parent enrols and acknowledges your terms (particularly by paying the first invoice), a contract is formed. UK contract law applies, and your terms are enforceable provided they're reasonable, clearly communicated, and not unfair under the Consumer Rights Act 2015. For significant disputes, seek legal advice, but in practice, well-written terms prevent disputes from escalating.
+
+### Can I suspend lessons for non-payment?
+
+Yes, provided your terms state this possibility. A clause like "We reserve the right to suspend lessons for accounts overdue by more than 28 days" gives you the authority. In practice, suspension should be a last resort after automated reminders and a personal conversation. The goal is always to resolve the situation and continue the relationship, not to punish the family.
+
+### Should I require a deposit at enrolment?
+
+Some schools require a deposit (typically equivalent to one lesson fee or one month's fees) at enrolment, refundable against the final term's invoice. This provides a small financial buffer and signals commitment from the family. It's not common in UK music schools but it's entirely acceptable and can be useful for schools with high demand and limited places.
+
+### How do I handle a family that disputes a charge?
+
+Refer to your terms. If the charge aligns with what was agreed — and you can demonstrate that the terms were communicated and accepted — you're on solid ground. Respond calmly, point to the specific clause, and offer to discuss. If there's a genuine error on your part, correct it immediately and apologise. If the dispute is about the terms themselves ("I didn't know about the notice period"), that's a communication problem to fix for future enrolments, but the current terms still apply.
+
+---
+
+*Part of our [guide to music school billing](/blog/guide-to-music-school-billing) series. Related: [Handling Refunds & Credits](/blog/music-school-refunds-credits) · [Built for UK Music Schools](/uk)*`,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
