@@ -4568,6 +4568,128 @@ Termly. It's the UK standard, it provides cash flow predictability, it improves 
 
 *Part of our [guide to music school software](/blog/best-music-school-software) series. Related: [Starting a Music School](/blog/starting-a-music-school-uk) · [LessonLoop for Solo Teachers](/for/solo-teachers)*`,
   },
+  {
+    slug: "best-software-music-academies",
+    title: "Best Software for Multi-Teacher Music Academies",
+    excerpt: "Multi-teacher academy? You need software that handles permissions, payroll, multi-location scheduling and parent portals. Here's what works best in 2026.",
+    date: "",
+    category: "Guides",
+    readTime: "6 min",
+    author: {
+      name: "LessonLoop",
+      role: "Music School Management Platform",
+    },
+    featuredImage: "/images/blog/best-software-music-academies.jpg",
+    tags: ["music academy", "multi-teacher", "management software", "permissions", "payroll", "enterprise"],
+    relatedPosts: ["best-music-school-software", "music-school-software-features", "hiring-music-teachers"],
+    content: `Running a multi-teacher music academy is a fundamentally different operation from being a solo music teacher. The admin complexity doesn't scale linearly — it multiplies. With three teachers, you have three schedules to coordinate, three sets of lesson notes to monitor, three payroll calculations to run, and the possibility that each teacher manages "their" students differently unless you enforce consistency through systems.
+
+At five teachers, you probably have multiple locations, shared rooms, parents who don't know which teacher to contact, and a billing process that takes an entire weekend if you're doing it manually.
+
+The software that worked when you were solo — or the spreadsheet system you've been patching together — collapses at academy scale. Here's what to look for, and which platforms deliver it.
+
+## What academies need that solo teachers don't
+
+### Role-based permissions
+
+A teacher should see their own students, their own schedule, and the ability to write lesson notes. They should not see other teachers' students, billing data, school-wide revenue figures, or admin settings. An administrator should see billing and scheduling but perhaps not teacher pay rates. The school owner sees everything.
+
+Without role-based permissions, you're either sharing too much data with teachers (a GDPR concern and a management issue) or restricting their access so much that they can't do their job without asking you. Proper permissions let everyone see exactly what they need — no more, no less.
+
+### Teacher payroll tracking
+
+Paying teachers correctly requires knowing how many lessons each teacher taught during the pay period, at what rate, minus any cancellations. If teachers are paid per lesson (common for self-employed teachers in UK music schools), the software should calculate this automatically from the attendance records.
+
+Without automated payroll tracking, you're cross-referencing calendars and attendance logs manually each month — a process that takes 1–2 hours for a 5-teacher school and introduces the risk of under- or overpaying.
+
+### Multi-location scheduling
+
+Once you're teaching across two or more venues, the scheduling system must prevent a teacher being booked at two locations simultaneously, show room availability per venue, support location-based calendar views (so a teacher arriving at Venue B sees only their Venue B lessons), and handle the operational reality that some rooms have pianos and some don't, some venues are available Monday–Wednesday and others Thursday–Saturday.
+
+### Delegation and oversight
+
+The owner of an 80-student academy can't write every lesson note, manage every parent conversation, and chase every invoice. Teachers write notes. An administrator handles billing queries. The owner oversees, intervenes when needed, and focuses on strategy.
+
+The software must support this delegation model — giving each team member the tools and access they need while giving the owner visibility across the entire operation. A dashboard that shows attendance rates, outstanding invoices, lesson note completion rates, and student concerns is the owner's control panel.
+
+### Consistency enforcement
+
+Different teachers have different habits. One writes detailed lesson notes; another writes nothing. One marks attendance immediately; another forgets until Thursday. Without systems, quality varies across your teaching team.
+
+Good software enforces consistency by making the right thing the easy thing. If the system prompts for a lesson note immediately after each lesson ends, note completion goes up. If attendance marking is a one-tap action at the start of each lesson, it happens. The platform becomes the quality standard, not the owner's ability to nag.
+
+## The platforms for academies
+
+### LessonLoop
+
+LessonLoop handles every academy requirement listed above. Role-based permissions with separate views for owner, admin, teacher and parent. Automated [teacher management](/features/teachers) with payroll calculation based on lessons taught. Multi-location scheduling with per-venue room management and teacher allocation. Full delegation support with an owner dashboard showing school-wide metrics.
+
+The UK-specific features — [termly billing](/features/billing), ABRSM/Trinity tracking, UK GDPR compliance — are particularly valuable at academy scale, where the administrative cost of US-platform workarounds is multiplied across dozens of students and multiple staff. For a 100-student UK academy, the time saved on termly billing alone (versus manually configuring a US-centric platform) is significant.
+
+[LoopAssist AI](/features/loopassist), the AI copilot, is especially useful at academy scale — owners can ask "which teachers have the lowest lesson note completion this month?" or "what's my revenue per location?" and get instant answers without building reports.
+
+<span class="font-semibold">Best for:</span> UK academies at any scale. The platform grows from solo teacher to multi-location academy without migration.
+
+See [LessonLoop for music academies](/for/music-academies).
+
+### Jackrabbit Music
+
+Jackrabbit is the established enterprise option, originally built for US dance studios and expanded to music schools. It handles multi-location management, complex scheduling, batch billing, staff permissions, and integration with accounting software (QuickBooks, Xero).
+
+The platform is comprehensive and battle-tested at scale. If you're running a 300-student, 10-teacher operation in the United States, Jackrabbit is a strong choice.
+
+For UK academies, the drawbacks are familiar: US-centric design (monthly billing default, USD, American terminology), no native UK term structure, no ABRSM/Trinity integration, and an interface that feels more complex than necessary for a 50–150 student UK school. The onboarding process is longer than lighter-weight platforms.
+
+<span class="font-semibold">Best for:</span> Large US performing arts schools. UK academies of similar scale should evaluate whether the UK-specific friction is worth the enterprise feature set.
+
+See [LessonLoop vs Jackrabbit Music](/compare/lessonloop-vs-jackrabbit-music).
+
+### Teachworks
+
+Teachworks has solid multi-teacher features — teacher availability management, payroll calculation, basic permissions, and the ability to manage multiple service types (useful if you offer both music and academic tutoring).
+
+The billing system handles recurring invoicing and packages. Teacher payroll tracking is functional. The interface is straightforward.
+
+The UK limitations apply: no native termly billing, US date formats, no ABRSM/Trinity tracking. For a UK academy, these gaps require workarounds that compound across a larger operation.
+
+<span class="font-semibold">Best for:</span> North American multi-teacher tutoring businesses that also teach music. UK academies with 50+ students should weigh the workaround cost carefully.
+
+### Opus1
+
+Opus1 has a modern interface and handles multi-teacher scheduling well. The visual calendar is clean and the conflict detection is solid. Some plans include marketing tools (website builder, lead capture) that may appeal to growing schools.
+
+At academy scale, the limitations are in depth rather than breadth — billing flexibility, parent portal features, and reporting capabilities are less developed than LessonLoop or Jackrabbit for larger operations. The UK-specific gaps (no termly billing, no ABRSM tracking) remain.
+
+<span class="font-semibold">Best for:</span> US academies that value design and want built-in marketing tools.
+
+## The cost of choosing wrong
+
+Choosing the wrong platform at academy scale is expensive. Not just the subscription cost — the operational cost. If your billing system doesn't handle termly invoicing natively, your administrator spends 5+ hours every term manually configuring invoices. If the parent portal is weak, your team answers hundreds of routine queries per month. If permissions are inadequate, you're managing teacher access through workarounds and hoping nobody sees data they shouldn't.
+
+At 80+ students and 3+ teachers, these inefficiencies cost more per year than the difference between any two platforms' subscription prices. Choose the platform that eliminates the most admin friction, not the one with the lowest monthly fee.
+
+For a structured evaluation approach, see our guide to [features that actually matter](/blog/music-school-software-features).
+
+---
+
+## Frequently Asked Questions
+
+### When should I upgrade from solo teacher software to academy software?
+
+When you hire your second teacher. At that point, you need permissions (the new teacher shouldn't see your billing data), payroll tracking, and coordinated scheduling. If your current platform doesn't support multi-teacher operations, switch before the second teacher starts — not after the chaos has begun.
+
+### Do I need different software for each location?
+
+No — the right platform manages all locations within a single system. You should be able to see a unified calendar across all venues, filter by location, and run reports per location or school-wide. Separate systems per location create data silos and operational fragmentation.
+
+### How do I handle self-employed vs employed teachers in the software?
+
+Most UK music school teachers are self-employed, paid per lesson taught. The software should track lessons taught per teacher per period and calculate the payment due. For employed teachers (less common in UK music schools), the software should integrate with or export to your payroll system. The key is that the data (lessons taught, rates, attendance) is captured automatically rather than reconstructed manually each pay period.
+
+---
+
+*Part of our [guide to music school software](/blog/best-music-school-software) series. Related: [Hiring Music Teachers](/blog/hiring-music-teachers) · [LessonLoop for Academies](/for/music-academies)*`,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
