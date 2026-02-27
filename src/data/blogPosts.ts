@@ -2055,6 +2055,119 @@ Refer to your terms. If the charge aligns with what was agreed — and you can d
 
 *Part of our [guide to music school billing](/blog/guide-to-music-school-billing) series. Related: [Handling Refunds & Credits](/blog/music-school-refunds-credits) · [Built for UK Music Schools](/uk)*`,
   },
+  {
+    slug: "music-school-refunds-credits",
+    title: "Handling Refunds and Credits in Your Music School",
+    excerpt: "When should you refund? When should you credit? Get a clear refund and credit policy framework for your UK music school with real-world examples.",
+    date: "",
+    category: "Music Business",
+    readTime: "6 min",
+    author: {
+      name: "LessonLoop",
+      role: "Music School Management Platform",
+    },
+    featuredImage: "/images/blog/music-school-refunds-credits.jpg",
+    tags: ["refunds", "credits", "billing", "music school", "UK", "policy"],
+    relatedPosts: ["guide-to-music-school-billing", "music-school-payment-terms-uk", "music-lesson-cancellation-policy"],
+    content: `Every music school owner eventually faces the refund question. A family wants to leave mid-term. A student has been ill for three weeks. A teacher cancelled two lessons that couldn't be made up. A parent demands their money back for lessons their child didn't attend.
+
+How you handle these situations defines whether your school feels fair and professional — or rigid and extractive. The goal is a policy that protects your revenue without being unreasonable, one that families can understand before they need to invoke it, and one that you can apply consistently without agonising over every individual case.
+
+## Refunds vs credits: when to use each
+
+The distinction matters both financially and psychologically.
+
+**A credit** is applied to the family's next invoice. The money stays within your school's ecosystem. The family continues as a customer, their account reflects the adjustment, and their next term costs less. Credits work well for minor adjustments: a lesson cancelled by the school, a make-up that couldn't be scheduled, a billing error that's been corrected.
+
+**A refund** returns money to the family's bank account or card. It's a cash outflow from your business. Refunds are appropriate for situations where the relationship is ending (the family is leaving and has credit on their account), where the school has failed to deliver a service (multiple teacher cancellations without alternatives), or where a billing error has resulted in an overpayment.
+
+**Default to credits when the student is continuing. Default to refunds when they're leaving.** This keeps your cash flow intact for ongoing families while ensuring departing families aren't left with worthless credit.
+
+## Building your refund and credit policy
+
+### School-initiated cancellations
+
+When your school cancels a lesson — teacher illness, venue closure, emergency — the family is always owed a remedy. They paid for a service that wasn't delivered.
+
+**First preference: make-up lesson.** Offer an alternative slot within the same term. This keeps the student on track, maintains the teacher's contact hours, and avoids any financial adjustment.
+
+**Second preference: credit to next term.** If no make-up is possible (common at the end of term when there's no scheduling room), apply a credit to the next invoice. Communicate this clearly: "Oliver's lesson on 15 March couldn't be rescheduled, so we've applied a £22 credit to your Summer Term invoice."
+
+**Last resort: refund.** If the family is leaving and a make-up isn't possible, refund the lesson fee. Don't hold credits hostage for families who are departing — it's a poor look and generates disproportionate ill will.
+
+### Student-initiated cancellations
+
+When the student cancels, the terms are different. The school made the teacher available, booked the room, and held the slot. The service was available; the student chose not to use it.
+
+Your [cancellation policy](/blog/music-lesson-cancellation-policy) should define the outcomes clearly:
+
+**Adequate notice (24+ hours):** Offer a make-up lesson where possible. If no make-up is available, a credit may be offered at the school's discretion. Many schools cap this at 2–3 credits per term.
+
+**Inadequate notice or no-show:** The lesson fee is retained. No make-up, no credit. This is standard practice and entirely fair — the teacher was present and the slot couldn't be reallocated.
+
+**Extended absence (illness, family emergency):** If a student misses three or more consecutive weeks for a genuine reason, consider offering a pro-rata credit for the missed period. This isn't strictly required by most terms and conditions, but it's a goodwill gesture that builds loyalty and prevents the family from feeling trapped.
+
+### Mid-term withdrawals
+
+A family who leaves mid-term — despite your notice period policy — is the most common refund flashpoint.
+
+If your [payment terms](/blog/music-school-payment-terms-uk) specify one full term's notice and the family gives notice mid-Spring Term, they're technically committed until the end of Summer Term. In practice, most schools don't force families to attend (and pay for) a full additional term after they've decided to leave.
+
+A pragmatic approach: **charge for the current term in full (the service was available and the commitment was made) but don't bill for the following term if the family has clearly withdrawn.** If the student stops attending mid-term, the fee for the remaining weeks of the current term is not refunded — but you don't pursue payment for a subsequent term of lessons they won't use.
+
+This balances your contractual right to the notice period against the reality that forcing a disengaged family to pay for lessons they won't use generates resentment, potential disputes, and negative word-of-mouth that costs more than the revenue you'd recover.
+
+### Overpayments and billing errors
+
+If a parent has overpaid (double payment, incorrect amount) or you've overbilled (wrong rate, duplicate invoice), issue a correction immediately. For overpayments, offer the choice of a credit against the next invoice or a refund. For billing errors, correct the invoice and apologise — don't wait for the parent to notice.
+
+Speed and transparency here build enormous trust. A school that catches its own billing error and proactively corrects it earns more credibility than one that never makes an error in the first place.
+
+## Tracking credits accurately
+
+Credits that aren't tracked properly get lost — and lost credits become disputes.
+
+If you're managing billing manually, keep a dedicated credit log: which family, how much, the reason, and the term it should be applied to. Review the log before generating each term's invoices and ensure every credit is applied.
+
+[Billing software](/features/billing) handles this automatically. Credits are attached to the family's account and carried forward to the next invoice. When you generate the termly batch, credits are deducted before the invoice is sent. The parent sees the credit clearly on their invoice, and there's no risk of it being forgotten.
+
+For schools running on spreadsheets, credit tracking is one of the first things that breaks as student numbers grow. See our piece on [the real cost of spreadsheets](/blog/music-school-spreadsheets-hidden-cost) for the wider picture.
+
+## Communicating your policy
+
+Include your refund and credit policy in your terms and conditions, shared at enrolment. The language should be clear enough that a parent can read it and know exactly what applies to their situation without having to ask you.
+
+A good format:
+
+- "Lessons cancelled by the school will be rescheduled or credited to your next invoice."
+- "Lessons cancelled by the student with 24+ hours' notice may be offered a make-up session, subject to availability."
+- "No refunds or credits are issued for lessons missed without adequate notice."
+- "Credits expire if not used within two terms of issue."
+
+When a credit or refund is actually issued, confirm it in writing — an email or a notification through the [parent portal](/features/parent-portal) that says "We've applied a £22 credit to your account for [reason]. This will appear on your next invoice."
+
+Documentation prevents disputes. Disputes prevented are relationships preserved. LessonLoop's [automated billing](/features/billing) tracks credits automatically and applies them at invoice generation — combined with [scheduling features](/features/scheduling) that handle make-up lesson allocation.
+
+---
+
+## Frequently Asked Questions
+
+### Should I set an expiry on unused credits?
+
+Yes. Credits that never expire accumulate into a liability on your books and create confusion when families try to redeem them much later. A reasonable expiry is two terms — if a credit from Autumn Term isn't used by the end of Spring Term, it expires. State this clearly in your terms and remind families when they have unused credits approaching expiry.
+
+### Can a departing family transfer their credit to another family?
+
+This is at your discretion. Some schools allow it (it's a nice referral incentive — "recommend a friend and gift them your remaining credit"), while others don't (it complicates accounting). If you do allow transfers, handle them as a formal adjustment: reduce the departing family's credit to zero and create a corresponding credit on the receiving family's account.
+
+### What if a parent demands a refund that my policy doesn't support?
+
+Refer to your terms calmly and specifically. Explain the clause that applies and why. If the parent is unhappy, listen to their perspective — sometimes there's a legitimate grievance that the policy doesn't cover. If you decide to make an exception, do it explicitly as a goodwill gesture ("We wouldn't normally offer a refund in this situation, but given the circumstances, we're happy to make an exception this time"). This preserves the policy while demonstrating compassion.
+
+---
+
+*Part of our [guide to music school billing](/blog/guide-to-music-school-billing) series. Related: [Cancellation Policies](/blog/music-lesson-cancellation-policy) · [Payment Terms for UK Schools](/blog/music-school-payment-terms-uk)*`,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
