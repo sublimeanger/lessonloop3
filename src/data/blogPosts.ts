@@ -3533,6 +3533,151 @@ A minimum of one full term (10–12 weeks) of focused preparation is standard. F
 
 *Part of our [guide to UK music education](/blog/guide-to-music-education-uk) series. Related: [Practice Tracking Tips](/blog/music-practice-tracking-tips) · [Term Date Planning](/blog/music-school-term-dates-planning)*`,
   },
+  {
+    slug: "gdpr-music-schools-uk",
+    title: "GDPR for Music Schools: What You Need to Know",
+    excerpt: "GDPR compliance isn't optional for UK music schools. Learn what data you hold, your legal obligations, and how to handle subject access and deletion requests.",
+    date: "",
+    category: "Guides",
+    readTime: "7 min",
+    author: {
+      name: "LessonLoop",
+      role: "Music School Management Platform",
+    },
+    featuredImage: "/images/blog/gdpr-music-schools-uk.jpg",
+    tags: ["GDPR", "data protection", "music school UK", "privacy", "compliance", "student data"],
+    relatedPosts: ["guide-to-music-education-uk", "music-school-spreadsheets-hidden-cost", "safeguarding-dbs-music-schools-uk"],
+    content: `GDPR isn't just for tech companies and hospitals. If you run a music school in the UK and you hold anyone's name, email address, phone number or payment details — and you do — you're processing personal data and the UK General Data Protection Regulation applies to you.
+
+This isn't a theoretical concern. The ICO (Information Commissioner's Office) can and does investigate small organisations, and the penalties for non-compliance range from warnings and enforcement notices to fines of up to £17.5 million (though fines for small businesses are typically much smaller). More importantly, a data breach involving children's personal information is reputational dynamite for a music school.
+
+The good news: GDPR compliance for a music school isn't complicated. It requires understanding, a few specific actions, and ongoing good practice. Here's what you need to know.
+
+## What personal data does a music school hold?
+
+More than you might think. A typical music school processes:
+
+<span class="font-semibold">Student data:</span> Name, date of birth, instrument(s), grade level, lesson notes, attendance records, practice logs, exam results, medical information (allergies, conditions that affect lessons), and photographs or videos (recitals, marketing).
+
+<span class="font-semibold">Parent/guardian data:</span> Names, addresses, email addresses, phone numbers, payment card details (processed through Stripe or similar — you shouldn't store these directly), bank details (for refunds), and communication records.
+
+<span class="font-semibold">Teacher data:</span> Names, addresses, contact details, DBS check status, qualifications, pay rates, bank details, and employment/contract records.
+
+Some of this data relates to children, which makes it more sensitive under GDPR. And some of it — medical information, for example — qualifies as "special category data" with stricter processing requirements.
+
+## Your core GDPR obligations
+
+### 1. Register with the ICO
+
+Every organisation that processes personal data must register with the Information Commissioner's Office unless they're exempt (most music schools aren't exempt). Registration costs £40/year for organisations with fewer than 10 staff and turnover under £632,000, which covers the vast majority of music schools.
+
+Register online at ico.org.uk. It takes 10 minutes. Failure to register can result in a fine of up to £4,000.
+
+### 2. Have a lawful basis for processing
+
+You can't just collect and use personal data because it's useful. You need a legal justification for each type of processing. For music schools, the most relevant bases are:
+
+<span class="font-semibold">Contract:</span> You process student and parent data because it's necessary to deliver the service they've signed up for — scheduling lessons, sending invoices, communicating about their child's progress. This covers the bulk of your data processing.
+
+<span class="font-semibold">Legitimate interests:</span> You process some data because it's in your legitimate business interests — for example, sending marketing emails to existing families about new term dates or new offerings. You must balance your interests against the individual's rights.
+
+<span class="font-semibold">Consent:</span> Required for processing that isn't covered by contract or legitimate interests — for example, publishing a child's photograph on your website or social media. Consent must be freely given, specific, informed and unambiguous. For children under 13 in the UK, consent must come from a parent or guardian.
+
+### 3. Write a privacy policy
+
+Your privacy policy tells parents, students and teachers what data you collect, why you collect it, how you use it, who you share it with, how long you keep it, and what rights they have. It must be written in clear, plain language — not legalese.
+
+Publish it on your website and reference it in your enrolment terms. A music school privacy policy should cover: the types of data you collect (see above), your lawful basis for processing each type, who has access to the data (teachers, admin staff, software providers), how long you retain data after a student leaves, the individual's rights (access, correction, deletion, portability), and how to contact you with data requests.
+
+### 4. Keep data secure
+
+GDPR requires you to implement "appropriate technical and organisational measures" to protect personal data. For a music school, this means:
+
+<span class="font-semibold">Digital security:</span> Use a secure, cloud-based [management platform](/features/students) rather than spreadsheets stored on personal laptops. Ensure your software provider encrypts data in transit and at rest. Use strong, unique passwords. Enable two-factor authentication where available.
+
+<span class="font-semibold">Access control:</span> Not everyone needs access to everything. Teachers should see their own students' data but not billing information or other teachers' records. Admin staff need billing access but may not need lesson notes. Role-based permissions in your software enforce this.
+
+<span class="font-semibold">Physical security:</span> If you keep any paper records (student files, registration forms), store them securely — locked cabinets, not an open shelf in the reception area.
+
+<span class="font-semibold">Device security:</span> If teachers access student data on personal phones or laptops, ensure those devices are password-protected and encrypted. Consider a policy requiring screen locks and prohibiting saving data locally.
+
+The contrast with a spreadsheet-based approach is stark. A Google Sheet containing children's names, addresses and parent contact details, shared via a link with teachers who access it on their personal phones, represents multiple GDPR vulnerabilities simultaneously. See our piece on [the real cost of spreadsheets](/blog/music-school-spreadsheets-hidden-cost) for the full picture.
+
+### 5. Respond to data rights requests
+
+Individuals have rights under UK GDPR that you must respect:
+
+<span class="font-semibold">Right of access (Subject Access Request).</span> A parent can ask to see all the personal data you hold about their child and themselves. You must respond within one month with a copy of the data. This is free — you cannot charge for it.
+
+<span class="font-semibold">Right to rectification.</span> If data is inaccurate, the individual can ask you to correct it. Respond within one month.
+
+<span class="font-semibold">Right to erasure ("right to be forgotten").</span> An individual can request that you delete their data. This applies when the data is no longer necessary for the purpose it was collected, when consent is withdrawn, or when the data has been unlawfully processed. You don't have to delete data you're required to keep for legal reasons (e.g., financial records for HMRC), but you should delete everything else.
+
+<span class="font-semibold">Right to data portability.</span> The individual can request their data in a commonly used, machine-readable format so they can transfer it to another provider.
+
+Having a system that can quickly locate, export and delete an individual's data is essential. [LessonLoop](/uk) is built with GDPR compliance at its core — soft delete (data is marked for deletion but recoverable within a grace period), full data export per student or family, deletion candidates flagged automatically for students who've been inactive, and audit logging of data access.
+
+### 6. Report breaches
+
+If a data breach occurs — unauthorised access, accidental disclosure, data loss — and it poses a risk to individuals' rights and freedoms, you must report it to the ICO within 72 hours. If the breach is likely to result in a high risk to individuals (e.g., children's data exposed publicly), you must also notify the affected individuals.
+
+In practice, the best approach is prevention. Secure systems, access controls and staff awareness training reduce breach risk to near zero.
+
+## Data retention: how long should you keep records?
+
+Don't keep data longer than necessary. Define a retention policy:
+
+<span class="font-semibold">Active students:</span> Full data retained while the student is enrolled.
+
+<span class="font-semibold">Departed students:</span> Student profile, lesson history and exam records retained for 1–2 years after departure (useful if they return). Financial records retained for 6 years (HMRC requirement). All other data deleted within 3 months of departure.
+
+<span class="font-semibold">Enquiries that didn't enrol:</span> Delete within 6 months if they didn't convert.
+
+<span class="font-semibold">Teacher records:</span> Employment/contract records retained for 6 years after the working relationship ends. DBS records noted but certificate details not retained beyond confirmation of check status.
+
+Automate this where possible. A management platform that flags inactive students for review and supports scheduled data cleanup is far more reliable than a manual diary reminder.
+
+## The practical checklist
+
+Here's your GDPR compliance checklist, in order of priority:
+
+1. Register with the ICO (£40/year, 10 minutes online)
+2. Write and publish a privacy policy
+3. Include data protection terms in your enrolment form (consent for photos, acknowledgement of privacy policy)
+4. Use a secure management platform with role-based access and encryption
+5. Ensure all staff and teachers understand their data protection obligations (a 30-minute briefing annually is sufficient)
+6. Define and document your data retention periods
+7. Have a process for handling data rights requests (who responds, within what timeframe)
+8. Have a breach response plan (who to notify, how to report to the ICO)
+
+None of this is onerous. An afternoon of focused effort gets most music schools to a solid compliance position, and ongoing maintenance is minimal.
+
+For the broader regulatory context — including safeguarding, Ofsted, and insurance — see our [complete guide to music education in the UK](/blog/guide-to-music-education-uk). And if you're currently managing student data in spreadsheets, our guide to [the hidden cost of spreadsheets](/blog/music-school-spreadsheets-hidden-cost) explains why that's a GDPR risk in itself.
+
+---
+
+## Frequently Asked Questions
+
+### Do I need a Data Protection Officer (DPO)?
+
+Most music schools don't need a formally appointed DPO. DPOs are required for public authorities and organisations whose core activities involve large-scale processing of sensitive data or systematic monitoring of individuals. A private music school doesn't typically meet these thresholds. However, you should have a designated person (even if that's you) responsible for data protection matters.
+
+### Can I use photos of students on my website and social media?
+
+Only with explicit consent from the parent or guardian. Use a specific photo consent form (separate from your general terms) that states how photos will be used, where they'll be published, and that consent can be withdrawn at any time. Never assume consent — always ask, and respect any refusal without question.
+
+### What happens if a parent asks me to delete all their child's data?
+
+You must comply with the parts of the request that are legally permissible. Delete personal data that you no longer need for the original purpose. Retain financial records (invoices, payment records) for 6 years as required by HMRC. Inform the parent of what has been deleted and what has been retained, with the reason for retention.
+
+### Is using WhatsApp for parent communication a GDPR issue?
+
+Potentially. WhatsApp processes data through Meta's servers (which may transfer data outside the UK), and you have limited control over how that data is handled. More practically, WhatsApp messages containing student names and lesson details on a teacher's personal phone create data security risks if the phone is lost or accessed by others. A dedicated [messaging system](/features/messaging) within a GDPR-compliant platform is significantly safer.
+
+---
+
+*Part of our [guide to UK music education](/blog/guide-to-music-education-uk) series. Related: [The Cost of Spreadsheets](/blog/music-school-spreadsheets-hidden-cost) · [Built for UK Music Schools](/uk)*`,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
