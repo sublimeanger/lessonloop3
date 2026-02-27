@@ -915,7 +915,33 @@ async function handleConfirm(
     },
   });
 
-  // 7. Return confirmation
+  // 7. Enrolment Waitlist: check for waiting families on withdrawal
+  let waitlistMatches: any[] = [];
+  let freedSlot: any = null;
+  if (adjustment.adjustment_type === "withdrawal") {
+    try {
+      const { data: waitingEntries } = await client
+        .from("enrolment_waitlist")
+        .select("id, contact_name, child_first_name, instrument_name")
+        .eq("org_id", orgId)
+        .eq("status", "waiting")
+        .order("position", { ascending: true })
+        .limit(5);
+
+      if (waitingEntries && waitingEntries.length > 0) {
+        waitlistMatches = waitingEntries;
+        freedSlot = {
+          day: adjustment.original_day_of_week,
+          time: adjustment.original_time,
+        };
+      }
+    } catch (e) {
+      // Non-fatal: don't block the withdrawal if waitlist check fails
+      console.warn("Waitlist match check failed:", e);
+    }
+  }
+
+  // 8. Return confirmation
   return jsonResponse(
     {
       success: true,
@@ -923,6 +949,8 @@ async function handleConfirm(
       cancelled_count: cancelledIds.length,
       created_count: createdIds.length,
       credit_note_invoice_id: creditNoteInvoiceId,
+      waitlist_matches: waitlistMatches.length > 0 ? waitlistMatches : undefined,
+      freed_slot: freedSlot,
     },
     cors
   );

@@ -503,6 +503,25 @@ export function TermAdjustmentWizard({
               )}
             </div>
 
+            {confirmResult.waitlist_matches?.length > 0 && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-center">
+                <p className="text-sm font-medium text-emerald-800">
+                  {confirmResult.waitlist_matches.length} {confirmResult.waitlist_matches.length === 1 ? 'family' : 'families'} on the waiting list may match this freed slot
+                </p>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="text-emerald-700 mt-1"
+                  onClick={() => {
+                    handleClose();
+                    navigate('/waitlist');
+                  }}
+                >
+                  View Waiting List
+                </Button>
+              </div>
+            )}
+
             <DialogFooter className="flex-col gap-2 sm:flex-row">
               {confirmResult.credit_note_invoice_id && (
                 <Button

@@ -33,9 +33,11 @@ import {
   CalendarPlus,
   UserCheck,
   FileText,
+  ClipboardCheck,
 } from 'lucide-react';
 import { format, formatDistanceToNow, isPast } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AddToWaitlistDialog } from '@/components/waitlist/AddToWaitlistDialog';
 import type { Database } from '@/integrations/supabase/types';
 
 type LeadStage = Database['public']['Enums']['lead_stage'];
@@ -84,6 +86,7 @@ export default function LeadDetail() {
 
   const [showConvert, setShowConvert] = useState(false);
   const [showBookTrial, setShowBookTrial] = useState(false);
+  const [showAddToWaitlist, setShowAddToWaitlist] = useState(false);
 
   const { data: lead, isLoading } = useLead(id!);
   const { data: followUps = [] } = useLeadFollowUps(id!);
@@ -182,6 +185,12 @@ export default function LeadDetail() {
               <Button onClick={() => setShowConvert(true)} size="sm" className="gap-2">
                 <UserCheck className="h-4 w-4" />
                 Convert
+              </Button>
+            )}
+            {lead.stage !== 'enrolled' && lead.stage !== 'lost' && (
+              <Button onClick={() => setShowAddToWaitlist(true)} variant="outline" size="sm" className="gap-2">
+                <ClipboardCheck className="h-4 w-4" />
+                Waiting List
               </Button>
             )}
             <AlertDialog>
@@ -416,6 +425,23 @@ export default function LeadDetail() {
         open={showBookTrial}
         onOpenChange={setShowBookTrial}
         lead={lead}
+      />
+
+      <AddToWaitlistDialog
+        open={showAddToWaitlist}
+        onOpenChange={setShowAddToWaitlist}
+        leadData={{
+          lead_id: lead.id,
+          contact_name: lead.contact_name,
+          contact_email: lead.contact_email || undefined,
+          contact_phone: lead.contact_phone || undefined,
+          children: students.map((s: any) => ({
+            first_name: s.first_name || '',
+            last_name: s.last_name || undefined,
+            age: s.age || undefined,
+            instrument: s.instrument_name || undefined,
+          })),
+        }}
       />
     </AppLayout>
   );

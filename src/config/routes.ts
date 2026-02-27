@@ -58,6 +58,7 @@ const Help = lazy(() => import('@/pages/Help'));
 const MakeUpDashboard = lazy(() => import('@/pages/MakeUpDashboard'));
 const Leads = lazy(() => import('@/pages/Leads'));
 const LeadDetail = lazy(() => import('@/pages/LeadDetail'));
+const EnrolmentWaitlistPage = lazy(() => import('@/pages/EnrolmentWaitlistPage'));
 const TeacherPerformanceReport = lazy(() => import('@/pages/reports/TeacherPerformance'));
 
 // ─── Lazy: Public ───────────────────────────────────────
@@ -145,6 +146,7 @@ export const appRoutes: RouteConfig[] = [
   { path: '/make-ups', component: MakeUpDashboard, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Make-Ups' },
   { path: '/leads', component: Leads, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Leads' },
   { path: '/leads/:id', component: LeadDetail, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Lead Detail' },
+  { path: '/waitlist', component: EnrolmentWaitlistPage, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Waiting List' },
   { path: '/reports/teacher-performance', component: TeacherPerformanceReport, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Teacher Performance' },
   { path: '/settings', component: Settings, auth: 'protected', allowedRoles: ['owner', 'admin', 'teacher', 'finance'], label: 'Settings' },
   { path: '/help', component: Help, auth: 'protected', label: 'Help' },

@@ -33,6 +33,7 @@ import {
 import { differenceInDays } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { PaymentAnalyticsCard } from '@/components/dashboard/PaymentAnalyticsCard';
+import { WaitlistDashboardWidget } from '@/components/waitlist/WaitlistDashboardWidget';
 
 const itemVariants = {
   hidden: { opacity: 0, y: 8 },
@@ -330,6 +331,10 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
               </CardContent>
             </Card>
             
+            <SectionErrorBoundary name="Waitlist Widget">
+              <WaitlistDashboardWidget />
+            </SectionErrorBoundary>
+
             <SectionErrorBoundary name="Quick Actions">
               <QuickActionsGrid variant="academy" />
             </SectionErrorBoundary>
