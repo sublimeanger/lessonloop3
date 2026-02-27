@@ -1747,6 +1747,198 @@ Apply the same criteria as the second: sustained waitlist, high utilisation at e
 
 *Part of our [guide to music lesson scheduling](/blog/guide-to-music-lesson-scheduling) series. Related: [Multi-Location Music School Software](/features/locations) · [Growing to 200+ Students](/blog/grow-music-school-students)*`,
   },
+  {
+    slug: "guide-to-music-school-billing",
+    title: "Music School Billing: The Complete Guide to Getting Paid on Time",
+    excerpt: "Stop chasing payments. This guide covers invoicing, payment collection, termly billing, Stripe setup, tax records and billing automation for UK music schools.",
+    date: "",
+    category: "Guides",
+    readTime: "13 min",
+    author: {
+      name: "LessonLoop",
+      role: "Music School Management Platform",
+    },
+    featuredImage: "/images/blog/guide-to-music-school-billing.jpg",
+    tags: ["billing", "invoicing", "payments", "music school", "UK", "Stripe", "accounting"],
+    relatedPosts: ["guide-to-running-a-music-school", "music-school-pricing-strategies", "automate-music-school-invoicing"],
+    content: `Ask any music school owner what keeps them up at night and the answer is almost never a tricky piece of Chopin or a student who can't find the beat. It's money. Specifically: getting it from the people who owe it, on time, without spending half your week chasing invoices and reconciling bank statements.
+
+Billing is the operational backbone of every music school. When it works well — invoices go out on schedule, payments arrive without chasing, records are clean, and everyone knows where they stand — you barely think about it. When it doesn't work, it consumes your evenings, strains relationships with families, and quietly bleeds revenue through missed invoices, late payments and administrative errors.
+
+This guide covers the complete billing lifecycle for UK music schools: choosing your billing model, setting up payment collection, automating the process, handling the inevitable exceptions, and keeping records that make tax season painless.
+
+## Choosing your billing model
+
+Your billing model determines when you get paid, how predictably, and how much admin each payment cycle requires. We've covered the three main models in depth in our [pricing strategies guide](/blog/music-school-pricing-strategies), but here's how they affect your billing operations specifically.
+
+### Termly billing: the UK standard
+
+Termly billing means invoicing families for a full term of lessons at once — typically 10–13 weeks — with payment due before or at the start of term. It's the dominant model for UK children's music schools for compelling operational reasons.
+
+**Cash flow is predictable.** You know at the start of each term exactly how much revenue you'll receive. This makes financial planning, teacher pay budgets and growth investment far easier.
+
+**Billing is a batch process, not a weekly grind.** You generate all invoices in a single session (or a single click, if you're using [billing software](/features/billing)), send them out together, and then focus on collection. Compare this to per-lesson billing, where you're processing individual payments every week for every student.
+
+**Cancellation rates drop.** When a family has committed financially to a full term, casual cancellations ("we're not coming this week, it's raining") virtually disappear. This protects your revenue and your teacher utilisation.
+
+**It mirrors what parents already understand.** UK families are accustomed to termly structures from school, clubs and extracurricular activities. There's no conceptual leap.
+
+The operational challenge with termly billing is the start-of-term crunch: generating all invoices, chasing any that aren't paid by the due date, handling pro-rata calculations for mid-term joiners, and managing payment plans for families who can't pay the full amount upfront. This is exactly where [automation](/blog/automate-music-school-invoicing) transforms the workload.
+
+### Monthly billing
+
+Some schools bill monthly rather than termly. This smooths the payment burden for families (smaller regular amounts) and creates a more even cash flow for the school. It works well for schools with rolling enrolment rather than fixed term structures, or for adult programmes where termly commitment feels too rigid.
+
+The trade-off is more frequent billing cycles — twelve per year instead of three — which means more invoices to generate, more payment dates to track, and more opportunities for late payment.
+
+### Per-lesson billing
+
+Per-lesson billing is the simplest model but the least efficient operationally. Every lesson requires a payment, every payment requires tracking, and your revenue is at the mercy of weekly attendance. It's appropriate for casual adult learners, trial periods, and the very early stages of a new school. Most schools outgrow it quickly.
+
+## The anatomy of a good invoice
+
+Regardless of your billing model, every invoice your school sends should include:
+
+**Your school name and contact details.** If you're VAT-registered or operating as a limited company, include your registration numbers.
+
+**The parent's name and a unique invoice number.** Sequential numbering (INV-001, INV-002) keeps your records clean and makes it easy to reference specific invoices in communication.
+
+**A clear description of what's being billed.** "Piano lessons — Spring Term 2026, 12 weeks × £22 = £264" is far better than "Music lessons — £264." Parents should be able to see exactly what they're paying for without having to ask.
+
+**The payment due date.** Be specific: "Due by Friday 10 January 2026" not "Due at the start of term." Ambiguity delays payment.
+
+**Payment methods accepted.** List every way you accept payment: online card payment (with a link), bank transfer (with account details and a reference format), or any other method. The fewer barriers to payment, the faster you'll be paid.
+
+**Your payment terms and late payment policy.** A one-line reference is sufficient: "Payment terms: due before the first lesson of term. See our full payment policy at [link]." This protects you legally and reminds families of the agreement.
+
+**Any credits, discounts or adjustments.** Sibling discounts, make-up credits carried from last term, or pro-rata adjustments for mid-term joiners should all be itemised so parents can see the calculation.
+
+If this sounds like a lot to include on every invoice for every student, it is — when done manually. [Automated invoicing](/blog/automate-music-school-invoicing) generates all of this from your student and billing data in seconds.
+
+## Setting up payment collection
+
+How you collect payments affects your cash flow speed, your admin burden, and the parent experience. Here are the main options for UK music schools.
+
+### Online card payments via Stripe
+
+[Stripe](/blog/stripe-for-music-schools) is the most popular payment processor for UK music schools and the one we recommend. Parents pay online using their debit or credit card, and funds arrive in your bank account within 2–3 business days.
+
+**Fees:** 1.5% + 20p per UK card transaction. On a £264 termly invoice, that's £4.16 — significantly less than the admin time you'd spend processing a bank transfer and matching it to the right student.
+
+**Benefits:** Instant confirmation (you know immediately that payment has been received), automatic reconciliation (no manual bank statement checking), and a professional experience for parents (they click a link, enter their card, and they're done).
+
+Stripe integrates directly with [LessonLoop's billing system](/features/billing), so invoices include a "Pay now" button that takes parents straight to a secure payment page. No manual setup, no separate Stripe dashboard to manage.
+
+### Bank transfer (BACS)
+
+Some parents prefer to pay by bank transfer, and many schools offer it as an alternative to card payments. It's free for both parties, which appeals to cost-conscious families.
+
+The operational downside is significant: you need to manually check your bank account for incoming payments, match each payment to the correct student (which requires parents to use the right reference, and they often don't), and follow up on any that haven't arrived.
+
+If you offer bank transfer, provide a unique reference for each invoice (e.g., "LL-SMITH-SPR26") and check payments against your invoice list regularly. Better yet, use software that can reconcile bank payments against outstanding invoices.
+
+### Direct debit (GoCardless)
+
+Direct debit collects payments automatically from the parent's bank account on a set date. It's excellent for payment plans (e.g., three monthly instalments per term) because you don't rely on the parent remembering to pay — the money comes out automatically.
+
+GoCardless is the most common direct debit provider for small UK businesses. Fees are typically 1% + 20p per transaction, slightly cheaper than card payments. The main downside is setup friction: parents need to complete a direct debit mandate, which adds a step to the enrolment process.
+
+### Cash and cheques
+
+We'll mention these for completeness, but they should be a last resort. Cash creates security and record-keeping headaches. Cheques require trips to the bank and take days to clear. Both are impossible to automate or reconcile electronically. If a parent insists on paying by cash or cheque, accommodate them — but make online payment the default and the easiest option.
+
+## Payment plans and instalments
+
+Not every family can pay a full term's fees upfront, and rigid "pay in full or don't enrol" policies lose you students from families who would happily pay if given some flexibility.
+
+The most common approach is to split the termly fee into two or three instalments: one-third due before the term starts, one-third due at half-term, and the final third due a month before the term ends. This keeps the total fee the same but spreads the cash flow burden.
+
+**Set instalment dates in advance** and communicate them clearly at invoicing time. Parents should know exactly when each payment is due, not receive surprise invoices mid-term.
+
+**Automate instalment collection** wherever possible. If you're using Stripe, you can schedule future payments. If you're using GoCardless, set up the direct debit for the instalment dates. If you're collecting bank transfers, set calendar reminders for yourself to check whether each instalment has arrived.
+
+**Don't offer instalments to everyone by default.** Make full upfront payment the standard and offer instalments on request. This keeps your cash flow front-loaded while accommodating families who genuinely need flexibility.
+
+## Chasing late payments without damaging relationships
+
+Late payments are the most draining part of music school billing. The money is owed, the parent knows it's owed, but the invoice sits unpaid — and you're left deciding whether to chase, how hard, and at what point to escalate.
+
+The goal is a system that collects payment firmly without you personally having to be the enforcer. Here's the escalation ladder:
+
+**7 days before the due date: friendly reminder.** An automated email: "Just a reminder that your invoice for Spring Term is due on [date]. You can pay online here: [link]." No apology, no heavy tone. Just a helpful nudge.
+
+**On the due date: payment due notice.** Another automated email: "Your invoice of £264 for Spring Term was due today. If you've already paid, please disregard this message. If not, you can pay here: [link]."
+
+**7 days after the due date: overdue notice.** Slightly firmer: "Your invoice is now 7 days overdue. Please arrange payment as soon as possible to avoid any disruption to [student name]'s lessons. Pay here: [link]."
+
+**14 days after the due date: personal contact.** At this point, automated emails have failed. Pick up the phone or send a personal message. Be direct but empathetic: "I noticed Oliver's invoice is still outstanding — is everything OK? Happy to set up a payment plan if that helps." This call resolves the vast majority of late payments. Sometimes the email went to spam. Sometimes the parent forgot. Sometimes there's a genuine financial difficulty.
+
+**28+ days overdue: final notice.** This is rare if the earlier steps are followed. A written notice stating that lessons will be paused until the account is settled. This should be a last resort, clearly communicated in your [payment terms](/blog/music-school-payment-terms-uk) from the outset.
+
+The entire sequence above can be automated in [LessonLoop's billing system](/features/billing). You set the reminder schedule once, and every invoice follows the same escalation path without you lifting a finger until the personal contact stage.
+
+## Handling the exceptions
+
+No billing system runs without exceptions. Here's how to handle the common ones:
+
+**Mid-term joiners.** Calculate a pro-rata fee based on the remaining weeks in the term. If the full term is 12 weeks at £264 and the student joins in week 5, the pro-rata fee is (8 ÷ 12) × £264 = £176. Invoice them immediately and include them in regular billing from the next term.
+
+**Mid-term leavers.** Your terms and conditions should specify the notice period required (typically one full term). If a family gives notice mid-term, lessons and billing continue until the end of the term. Refunds for mid-term departures should be at your discretion and addressed on a case-by-case basis. See our guide to [handling refunds and credits](/blog/music-school-refunds-credits).
+
+**Make-up credits.** When a lesson is cancelled (by either party) and a make-up isn't possible within the term, apply a credit to the next term's invoice. Track credits carefully — they're easy to lose track of manually, but [billing software](/features/billing) carries them forward automatically.
+
+**Sibling discounts.** Apply the discount to the second (and subsequent) child's invoice, not the first. This keeps your per-student revenue calculation clean and makes the discount visible to the parent.
+
+**Scholarship or bursary students.** If you offer reduced fees for families in financial difficulty, track these as explicit discounts on invoices rather than informal arrangements. This protects both parties and keeps your records accurate for tax purposes.
+
+## Record-keeping for tax and compliance
+
+UK music schools need to maintain financial records that satisfy HMRC requirements. This applies whether you're a sole trader or a limited company, and whether or not you're VAT-registered.
+
+At minimum, keep records of all income (every invoice and payment received), all business expenses (room hire, insurance, software, instruments, music books, travel), every invoice you issue, and bank statements for your business account.
+
+If you're a sole trader, you'll report this income through self-assessment. If you're a limited company, you'll file corporation tax returns and annual accounts. Our full guide to [tax and record-keeping for UK music schools](/blog/music-school-tax-record-keeping-uk) covers the specifics, including VAT exemption rules for music tuition.
+
+The easiest way to maintain clean records is to use billing software that generates invoices, tracks payments and produces [financial reports](/features/reports) automatically. Exporting this data into accounting software (FreeAgent, Xero, or QuickBooks) at the end of each term gives your accountant everything they need.
+
+## The billing experience as a trust signal
+
+Here's something that doesn't appear in any accounting textbook: the way you bill families is a trust signal. A professional, clear, automated billing experience tells parents that your school is well-run. A chaotic, inconsistent, manual billing process tells them the opposite.
+
+Parents notice when invoices arrive on time, when the amounts are correct, when there's a clear online payment option, and when credits are applied accurately. They also notice when invoices are late, when the amounts don't match what was agreed, when they have to chase for a receipt, or when they're asked to pay by bank transfer with no reference format.
+
+Your billing system is part of your product, whether you think of it that way or not. Invest in getting it right — not just for your cash flow, but for the impression it creates. Whether you're a [solo teacher](/for/solo-teachers) or running a [multi-teacher academy](/for/music-academies), the [parent portal](/features/parent-portal) experience starts with how you handle money.
+
+Ready to transform your billing? See how [LessonLoop's automated billing](/features/billing) handles everything from termly invoicing to payment plans and overdue reminders, or [view plans and pricing](/pricing) to get started.
+
+---
+
+## Frequently Asked Questions
+
+### How often should I send invoices for music lessons?
+
+For termly billing, send invoices 2–3 weeks before the term starts. This gives parents time to pay before lessons begin. For monthly billing, send invoices on the same date each month (e.g., the 1st) so parents know when to expect them. Consistency is more important than the specific timing — pick a schedule and stick to it.
+
+### What percentage of revenue should I expect to lose to late or unpaid invoices?
+
+With a clear payment policy and automated reminders, bad debt should be below 2% of total revenue. Schools without these systems often see 5–10% sitting unpaid at any given time. The gap between these two figures represents thousands of pounds per year for a school of 50+ students.
+
+### Should I charge late fees for overdue music lesson invoices?
+
+Late fees are legally permissible in the UK and some schools include them in their terms (e.g., "A £10 late fee will be applied to invoices unpaid 14 days after the due date"). Whether they're effective depends on your school culture. For most music schools, automated reminders followed by a personal phone call resolves late payment faster and with less friction than a formal late fee. Include the option in your terms even if you rarely apply it — it gives you leverage.
+
+### Is music tuition VAT exempt in the UK?
+
+Music tuition is exempt from VAT under specific conditions outlined in HMRC Notice 701/30. The exemption applies when the tuition is provided by a sole trader teacher or by an eligible body (which includes most music schools), and the subject taught is one ordinarily taught in schools or universities. Most private music tuition meets these conditions, meaning you don't charge VAT on lesson fees regardless of your turnover. However, other sales (instruments, books, merchandise) may be subject to VAT if your taxable turnover exceeds the registration threshold. See our full [tax guide](/blog/music-school-tax-record-keeping-uk) for details.
+
+### What's the best way to handle a family who consistently pays late?
+
+Have a direct, private conversation. Most persistent late payers aren't deliberately avoiding payment — they're forgetful, disorganised, or experiencing financial pressure they haven't communicated. Offer a payment plan (monthly instalments via direct debit) that removes the need for them to remember. If the issue persists after that, apply your late payment policy consistently. A very small number of families will refuse to pay regardless — at that point, pausing lessons until the account is settled is the appropriate response.
+
+---
+
+*Related reading: [How to Automate Music School Invoicing](/blog/automate-music-school-invoicing) · [Stripe for Music Schools](/blog/stripe-for-music-schools) · [Payment Terms for UK Schools](/blog/music-school-payment-terms-uk)*`,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
