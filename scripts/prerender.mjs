@@ -715,6 +715,12 @@ function postProcess(html, routePath, blogSlugs) {
   // Replace all lessonloop.co.uk → lessonloop.net
   html = html.replace(/lessonloop\.co\.uk/g, 'lessonloop.net');
 
+  // Ensure all marketing pages are indexable (base index.html has noindex for the app)
+  html = html.replace(
+    /<meta name="robots" content="noindex,?\s*nofollow">/,
+    '<meta name="robots" content="index, follow">'
+  );
+
   // Replace localhost dev-server URLs left behind by React (e.g. JSON-LD)
   html = html.replace(/http:\/\/localhost:\d+/g, SITE_DOMAIN);
   // Also handle URL-encoded variant (%3A = :, %2F = /)
