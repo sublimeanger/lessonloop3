@@ -12,7 +12,7 @@ export function LoopAssistAlerts() {
 
   const actionableAlerts = alerts
     .filter(a => a.severity === 'urgent' || a.severity === 'warning')
-    .filter(a => !isDismissed(a.type))
+    .filter(a => !isDismissed(a.dismissalKey ?? a.type))
     .slice(0, 2);
 
   if (actionableAlerts.length === 0) return null;
@@ -21,15 +21,15 @@ export function LoopAssistAlerts() {
     <div className="space-y-2">
       {actionableAlerts.map((alert) => (
         <AlertRow
-          key={alert.type}
+          key={alert.dismissalKey ?? alert.type}
           alert={alert}
           onAction={() => {
             if (alert.suggestedAction) {
-              dismissPermanently(alert.type);
+              dismissPermanently(alert.dismissalKey ?? alert.type);
               openDrawerWithMessage(alert.suggestedAction);
             }
           }}
-          onDismiss={() => dismissPermanently(alert.type)}
+          onDismiss={() => dismissPermanently(alert.dismissalKey ?? alert.type)}
         />
       ))}
     </div>

@@ -15,7 +15,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { CalendarSkeleton } from '@/components/shared/LoadingState';
 import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
-import { useProactiveAlerts } from '@/hooks/useProactiveAlerts';
+import { useUrgentActions } from '@/hooks/useUrgentActions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Columns3, Minimize2, Users, AlertTriangle, Calendar } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -238,8 +238,8 @@ export function CalendarDesktopLayout({
 
 
 function CalendarUnmarkedBanner() {
-  const { alerts } = useProactiveAlerts();
-  const unmarked = alerts.find(a => a.type === 'unmarked');
+  const { actions } = useUrgentActions();
+  const unmarked = actions.find(a => a.type === 'unmarked_lessons');
   if (!unmarked || !unmarked.count) return null;
 
   return (
