@@ -199,6 +199,24 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://lessonloop.net/blog/2</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/3</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/4</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://lessonloop.net/blog/guide-to-running-a-music-school</loc>
     <lastmod>2026-02-27</lastmod>
     <changefreq>daily</changefreq>

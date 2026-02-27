@@ -246,35 +246,6 @@ export default function Blog() {
   const featured = safePage === 1 ? pagePosts[0] : undefined;
   const gridPosts = safePage === 1 ? pagePosts.slice(1) : pagePosts;
 
-  // SEO: rel="prev" / rel="next"
-  useEffect(() => {
-    const head = document.head;
-    const cleanup = () => {
-      const p = head.querySelector('link[rel="prev"]');
-      const n = head.querySelector('link[rel="next"]');
-      if (p) head.removeChild(p);
-      if (n) head.removeChild(n);
-    };
-    cleanup();
-
-    if (safePage > 1) {
-      const prev = document.createElement("link");
-      prev.rel = "prev";
-      prev.href = safePage === 2
-        ? "https://lessonloop.net/blog/"
-        : `https://lessonloop.net/blog/${safePage - 1}/`;
-      head.appendChild(prev);
-    }
-    if (safePage < totalPages) {
-      const next = document.createElement("link");
-      next.rel = "next";
-      next.href = `https://lessonloop.net/blog/${safePage + 1}/`;
-      head.appendChild(next);
-    }
-
-    return cleanup;
-  }, [safePage, totalPages]);
-
   return (
     <MarketingLayout>
       {/* ═══ HERO ═══ */}
