@@ -120,10 +120,11 @@ export default function Continuation() {
   };
 
   const handleBulkProcess = async (type: 'confirmed' | 'withdrawals' | 'all') => {
-    if (!run?.id || !run.next_term?.end_date) return;
+    if (!run?.id || !run.next_term?.end_date || !run.next_term?.start_date) return;
     await bulkProcess.mutateAsync({
       run_id: run.id,
       next_term_end_date: run.next_term.end_date,
+      next_term_start_date: run.next_term.start_date,
       process_type: type,
     });
   };

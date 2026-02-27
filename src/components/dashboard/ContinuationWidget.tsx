@@ -27,8 +27,8 @@ export function ContinuationWidget() {
   }
 
   const summary = activeRun.summary as Record<string, number> | null;
-  const continuing = (summary?.continuing ?? 0) + (summary?.assumed_continuing ?? 0);
-  const total = summary?.total ?? 0;
+  const continuing = (summary?.confirmed ?? 0) + (summary?.assumed_continuing ?? 0);
+  const total = summary?.total_students ?? 0;
   const pending = summary?.pending ?? 0;
   const withdrawing = summary?.withdrawing ?? 0;
   const pct = total > 0 ? Math.round((continuing / total) * 100) : 0;
