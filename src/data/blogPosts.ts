@@ -2308,6 +2308,135 @@ The decision depends on your profit level, your personal tax situation, and your
 
 *Part of our [guide to music school billing](/blog/guide-to-music-school-billing) series. Related: [Starting a Music School in the UK](/blog/starting-a-music-school-uk) · [Built for UK Music Schools](/uk)*`,
   },
+  {
+    slug: "stripe-for-music-schools",
+    title: "Stripe for Music Schools: A Setup Guide",
+    excerpt: "Accept card payments for music lessons with Stripe. This guide covers setup, fees, recurring billing, refunds, and integration with music school software.",
+    date: "",
+    category: "Guides",
+    readTime: "6 min",
+    author: {
+      name: "LessonLoop",
+      role: "Music School Management Platform",
+    },
+    featuredImage: "/images/blog/stripe-for-music-schools.jpg",
+    tags: ["Stripe", "payments", "billing", "music school", "online payments", "card payments"],
+    relatedPosts: ["guide-to-music-school-billing", "music-school-payment-terms-uk", "music-school-refunds-credits"],
+    content: `If you're still collecting lesson fees by bank transfer, cash, or cheque, you're working harder than you need to. Online card payments are faster to process, easier to track, and — critically — far more convenient for parents. And the most popular way to accept them is Stripe.
+
+Stripe is the payment processor behind the "Pay now" button on millions of websites and apps worldwide. For UK music schools, it offers a straightforward way to accept debit and credit card payments online, with funds deposited directly into your bank account. No payment terminal, no merchant account application, no complex setup.
+
+Here's how to get started and how to make the most of it.
+
+## Why Stripe (and not something else)
+
+There are other payment processors — PayPal, Square, GoCardless, Worldpay — but Stripe has become the default for UK music schools for several practical reasons.
+
+**It works seamlessly with music school software.** [LessonLoop](/features/billing), Teachworks, My Music Staff and other platforms all integrate with Stripe. This means invoices generated in your management platform include a direct payment link that processes through Stripe — no separate system to manage.
+
+**The fees are transparent.** 1.5% + 20p per UK card transaction. No monthly fees, no setup costs, no hidden charges. You only pay when a payment is processed. On a typical £264 termly invoice, the Stripe fee is £4.16.
+
+**Payout speed is reasonable.** Funds reach your UK bank account within 2–3 business days (7 days for new accounts during the initial verification period). You can set up daily or weekly automatic payouts.
+
+**It handles refunds cleanly.** If you need to issue a refund, you do it from the Stripe dashboard (or from your integrated software), and the money returns to the parent's card. The original transaction fee is not refunded by Stripe, but you avoid the admin of manual bank transfers.
+
+**Strong regulation and security.** Stripe is PCI DSS Level 1 compliant, handles card data securely, and is authorised by the FCA. You never see or store card numbers — parents enter their details directly on Stripe's secure payment page.
+
+## Setting up Stripe for your music school
+
+### Step 1: Create your Stripe account
+
+Go to stripe.com and sign up. You'll need your business name (or your name if you're a sole trader), your business address, your bank account details for payouts, and your date of birth and address for identity verification.
+
+The process takes about 10 minutes. Stripe may ask for additional documentation (proof of address, business registration) for verification, but most sole traders are approved quickly.
+
+### Step 2: Configure your account settings
+
+Once your account is active, set up the following:
+
+**Business details.** Ensure your business name and statement descriptor are correct. The statement descriptor is what appears on parents' bank statements — use something recognisable like "LESSONLOOP" or "YOURMUSICSCHOOL" rather than a generic string.
+
+**Payout schedule.** Choose daily or weekly automatic payouts to your bank account. Daily payouts give you faster access to funds; weekly payouts are easier to reconcile against your invoice list.
+
+**Email receipts.** Enable automatic email receipts so parents receive confirmation when their payment is processed. This reduces "did my payment go through?" queries.
+
+### Step 3: Connect Stripe to your billing software
+
+If you're using [LessonLoop](/features/billing), the connection takes less than a minute. Navigate to your billing settings, click "Connect Stripe", and authorise the connection. From that point, every invoice you generate includes a "Pay online" button that processes through your Stripe account.
+
+This integration means you don't need to create payment links manually, send separate Stripe invoices, or log into the Stripe dashboard to check payment status. Everything flows through your billing platform — invoice generated, payment link sent, payment received, invoice marked as paid. Automatically.
+
+If you're not using integrated software, Stripe offers its own invoicing tool (Stripe Invoicing) and payment links. These work, but you'll need to manually create each invoice or payment link in Stripe and reconcile them against your student records separately.
+
+### Step 4: Test with a real payment
+
+Before sending your first batch of invoices, process a test payment. Use your own card to pay a small invoice and verify that the payment appears in your Stripe dashboard, the payout reaches your bank account, and the receipt email arrives correctly. This five-minute test prevents embarrassment with your first real billing cycle.
+
+## Handling common payment scenarios
+
+### Termly invoice payments
+
+The standard use case. You generate invoices through your [billing platform](/features/billing), each with a Stripe payment link. Parents click the link, enter their card details, and the payment processes instantly. You see the payment reflected against the invoice in real-time.
+
+For schools processing 50–100 invoices per term, this turns a week of payment chasing into a day or two. Most parents pay within 48 hours of receiving the invoice — the convenience of a one-click payment removes the friction that causes bank transfers to be delayed.
+
+### Payment plans and instalments
+
+Stripe supports scheduled payments, allowing you to split a termly fee into instalments. When integrated with billing software, you can set up a payment plan (e.g., three monthly payments) and Stripe processes each instalment on the scheduled date.
+
+Note that Stripe requires the parent to authorise the initial payment and the schedule. Unlike direct debit, Stripe doesn't pull from the parent's bank account — it charges the card on file. If the card expires or is declined, you'll be notified and can follow up.
+
+### Refunds
+
+To refund a payment, locate the transaction in your Stripe dashboard (or through your billing software) and issue a full or partial refund. The funds return to the parent's original payment method within 5–10 business days. Stripe does not refund its processing fee on the original transaction — on a £264 payment, you'll absorb the £4.16 fee even after refunding.
+
+For detailed refund policy guidance, see our piece on [handling refunds and credits in your music school](/blog/music-school-refunds-credits).
+
+### Failed payments
+
+Occasionally a payment fails — the card is declined, expired, or has insufficient funds. Stripe notifies you of the failure, and if you're using integrated software, the invoice remains marked as unpaid. Follow up with the parent directly: "It looks like your card payment for Oliver's Spring Term invoice didn't go through — would you like to try again or use a different payment method?"
+
+Stripe also offers Smart Retries, which automatically retries failed payments at optimised times over the following days. This recovers a surprising percentage of failed payments without any action from you.
+
+## Stripe fees: the real cost
+
+The headline rate is 1.5% + 20p per successful UK card transaction. Here's what that looks like at typical music school amounts:
+
+- **£22 lesson (per-lesson billing):** 53p fee → 2.4% effective rate
+- **£132 half-term invoice:** £2.18 fee → 1.7% effective rate
+- **£264 termly invoice:** £4.16 fee → 1.6% effective rate
+- **£528 termly invoice (two instruments):** £8.12 fee → 1.5% effective rate
+
+Larger invoices have a lower effective rate because the fixed 20p component is less significant. This is another reason termly billing is operationally superior — you process fewer, larger transactions and pay proportionally less in fees.
+
+**Is it worth it?** Consider the alternative. Processing a £264 bank transfer costs nothing in fees, but it costs 10–15 minutes of admin time (checking the payment arrived, matching it to the right student, chasing if it didn't, handling reference mismatches). At any reasonable valuation of your time, the £4.16 Stripe fee is a bargain.
+
+Ready to streamline your payment collection? See how [LessonLoop's billing features](/features/billing) integrate with Stripe, or [view plans and pricing](/pricing) to get started.
+
+---
+
+## Frequently Asked Questions
+
+### Do I need a business bank account to use Stripe?
+
+Stripe can pay out to a personal bank account if you're a sole trader. However, we strongly recommend a separate business bank account for cleaner record-keeping and easier tax preparation. Most UK business accounts are free (Starling, Tide, Monzo Business) and take minutes to open.
+
+### Can parents save their card for future payments?
+
+Yes. When a parent pays through Stripe, their card details can be saved (with their consent) for future transactions. This makes subsequent payments even faster — they confirm the amount and click pay, without re-entering card details. This is handled securely by Stripe; you never see or store the actual card numbers.
+
+### What about parents who don't want to pay by card?
+
+Always offer bank transfer as an alternative. Some parents prefer it for privacy reasons or because they don't want to enter card details online. The goal is to make card payment the easiest and default option while accommodating preferences. In practice, when you offer a one-click "Pay now" button alongside bank transfer details, 70–80% of parents choose the card option.
+
+### Does Stripe work for international students?
+
+Yes. Stripe processes cards from most countries. Fees for non-UK European cards are 2.5% + 20p, and for international cards outside Europe, it's 3.25% + 20p. If you have international students (online lessons, for example), Stripe handles the currency conversion automatically. You receive GBP in your bank account regardless of the card's home currency.
+
+---
+
+*Part of our [guide to music school billing](/blog/guide-to-music-school-billing) series. Related: [Automate Music School Invoicing](/blog/automate-music-school-invoicing) · [LessonLoop Billing Features](/features/billing)*`,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
