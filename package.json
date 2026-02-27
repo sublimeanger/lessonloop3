@@ -25,7 +25,11 @@
     "cap:ios:run": "cap run ios",
     "cap:icons": "node scripts/generate-icons.mjs",
     "prerender": "node scripts/prerender.mjs",
-    "preview:marketing": "node scripts/preview-marketing.mjs"
+    "preview:marketing": "node scripts/preview-marketing.mjs",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:e2e:headed": "npx playwright test --headed",
+    "test:e2e:debug": "PWDEBUG=1 npx playwright test"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",
@@ -115,6 +119,7 @@
   "devDependencies": {
     "@capacitor/cli": "^8.1.0",
     "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -123,6 +128,7 @@
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react-swc": "^3.11.0",
     "autoprefixer": "^10.4.21",
+    "dotenv": "^17.3.1",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
