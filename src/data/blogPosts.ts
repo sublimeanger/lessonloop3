@@ -2168,6 +2168,146 @@ Refer to your terms calmly and specifically. Explain the clause that applies and
 
 *Part of our [guide to music school billing](/blog/guide-to-music-school-billing) series. Related: [Cancellation Policies](/blog/music-lesson-cancellation-policy) · [Payment Terms for UK Schools](/blog/music-school-payment-terms-uk)*`,
   },
+  {
+    slug: "music-school-tax-record-keeping-uk",
+    title: "Tax and Record-Keeping for UK Music Schools",
+    excerpt: "Keep HMRC happy without a full-time accountant. Covers self-assessment, VAT thresholds, allowable expenses and record-keeping for UK music school owners.",
+    date: "",
+    category: "Music Business",
+    readTime: "7 min",
+    author: {
+      name: "LessonLoop",
+      role: "Music School Management Platform",
+    },
+    featuredImage: "/images/blog/music-school-tax-record-keeping-uk.jpg",
+    tags: ["tax", "HMRC", "UK", "music school", "VAT", "record keeping", "self-assessment"],
+    relatedPosts: ["guide-to-music-school-billing", "starting-a-music-school-uk", "music-school-pricing-strategies"],
+    content: `Tax isn't the reason you got into music education. But if you're running a music school in the UK — whether as a solo teacher or a multi-teacher academy — HMRC expects you to track your income, understand your obligations, and file your returns accurately. Getting this wrong isn't just an accounting problem; it's a legal one.
+
+The good news: music school finances are relatively straightforward compared to many businesses. You have a clear income stream (lesson fees), predictable costs, and — crucially — some favourable tax treatment that most music school owners don't fully understand.
+
+This guide covers the essentials. It's not a replacement for professional accounting advice (get an accountant — they pay for themselves many times over), but it gives you the framework to keep clean records and avoid the most common mistakes.
+
+**Important note:** Tax rules change. This guide reflects UK tax law as of early 2026. Always verify current rates and thresholds with HMRC or your accountant.
+
+## Your tax obligations depend on your business structure
+
+### Sole trader
+
+Most solo music teachers and small schools operate as sole traders. You register with HMRC for self-assessment, report your income and expenses annually, and pay income tax and National Insurance on your profits.
+
+**Key dates:** Register with HMRC as soon as you start trading. File your self-assessment tax return by 31 January following the end of the tax year (e.g., by 31 January 2027 for the 2025/26 tax year). Pay your tax bill by the same date.
+
+**What you pay:** Income tax on your profits (revenue minus allowable expenses) at the standard rates: 0% on the first £12,570 (personal allowance), 20% on £12,571–£50,270, 40% on £50,271–£125,140, and 45% above that. Plus Class 2 and Class 4 National Insurance contributions on profits above the threshold.
+
+**Payment on account:** Once your tax bill exceeds £1,000, HMRC requires payments on account — advance payments toward next year's tax, due in January and July. Budget for this from day one, as the first year's payments on account can feel like a double hit.
+
+### Limited company
+
+If your music school is incorporated, the company pays corporation tax on its profits (currently 25% for profits over £250,000, with a small profits rate of 19% for profits under £50,000 and a tapered rate between). You pay yourself through a combination of salary and dividends, each taxed differently.
+
+**Key dates:** File your company accounts with Companies House within 9 months of your accounting year-end. File your corporation tax return with HMRC within 12 months. Pay corporation tax within 9 months and 1 day.
+
+**Why limited?** The main advantage is tax efficiency at higher profit levels. A sole trader earning £60,000 profit pays significantly more in personal tax and NI than a director-shareholder extracting the same amount through an optimal salary/dividend split. The breakeven point varies, but most accountants suggest incorporating becomes beneficial somewhere between £30,000 and £50,000 annual profit.
+
+## The VAT exemption most music schools don't know about
+
+This is the single most valuable piece of tax knowledge for UK music school owners: **music tuition is exempt from VAT under specific conditions.**
+
+HMRC Notice 701/30 exempts education provided by an eligible body or by a sole trader teacher, where the subject is one ordinarily taught in schools or universities. Music tuition clearly qualifies.
+
+What this means in practice: **you don't charge VAT on lesson fees, regardless of your turnover.** Even if your total revenue exceeds the VAT registration threshold (currently £90,000), your lesson fee income is exempt and doesn't count toward that threshold for standard-rated supplies.
+
+There are nuances:
+
+- **Exempt vs zero-rated:** Exempt means you don't charge VAT and you can't reclaim VAT on related purchases. Zero-rated means you charge VAT at 0% and can reclaim input VAT. Music tuition is exempt, so you cannot reclaim VAT on business purchases related to your exempt supplies.
+- **Mixed supplies:** If you sell instruments, books, merchandise or other goods alongside tuition, those sales are standard-rated (currently 20% VAT). If your standard-rated turnover exceeds the £90,000 threshold, you must register for VAT — but only charge it on the non-exempt sales.
+- **Company vs sole trader:** The exemption applies to tuition provided by a sole trader teacher acting independently, or by an "eligible body" (which includes non-profit organisations, schools and similar). A for-profit limited company providing tuition through employed teachers may not automatically qualify for the exemption — the specifics depend on how the company is structured and how tuition is delivered. This is one area where professional advice is essential.
+
+The bottom line: most UK music schools don't need to worry about VAT on lesson fees. But if you also sell goods or if you're a limited company, check your specific situation with an accountant.
+
+## Allowable expenses: what you can deduct
+
+Allowable expenses reduce your taxable profit, which reduces your tax bill. Keep records and receipts for all business expenses. The most common deductions for music schools:
+
+**Premises costs.** Rent, rates, utilities and insurance for your teaching space. If you teach from home, you can claim a proportion of household costs (heating, electricity, broadband, council tax) based on the percentage of your home used for business and the hours of business use. HMRC's simplified expenses method allows a flat-rate deduction based on hours worked from home.
+
+**Instruments and equipment.** Pianos, keyboards, guitars, amplifiers, music stands, metronomes, recording equipment — all deductible. Items over £1,000 may need to be capitalised and depreciated (claimed over several years) rather than deducted in full in the year of purchase. The Annual Investment Allowance (currently £1,000,000) means most music school purchases can be deducted fully in the year they're bought.
+
+**Music and teaching materials.** Sheet music, method books, exam syllabuses, manuscript paper, theory resources — all deductible.
+
+**Software and technology.** Your [music school management platform](/features), accounting software, website hosting, domain names, email services — all deductible as business expenses.
+
+**Insurance.** Public liability, professional indemnity, building/contents insurance for your premises — all deductible.
+
+**Marketing and advertising.** Website design, printed materials, online advertising, event costs for open days — all deductible.
+
+**Travel.** Mileage for travelling to teaching locations (if you travel to students or between venues), at the approved HMRC rate of 45p per mile for the first 10,000 miles and 25p thereafter. Keep a mileage log.
+
+**Professional development.** Courses, workshops, conferences and CPD related to your music teaching — deductible. Your own music lessons or performance coaching are also deductible if they directly support your teaching work.
+
+**Professional memberships and subscriptions.** ISM (Incorporated Society of Musicians), MU (Musicians' Union), ABRSM membership — deductible.
+
+**DBS checks and compliance costs.** DBS applications, ICO registration, safeguarding training — all deductible.
+
+## Record-keeping: what HMRC requires
+
+HMRC requires you to keep records of all business income and expenses for at least 5 years after the 31 January submission deadline for the relevant tax year. For a limited company, records must be kept for 6 years from the end of the financial year.
+
+At minimum, maintain:
+
+**A record of all income.** Every invoice issued, every payment received, and the date of each. If you're using [billing software](/features/billing), this is generated automatically. Export it at the end of each tax year.
+
+**A record of all expenses.** Every business purchase with the date, amount, supplier and what it was for. Keep receipts (digital copies are fine — photograph paper receipts and store them in a folder).
+
+**Bank statements.** For your business bank account, covering the full tax year. If you also use a personal account for any business transactions (not recommended), those statements too.
+
+**Invoices issued and received.** Copies of every invoice you've sent and every invoice you've received from suppliers.
+
+**Mileage log** (if claiming travel expenses). Date, destination, purpose and miles for each business journey.
+
+The easiest approach is to use accounting software (FreeAgent, Xero, or QuickBooks are the most popular for small UK businesses) and feed it data from your billing platform and bank account. At the end of the year, your accountant receives a clean set of records that takes them minutes to process rather than hours.
+
+[LessonLoop's reporting](/features/reports) generates revenue summaries, invoice histories, and payment records that export cleanly into accounting software — giving you the billing-side records without manual compilation. Purpose-[built for UK music schools](/uk).
+
+## Common tax mistakes to avoid
+
+**Mixing personal and business finances.** Open a separate business bank account and run all school income and expenses through it. Mixing accounts makes record-keeping far harder and raises HMRC's suspicions during any enquiry.
+
+**Not keeping receipts.** HMRC can disallow expenses you can't evidence. Photograph every receipt on the day you receive it and file it digitally. The 30 seconds this takes per receipt can save you hundreds of pounds in disallowed deductions.
+
+**Forgetting payments on account.** The January and July payments on account catch many sole traders off guard, especially in their second year of trading. Budget 25–30% of your profits for tax and set it aside monthly in a separate savings account.
+
+**Misunderstanding the VAT exemption.** As discussed above, the exemption applies to tuition, not to all your revenue. If you sell goods, hire out your space, or provide non-educational services, those may attract VAT.
+
+**Not using an accountant.** A good accountant costs £300–£800 per year for a sole trader or small limited company. They'll almost certainly save you more than their fee through legitimate tax planning, expense identification, and error prevention. Find one who works with small service businesses — ideally one who's worked with music schools, tutoring companies or similar.
+
+If you're just [starting a music school in the UK](/blog/starting-a-music-school-uk), getting your financial foundations right from day one saves enormous pain later. And if you're looking to [automate your invoicing](/blog/automate-music-school-invoicing), clean billing data feeds directly into clean tax records.
+
+---
+
+## Frequently Asked Questions
+
+### Do I need to register as self-employed to teach music privately?
+
+Yes. If you're earning money from teaching music — even a small amount alongside employment — you need to register as self-employed with HMRC. You can be employed and self-employed simultaneously. Register online within three months of starting self-employment to avoid a penalty.
+
+### Can I claim the cost of my own instrument as a business expense?
+
+If you use the instrument primarily for teaching, yes. An instrument used 80% for teaching and 20% for personal playing can have 80% of its cost claimed as a business expense. If the instrument is used exclusively for teaching, 100% is deductible. Keep a note of the split and be prepared to justify it if HMRC asks.
+
+### What records do I need if I pay teachers as self-employed contractors?
+
+Keep copies of all invoices from your self-employed teachers, records of payments made, and evidence that the arrangement genuinely meets the criteria for self-employment (not disguised employment). You may also need to report payments to subcontractors via the Construction Industry Scheme if applicable, though this is unusual for music schools. The key risk is IR35 — ensure the working arrangement genuinely reflects self-employment rather than de facto employment.
+
+### When should I switch from sole trader to limited company?
+
+The decision depends on your profit level, your personal tax situation, and your long-term plans. As a rough guide, if your annual profit consistently exceeds £35,000–£50,000, the tax savings from a limited company structure typically outweigh the additional administrative costs. Consult an accountant who can model both scenarios with your actual numbers.
+
+---
+
+*Part of our [guide to music school billing](/blog/guide-to-music-school-billing) series. Related: [Starting a Music School in the UK](/blog/starting-a-music-school-uk) · [Built for UK Music Schools](/uk)*`,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
