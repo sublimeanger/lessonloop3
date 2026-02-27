@@ -15,7 +15,7 @@ async function loginAndSave(
 ) {
   await page.goto('/login');
   await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill(password);
+  await page.locator('#password').fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL(`**${expectedPath}`, { timeout: 20_000 });
   await page.context().storageState({ path: savePath });
