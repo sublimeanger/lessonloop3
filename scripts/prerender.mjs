@@ -446,6 +446,22 @@ function copyStaticAssets() {
     console.log(`  ✓ Copied blog SVGs → blog/`);
   }
 
+  // 4b. Copy public/images/blog/ featured images → marketing-html/images/blog/
+  const blogImgSrc = join(publicDir, 'images', 'blog');
+  if (existsSync(blogImgSrc)) {
+    const blogImgDest = join(OUT_DIR, 'images', 'blog');
+    mkdirSync(blogImgDest, { recursive: true });
+    let imgCount = 0;
+    for (const file of readdirSync(blogImgSrc)) {
+      const ext = extname(file).toLowerCase();
+      if (['.png', '.jpg', '.jpeg', '.webp', '.svg'].includes(ext)) {
+        copyFileSync(join(blogImgSrc, file), join(blogImgDest, file));
+        imgCount++;
+      }
+    }
+    console.log(`  ✓ Copied ${imgCount} blog featured images → images/blog/`);
+  }
+
   // 5. Copy PWA icons if they exist
   for (const file of readdirSync(publicDir)) {
     if (file.startsWith('pwa-') && file.endsWith('.png')) {

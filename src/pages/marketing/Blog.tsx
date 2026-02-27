@@ -1,12 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { Clock, ArrowRight, BookOpen, Sparkles, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 import type { BlogPost } from "@/data/blogPosts";
+
+const POSTS_PER_PAGE = 9;
 
 const CATEGORIES = ["All", "Teaching Tips", "Product Updates", "Music Business", "Guides"] as const;
 
@@ -121,12 +132,71 @@ function PostCard({ post, index }: { post: BlogPost; index: number }) {
   );
 }
 
+function BlogPagination({ currentPage, totalPages, onPageChange }: { currentPage: number; totalPages: number; onPageChange: (page: number) => void }) {
+  const pages: (number | "ellipsis")[] = [];
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+      pages.push(i);
+    } else if (pages[pages.length - 1] !== "ellipsis") {
+      pages.push("ellipsis");
+    }
+  }
+
+  return (
+    <Pagination className="mt-4">
+      <PaginationContent>
+        <PaginationItem>
+          <PaginationPrevious
+            href="#"
+            onClick={(e) => { e.preventDefault(); if (currentPage > 1) onPageChange(currentPage - 1); }}
+            className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+          />
+        </PaginationItem>
+        {pages.map((page, i) =>
+          page === "ellipsis" ? (
+            <PaginationItem key={`e-${i}`}>
+              <PaginationEllipsis />
+            </PaginationItem>
+          ) : (
+            <PaginationItem key={page}>
+              <PaginationLink
+                href="#"
+                isActive={page === currentPage}
+                onClick={(e) => { e.preventDefault(); onPageChange(page); }}
+                className="cursor-pointer"
+              >
+                {page}
+              </PaginationLink>
+            </PaginationItem>
+          )
+        )}
+        <PaginationItem>
+          <PaginationNext
+            href="#"
+            onClick={(e) => { e.preventDefault(); if (currentPage < totalPages) onPageChange(currentPage + 1); }}
+            className={currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+          />
+        </PaginationItem>
+      </PaginationContent>
+    </Pagination>
+  );
+}
+
 export default function Blog() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentPage = Math.max(1, Number(searchParams.get("page")) || 1);
+
+  const canonical = currentPage > 1
+    ? `https://lessonloop.co.uk/blog?page=${currentPage}`
+    : "https://lessonloop.co.uk/blog";
+
   usePageMeta(
-    "Blog — Tips & Guides for UK Music Educators | LessonLoop",
+    currentPage > 1
+      ? `Blog — Page ${currentPage} | Tips & Guides for UK Music Educators | LessonLoop`
+      : "Blog — Tips & Guides for UK Music Educators | LessonLoop",
     "Expert tips, practical guides, and industry insights to help UK music teachers run thriving teaching practices. Scheduling, billing, and growth strategies.",
     {
-      canonical: "https://lessonloop.co.uk/blog",
+      canonical,
       ogTitle: "Blog — Tips & Guides for UK Music Educators",
       ogDescription: "Expert tips, practical guides, and industry insights for UK music teachers.",
       ogType: "website",
@@ -158,8 +228,63 @@ export default function Blog() {
     return matchesCategory && matchesSearch;
   });
 
-  const featured = filteredPosts[0];
-  const remaining = filteredPosts.slice(1);
+  const totalPages = Math.max(1, Math.ceil(filteredPosts.length / POSTS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIdx = (safePage - 1) * POSTS_PER_PAGE;
+  const pagePosts = filteredPosts.slice(startIdx, startIdx + POSTS_PER_PAGE);
+
+  const featured = safePage === 1 ? pagePosts[0] : undefined;
+  const remaining = safePage === 1 ? pagePosts.slice(1) : pagePosts;
+
+  const goToPage = useCallback((page: number) => {
+    if (page <= 1) {
+      searchParams.delete("page");
+    } else {
+      searchParams.set("page", String(page));
+    }
+    setSearchParams(searchParams, { replace: true });
+    document.getElementById("blog-posts")?.scrollIntoView({ behavior: "smooth" });
+  }, [searchParams, setSearchParams]);
+
+  // Reset to page 1 when filters/search change
+  useEffect(() => {
+    if (currentPage > 1) {
+      searchParams.delete("page");
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategory, searchQuery]);
+
+  // Add rel="next" / rel="prev" for SEO
+  useEffect(() => {
+    const head = document.head;
+    const prevLink = head.querySelector('link[rel="prev"]');
+    const nextLink = head.querySelector('link[rel="next"]');
+    if (prevLink) head.removeChild(prevLink);
+    if (nextLink) head.removeChild(nextLink);
+
+    if (safePage > 1) {
+      const prev = document.createElement("link");
+      prev.rel = "prev";
+      prev.href = safePage === 2
+        ? "https://lessonloop.co.uk/blog"
+        : `https://lessonloop.co.uk/blog?page=${safePage - 1}`;
+      head.appendChild(prev);
+    }
+    if (safePage < totalPages) {
+      const next = document.createElement("link");
+      next.rel = "next";
+      next.href = `https://lessonloop.co.uk/blog?page=${safePage + 1}`;
+      head.appendChild(next);
+    }
+
+    return () => {
+      const p = head.querySelector('link[rel="prev"]');
+      const n = head.querySelector('link[rel="next"]');
+      if (p) head.removeChild(p);
+      if (n) head.removeChild(n);
+    };
+  }, [safePage, totalPages]);
 
   return (
     <MarketingLayout>
@@ -239,7 +364,7 @@ export default function Blog() {
       </section>
 
       {/* ═══ POSTS ═══ */}
-      <section className="py-16 lg:py-24 bg-background">
+      <section id="blog-posts" className="py-16 lg:py-24 bg-background scroll-mt-28">
         <div className="container mx-auto px-5 sm:px-6 lg:px-8">
           {isLoading ? (
             <div className="space-y-12">
@@ -295,6 +420,11 @@ export default function Blog() {
                     <PostCard key={post.slug} post={post} index={index} />
                   ))}
                 </div>
+              )}
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <BlogPagination currentPage={safePage} totalPages={totalPages} onPageChange={goToPage} />
               )}
             </div>
           )}
