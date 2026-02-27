@@ -1400,6 +1400,125 @@ Yes, and you should — provided your policy states this clearly. A no-show is a
 
 Two to three per student per term is the standard range. This covers genuine illness and the occasional scheduling conflict without creating an unmanageable backlog. If a student regularly exceeds this, the issue is usually that their lesson slot doesn't work for the family — and the better conversation is about finding a time that does.`,
   },
+  {
+    slug: "group-vs-private-music-lessons-scheduling",
+    title: "Group vs Private Music Lessons: Scheduling Best Practices",
+    excerpt: "Running both group and private lessons? Learn how to schedule them efficiently, set the right ratios, and maximise teacher utilisation across your school.",
+    date: "",
+    category: "Teaching Tips",
+    readTime: "6 min",
+    author: {
+      name: "LessonLoop",
+      role: "Music School Management Platform",
+    },
+    featuredImage: "/images/blog/group-vs-private-music-lessons.jpg",
+    tags: ["group lessons", "private lessons", "scheduling", "music school", "teacher utilisation", "UK"],
+    relatedPosts: ["guide-to-music-lesson-scheduling", "music-school-pricing-strategies", "music-lesson-cancellation-policy"],
+    content: `Most music schools start with one-to-one lessons. A teacher, a student, 30 minutes, every week. It's the foundation of private music education and it works brilliantly for focused, personalised instruction.
+
+But the moment you add group lessons to the mix — theory classes, ensemble rehearsals, beginner workshops, band sessions, shared instrument classes — the scheduling complexity multiplies. Group lessons follow fundamentally different rules than individual lessons, and getting the two to coexist in a single timetable takes deliberate planning.
+
+This isn't just a logistical question. The balance between group and private teaching affects your revenue per hour, your teacher utilisation, your room allocation, your student experience, and your retention. Get it right and group lessons become your most profitable offering. Get it wrong and they drain resources while disrupting your core one-to-one programme.
+
+## The economics of group vs private
+
+Understanding the financial dynamics shapes how you schedule each type.
+
+**Private lessons** generate the highest revenue per student per hour. A 30-minute lesson at £22 equates to £44/hour from one room. The teacher delivers focused, individualised instruction. The limitation is that it's one-to-one — your revenue from that room and teacher is capped at one student's fee.
+
+**Group lessons** generate lower revenue per student but higher revenue per teaching hour. A theory class with 6 students at £10 each for 60 minutes generates £60/hour from one room — 36% more than a private lesson despite the lower per-student fee. A beginner guitar workshop with 4 students at £12 each for 45 minutes generates £64/hour equivalent.
+
+The sweet spot for most schools is a core programme of private lessons (the primary revenue stream and the service parents specifically seek out) supplemented by group offerings that increase revenue per teaching hour, create community among students, and build skills (theory, ensemble playing, performance confidence) that private lessons alone don't develop.
+
+**A common ratio for UK music schools is 70–80% private lessons and 20–30% group sessions by teaching hours.** Schools with strong ensemble and workshop programmes may push this to 60/40.
+
+## Scheduling private lessons: the fundamentals
+
+Private lesson scheduling is relatively straightforward once you have the basics in place (see our [full scheduling guide](/blog/guide-to-music-lesson-scheduling) for the complete process):
+
+**Fixed weekly slots** are the foundation. The same student, same teacher, same time, same day, every week of the term.
+
+**30-minute blocks with 5-minute buffers** are the standard unit. Build your timetable grid on 35-minute intervals.
+
+**Teacher-student continuity** matters enormously. Students build a relationship with their teacher. Avoid reassigning students between teachers unless there's a strong reason (teacher departure, schedule incompatibility, or a pedagogical need).
+
+**Peak demand hours** for children's lessons are 3:30pm–6:30pm on weekdays and 9am–1pm on Saturdays. These are your most valuable slots — fill them first and price them accordingly.
+
+## Scheduling group lessons: different rules apply
+
+Group lessons introduce variables that private lessons don't have. Here's how to handle them:
+
+### Choose the right time slots
+
+Group lessons work best at the edges of your private lesson schedule — before the afternoon private lesson rush starts or after it ends. Common slots include:
+
+- **Saturday mornings** for theory classes and beginner workshops (parents appreciate the weekend convenience and it fills time that's often underused)
+- **Weekday 5:30pm–6:30pm** for ensemble rehearsals (after the core private lesson block)
+- **Weekday 3:00pm–3:45pm** for young beginner groups (before the main afternoon rush begins)
+- **Sunday mornings** for band sessions or performance workshops
+
+Avoid scheduling group lessons in your peak private lesson hours. Those slots generate more revenue as one-to-one lessons unless your group fees are high enough to justify the trade-off.
+
+### Set minimum and maximum participant counts
+
+Every group lesson needs a viability threshold and a quality ceiling.
+
+**Minimum participants:** 3 is the typical floor for a small group class, 4–5 for an ensemble. Below the minimum, the class isn't financially viable (a "group" of 2 at £10 each generates £20/hour — less than half of a private lesson). Decide upfront: if enrolment doesn't reach the minimum by a set date before term starts, the class is cancelled and enrolled students are offered alternatives.
+
+**Maximum participants:** This depends on the activity. Theory classes can accommodate 6–10 students. Beginner instrument groups work best at 3–5 (beyond that, individual attention suffers). Ensemble rehearsals can handle 8–15+ depending on the ensemble type. Set the cap based on what delivers good educational outcomes, not on what fills the room.
+
+### Coordinate with individual lesson schedules
+
+If a student takes both a private lesson and a group class, scheduling them on the same day and in adjacent time slots dramatically improves attendance and reduces the burden on families. A student with a 4:00pm piano lesson and a 5:00pm theory class at the same venue requires one trip. A student with piano on Tuesday and theory on Thursday requires two.
+
+When building your timetable, identify which students are enrolled in both private and group lessons, and try to cluster their activities. This isn't always possible, but when it works, attendance in group sessions improves noticeably.
+
+### Handle attendance differently
+
+Group lessons don't offer make-ups — the class runs regardless of individual absences, and the curriculum progresses each week. This needs to be explicit in your terms: "Group class fees are non-refundable for individual absences. Make-up sessions are not offered for missed group classes."
+
+This is fair because the group still runs and the teaching resource is still consumed. Parents generally accept it, provided it's communicated at enrolment rather than after the first missed session.
+
+Track group attendance anyway, even though make-ups aren't offered. Declining attendance in a group class is a signal — either the timing isn't working, the class isn't engaging, or students are losing interest. Catching this pattern early lets you adjust before the class becomes unviable.
+
+## Room allocation for mixed timetables
+
+Group lessons need more space than private lessons. A room that comfortably holds a teacher and one piano student might not fit six students with theory books and manuscript paper.
+
+When planning your room allocation:
+
+**Assign your largest room to group lessons** and your smaller rooms to private lessons. This sounds obvious but it's often the reverse — the largest room sits empty during private lesson hours because it's "reserved" for the weekly ensemble rehearsal.
+
+**Time-share larger rooms.** Use the big room for private lessons during peak hours and switch it to group use for scheduled classes. This requires clear changeover time and a setup process (chairs arranged, whiteboards cleared), but it maximises your space utilisation.
+
+**Account for instrument storage and setup.** A drum kit ensemble needs the room set up beforehand. A string quartet needs chairs without desks. A theory class needs tables. If the same room hosts different group types on different days, the changeover logistics need to be planned.
+
+For schools operating across [multiple locations](/blog/multi-location-music-school-scheduling), group lessons are best concentrated at your largest or most accessible venue rather than duplicated across sites — unless student numbers at each site justify it.
+
+## Making the decision: when to add group lessons
+
+Not every music school needs group lessons. If you're a solo piano teacher with a full diary, adding group classes creates complexity without clear benefit. But if you're running a [multi-teacher academy](/for/music-academies) and looking to increase revenue per teaching hour, build student community, or offer a broader curriculum, group lessons are a powerful tool.
+
+Add group lessons when you have at least 30–40 individual students (enough to draw group participants from), a room that accommodates 4+ students, and a teacher confident in group instruction (it's a genuinely different skill from one-to-one teaching).
+
+Start with one group offering — a Saturday morning theory class is the easiest to fill and [schedule](/features/scheduling) — measure the demand and economics, and expand from there.
+
+---
+
+## Frequently Asked Questions
+
+### How much should I charge for group music lessons?
+
+Price group lessons at 40–60% of your equivalent private lesson rate per student. If a 30-minute private lesson costs £22, a 60-minute group theory class might cost £10–£13 per student. The lower per-student fee is offset by the higher per-hour revenue (6 students × £10 = £60/hour vs £44/hour for private lessons). Ensure the price reflects the value — theory knowledge directly supports instrument progress and exam preparation.
+
+### What's the ideal group size for music lessons?
+
+For instrument-based group lessons (beginner guitar, keyboard groups), 3–4 students is ideal. For theory and musicianship classes, 5–8 works well. For ensemble rehearsals and band sessions, 6–15 depending on the type. The upper limit is always defined by the quality of instruction — when the teacher can no longer give meaningful attention to each participant, the group is too large.
+
+### Can beginners start in group lessons rather than private lessons?
+
+Yes, and many schools use beginner group lessons as an entry point. A 6-week "Introduction to Piano" class for 4 students is lower commitment than signing up for termly individual lessons, and it gives students (and parents) a chance to gauge interest before investing in one-to-one teaching. Schools that offer this pathway often see 50–70% of group beginners convert to private lesson enrolment.`,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
