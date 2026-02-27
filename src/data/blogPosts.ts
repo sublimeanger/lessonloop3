@@ -3948,6 +3948,140 @@ Most UK music schools deliver 33–36 teaching weeks per year across three terms
 
 *Part of our [guide to UK music education](/blog/guide-to-music-education-uk) series. Related: [Scheduling Guide](/blog/guide-to-music-lesson-scheduling) · [Billing Guide](/blog/guide-to-music-school-billing)*`,
   },
+  {
+    slug: "switching-music-school-software",
+    title: "How to Switch Music School Software Without Losing Your Mind",
+    excerpt: "Switching music school software doesn't have to be painful. Follow this step-by-step migration guide covering data, timing, teacher onboarding and parent communication.",
+    date: "",
+    category: "Guides",
+    readTime: "7 min",
+    author: {
+      name: "LessonLoop",
+      role: "Music School Management Platform",
+    },
+    featuredImage: "/images/blog/switching-music-school-software.jpg",
+    tags: ["software migration", "music school software", "data migration", "switching platforms", "onboarding"],
+    relatedPosts: ["guide-to-music-education-uk", "music-school-spreadsheets-hidden-cost", "gdpr-music-schools-uk"],
+    content: `You know you need to switch. Your current system doesn't do what you need, the workarounds have multiplied into a fragile web of spreadsheets and manual processes, and every week brings another hour of admin that better software would eliminate. Or maybe you've outgrown spreadsheets entirely and you're ready for a proper management platform.
+
+The thing stopping you isn't the decision. It's the fear of the transition — the data migration, the teacher retraining, the parent communication, the inevitable period of chaos when the old system is gone and the new one isn't fully running.
+
+That fear is understandable. It's also manageable. Thousands of music schools have switched software successfully, and the ones who do it well follow a predictable pattern. Here's the playbook.
+
+## When to switch (timing matters)
+
+The best time to switch music school software is between terms. Specifically, during the summer break or the Christmas break — the two longest gaps in the UK teaching calendar.
+
+<span class="font-semibold">Why between terms?</span>
+
+- No active lessons to disrupt during the migration
+- New term = new invoices, so you start fresh in the new system rather than migrating mid-cycle
+- Teachers and parents are mentally prepared for "new term, new things"
+- You have 2–5 weeks to set up, test and troubleshoot before lessons resume
+
+<span class="font-semibold">The worst time to switch</span> is mid-term. Teachers are in the middle of their schedules, invoices are partially paid, lesson histories are accumulating, and any disruption creates visible friction for parents. If you absolutely must switch mid-term, do it over a half-term break and communicate obsessively.
+
+<span class="font-semibold">Plan the timeline backwards.</span> If your autumn term starts on 4 September, aim to have the new system fully operational by 25 August. That means data migration in early-to-mid August, teacher training in the third week of August, and parent portal invitations sent the last week of August. Work backwards from your term start date and give yourself more buffer than you think you need.
+
+## Step 1: Export everything from the old system
+
+Before you touch the new platform, extract all your data from the existing one. This is your insurance policy — even if the migration goes perfectly, having a complete export means nothing is permanently lost.
+
+<span class="font-semibold">What to export:</span>
+
+- <span class="font-semibold">Student records:</span> Names, contact details, instruments, current grade levels, lesson day/time, teacher assignments, medical notes, start dates
+- <span class="font-semibold">Parent/guardian records:</span> Names, email addresses, phone numbers, billing addresses, any special arrangements
+- <span class="font-semibold">Teacher records:</span> Names, contact details, teaching schedule, pay rates, DBS check dates
+- <span class="font-semibold">Financial records:</span> Invoices (paid and outstanding), payment history, credits, outstanding balances. You need this for HMRC continuity — 6 years of financial records is the legal minimum
+- <span class="font-semibold">Lesson history:</span> Lesson notes, attendance records, exam history. This is valuable for continuity but may not import cleanly into every new system
+- <span class="font-semibold">Documents:</span> Any contracts, policies, or forms stored in the old system
+
+Most music school software offers a CSV export. If it doesn't, contact the provider and exercise your [GDPR data portability rights](/blog/gdpr-music-schools-uk) — they're legally obligated to provide your data in a usable format.
+
+If you're migrating from spreadsheets, your data is already in CSV or Excel format. The challenge isn't extraction — it's cleaning. Spreadsheet data tends to be inconsistent (different date formats, missing fields, duplicate entries). Spend time cleaning the data before importing it. See [the real cost of spreadsheets](/blog/music-school-spreadsheets-hidden-cost) for more on why this matters.
+
+## Step 2: Set up the new system
+
+With your data exported and cleaned, set up the new platform in this order:
+
+<span class="font-semibold">Account and school settings first.</span> Business name, address, term dates, billing cycle, payment methods, timezone, currency. In a UK-focused platform like [LessonLoop](/features), most of these default correctly — GBP, UK date format, termly billing structure.
+
+<span class="font-semibold">Teachers next.</span> Create teacher profiles with their schedules, instruments, pay rates and availability. This determines what the timetable looks like before any students are added.
+
+<span class="font-semibold">Then students and families.</span> Import student records, link them to parents/guardians, and assign them to teachers and lesson slots. This is the most time-consuming step if done manually. Many platforms offer CSV import — match your exported columns to the system's fields and import in bulk.
+
+<span class="font-semibold">Then billing setup.</span> Set your [term dates](/blog/music-school-term-dates-planning), lesson counts per student, and rates. Generate the first term's invoices as a test — check that the amounts, dates and student names are correct before sending anything to parents.
+
+<span class="font-semibold">Finally, integrations.</span> Connect your payment processor (Stripe, typically), email system, and any other tools. Test a payment flow end-to-end: generate an invoice, send it, click the payment link, process a test payment, and verify it reconciles in the system.
+
+## Step 3: Train your teachers
+
+Teachers are the daily users of your system. If they can't navigate it confidently, the system fails regardless of how good it is.
+
+<span class="font-semibold">Keep training focused and practical.</span> Teachers don't need to understand billing, admin settings or school-wide reports. They need to know how to view their schedule, write and post lesson notes, record attendance, see student information (contact details, current grade, lesson history), and send messages to parents.
+
+<span class="font-semibold">Run a 30-minute walkthrough</span> — either in person, via video call, or as a recorded screen share they can rewatch. Walk through a typical teaching day: "You arrive, open the app, here's your [schedule](/features/scheduling). You teach Oliver — here's how you write a lesson note. You mark Sophie as absent — here's how attendance works. A parent messages you about rescheduling — here's the messaging system."
+
+<span class="font-semibold">Give teachers access 1–2 weeks before the term starts</span> so they can explore the system at their own pace. Most teachers will be comfortable after 2–3 uses.
+
+## Step 4: Communicate with parents
+
+The parent communication around a software switch should achieve three things: explain what's changing, reassure them that it's an improvement, and give them clear instructions for the new system.
+
+<span class="font-semibold">Send one email, 1–2 weeks before the term starts:</span>
+
+Subject: "New parent portal for [term] — your login details"
+
+Content: We're upgrading our school management system to give you a better experience. From [date], you'll have a new parent portal where you can see your child's lesson schedule, read lesson notes after each session, view and pay invoices, message us directly, and track practice progress.
+
+Your login details are below. Please log in before [date] to check your details are correct.
+
+<span class="font-semibold">Keep the tone positive and benefits-focused.</span> Parents don't care about your admin efficiency — they care about their experience. Frame the switch in terms of what improves for them: easier access to information, better communication, simpler payments.
+
+<span class="font-semibold">Expect 5–10% of parents to need help logging in.</span> This is normal. A brief phone call or email walking them through the first login resolves it. Within a week of the term starting, adoption stabilises.
+
+## Step 5: Run both systems in parallel (briefly)
+
+For the first 2–4 weeks of the new term, keep the old system accessible (read-only) in case you need to reference historical data that didn't migrate cleanly. Don't actively use it — all new data goes into the new system from day one — but having the old system available as a reference prevents panic if something is missing.
+
+After a month, once you're confident that everything has transferred and the new system is running smoothly, cancel the old subscription and archive your data export securely.
+
+## Common migration pitfalls (and how to avoid them)
+
+<span class="font-semibold">Trying to migrate mid-term.</span> The complexity is exponentially higher. Invoices are partially paid, lesson counts are mid-cycle, and any disruption is immediately visible to parents. Wait for a term break.
+
+<span class="font-semibold">Not cleaning data before import.</span> Duplicate student records, inconsistent date formats, missing email addresses — all of these create problems in the new system that are harder to fix after import than before. Spend the time cleaning your CSV before uploading.
+
+<span class="font-semibold">Under-communicating with parents.</span> If a parent logs into a new system they weren't told about, their first reaction is confusion, not delight. Communicate early, clearly and once. Over-communicating (multiple emails, repeated reminders) is unnecessary and creates its own noise.
+
+<span class="font-semibold">Not testing billing end-to-end.</span> Generate a test invoice, send it to yourself, click the payment link, process a payment, and verify the reconciliation. Do this before sending real invoices to real parents. A billing error in the first week undermines confidence in the entire system.
+
+<span class="font-semibold">Expecting perfection on day one.</span> The first week will have rough edges — a missing lesson note, a student assigned to the wrong time slot, a parent who can't log in. This is normal. Fix issues quickly, communicate proactively, and by week three, the system will feel like it's always been there.
+
+---
+
+## Frequently Asked Questions
+
+### How long does a typical music school software migration take?
+
+For a school with 50–100 students, allow 2–3 weeks from starting setup to going live. Week 1: data export, cleaning, and system setup. Week 2: student/teacher import, billing configuration, and testing. Week 3: teacher training, parent communication, and go-live. Larger schools (200+ students) should allow 4–5 weeks.
+
+### Will I lose my lesson history and student records?
+
+Not if you export them properly. Most platforms export to CSV, which can be archived and referenced even if it doesn't import into the new system's lesson notes feature. Financial records should always be exported and kept for 6 years regardless of the platform switch. Some systems offer direct migration support — ask both your old and new providers.
+
+### What if my teachers resist the change?
+
+Resistance usually stems from unfamiliarity, not genuine objection. A 30-minute training session and a week of access before go-live resolves most resistance. Focus on showing teachers how the new system makes their life easier (faster lesson notes, easier schedule access, less WhatsApp messaging). The teachers who initially resist often become the strongest advocates once they see the benefits.
+
+### Can I switch from spreadsheets to software without losing data?
+
+Yes — and it's actually simpler than switching between platforms, because you already have your data in a structured format (rows and columns). Clean the spreadsheet, map columns to the platform's import fields, and import. The biggest challenge isn't the data migration — it's changing your own habits from "open the spreadsheet" to "open the app." For the full case for making the switch, see [the real cost of spreadsheets](/blog/music-school-spreadsheets-hidden-cost).
+
+---
+
+*Part of our [guide to UK music education](/blog/guide-to-music-education-uk) series. Related: [LessonLoop vs My Music Staff](/compare/lessonloop-vs-my-music-staff) · [LessonLoop Features](/features)*`,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
