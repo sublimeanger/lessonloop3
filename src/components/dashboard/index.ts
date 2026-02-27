@@ -7,3 +7,4 @@ export { UrgentActionsBar, UrgentActionsBadge } from './UrgentActionsBar';
 export { LoopAssistWidget } from './LoopAssistWidget';
 export { LoopAssistAlerts } from './LoopAssistAlerts';
 export { CalendarSyncBanner } from './CalendarSyncBanner';
+export { ContinuationWidget } from './ContinuationWidget';

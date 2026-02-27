@@ -25,6 +25,7 @@ import {
   LoopAssistWidget,
   LoopAssistAlerts,
   CalendarSyncBanner,
+  ContinuationWidget,
 } from '@/components/dashboard';
 import {
   Calendar, Users, Receipt, Clock, TrendingUp, PoundSterling,
@@ -185,6 +186,12 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
           <LoopAssistWidget />
         </motion.div>
 
+        <motion.div variants={itemVariants}>
+          <SectionErrorBoundary name="Continuation Widget">
+            <ContinuationWidget />
+          </SectionErrorBoundary>
+        </motion.div>
+
         {/* Stats Grid — 6 cards, 2 cols mobile, 3 cols desktop */}
         <motion.div variants={itemVariants}>
           {isLoading ? (
@@ -290,6 +297,12 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
 
         <motion.div variants={itemVariants}>
           <LoopAssistWidget />
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <SectionErrorBoundary name="Continuation Widget">
+            <ContinuationWidget />
+          </SectionErrorBoundary>
         </motion.div>
 
         {/* Stats Grid — 2 cols mobile, 3 cols desktop */}
