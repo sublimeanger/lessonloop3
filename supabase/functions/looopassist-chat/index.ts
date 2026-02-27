@@ -447,6 +447,26 @@ async function buildStudentContext(supabase: SupabaseClient, orgId: string, stud
       const totalCredit = credits.reduce((sum: number, c: { credit_value_minor: number }) => sum + c.credit_value_minor, 0);
       context += `\n\nAvailable Make-up Credits: ${credits.length} (${fmtCurrency(totalCredit)} value)`;
     }
+
+    // Term adjustments
+    const { data: adjustments } = await supabase
+      .from("term_adjustments")
+      .select("adjustment_type, effective_date, lessons_difference, adjustment_amount_minor, status, terms:term_id(name)")
+      .eq("student_id", studentId)
+      .eq("status", "confirmed")
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    if (adjustments && adjustments.length > 0) {
+      context += `\n\nTerm Adjustments:`;
+      adjustments.forEach((a: any) => {
+        const type = a.adjustment_type === "withdrawal" ? "Withdrawal" : "Day Change";
+        const termName = a.terms?.name ?? "Unknown term";
+        const amount = Math.abs(a.adjustment_amount_minor);
+        const direction = a.adjustment_amount_minor > 0 ? "credit" : a.adjustment_amount_minor < 0 ? "charge" : "no change";
+        context += `\n  - ${type} on ${a.effective_date} (${termName}): ${a.lessons_difference} lessons, ${fmtCurrency(amount)} ${direction}`;
+      });
+    }
   }
 
   // Practice assignments — hidden from finance role
@@ -501,7 +521,7 @@ async function executeToolCall(
     new Intl.NumberFormat('en-GB', { style: 'currency', currency: currencyCode }).format(minor / 100);
 
   // Role-based tool access restrictions
-  const TEACHER_BLOCKED_TOOLS = ["search_invoices", "get_revenue_summary"];
+  const TEACHER_BLOCKED_TOOLS = ["search_invoices", "get_revenue_summary", "get_term_adjustments"];
   const FINANCE_BLOCKED_TOOLS = ["get_practice_history"];
 
   if (userRole === "teacher" && TEACHER_BLOCKED_TOOLS.includes(toolName)) {
@@ -644,7 +664,7 @@ async function executeToolCall(
       let query = supabase
         .from("invoices")
         .select(`
-          id, invoice_number, status, total_minor, due_date,
+          id, invoice_number, status, total_minor, due_date, is_credit_note,
           guardians:payer_guardian_id(id, full_name, email),
           students:payer_student_id(id, first_name, last_name)
         `)
@@ -654,6 +674,7 @@ async function executeToolCall(
       if (toolInput.start_date) query = query.gte("due_date", toolInput.start_date);
       if (toolInput.end_date) query = query.lte("due_date", toolInput.end_date);
       if (toolInput.min_amount) query = query.gte("total_minor", toolInput.min_amount);
+      if (toolInput.credit_notes_only) query = query.eq("is_credit_note", true);
       query = query.order("due_date", { ascending: true }).limit(toolInput.limit || 20);
 
       const { data, error } = await query;
@@ -664,7 +685,8 @@ async function executeToolCall(
       data.forEach((inv: any) => {
         const payer = inv.guardians?.full_name ||
           (inv.students ? `${inv.students.first_name} ${inv.students.last_name}` : "Unknown");
-        result += `\n- [Invoice:${inv.invoice_number}] ${inv.status} — ${fmtCurrency(inv.total_minor)} due ${inv.due_date} (${payer})`;
+        const creditTag = inv.is_credit_note ? " [CREDIT NOTE]" : "";
+        result += `\n- [Invoice:${inv.invoice_number}] ${inv.status}${creditTag} — ${fmtCurrency(inv.total_minor)} due ${inv.due_date} (${payer})`;
       });
       return result;
     }
@@ -922,6 +944,50 @@ async function executeToolCall(
       return result;
     }
 
+    case "get_term_adjustments": {
+      if (userRole === "teacher") return "You don't have access to term adjustment data.";
+
+      const { data, error } = await supabase
+        .from("term_adjustments")
+        .select(`
+          id, adjustment_type, effective_date, status,
+          original_day_of_week, original_time, new_day_of_week, new_time,
+          original_lessons_remaining, new_lessons_count, lessons_difference,
+          lesson_rate_minor, adjustment_amount_minor, currency_code,
+          notes, confirmed_at,
+          terms:term_id(name),
+          credit_note:credit_note_invoice_id(invoice_number, total_minor)
+        `)
+        .eq("student_id", toolInput.student_id)
+        .eq("status", "confirmed")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (error) return `Error: ${error.message}`;
+      if (!data || data.length === 0) return "No term adjustments found for this student.";
+
+      let result = `Found ${data.length} term adjustment(s):\n`;
+      data.forEach((a: any) => {
+        const type = a.adjustment_type === "withdrawal" ? "Withdrawal" : "Day Change";
+        const termName = a.terms?.name ?? "Unknown term";
+        result += `\n- **${type}** (${termName}) — effective ${a.effective_date}`;
+        if (a.adjustment_type === "day_change") {
+          result += `\n  Changed from ${a.original_day_of_week} ${a.original_time ?? ""} to ${a.new_day_of_week} ${a.new_time ?? ""}`;
+        }
+        result += `\n  ${a.original_lessons_remaining} lessons cancelled`;
+        if (a.new_lessons_count) result += `, ${a.new_lessons_count} new lessons created`;
+        result += ` (${a.lessons_difference} net difference)`;
+        const amount = Math.abs(a.adjustment_amount_minor);
+        const direction = a.adjustment_amount_minor > 0 ? "credit to parent" : a.adjustment_amount_minor < 0 ? "additional charge" : "no financial change";
+        result += `\n  Financial: ${fmtCurrency(amount)} ${direction}`;
+        if (a.credit_note) {
+          result += ` — [Invoice:${a.credit_note.invoice_number}]`;
+        }
+        if (a.notes) result += `\n  Notes: ${a.notes.slice(0, 200)}`;
+      });
+      return result;
+    }
+
     default:
       return `Unknown tool: ${toolName}`;
   }
@@ -967,6 +1033,7 @@ You have tools to dynamically query the database. Use them proactively:
 - When asked about room availability, use check_room_availability
 - When asked about attendance trends or patterns, use get_attendance_summary
 - When asked about a student's practice, use get_practice_history
+- When asked about term adjustments, withdrawals, or credit notes for a student, use get_term_adjustments
 
 You also have pre-loaded context with a summary of the academy's current state (overdue invoices, upcoming lessons, active students, etc.). Use the pre-loaded context for quick overview questions, and use tools for specific or detailed queries.
 
@@ -994,12 +1061,20 @@ LESSONLOOP NAVIGATION (use these to direct users):
 - Register: /register — Daily attendance marking
 - Practice: /practice — Student practice logs and streak tracking
 - Resources: /resources — Teaching materials library
-- Invoices: /invoices — Create, send, track payments, billing runs
+- Invoices: /invoices — Create, send, track payments, billing runs. Credit notes (from term adjustments) appear here with a blue badge.
 - Reports: /reports — Revenue, outstanding, cancellations, payroll, lessons
 - Locations: /locations — Venues and rooms
 - Messages: /messages — Communication log with parents and guardians
 - Settings: /settings — Rate cards, branding, team management, billing configuration
 - Parent Portal: /portal — Where parents view schedules, invoices, and practice logs
+- Term Adjustments: Student Detail > Lessons tab > "Term Adjustment" button, OR Calendar > click recurring lesson > "Adjust Term" button. Handles mid-term withdrawals and day/time changes with pro-rata credit notes.
+
+BILLING FEATURES YOU SHOULD KNOW ABOUT:
+- Billing Runs: Generate invoices for a date range (/invoices > New Billing Run)
+- Payment Plans: Split an invoice into installments (Invoice Detail > "Set Up Payment Plan" button)
+- Refunds: Process refunds on paid invoices via Stripe or manual recording (Invoice Detail > "Refund" button)
+- Credit Notes: Auto-generated negative invoices from term adjustments. Shown with a blue "Credit Note" badge in the invoice list, amounts in green.
+- Term Adjustments: 3-step wizard for mid-term withdrawals (pro-rata credit notes) and day/time changes (cancel old lessons, create new series, generate credit note or supplementary invoice). Access via Student > Lessons tab or Calendar > recurring lesson detail.
 
 ENTITY CITATIONS — ALWAYS use these formats:
 - For invoices: [Invoice:LL-2026-XXXXX] — use the exact invoice number
@@ -1035,6 +1110,11 @@ For simple read-only queries, respond immediately without an action block:
 - "What happened in [student]'s last lesson?" — reference the lesson notes
 - "Who teaches piano?" — list teachers with piano in their instruments
 - "Which students are struggling?" — flag students with declining attendance, no practice, or overdue invoices
+- "How do I withdraw a student mid-term?" — explain the Term Adjustment wizard on the student's Lessons tab
+- "Can I change a student's lesson day?" — explain the day change flow via the Term Adjustment wizard (Student > Lessons tab or Calendar > recurring lesson > "Adjust Term")
+- "What is a credit note?" — explain it's an auto-generated negative invoice created by a term adjustment, visible in the invoice list with a blue badge
+- "How do I set up a payment plan?" — explain the Payment Plan feature on individual invoice detail pages (click invoice > "Set Up Payment Plan")
+- "How do I refund a payment?" — explain the Refund button on paid invoice detail pages
 
 Only use action proposals for write operations that need confirmation.
 
@@ -1112,6 +1192,16 @@ ACTION TYPES AND PARAMS:
     entities: List of lessons that will be completed
 
 IMPORTANT: Only include action blocks when the user explicitly requests an action. For questions or information requests, respond normally without action blocks.
+
+TERM ADJUSTMENTS — GUIDANCE ONLY (no action block):
+When a user asks about mid-term withdrawals, day/time changes, pro-rata refunds, or credit notes, do NOT propose an action. The Term Adjustment wizard requires a multi-step review with financial preview that cannot be done via chat. Instead, guide them:
+- From the student's page: Lessons tab > "Term Adjustment" button
+- From the calendar: Click the recurring lesson > "Adjust Term" button
+The wizard handles lesson cancellation, new lesson creation, closure date awareness, and credit note / supplementary invoice generation automatically.
+
+REFUNDS & PAYMENT PLANS — GUIDANCE ONLY (no action block):
+When a user asks about refunding a payment, direct them to the invoice detail page > "Refund" button (available on paid invoices).
+When a user asks about payment plans or installments, direct them to the invoice detail page > "Set Up Payment Plan" button (available on unpaid invoices).
 
 MULTI-ACTION SUPPORT:
 When the user's request requires MULTIPLE actions (e.g., "email both parents", "draft emails to the parents of absent students"), output MULTIPLE separate action blocks — one per action. Each block is independent and will be shown as a separate confirmation card.
@@ -1219,7 +1309,7 @@ const TOOLS = [
   },
   {
     name: "search_invoices",
-    description: "Search invoices by status, date range, payer, or amount. Use for billing queries, finding specific invoices, or financial analysis.",
+    description: "Search invoices by status, date range, payer, or amount. Use for billing queries, finding specific invoices, or financial analysis. Can also filter to show only credit notes.",
     input_schema: {
       type: "object",
       properties: {
@@ -1228,6 +1318,7 @@ const TOOLS = [
         end_date: { type: "string", description: "Invoices with due_date before this (YYYY-MM-DD)" },
         payer_name: { type: "string", description: "Search by payer name (guardian or student)" },
         min_amount: { type: "number", description: "Minimum total_minor in pence" },
+        credit_notes_only: { type: "boolean", description: "If true, only return credit notes (from term adjustments)" },
         limit: { type: "number", description: "Max results. Default: 20" }
       },
       required: []
@@ -1306,6 +1397,17 @@ const TOOLS = [
         student_id: { type: "string", description: "The student's UUID" },
         start_date: { type: "string", description: "Start date for log range (YYYY-MM-DD)" },
         end_date: { type: "string", description: "End date for log range (YYYY-MM-DD)" }
+      },
+      required: ["student_id"]
+    }
+  },
+  {
+    name: "get_term_adjustments",
+    description: "Get term adjustment history for a student. Shows mid-term withdrawals and day/time changes with financial details and linked credit notes. Use when asked about a student's term adjustments, withdrawals, or credit notes.",
+    input_schema: {
+      type: "object",
+      properties: {
+        student_id: { type: "string", description: "The student's UUID" }
       },
       required: ["student_id"]
     }
@@ -1677,6 +1779,7 @@ AI tier: ${isPro ? "Pro (Sonnet)" : "Standard (Haiku)"}`
       get_attendance_summary: "Analysing attendance...",
       get_at_risk_students: "Identifying at-risk students...",
       get_practice_history: "Loading practice history...",
+      get_term_adjustments: "Checking term adjustments...",
     };
 
     // Use a TransformStream so we can push progress events during tool use

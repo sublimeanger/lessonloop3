@@ -1416,6 +1416,73 @@ Contact support with:
     `,
     keywords: ['login', 'password', 'forgot', 'access', 'locked', 'browser'],
   },
+  {
+    id: 'term-adjustments-credit-notes',
+    title: 'Term Adjustments & Credit Notes',
+    category: 'invoicing',
+    summary: 'Handle mid-term withdrawals and day/time changes with automatic pro-rata credit notes.',
+    content: `
+# Term Adjustments & Credit Notes
+
+Term Adjustments handle two common mid-term scenarios with a guided 3-step wizard.
+
+## Mid-Term Withdrawal
+
+When a student leaves partway through a term, the wizard:
+1. Counts remaining lessons in their series
+2. Calculates the pro-rata amount at their lesson rate
+3. Cancels remaining lessons automatically
+4. Generates a credit note for the refund amount
+
+## Day/Time Change
+
+When a student moves to a different lesson day or time, the wizard:
+1. Cancels remaining lessons on the old schedule
+2. Creates new lessons on the new day/time (respecting closure dates)
+3. Compares lesson counts and calculates any financial difference
+4. Generates a credit note or supplementary invoice as needed
+
+You can also change the teacher and/or location during a day change.
+
+## How to Access
+
+There are two entry points:
+
+**From a student's profile:**
+1. Go to the student's detail page
+2. Click the **Lessons** tab
+3. Click the **Term Adjustment** button in the header
+
+**From the calendar:**
+1. Click on a recurring lesson
+2. In the lesson detail panel, click **Adjust Term**
+
+## The 3-Step Process
+
+### Step 1: Configure
+- Select the student (pre-filled if accessed from student page)
+- Choose the adjustment type: **Withdrawal** or **Day/Time Change**
+- Select which lesson series to adjust
+- Set the effective date
+- For day changes: choose the new day, time, teacher, and/or location
+
+### Step 2: Preview
+- Review the lesson changes (current vs new)
+- See the financial breakdown including VAT
+- Choose whether to generate a credit note or supplementary invoice
+- Review the linked original invoice
+
+### Step 3: Confirm
+- Lessons are cancelled and/or created
+- Credit note or supplementary invoice is generated
+- You can view the credit note directly from the confirmation screen
+
+## Credit Notes in the Invoice List
+
+Credit notes appear in your invoice list with a blue **Credit Note** badge. The amount is shown in green to distinguish it from regular invoices. Click a credit note to view its details and link back to the original invoice.
+    `,
+    keywords: ['term adjustment', 'withdrawal', 'credit note', 'day change', 'pro-rata', 'refund', 'mid-term', 'supplementary invoice'],
+  },
 ];
 
 // Search helper
