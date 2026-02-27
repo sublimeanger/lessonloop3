@@ -4320,6 +4320,148 @@ Features — specifically, the features you'll actually use. A cheaper platform 
 
 *Related reading: [Features That Actually Matter](/blog/music-school-software-features) · [Best for Solo Teachers](/blog/best-software-solo-music-teachers) · [Best for Academies](/blog/best-software-music-academies) · [All Comparisons](/compare/lessonloop-vs-my-music-staff)*`,
   },
+  {
+    slug: "music-school-software-features",
+    title: "Music School Software: The Features That Actually Matter",
+    excerpt: "Not all features are equal. Cut through the noise and focus on the music school software features that genuinely save time, reduce churn and grow revenue.",
+    date: "",
+    category: "Guides",
+    readTime: "7 min",
+    author: {
+      name: "LessonLoop",
+      role: "Music School Management Platform",
+    },
+    featuredImage: "/images/blog/music-school-software-features.jpg",
+    tags: ["music school software", "features", "evaluation", "checklist", "requirements"],
+    relatedPosts: ["best-music-school-software", "music-school-spreadsheets-hidden-cost", "switching-music-school-software"],
+    content: `Every music school software platform has a features page. They all list scheduling, billing, student management, communication, and reporting. They all sound impressive. And they all leave you with the same question: which of these features actually make a difference to my daily life as a school owner?
+
+The honest answer is that most features on most platforms are fine. Scheduling works. Billing generates invoices. Student profiles store data. The differences that matter aren't whether a feature exists — they're whether it's designed for how your school actually operates.
+
+Here's a framework for cutting through the noise and evaluating what genuinely matters.
+
+## Tier 1: The features that save you hours every week
+
+These are the features that, if they work well, transform your admin workload. If they work poorly or don't exist, they're the reason you're still up at 10pm on a Sunday managing spreadsheets.
+
+### Conflict-proof scheduling
+
+The scheduling system should make double-bookings physically impossible — not just warn you after you've made one. When you assign a student to a time slot, the system should check: is the teacher available? Is the room free? Does the student have another lesson at this time? If any of these conflict, the slot shouldn't be bookable.
+
+Beyond conflict prevention, the scheduling system should handle UK term-based lesson patterns. You set the term dates (start, end, half-term), and the system generates recurring lessons that automatically skip non-teaching weeks. If your scheduling tool requires you to manually delete lessons during half-term or add them one by one each term, it's not saving you time — it's redistributing it.
+
+For schools with multiple locations, the scheduling system should support location-based calendar filtering, room allocation per venue, and teacher assignment by location.
+
+### Automated termly billing
+
+Billing is where UK music schools diverge most sharply from the US market, and where most software platforms fail UK users.
+
+A good billing system for UK schools should: calculate the term fee automatically based on the number of teaching weeks and the student's lesson rate; generate invoices for all students in a single batch operation; send invoices by email with a one-click online payment link; send automated reminders at configurable intervals (7 days before due, on due date, 7 days overdue); handle credits for cancelled lessons that carry forward to the next invoice; and reconcile payments against invoices automatically when received via Stripe.
+
+If the billing system requires you to manually calculate each student's termly fee, create invoices one at a time, or chase payments by personal message, it's a spreadsheet with a login screen — not a [billing platform](/features/billing).
+
+### The parent portal
+
+In the context of feature evaluation, here's the litmus test: after a parent logs into the portal, how many of their typical questions are answered without sending you a message?
+
+<span class="font-semibold">Good portal:</span> Schedule, lesson notes, invoices, payment status, practice assignments, messaging. Parent answer rate: 80–90%.
+
+<span class="font-semibold">Adequate portal:</span> Schedule, maybe invoices. Parent answer rate: 40–50%.
+
+<span class="font-semibold">No portal:</span> Every question comes to you. Parent answer rate: 0%.
+
+The difference between a good portal and no portal is 5+ hours per week of messaging for a 60-student school. That alone justifies the software cost.
+
+## Tier 2: The features that improve your school over time
+
+These features don't save you hours immediately, but they compound over months — improving retention, informing decisions, and building a better school.
+
+### Lesson notes and progress tracking
+
+The ability for teachers to write lesson notes after each session, visible to parents through the portal, is the single most powerful retention tool in music education. It makes the lesson tangible, guides home practice, and creates a visible progress record that keeps parents enrolled.
+
+The software should make note-writing fast (a mobile-friendly form that a teacher can complete in 60 seconds between lessons), automatically linked to the student's profile and the lesson record, and visible to the parent instantly.
+
+If lesson notes require a desktop computer, a multi-step process, or manual sharing, teachers won't write them. The feature only works if it's frictionless.
+
+### Practice tracking
+
+Practice tracking — where students log their practice and teachers/parents can see the data — transforms practice compliance. The key features: teacher-set practice assignments linked to the lesson, student-accessible practice timer or log, streak tracking (consecutive days practised), and parent visibility through the portal.
+
+This is a feature that many platforms don't offer at all. [LessonLoop's practice tracking](/features/practice-tracking) includes all of the above plus gamification elements that are genuinely effective with younger students.
+
+### Reporting and analytics
+
+At minimum, your software should surface: revenue per term (and trend over time), student retention rate, outstanding invoice total, teacher utilisation (percentage of available slots filled), and attendance rate.
+
+These are the KPIs that drive growth. If you can't see them without exporting data and building a spreadsheet, you'll never look at them. The software should present them on a dashboard, updated in real time.
+
+More advanced reporting — revenue per student, lifetime value, enquiry conversion rates, churn analysis — is valuable for schools at 80+ students. At that scale, data-driven decisions about pricing, marketing and staffing make a measurable difference to growth.
+
+## Tier 3: Features that matter for specific school types
+
+### Multi-location management
+
+Only relevant if you teach across multiple venues, but essential if you do. The system should support per-location room configuration, teacher scheduling by location, unified calendar with location filtering, and location-specific reporting.
+
+### Teacher payroll and permissions
+
+For schools with 3+ teachers, payroll tracking (calculating what each teacher is owed based on lessons taught) and role-based permissions (teachers see their students, not your billing data) become important. Solo teachers don't need this; academies can't function without it.
+
+### Exam management
+
+Tracking which students are preparing for which grade, on which instrument, via which exam board, with entry deadline reminders and results recording. Essential for UK schools where [ABRSM and Trinity preparation](/blog/abrsm-trinity-exam-preparation-music-school) is a core part of the service.
+
+### AI and automation
+
+[AI copilots](/features/loopassist) that can answer questions about your school data ("who's overdue?", "what's my retention rate this term?") are genuinely useful for school owners who don't have time to dig through reports. This is an emerging differentiator — most platforms don't offer it yet.
+
+## The features that don't matter (as much as vendors claim)
+
+A few features that appear prominently on marketing pages but rarely drive a purchasing decision:
+
+<span class="font-semibold">Website builders.</span> If you already have a website (and you should), a built-in website builder is irrelevant. If you don't, a dedicated website tool (Squarespace, WordPress, even a single landing page) will produce a better result than one embedded in your school management software.
+
+<span class="font-semibold">Marketplace/directory listings.</span> Some platforms offer a directory where parents can "find" your school. In practice, these directories have negligible traffic compared to Google Search, Google Business Profile, or word of mouth. Don't choose a platform because of its directory.
+
+<span class="font-semibold">Advanced CRM features.</span> Lead tracking, email marketing automation, and sales funnels are overkill for most music schools. Your "sales funnel" is: parent enquires → trial lesson → enrolment. You don't need Salesforce for that.
+
+<span class="font-semibold">Integrations you won't use.</span> Zoom integration? Maybe if you teach online. Mailchimp integration? Only if you actively send email campaigns. QuickBooks integration? Only if your accountant requires it. Don't pay for integrations you'll never connect.
+
+## The evaluation framework
+
+When comparing platforms, score each one on:
+
+1. <span class="font-semibold">Does it handle UK termly billing natively?</span> (Eliminates most US platforms for UK schools)
+2. <span class="font-semibold">Does the parent portal answer 80%+ of routine queries?</span>
+3. <span class="font-semibold">Can teachers write lesson notes in under 60 seconds from their phone?</span>
+4. <span class="font-semibold">Does the scheduling system prevent conflicts automatically?</span>
+5. <span class="font-semibold">Can I see my key metrics without building a spreadsheet?</span>
+
+A platform that scores well on all five is the right choice. A platform that scores well on three but fails on billing and portal will create more admin than it eliminates.
+
+For our recommendations based on school size and type, see [best music school software](/blog/best-music-school-software). To see how platforms compare head-to-head, check our [LessonLoop vs Teachworks](/compare/lessonloop-vs-teachworks) comparison.
+
+---
+
+## Frequently Asked Questions
+
+### Do I need different software as my school grows?
+
+Not if you choose the right platform from the start. The best music school platforms are designed to scale — a solo teacher with 20 students uses the same core features as an academy with 200, just with more data. What changes is the need for multi-teacher features (permissions, payroll, delegation). Choosing a platform that supports growth from day one avoids the painful [software migration](/blog/switching-music-school-software) that many schools face at 40–60 students.
+
+### Is mobile access essential?
+
+Yes. Teachers write lesson notes between students, parents check schedules on the school run, and you manage your school from everywhere. If the software doesn't work well on a phone, it doesn't work well in practice. Test the mobile experience during your trial — open it on your phone, write a lesson note, check the calendar, send a message. If any of those are clunky, it's a problem.
+
+### How much should I expect to pay for music school software?
+
+Most platforms charge between £15 and £50 per month for a typical school. Some charge per student, some charge flat rates by tier. The cost is almost always justified by the admin time saved — even at £50/month, that's £1.25 per hour of admin eliminated if the software saves you 10 hours per week. Compare the monthly cost to the hourly value of your time, and the ROI is clear.
+
+---
+
+*Part of our [guide to music school software](/blog/best-music-school-software) series. Related: [The Cost of Spreadsheets](/blog/music-school-spreadsheets-hidden-cost) · [LessonLoop Features](/features)*`,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
