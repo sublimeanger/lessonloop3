@@ -634,7 +634,7 @@ Deno.serve(async (req) => {
 
     // ─── 15. Leads ───
     const leadDefs = [
-      { name: "Alice Green", stage: "new", instrument: "Piano", email: "alice.green@example.com" },
+      { name: "Alice Green", stage: "enquiry", instrument: "Piano", email: "alice.green@example.com" },
       { name: "Bob Taylor", stage: "contacted", instrument: "Guitar", email: "bob.taylor@example.com" },
       { name: "Carol White", stage: "trial_booked", instrument: "Violin", email: "carol.white@example.com" },
     ];
@@ -736,7 +736,49 @@ Deno.serve(async (req) => {
     }
     L("Message created");
 
-    // ─── 19. Booking page ───
+    // ─── 19. Upload a test resource + share with Emma ───
+    const { data: existingRes } = await admin
+      .from("resources")
+      .select("id")
+      .eq("org_id", orgId)
+      .limit(1)
+      .maybeSingle();
+
+    let resourceId: string | null = existingRes?.id ?? null;
+    if (!existingRes) {
+      // Create a small text file in the teaching-resources bucket
+      const fileContent = new TextEncoder().encode(
+        "# Sample Practice Sheet\n\nC Major Scale — 4 octaves, hands together.\n\nTempo: 80 BPM\n"
+      );
+      const filePath = `${orgId}/seed-practice-sheet.txt`;
+      await admin.storage
+        .from("teaching-resources")
+        .upload(filePath, fileContent, { contentType: "text/plain", upsert: true });
+
+      const { data: resRow, error: resErr } = await admin.from("resources").insert({
+        org_id: orgId,
+        title: "Sample Practice Sheet",
+        description: "A simple practice sheet for E2E testing.",
+        file_path: filePath,
+        file_name: "seed-practice-sheet.txt",
+        file_type: "text/plain",
+        file_size_bytes: fileContent.byteLength,
+        uploaded_by: ownerId,
+      }).select("id").single();
+      if (resErr) throw new Error(`Resource insert failed: ${resErr.message}`);
+      resourceId = resRow.id;
+
+      // Share with Emma
+      await admin.from("resource_shares").insert({
+        resource_id: resourceId,
+        student_id: studentIds.Emma,
+        org_id: orgId,
+        shared_by: ownerId,
+      });
+    }
+    L("Resource uploaded and shared with Emma");
+
+    // ─── 20. Booking page ───
     const { data: existingBP } = await admin
       .from("booking_pages")
       .select("id")
@@ -756,7 +798,7 @@ Deno.serve(async (req) => {
     }
     L("Booking page created");
 
-    // ─── 20. Seed make-up policies ───
+    // ─── 21. Seed make-up policies ───
     await admin.rpc("seed_make_up_policies", { _org_id: orgId });
     L("Make-up policies seeded");
 
