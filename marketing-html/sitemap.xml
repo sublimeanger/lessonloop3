@@ -2,235 +2,415 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://lessonloop.net/</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/features</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/pricing</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/about</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/blog</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/contact</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/privacy</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/terms</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/gdpr</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/cookies</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/uk</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/features/scheduling</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/features/billing</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/features/parent-portal</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/features/loopassist</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/features/students</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/features/teachers</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/features/attendance</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/features/practice-tracking</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/features/messaging</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/features/reports</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/features/locations</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/features/resources</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/compare/lessonloop-vs-my-music-staff</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/compare/lessonloop-vs-teachworks</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/compare/lessonloop-vs-opus1</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/compare/lessonloop-vs-jackrabbit-music</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/compare/lessonloop-vs-fons</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/for/music-academies</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/for/solo-teachers</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/for/piano-schools</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/for/guitar-schools</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/for/performing-arts</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/blog/guide-to-running-a-music-school</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/blog/starting-a-music-school-uk</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/blog/music-school-pricing-strategies</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/blog/grow-music-school-students</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/blog/music-school-spreadsheets-hidden-cost</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://lessonloop.net/blog/music-school-kpis</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/guide-to-music-lesson-scheduling</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/automate-music-school-invoicing</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/avoid-double-booking-music-school</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/music-lesson-cancellation-policy</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/group-vs-private-music-lessons-scheduling</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/parent-self-booking-music-lessons</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/multi-location-music-school-scheduling</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/guide-to-music-school-billing</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/music-school-payment-terms-uk</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/music-school-refunds-credits</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/music-school-tax-record-keeping-uk</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/stripe-for-music-schools</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/guide-to-parent-communication-music-school</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/music-school-parent-portal</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/music-lesson-progress-reports</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/music-practice-tracking-tips</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/handling-difficult-music-school-parents</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/music-school-newsletter-guide</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/guide-to-music-education-uk</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/abrsm-trinity-exam-preparation-music-school</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/gdpr-music-schools-uk</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/safeguarding-dbs-music-schools-uk</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/music-school-term-dates-planning</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/switching-music-school-software</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/best-music-school-software</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/music-school-software-features</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/best-software-solo-music-teachers</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/best-software-music-academies</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/ai-music-school-management</loc>
+    <lastmod>2026-02-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://lessonloop.net/blog/software-performing-arts-schools</loc>
+    <lastmod>2026-02-27</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
