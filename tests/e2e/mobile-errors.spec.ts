@@ -1,9 +1,9 @@
-import { test, expect, devices } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { AUTH, waitForPageReady, goTo } from './helpers';
 
 // ═══ MOBILE TESTS ═══
 test.describe('Mobile Responsiveness', () => {
-  test.use({ ...devices['iPhone 14'], storageState: AUTH.owner });
+  test.use({ viewport: { width: 390, height: 844 }, storageState: AUTH.owner });
 
   test('login page usable on mobile', async ({ page }) => {
     await page.goto('/login');
@@ -50,7 +50,7 @@ test.describe('Mobile Responsiveness', () => {
 });
 
 test.describe('Mobile Portal', () => {
-  test.use({ ...devices['iPhone 14'], storageState: AUTH.parent });
+  test.use({ viewport: { width: 390, height: 844 }, storageState: AUTH.parent });
 
   test('portal home usable on mobile', async ({ page }) => {
     await goTo(page, '/portal/home');
