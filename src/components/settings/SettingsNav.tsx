@@ -24,6 +24,7 @@ import {
   ArrowLeft,
   Globe,
   Upload,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -84,6 +85,7 @@ export const SETTINGS_NAV_GROUPS: NavGroup[] = [
       { value: 'messaging', label: 'Messaging', icon: MessageSquare, adminOnly: true },
       { value: 'booking-page', label: 'Booking Page', icon: Globe, adminOnly: true },
       { value: 'looopassist', label: 'LoopAssist AI', icon: Sparkles, adminOnly: true },
+      { value: 'continuation', label: 'Continuation', icon: ArrowRightLeft, adminOnly: true },
     ],
   },
   {

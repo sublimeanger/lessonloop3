@@ -60,6 +60,7 @@ const Leads = lazy(() => import('@/pages/Leads'));
 const LeadDetail = lazy(() => import('@/pages/LeadDetail'));
 const EnrolmentWaitlistPage = lazy(() => import('@/pages/EnrolmentWaitlistPage'));
 const TeacherPerformanceReport = lazy(() => import('@/pages/reports/TeacherPerformance'));
+const Continuation = lazy(() => import('@/pages/Continuation'));
 
 // ─── Lazy: Public ───────────────────────────────────────
 const BookingPage = lazy(() => import('@/pages/public/BookingPage'));
@@ -72,6 +73,7 @@ const PortalResources = lazy(() => import('@/pages/portal/PortalResources'));
 const PortalInvoices = lazy(() => import('@/pages/portal/PortalInvoices'));
 const PortalMessages = lazy(() => import('@/pages/portal/PortalMessages'));
 const PortalProfile = lazy(() => import('@/pages/portal/PortalProfile'));
+const PortalContinuation = lazy(() => import('@/pages/portal/PortalContinuation'));
 
 // ─── SSG / External redirect helper ─────────────────────
 const MARKETING_BASE = 'https://lessonloop.net';
@@ -118,6 +120,7 @@ export const portalRoutes: RouteConfig[] = [
   { path: '/portal/invoices', component: PortalInvoices, auth: 'protected', allowedRoles: ['parent'], label: 'Invoices & Payments' },
   { path: '/portal/messages', component: PortalMessages, auth: 'protected', allowedRoles: ['parent'], label: 'Messages' },
   { path: '/portal/profile', component: PortalProfile, auth: 'protected', allowedRoles: ['parent'], label: 'Profile' },
+  { path: '/portal/continuation', component: PortalContinuation, auth: 'protected', allowedRoles: ['parent'], label: 'Continuation' },
 ];
 
 /** Main app routes (staff roles) */
@@ -148,6 +151,7 @@ export const appRoutes: RouteConfig[] = [
   { path: '/leads/:id', component: LeadDetail, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Lead Detail' },
   { path: '/waitlist', component: EnrolmentWaitlistPage, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Waiting List' },
   { path: '/reports/teacher-performance', component: TeacherPerformanceReport, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Teacher Performance' },
+  { path: '/continuation', component: Continuation, auth: 'protected', allowedRoles: ['owner', 'admin'], label: 'Continuation' },
   { path: '/settings', component: Settings, auth: 'protected', allowedRoles: ['owner', 'admin', 'teacher', 'finance'], label: 'Settings' },
   { path: '/help', component: Help, auth: 'protected', label: 'Help' },
 ];
@@ -158,6 +162,7 @@ export const appRoutes: RouteConfig[] = [
 const sharedPublicRoutes: RouteConfig[] = [
   { path: '/reset-password', component: ResetPassword, auth: 'public', label: 'Reset Password' },
   { path: '/book/:slug', component: BookingPage, auth: 'public', label: 'Book' },
+  { path: '/respond/continuation', component: PortalContinuation, auth: 'public', label: 'Continuation Response' },
 ];
 
 /**

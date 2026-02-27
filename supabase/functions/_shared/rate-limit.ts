@@ -32,6 +32,10 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   "marketing-chat":        { maxRequests: 20,  windowMinutes: 60 },
   "marketing-chat-daily":  { maxRequests: 1000, windowMinutes: 1440 },
 
+  // Term continuation
+  "create-continuation-run": { maxRequests: 10, windowMinutes: 60 },
+  "continuation-respond":   { maxRequests: 20, windowMinutes: 60 },
+
   // Data imports
   "csv-import":            { maxRequests: 10,  windowMinutes: 10 },
 

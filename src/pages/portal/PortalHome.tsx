@@ -7,6 +7,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useParentSummary, useChildrenWithDetails, useGuardianInfo } from '@/hooks/useParentPortal';
 import { useParentWaitlistEntries } from '@/hooks/useMakeUpWaitlist';
 import { useParentEnrolmentWaitlist, useRespondToOffer as useRespondToEnrolmentOffer } from '@/hooks/useEnrolmentWaitlist';
+import { useParentContinuationPending } from '@/hooks/useTermContinuation';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
 import { useParentCredits } from '@/hooks/useParentCredits';
 import { useParentChildInstruments } from '@/hooks/useParentInstruments';
@@ -19,6 +20,7 @@ import {
   ChevronRight,
   MessageSquare,
   Gift,
+  ArrowRight,
   MapPin,
   FolderOpen,
   UserX,
@@ -138,6 +140,7 @@ export default function PortalHome() {
   const { data: childInstruments } = useParentChildInstruments();
   const { data: enrolmentWaitlistEntries } = useParentEnrolmentWaitlist();
   const respondToEnrolmentOffer = useRespondToEnrolmentOffer();
+  const { data: pendingContinuation = [] } = useParentContinuationPending();
 
   const activeWaitlist = (waitlistEntries ?? []).filter((e) =>
     ['waiting', 'matched', 'offered', 'accepted', 'booked'].includes(e.status)
@@ -272,6 +275,30 @@ export default function PortalHome() {
         </div>
 
         <ParentOnboardingChecklist className="mb-2" />
+
+        {/* Continuation alert banner */}
+        {pendingContinuation.length > 0 && (
+          <Link to="/portal/continuation" className="block">
+            <Card className="border-primary/30 bg-primary/5 rounded-2xl" data-interactive>
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                  <ArrowRight className="h-4 w-4 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">
+                    Term Continuation — action needed
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {pendingContinuation.length === 1
+                      ? 'Please confirm whether your child is continuing next term'
+                      : `Please confirm continuation for ${pendingContinuation.length} students`}
+                  </p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+              </CardContent>
+            </Card>
+          </Link>
+        )}
 
         {isLoading ? (
           <PortalHomeSkeleton />
