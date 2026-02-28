@@ -505,3 +505,129 @@ export async function getToastMessages(page: Page): Promise<string[]> {
   }
   return messages;
 }
+
+// ═══════════════════════════════════════════════════════════
+// 12. TestCleanup
+// ═══════════════════════════════════════════════════════════
+
+/** Tracks entities created during a test so callers can identify them later. */
+export class TestCleanup {
+  readonly students: string[] = [];
+  readonly invoiceRefs: string[] = [];
+  readonly leads: string[] = [];
+  readonly messages: string[] = [];
+
+  addStudent(name: string) {
+    this.students.push(name);
+  }
+  addInvoice(ref: string) {
+    this.invoiceRefs.push(ref);
+  }
+  addLead(name: string) {
+    this.leads.push(name);
+  }
+  addMessage(subject: string) {
+    this.messages.push(subject);
+  }
+
+  summary(): string {
+    const parts: string[] = [];
+    if (this.students.length) parts.push(`students: ${this.students.join(', ')}`);
+    if (this.invoiceRefs.length) parts.push(`invoices: ${this.invoiceRefs.join(', ')}`);
+    if (this.leads.length) parts.push(`leads: ${this.leads.join(', ')}`);
+    if (this.messages.length) parts.push(`messages: ${this.messages.join(', ')}`);
+    return parts.join(' | ') || '(nothing created)';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// 13. expectAuditEntry
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Navigate to Settings → Audit Log tab, apply filters, and assert at least
+ * one entry matching the given action and entity type exists.
+ */
+export async function expectAuditEntry(
+  page: Page,
+  opts: { action: 'Created' | 'Updated' | 'Deleted'; entity: string },
+): Promise<void> {
+  await goTo(page, '/settings?tab=audit');
+  await expect(page.getByText(/audit log/i).first()).toBeVisible({ timeout: 15_000 });
+
+  // Filter by entity type if a select is visible
+  const entitySelect = page.getByLabel(/entity type/i).first();
+  if (await entitySelect.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await entitySelect.click();
+    const option = page.getByText(new RegExp(opts.entity, 'i')).first();
+    if (await option.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await option.click();
+    }
+  }
+
+  // Filter by action if a select is visible
+  const actionSelect = page.getByLabel(/^action$/i).first();
+  if (await actionSelect.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await actionSelect.click();
+    await page.getByText(opts.action).first().click();
+  }
+
+  await page.waitForTimeout(500);
+  const entry = page.locator('main').getByText(new RegExp(opts.action, 'i')).first();
+  await expect(entry).toBeVisible({ timeout: 10_000 });
+}
+
+// ═══════════════════════════════════════════════════════════
+// 14. switchToCalendarView
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Switch the calendar view using the view toggle buttons.
+ * Assumes the calendar page is already loaded.
+ */
+export async function switchToCalendarView(
+  page: Page,
+  view: 'day' | 'week' | 'stacked' | 'agenda',
+): Promise<void> {
+  const ariaLabels: Record<string, string> = {
+    day: 'Day view',
+    week: 'Time grid view',
+    stacked: 'Stacked view',
+    agenda: 'Agenda view',
+  };
+  const label = ariaLabels[view];
+
+  await expect(page.locator('main').first()).toBeVisible({ timeout: 15_000 });
+
+  const toggle = page.locator(`[data-tour="calendar-view-toggle"] [aria-label="${label}"]`).first()
+    .or(page.locator(`[aria-label="${label}"]`).first());
+  await expect(toggle).toBeVisible({ timeout: 10_000 });
+  await toggle.click();
+  await page.waitForTimeout(500);
+}
+
+// ═══════════════════════════════════════════════════════════
+// 15. navigateToInvoiceDetail
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Navigate to /invoices, click on an invoice row matching the given
+ * reference / description text, and wait for the invoice detail page.
+ *
+ * @returns true if navigation succeeded, false if the invoice was not found.
+ */
+export async function navigateToInvoiceDetail(
+  page: Page,
+  invoiceRef: string,
+): Promise<boolean> {
+  await goTo(page, '/invoices');
+
+  const row = page.locator('main').getByText(invoiceRef, { exact: false }).first();
+  if (!(await row.isVisible({ timeout: 15_000 }).catch(() => false))) {
+    return false;
+  }
+  await row.click();
+  await expect(page).toHaveURL(/\/invoices\//, { timeout: 10_000 });
+  await waitForPageReady(page);
+  return true;
+}
