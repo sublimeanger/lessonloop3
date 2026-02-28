@@ -7,7 +7,7 @@
  * dialog handling, or mobile-specific interactions.
  */
 import { Page, expect } from '@playwright/test';
-import { waitForPageReady, goTo } from './helpers';
+import { AUTH, waitForPageReady, goTo, expectToast } from './helpers';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -337,4 +337,374 @@ export async function readContinuationStats(page: Page) {
     withdrawing: await readStat('Withdrawing'),
     noResponse: await readStat('No Response'),
   };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Data factory helpers                                               */
+/* ------------------------------------------------------------------ */
+
+export interface CreateStudentData {
+  firstName: string;
+  lastName: string;
+  email?: string;
+  instrument?: string;
+  guardianName?: string;
+  guardianEmail?: string;
+  guardianPhone?: string;
+}
+
+/**
+ * Create a student through the Add Student wizard.
+ *
+ * Navigates to /students, opens the wizard, completes all 3 steps,
+ * waits for the success toast, and returns the full student name.
+ */
+export async function createStudentViaWizard(
+  page: Page,
+  data: CreateStudentData,
+): Promise<string> {
+  await goTo(page, '/students');
+  await assertPageLoaded(page, 'Students');
+
+  // Open the wizard
+  await page.getByRole('button', { name: /add student/i }).first().click();
+  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
+
+  // ── Step 1: Student Info ──
+  await page.locator('#wizard-firstName').fill(data.firstName);
+  await page.locator('#wizard-lastName').fill(data.lastName);
+  if (data.email) {
+    await page.locator('#wizard-email').fill(data.email);
+  }
+  if (data.instrument) {
+    // Instrument is a Select/Combobox — click the trigger then the option
+    const instrumentTrigger = page.getByRole('dialog').locator('text=Instrument').locator('..');
+    const select = instrumentTrigger.getByRole('combobox').first();
+    if (await select.isVisible().catch(() => false)) {
+      await select.click();
+      await page.getByRole('option', { name: data.instrument }).first().click();
+    }
+  }
+  await page.getByRole('dialog').getByRole('button', { name: 'Next' }).click();
+  await page.waitForTimeout(500);
+
+  // ── Step 2: Guardian ──
+  if (data.guardianName) {
+    // Enable the "Add a parent or guardian" switch
+    const addGuardianSwitch = page.locator('#add-guardian');
+    if (await addGuardianSwitch.isVisible().catch(() => false)) {
+      const checked = await addGuardianSwitch.isChecked().catch(() => false);
+      if (!checked) await addGuardianSwitch.click();
+    }
+    await page.waitForTimeout(300);
+
+    // Select "Create new guardian" radio
+    const newGuardianRadio = page.locator('#mode-new');
+    if (await newGuardianRadio.isVisible().catch(() => false)) {
+      await newGuardianRadio.click();
+      await page.waitForTimeout(300);
+    }
+
+    await page.locator('#new-guardian-name').fill(data.guardianName);
+    if (data.guardianEmail) {
+      await page.locator('#new-guardian-email').fill(data.guardianEmail);
+    }
+    if (data.guardianPhone) {
+      await page.locator('#new-guardian-phone').fill(data.guardianPhone);
+    }
+  }
+  await page.getByRole('dialog').getByRole('button', { name: 'Next' }).click();
+  await page.waitForTimeout(500);
+
+  // ── Step 3: Teaching Defaults — skip (all optional) ──
+  await page.getByRole('dialog').getByRole('button', { name: 'Create Student' }).click();
+
+  // Wait for success
+  await expectToast(page, /student created/i);
+  await page.waitForTimeout(500);
+
+  return `${data.firstName} ${data.lastName}`;
+}
+
+export interface CreateLessonData {
+  studentName: string;
+  teacherName?: string;
+  date?: string;
+  time?: string;
+  duration?: string;
+  instrument?: string;
+  locationName?: string;
+  roomName?: string;
+}
+
+/**
+ * Create a lesson via the calendar's "New Lesson" modal.
+ *
+ * Navigates to /calendar, opens the full lesson modal,
+ * fills fields, saves, and waits for the success toast.
+ */
+export async function createLessonViaCalendar(
+  page: Page,
+  data: CreateLessonData,
+): Promise<void> {
+  await goTo(page, '/calendar');
+  await assertPageLoaded(page, 'Calendar');
+
+  // Open the lesson modal — look for "New Lesson" or "Add Lesson" button
+  const newLessonBtn = page
+    .getByRole('button', { name: /new lesson|add lesson/i })
+    .first();
+  const hasNewLesson = await newLessonBtn.isVisible().catch(() => false);
+  if (hasNewLesson) {
+    await newLessonBtn.click();
+  } else {
+    // Fallback: click an empty time slot to get the quick-create popover,
+    // then click "More" to open the full modal
+    const timeSlot = page.locator('[data-time-slot]').first();
+    if (await timeSlot.isVisible().catch(() => false)) {
+      await timeSlot.click();
+      await page.waitForTimeout(300);
+      const moreBtn = page.getByRole('button', { name: 'More' }).first();
+      if (await moreBtn.isVisible().catch(() => false)) {
+        await moreBtn.click();
+      }
+    }
+  }
+  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
+
+  // ── Select student ──
+  // StudentSelector uses a popover with search
+  const studentLabel = page.getByRole('dialog').getByText('Student').first();
+  const studentTrigger = studentLabel.locator('..').getByRole('button').first();
+  if (await studentTrigger.isVisible().catch(() => false)) {
+    await studentTrigger.click();
+    await page.waitForTimeout(300);
+    // Type the student name into the search input
+    const searchInput = page.getByPlaceholder('Search students...').first();
+    if (await searchInput.isVisible().catch(() => false)) {
+      await searchInput.fill(data.studentName);
+      await page.waitForTimeout(500);
+      // Click the matching student option
+      await page.getByText(data.studentName, { exact: false }).first().click();
+      await page.waitForTimeout(300);
+    }
+  }
+
+  // ── Select teacher (if specified) ──
+  if (data.teacherName) {
+    const teacherSelect = page.getByRole('dialog').locator('text=Teacher').locator('..');
+    const combobox = teacherSelect.getByRole('combobox').first();
+    if (await combobox.isVisible().catch(() => false)) {
+      await combobox.click();
+      await page.getByRole('option', { name: data.teacherName }).first().click();
+    }
+  }
+
+  // ── Select time (if specified) ──
+  if (data.time) {
+    const timeSelect = page.getByRole('dialog').locator('text=Time').locator('..');
+    const combobox = timeSelect.getByRole('combobox').first();
+    if (await combobox.isVisible().catch(() => false)) {
+      await combobox.click();
+      await page.getByRole('option', { name: data.time }).first().click();
+    }
+  }
+
+  // ── Select duration (if specified) ──
+  if (data.duration) {
+    const durationSelect = page.getByRole('dialog').locator('text=Duration').locator('..');
+    const combobox = durationSelect.getByRole('combobox').first();
+    if (await combobox.isVisible().catch(() => false)) {
+      await combobox.click();
+      await page.getByRole('option', { name: data.duration }).first().click();
+    }
+  }
+
+  // ── Save ──
+  await page.getByRole('dialog').getByRole('button', { name: 'Create Lesson' }).click();
+  await expectToast(page, /lesson created/i);
+  await page.waitForTimeout(500);
+}
+
+export interface CreateInvoiceData {
+  studentName: string;
+  amount: number;
+  description?: string;
+}
+
+/**
+ * Create an invoice for a student's guardian.
+ *
+ * Navigates to /invoices, opens the create modal, fills in a single
+ * line item, saves, and waits for the success toast.
+ */
+export async function createInvoiceForStudent(
+  page: Page,
+  data: CreateInvoiceData,
+): Promise<void> {
+  await goTo(page, '/invoices');
+  await assertPageLoaded(page, 'Invoices');
+
+  await page.getByRole('button', { name: 'Create Invoice' }).first().click();
+  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
+
+  // ── Select payer ──
+  // First select "Guardian" as payer type (should be default)
+  const payerSelect = page.getByRole('dialog').locator('text=Payer').locator('..');
+  const payerCombobox = payerSelect.getByRole('combobox').first();
+  if (await payerCombobox.isVisible().catch(() => false)) {
+    await payerCombobox.click();
+    await page.waitForTimeout(300);
+    // Search for the student name — the guardian will be listed near them
+    await page.getByRole('option').filter({ hasText: new RegExp(data.studentName, 'i') }).first().click();
+  }
+
+  // ── Fill line item ──
+  const descInput = page.getByRole('dialog').locator('input[placeholder="Description"]').first();
+  await descInput.fill(data.description ?? `Lesson — ${data.studentName}`);
+
+  const priceInput = page.getByRole('dialog').locator('input[placeholder="Price"]').first();
+  await priceInput.fill(data.amount.toString());
+
+  // ── Save ──
+  await page.getByRole('dialog').getByRole('button', { name: 'Create Invoice' }).last().click();
+  await expectToast(page, /invoice created/i);
+  await page.waitForTimeout(500);
+}
+
+/**
+ * Send a draft invoice.
+ *
+ * Finds an invoice matching `invoiceIdentifier` in the list, opens it,
+ * clicks Send, confirms the send dialog.
+ */
+export async function sendInvoice(page: Page, invoiceIdentifier: string): Promise<void> {
+  // Find the invoice row/card in the list and click into it
+  const invoiceEl = page.getByText(invoiceIdentifier, { exact: false }).first();
+  await expect(invoiceEl).toBeVisible({ timeout: 10_000 });
+  await invoiceEl.click();
+  await page.waitForURL(/\/invoices\//, { timeout: 5_000 });
+  await waitForPageReady(page);
+
+  // Click "Send" on the detail page
+  await page.getByRole('button', { name: 'Send' }).first().click();
+  await page.waitForTimeout(300);
+
+  // Confirm in the send dialog
+  const dialog = page.getByRole('dialog').first();
+  if (await dialog.isVisible().catch(() => false)) {
+    await dialog.getByRole('button', { name: 'Send Invoice' }).click();
+  }
+
+  await expectToast(page, /invoice sent/i);
+  await page.waitForTimeout(500);
+}
+
+/**
+ * Mark attendance for a student's lesson on the register page.
+ *
+ * Navigates to /register, finds the student's lesson row,
+ * and clicks the status button.
+ */
+export async function markAttendance(
+  page: Page,
+  data: { studentName: string; status: 'present' | 'absent' | 'late' },
+): Promise<void> {
+  await goTo(page, '/register');
+  await assertPageLoaded(page, 'Register');
+
+  // Find the lesson row that contains the student name
+  const lessonRow = page
+    .locator('.rounded-xl.border')
+    .filter({ hasText: data.studentName })
+    .first();
+  await expect(lessonRow).toBeVisible({ timeout: 10_000 });
+
+  // Expand the row if collapsed (click the row header to expand)
+  await lessonRow.click();
+  await page.waitForTimeout(300);
+
+  // Click the status button
+  const statusLabel = data.status.charAt(0).toUpperCase() + data.status.slice(1);
+  const statusBtn = lessonRow.getByRole('button', { name: statusLabel }).first();
+  // fallback: try the single-letter abbreviation (mobile shows P/A/L)
+  const altBtn = lessonRow.getByRole('button', { name: data.status[0].toUpperCase() }).first();
+  if (await statusBtn.isVisible().catch(() => false)) {
+    await statusBtn.click();
+  } else if (await altBtn.isVisible().catch(() => false)) {
+    await altBtn.click();
+  }
+  await page.waitForTimeout(500);
+}
+
+/**
+ * Navigate to a student's detail page by searching for their name.
+ *
+ * Unlike `goToStudentDetail` (hardcoded to Emma), this accepts any name.
+ */
+export async function navigateToStudentDetail(
+  page: Page,
+  studentName: string,
+): Promise<void> {
+  await goTo(page, '/students');
+  await assertPageLoaded(page, 'Students');
+
+  // Use the search input to find the student
+  const searchInput = page.getByPlaceholder(/search/i).first();
+  if (await searchInput.isVisible().catch(() => false)) {
+    await searchInput.fill(studentName);
+    await page.waitForTimeout(500);
+  }
+
+  // Click on the student link
+  const studentLink = page.getByText(studentName, { exact: false }).first();
+  await expect(studentLink).toBeVisible({ timeout: 10_000 });
+  await studentLink.click();
+  await expect(page).toHaveURL(/\/students\//, { timeout: 10_000 });
+  await waitForPageReady(page);
+}
+
+/**
+ * Wait for all loading states to finish and at least one data element
+ * to be visible in the main content area.
+ */
+export async function waitForDataLoad(page: Page) {
+  await waitForPageReady(page);
+  // Wait for at least one meaningful data element (link, row, card) in main
+  await expect(
+    page.locator('main').getByRole('link').first()
+      .or(page.locator('main table tbody tr').first())
+      .or(page.locator('main .rounded-lg.border').first()),
+  ).toBeVisible({ timeout: 15_000 });
+}
+
+/** Returns an array of all currently visible toast messages. */
+export async function getToastMessages(page: Page): Promise<string[]> {
+  const toasts = page.locator('[data-radix-collection-item]');
+  const count = await toasts.count();
+  const messages: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const text = await toasts.nth(i).textContent();
+    if (text) messages.push(text.trim());
+  }
+  return messages;
+}
+
+/** Check all `<img>` elements on the page loaded without errors. */
+export async function assertNoBrokenImages(page: Page) {
+  const broken = await page.evaluate(() => {
+    const imgs = Array.from(document.querySelectorAll('img'));
+    return imgs
+      .filter((img) => !img.complete || img.naturalWidth === 0)
+      .map((img) => img.src);
+  });
+  expect(broken, `Broken images: ${broken.join(', ')}`).toHaveLength(0);
+}
+
+/**
+ * Get the correct storageState path for a role.
+ * Use with `test.use({ storageState })` or BrowserContext.
+ */
+export function getAuthState(role: 'owner' | 'admin' | 'teacher' | 'finance' | 'parent' | 'parent2'): string {
+  return AUTH[role];
 }

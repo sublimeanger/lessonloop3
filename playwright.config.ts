@@ -37,6 +37,7 @@ export default defineConfig({
     {
       name: 'workflow',
       testDir: './tests/e2e/workflows',
+      fullyParallel: false,
       use: { ...devices['Desktop Chrome'] },
       timeout: 120_000,
       dependencies: ['auth-setup'],
