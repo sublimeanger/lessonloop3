@@ -6,11 +6,11 @@ test.describe('Owner Dashboard', () => {
 
   test('loads with greeting and org name', async ({ page }) => {
     await goTo(page, '/dashboard');
-    // Dashboard hero may show "Good morning", "Hi <name>!", or just the page heading
+    // Dashboard hero shows "Good morning/afternoon/evening, <name>!" as an h1
     await expect(
-      page.getByText(/good (morning|afternoon|evening)/i)
-        .or(page.getByText(/^hi /i))
-        .or(page.getByText(/dashboard/i).first())
+      page.getByRole('heading', { name: /good (morning|afternoon|evening)/i })
+        .or(page.getByRole('heading', { name: /^hi /i }))
+        .or(page.getByRole('heading', { name: /dashboard/i }))
     ).toBeVisible({ timeout: 10_000 });
   });
 

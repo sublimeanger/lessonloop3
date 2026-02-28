@@ -11,8 +11,10 @@ test.describe('Calendar — Owner', () => {
 
   test('navigate forward and back', async ({ page }) => {
     await goTo(page, '/calendar');
-    const nextBtn = page.getByRole('button', { name: /next|forward|›|chevronright/i }).first();
-    const prevBtn = page.getByRole('button', { name: /prev|back|‹|chevronleft/i }).first();
+    // Buttons use aria-label="Next" / "Previous" (icon-only)
+    const nextBtn = page.locator('[aria-label="Next"], [aria-label="Next week"]').first();
+    const prevBtn = page.locator('[aria-label="Previous"], [aria-label="Previous week"]').first();
+    await expect(nextBtn).toBeVisible({ timeout: 10_000 });
     await nextBtn.click();
     await page.waitForTimeout(500);
     await prevBtn.click();
@@ -21,7 +23,8 @@ test.describe('Calendar — Owner', () => {
 
   test('today button returns to current week', async ({ page }) => {
     await goTo(page, '/calendar');
-    const nextBtn = page.getByRole('button', { name: /next|forward|›/i }).first();
+    const nextBtn = page.locator('[aria-label="Next"], [aria-label="Next week"]').first();
+    await expect(nextBtn).toBeVisible({ timeout: 10_000 });
     await nextBtn.click();
     await page.waitForTimeout(300);
     await nextBtn.click();

@@ -18,7 +18,7 @@ test.describe('Login Page', () => {
   test('empty form shows validation toast', async ({ page }) => {
     await page.goto('/login');
     await page.getByRole('button', { name: 'Sign in' }).click();
-    await expect(page.getByText(/missing fields/i)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/missing fields/i).first()).toBeVisible({ timeout: 5_000 });
   });
 
   test('wrong password shows error', async ({ page }) => {

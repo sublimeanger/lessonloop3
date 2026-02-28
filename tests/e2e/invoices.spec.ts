@@ -33,7 +33,10 @@ test.describe('Invoices — Owner', () => {
 
   test('billing run button exists', async ({ page }) => {
     await goTo(page, '/invoices');
-    await expect(page.getByRole('button', { name: /billing run|generate/i }).first()).toBeVisible({ timeout: 5_000 });
+    // Button uses data-tour attribute; text may be hidden on small viewports
+    const btn = page.locator('[data-tour="billing-run-button"]')
+      .or(page.getByRole('button', { name: /billing run|generate/i }).first());
+    await expect(btn.first()).toBeVisible({ timeout: 10_000 });
   });
 
   test('navigate to invoice detail', async ({ page }) => {

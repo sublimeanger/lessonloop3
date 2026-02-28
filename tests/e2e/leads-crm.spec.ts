@@ -11,8 +11,9 @@ test.describe('Leads — Owner', () => {
 
   test('view toggle (kanban/list) exists', async ({ page }) => {
     await goTo(page, '/leads');
-    const kanbanBtn = page.getByRole('button', { name: /board|kanban/i }).first();
-    const listBtn = page.getByRole('button', { name: /list|table/i }).first();
+    // View toggle buttons use aria-labels "Kanban view" / "List view"
+    const kanbanBtn = page.locator('[aria-label*="anban"]').first();
+    const listBtn = page.locator('[aria-label*="ist view"]').first();
     const hasKanban = await kanbanBtn.isVisible().catch(() => false);
     const hasList = await listBtn.isVisible().catch(() => false);
     expect(hasKanban || hasList).toBeTruthy();
@@ -20,7 +21,10 @@ test.describe('Leads — Owner', () => {
 
   test('create lead button opens modal', async ({ page }) => {
     await goTo(page, '/leads');
-    await page.getByRole('button', { name: /add.*lead|new.*lead|create/i }).first().click();
+    // Button text is "Add Lead"
+    const btn = page.getByRole('button', { name: /add lead/i }).first();
+    await expect(btn).toBeVisible({ timeout: 10_000 });
+    await btn.click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
   });
 
