@@ -34,6 +34,15 @@ export default defineConfig({
       use: { ...devices['iPhone 14'] },
       dependencies: ['auth-setup'],
     },
+    {
+      name: 'workflows',
+      testDir: './tests/e2e/workflows',
+      testMatch: /\.spec\.ts$/,
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['desktop-chrome'],
+      timeout: 120_000,
+      fullyParallel: false,
+    },
   ],
   webServer: process.env.CI ? undefined : {
     command: 'npm run dev',
