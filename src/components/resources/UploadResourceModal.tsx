@@ -12,7 +12,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, File, X, Loader2, HardDrive } from 'lucide-react';
+import { Upload, File, X, Loader2, HardDrive, Camera } from 'lucide-react';
+import { platform } from '@/lib/platform';
+import { pickImageSafely } from '@/lib/native/camera';
 import { useUploadResource, useStorageUsage } from '@/hooks/useResources';
 import { MAX_FILE_SIZE, ALLOWED_TYPES } from '@/lib/resource-validation';
 import { formatFileSize } from '@/lib/fileUtils';
@@ -71,6 +73,17 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
     }
     if (entries.length) {
       setFiles((prev) => [...prev, ...entries]);
+    }
+  };
+
+  const handlePickImageNative = async () => {
+    const { file, error: pickError } = await pickImageSafely({ maxSize: MAX_FILE_SIZE });
+    if (pickError) {
+      setError(pickError);
+      return;
+    }
+    if (file) {
+      addFiles([file]);
     }
   };
 
@@ -192,17 +205,32 @@ export function UploadResourceModal({ open, onOpenChange }: UploadResourceModalP
             <p className="text-sm text-muted-foreground mb-1">
               Drag and drop files here, or
             </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="min-h-11 sm:min-h-9"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              aria-describedby="file-format-hint"
-            >
-              Browse files
-            </Button>
+            <div className="flex gap-2 justify-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-11 sm:min-h-9"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                aria-describedby="file-format-hint"
+              >
+                Browse files
+              </Button>
+              {platform.isNative && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="min-h-11 sm:min-h-9"
+                  onClick={handlePickImageNative}
+                  disabled={isUploading}
+                >
+                  <Camera className="h-4 w-4 mr-2" />
+                  Photo
+                </Button>
+              )}
+            </div>
             <p id="file-format-hint" className="text-xs text-muted-foreground mt-2">
               PDF, images, audio, video, Word docs up to 50MB each
             </p>

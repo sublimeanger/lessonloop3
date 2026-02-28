@@ -14,6 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Upload, X, Eye, Hash, Palette } from 'lucide-react';
 import { InvoicePreview } from '@/components/invoices/InvoicePreview';
+import { platform } from '@/lib/platform';
+import { pickImageSafely } from '@/lib/native/camera';
 
 const MAX_DIMENSION = 512;
 
@@ -224,6 +226,27 @@ export function BrandingTab() {
     }
   };
 
+  const handleLogoPickNative = async () => {
+    const { file, error } = await pickImageSafely({
+      maxSize: 2 * 1024 * 1024,
+    });
+    if (error) {
+      toast({ title: 'Photo error', description: error, variant: 'destructive' });
+      return;
+    }
+    if (!file) return;
+    try {
+      const dims = await getImageDimensions(file);
+      const url = URL.createObjectURL(file);
+      setPreviewFile(file);
+      setPreviewUrl(url);
+      setPreviewDimensions(dims);
+      setShowPreview(true);
+    } catch {
+      toast({ title: 'Error', description: 'Could not read image', variant: 'destructive' });
+    }
+  };
+
   const handleConfirmUpload = async () => {
     if (!previewFile || !currentOrg) return;
 
@@ -348,7 +371,7 @@ export function BrandingTab() {
                           variant="outline"
                           size="sm"
                           disabled={logoUploading}
-                          onClick={() => fileInputRef.current?.click()}
+                          onClick={platform.isNative ? handleLogoPickNative : () => fileInputRef.current?.click()}
                           aria-label="Upload logo"
                         >
                           {logoUploading ? (
