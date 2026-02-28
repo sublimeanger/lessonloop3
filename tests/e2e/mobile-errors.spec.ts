@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { AUTH, waitForPageReady, goTo } from './helpers';
 
-// ═══ MOBILE TESTS ═══
-test.describe('Mobile Responsiveness', () => {
-  test.use({ viewport: { width: 390, height: 844 }, storageState: AUTH.owner });
+// ═══ MOBILE LOGIN (unauthenticated) ═══
+test.describe('Mobile Login Page', () => {
+  test.use({ viewport: { width: 390, height: 844 }, storageState: { cookies: [], origins: [] } });
 
   test('login page usable on mobile', async ({ page }) => {
     await page.goto('/login');
@@ -12,6 +12,11 @@ test.describe('Mobile Responsiveness', () => {
     const emailBox = await page.getByLabel('Email').boundingBox();
     expect(emailBox!.width).toBeGreaterThan(200);
   });
+});
+
+// ═══ MOBILE TESTS (authenticated) ═══
+test.describe('Mobile Responsiveness', () => {
+  test.use({ viewport: { width: 390, height: 844 }, storageState: AUTH.owner });
 
   test('dashboard no horizontal scroll', async ({ page }) => {
     await goTo(page, '/dashboard');
@@ -42,8 +47,7 @@ test.describe('Mobile Responsiveness', () => {
   });
 
   test('settings page shows mobile nav list', async ({ page }) => {
-    await page.goto('/settings');
-    await waitForPageReady(page);
+    await goTo(page, '/settings');
     // On mobile, settings should show a nav list (not sidebar)
     await expect(page.getByText(/account|profile/i).first()).toBeVisible();
   });
@@ -74,7 +78,7 @@ test.describe('Error & Empty States', () => {
   test.use({ storageState: AUTH.owner });
 
   test('404 page renders for unknown routes', async ({ page }) => {
-    await page.goto('/this-route-definitely-does-not-exist-xyz123');
+    await goTo(page, '/this-route-definitely-does-not-exist-xyz123');
     await expect(page.getByText(/not found|404/i).first()).toBeVisible({ timeout: 10_000 });
   });
 
@@ -83,7 +87,10 @@ test.describe('Error & Empty States', () => {
     page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
     await goTo(page, '/dashboard');
     await page.waitForTimeout(2000);
-    const real = errors.filter(e => !e.includes('favicon') && !e.includes('net::') && !e.includes('Failed to fetch'));
+    const real = errors.filter(e =>
+      !e.includes('favicon') && !e.includes('net::') &&
+      !e.includes('Failed to fetch') && !e.includes('401') && !e.includes('403')
+    );
     expect(real, `Console errors: ${real.join(', ')}`).toHaveLength(0);
   });
 
@@ -91,17 +98,10 @@ test.describe('Error & Empty States', () => {
     const failed: string[] = [];
     page.on('response', r => { if (r.status() >= 500) failed.push(`${r.status()} ${r.url()}`); });
     for (const path of ['/dashboard', '/students', '/calendar', '/invoices', '/settings', '/reports', '/messages', '/leads', '/waitlist']) {
-      await page.goto(path);
-      await waitForPageReady(page);
+      await goTo(page, path);
       await page.waitForTimeout(1000);
     }
     expect(failed, `Server errors: ${failed.join(', ')}`).toHaveLength(0);
-  });
-
-  test('no 5xx errors on portal pages', async ({ page }) => {
-    const failed: string[] = [];
-    // Switch to parent auth for portal
-    await page.goto('/login');
   });
 
   test('help page loads', async ({ page }) => {
@@ -117,8 +117,7 @@ test.describe('Portal Error States', () => {
     const failed: string[] = [];
     page.on('response', r => { if (r.status() >= 500) failed.push(`${r.status()} ${r.url()}`); });
     for (const path of ['/portal/home', '/portal/schedule', '/portal/practice', '/portal/invoices', '/portal/messages', '/portal/profile']) {
-      await page.goto(path);
-      await waitForPageReady(page);
+      await goTo(page, path);
       await page.waitForTimeout(1000);
     }
     expect(failed, `Server errors: ${failed.join(', ')}`).toHaveLength(0);

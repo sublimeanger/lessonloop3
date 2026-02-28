@@ -1,5 +1,5 @@
-import { test, expect, Page } from '@playwright/test';
-import { AUTH, waitForPageReady } from './helpers';
+import { test, expect } from '@playwright/test';
+import { AUTH, waitForPageReady, goTo } from './helpers';
 
 // ═══════════════════════════════════════════════════════════════
 // TEACHER — can access teaching routes, BLOCKED from admin routes
@@ -12,8 +12,7 @@ test.describe('Teacher RBAC', () => {
 
   for (const route of allowed) {
     test(`can access ${route}`, async ({ page }) => {
-      await page.goto(route);
-      await waitForPageReady(page);
+      await goTo(page, route);
       await expect(page).toHaveURL(new RegExp(route.replace('/', '\\/')));
     });
   }
@@ -31,16 +30,14 @@ test.describe('Teacher RBAC', () => {
   });
 
   test('sidebar hides admin-only links', async ({ page }) => {
-    await page.goto('/dashboard');
-    await waitForPageReady(page);
+    await goTo(page, '/dashboard');
     for (const link of ['Teachers', 'Locations', 'Invoices', 'Leads', 'Waiting List', 'Make-Ups', 'Continuation']) {
       await expect(page.getByRole('link', { name: link, exact: true }).first()).toBeHidden();
     }
   });
 
   test('sidebar shows teacher links', async ({ page }) => {
-    await page.goto('/dashboard');
-    await waitForPageReady(page);
+    await goTo(page, '/dashboard');
     for (const link of ['Dashboard', 'My Calendar', 'My Students', 'Register', 'Batch Attendance', 'Practice', 'Resources', 'Messages']) {
       await expect(page.getByRole('link', { name: link, exact: true }).first()).toBeVisible();
     }
@@ -58,8 +55,7 @@ test.describe('Finance RBAC', () => {
 
   for (const route of allowed) {
     test(`can access ${route}`, async ({ page }) => {
-      await page.goto(route);
-      await waitForPageReady(page);
+      await goTo(page, route);
       await expect(page).toHaveURL(new RegExp(route.replace('/', '\\/')));
     });
   }
@@ -72,8 +68,7 @@ test.describe('Finance RBAC', () => {
   }
 
   test('sidebar shows only finance links', async ({ page }) => {
-    await page.goto('/dashboard');
-    await waitForPageReady(page);
+    await goTo(page, '/dashboard');
     await expect(page.getByRole('link', { name: 'Invoices', exact: true }).first()).toBeVisible();
     await expect(page.getByRole('link', { name: 'Reports', exact: true }).first()).toBeVisible();
     await expect(page.getByRole('link', { name: 'Students', exact: true }).first()).toBeHidden();
@@ -92,8 +87,7 @@ test.describe('Parent RBAC', () => {
 
   for (const route of portalRoutes) {
     test(`can access ${route}`, async ({ page }) => {
-      await page.goto(route);
-      await waitForPageReady(page);
+      await goTo(page, route);
       await expect(page).toHaveURL(new RegExp(route.replace('/', '\\/')));
     });
   }
@@ -121,8 +115,7 @@ test.describe('Admin RBAC', () => {
 
   for (const route of allStaffRoutes) {
     test(`can access ${route}`, async ({ page }) => {
-      await page.goto(route);
-      await waitForPageReady(page);
+      await goTo(page, route);
       await expect(page).toHaveURL(new RegExp(route.replace('/', '\\/')));
     });
   }

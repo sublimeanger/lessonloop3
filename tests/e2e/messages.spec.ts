@@ -17,6 +17,8 @@ test.describe('Messages — Owner', () => {
   test('compose modal opens', async ({ page }) => {
     await goTo(page, '/messages');
     await page.getByRole('button', { name: /compose|new message|write/i }).first().click();
+    // "New Message" is a dropdown trigger — pick the first option to open compose dialog
+    await page.getByRole('menuitem').first().click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
   });
 
