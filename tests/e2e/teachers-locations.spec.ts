@@ -70,8 +70,10 @@ test.describe('Locations — Owner', () => {
 
   test('filter by location type', async ({ page }) => {
     await goTo(page, '/locations');
-    const filterBtn = page.locator('button').filter({ hasText: /all|studio|school/i }).first();
-    if (await filterBtn.isVisible().catch(() => false)) {
+    await expect(page.getByText(/main studio|location/i).first()).toBeVisible({ timeout: 20_000 });
+    // Location type filter — scope to main to avoid matching org-setup radio buttons
+    const filterBtn = page.locator('main').locator('[role="tablist"] button, [role="tab"]').first();
+    if (await filterBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
       await filterBtn.click();
       await page.waitForTimeout(300);
     }

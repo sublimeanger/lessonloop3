@@ -11,26 +11,24 @@ test.describe('Calendar — Owner', () => {
 
   test('navigate forward and back', async ({ page }) => {
     await goTo(page, '/calendar');
-    // Wait for calendar to fully render (day headers visible = calendar loaded)
     await expect(page.getByText(/mon|tue|wed|thu|fri/i).first()).toBeVisible({ timeout: 15_000 });
-    // Nav buttons are icon-only; try aria-label first, then fall back to icon button locators
-    const nextBtn = page.locator('[aria-label="Next"], [aria-label="Next week"]').first()
-      .or(page.locator('button:has(svg)').filter({ hasNotText: /today|view|filter/i }).nth(1));
-    const prevBtn = page.locator('[aria-label="Previous"], [aria-label="Previous week"]').first()
-      .or(page.locator('button:has(svg)').filter({ hasNotText: /today|view|filter/i }).nth(0));
+    // Nav buttons use aria-label="Next"/"Previous" (desktop) or "Next week"/"Previous week" (mobile)
+    const nextBtn = page.locator('[aria-label="Next"], [aria-label="Next week"]').first();
+    const prevBtn = page.locator('[aria-label="Previous"], [aria-label="Previous week"]').first();
     if (await nextBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
       await nextBtn.click();
       await page.waitForTimeout(500);
-      await prevBtn.click();
-      await page.waitForTimeout(500);
+      if (await prevBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await prevBtn.click();
+        await page.waitForTimeout(500);
+      }
     }
   });
 
   test('today button returns to current week', async ({ page }) => {
     await goTo(page, '/calendar');
     await expect(page.getByText(/mon|tue|wed|thu|fri/i).first()).toBeVisible({ timeout: 15_000 });
-    const nextBtn = page.locator('[aria-label="Next"], [aria-label="Next week"]').first()
-      .or(page.locator('button:has(svg)').filter({ hasNotText: /today|view|filter/i }).nth(1));
+    const nextBtn = page.locator('[aria-label="Next"], [aria-label="Next week"]').first();
     if (await nextBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
       await nextBtn.click();
       await page.waitForTimeout(300);

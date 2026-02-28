@@ -21,8 +21,10 @@ test.describe('Enrolment Waitlist — Owner', () => {
 
   test('status filter works', async ({ page }) => {
     await goTo(page, '/waitlist');
-    const filter = page.locator('button, [role="combobox"]').filter({ hasText: /status|all|waiting|offered/i }).first();
-    if (await filter.isVisible().catch(() => false)) {
+    await expect(page.getByText(/waiting list|waitlist|enrolment/i).first()).toBeVisible({ timeout: 20_000 });
+    // Scope to main to avoid matching org-setup radio buttons ("Small" contains "all")
+    const filter = page.locator('main').locator('[role="combobox"], select').first();
+    if (await filter.isVisible({ timeout: 5_000 }).catch(() => false)) {
       await filter.click();
       await page.waitForTimeout(300);
     }

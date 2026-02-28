@@ -72,14 +72,14 @@ test.describe('Mobile Portal', () => {
   test('portal bottom nav visible', async ({ page }) => {
     await goTo(page, '/portal/home');
     await expect(page.locator('main').first()).toBeVisible({ timeout: 15_000 });
-    // Mobile portal should show bottom navigation, sidebar, or any navigation
-    const nav = page.locator('nav').last();
-    const sidebar = page.locator('[data-sidebar], [class*="sidebar"]').first();
+    // PortalBottomNav renders <nav aria-label="Portal navigation"> on mobile
+    const portalNav = page.locator('nav[aria-label="Portal navigation"]');
+    const anyNav = page.getByRole('navigation').first();
     const anyLink = page.getByRole('link').first();
-    const hasNav = await nav.isVisible().catch(() => false);
-    const hasSidebar = await sidebar.isVisible().catch(() => false);
+    const hasPortalNav = await portalNav.isVisible({ timeout: 5_000 }).catch(() => false);
+    const hasAnyNav = await anyNav.isVisible().catch(() => false);
     const hasLinks = await anyLink.isVisible().catch(() => false);
-    expect(hasNav || hasSidebar || hasLinks).toBeTruthy();
+    expect(hasPortalNav || hasAnyNav || hasLinks).toBeTruthy();
   });
 });
 
