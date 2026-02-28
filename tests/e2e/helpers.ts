@@ -38,10 +38,19 @@ export async function openDialog(page: Page, buttonText: string | RegExp) {
   await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
 }
 
-/** Navigate directly and wait for content */
+/** Navigate directly and wait for content.
+ *  Handles the Supabase auth race condition: if the route guard redirects
+ *  before the async session restore finishes, we retry once.
+ */
 export async function goTo(page: Page, path: string) {
   await page.goto(path);
   await waitForPageReady(page);
+
+  // If auth redirected us away, the session is now warm — retry once
+  if (!page.url().includes(path)) {
+    await page.goto(path);
+    await waitForPageReady(page);
+  }
 }
 
 /** Expect a page redirect */

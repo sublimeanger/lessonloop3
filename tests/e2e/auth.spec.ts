@@ -26,7 +26,7 @@ test.describe('Login Page', () => {
     await page.getByLabel('Email').fill('e2e-owner@test.lessonloop.net');
     await page.locator('#password').fill('WrongPassword999!');
     await page.getByRole('button', { name: 'Sign in' }).click();
-    await expect(page.getByText(/sign in failed/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Sign in failed', { exact: true })).toBeVisible({ timeout: 10_000 });
   });
 
   test('password visibility toggle', async ({ page }) => {
@@ -73,7 +73,7 @@ test.describe('Signup Page', () => {
 
   test('renders signup form', async ({ page }) => {
     await page.goto('/signup');
-    await expect(page.getByText(/create/i)).toBeVisible();
+    await expect(page.getByText(/create your account/i)).toBeVisible();
     await expect(page.getByLabel(/full name/i)).toBeVisible();
     await expect(page.getByLabel('Email')).toBeVisible();
     await expect(page.locator('#password')).toBeVisible();
