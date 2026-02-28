@@ -8,7 +8,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
-import { Loader2, LogOut, ShieldAlert, Mail, Eye, EyeOff, Lock, X, Camera } from 'lucide-react';
+import { Loader2, LogOut, ShieldAlert, Mail, Eye, EyeOff, Lock, X, Camera, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { platform } from '@/lib/platform';
+import { pickImageSafely } from '@/lib/native/camera';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,8 +33,9 @@ import {
 } from '@/components/ui/dialog';
 
 export function ProfileTab() {
-  const { profile, updateProfile, user } = useAuth();
+  const { profile, updateProfile, user, signOut, session } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -79,10 +83,8 @@ export function ProfileTab() {
     onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
 
-  const handleAvatarSelect = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    if (!file || !user) return;
+  const uploadAvatarFile = async (file: File) => {
+    if (!user) return;
 
     if (!file.type.startsWith('image/')) {
       toast({ title: 'Invalid file', description: 'Please upload an image file', variant: 'destructive' });
@@ -126,6 +128,27 @@ export function ProfileTab() {
       toast({ title: 'Upload failed', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
     } finally {
       setAvatarUploading(false);
+    }
+  };
+
+  const handleAvatarSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (!file) return;
+    await uploadAvatarFile(file);
+  };
+
+  const handleAvatarPickNative = async () => {
+    const { file, error } = await pickImageSafely({
+      maxSize: 1024 * 1024,
+      accept: ['image/jpeg', 'image/png'],
+    });
+    if (error) {
+      toast({ title: 'Photo error', description: error, variant: 'destructive' });
+      return;
+    }
+    if (file) {
+      await uploadAvatarFile(file);
     }
   };
 
@@ -199,6 +222,30 @@ export function ProfileTab() {
   const globalSignOutMutation = useMutation({
     mutationFn: () => supabase.auth.signOut({ scope: 'global' }),
     onError: () => toast({ title: 'Error', description: 'Failed to sign out of all devices', variant: 'destructive' }),
+  });
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: async () => {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/account-delete`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to delete account');
+      }
+      return response.json();
+    },
+    onSuccess: async () => {
+      toast({ title: 'Account deleted', description: 'Your account has been permanently deleted.' });
+      await signOut();
+      navigate('/login');
+    },
+    onError: (err: Error) => toast({ title: 'Deletion failed', description: err.message, variant: 'destructive' }),
   });
 
   return (
@@ -276,7 +323,7 @@ export function ProfileTab() {
                 variant="outline"
                 size="sm"
                 disabled={avatarUploading}
-                onClick={() => fileInputRef.current?.click()}
+                onClick={platform.isNative ? handleAvatarPickNative : () => fileInputRef.current?.click()}
               >
                 {avatarUploading ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -453,6 +500,53 @@ export function ProfileTab() {
           </CardContent>
         </Card>
       )}
+
+      {/* Delete Account Section */}
+      <Card className="border-destructive/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Trash2 className="h-5 w-5 text-destructive" />
+            Delete Account
+          </CardTitle>
+          <CardDescription>Permanently delete your account and all associated data</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="flex-1 mr-4">
+              <p className="text-sm text-muted-foreground">
+                Once deleted, your account cannot be recovered. All your data, including profile information, organisation memberships, and settings will be permanently removed.
+              </p>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="shrink-0">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Account
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure you want to delete your account?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action is permanent and cannot be undone. All your data will be permanently deleted, including your profile, organisation memberships, and settings. You will be signed out immediately.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteAccountMutation.mutate()}
+                    disabled={deleteAccountMutation.isPending}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {deleteAccountMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Yes, delete my account
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
