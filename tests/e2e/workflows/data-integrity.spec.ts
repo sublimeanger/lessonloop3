@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { AUTH, waitForPageReady, goTo, expectToast } from '../helpers';
+import { AUTH, waitForPageReady, goTo } from '../helpers';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
