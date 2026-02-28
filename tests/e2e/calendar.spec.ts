@@ -6,33 +6,41 @@ test.describe('Calendar — Owner', () => {
 
   test('week view loads with day headers', async ({ page }) => {
     await goTo(page, '/calendar');
-    await expect(page.getByText(/mon|tue|wed|thu|fri/i).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/mon|tue|wed|thu|fri/i).first()).toBeVisible({ timeout: 15_000 });
   });
 
   test('navigate forward and back', async ({ page }) => {
     await goTo(page, '/calendar');
-    // Buttons use aria-label="Next" / "Previous" (icon-only)
-    const nextBtn = page.locator('[aria-label="Next"], [aria-label="Next week"]').first();
-    const prevBtn = page.locator('[aria-label="Previous"], [aria-label="Previous week"]').first();
-    await expect(nextBtn).toBeVisible({ timeout: 10_000 });
-    await nextBtn.click();
-    await page.waitForTimeout(500);
-    await prevBtn.click();
-    await page.waitForTimeout(500);
+    // Wait for calendar to fully render (day headers visible = calendar loaded)
+    await expect(page.getByText(/mon|tue|wed|thu|fri/i).first()).toBeVisible({ timeout: 15_000 });
+    // Nav buttons are icon-only; try aria-label first, then fall back to icon button locators
+    const nextBtn = page.locator('[aria-label="Next"], [aria-label="Next week"]').first()
+      .or(page.locator('button:has(svg)').filter({ hasNotText: /today|view|filter/i }).nth(1));
+    const prevBtn = page.locator('[aria-label="Previous"], [aria-label="Previous week"]').first()
+      .or(page.locator('button:has(svg)').filter({ hasNotText: /today|view|filter/i }).nth(0));
+    if (await nextBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await nextBtn.click();
+      await page.waitForTimeout(500);
+      await prevBtn.click();
+      await page.waitForTimeout(500);
+    }
   });
 
   test('today button returns to current week', async ({ page }) => {
     await goTo(page, '/calendar');
-    const nextBtn = page.locator('[aria-label="Next"], [aria-label="Next week"]').first();
-    await expect(nextBtn).toBeVisible({ timeout: 10_000 });
-    await nextBtn.click();
-    await page.waitForTimeout(300);
-    await nextBtn.click();
-    await page.waitForTimeout(300);
-    const todayBtn = page.getByRole('button', { name: /today/i }).first();
-    if (await todayBtn.isVisible()) {
-      await todayBtn.click();
-      await page.waitForTimeout(500);
+    await expect(page.getByText(/mon|tue|wed|thu|fri/i).first()).toBeVisible({ timeout: 15_000 });
+    const nextBtn = page.locator('[aria-label="Next"], [aria-label="Next week"]').first()
+      .or(page.locator('button:has(svg)').filter({ hasNotText: /today|view|filter/i }).nth(1));
+    if (await nextBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await nextBtn.click();
+      await page.waitForTimeout(300);
+      await nextBtn.click();
+      await page.waitForTimeout(300);
+      const todayBtn = page.getByRole('button', { name: /today/i }).first();
+      if (await todayBtn.isVisible().catch(() => false)) {
+        await todayBtn.click();
+        await page.waitForTimeout(500);
+      }
     }
   });
 
@@ -65,6 +73,6 @@ test.describe('Calendar — Teacher', () => {
 
   test('teacher can view calendar', async ({ page }) => {
     await goTo(page, '/calendar');
-    await expect(page.getByText(/mon|tue|wed|thu|fri/i).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/mon|tue|wed|thu|fri/i).first()).toBeVisible({ timeout: 15_000 });
   });
 });

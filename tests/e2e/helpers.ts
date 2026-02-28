@@ -13,12 +13,24 @@ export const AUTH = {
   parent2: path.join(__dirname, '.auth/parent2.json'),
 };
 
-/** Wait for any loading spinners to disappear and main content to render */
+/** Wait for auth/org init, spinners to disappear, and main content to render.
+ *  Order matters: RouteGuard renders AppShellSkeleton (no <main>) until auth+org
+ *  initialise, so we gate on <main> appearing first (signals RouteGuard passed),
+ *  then wait for page-level Loader2 spinners (.animate-spin) to clear.
+ */
 export async function waitForPageReady(page: Page) {
   await page.waitForLoadState('domcontentloaded').catch(() => {});
+  // main only appears after RouteGuard (auth + org init) passes
+  await expect(page.locator('main').first()).toBeVisible({ timeout: 20_000 }).catch(() => {});
+  // Let page-level data queries fire
   await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {});
-  await expect(page.locator('.animate-spin').first()).toBeHidden({ timeout: 5_000 }).catch(() => {});
-  await expect(page.locator('main').first()).toBeVisible({ timeout: 10_000 }).catch(() => {});
+  // Wait for ALL page-level loading spinners to clear
+  try {
+    await page.waitForFunction(
+      () => document.querySelectorAll('.animate-spin').length === 0,
+      { timeout: 10_000 },
+    );
+  } catch { /* no spinners or timeout */ }
 }
 
 /** Assert a toast notification appears */
@@ -45,13 +57,16 @@ export async function openDialog(page: Page, buttonText: string | RegExp) {
  */
 export async function goTo(page: Page, path: string) {
   await page.goto(path);
-  await waitForPageReady(page);
+  // Give auth session a moment to restore from localStorage before RouteGuard redirects
+  await page.waitForLoadState('domcontentloaded');
 
   // If auth redirected us away, the session is now warm — retry once
   if (!page.url().includes(path)) {
     await page.goto(path);
-    await waitForPageReady(page);
   }
+
+  // Single thorough wait for auth + org + page data
+  await waitForPageReady(page);
 }
 
 /** Expect a page redirect */

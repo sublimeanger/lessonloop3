@@ -19,6 +19,10 @@ async function loginAndSave(
   await page.locator('#password').fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL(`**${expectedPath}`, { timeout: 30_000 });
+  // Wait for app to fully initialise (auth + org context) before saving session.
+  // This ensures localStorage has all tokens fully set for subsequent tests.
+  await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {});
+  await page.locator('main').first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {});
   await page.context().storageState({ path: savePath });
 }
 
