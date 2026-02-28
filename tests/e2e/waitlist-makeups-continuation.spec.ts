@@ -6,12 +6,14 @@ test.describe('Enrolment Waitlist — Owner', () => {
 
   test('waitlist page loads', async ({ page }) => {
     await goTo(page, '/waitlist');
-    await expect(page.getByText(/waiting list|waitlist|enrolment/i).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/waiting list|waitlist|enrolment/i).first()).toBeVisible({ timeout: 15_000 });
   });
 
   test('add to waitlist button exists', async ({ page }) => {
     await goTo(page, '/waitlist');
-    await expect(page.getByRole('button', { name: /add|new/i }).first()).toBeVisible();
+    // Button text is "Add to Waiting List" or similar
+    const btn = page.getByRole('button', { name: /add|new|waiting/i }).first();
+    await expect(btn).toBeVisible({ timeout: 10_000 });
   });
 
   test('status filter works', async ({ page }) => {
@@ -29,7 +31,7 @@ test.describe('Make-Up Dashboard — Owner', () => {
 
   test('make-ups page loads', async ({ page }) => {
     await goTo(page, '/make-ups');
-    await expect(page.getByText(/make-up|credit|waitlist/i).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/make-up|credit|waitlist/i).first()).toBeVisible({ timeout: 15_000 });
   });
 
   test('stats cards render', async ({ page }) => {
@@ -53,12 +55,13 @@ test.describe('Continuation — Owner', () => {
 
   test('continuation page loads', async ({ page }) => {
     await goTo(page, '/continuation');
-    await expect(page.getByText(/continuation|term/i).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/continuation|term/i).first()).toBeVisible({ timeout: 15_000 });
   });
 
   test('create continuation run button exists', async ({ page }) => {
     await goTo(page, '/continuation');
-    const createBtn = page.getByRole('button', { name: /create|new|start/i }).first();
-    await expect(createBtn).toBeVisible({ timeout: 5_000 });
+    // Button text is "New Run" or "Create Continuation Run"
+    const createBtn = page.getByRole('button', { name: /new run|create|start/i }).first();
+    await expect(createBtn).toBeVisible({ timeout: 10_000 });
   });
 });

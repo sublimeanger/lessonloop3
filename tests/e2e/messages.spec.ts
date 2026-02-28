@@ -11,12 +11,15 @@ test.describe('Messages — Owner', () => {
 
   test('compose button exists', async ({ page }) => {
     await goTo(page, '/messages');
-    await expect(page.getByRole('button', { name: /compose|new message|write/i }).first()).toBeVisible();
+    // Button text is "New Message" (dropdown trigger)
+    await expect(page.getByRole('button', { name: /new message/i }).first()).toBeVisible({ timeout: 10_000 });
   });
 
   test('compose modal opens', async ({ page }) => {
     await goTo(page, '/messages');
-    await page.getByRole('button', { name: /compose|new message|write/i }).first().click();
+    const btn = page.getByRole('button', { name: /new message/i }).first();
+    await expect(btn).toBeVisible({ timeout: 10_000 });
+    await btn.click();
     // "New Message" is a dropdown trigger — pick the first option to open compose dialog
     await page.getByRole('menuitem').first().click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });

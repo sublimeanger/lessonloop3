@@ -29,16 +29,20 @@ test.describe('Resources — Owner', () => {
 
   test('upload button exists', async ({ page }) => {
     await goTo(page, '/resources');
-    await expect(page.getByRole('button', { name: /upload|add|new/i }).first()).toBeVisible();
+    // Button text is "Upload Resource" or just "Upload"
+    const btn = page.getByRole('button', { name: /upload|add resource|new/i }).first();
+    await expect(btn).toBeVisible({ timeout: 10_000 });
   });
 
   test('view toggle (grid/list) exists', async ({ page }) => {
     await goTo(page, '/resources');
-    const gridBtn = page.getByRole('button', { name: /grid/i }).first();
-    const listBtn = page.getByRole('button', { name: /list/i }).first();
-    // At least one view toggle should exist
-    const hasGrid = await gridBtn.isVisible().catch(() => false);
-    const hasList = await listBtn.isVisible().catch(() => false);
+    // View toggle buttons may use aria-labels or icon-only buttons
+    const gridBtn = page.locator('[aria-label*="rid"]').first();
+    const listBtn = page.locator('[aria-label*="ist"]').first();
+    const gridRole = page.getByRole('button', { name: /grid/i }).first();
+    const listRole = page.getByRole('button', { name: /list/i }).first();
+    const hasGrid = await gridBtn.isVisible().catch(() => false) || await gridRole.isVisible().catch(() => false);
+    const hasList = await listBtn.isVisible().catch(() => false) || await listRole.isVisible().catch(() => false);
     expect(hasGrid || hasList).toBeTruthy();
   });
 

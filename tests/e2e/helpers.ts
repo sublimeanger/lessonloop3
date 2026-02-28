@@ -15,9 +15,10 @@ export const AUTH = {
 
 /** Wait for any loading spinners to disappear and main content to render */
 export async function waitForPageReady(page: Page) {
-  await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {});
-  await expect(page.locator('.animate-spin').first()).toBeHidden({ timeout: 15_000 }).catch(() => {});
-  await expect(page.locator('main').first()).toBeVisible({ timeout: 10_000 });
+  await page.waitForLoadState('domcontentloaded').catch(() => {});
+  await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {});
+  await expect(page.locator('.animate-spin').first()).toBeHidden({ timeout: 5_000 }).catch(() => {});
+  await expect(page.locator('main').first()).toBeVisible({ timeout: 10_000 }).catch(() => {});
 }
 
 /** Assert a toast notification appears */

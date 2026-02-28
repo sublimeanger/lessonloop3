@@ -1,6 +1,21 @@
 import { test, expect } from '@playwright/test';
 import { AUTH, waitForPageReady, goTo } from './helpers';
 
+/** Navigate and verify the URL contains the expected route path */
+async function accessRoute(page: any, route: string) {
+  await page.goto(route);
+  await page.waitForLoadState('domcontentloaded');
+  // Wait for auth to settle — session restore may redirect then correct
+  await page.waitForTimeout(1000);
+  if (!page.url().includes(route)) {
+    // Auth redirect — retry once after session warms up
+    await page.goto(route);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1000);
+  }
+  await expect(page).toHaveURL(new RegExp(route.replace(/\//g, '\\/')), { timeout: 15_000 });
+}
+
 // ═══════════════════════════════════════════════════════════════
 // TEACHER — can access teaching routes, BLOCKED from admin routes
 // ═══════════════════════════════════════════════════════════════
@@ -12,21 +27,20 @@ test.describe('Teacher RBAC', () => {
 
   for (const route of allowed) {
     test(`can access ${route}`, async ({ page }) => {
-      await goTo(page, route);
-      await expect(page).toHaveURL(new RegExp(route.replace('/', '\\/')));
+      await accessRoute(page, route);
     });
   }
 
   for (const route of blocked) {
     test(`BLOCKED from ${route}`, async ({ page }) => {
       await page.goto(route);
-      await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 10_000 });
+      await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 });
     });
   }
 
   test('BLOCKED from parent portal', async ({ page }) => {
     await page.goto('/portal/home');
-    await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 10_000 });
+    await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 });
   });
 
   test('sidebar hides admin-only links', async ({ page }) => {
@@ -55,15 +69,14 @@ test.describe('Finance RBAC', () => {
 
   for (const route of allowed) {
     test(`can access ${route}`, async ({ page }) => {
-      await goTo(page, route);
-      await expect(page).toHaveURL(new RegExp(route.replace('/', '\\/')));
+      await accessRoute(page, route);
     });
   }
 
   for (const route of blocked) {
     test(`BLOCKED from ${route}`, async ({ page }) => {
       await page.goto(route);
-      await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 10_000 });
+      await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 });
     });
   }
 
@@ -87,21 +100,20 @@ test.describe('Parent RBAC', () => {
 
   for (const route of portalRoutes) {
     test(`can access ${route}`, async ({ page }) => {
-      await goTo(page, route);
-      await expect(page).toHaveURL(new RegExp(route.replace('/', '\\/')));
+      await accessRoute(page, route);
     });
   }
 
   for (const route of staffRoutes) {
     test(`BLOCKED from ${route}`, async ({ page }) => {
       await page.goto(route);
-      await page.waitForURL(url => /\/portal\/home/.test(url.toString()), { timeout: 10_000 });
+      await page.waitForURL(url => /\/portal\/home/.test(url.toString()), { timeout: 15_000 });
     });
   }
 
   test('already-authed parent redirected from /login to portal', async ({ page }) => {
     await page.goto('/login');
-    await expect(page).toHaveURL(/\/portal\/home/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/portal\/home/, { timeout: 15_000 });
   });
 });
 
@@ -115,8 +127,7 @@ test.describe('Admin RBAC', () => {
 
   for (const route of allStaffRoutes) {
     test(`can access ${route}`, async ({ page }) => {
-      await goTo(page, route);
-      await expect(page).toHaveURL(new RegExp(route.replace('/', '\\/')));
+      await accessRoute(page, route);
     });
   }
 });

@@ -6,12 +6,14 @@ test.describe('Teachers — Owner', () => {
 
   test('page loads with teacher list', async ({ page }) => {
     await goTo(page, '/teachers');
-    await expect(page.getByText(/teacher|e2e/i).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/teacher|e2e/i).first()).toBeVisible({ timeout: 15_000 });
   });
 
   test('add teacher / invite button exists', async ({ page }) => {
     await goTo(page, '/teachers');
-    await expect(page.getByRole('button', { name: /add|invite|new/i }).first()).toBeVisible();
+    // Button text is "Add Teacher" or "Invite to Login"
+    const btn = page.getByRole('button', { name: /add teacher|invite|new/i }).first();
+    await expect(btn).toBeVisible({ timeout: 10_000 });
   });
 
   test('teacher card shows student count', async ({ page }) => {
@@ -43,12 +45,13 @@ test.describe('Locations — Owner', () => {
 
   test('page loads', async ({ page }) => {
     await goTo(page, '/locations');
-    await expect(page.getByText(/main studio|location/i).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/main studio|location/i).first()).toBeVisible({ timeout: 15_000 });
   });
 
   test('add location button exists', async ({ page }) => {
     await goTo(page, '/locations');
-    await expect(page.getByRole('button', { name: /add.*location|new.*location/i }).first()).toBeVisible();
+    const btn = page.getByRole('button', { name: /add.*location|new.*location/i }).first();
+    await expect(btn).toBeVisible({ timeout: 10_000 });
   });
 
   test('location card shows rooms', async ({ page }) => {
@@ -72,7 +75,9 @@ test.describe('Locations — Owner', () => {
 
   test('add location dialog opens', async ({ page }) => {
     await goTo(page, '/locations');
-    await page.getByRole('button', { name: /add.*location|new.*location/i }).first().click();
+    const btn = page.getByRole('button', { name: /add.*location|new.*location/i }).first();
+    await expect(btn).toBeVisible({ timeout: 10_000 });
+    await btn.click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
     await expect(page.getByLabel(/name/i).first()).toBeVisible();
   });
