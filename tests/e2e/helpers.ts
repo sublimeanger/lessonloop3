@@ -96,3 +96,179 @@ export async function safeGoTo(page: Page, path: string, pageName = path) {
 
   await assertNoErrorBoundary(page);
 }
+
+/**
+ * Fill a form field by its label text, placeholder, or id.
+ * Tries label first, then placeholder, then #id.
+ */
+export async function fillField(page: Page, labelOrPlaceholder: string, value: string) {
+  const byLabel = page.getByLabel(labelOrPlaceholder, { exact: false }).first();
+  if (await byLabel.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await byLabel.fill(value);
+    return;
+  }
+  const byPlaceholder = page.getByPlaceholder(labelOrPlaceholder).first();
+  if (await byPlaceholder.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await byPlaceholder.fill(value);
+    return;
+  }
+  // Fallback: try lowercase-kebab-case id derived from label
+  const id = labelOrPlaceholder.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  await page.locator(`#${id}`).fill(value);
+}
+
+/**
+ * Select an option from a combobox, select, or dropdown.
+ * Clicks the trigger, then clicks the matching option text.
+ */
+export async function selectOption(page: Page, triggerLabel: string, optionText: string) {
+  // Try Radix select / combobox trigger by label
+  const trigger = page.getByLabel(triggerLabel, { exact: false }).first()
+    .or(page.getByRole('combobox', { name: triggerLabel }).first())
+    .or(page.locator(`[data-tour*="${triggerLabel.toLowerCase().replace(/\s+/g, '-')}"]`).first());
+  await trigger.first().click();
+  await page.waitForTimeout(300);
+  // Click the option from the dropdown
+  const option = page.getByRole('option', { name: optionText }).first()
+    .or(page.getByText(optionText, { exact: false }).first());
+  await option.first().click();
+  await page.waitForTimeout(200);
+}
+
+/**
+ * Click a button by name/text and wait for network to settle.
+ */
+export async function clickButton(page: Page, name: string | RegExp) {
+  const btn = page.getByRole('button', { name }).first();
+  await expect(btn).toBeVisible({ timeout: 10_000 });
+  await btn.click();
+  await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {});
+}
+
+/**
+ * Wait for a success toast to appear.
+ * Checks for common success text patterns if no specific text provided.
+ */
+export async function expectToastSuccess(page: Page, text?: string | RegExp) {
+  const pattern = text ?? /success|created|saved|updated|sent|deleted|added|recorded|completed/i;
+  // Radix toast uses data-radix-collection-item, or check by role
+  const toast = page.locator('[data-radix-collection-item]').filter({ hasText: pattern })
+    .or(page.locator('[data-state="open"][role="status"]').filter({ hasText: pattern }));
+  await expect(toast.first()).toBeVisible({ timeout: 15_000 });
+}
+
+/**
+ * Wait for a destructive/error toast to appear.
+ */
+export async function expectToastError(page: Page, text?: string | RegExp) {
+  const pattern = text ?? /error|failed|invalid|could not|unable|problem/i;
+  const toast = page.locator('[data-radix-collection-item]').filter({ hasText: pattern })
+    .or(page.locator('.destructive[data-state="open"]').filter({ hasText: pattern }));
+  await expect(toast.first()).toBeVisible({ timeout: 15_000 });
+}
+
+/**
+ * Close the currently open dialog by clicking X or Cancel.
+ */
+export async function closeDialog(page: Page) {
+  const dialog = page.getByRole('dialog');
+  if (!(await dialog.isVisible().catch(() => false))) return;
+  // Try close (X) button first, then Cancel button
+  const closeBtn = dialog.locator('button[aria-label="Close"]')
+    .or(dialog.locator('button').filter({ hasText: /^close$/i }))
+    .or(dialog.getByRole('button', { name: /cancel/i }));
+  if (await closeBtn.first().isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await closeBtn.first().click();
+  } else {
+    // Press Escape as fallback
+    await page.keyboard.press('Escape');
+  }
+  await expect(dialog).toBeHidden({ timeout: 5_000 }).catch(() => {});
+}
+
+/**
+ * Wait for a table or list to have at least `minRows` items of content.
+ * Checks for table rows, link elements, or card-like children inside <main>.
+ */
+export async function waitForTableData(page: Page, minRows = 1) {
+  // Try table rows first
+  const tableRows = page.locator('main tbody tr, main [role="row"]');
+  const hasTableRows = await tableRows.first().isVisible({ timeout: 10_000 }).catch(() => false);
+  if (hasTableRows) {
+    const count = await tableRows.count();
+    expect(count, `Expected at least ${minRows} table rows`).toBeGreaterThanOrEqual(minRows);
+    return count;
+  }
+  // Fallback: count links or cards within main
+  const items = page.locator('main').getByRole('link');
+  const hasItems = await items.first().isVisible({ timeout: 10_000 }).catch(() => false);
+  if (hasItems) {
+    const count = await items.count();
+    expect(count, `Expected at least ${minRows} list items`).toBeGreaterThanOrEqual(minRows);
+    return count;
+  }
+  return 0;
+}
+
+/**
+ * Return the main content locator for scoping assertions.
+ */
+export function getMainContent(page: Page) {
+  return page.locator('main').first();
+}
+
+/**
+ * Count matching elements on the page.
+ */
+export async function countElements(page: Page, selector: string) {
+  return page.locator(selector).count();
+}
+
+/**
+ * Set up console error tracking on the page.
+ * Call at the start of a test, then call the returned function at the end
+ * to assert no unexpected console errors occurred.
+ *
+ * Usage:
+ *   const checkErrors = await trackConsoleErrors(page);
+ *   // ... do test actions ...
+ *   checkErrors(); // asserts no errors
+ */
+export async function trackConsoleErrors(page: Page) {
+  const errors: string[] = [];
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      const text = msg.text();
+      // Ignore known benign errors
+      if (
+        text.includes('Failed to load resource') ||
+        text.includes('favicon') ||
+        text.includes('ResizeObserver') ||
+        text.includes('net::ERR')
+      ) return;
+      errors.push(text);
+    }
+  });
+  return () => {
+    expect(errors, `Unexpected console errors: ${errors.join('; ')}`).toEqual([]);
+  };
+}
+
+/**
+ * Generate a unique test identifier to avoid data collisions.
+ * Returns a string like "e2e_1709312456789"
+ */
+export function generateTestId() {
+  return `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+}
+
+/**
+ * Assert the page has no horizontal scroll overflow.
+ * Useful for mobile viewport tests.
+ */
+export async function assertNoHorizontalOverflow(page: Page) {
+  const overflow = await page.evaluate(() => {
+    return document.documentElement.scrollWidth > document.documentElement.clientWidth;
+  });
+  expect(overflow, 'Page should not have horizontal overflow').toBe(false);
+}
