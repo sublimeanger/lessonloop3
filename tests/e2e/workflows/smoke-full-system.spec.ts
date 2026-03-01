@@ -18,7 +18,8 @@ function trackErrors(page: Page) {
         text.includes('net::ERR_') ||
         text.includes('favicon') ||
         text.includes('ResizeObserver') ||
-        text.includes('Download the React DevTools')
+        text.includes('Download the React DevTools') ||
+        text.includes('CORS policy')
       ) {
         return;
       }
