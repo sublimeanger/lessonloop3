@@ -7,6 +7,18 @@ env:
   E2E_BASE_URL: http://localhost:8080
   VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
   VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+  E2E_OWNER_EMAIL: ${{ secrets.E2E_OWNER_EMAIL }}
+  E2E_OWNER_PASSWORD: ${{ secrets.E2E_OWNER_PASSWORD }}
+  E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+  E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+  E2E_TEACHER_EMAIL: ${{ secrets.E2E_TEACHER_EMAIL }}
+  E2E_TEACHER_PASSWORD: ${{ secrets.E2E_TEACHER_PASSWORD }}
+  E2E_FINANCE_EMAIL: ${{ secrets.E2E_FINANCE_EMAIL }}
+  E2E_FINANCE_PASSWORD: ${{ secrets.E2E_FINANCE_PASSWORD }}
+  E2E_PARENT_EMAIL: ${{ secrets.E2E_PARENT_EMAIL }}
+  E2E_PARENT_PASSWORD: ${{ secrets.E2E_PARENT_PASSWORD }}
+  E2E_PARENT2_EMAIL: ${{ secrets.E2E_PARENT2_EMAIL }}
+  E2E_PARENT2_PASSWORD: ${{ secrets.E2E_PARENT2_PASSWORD }}
 jobs:
   e2e-workflow-tests:
     name: Workflow E2E Tests
@@ -26,6 +38,18 @@ jobs:
           E2E_BASE_URL=http://localhost:8080
           VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          E2E_OWNER_EMAIL=${{ secrets.E2E_OWNER_EMAIL }}
+          E2E_OWNER_PASSWORD=${{ secrets.E2E_OWNER_PASSWORD }}
+          E2E_ADMIN_EMAIL=${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD=${{ secrets.E2E_ADMIN_PASSWORD }}
+          E2E_TEACHER_EMAIL=${{ secrets.E2E_TEACHER_EMAIL }}
+          E2E_TEACHER_PASSWORD=${{ secrets.E2E_TEACHER_PASSWORD }}
+          E2E_FINANCE_EMAIL=${{ secrets.E2E_FINANCE_EMAIL }}
+          E2E_FINANCE_PASSWORD=${{ secrets.E2E_FINANCE_PASSWORD }}
+          E2E_PARENT_EMAIL=${{ secrets.E2E_PARENT_EMAIL }}
+          E2E_PARENT_PASSWORD=${{ secrets.E2E_PARENT_PASSWORD }}
+          E2E_PARENT2_EMAIL=${{ secrets.E2E_PARENT2_EMAIL }}
+          E2E_PARENT2_PASSWORD=${{ secrets.E2E_PARENT2_PASSWORD }}
           EOF
       - run: npm run dev &
         env:
