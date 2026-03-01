@@ -60,3 +60,39 @@ export async function expectRedirect(page: Page, path: string, redirectPattern: 
   await page.waitForURL(url => redirectPattern.test(url.toString()), { timeout: 10_000 });
   expect(page.url()).not.toContain(path);
 }
+
+/** Assert no error boundary is shown on the current page. */
+export async function assertNoErrorBoundary(page: Page) {
+  const fullError = await page.getByText('Something went wrong').isVisible().catch(() => false);
+  expect(fullError, 'Full-page error boundary should not be visible').toBe(false);
+
+  const sectionError = await page.getByText(/Failed to load/).first().isVisible().catch(() => false);
+  expect(sectionError, 'Section error boundary should not be visible').toBe(false);
+}
+
+/**
+ * Navigate to a page and wait for <main> to appear.
+ * Retries the navigation once if main doesn't show up —
+ * handles slow Supabase connections in CI.
+ */
+export async function safeGoTo(page: Page, path: string, pageName = path) {
+  await goTo(page, path);
+
+  const mainVisible = await page
+    .locator('main')
+    .first()
+    .isVisible({ timeout: 20_000 })
+    .catch(() => false);
+
+  if (!mainVisible) {
+    // Retry once — CI can be slow on first navigation
+    await page.reload();
+    await waitForPageReady(page);
+    await expect(
+      page.locator('main').first(),
+      `${pageName} should have <main> element after retry`,
+    ).toBeVisible({ timeout: 20_000 });
+  }
+
+  await assertNoErrorBoundary(page);
+}
