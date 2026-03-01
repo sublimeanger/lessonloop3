@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { AUTH, safeGoTo, waitForPageReady, assertNoErrorBoundary, trackConsoleErrors } from './helpers';
+import { AUTH, safeGoTo, assertNoErrorBoundary, trackConsoleErrors } from './helpers';
 
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 

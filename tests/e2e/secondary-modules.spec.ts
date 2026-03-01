@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { AUTH, safeGoTo, waitForPageReady, assertNoErrorBoundary, trackConsoleErrors, generateTestId } from './helpers';
+import { AUTH, safeGoTo, assertNoErrorBoundary, trackConsoleErrors } from './helpers';
 
 // ═══════════════════════════════════════════════════════════════
 // LEADS & CRM — Owner

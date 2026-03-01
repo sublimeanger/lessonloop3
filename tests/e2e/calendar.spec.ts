@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { AUTH, safeGoTo, waitForPageReady, assertNoErrorBoundary, trackConsoleErrors, closeDialog, generateTestId } from './helpers';
+import { AUTH, safeGoTo, waitForPageReady, assertNoErrorBoundary, trackConsoleErrors } from './helpers';
 
 // ═══════════════════════════════════════════════════════════════
 // OWNER — CALENDAR (Desktop Chrome project)

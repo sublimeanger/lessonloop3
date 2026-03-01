@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { AUTH, safeGoTo, waitForPageReady, assertNoErrorBoundary, trackConsoleErrors, generateTestId, closeDialog, fillField, clickButton, expectToastSuccess, expectToastError } from './helpers';
+import { AUTH, safeGoTo, waitForPageReady, assertNoErrorBoundary, trackConsoleErrors } from './helpers';
 
 // ═══════════════════════════════════════════════════════════════
 // OWNER — STUDENTS LIST
