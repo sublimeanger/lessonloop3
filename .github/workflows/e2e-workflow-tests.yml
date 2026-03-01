@@ -7,9 +7,6 @@ on:
   workflow_dispatch:
 env:
   E2E_BASE_URL: http://localhost:8080
-  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-  VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-  VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
   E2E_OWNER_EMAIL: ${{ secrets.E2E_OWNER_EMAIL }}
   E2E_OWNER_PASSWORD: ${{ secrets.E2E_OWNER_PASSWORD }}
   E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
@@ -39,9 +36,6 @@ jobs:
         run: |
           {
             echo "E2E_BASE_URL=http://localhost:8080"
-            echo "VITE_SUPABASE_URL=$VITE_SUPABASE_URL"
-            echo "VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY"
-            echo "VITE_SUPABASE_PROJECT_ID=$VITE_SUPABASE_PROJECT_ID"
             echo "E2E_OWNER_EMAIL=$E2E_OWNER_EMAIL"
             echo "E2E_OWNER_PASSWORD=$E2E_OWNER_PASSWORD"
             echo "E2E_ADMIN_EMAIL=$E2E_ADMIN_EMAIL"
@@ -55,10 +49,25 @@ jobs:
             echo "E2E_PARENT2_EMAIL=$E2E_PARENT2_EMAIL"
             echo "E2E_PARENT2_PASSWORD=$E2E_PARENT2_PASSWORD"
           } > .env.test
+      - name: Verify Supabase config exists
+        run: |
+          if ! grep -q "VITE_SUPABASE_PUBLISHABLE_KEY" .env; then
+            echo "::error::Missing VITE_SUPABASE_PUBLISHABLE_KEY in .env — the Supabase client will not initialize."
+            exit 1
+          fi
       - run: npm run dev &
         env:
           CI: true
       - run: npx wait-on http://localhost:8080 --timeout 30000
+      - name: Verify app loaded correctly
+        run: |
+          STATUS=$(curl -s -o /tmp/login-response.html -w "%{http_code}" http://localhost:8080/login)
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::Expected HTTP 200 from /login but got $STATUS"
+            echo "--- Response body ---"
+            cat /tmp/login-response.html
+            exit 1
+          fi
       - name: Smoke test
         id: smoke
         continue-on-error: true
