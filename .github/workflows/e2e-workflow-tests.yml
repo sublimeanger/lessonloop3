@@ -34,23 +34,23 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Create .env.test
         run: |
-          cat > .env.test << EOF
-          E2E_BASE_URL=http://localhost:8080
-          VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          E2E_OWNER_EMAIL=${{ secrets.E2E_OWNER_EMAIL }}
-          E2E_OWNER_PASSWORD=${{ secrets.E2E_OWNER_PASSWORD }}
-          E2E_ADMIN_EMAIL=${{ secrets.E2E_ADMIN_EMAIL }}
-          E2E_ADMIN_PASSWORD=${{ secrets.E2E_ADMIN_PASSWORD }}
-          E2E_TEACHER_EMAIL=${{ secrets.E2E_TEACHER_EMAIL }}
-          E2E_TEACHER_PASSWORD=${{ secrets.E2E_TEACHER_PASSWORD }}
-          E2E_FINANCE_EMAIL=${{ secrets.E2E_FINANCE_EMAIL }}
-          E2E_FINANCE_PASSWORD=${{ secrets.E2E_FINANCE_PASSWORD }}
-          E2E_PARENT_EMAIL=${{ secrets.E2E_PARENT_EMAIL }}
-          E2E_PARENT_PASSWORD=${{ secrets.E2E_PARENT_PASSWORD }}
-          E2E_PARENT2_EMAIL=${{ secrets.E2E_PARENT2_EMAIL }}
-          E2E_PARENT2_PASSWORD=${{ secrets.E2E_PARENT2_PASSWORD }}
-          EOF
+          {
+            echo "E2E_BASE_URL=http://localhost:8080"
+            echo "VITE_SUPABASE_URL=$VITE_SUPABASE_URL"
+            echo "VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY"
+            echo "E2E_OWNER_EMAIL=$E2E_OWNER_EMAIL"
+            echo "E2E_OWNER_PASSWORD=$E2E_OWNER_PASSWORD"
+            echo "E2E_ADMIN_EMAIL=$E2E_ADMIN_EMAIL"
+            echo "E2E_ADMIN_PASSWORD=$E2E_ADMIN_PASSWORD"
+            echo "E2E_TEACHER_EMAIL=$E2E_TEACHER_EMAIL"
+            echo "E2E_TEACHER_PASSWORD=$E2E_TEACHER_PASSWORD"
+            echo "E2E_FINANCE_EMAIL=$E2E_FINANCE_EMAIL"
+            echo "E2E_FINANCE_PASSWORD=$E2E_FINANCE_PASSWORD"
+            echo "E2E_PARENT_EMAIL=$E2E_PARENT_EMAIL"
+            echo "E2E_PARENT_PASSWORD=$E2E_PARENT_PASSWORD"
+            echo "E2E_PARENT2_EMAIL=$E2E_PARENT2_EMAIL"
+            echo "E2E_PARENT2_PASSWORD=$E2E_PARENT2_PASSWORD"
+          } > .env.test
       - run: npm run dev &
         env:
           CI: true
