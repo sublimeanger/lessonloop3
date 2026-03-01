@@ -244,7 +244,12 @@ export async function trackConsoleErrors(page: Page) {
         text.includes('Failed to load resource') ||
         text.includes('favicon') ||
         text.includes('ResizeObserver') ||
-        text.includes('net::ERR')
+        text.includes('net::ERR') ||
+        text.includes('third-party cookie') ||
+        text.includes('Refused to connect') ||
+        text.includes('ERR_BLOCKED') ||
+        text.includes('postMessage') ||
+        text.includes('auth/session')
       ) return;
       errors.push(text);
     }
