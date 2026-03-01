@@ -4,7 +4,7 @@ on:
     branches: [main]
   workflow_dispatch:
 env:
-  E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
+  E2E_BASE_URL: http://localhost:8080
   VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
   VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 jobs:
@@ -23,21 +23,25 @@ jobs:
       - name: Create .env.test
         run: |
           cat > .env.test << EOF
-          E2E_BASE_URL=${{ secrets.E2E_BASE_URL }}
+          E2E_BASE_URL=http://localhost:8080
           VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
           EOF
       - run: npm run dev &
         env:
           CI: true
-      - run: npx wait-on http://localhost:5173 --timeout 30000
+      - run: npx wait-on http://localhost:8080 --timeout 30000
       - name: Smoke test
         id: smoke
         continue-on-error: true
         run: npx playwright test tests/e2e/workflows/smoke-full-system.spec.ts --project=workflow --reporter=list
+        env:
+          E2E_BASE_URL: http://localhost:8080
       - name: Full workflow suite
         if: steps.smoke.outcome == 'success'
         run: npx playwright test tests/e2e/workflows/ --project=workflow --reporter=html
+        env:
+          E2E_BASE_URL: http://localhost:8080
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@v4
