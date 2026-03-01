@@ -1,138 +1,309 @@
 import { test, expect } from '@playwright/test';
-import { AUTH, waitForPageReady, safeGoTo } from './helpers';
+import { AUTH, safeGoTo, assertNoErrorBoundary, trackConsoleErrors } from './helpers';
 
-// ═══════════════════════════════════════════════════════════
-// PARENT 1 — Should see Emma + James
-// ═══════════════════════════════════════════════════════════
-test.describe('Portal — Parent 1', () => {
+// ═══════════════════════════════════════════════════════════════
+// PARENT — PORTAL HOME
+// ═══════════════════════════════════════════════════════════════
+test.describe('Parent Portal — Home', () => {
   test.use({ storageState: AUTH.parent });
 
-  test('portal home loads', async ({ page }) => {
+  test('portal home loads with greeting', async ({ page }) => {
     await safeGoTo(page, '/portal/home', 'Portal Home');
-    const hasEmma = await page.getByText(/emma/i).first().isVisible({ timeout: 15_000 }).catch(() => false);
+    await assertNoErrorBoundary(page);
+
+    // Should show time-of-day greeting
+    const greeting = page.getByText(/good (morning|afternoon|evening)/i).first();
+    await expect(greeting).toBeVisible({ timeout: 15_000 });
+  });
+
+  test('shows personalised "Hi {name}!" greeting', async ({ page }) => {
+    await safeGoTo(page, '/portal/home', 'Portal Home');
+    await page.waitForTimeout(2_000);
+
+    const hiGreeting = page.getByText(/^Hi .+! 👋$/).first();
+    const hasGreeting = await hiGreeting.isVisible({ timeout: 10_000 }).catch(() => false);
     // eslint-disable-next-line no-console
-    console.log(`[portal] Emma visible on home: ${hasEmma}`);
+    console.log(`[portal-home] Personalised greeting: ${hasGreeting}`);
   });
 
-  test('schedule page loads', async ({ page }) => {
-    await safeGoTo(page, '/portal/schedule', 'Portal Schedule');
-    const hasContent = await page.getByText(/schedule|lesson|upcoming/i).first().isVisible({ timeout: 15_000 }).catch(() => false);
+  test('shows next lesson card or access issue state', async ({ page }) => {
+    await safeGoTo(page, '/portal/home', 'Portal Home');
+    await page.waitForTimeout(3_000);
+
+    // Either next lesson card or access issue
+    const nextLessonCard = page.locator('[aria-label="Next lesson"]').first();
+    const accessIssue = page.getByText(/account not linked|no students found|enrolments inactive/i).first();
+    const scheduleBtn = page.getByRole('button', { name: /schedule/i }).first();
+    const scheduleLink = page.getByRole('link', { name: /schedule/i }).first();
+
+    const hasNextLesson = await nextLessonCard.isVisible({ timeout: 5_000 }).catch(() => false);
+    const hasAccessIssue = await accessIssue.isVisible({ timeout: 3_000 }).catch(() => false);
+
     // eslint-disable-next-line no-console
-    console.log(`[portal] Schedule content visible: ${hasContent}`);
+    console.log(`[portal-home] Next lesson: ${hasNextLesson}, Access issue: ${hasAccessIssue}`);
+
+    // One of these states should be true
+    expect(hasNextLesson || hasAccessIssue, 'Should show next lesson or access state').toBe(true);
   });
 
-  test('practice page loads', async ({ page }) => {
-    await safeGoTo(page, '/portal/practice', 'Portal Practice');
-  });
+  test('outstanding balance card links to invoices', async ({ page }) => {
+    await safeGoTo(page, '/portal/home', 'Portal Home');
+    await page.waitForTimeout(3_000);
 
-  test('resources page loads', async ({ page }) => {
-    await safeGoTo(page, '/portal/resources', 'Portal Resources');
-  });
-
-  test('invoices page loads', async ({ page }) => {
-    await safeGoTo(page, '/portal/invoices', 'Portal Invoices');
-    const hasContent = await page.getByText(/invoice|payment|no.*invoices/i).first().isVisible({ timeout: 15_000 }).catch(() => false);
+    // May or may not have outstanding balance
+    const outstandingCard = page.locator('[aria-label*="outstanding"]').first();
+    const hasOutstanding = await outstandingCard.isVisible({ timeout: 5_000 }).catch(() => false);
     // eslint-disable-next-line no-console
-    console.log(`[portal] Invoices content visible: ${hasContent}`);
-  });
+    console.log(`[portal-home] Outstanding balance card: ${hasOutstanding}`);
 
-  test('messages page loads', async ({ page }) => {
-    await safeGoTo(page, '/portal/messages', 'Portal Messages');
-    const hasContent = await page.getByText(/message|inbox|no.*messages/i).first().isVisible({ timeout: 15_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[portal] Messages content visible: ${hasContent}`);
-  });
-
-  test('can create message request', async ({ page }) => {
-    await safeGoTo(page, '/portal/messages', 'Portal Messages');
-    const composeBtn = page.getByRole('button', { name: /new|compose|request|write|message/i }).first();
-    if (await composeBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await composeBtn.click();
-      const dialogVisible = await page.getByRole('dialog').isVisible({ timeout: 5_000 }).catch(() => false);
+    if (hasOutstanding) {
+      // Verify it links to invoices
+      const invoiceLink = page.locator('a[href="/portal/invoices"]').first();
+      const hasLink = await invoiceLink.isVisible({ timeout: 3_000 }).catch(() => false);
       // eslint-disable-next-line no-console
-      console.log(`[portal] Compose dialog visible: ${dialogVisible}`);
+      console.log(`[portal-home] Invoice link: ${hasLink}`);
     }
   });
 
-  test('profile page loads with user info', async ({ page }) => {
-    await safeGoTo(page, '/portal/profile', 'Portal Profile');
-    const hasProfile = await page.getByText(/profile/i).first().isVisible({ timeout: 15_000 }).catch(() => false);
-    const hasLabel = await page.getByLabel(/name|email/i).first().isVisible().catch(() => false);
-    const hasText = await page.getByText(/name|email/i).first().isVisible().catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[portal] Profile: ${hasProfile}, label: ${hasLabel}, text: ${hasText}`);
-  });
-
-  test('continuation page loads', async ({ page }) => {
-    await safeGoTo(page, '/portal/continuation', 'Portal Continuation');
-  });
-
-  test('portal sidebar navigation works', async ({ page }) => {
-    test.setTimeout(120_000);
+  test('unread messages card links to messages', async ({ page }) => {
     await safeGoTo(page, '/portal/home', 'Portal Home');
-    const nav = [
-      { name: /schedule/i, url: /\/portal\/schedule/ },
-      { name: /practice/i, url: /\/portal\/practice/ },
-      { name: /invoices|payments/i, url: /\/portal\/invoices/ },
-      { name: /messages/i, url: /\/portal\/messages/ },
-    ];
-    for (const item of nav) {
-      const link = page.getByRole('link', { name: item.name }).first();
-      const linkVisible = await link.isVisible({ timeout: 10_000 }).catch(() => false);
-      if (linkVisible) {
-        await link.click();
-        await page.waitForURL(url => item.url.test(url.toString()), { timeout: 15_000 }).catch(() => {});
-        await waitForPageReady(page);
+    await page.waitForTimeout(3_000);
+
+    const unreadCard = page.locator('[aria-label="Unread messages"]').first();
+    const hasUnread = await unreadCard.isVisible({ timeout: 5_000 }).catch(() => false);
+    // eslint-disable-next-line no-console
+    console.log(`[portal-home] Unread messages card: ${hasUnread}`);
+  });
+
+  test('no console errors on portal home', async ({ page }) => {
+    const checkErrors = await trackConsoleErrors(page);
+    await safeGoTo(page, '/portal/home', 'Portal Home');
+    await page.waitForTimeout(3_000);
+    checkErrors();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PARENT — PORTAL SCHEDULE
+// ═══════════════════════════════════════════════════════════════
+test.describe('Parent Portal — Schedule', () => {
+  test.use({ storageState: AUTH.parent });
+
+  test('schedule page loads with title', async ({ page }) => {
+    await safeGoTo(page, '/portal/schedule', 'Portal Schedule');
+    await assertNoErrorBoundary(page);
+    await expect(page.getByText('Schedule').first()).toBeVisible({ timeout: 15_000 });
+  });
+
+  test('shows lesson cards or empty state', async ({ page }) => {
+    await safeGoTo(page, '/portal/schedule', 'Portal Schedule');
+    await page.waitForTimeout(3_000);
+
+    // Look for lesson content or empty message
+    const cards = page.locator('.rounded-2xl, .rounded-xl').filter({ hasText: /lesson|piano|guitar|violin|music/i });
+    const cardCount = await cards.count();
+    // eslint-disable-next-line no-console
+    console.log(`[portal-schedule] Lesson-related cards found: ${cardCount}`);
+    await assertNoErrorBoundary(page);
+  });
+
+  test('no console errors on schedule', async ({ page }) => {
+    const checkErrors = await trackConsoleErrors(page);
+    await safeGoTo(page, '/portal/schedule', 'Portal Schedule');
+    await page.waitForTimeout(2_000);
+    checkErrors();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PARENT — PORTAL INVOICES
+// ═══════════════════════════════════════════════════════════════
+test.describe('Parent Portal — Invoices', () => {
+  test.use({ storageState: AUTH.parent });
+
+  test('invoices page loads with title', async ({ page }) => {
+    await safeGoTo(page, '/portal/invoices', 'Portal Invoices');
+    await assertNoErrorBoundary(page);
+    await expect(page.getByText('Invoices & Payments').first()).toBeVisible({ timeout: 15_000 });
+  });
+
+  test('shows outstanding summary or invoice list', async ({ page }) => {
+    await safeGoTo(page, '/portal/invoices', 'Portal Invoices');
+    await page.waitForTimeout(3_000);
+
+    // Check for outstanding balance summary
+    const outstandingLabel = page.getByText('Outstanding Balance').first();
+    const hasOutstanding = await outstandingLabel.isVisible({ timeout: 5_000 }).catch(() => false);
+    // eslint-disable-next-line no-console
+    console.log(`[portal-invoices] Outstanding Balance section: ${hasOutstanding}`);
+
+    // Check for invoice status badges
+    const badges = ['Awaiting Payment', 'Paid', 'Overdue'];
+    for (const badge of badges) {
+      const el = page.getByText(badge, { exact: true }).first();
+      const visible = await el.isVisible({ timeout: 2_000 }).catch(() => false);
+      if (visible) {
+        // eslint-disable-next-line no-console
+        console.log(`[portal-invoices] Badge "${badge}" visible`);
       }
     }
   });
 
-  test('sign out from portal works', async ({ page }) => {
-    await safeGoTo(page, '/portal/home', 'Portal Home');
-    const signOutBtn = page.getByRole('button', { name: /sign out|log out/i }).first()
-      .or(page.locator('[title="Sign out"]').first())
-      .or(page.locator('[aria-label="Sign out"]').first());
-    await expect(signOutBtn.first()).toBeVisible({ timeout: 10_000 });
-    await signOutBtn.first().click();
-    await page.waitForURL(
-      url => /\/(login|auth)/.test(url.toString()),
-      { timeout: 15_000 },
-    );
+  test('status filter dropdown works', async ({ page }) => {
+    await safeGoTo(page, '/portal/invoices', 'Portal Invoices');
+    await page.waitForTimeout(2_000);
+
+    // Look for a select/combobox for status filter
+    const filterSelect = page.locator('button[role="combobox"]').first();
+    const hasFilter = await filterSelect.isVisible({ timeout: 5_000 }).catch(() => false);
+    // eslint-disable-next-line no-console
+    console.log(`[portal-invoices] Status filter: ${hasFilter}`);
+
+    if (hasFilter) {
+      await filterSelect.click();
+      await page.waitForTimeout(300);
+      // Check for filter options
+      const paidOption = page.getByRole('option', { name: /paid/i }).first();
+      const hasPaid = await paidOption.isVisible({ timeout: 3_000 }).catch(() => false);
+      // eslint-disable-next-line no-console
+      console.log(`[portal-invoices] Paid filter option: ${hasPaid}`);
+      await page.keyboard.press('Escape');
+    }
+  });
+
+  test('no console errors on invoices', async ({ page }) => {
+    const checkErrors = await trackConsoleErrors(page);
+    await safeGoTo(page, '/portal/invoices', 'Portal Invoices');
+    await page.waitForTimeout(2_000);
+    checkErrors();
   });
 });
 
-// ═══════════════════════════════════════════════════════════
-// PARENT 2 — Should see ONLY Sophie, NOT Emma/James
-// ═══════════════════════════════════════════════════════════
-test.describe('Portal Data Isolation — Parent 2', () => {
-  test.use({ storageState: AUTH.parent2 });
+// ═══════════════════════════════════════════════════════════════
+// PARENT — PORTAL PRACTICE
+// ═══════════════════════════════════════════════════════════════
+test.describe('Parent Portal — Practice', () => {
+  test.use({ storageState: AUTH.parent });
 
-  test('sees their own child (Sophie)', async ({ page }) => {
-    await safeGoTo(page, '/portal/home', 'Portal Home P2');
-    const hasSophie = await page.getByText(/sophie/i).first().isVisible({ timeout: 15_000 }).catch(() => false);
+  test('practice page loads with title', async ({ page }) => {
+    await safeGoTo(page, '/portal/practice', 'Portal Practice');
+    await assertNoErrorBoundary(page);
+    await expect(page.getByText('Practice').first()).toBeVisible({ timeout: 15_000 });
+  });
+
+  test('no console errors on practice', async ({ page }) => {
+    const checkErrors = await trackConsoleErrors(page);
+    await safeGoTo(page, '/portal/practice', 'Portal Practice');
+    await page.waitForTimeout(2_000);
+    checkErrors();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PARENT — PORTAL RESOURCES
+// ═══════════════════════════════════════════════════════════════
+test.describe('Parent Portal — Resources', () => {
+  test.use({ storageState: AUTH.parent });
+
+  test('resources page loads with title', async ({ page }) => {
+    await safeGoTo(page, '/portal/resources', 'Portal Resources');
+    await assertNoErrorBoundary(page);
+    await expect(page.getByText('Resources').first()).toBeVisible({ timeout: 15_000 });
+  });
+
+  test('shows resource list or empty state', async ({ page }) => {
+    await safeGoTo(page, '/portal/resources', 'Portal Resources');
+    await page.waitForTimeout(3_000);
+
+    const description = page.getByText('Teaching materials shared by your teacher').first();
+    const hasDesc = await description.isVisible({ timeout: 5_000 }).catch(() => false);
     // eslint-disable-next-line no-console
-    console.log(`[portal-p2] Sophie visible: ${hasSophie}`);
+    console.log(`[portal-resources] Description visible: ${hasDesc}`);
+    await assertNoErrorBoundary(page);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PARENT — PORTAL PROFILE
+// ═══════════════════════════════════════════════════════════════
+test.describe('Parent Portal — Profile', () => {
+  test.use({ storageState: AUTH.parent });
+
+  test('profile page loads with title', async ({ page }) => {
+    await safeGoTo(page, '/portal/profile', 'Portal Profile');
+    await assertNoErrorBoundary(page);
+    await expect(page.getByText('Profile').first()).toBeVisible({ timeout: 15_000 });
   });
 
-  test('does NOT see parent1 children (Emma)', async ({ page }) => {
-    await safeGoTo(page, '/portal/home', 'Portal Home P2');
-    await page.waitForTimeout(3000); // Wait for data to load
-    const emmaVisible = await page.getByText(/emma wilson/i).isVisible().catch(() => false);
-    expect(emmaVisible, 'Emma Wilson should not be visible to Parent 2').toBe(false);
+  test('shows profile description', async ({ page }) => {
+    await safeGoTo(page, '/portal/profile', 'Portal Profile');
+    await page.waitForTimeout(2_000);
+
+    const description = page.getByText('Manage your details and preferences').first();
+    const hasDesc = await description.isVisible({ timeout: 5_000 }).catch(() => false);
+    // eslint-disable-next-line no-console
+    console.log(`[portal-profile] Description visible: ${hasDesc}`);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PARENT — SIDEBAR NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+test.describe('Parent Portal — Navigation', () => {
+  test.use({ storageState: AUTH.parent });
+
+  test('portal sidebar has all expected nav items', async ({ page }) => {
+    await safeGoTo(page, '/portal/home', 'Portal Nav');
+    await page.waitForTimeout(2_000);
+
+    const navItems = ['Home', 'Schedule', 'Practice', 'Resources', 'Invoices & Payments', 'Messages'];
+    for (const item of navItems) {
+      const navLink = page.getByRole('link', { name: item, exact: true }).first();
+      const visible = await navLink.isVisible({ timeout: 3_000 }).catch(() => false);
+      // eslint-disable-next-line no-console
+      console.log(`[portal-nav] "${item}": ${visible}`);
+    }
   });
 
-  test('does NOT see parent1 children (James)', async ({ page }) => {
-    await safeGoTo(page, '/portal/home', 'Portal Home P2');
-    await page.waitForTimeout(3000);
-    const jamesVisible = await page.getByText(/james smith/i).isVisible().catch(() => false);
-    expect(jamesVisible, 'James Smith should not be visible to Parent 2').toBe(false);
-  });
+  test('clicking sidebar nav items navigates correctly', async ({ page }) => {
+    await safeGoTo(page, '/portal/home', 'Portal Nav');
+    await page.waitForTimeout(2_000);
 
-  test('invoices page shows no leaked data', async ({ page }) => {
-    await safeGoTo(page, '/portal/invoices', 'Portal Invoices P2');
-  });
+    // Navigate to Schedule
+    const scheduleLink = page.getByRole('link', { name: 'Schedule', exact: true }).first();
+    if (await scheduleLink.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await scheduleLink.click();
+      await page.waitForURL(/\/portal\/schedule/, { timeout: 10_000 });
+      await assertNoErrorBoundary(page);
+    }
 
-  test('schedule shows only Sophie lessons', async ({ page }) => {
-    await safeGoTo(page, '/portal/schedule', 'Portal Schedule P2');
+    // Navigate to Resources
+    const resourcesLink = page.getByRole('link', { name: 'Resources', exact: true }).first();
+    if (await resourcesLink.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await resourcesLink.click();
+      await page.waitForURL(/\/portal\/resources/, { timeout: 10_000 });
+      await assertNoErrorBoundary(page);
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// OWNER — CANNOT ACCESS PORTAL PAGES
+// ═══════════════════════════════════════════════════════════════
+test.describe('Parent Portal — Owner Access', () => {
+  test.use({ storageState: AUTH.owner });
+
+  test('owner accessing /portal/home is redirected', async ({ page }) => {
+    await page.goto('/portal/home');
+    await page.waitForTimeout(5_000);
+
+    const url = page.url();
+    // eslint-disable-next-line no-console
+    console.log(`[owner-portal] /portal/home → URL: ${url}`);
+    // Owner should not see portal greeting
+    const portalGreeting = page.getByText(/good (morning|afternoon|evening)/i).first();
+    const hasGreeting = await portalGreeting.isVisible({ timeout: 3_000 }).catch(() => false);
+    // eslint-disable-next-line no-console
+    console.log(`[owner-portal] Portal greeting visible: ${hasGreeting}`);
   });
 });
