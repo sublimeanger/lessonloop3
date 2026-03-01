@@ -32,4 +32,14 @@ export default tseslint.config(
       "no-console": "off",
     },
   },
+  // E2E test files use Playwright's `use` fixture callback — not a React hook
+  {
+    files: ["tests/e2e/**/*.ts"],
+    rules: {
+      "react-hooks/rules-of-hooks": "off",
+      "react-hooks/exhaustive-deps": "off",
+      "react-refresh/only-export-components": "off",
+      "no-empty-pattern": "off",
+    },
+  },
 );

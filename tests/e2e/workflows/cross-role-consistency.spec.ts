@@ -47,7 +47,7 @@ test.describe('Cross-Role — Student Data Consistency', () => {
 
     // Navigate to Instruments tab
     const instrumentsTab = page.getByRole('tab', { name: /Instruments/i }).first();
-    let instruments: string[] = [];
+    const instruments: string[] = [];
     if (await instrumentsTab.isVisible().catch(() => false)) {
       await instrumentsTab.click();
       await page.waitForTimeout(500);
@@ -62,7 +62,7 @@ test.describe('Cross-Role — Student Data Consistency', () => {
 
     // Navigate to Guardians tab
     const guardiansTab = page.getByRole('tab', { name: /Guardians/i }).first();
-    let guardians: string[] = [];
+    const guardians: string[] = [];
     if (await guardiansTab.isVisible().catch(() => false)) {
       await guardiansTab.click();
       await page.waitForTimeout(500);

@@ -121,9 +121,9 @@ function parseDate(dateStr: string): string | null {
   }
 
   // Numeric with separators: DD/MM/YYYY, MM/DD/YYYY, DD-MM-YYYY, DD.MM.YYYY
-  const numMatch = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  const numMatch = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})/);
   if (numMatch) {
-    let [, a, b, yearStr] = numMatch;
+    const [, a, b, yearStr] = numMatch;
     let year = parseInt(yearStr, 10);
     if (year < 100) year += year > 50 ? 1900 : 2000;
     const aNum = parseInt(a, 10);
