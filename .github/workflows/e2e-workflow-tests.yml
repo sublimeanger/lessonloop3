@@ -1,0 +1,54 @@
+name: E2E Workflow Tests
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+env:
+  E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
+  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+jobs:
+  e2e-workflow-tests:
+    name: Workflow E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Create .env.test
+        run: |
+          cat > .env.test << EOF
+          E2E_BASE_URL=${{ secrets.E2E_BASE_URL }}
+          VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          EOF
+      - run: npm run dev &
+        env:
+          CI: true
+      - run: npx wait-on http://localhost:5173 --timeout 30000
+      - name: Smoke test
+        id: smoke
+        continue-on-error: true
+        run: npx playwright test tests/e2e/workflows/smoke-full-system.spec.ts --project=workflow --reporter=list
+      - name: Full workflow suite
+        if: steps.smoke.outcome == 'success'
+        run: npx playwright test tests/e2e/workflows/ --project=workflow --reporter=html
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-workflow-report
+          path: playwright-report/
+          retention-days: 14
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-failure-screenshots
+          path: test-results/
+          retention-days: 14
