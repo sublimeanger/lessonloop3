@@ -35,13 +35,22 @@ async function signInWithOAuthNative(provider: "google" | "apple") {
 
     // Wait for the app to receive a deep-link callback with the auth tokens
     return new Promise<{ error: Error | null }>((resolve) => {
-      const timeout = setTimeout(async () => {
-        listener.remove();
+      let listenerHandle: Awaited<ReturnType<typeof CapApp.addListener>> | null = null;
+
+      const cleanup = async () => {
+        if (listenerHandle) {
+          listenerHandle.remove();
+          listenerHandle = null;
+        }
         await Browser.close().catch(() => {});
+      };
+
+      const timeout = setTimeout(async () => {
+        await cleanup();
         resolve({ error: new Error("Sign in timed out") });
       }, 120_000);
 
-      const listener = CapApp.addListener("appUrlOpen", async ({ url }) => {
+      CapApp.addListener("appUrlOpen", async ({ url }) => {
         try {
           const urlObj = new URL(url);
           const hasTokens =
@@ -51,17 +60,15 @@ async function signInWithOAuthNative(provider: "google" | "apple") {
           if (!hasTokens) return; // Not our callback
 
           clearTimeout(timeout);
-          listener.remove();
-          await Browser.close().catch(() => {});
+          await cleanup();
 
-          // Let the Supabase client pick up the tokens from the URL hash/params
-          // Navigate to the login page with the token fragment so
-          // AuthContext's onAuthStateChange fires automatically.
           window.location.href = `/login${urlObj.hash || `?${urlObj.searchParams.toString()}`}`;
           resolve({ error: null });
         } catch {
           // Not our URL — ignore
         }
+      }).then((handle) => {
+        listenerHandle = handle;
       });
     });
   } catch (e) {
