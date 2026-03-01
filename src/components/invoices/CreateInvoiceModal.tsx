@@ -76,7 +76,6 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
     watch,
     setValue,
     reset,
-    formState: { },
   } = useForm<InvoiceFormData>({
     defaultValues: {
       payerType: 'guardian',
