@@ -163,10 +163,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logger.debug('[Auth] Profile missing after init - attempting recovery');
       
       const recoverProfile = async () => {
-        // First try to ensure profile exists
-        const success = await ensureProfileExists(session.access_token);
-        if (success && mountedRef.current) {
-          // Now fetch the profile again
+        // First try to ensure profile exists via edge function
+        await ensureProfileExists(session.access_token);
+        // Always attempt direct DB fetch regardless of edge function result
+        // The profile may already exist even if profile-ensure failed
+        if (mountedRef.current) {
           await refreshProfile();
         }
       };
