@@ -1,182 +1,168 @@
 
 
-# Implementation Plan: 25 Remaining Marketing Pages
+# Demo Account Seed Plan — Comprehensive Real-World Data
 
-This is a large build covering 25 pages across 6 categories. Following the brief's recommended build order, I will break this into **6 runs**.
+**Target**: `demo-teacher@lessonloop.test` (User ID: `b633da13-...`, Org ID: `5b905216-...`)
 
----
-
-## Run 1: About + Contact SEO upgrades + Legal meta upgrades (Parts A, B, F)
-
-**5 pages — quick SEO upgrades only, no new pages.**
-
-### About (`/about`) — SEO upgrade
-- Create `src/components/marketing/about/AboutSchema.tsx` with Organization + BreadcrumbList JSON-LD (inline `<script>` blocks)
-- Update `usePageMeta` in `About.tsx`: title, description, OG tags, canonical, robots
-- Import and render `<AboutSchema />`
-- Update hero subheadline: add "music school management software" and "UK"
-- Update "What We Solve" H2 to "Designed to solve the real problems music teachers face"
-- Add `<Link>` below each pain point card: Scheduling → `/features/scheduling`, Billing → `/features/billing`, Communication → `/features/parent-portal`
-- Add links in Contact CTA section: "See pricing →" → `/pricing`, "Built for UK schools →" → `/uk`
-
-### Contact (`/contact`) — SEO upgrade
-- Create `src/components/marketing/contact/ContactSchema.tsx` with ContactPage + BreadcrumbList JSON-LD
-- Update `usePageMeta`: title, description, OG tags, canonical
-- Import and render `<ContactSchema />`
-
-### Legal pages (Privacy, Terms, GDPR) — meta-only upgrades
-- Update `usePageMeta` calls in all three pages with new titles, descriptions, canonical URLs, robots
-- Add inline BreadcrumbList `<script>` block to each page (directly in JSX, no separate component needed for these small changes)
-
-**Files created:** 2 (AboutSchema, ContactSchema)
-**Files modified:** 5 (About, Contact, Privacy, Terms, GDPR)
+This plan creates a new edge function `seed-demo-data` that populates the demo org with realistic UK music school data touching every feature surface in the app.
 
 ---
 
-## Run 2: Feature pages 1–4 (Scheduling, Billing, Parent Portal, LoopAssist)
+## Data Architecture
 
-**4 net-new pages + 7 shared template components.**
+### 1. Organisation Settings
+- Update org with full config: VAT enabled (20%), `Europe/London`, `GBP`, `cancellation_notice_hours: 24`, `overdue_reminder_days: [7,14,30]`, `continuation_notice_weeks: 4`, `continuation_assumed_continuing: true`, `parent_can_message_teacher: true`
 
-### Shared components (created once, reused by all 12 feature pages)
-Create in `src/components/marketing/feature-page/`:
-- `FeaturePageHero.tsx` — badge, H1, subheadline, CTAs (props-driven)
-- `FeaturePageProblem.tsx` — H2 + 3 pain point cards (props-driven)
-- `FeaturePageSolution.tsx` — H2 + 4-6 feature cards grid (props-driven)
-- `FeaturePageHowItWorks.tsx` — H2 + 3 numbered steps (props-driven)
-- `FeaturePageRelated.tsx` — H2 + 3 related feature cards with `<Link>` (props-driven)
-- `FeaturePageCTA.tsx` — dark bg CTA section (props-driven)
-- `FeaturePageSchema.tsx` — SoftwareApplication + BreadcrumbList + FAQPage JSON-LD (props-driven)
+### 2. Terms (3)
+- **Spring 2026**: 2026-01-05 → 2026-03-27 (current term)
+- **Summer 2026**: 2026-04-20 → 2026-07-17 (next term)
+- **Autumn 2025**: 2025-09-01 → 2025-12-19 (past term, for historical data)
 
-### Page files
-Create in `src/pages/marketing/features/`:
-- `FeatureScheduling.tsx` — `/features/scheduling`
-- `FeatureBilling.tsx` — `/features/billing`
-- `FeatureParentPortal.tsx` — `/features/parent-portal`
-- `FeatureLoopAssist.tsx` — `/features/loopassist`
+### 3. Teachers (3)
+- **Lauren Twilley** (owner, already exists) — Piano, Voice
+- **Marcus Chen** — Guitar, Bass, Ukulele
+- **Priya Sharma** — Violin, Viola, Cello
 
-### Routes
-Add all 4 routes to `src/config/routes.ts` with lazy imports.
+### 4. Locations (2) + Rooms (4)
+- **Harmony Studios** (123 High Street, Richmond TW9 1DN): Room 1 (cap 1), Room 2 (cap 1), Ensemble Room (cap 8)
+- **Online** (type: online): no rooms
 
-Each page passes its spec data (title, description, H1, pain points, solution features, steps, FAQ, related features) as props to the shared components.
+### 5. Instruments (8)
+Piano, Guitar, Violin, Voice, Drums, Bass, Cello, Ukulele
 
-**Files created:** 11 (7 shared components + 4 page files)
-**Files modified:** 1 (routes.ts)
+### 6. Students (12) — mix of active/inactive
+| Student | Instrument | Teacher | Status |
+|---------|-----------|---------|--------|
+| Ella Whitmore | Piano | Lauren | active |
+| Noah Patel | Piano | Lauren | active |
+| Amelia Brooks | Voice | Lauren | active |
+| Oscar Chen | Guitar | Marcus | active |
+| Isla Martinez | Guitar | Marcus | active |
+| Freddie Young | Bass | Marcus | active |
+| Sophia Okafor | Violin | Priya | active |
+| Liam Bennett | Violin | Priya | active |
+| Ruby Kowalski | Cello | Priya | active |
+| George Taylor | Piano | Lauren | inactive |
+| Maisie Green | Guitar | Marcus | active |
+| Harry Evans | Drums | Lauren | active |
+
+### 7. Guardians (6) + Student-Guardian Links
+| Guardian | Children | User Account |
+|----------|----------|-------------|
+| Sarah Whitmore | Ella, Harry | (no user) |
+| Raj Patel | Noah | (no user) |
+| Claire Brooks | Amelia, George | (no user) |
+| David Martinez | Isla, Oscar | (no user) |
+| Jenny Okafor | Sophia | (no user) |
+| Anna Bennett | Liam, Ruby | (no user) |
+
+Primary payer flags set appropriately. Maisie and Freddie are self-paying students (no guardian).
+
+### 8. Recurrence Rules + Lessons
+- Create weekly recurrence rules for each student-teacher pairing
+- Generate 12 weeks of lessons spanning Autumn 2025 and Spring 2026 terms
+- Past lessons: `completed` status with attendance records (mix of present/absent/late)
+- Future lessons: `scheduled` status
+- 2 cancelled lessons (teacher cancelled, student absent) to feed make-up credit system
+- Group lesson: "Saturday Ensemble" with Sophia, Liam, Ruby (Priya, Ensemble Room)
+
+### 9. Closure Dates
+- Christmas closure: 2025-12-20 → 2026-01-04
+- Half-term: 2026-02-16 → 2026-02-20
+- Easter: 2026-04-03 → 2026-04-18
+- Bank holidays: scattered
+
+### 10. Rate Cards (4)
+- Standard 30-min: £35
+- Standard 45-min: £48
+- Standard 60-min: £60
+- Group 60-min: £20
+
+### 11. Invoices (8) — full lifecycle
+| Invoice | Payer | Status | Amount | Notes |
+|---------|-------|--------|--------|-------|
+| LL-2025-00001 | Sarah Whitmore | paid | £420 | Autumn term - Ella |
+| LL-2025-00002 | Raj Patel | paid | £350 | Autumn term - Noah |
+| LL-2026-00001 | Sarah Whitmore | sent | £455 | Spring term - Ella + Harry |
+| LL-2026-00002 | Raj Patel | sent | £350 | Spring term - Noah |
+| LL-2026-00003 | Claire Brooks | overdue | £350 | Spring term - Amelia |
+| LL-2026-00004 | David Martinez | draft | £700 | Spring term - Isla + Oscar |
+| LL-2026-00005 | Freddie Young (self) | sent | £350 | Spring term |
+| LL-2026-00006 | Jenny Okafor | paid | £350 | Autumn term - Sophia |
+
+With invoice items linked to lessons where applicable. One invoice with a payment plan (3 monthly installments).
+
+### 12. Payments (for paid/partial invoices)
+- Full payments for paid invoices (bank_transfer, card mix)
+- One partial payment on Sarah's Spring invoice
+
+### 13. Make-Up Credits (3)
+- 1 available credit for Ella (teacher cancelled)
+- 1 redeemed credit for Noah (used on replacement lesson)
+- 1 expired credit for Amelia
+
+### 14. Make-Up Waitlist (3 entries)
+- Ella: `waiting` (matching teacher cancelled slot)
+- Oscar: `matched` (matched to a future lesson)
+- Sophia: `offered` (offered but not yet responded)
+
+### 15. Term Continuation Run
+- Run for Spring → Summer 2026, status: `sent`
+- Responses: 8 continuing, 1 withdrawing (George — already inactive), 2 pending
+
+### 16. Leads (5)
+| Lead | Stage | Source |
+|------|-------|--------|
+| Tom Henderson | enquiry | website |
+| Lisa Park | contacted | referral |
+| James Cooper | trial_booked | website |
+| Fatima Hassan | trial_completed | social_media |
+| Ben Wright | converted | referral |
+
+### 17. Practice Assignments + Logs
+- 4 active practice assignments (Ella, Noah, Sophia, Oscar)
+- Practice logs over past 3 weeks for Ella (building a streak) and Noah (sporadic)
+
+### 18. Teacher Availability Blocks
+- Lauren: Mon-Fri 09:00-17:00
+- Marcus: Mon, Wed, Fri 14:00-20:00
+- Priya: Tue, Thu 10:00-18:00, Sat 09:00-13:00
+
+### 19. Messages (4 threads)
+- Owner → Sarah Whitmore: welcome + reply
+- Owner → David Martinez: invoice reminder
+- Priya → Jenny Okafor: lesson feedback
+- Internal admin message about upcoming term
+
+### 20. Resources (3)
+- "Beginner Scales PDF" shared with Ella, Noah
+- "Grade 3 Pieces" shared with Sophia
+- "Guitar Chord Chart" shared with Oscar, Isla
+
+### 21. Booking Page
+- Enabled with slug `harmony-studios`, title, description, welcome/confirmation messages
+
+### 22. Make-Up Policies
+- Seed via existing `seed_make_up_policies` RPC
+
+### 23. Notification Preferences
+- Default for all guardian users (opt-in everything except marketing)
+
+### 24. Enrolment Waitlist
+- 1 entry: prospective student waiting for a Piano slot
 
 ---
 
-## Run 3: Feature pages 5–8 (Students, Teachers, Attendance, Practice Tracking)
+## Implementation
 
-**4 net-new pages reusing the shared template from Run 2.**
+**Single new edge function**: `supabase/functions/seed-demo-data/index.ts`
 
-Create in `src/pages/marketing/features/`:
-- `FeatureStudents.tsx` — `/features/students`
-- `FeatureTeachers.tsx` — `/features/teachers`
-- `FeatureAttendance.tsx` — `/features/attendance`
-- `FeaturePracticeTracking.tsx` — `/features/practice-tracking`
+- Uses service role client (same pattern as `seed-e2e-data`)
+- Hardcodes the demo org ID and user ID
+- Idempotent: checks for existing records before inserting
+- Follows dependency order (terms → teachers → students → lessons → invoices → continuation)
+- Handles invoice status transitions correctly (draft → sent → paid/overdue)
+- Creates realistic UK date/time data in `Europe/London` timezone
 
-Add 4 routes to `routes.ts`.
-
-**Files created:** 4
-**Files modified:** 1 (routes.ts)
-
----
-
-## Run 4: Feature pages 9–12 (Messaging, Reports, Locations, Resources)
-
-**4 net-new pages reusing the shared template.**
-
-Create in `src/pages/marketing/features/`:
-- `FeatureMessaging.tsx` — `/features/messaging`
-- `FeatureReports.tsx` — `/features/reports`
-- `FeatureLocations.tsx` — `/features/locations`
-- `FeatureResources.tsx` — `/features/resources`
-
-Add 4 routes to `routes.ts`.
-
-**Files created:** 4
-**Files modified:** 1 (routes.ts)
-
----
-
-## Run 5: 5 Comparison pages
-
-**5 net-new pages + 7 shared comparison components.**
-
-### Shared components
-Create in `src/components/marketing/compare/`:
-- `CompareHero.tsx` — H1, subheadline, two badges, CTA
-- `CompareTable.tsx` — tick/cross feature comparison table (responsive)
-- `CompareDifferentiators.tsx` — 3-4 differentiator cards
-- `CompareWhySwitch.tsx` — 3 reason cards + migration CTA
-- `CompareFAQ.tsx` — accordion FAQ
-- `CompareCTA.tsx` — dark bg CTA
-- `CompareSchema.tsx` — BreadcrumbList + FAQPage JSON-LD
-
-### Page files
-Create in `src/pages/marketing/compare/`:
-- `VsMyMusicStaff.tsx` — `/compare/lessonloop-vs-my-music-staff`
-- `VsTeachworks.tsx` — `/compare/lessonloop-vs-teachworks`
-- `VsOpus1.tsx` — `/compare/lessonloop-vs-opus1`
-- `VsJackrabbitMusic.tsx` — `/compare/lessonloop-vs-jackrabbit-music`
-- `VsFons.tsx` — `/compare/lessonloop-vs-fons`
-
-Add 5 routes to `routes.ts`. Each page includes internal links to `/features`, `/pricing`, `/uk`, and cross-links to other comparison pages.
-
-**Files created:** 12 (7 shared + 5 pages)
-**Files modified:** 1 (routes.ts)
-
----
-
-## Run 6: 5 Use Case pages
-
-**5 net-new pages + shared use case components.**
-
-### Shared components
-Create in `src/components/marketing/use-case/`:
-- `UseCaseHero.tsx`
-- `UseCasePainPoints.tsx`
-- `UseCaseFeatures.tsx` — each feature card links to its feature page via `<Link>`
-- `UseCaseSocialProof.tsx`
-- `UseCasePricing.tsx`
-- `UseCaseCTA.tsx`
-- `UseCaseSchema.tsx` — BreadcrumbList + SoftwareApplication JSON-LD
-
-### Page files
-Create in `src/pages/marketing/use-cases/`:
-- `MusicAcademies.tsx` — `/for/music-academies`
-- `SoloTeachers.tsx` — `/for/solo-teachers`
-- `PianoSchools.tsx` — `/for/piano-schools`
-- `GuitarSchools.tsx` — `/for/guitar-schools`
-- `PerformingArts.tsx` — `/for/performing-arts`
-
-Add 5 routes to `routes.ts`. Each page links to 3-4 feature pages + `/pricing` + `/features`.
-
-**Files created:** 12 (7 shared + 5 pages)
-**Files modified:** 1 (routes.ts)
-
----
-
-## Cross-cutting rules (all runs)
-
-- All internal links use `<Link>` from `react-router-dom` with keyword-rich anchor text
-- All links to future routes are implemented even if the destination does not exist yet
-- All JSON-LD rendered as inline `<script type="application/ld+json">` in JSX (no useEffect, no Helmet)
-- All components self-contained (no global state/context for content)
-- Framer-motion for animations (progressive enhancement)
-- Tailwind CSS utilities only
-- Brand system: DM Sans, ink/teal/coral/violet/emerald, shadcn/ui
-
----
-
-## Summary
-
-| Run | Pages | New files | Modified files |
-|-----|-------|-----------|----------------|
-| 1 | About, Contact, Privacy, Terms, GDPR | 2 | 5 |
-| 2 | Scheduling, Billing, Parent Portal, LoopAssist + shared template | 11 | 1 |
-| 3 | Students, Teachers, Attendance, Practice Tracking | 4 | 1 |
-| 4 | Messaging, Reports, Locations, Resources | 4 | 1 |
-| 5 | 5 Comparison pages + shared template | 12 | 1 |
-| 6 | 5 Use Case pages + shared template | 12 | 1 |
-| **Total** | **25 pages** | **45 files** | **10 edits** |
+**Also fix build errors** in `create-continuation-run/index.ts`, `enrolment-offer-expiry/index.ts`, and `looopassist-execute/index.ts` by adding proper type annotations to Supabase query results.
 
