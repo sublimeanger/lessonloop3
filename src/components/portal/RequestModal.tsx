@@ -117,12 +117,12 @@ export function RequestModal({
           {children && children.length > 1 && (
             <div className="space-y-2">
               <Label>Regarding Student (optional)</Label>
-              <Select value={studentId} onValueChange={setStudentId}>
+              <Select value={studentId || '__none__'} onValueChange={(v) => setStudentId(v === '__none__' ? '' : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a child" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All / Not specific</SelectItem>
+                  <SelectItem value="__none__">All / Not specific</SelectItem>
                   {children.map((child) => (
                     <SelectItem key={child.id} value={child.id}>
                       {child.first_name} {child.last_name}

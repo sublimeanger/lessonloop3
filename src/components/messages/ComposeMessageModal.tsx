@@ -227,12 +227,12 @@ export function ComposeMessageModal({
           {templates && templates.length > 0 && (
             <div className="space-y-2">
               <Label>Use Template (optional)</Label>
-              <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+              <Select value={selectedTemplateId || '__none__'} onValueChange={(v) => setSelectedTemplateId(v === '__none__' ? '' : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a template" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No template</SelectItem>
+                  <SelectItem value="__none__">No template</SelectItem>
                   {templates.map((template) => (
                     <SelectItem key={template.id} value={template.id}>
                       {template.name}
@@ -247,12 +247,12 @@ export function ComposeMessageModal({
           {linkedStudents.length > 0 && (
             <div className="space-y-2">
               <Label>Related Student (optional)</Label>
-              <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+              <Select value={selectedStudentId || '__none__'} onValueChange={(v) => setSelectedStudentId(v === '__none__' ? '' : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Link to a student" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No student linked</SelectItem>
+                  <SelectItem value="__none__">No student linked</SelectItem>
                   {linkedStudents.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.name}
