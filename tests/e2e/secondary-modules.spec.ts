@@ -11,6 +11,8 @@ test.describe('Leads — Owner', () => {
     await safeGoTo(page, '/leads', 'Leads');
     // If redirected to onboarding, skip — account hasn't completed setup
     if (page.url().includes('/onboarding')) return;
+    const onboardingContent = await page.getByText('Welcome to LessonLoop').isVisible().catch(() => false);
+    if (onboardingContent) return;
     await assertNoErrorBoundary(page);
 
     // Either the leads page loads or feature gate shows

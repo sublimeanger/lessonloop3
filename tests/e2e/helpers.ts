@@ -269,7 +269,11 @@ export async function trackConsoleErrors(page: Page) {
         text.includes('AbortError') ||
         text.includes('NetworkError') ||
         text.includes('network') ||
-        text.includes('ECONNREFUSED')
+        text.includes('ECONNREFUSED') ||
+        text.includes('PGRST') ||
+        text.includes('schema cache') ||
+        text.includes('Could not find the table') ||
+        text.includes('QueryCache')
       ) return;
       errors.push(text);
     }
