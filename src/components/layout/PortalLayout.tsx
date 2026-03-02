@@ -37,19 +37,21 @@ export function PortalLayout({ children }: PortalLayoutProps) {
   if (isMobile) {
     return (
       <ChildFilterProvider>
-        <div className="min-h-screen flex flex-col bg-background">
-          <Header />
-          <div className="px-4 pt-3 md:px-6">
-            <ChildSwitcher compact className="w-full" />
-          </div>
-          <main className="flex-1 overflow-auto p-6 pb-24">
-            <div className="max-w-4xl mx-auto">
-              {contentTransition}
+        <SidebarProvider>
+          <div className="min-h-screen flex flex-col bg-background">
+            <Header />
+            <div className="px-4 pt-3 md:px-6">
+              <ChildSwitcher compact className="w-full" />
             </div>
-          </main>
-          <PortalBottomNav />
-          <ParentLoopAssist open={isOpen} onOpenChange={setIsOpen} />
-        </div>
+            <main className="flex-1 overflow-auto p-6 pb-24">
+              <div className="max-w-4xl mx-auto">
+                {contentTransition}
+              </div>
+            </main>
+            <PortalBottomNav />
+            <ParentLoopAssist open={isOpen} onOpenChange={setIsOpen} />
+          </div>
+        </SidebarProvider>
       </ChildFilterProvider>
     );
   }
