@@ -231,12 +231,12 @@ export function BulkComposeModal({ open, onOpenChange }: BulkComposeModalProps) 
           {templates && templates.length > 0 && (
             <div className="space-y-2">
               <Label>Use Template</Label>
-              <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+              <Select value={selectedTemplateId || '__none__'} onValueChange={(v) => setSelectedTemplateId(v === '__none__' ? '' : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a template (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No template</SelectItem>
+                  <SelectItem value="__none__">No template</SelectItem>
                   {templates.map((template) => (
                     <SelectItem key={template.id} value={template.id}>
                       {template.name}
