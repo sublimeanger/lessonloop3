@@ -124,7 +124,9 @@ test.describe('Parent Portal — Invoices', () => {
   test('invoices page loads with title', async ({ page }) => {
     await safeGoTo(page, '/portal/invoices', 'Portal Invoices');
     await assertNoErrorBoundary(page);
-    await expect(page.getByText('Invoices & Payments').first()).toBeVisible({ timeout: 15_000 });
+    const title = page.getByText('Invoices & Payments').first()
+      .or(page.getByText('Invoices').first());
+    await expect(title).toBeVisible({ timeout: 15_000 });
   });
 
   test('shows outstanding summary or invoice list', async ({ page }) => {

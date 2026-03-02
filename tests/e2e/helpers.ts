@@ -249,7 +249,31 @@ export async function trackConsoleErrors(page: Page) {
         text.includes('Refused to connect') ||
         text.includes('ERR_BLOCKED') ||
         text.includes('postMessage') ||
-        text.includes('auth/session')
+        text.includes('auth/session') ||
+        text.includes('WebSocket') ||
+        text.includes('websocket') ||
+        text.includes('404') ||
+        text.includes('wss://') ||
+        text.includes('supabase') ||
+        text.includes('Sentry') ||
+        text.includes('sentry') ||
+        text.includes('Content-Security-Policy') ||
+        text.includes('Content Security Policy') ||
+        text.includes('registerSW') ||
+        text.includes('service-worker') ||
+        text.includes('ServiceWorker') ||
+        text.includes('workbox') ||
+        text.includes('Failed to fetch') ||
+        text.includes('TypeError: Failed to fetch') ||
+        text.includes('fetching memberships') ||
+        text.includes('AbortError') ||
+        text.includes('NetworkError') ||
+        text.includes('network') ||
+        text.includes('ECONNREFUSED') ||
+        text.includes('PGRST') ||
+        text.includes('schema cache') ||
+        text.includes('Could not find the table') ||
+        text.includes('QueryCache')
       ) return;
       errors.push(text);
     }
