@@ -327,12 +327,12 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
       {currentStudentAssignments.length > 0 && (
         <div className="space-y-2">
           <label className="text-sm font-medium">Assignment (optional)</label>
-          <Select value={selectedAssignmentId} onValueChange={setSelectedAssignmentId} disabled={disabled}>
+          <Select value={selectedAssignmentId || '__general__'} onValueChange={(v) => setSelectedAssignmentId(v === '__general__' ? '' : v)} disabled={disabled}>
             <SelectTrigger>
               <SelectValue placeholder="Select assignment" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">General Practice</SelectItem>
+              <SelectItem value="__general__">General Practice</SelectItem>
               {currentStudentAssignments.map(assignment => (
                 <SelectItem key={assignment.id} value={assignment.id}>
                   {assignment.title}
