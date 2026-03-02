@@ -181,6 +181,38 @@ Deno.serve(async (req) => {
     L("7. Guardians + links done");
 
     // ═══════════════════════════════════════════════════════════════
+    // 7b. PARENT PORTAL TEST USER (Sarah Whitmore)
+    // ═══════════════════════════════════════════════════════════════
+    const PARENT_EMAIL = "demo-parent@lessonloop.test";
+    const PARENT_PASSWORD = "DemoParent2026!";
+    const { data: existingParentUsers } = await admin.auth.admin.listUsers();
+    const existingParent = existingParentUsers?.users?.find((u: any) => u.email === PARENT_EMAIL);
+    let parentUserId: string;
+    if (existingParent) {
+      parentUserId = existingParent.id;
+    } else {
+      const { data: newParent, error: parentErr } = await admin.auth.admin.createUser({
+        email: PARENT_EMAIL, password: PARENT_PASSWORD, email_confirm: true,
+      });
+      if (parentErr) throw new Error(`Create parent user: ${parentErr.message}`);
+      parentUserId = newParent.user.id;
+    }
+    // Profile
+    await admin.from("profiles").upsert({
+      id: parentUserId, full_name: "Sarah Whitmore",
+      has_completed_onboarding: true, current_org_id: ORG_ID,
+    }, { onConflict: "id" });
+    // Membership as parent
+    const { data: existingParentMem } = await admin.from("org_memberships").select("id")
+      .eq("org_id", ORG_ID).eq("user_id", parentUserId).maybeSingle();
+    if (!existingParentMem) {
+      await admin.from("org_memberships").insert({ org_id: ORG_ID, user_id: parentUserId, role: "parent", status: "active" });
+    }
+    // Link guardian record to this user
+    await admin.from("guardians").update({ user_id: parentUserId }).eq("id", guardians["Sarah Whitmore"]);
+    L(`7b. Parent user created: ${PARENT_EMAIL} / ${PARENT_PASSWORD} (linked to Sarah Whitmore → Ella + Harry)`);
+
+    // ═══════════════════════════════════════════════════════════════
     // 8. ASSIGNMENTS + STUDENT-INSTRUMENTS
     // ═══════════════════════════════════════════════════════════════
     const assignments = [
