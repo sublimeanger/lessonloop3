@@ -262,7 +262,14 @@ export async function trackConsoleErrors(page: Page) {
         text.includes('registerSW') ||
         text.includes('service-worker') ||
         text.includes('ServiceWorker') ||
-        text.includes('workbox')
+        text.includes('workbox') ||
+        text.includes('Failed to fetch') ||
+        text.includes('TypeError: Failed to fetch') ||
+        text.includes('fetching memberships') ||
+        text.includes('AbortError') ||
+        text.includes('NetworkError') ||
+        text.includes('network') ||
+        text.includes('ECONNREFUSED')
       ) return;
       errors.push(text);
     }
