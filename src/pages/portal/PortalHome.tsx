@@ -32,6 +32,7 @@ import { PortalHomeSkeleton } from '@/components/shared/LoadingState';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { usePortalLink } from '@/hooks/usePortalLink';
 import { useToast } from '@/hooks/use-toast';
 import { RequestModal } from '@/components/portal/RequestModal';
 import { ParentOnboardingChecklist } from '@/components/portal/ParentOnboardingChecklist';
@@ -56,6 +57,7 @@ export default function PortalHome() {
   const { profile } = useAuth();
   const { currentOrg } = useOrg();
   const navigate = useNavigate();
+  const { portalLink } = usePortalLink();
   const [searchParams, setSearchParams] = useSearchParams();
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const { toast } = useToast();
@@ -327,7 +329,7 @@ export default function PortalHome() {
 
         {/* Continuation alert banner */}
         {pendingContinuation.length > 0 && (
-          <Link to="/portal/continuation" className="block">
+          <Link to={portalLink("/portal/continuation")} className="block">
             <Card className="border-primary/30 bg-primary/5 rounded-2xl" data-interactive>
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
@@ -445,7 +447,7 @@ export default function PortalHome() {
                           </Button>
                         </a>
                       )}
-                      <Link to="/portal/schedule">
+                      <Link to={portalLink("/portal/schedule")}>
                         <Button variant="secondary" size="sm" className="gap-1 w-full">
                           Schedule
                           <ChevronRight className="h-3.5 w-3.5" />
@@ -469,7 +471,7 @@ export default function PortalHome() {
                       key={child.id}
                       data-interactive
                       className="min-w-[220px] snap-start sm:min-w-0 rounded-2xl overflow-hidden"
-                      onClick={() => navigate(`/portal/schedule?student=${child.id}`)}
+                      onClick={() => navigate(`/portal/schedule?child=${child.id}`)}
                     >
                       <CardContent className="p-4 relative">
                         {/* Left accent stripe */}
@@ -787,7 +789,7 @@ export default function PortalHome() {
 
             {/* 4. Outstanding Balance */}
             {hasOutstanding && (
-              <Link to="/portal/invoices" className="block" aria-label="View invoices">
+              <Link to={portalLink("/portal/invoices")} className="block" aria-label="View invoices">
                 <Card data-interactive className="border-warning/30 bg-warning/5 rounded-2xl" role="region" aria-label={`${formatCurrencyMinor(displayOutstanding, currencyCode)} outstanding`}>
                   <CardContent className="p-4 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
@@ -819,13 +821,13 @@ export default function PortalHome() {
                     Messages
                   </h2>
                   <Link
-                    to="/portal/messages"
+                    to={portalLink("/portal/messages")}
                     className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
                   >
                     View all <ChevronRight className="h-3 w-3" />
                   </Link>
                 </div>
-                <Link to="/portal/messages" aria-label={`${unreadCount} unread message${unreadCount !== 1 ? 's' : ''}`}>
+                <Link to={portalLink("/portal/messages")} aria-label={`${unreadCount} unread message${unreadCount !== 1 ? 's' : ''}`}>
                   <Card data-interactive className="rounded-2xl" role="region" aria-label="Unread messages">
                     <CardContent className="p-4 flex items-center gap-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
@@ -857,7 +859,7 @@ export default function PortalHome() {
                 Send a Message
               </Button>
             </div>
-            <Link to="/portal/resources" className="block">
+            <Link to={portalLink("/portal/resources")} className="block">
               <Card data-interactive className="rounded-2xl">
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">

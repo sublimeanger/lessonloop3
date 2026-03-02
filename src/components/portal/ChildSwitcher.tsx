@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useChildrenWithDetails } from '@/hooks/useParentPortal';
 import { useChildFilter } from '@/contexts/ChildFilterContext';
 import {
@@ -18,6 +19,16 @@ interface ChildSwitcherProps {
 export function ChildSwitcher({ className, compact }: ChildSwitcherProps) {
   const { data: children } = useChildrenWithDetails();
   const { selectedChildId, setSelectedChildId } = useChildFilter();
+
+  // If selected child is no longer valid, reset to "All children"
+  useEffect(() => {
+    if (selectedChildId && children && children.length > 0) {
+      const isValid = children.some((c) => c.id === selectedChildId);
+      if (!isValid) {
+        setSelectedChildId(null);
+      }
+    }
+  }, [selectedChildId, children, setSelectedChildId]);
 
   if (!children || children.length <= 1) return null;
 
