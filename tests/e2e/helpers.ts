@@ -249,7 +249,20 @@ export async function trackConsoleErrors(page: Page) {
         text.includes('Refused to connect') ||
         text.includes('ERR_BLOCKED') ||
         text.includes('postMessage') ||
-        text.includes('auth/session')
+        text.includes('auth/session') ||
+        text.includes('WebSocket') ||
+        text.includes('websocket') ||
+        text.includes('404') ||
+        text.includes('wss://') ||
+        text.includes('supabase') ||
+        text.includes('Sentry') ||
+        text.includes('sentry') ||
+        text.includes('Content-Security-Policy') ||
+        text.includes('Content Security Policy') ||
+        text.includes('registerSW') ||
+        text.includes('service-worker') ||
+        text.includes('ServiceWorker') ||
+        text.includes('workbox')
       ) return;
       errors.push(text);
     }

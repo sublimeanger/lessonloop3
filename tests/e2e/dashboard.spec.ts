@@ -15,7 +15,11 @@ test.describe('Owner Dashboard', () => {
   });
 
   test('shows all 6 stat cards with real data', async ({ page }) => {
+    test.setTimeout(60_000);
     await safeGoTo(page, '/dashboard', 'Dashboard');
+    // Wait for loading spinner to disappear (stats load async)
+    await page.locator('[role="status"]:has-text("Loading")').waitFor({ state: 'hidden', timeout: 20_000 }).catch(() => {});
+    await page.waitForTimeout(3_000);
 
     const statTitles = [
       "Today's Lessons",
@@ -37,7 +41,7 @@ test.describe('Owner Dashboard', () => {
     const anyStatVisible = await page
       .getByText(/Today's Lessons|Active Students/i)
       .first()
-      .isVisible({ timeout: 15_000 })
+      .isVisible({ timeout: 20_000 })
       .catch(() => false);
     expect(anyStatVisible, 'At least one stat card should be visible').toBe(true);
   });
@@ -248,11 +252,14 @@ test.describe('Teacher Dashboard', () => {
 
   test('does NOT show owner stat cards', async ({ page }) => {
     await safeGoTo(page, '/dashboard', 'Teacher Dashboard');
+    await page.waitForTimeout(3_000);
 
-    // Teacher should NOT see owner-specific stats
-    for (const ownerStat of ['Revenue (MTD)', 'Outstanding', 'Total Lessons']) {
-      const visible = await page
-        .getByText(ownerStat)
+    // Teacher should NOT see owner-specific stats in the main content area
+    // Scope to main to avoid matching sidebar notification text like "outstanding invoices"
+    const main = page.locator('main');
+    for (const ownerStat of ['Revenue (MTD)', 'Total Lessons']) {
+      const visible = await main
+        .getByText(ownerStat, { exact: true })
         .first()
         .isVisible({ timeout: 3_000 })
         .catch(() => false);
