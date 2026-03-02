@@ -260,8 +260,10 @@ serve(async (req) => {
             const bulkEntities: any[] = [];
 
             for (const inv of overdueInvoices || []) {
-              const email = inv.guardians?.email || inv.students?.email;
-              const name = inv.guardians?.full_name || (inv.students ? `${inv.students.first_name} ${inv.students.last_name}` : "Customer");
+              const _g = inv.guardians as any;
+              const _s = inv.students as any;
+              const email = _g?.email || _s?.email;
+              const name = _g?.full_name || (_s ? `${_s.first_name} ${_s.last_name}` : "Customer");
               if (!email) continue;
 
               await supabase.from("message_log").insert({
@@ -270,7 +272,7 @@ serve(async (req) => {
                 recipient_email: email,
                 recipient_name: name,
                 recipient_type: inv.guardians ? "guardian" : "student",
-                recipient_id: inv.guardians?.id || inv.students?.id,
+                recipient_id: _g?.id || _s?.id,
                 subject: `Payment Reminder: Invoice ${inv.invoice_number}`,
                 body: `Dear ${name},\n\nThis is a friendly reminder that invoice ${inv.invoice_number} for £${(inv.total_minor / 100).toFixed(2)} is outstanding. The due date was ${inv.due_date}.\n\nPlease arrange payment at your earliest convenience.\n\nThank you.`,
                 message_type: "invoice_reminder",
@@ -547,11 +549,11 @@ async function executeGenerateBillingRun(
 
   for (const lesson of uninvoicedLessons) {
     for (const participant of lesson.lesson_participants || []) {
-      const student = participant.students;
+      const student = participant.students as any;
       if (!student) continue;
 
-      const rate = resolveRate(lesson, student);
-      const primaryGuardian = student.student_guardians?.find((sg: { is_primary_payer: boolean }) => sg.is_primary_payer);
+      const rate = resolveRate(lesson, student as { default_rate_card_id?: string | null });
+      const primaryGuardian = (student.student_guardians as any[])?.find((sg: any) => sg.is_primary_payer);
 
       let payerKey: string;
       let payerInfo: { type: 'guardian' | 'student'; id: string; name: string };
