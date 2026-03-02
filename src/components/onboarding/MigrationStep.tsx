@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { parseCSV, readFileAsText } from '@/lib/csv-parser';
 import type { MigrationChoice, ImportData } from '@/hooks/useOnboardingState';
 import type { ColumnMapping, TargetField } from '@/hooks/useStudentsImport';
 
@@ -38,35 +39,7 @@ const SOURCE_LABELS: Record<string, string> = {
   jackrabbit: 'Jackrabbit Music',
 };
 
-// ── CSV Parsing (extracted from useStudentsImport) ─────────────────────────
-
-function parseCSV(content: string): { headers: string[]; rows: string[][] } {
-  const lines = content.split(/\r?\n/).filter(line => line.trim());
-  if (lines.length === 0) return { headers: [], rows: [] };
-
-  const parseRow = (line: string): string[] => {
-    const result: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') { inQuotes = !inQuotes; }
-      else if (char === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
-      else { current += char; }
-    }
-    result.push(current.trim());
-    return result;
-  };
-
-  return { headers: parseRow(lines[0]), rows: lines.slice(1).map(parseRow) };
-}
-
-async function readFileAsText(f: File): Promise<string> {
-  const utf8 = await f.text();
-  if (!utf8.includes('\uFFFD')) return utf8;
-  const buffer = await f.arrayBuffer();
-  return new TextDecoder('windows-1252').decode(buffer);
-}
+// ── CSV Parsing now uses shared @/lib/csv-parser ───────────────────────────
 
 // ── Confidence badge ───────────────────────────────────────────────────────
 
@@ -141,15 +114,19 @@ export function MigrationStep({
     return {
       students: localRows.length,
       guardians: hasGuardian ? localRows.filter(r => {
-        const guardianIdx = localMappings.findIndex(m => m.target_field === 'guardian_name' || m.target_field === 'guardian_email');
-        return guardianIdx >= 0 && r[guardianIdx]?.trim();
+        const guardianMapping = localMappings.find(m => m.target_field === 'guardian_name' || m.target_field === 'guardian_email');
+        if (!guardianMapping) return false;
+        const colIdx = localHeaders.indexOf(guardianMapping.csv_header);
+        return colIdx >= 0 && r[colIdx]?.trim();
       }).length : 0,
       lessons: hasLesson ? localRows.filter(r => {
-        const lessonIdx = localMappings.findIndex(m => m.target_field === 'lesson_day');
-        return lessonIdx >= 0 && r[lessonIdx]?.trim();
+        const lessonMapping = localMappings.find(m => m.target_field === 'lesson_day');
+        if (!lessonMapping) return false;
+        const colIdx = localHeaders.indexOf(lessonMapping.csv_header);
+        return colIdx >= 0 && r[colIdx]?.trim();
       }).length : 0,
     };
-  }, [localMappings, localRows]);
+  }, [localMappings, localRows, localHeaders]);
 
   const requiredFieldsMapped = useMemo(() => {
     const required = localTargetFields.filter(f => f.required).map(f => f.name);
