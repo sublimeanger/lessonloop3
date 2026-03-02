@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
       for (const child of gd.children) {
         const { data: ex } = await admin.from("student_guardians").select("id").eq("guardian_id", guardians[gd.name]).eq("student_id", students[child]).maybeSingle();
         if (!ex) {
-          await admin.from("student_guardians").insert({ guardian_id: guardians[gd.name], student_id: students[child], relationship: "parent", is_primary_payer: true, org_id: ORG_ID });
+          await admin.from("student_guardians").insert({ guardian_id: guardians[gd.name], student_id: students[child], relationship: "mother", is_primary_payer: true, org_id: ORG_ID });
         }
       }
     }
