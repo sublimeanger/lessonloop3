@@ -237,7 +237,7 @@ export function DayTimelineView({
               style={{ height: DAY_HOUR_HEIGHT }}
             >
               <span className="absolute -top-2 right-2 text-caption text-muted-foreground tabular-nums">
-                {format(setHours(new Date(), hour), 'HH:mm')}
+                {`${hour.toString().padStart(2, '0')}:00`}
               </span>
             </div>
           ))}
