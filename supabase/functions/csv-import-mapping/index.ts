@@ -156,27 +156,29 @@ serve(async (req) => {
 
     const { headers, sampleRows, orgId, sourceSoftware } = await req.json();
 
-    if (!orgId || !headers || !Array.isArray(headers)) {
+    if (!headers || !Array.isArray(headers)) {
       return new Response(JSON.stringify({ error: "Missing required parameters" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Verify org access
-    const { data: membership } = await supabase
-      .from("org_memberships")
-      .select("role")
-      .eq("org_id", orgId)
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .single();
+    // Verify org access only when orgId is provided (skipped during onboarding)
+    if (orgId) {
+      const { data: membership } = await supabase
+        .from("org_memberships")
+        .select("role")
+        .eq("org_id", orgId)
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .single();
 
-    if (!membership || !["owner", "admin"].includes(membership.role)) {
-      return new Response(JSON.stringify({ error: "Import requires owner or admin role" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (!membership || !["owner", "admin"].includes(membership.role)) {
+        return new Response(JSON.stringify({ error: "Import requires owner or admin role" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Auto-detect source software if not explicitly specified

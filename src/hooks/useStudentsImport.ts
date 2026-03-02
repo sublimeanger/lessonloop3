@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/contexts/OrgContext";
 import { useToast } from "@/hooks/use-toast";
 import { useUsageCounts } from "@/hooks/useUsageCounts";
+import { parseCSV as sharedParseCSV, readFileAsText } from "@/lib/csv-parser";
 
 export interface TargetField {
   name: string;
@@ -83,43 +84,7 @@ export function useStudentsImport() {
   const [sourceSoftware, setSourceSoftware] = useState<string>("auto");
   const [detectedSource, setDetectedSource] = useState<string | null>(null);
 
-  const readFileAsText = useCallback(async (f: File): Promise<string> => {
-    // Try UTF-8 first; if replacement chars appear, fall back to Windows-1252
-    const utf8 = await f.text();
-    if (!utf8.includes('\uFFFD')) return utf8;
-    const buffer = await f.arrayBuffer();
-    const decoder = new TextDecoder('windows-1252');
-    return decoder.decode(buffer);
-  }, []);
-
-  const parseCSV = useCallback((content: string): { headers: string[]; rows: string[][] } => {
-    const lines = content.split(/\r?\n/).filter(line => line.trim());
-    if (lines.length === 0) return { headers: [], rows: [] };
-
-    const parseRow = (line: string): string[] => {
-      const result: string[] = [];
-      let current = "";
-      let inQuotes = false;
-
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        if (char === '"') {
-          inQuotes = !inQuotes;
-        } else if (char === "," && !inQuotes) {
-          result.push(current.trim());
-          current = "";
-        } else {
-          current += char;
-        }
-      }
-      result.push(current.trim());
-      return result;
-    };
-
-    const csvHeaders = parseRow(lines[0]);
-    const csvRows = lines.slice(1).map(parseRow);
-    return { headers: csvHeaders, rows: csvRows };
-  }, []);
+  // Use shared RFC 4180 parser — imported at top of file
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = e.target.files?.[0];
@@ -135,7 +100,7 @@ export function useStudentsImport() {
 
     try {
       const content = await readFileAsText(uploadedFile);
-      const { headers: csvHeaders, rows: csvRows } = parseCSV(content);
+      const { headers: csvHeaders, rows: csvRows } = sharedParseCSV(content);
 
       if (csvHeaders.length === 0 || csvRows.length === 0) {
         throw new Error("CSV file is empty or invalid");
@@ -200,7 +165,7 @@ export function useStudentsImport() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentOrg, parseCSV, readFileAsText, toast, sourceSoftware]);
+  }, [currentOrg, toast, sourceSoftware]);
 
   const updateMapping = useCallback((csvHeader: string, targetField: string | null) => {
     setMappings(prev => prev.map(m =>
@@ -220,25 +185,23 @@ export function useStudentsImport() {
   const transformedRows = useMemo(() => {
     return rows.map(row => {
       const obj: Record<string, string> = {};
-      mappings.forEach((mapping, idx) => {
-        if (mapping.target_field && row[idx]) {
+      mappings.forEach((mapping) => {
+        const colIdx = headers.indexOf(mapping.csv_header);
+        if (mapping.target_field && colIdx >= 0 && row[colIdx]) {
           if (mapping.transform === "split_name") {
-            // Split "John Smith" into first_name + last_name
-            const parts = row[idx].trim().split(/\s+/);
+            const parts = row[colIdx].trim().split(/\s+/);
             obj["first_name"] = parts[0] || "";
             obj["last_name"] = parts.slice(1).join(" ") || "";
           } else if (mapping.transform === "combine_guardian_name" && mapping.combine_with) {
-            // Combine guardian first + last name
             const lastIdx = headers.indexOf(mapping.combine_with);
             const lastName = lastIdx >= 0 ? (row[lastIdx] || "") : "";
-            obj["guardian_name"] = `${row[idx]} ${lastName}`.trim();
+            obj["guardian_name"] = `${row[colIdx]} ${lastName}`.trim();
           } else if (mapping.transform === "combine_guardian2_name" && mapping.combine_with) {
-            // Combine guardian2 first + last name
             const lastIdx = headers.indexOf(mapping.combine_with);
             const lastName = lastIdx >= 0 ? (row[lastIdx] || "") : "";
-            obj["guardian2_name"] = `${row[idx]} ${lastName}`.trim();
+            obj["guardian2_name"] = `${row[colIdx]} ${lastName}`.trim();
           } else {
-            obj[mapping.target_field] = row[idx];
+            obj[mapping.target_field] = row[colIdx];
           }
         }
       });

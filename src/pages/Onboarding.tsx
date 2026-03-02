@@ -244,22 +244,23 @@ export default function Onboarding() {
               // Build transformed rows from mappings
               const transformedRows = state.importData.rows.map(row => {
                 const obj: Record<string, string> = {};
-                state.importData!.mappings.forEach((mapping, idx) => {
-                  if (mapping.target_field && row[idx]) {
+                state.importData!.mappings.forEach((mapping) => {
+                  const colIdx = state.importData!.headers.indexOf(mapping.csv_header);
+                  if (mapping.target_field && colIdx >= 0 && row[colIdx]) {
                     if (mapping.transform === 'split_name') {
-                      const parts = row[idx].trim().split(/\s+/);
+                      const parts = row[colIdx].trim().split(/\s+/);
                       obj['first_name'] = parts[0] || '';
                       obj['last_name'] = parts.slice(1).join(' ') || '';
                     } else if (mapping.transform === 'combine_guardian_name' && mapping.combine_with) {
                       const lastIdx = state.importData!.headers.indexOf(mapping.combine_with);
                       const lastName = lastIdx >= 0 ? (row[lastIdx] || '') : '';
-                      obj['guardian_name'] = `${row[idx]} ${lastName}`.trim();
+                      obj['guardian_name'] = `${row[colIdx]} ${lastName}`.trim();
                     } else if (mapping.transform === 'combine_guardian2_name' && mapping.combine_with) {
                       const lastIdx = state.importData!.headers.indexOf(mapping.combine_with);
                       const lastName = lastIdx >= 0 ? (row[lastIdx] || '') : '';
-                      obj['guardian2_name'] = `${row[idx]} ${lastName}`.trim();
+                      obj['guardian2_name'] = `${row[colIdx]} ${lastName}`.trim();
                     } else {
-                      obj[mapping.target_field!] = row[idx];
+                      obj[mapping.target_field!] = row[colIdx];
                     }
                   }
                 });
