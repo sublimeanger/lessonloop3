@@ -76,7 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error) {
     console.error("enrolment-offer-expiry error:", error);
     return new Response(
-      JSON.stringify({ error: error.message || "Internal server error" }),
+      JSON.stringify({ error: (error as Error).message || "Internal server error" }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }

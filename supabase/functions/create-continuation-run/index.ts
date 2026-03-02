@@ -361,7 +361,7 @@ async function handleCreate(
     .is("deleted_at", null);
 
   const activeStudentIds = new Set((students || []).map((s: any) => s.id));
-  const studentMap = new Map(
+  const studentMap = new Map<string, any>(
     (students || []).map((s: any) => [s.id, s])
   );
 
@@ -393,7 +393,7 @@ async function handleCreate(
     .select("id, display_name")
     .eq("org_id", orgId);
 
-  const teacherMap = new Map(
+  const teacherMap = new Map<string, any>(
     (teachers || []).map((t: any) => [t.id, t.display_name])
   );
 
@@ -610,7 +610,7 @@ async function handleCreateFallback(
     .eq("org_id", orgId);
 
   // Build student → recurrence → lessons map
-  const lessonMap = new Map(lessons.map((l: any) => [l.id, l]));
+  const lessonMap = new Map<string, any>(lessons.map((l: any) => [l.id, l]));
   const studentRecurrences = new Map<string, Map<string, any[]>>();
 
   for (const p of participants || []) {
@@ -646,7 +646,7 @@ async function handleCreateFallback(
     .is("deleted_at", null);
 
   const activeStudentIds = new Set((students || []).map((s: any) => s.id));
-  const studentMap = new Map((students || []).map((s: any) => [s.id, s]));
+  const studentMap = new Map<string, any>((students || []).map((s: any) => [s.id, s]));
 
   // Get primary payer guardians
   const { data: guardianLinks } = await client
@@ -667,7 +667,7 @@ async function handleCreateFallback(
     .select("id, full_name, email")
     .in("id", guardianIds);
 
-  const guardianDetailMap = new Map(
+  const guardianDetailMap = new Map<string, any>(
     (guardians || []).map((g: any) => [g.id, g])
   );
 
@@ -680,7 +680,7 @@ async function handleCreateFallback(
     .select("id, days_of_week")
     .in("id", recurrenceIds);
 
-  const recurrenceMap = new Map(
+  const recurrenceMap = new Map<string, any>(
     (recurrences || []).map((r: any) => [r.id, r])
   );
 
@@ -696,7 +696,7 @@ async function handleCreateFallback(
     .select("id, display_name")
     .eq("org_id", orgId);
 
-  const teacherMap = new Map(
+  const teacherMap = new Map<string, any>(
     (teachers || []).map((t: any) => [t.id, t.display_name])
   );
 
@@ -928,10 +928,10 @@ async function handleSend(
     .select("id, full_name, email")
     .in("id", guardianIds);
 
-  const studentMap = new Map(
+  const studentMap = new Map<string, any>(
     (students || []).map((s: any) => [s.id, s])
   );
-  const guardianMap = new Map(
+  const guardianMap = new Map<string, any>(
     (guardians || []).map((g: any) => [g.id, g])
   );
 
@@ -1178,8 +1178,8 @@ async function handleSendReminders(
     .eq("id", org_id)
     .single();
 
-  const studentMap = new Map((students || []).map((s: any) => [s.id, s]));
-  const guardianMap = new Map((guardians || []).map((g: any) => [g.id, g]));
+  const studentMap = new Map<string, any>((students || []).map((s: any) => [s.id, s]));
+  const guardianMap = new Map<string, any>((guardians || []).map((g: any) => [g.id, g]));
   const orgName = org?.name || "Your Music Service";
   const nextTermName = (run.next_term as any)?.name || "Next Term";
 

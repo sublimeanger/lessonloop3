@@ -82,3 +82,8 @@ verify_jwt = false
 
 [functions.zoom-sync-lesson]
 verify_jwt = false
+
+# ── Seed/test functions ─────────────────────────────────────────
+
+[functions.seed-demo-data]
+verify_jwt = false
