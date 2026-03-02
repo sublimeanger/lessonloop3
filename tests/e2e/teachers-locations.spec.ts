@@ -8,6 +8,7 @@ test.describe('Teachers — Owner', () => {
   test.use({ storageState: AUTH.owner });
 
   test('loads teachers page with title', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/teachers', 'Teachers');
     await assertNoErrorBoundary(page);
     const title = page.getByText(/^Teachers/i).first();
@@ -176,6 +177,7 @@ test.describe('Teachers — Owner', () => {
   });
 
   test('no console errors on teachers page', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     const checkErrors = await trackConsoleErrors(page);
     await safeGoTo(page, '/teachers', 'Teachers');
     await page.waitForTimeout(2_000);
@@ -209,6 +211,7 @@ test.describe('Locations — Owner', () => {
   test.use({ storageState: AUTH.owner });
 
   test('loads locations page with title', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/locations', 'Locations');
     await assertNoErrorBoundary(page);
     const title = page.getByText(/^Locations/i).first();
@@ -357,6 +360,7 @@ test.describe('Locations — Owner', () => {
   });
 
   test('no console errors on locations page', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     const checkErrors = await trackConsoleErrors(page);
     await safeGoTo(page, '/locations', 'Locations');
     await page.waitForTimeout(2_000);

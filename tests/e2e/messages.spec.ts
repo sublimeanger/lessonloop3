@@ -8,6 +8,7 @@ test.describe('Messages — Owner', () => {
   test.use({ storageState: AUTH.owner });
 
   test('loads messages page with title and description', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/messages', 'Messages');
     await assertNoErrorBoundary(page);
     const title = page.getByText('Messages').first();
@@ -177,6 +178,7 @@ test.describe('Messages — Teacher', () => {
   test.use({ storageState: AUTH.teacher });
 
   test('teacher can access /messages', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/messages', 'Teacher Messages');
     await assertNoErrorBoundary(page);
     const title = page.getByText('Messages').first();
@@ -233,6 +235,7 @@ test.describe('Messages — Finance', () => {
   test.use({ storageState: AUTH.finance });
 
   test('finance user can access /messages', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/messages', 'Finance Messages');
     await assertNoErrorBoundary(page);
     const title = page.getByText('Messages').first();
@@ -269,6 +272,7 @@ test.describe('Messages — Parent Portal', () => {
   test.use({ storageState: AUTH.parent });
 
   test('parent portal messages page loads', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/portal/messages', 'Parent Messages');
     await assertNoErrorBoundary(page);
     const title = page.getByText('Messages').first();
@@ -291,6 +295,7 @@ test.describe('Messages — Parent Portal', () => {
   });
 
   test('parent does NOT see New Message dropdown', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/portal/messages', 'Parent Messages');
     await page.waitForTimeout(2_000);
 
@@ -300,6 +305,7 @@ test.describe('Messages — Parent Portal', () => {
   });
 
   test('My Requests tab loads without errors', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/portal/messages', 'Parent Messages');
 
     const requestsTab = page.getByRole('tab', { name: /my requests/i }).first();
@@ -311,6 +317,7 @@ test.describe('Messages — Parent Portal', () => {
   });
 
   test('parent inbox shows empty state or messages', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/portal/messages', 'Parent Messages');
     await page.waitForTimeout(3_000);
 

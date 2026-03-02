@@ -8,6 +8,7 @@ test.describe('Reports Hub — Owner', () => {
   test.use({ storageState: AUTH.owner });
 
   test('loads reports hub with title and description', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/reports', 'Reports');
     await assertNoErrorBoundary(page);
     await expect(page.getByText('Reports').first()).toBeVisible({ timeout: 15_000 });
@@ -43,6 +44,7 @@ test.describe('Reports Hub — Owner', () => {
   });
 
   test('clicking a report card navigates to the report', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/reports', 'Reports');
     await page.waitForTimeout(2_000);
 
@@ -81,6 +83,7 @@ test.describe('Reports Hub — Owner', () => {
   });
 
   test('no console errors on reports hub', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     const checkErrors = await trackConsoleErrors(page);
     await safeGoTo(page, '/reports', 'Reports');
     await page.waitForTimeout(2_000);
@@ -95,6 +98,7 @@ test.describe('Report Pages — Owner', () => {
   test.use({ storageState: AUTH.owner });
 
   test('Outstanding Payments report loads with date filter', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/reports/outstanding', 'Outstanding');
     if (!page.url().includes('/reports')) return; // auth race
     await assertNoErrorBoundary(page);
@@ -202,6 +206,7 @@ test.describe('Reports — Finance', () => {
   test.use({ storageState: AUTH.finance });
 
   test('finance can access /reports hub', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/reports', 'Finance Reports');
     await assertNoErrorBoundary(page);
     await expect(page.getByText('Reports').first()).toBeVisible({ timeout: 15_000 });

@@ -35,8 +35,24 @@ export default defineConfig({
     actionTimeout: 30_000,
     navigationTimeout: 60_000,
     launchOptions: {
-      args: ['--ignore-certificate-errors'],
       proxy: proxySettings,
     },
   },
+  projects: baseConfig.projects?.map((project) => {
+    // Add --ignore-certificate-errors only for Chromium-based projects
+    const isChromium =
+      project.name === 'desktop-chrome' ||
+      project.name === 'workflow' ||
+      project.name === 'auth-setup';
+    return {
+      ...project,
+      use: {
+        ...project.use,
+        launchOptions: {
+          ...(isChromium ? { args: ['--ignore-certificate-errors'] } : {}),
+          proxy: proxySettings,
+        },
+      },
+    };
+  }),
 });

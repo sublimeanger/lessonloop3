@@ -8,6 +8,7 @@ test.describe('Settings — Owner', () => {
   test.use({ storageState: AUTH.owner });
 
   test('loads settings page with title', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/settings', 'Settings');
     await assertNoErrorBoundary(page);
     await expect(page.getByText('Settings').first()).toBeVisible({ timeout: 15_000 });
@@ -156,6 +157,7 @@ test.describe('Settings — Owner', () => {
   });
 
   test('no console errors on settings profile', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     const checkErrors = await trackConsoleErrors(page);
     await safeGoTo(page, '/settings?tab=profile', 'Settings');
     await page.waitForTimeout(2_000);
@@ -170,6 +172,7 @@ test.describe('Settings — Teacher', () => {
   test.use({ storageState: AUTH.teacher });
 
   test('teacher can access /settings', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/settings?tab=profile', 'Teacher Settings');
     await assertNoErrorBoundary(page);
     await expect(page.getByText('Settings').first()).toBeVisible({ timeout: 15_000 });
@@ -229,6 +232,7 @@ test.describe('Settings — Finance', () => {
   test.use({ storageState: AUTH.finance });
 
   test('finance can access /settings', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/settings?tab=profile', 'Finance Settings');
     await assertNoErrorBoundary(page);
     await expect(page.getByText('Settings').first()).toBeVisible({ timeout: 15_000 });

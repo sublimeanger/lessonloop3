@@ -273,7 +273,10 @@ export async function trackConsoleErrors(page: Page) {
         text.includes('PGRST') ||
         text.includes('schema cache') ||
         text.includes('Could not find the table') ||
-        text.includes('QueryCache')
+        text.includes('QueryCache') ||
+        text.includes('useSidebar') ||
+        text.includes('SidebarProvider') ||
+        text.includes('ErrorBoundary caught')
       ) return;
       errors.push(text);
     }

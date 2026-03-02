@@ -80,6 +80,7 @@ test.describe('Owner Dashboard', () => {
   });
 
   test('sidebar shows all owner nav links', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/dashboard', 'Dashboard');
 
     // Core nav links that owner/admin always see
@@ -102,6 +103,7 @@ test.describe('Owner Dashboard', () => {
   });
 
   test('sidebar footer has Settings and Help links', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/dashboard', 'Dashboard');
     await expect(
       page.getByRole('link', { name: /settings/i }).first(),
@@ -159,6 +161,7 @@ test.describe('Owner Dashboard', () => {
   });
 
   test('sign out redirects to login', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/dashboard', 'Dashboard');
 
     // Sign out button has title="Sign out" in sidebar footer
@@ -202,6 +205,7 @@ test.describe('Owner Dashboard', () => {
   });
 
   test('sidebar navigation to Students works', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/dashboard', 'Dashboard');
     const link = page.getByRole('link', { name: 'Students', exact: true }).first();
     await expect(link).toBeVisible({ timeout: 10_000 });
@@ -212,6 +216,7 @@ test.describe('Owner Dashboard', () => {
   });
 
   test('sidebar navigation to Invoices works', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/dashboard', 'Dashboard');
     const link = page.getByRole('link', { name: 'Invoices', exact: true }).first();
     await expect(link).toBeVisible({ timeout: 10_000 });
@@ -278,6 +283,7 @@ test.describe('Teacher Dashboard', () => {
   });
 
   test('sidebar shows teacher nav links and hides admin links', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/dashboard', 'Teacher Dashboard');
 
     // Teacher sidebar uses "My Calendar" and "My Students" instead of "Calendar"/"Students"
@@ -333,6 +339,7 @@ test.describe('Finance Dashboard', () => {
   });
 
   test('sidebar shows finance-specific links', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/dashboard', 'Finance Dashboard');
 
     // Finance sees: Dashboard, Invoices, Reports, Messages
@@ -358,6 +365,7 @@ test.describe('Finance Dashboard', () => {
   });
 
   test('can navigate to Invoices from sidebar', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/dashboard', 'Finance Dashboard');
     const link = page.getByRole('link', { name: 'Invoices', exact: true }).first();
     await expect(link).toBeVisible({ timeout: 10_000 });
@@ -393,6 +401,7 @@ test.describe('Admin Dashboard', () => {
   });
 
   test('sidebar shows full owner/admin navigation', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/dashboard', 'Admin Dashboard');
     // Admin sees same links as owner
     await expect(

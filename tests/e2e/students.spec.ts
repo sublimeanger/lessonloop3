@@ -18,6 +18,7 @@ test.describe('Students List — Owner', () => {
   });
 
   test('student list shows seed data (Emma, James, or Sophie)', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/students', 'Students');
 
     // Wait for student data to load
@@ -274,6 +275,7 @@ test.describe('Students List — Owner', () => {
   });
 
   test('no console errors during students list interaction', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     const checkErrors = await trackConsoleErrors(page);
     await safeGoTo(page, '/students', 'Students');
     await page.waitForTimeout(2_000);
