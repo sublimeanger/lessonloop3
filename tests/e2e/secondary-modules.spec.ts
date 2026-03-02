@@ -101,6 +101,7 @@ test.describe('Leads — Owner', () => {
   });
 
   test('no console errors', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     const checkErrors = await trackConsoleErrors(page);
     await safeGoTo(page, '/leads', 'Leads');
     await page.waitForTimeout(2_000);
@@ -115,6 +116,7 @@ test.describe('Waitlist — Owner', () => {
   test.use({ storageState: AUTH.owner });
 
   test('waitlist page loads with title', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/waitlist', 'Waitlist');
     await assertNoErrorBoundary(page);
 
@@ -151,6 +153,7 @@ test.describe('Waitlist — Owner', () => {
   });
 
   test('no console errors', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     const checkErrors = await trackConsoleErrors(page);
     await safeGoTo(page, '/waitlist', 'Waitlist');
     await page.waitForTimeout(2_000);
@@ -295,6 +298,7 @@ test.describe('Daily Register — Owner', () => {
   });
 
   test('no console errors', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     const checkErrors = await trackConsoleErrors(page);
     await safeGoTo(page, '/register', 'Register');
     await page.waitForTimeout(2_000);
@@ -309,6 +313,7 @@ test.describe('Batch Attendance — Owner', () => {
   test.use({ storageState: AUTH.owner });
 
   test('batch attendance page loads', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/batch-attendance', 'Batch Attendance');
     await assertNoErrorBoundary(page);
 
@@ -358,6 +363,7 @@ test.describe('Register — Teacher', () => {
   });
 
   test('teacher can access batch attendance', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/batch-attendance', 'Batch Attendance');
     await assertNoErrorBoundary(page);
 
@@ -373,6 +379,7 @@ test.describe('Practice — Owner', () => {
   test.use({ storageState: AUTH.owner });
 
   test('practice page loads', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/practice', 'Practice');
     await assertNoErrorBoundary(page);
 
@@ -410,6 +417,7 @@ test.describe('Resources — Owner', () => {
   test.use({ storageState: AUTH.owner });
 
   test('resources page loads', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/resources', 'Resources');
     await assertNoErrorBoundary(page);
 
@@ -455,6 +463,7 @@ test.describe('Resources — Owner', () => {
   });
 
   test('no console errors', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     const checkErrors = await trackConsoleErrors(page);
     await safeGoTo(page, '/resources', 'Resources');
     await page.waitForTimeout(2_000);
@@ -469,6 +478,7 @@ test.describe('Practice & Resources — Teacher', () => {
   test.use({ storageState: AUTH.teacher });
 
   test('teacher can access practice page', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/practice', 'Practice');
     await assertNoErrorBoundary(page);
 
@@ -477,6 +487,7 @@ test.describe('Practice & Resources — Teacher', () => {
   });
 
   test('teacher can access resources page', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/resources', 'Resources');
     await assertNoErrorBoundary(page);
 

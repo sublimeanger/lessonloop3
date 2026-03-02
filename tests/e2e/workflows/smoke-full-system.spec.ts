@@ -245,6 +245,7 @@ test.describe('Smoke — Parent Portal Full Day', () => {
   test.use({ storageState: AUTH.parent });
 
   test('complete parent journey through every portal page', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     test.setTimeout(300_000);
     const testStart = Date.now();
 

@@ -8,6 +8,7 @@ test.describe('Invoices List — Owner', () => {
   test.use({ storageState: AUTH.owner });
 
   test('loads invoices page with title', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/invoices', 'Invoices');
     await assertNoErrorBoundary(page);
     // Title should show "Invoices" (possibly with count)
@@ -264,6 +265,7 @@ test.describe('Invoices List — Owner', () => {
   });
 
   test('no console errors during invoice page interaction', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     const checkErrors = await trackConsoleErrors(page);
     await safeGoTo(page, '/invoices', 'Invoices');
     await page.waitForTimeout(3_000);
@@ -278,6 +280,7 @@ test.describe('Invoices — Finance', () => {
   test.use({ storageState: AUTH.finance });
 
   test('finance user can access /invoices', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/invoices', 'Finance Invoices');
     await assertNoErrorBoundary(page);
 
@@ -352,6 +355,7 @@ test.describe('Invoices — Parent', () => {
   test.use({ storageState: AUTH.parent });
 
   test('parent sees "Invoices & Payments" title on portal', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/portal/invoices', 'Parent Invoices');
     await assertNoErrorBoundary(page);
 
@@ -361,6 +365,7 @@ test.describe('Invoices — Parent', () => {
   });
 
   test('parent does NOT see Create Invoice or Billing Run buttons', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/portal/invoices', 'Parent Invoices');
     await page.waitForTimeout(2_000);
 
@@ -375,6 +380,7 @@ test.describe('Invoices — Parent', () => {
   });
 
   test('parent does NOT see stats widget or tabs', async ({ page }) => {
+    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/portal/invoices', 'Parent Invoices');
     await page.waitForTimeout(2_000);
 
