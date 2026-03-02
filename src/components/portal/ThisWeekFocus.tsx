@@ -4,6 +4,7 @@ import { Progress } from '@/components/ui/progress';
 import { Target, Music, Clock, Flame, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { usePortalLink } from '@/hooks/usePortalLink';
 import { useParentPracticeAssignments, useWeeklyProgress } from '@/hooks/usePractice';
 import { useChildrenStreaks } from '@/hooks/usePracticeStreaks';
 import { StreakBadge } from '@/components/practice/StreakBadge';
@@ -12,6 +13,7 @@ import { useParentChildInstruments } from '@/hooks/useParentInstruments';
 import { getInstrumentCategoryIcon } from '@/hooks/useInstruments';
 
 export function ThisWeekFocus() {
+  const { portalLink } = usePortalLink();
   const { data: assignments = [], isLoading: assignmentsLoading } = useParentPracticeAssignments();
   const studentIds = [...new Set(assignments.map(a => a.student_id))];
   const { data: progress = [], isLoading: progressLoading } = useWeeklyProgress(studentIds);
@@ -68,7 +70,7 @@ export function ThisWeekFocus() {
             This Week's Focus
           </CardTitle>
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/portal/practice" className="text-sm">
+            <Link to={portalLink("/portal/practice")} className="text-sm">
               View All
               <ChevronRight className="h-4 w-4 ml-1" />
             </Link>
@@ -162,7 +164,7 @@ export function ThisWeekFocus() {
 
         {/* Quick Link to Practice */}
         <Button variant="outline" className="w-full" asChild>
-          <Link to="/portal/practice" className="flex items-center gap-2">
+          <Link to={portalLink("/portal/practice")} className="flex items-center gap-2">
             <Flame className="h-4 w-4" />
             Log Practice Session
           </Link>

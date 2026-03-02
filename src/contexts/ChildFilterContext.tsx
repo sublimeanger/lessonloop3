@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, ReactNode, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 interface ChildFilterContextValue {
@@ -13,7 +13,23 @@ const ChildFilterContext = createContext<ChildFilterContextValue>({
 
 export function ChildFilterProvider({ children }: { children: ReactNode }) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const selectedChildId = searchParams.get('child') || null;
+
+  // Support both `child` and legacy `student` param
+  const childParam = searchParams.get('child');
+  const studentParam = searchParams.get('student');
+  const selectedChildId = childParam || studentParam || null;
+
+  // Auto-normalize legacy `student` → `child`
+  useEffect(() => {
+    if (!childParam && studentParam) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('child', studentParam);
+        next.delete('student');
+        return next;
+      }, { replace: true });
+    }
+  }, [childParam, studentParam, setSearchParams]);
 
   const setSelectedChildId = (id: string | null) => {
     setSearchParams((prev) => {
@@ -23,6 +39,8 @@ export function ChildFilterProvider({ children }: { children: ReactNode }) {
       } else {
         next.delete('child');
       }
+      // Always clean up legacy param
+      next.delete('student');
       return next;
     }, { replace: true });
   };

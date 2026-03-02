@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Home, Calendar, Music, CreditCard, MessageSquare, FolderOpen } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useSearchParams } from 'react-router-dom';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
 import { usePortalFeatures } from '@/hooks/usePortalFeatures';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,11 @@ const allTabs = [
 export function PortalBottomNav() {
   const { data: unreadCount } = useUnreadMessagesCount();
   const { practiceEnabled, resourcesEnabled, invoicesEnabled } = usePortalFeatures();
+  const [searchParams] = useSearchParams();
+
+  // Preserve ?child= across navigation
+  const childParam = searchParams.get('child');
+  const childSuffix = childParam ? `?child=${encodeURIComponent(childParam)}` : '';
 
   const tabs = useMemo(() => allTabs.filter((t) => {
     if (t.key === 'always') return true;
@@ -41,7 +46,7 @@ export function PortalBottomNav() {
           return (
             <NavLink
               key={tab.path}
-              to={tab.path}
+              to={`${tab.path}${childSuffix}`}
               onClick={() => haptics.tap()}
               aria-label={badge ? `${tab.label}, ${badge} unread` : tab.label}
               className={({ isActive }) =>
@@ -65,7 +70,6 @@ export function PortalBottomNav() {
                     )}
                   </div>
                   <span>{tab.label}</span>
-                  {/* Active indicator bar */}
                   {isActive && (
                     <span className="absolute bottom-1 h-1 w-5 rounded-full bg-primary" />
                   )}

@@ -221,6 +221,7 @@ export function useParentLessons(options?: { studentId?: string; status?: string
       if (studentIds.length === 0) return [];
       if (options?.studentId) {
         studentIds = studentIds.filter(id => id === options.studentId);
+        if (studentIds.length === 0) return []; // Selected child not in allowed list
       }
 
       // Limit past lessons to 3 months to avoid loading entire history

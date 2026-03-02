@@ -8,7 +8,7 @@ import {
   FolderOpen,
   User,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -56,6 +56,11 @@ export function PortalSidebar() {
   const { data: unreadCount } = useUnreadMessagesCount();
   const navigate = useNavigate();
   const { practiceEnabled, resourcesEnabled, invoicesEnabled } = usePortalFeatures();
+  const [searchParams] = useSearchParams();
+
+  // Preserve ?child= across sidebar navigation
+  const childParam = searchParams.get('child');
+  const childSuffix = childParam ? `?child=${encodeURIComponent(childParam)}` : '';
 
   const portalNav = allPortalNav.filter((item) => {
     if (item.key === 'always') return true;
@@ -73,8 +78,6 @@ export function PortalSidebar() {
   return (
     <Sidebar className="border-r border-sidebar-border">
       <SidebarContent className="pt-3">
-        {/* Spacer — logo is in Header, matching main dashboard */}
-
         {/* Child filter */}
         <div className="mb-2 px-3">
           <ChildSwitcher className="w-full" />
@@ -95,7 +98,7 @@ export function PortalSidebar() {
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton asChild>
                       <NavLink
-                        to={item.url}
+                        to={`${item.url}${childSuffix}`}
                         className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                         activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                       >
