@@ -15,14 +15,19 @@ import { Flame } from 'lucide-react';
 import { useChildFilter } from '@/contexts/ChildFilterContext';
 import { usePortalFeatures } from '@/hooks/usePortalFeatures';
 import { PortalFeatureDisabled } from '@/components/portal/PortalFeatureDisabled';
+import { logger } from '@/lib/logger';
 
 export default function PortalPractice() {
   usePageMeta('Practice | Parent Portal', 'Track practice progress');
   const { practiceEnabled } = usePortalFeatures();
   const { selectedChildId } = useChildFilter();
-  const { data: streaks = [], isError: streaksError, refetch: refetchStreaks } = useChildrenStreaks();
-  const { data: assignments = [], isError: assignmentsError, refetch: refetchAssignments } = useParentPracticeAssignments();
+  const { data: streaks = [], isError: streaksError, isLoading: streaksLoading, refetch: refetchStreaks } = useChildrenStreaks();
+  const { data: assignments = [], isError: assignmentsError, isLoading: assignmentsLoading, refetch: refetchAssignments } = useParentPracticeAssignments();
   
+  // Log any errors for debugging
+  if (streaksError) logger.error('Streaks fetch error:', streaksError);
+  if (assignmentsError) logger.error('Assignments fetch error:', assignmentsError);
+
   // Filter by selected child
   const filteredAssignments = useMemo(
     () => selectedChildId ? assignments.filter(a => a.student_id === selectedChildId) : assignments,
@@ -31,11 +36,17 @@ export default function PortalPractice() {
   const studentIds = [...new Set(filteredAssignments.map(a => a.student_id))];
 
   const activeStreaks = useMemo(() => {
-    const filtered = selectedChildId
-      ? streaks.filter((s: PracticeStreak & { students?: { id: string } }) => s.students?.id === selectedChildId)
-      : streaks;
-    return filtered.filter(s => s.current_streak > 0 || s.longest_streak > 0);
+    try {
+      const filtered = selectedChildId
+        ? streaks.filter((s: PracticeStreak & { students?: { id: string } }) => s.students?.id === selectedChildId)
+        : streaks;
+      return filtered.filter(s => s.current_streak > 0 || s.longest_streak > 0);
+    } catch (err) {
+      logger.error('Error filtering streaks:', err);
+      return [];
+    }
   }, [streaks, selectedChildId]);
+
   if (!practiceEnabled) {
     return (
       <PortalLayout>
@@ -45,8 +56,9 @@ export default function PortalPractice() {
   }
 
   const practiceError = streaksError || assignmentsError;
+  const isLoading = streaksLoading || assignmentsLoading;
 
-  if (practiceError) {
+  if (practiceError && !isLoading) {
     return (
       <PortalLayout>
         <PortalErrorState onRetry={() => { refetchStreaks(); refetchAssignments(); }} />

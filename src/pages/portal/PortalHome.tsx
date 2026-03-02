@@ -13,6 +13,7 @@ import { useParentCredits } from '@/hooks/useParentCredits';
 import { useParentChildInstruments } from '@/hooks/useParentInstruments';
 import { getInstrumentCategoryIcon } from '@/hooks/useInstruments';
 import { useQueryClient } from '@tanstack/react-query';
+import { useChildFilter } from '@/contexts/ChildFilterContext';
 import {
   Calendar,
   Clock,
@@ -28,7 +29,7 @@ import {
   Video,
 } from 'lucide-react';
 import { PortalHomeSkeleton } from '@/components/shared/LoadingState';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -238,14 +239,62 @@ export default function PortalHome() {
   const hasAccessIssue = noGuardianRecord || noLinkedChildren || allChildrenInactive;
 
   const academyName = currentOrg?.name || 'your academy';
-  // Derive the overall "next lesson" from summary or children
-  const nextLesson = summary?.nextLesson;
+  const { selectedChildId } = useChildFilter();
+
+  // Filter children by selected child
+  const filteredChildren = useMemo(() => {
+    if (!children) return children;
+    if (!selectedChildId) return children;
+    return children.filter(c => c.id === selectedChildId);
+  }, [children, selectedChildId]);
+
+  // Derive the overall "next lesson" from summary or children, filtered
+  const nextLesson = useMemo(() => {
+    if (!selectedChildId) return summary?.nextLesson;
+    // If a child is selected, use that child's next lesson
+    const child = filteredChildren?.find(c => c.next_lesson);
+    return child?.next_lesson || null;
+  }, [summary, selectedChildId, filteredChildren]);
+
   // Find which child this next lesson belongs to
-  const nextLessonChild = children?.find(
-    (c) => c.next_lesson && c.next_lesson.id === nextLesson?.id,
+  const nextLessonChild = filteredChildren?.find(
+    (c) => c.next_lesson && nextLesson && c.next_lesson.id === nextLesson?.id,
   );
 
-  const hasOutstanding = (summary?.outstandingBalance || 0) > 0;
+  // Filter credits by selected child
+  const filteredCredits = useMemo(() => {
+    if (!parentCredits) return parentCredits;
+    if (!selectedChildId) return parentCredits;
+    return parentCredits.filter(c => c.student?.id === selectedChildId);
+  }, [parentCredits, selectedChildId]);
+
+  // Filter waitlist by selected child
+  const filteredWaitlist = useMemo(() => {
+    if (!selectedChildId) return activeWaitlist;
+    return activeWaitlist.filter(e => e.student_id === selectedChildId);
+  }, [activeWaitlist, selectedChildId]);
+
+  // Filter enrolment waitlist by selected child
+  const filteredEnrolmentWaitlist = useMemo(() => {
+    if (!enrolmentWaitlistEntries) return enrolmentWaitlistEntries;
+    if (!selectedChildId) return enrolmentWaitlistEntries;
+    return enrolmentWaitlistEntries.filter((e: any) => e.student_id === selectedChildId);
+  }, [enrolmentWaitlistEntries, selectedChildId]);
+
+  const hasOutstanding = useMemo(() => {
+    if (selectedChildId && filteredChildren) {
+      return filteredChildren.some(c => (c.outstanding_balance || 0) > 0);
+    }
+    return (summary?.outstandingBalance || 0) > 0;
+  }, [selectedChildId, filteredChildren, summary]);
+
+  const displayOutstanding = useMemo(() => {
+    if (selectedChildId && filteredChildren) {
+      return filteredChildren.reduce((sum, c) => sum + (c.outstanding_balance || 0), 0);
+    }
+    return summary?.outstandingBalance || 0;
+  }, [selectedChildId, filteredChildren, summary]);
+
   const overdueCount = summary?.overdueInvoices || 0;
 
   return (
@@ -388,7 +437,7 @@ export default function PortalHome() {
                       )}
                     </div>
                     <div className="flex flex-col gap-2 shrink-0">
-                      {nextLesson.online_meeting_url && (
+                      {'online_meeting_url' in nextLesson && nextLesson.online_meeting_url && (
                         <a href={nextLesson.online_meeting_url} target="_blank" rel="noopener noreferrer">
                           <Button size="sm" className="gap-1.5 w-full">
                             <Video className="h-3.5 w-3.5" />
@@ -409,13 +458,13 @@ export default function PortalHome() {
             )}
 
             {/* 3. Children Summary */}
-            {children && children.length >= 2 && (
+            {filteredChildren && filteredChildren.length >= 2 && (
               <div className="space-y-3">
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                   Your Children
                 </h2>
                 <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0">
-                  {children.map((child) => (
+                  {filteredChildren.map((child) => (
                     <Card
                       key={child.id}
                       data-interactive
@@ -482,11 +531,11 @@ export default function PortalHome() {
             )}
 
             {/* 3.5 Available Make-Up Credits */}
-            {parentCredits && parentCredits.length > 0 && (() => {
-              const totalValue = parentCredits.reduce((sum, c) => sum + c.credit_value_minor, 0);
+            {filteredCredits && filteredCredits.length > 0 && (() => {
+              const totalValue = filteredCredits.reduce((sum, c) => sum + c.credit_value_minor, 0);
               const now = new Date();
               const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-              const expiringSoon = parentCredits.filter(
+              const expiringSoon = filteredCredits.filter(
                 (c) => c.expires_at && isBefore(parseISO(c.expires_at), sevenDaysFromNow) && isAfter(parseISO(c.expires_at), now)
               );
 
@@ -499,8 +548,8 @@ export default function PortalHome() {
                           <Gift className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
-                            {parentCredits.length} make-up credit{parentCredits.length !== 1 ? 's' : ''} — {formatCurrencyMinor(totalValue, currencyCode)} available
+                    <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                            {filteredCredits.length} make-up credit{filteredCredits.length !== 1 ? 's' : ''} — {formatCurrencyMinor(totalValue, currencyCode)} available
                           </p>
                         </div>
                       </div>
@@ -514,9 +563,9 @@ export default function PortalHome() {
                       </div>
                     )}
 
-                    {parentCredits.length > 1 && (
+                    {filteredCredits.length > 1 && (
                       <div className="space-y-2">
-                        {parentCredits.map((credit) => (
+                        {filteredCredits.map((credit) => (
                           <div key={credit.id} className="flex items-center justify-between text-sm border-t border-emerald-200/60 dark:border-emerald-800/60 pt-2 first:border-t-0 first:pt-0">
                             <div className="min-w-0">
                               <p className="font-medium text-emerald-900 dark:text-emerald-100">
@@ -545,13 +594,13 @@ export default function PortalHome() {
             })()}
 
             {/* 3.6 Make-Up Lessons */}
-            {activeWaitlist.length > 0 && (
+            {filteredWaitlist.length > 0 && (
               <div className="space-y-3">
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                   🎵 Make-Up Lessons
                 </h2>
                 <div className="space-y-3">
-                  {activeWaitlist.map((entry) => {
+                  {filteredWaitlist.map((entry) => {
                     const studentName = entry.student
                       ? `${entry.student.first_name} ${entry.student.last_name}`
                       : 'Student';
@@ -642,13 +691,13 @@ export default function PortalHome() {
             )}
 
             {/* 3.7 Enrolment Waiting List */}
-            {enrolmentWaitlistEntries && enrolmentWaitlistEntries.length > 0 && (
+            {filteredEnrolmentWaitlist && filteredEnrolmentWaitlist.length > 0 && (
               <div className="space-y-3">
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                   Enrolment Waiting List
                 </h2>
                 <div className="space-y-3">
-                  {enrolmentWaitlistEntries.map((entry) => (
+                  {filteredEnrolmentWaitlist.map((entry) => (
                     <Card
                       key={entry.id}
                       className={
@@ -739,7 +788,7 @@ export default function PortalHome() {
             {/* 4. Outstanding Balance */}
             {hasOutstanding && (
               <Link to="/portal/invoices" className="block" aria-label="View invoices">
-                <Card data-interactive className="border-warning/30 bg-warning/5 rounded-2xl" role="region" aria-label={`${formatCurrencyMinor(summary!.outstandingBalance, currencyCode)} outstanding`}>
+                <Card data-interactive className="border-warning/30 bg-warning/5 rounded-2xl" role="region" aria-label={`${formatCurrencyMinor(displayOutstanding, currencyCode)} outstanding`}>
                   <CardContent className="p-4 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-warning/10 shrink-0">
@@ -747,7 +796,7 @@ export default function PortalHome() {
                       </div>
                       <div className="min-w-0">
                         <p className="font-semibold text-sm">
-                          {formatCurrencyMinor(summary!.outstandingBalance, currencyCode)} outstanding
+                          {formatCurrencyMinor(displayOutstanding, currencyCode)} outstanding
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {overdueCount > 0
