@@ -92,9 +92,9 @@ Deno.serve(async (req) => {
     // ═══════════════════════════════════════════════════════════════
     // 2. TERMS
     // ═══════════════════════════════════════════════════════════════
-    const autumnTermId = await findOrInsert("terms", { org_id: ORG_ID, name: "Autumn 2025" }, { start_date: "2025-09-01", end_date: "2025-12-19" });
-    const springTermId = await findOrInsert("terms", { org_id: ORG_ID, name: "Spring 2026" }, { start_date: "2026-01-05", end_date: "2026-03-27" });
-    const summerTermId = await findOrInsert("terms", { org_id: ORG_ID, name: "Summer 2026" }, { start_date: "2026-04-20", end_date: "2026-07-17" });
+    const autumnTermId = await findOrInsert("terms", { org_id: ORG_ID, name: "Autumn 2025" }, { start_date: "2025-09-01", end_date: "2025-12-19", created_by: OWNER_USER_ID });
+    const springTermId = await findOrInsert("terms", { org_id: ORG_ID, name: "Spring 2026" }, { start_date: "2026-01-05", end_date: "2026-03-27", created_by: OWNER_USER_ID });
+    const summerTermId = await findOrInsert("terms", { org_id: ORG_ID, name: "Summer 2026" }, { start_date: "2026-04-20", end_date: "2026-07-17", created_by: OWNER_USER_ID });
     L(`2. Terms: ${autumnTermId}, ${springTermId}, ${summerTermId}`);
 
     // ═══════════════════════════════════════════════════════════════
@@ -209,13 +209,13 @@ Deno.serve(async (req) => {
     // 9. RATE CARDS
     // ═══════════════════════════════════════════════════════════════
     const rateCardDefs = [
-      { label: "Standard 30-min", duration_mins: 30, rate_amount: 35, is_default: true },
-      { label: "Standard 45-min", duration_mins: 45, rate_amount: 48, is_default: false },
-      { label: "Standard 60-min", duration_mins: 60, rate_amount: 60, is_default: false },
-      { label: "Group 60-min", duration_mins: 60, rate_amount: 20, is_default: false },
+      { name: "Standard 30-min", duration_mins: 30, rate_amount: 35, is_default: true },
+      { name: "Standard 45-min", duration_mins: 45, rate_amount: 48, is_default: false },
+      { name: "Standard 60-min", duration_mins: 60, rate_amount: 60, is_default: false },
+      { name: "Group 60-min", duration_mins: 60, rate_amount: 20, is_default: false },
     ];
     for (const rc of rateCardDefs) {
-      await findOrInsert("rate_cards", { org_id: ORG_ID, label: rc.label }, { duration_mins: rc.duration_mins, rate_amount: rc.rate_amount, is_default: rc.is_default });
+      await findOrInsert("rate_cards", { org_id: ORG_ID, name: rc.name }, { duration_mins: rc.duration_mins, rate_amount: rc.rate_amount, is_default: rc.is_default });
     }
     L("9. Rate cards done");
 
@@ -284,17 +284,26 @@ Deno.serve(async (req) => {
     let noahAbsentLessonId: string | null = null;
     let ameliaAbsentLessonId: string | null = null;
 
+    // Batch all recurrence rules first
+    const recurrenceIds: string[] = [];
     for (const sched of schedules) {
       const { data: rec } = await admin.from("recurrence_rules").insert({
         org_id: ORG_ID, pattern_type: "weekly", interval_weeks: 1, days_of_week: [sched.day],
         start_date: termDates[sched.terms[0]].start, timezone: "Europe/London",
       }).select("id").single();
-      const recurrenceId = (rec as any).id;
+      recurrenceIds.push((rec as any).id);
+    }
 
+    // Build all lesson rows
+    type LessonMeta = { schedIdx: number; date: string; termKey: string; studentNames: string[]; isEllaCancelDate: boolean; status: string; tUId: string };
+    const lessonRows: any[] = [];
+    const lessonMetas: LessonMeta[] = [];
+
+    for (let si = 0; si < schedules.length; si++) {
+      const sched = schedules[si];
       for (const termKey of sched.terms) {
         const term = termDates[termKey];
         const dates = weeklyDates(term.start, term.end, sched.day, allClosures);
-
         for (const date of dates) {
           const startAt = `${date}T${String(sched.hr).padStart(2, "0")}:${String(sched.min).padStart(2, "0")}:00Z`;
           const endAt = new Date(new Date(startAt).getTime() + sched.dur * 60000).toISOString();
@@ -303,51 +312,77 @@ Deno.serve(async (req) => {
           const isEllaCancelDate = sched.students[0] === "Ella" && !sched.isGroup && date === "2026-02-09";
           const status = isEllaCancelDate ? "cancelled" : isPast ? "completed" : "scheduled";
 
-          const { data: lesson, error: lessonErr } = await admin.from("lessons").insert({
+          lessonRows.push({
             org_id: ORG_ID, title, teacher_id: sched.tId, teacher_user_id: sched.tUId,
             created_by: OWNER_USER_ID, location_id: sched.locId, room_id: sched.roomId,
-            start_at: startAt, end_at: endAt, status, recurrence_id: recurrenceId,
-            duration_mins: sched.dur, max_participants: sched.isGroup ? 8 : 1,
-          }).select("id").single();
-
-          if (lessonErr) { L(`Lesson skip (${date}): ${lessonErr.message}`); continue; }
-          const lessonId = (lesson as any).id;
-          totalLessons++;
-          if (isEllaCancelDate) ellaCancelledLessonId = lessonId;
-
-          for (const studentName of sched.students) {
-            await admin.from("lesson_participants").insert({ lesson_id: lessonId, student_id: students[studentName], org_id: ORG_ID });
-            if (!lessonIdsByStudent[studentName]) lessonIdsByStudent[studentName] = [];
-            lessonIdsByStudent[studentName].push(lessonId);
-
-            // Attendance for completed/cancelled lessons
-            if (status === "completed" || isEllaCancelDate) {
-              const isNoahAbsent = studentName === "Noah" && termKey === "autumn" && date === "2025-11-10";
-              const isAmeliaAbsent = studentName === "Amelia" && termKey === "autumn" && date === "2025-11-11";
-
-              let attStatus = "present";
-              let absReason: string | null = null;
-
-              if (isEllaCancelDate && studentName === "Ella") {
-                attStatus = "cancelled_by_teacher"; absReason = "teacher_cancelled";
-              } else if (isNoahAbsent) {
-                attStatus = "absent"; absReason = "sick"; noahAbsentLessonId = lessonId;
-              } else if (isAmeliaAbsent) {
-                attStatus = "absent"; absReason = "holiday"; ameliaAbsentLessonId = lessonId;
-              } else if (status === "completed") {
-                attStatus = Math.random() < 0.92 ? "present" : "late";
-              } else {
-                continue; // don't record attendance for non-Ella in cancelled lesson
-              }
-
-              await admin.from("attendance_records").insert({
-                lesson_id: lessonId, student_id: students[studentName], org_id: ORG_ID,
-                attendance_status: attStatus, absence_reason_category: absReason, recorded_by: sched.tUId,
-              });
-            }
-          }
+            start_at: startAt, end_at: endAt, status, recurrence_id: recurrenceIds[si],
+            max_participants: sched.isGroup ? 8 : 1,
+            lesson_type: sched.isGroup ? "group" : "private",
+          });
+          lessonMetas.push({ schedIdx: si, date, termKey, studentNames: sched.students, isEllaCancelDate, status, tUId: sched.tUId });
         }
       }
+    }
+
+    // Batch insert lessons in chunks of 50
+    const allLessonIds: string[] = [];
+    for (let i = 0; i < lessonRows.length; i += 50) {
+      const chunk = lessonRows.slice(i, i + 50);
+      const { data: created, error } = await admin.from("lessons").insert(chunk).select("id");
+      if (error) { L(`Lesson batch error at ${i}: ${error.message}`); break; }
+      for (const c of (created || [])) allLessonIds.push((c as any).id);
+    }
+    totalLessons = allLessonIds.length;
+
+    // Build participants and attendance in bulk
+    const participantRows: any[] = [];
+    const attendanceRows: any[] = [];
+
+    for (let li = 0; li < allLessonIds.length; li++) {
+      const lessonId = allLessonIds[li];
+      const meta = lessonMetas[li];
+      if (!meta) continue;
+
+      if (meta.isEllaCancelDate) ellaCancelledLessonId = lessonId;
+
+      for (const studentName of meta.studentNames) {
+        participantRows.push({ lesson_id: lessonId, student_id: students[studentName], org_id: ORG_ID });
+        if (!lessonIdsByStudent[studentName]) lessonIdsByStudent[studentName] = [];
+        lessonIdsByStudent[studentName].push(lessonId);
+
+        if (meta.status === "completed" || meta.isEllaCancelDate) {
+          const isNoahAbsent = studentName === "Noah" && meta.termKey === "autumn" && meta.date === "2025-11-10";
+          const isAmeliaAbsent = studentName === "Amelia" && meta.termKey === "autumn" && meta.date === "2025-11-11";
+
+          let attStatus = "present";
+          let absReason: string | null = null;
+
+          if (meta.isEllaCancelDate && studentName === "Ella") {
+            attStatus = "cancelled_by_teacher"; absReason = "teacher_cancelled";
+          } else if (isNoahAbsent) {
+            attStatus = "absent"; absReason = "sick"; noahAbsentLessonId = lessonId;
+          } else if (isAmeliaAbsent) {
+            attStatus = "absent"; absReason = "holiday"; ameliaAbsentLessonId = lessonId;
+          } else if (meta.status === "completed") {
+            attStatus = Math.random() < 0.92 ? "present" : "late";
+          } else {
+            continue;
+          }
+
+          attendanceRows.push({
+            lesson_id: lessonId, student_id: students[studentName], org_id: ORG_ID,
+            attendance_status: attStatus, absence_reason_category: absReason, recorded_by: meta.tUId,
+          });
+        }
+      }
+    }
+
+    // Batch insert participants and attendance
+    for (let i = 0; i < participantRows.length; i += 100) {
+      await admin.from("lesson_participants").insert(participantRows.slice(i, i + 100));
+    }
+    for (let i = 0; i < attendanceRows.length; i += 100) {
+      await admin.from("attendance_records").insert(attendanceRows.slice(i, i + 100));
     }
     L(`11. Lessons: ${totalLessons}`);
 
@@ -448,8 +483,8 @@ Deno.serve(async (req) => {
       { name: "Tom Henderson", email: "tom.henderson@example.com", stage: "enquiry", source: "website", instrument: "Piano", notes: "Interested in weekly piano lessons for son aged 8" },
       { name: "Lisa Park", email: "lisa.park@example.com", stage: "contacted", source: "referral", instrument: "Violin", notes: "Referred by Sarah Whitmore" },
       { name: "James Cooper", email: "james.cooper@example.com", stage: "trial_booked", source: "website", instrument: "Guitar", notes: "Trial booked for Guitar", trial_date: "2026-03-10" },
-      { name: "Fatima Hassan", email: "fatima.hassan@example.com", stage: "trial_completed", source: "social_media", instrument: "Voice", notes: "Enjoyed trial, considering enrolling", trial_date: "2026-02-24" },
-      { name: "Ben Wright", email: "ben.wright@example.com", stage: "converted", source: "referral", instrument: "Drums", notes: "Converted", converted_at: "2026-01-15T10:00:00Z" },
+      { name: "Fatima Hassan", email: "fatima.hassan@example.com", stage: "trial_completed", source: "other", instrument: "Voice", notes: "Enjoyed trial via social media referral, considering enrolling", trial_date: "2026-02-24" },
+      { name: "Ben Wright", email: "ben.wright@example.com", stage: "enrolled", source: "referral", instrument: "Drums", notes: "Enrolled and active", converted_at: "2026-01-15T10:00:00Z" },
     ];
     for (const ld of leadDefs) {
       await findOrInsert("leads", { org_id: ORG_ID, contact_name: ld.name }, {
@@ -463,15 +498,15 @@ Deno.serve(async (req) => {
     // 15. PRACTICE ASSIGNMENTS + LOGS
     // ═══════════════════════════════════════════════════════════════
     const practiceDefs = [
-      { s: "Ella", title: "Scales & Arpeggios", desc: "C major, G major, D major — hands together, 2 octaves", target: 20, inst: "Piano" },
-      { s: "Noah", title: "Grade 2 Pieces", desc: "Pieces 1 and 2, focus on dynamics", target: 15, inst: "Piano" },
-      { s: "Sophia", title: "Suzuki Book 2 — Minuet", desc: "Bowing technique bars 8-16", target: 20, inst: "Violin" },
-      { s: "Oscar", title: "Chord Progressions", desc: "G-C-D-G, smooth transitions", target: 15, inst: "Guitar" },
+      { s: "Ella", title: "Scales & Arpeggios", desc: "C major, G major, D major — hands together, 2 octaves", targetMins: 20, targetDays: 5, tUId: OWNER_USER_ID },
+      { s: "Noah", title: "Grade 2 Pieces", desc: "Pieces 1 and 2, focus on dynamics", targetMins: 15, targetDays: 4, tUId: OWNER_USER_ID },
+      { s: "Sophia", title: "Suzuki Book 2 — Minuet", desc: "Bowing technique bars 8-16", targetMins: 20, targetDays: 5, tUId: priyaUserId },
+      { s: "Oscar", title: "Chord Progressions", desc: "G-C-D-G, smooth transitions", targetMins: 15, targetDays: 4, tUId: marcusUserId },
     ];
     for (const pd of practiceDefs) {
       const paId = await findOrInsert("practice_assignments", { org_id: ORG_ID, student_id: students[pd.s], title: pd.title }, {
-        description: pd.desc, target_minutes: pd.target, due_date: "2026-03-15", status: "active",
-        assigned_by: OWNER_USER_ID, instrument_id: instruments[pd.inst],
+        description: pd.desc, target_minutes_per_day: pd.targetMins, target_days_per_week: pd.targetDays,
+        end_date: "2026-03-15", status: "active", teacher_user_id: pd.tUId,
       });
       // Ella: daily streak (14 days)
       if (pd.s === "Ella") {
@@ -479,13 +514,13 @@ Deno.serve(async (req) => {
           const date = new Date("2026-02-16"); date.setDate(date.getDate() + d);
           const ds = date.toISOString().slice(0, 10);
           if (allClosures.has(ds)) continue;
-          await admin.from("practice_logs").insert({ org_id: ORG_ID, student_id: students["Ella"], assignment_id: paId, practice_date: ds, duration_minutes: 15 + Math.floor(Math.random() * 15), quality_rating: 3 + Math.floor(Math.random() * 3) });
+          await admin.from("practice_logs").insert({ org_id: ORG_ID, student_id: students["Ella"], assignment_id: paId, practice_date: ds, duration_minutes: 15 + Math.floor(Math.random() * 15), logged_by_user_id: OWNER_USER_ID });
         }
       }
       // Noah: sporadic
       if (pd.s === "Noah") {
         for (const ds of ["2026-02-17", "2026-02-19", "2026-02-23", "2026-02-25", "2026-03-01"]) {
-          await admin.from("practice_logs").insert({ org_id: ORG_ID, student_id: students["Noah"], assignment_id: paId, practice_date: ds, duration_minutes: 10 + Math.floor(Math.random() * 10), quality_rating: 2 + Math.floor(Math.random() * 3) });
+          await admin.from("practice_logs").insert({ org_id: ORG_ID, student_id: students["Noah"], assignment_id: paId, practice_date: ds, duration_minutes: 10 + Math.floor(Math.random() * 10), logged_by_user_id: OWNER_USER_ID });
         }
       }
     }
@@ -520,25 +555,23 @@ Deno.serve(async (req) => {
     // ═══════════════════════════════════════════════════════════════
     // 18. ENROLMENT WAITLIST
     // ═══════════════════════════════════════════════════════════════
-    await findOrInsert("enrolment_waitlist", { org_id: ORG_ID, contact_name: "Michelle Thomas" }, {
-      contact_email: "michelle.thomas@example.com", contact_phone: "+447700200001",
-      child_first_name: "Oliver", instrument_name: "Piano", preferred_day: "Wednesday", preferred_time: "15:00",
-      status: "waiting", notes: "Looking for after-school slot",
-    });
-    L("18. Enrolment waitlist done");
+    // Enrolment waitlist table doesn't exist yet — skipping
+    L("18. Enrolment waitlist skipped (table not yet created)");
 
     // ═══════════════════════════════════════════════════════════════
     // 19. RESOURCES
     // ═══════════════════════════════════════════════════════════════
     const resDefs = [
-      { name: "Beginner Scales PDF", type: "document", desc: "Major and minor scales for beginners", shares: ["Ella", "Noah"] },
-      { name: "Grade 3 Pieces", type: "document", desc: "ABRSM Grade 3 violin repertoire", shares: ["Sophia"] },
-      { name: "Guitar Chord Chart", type: "document", desc: "Common open and barre chords", shares: ["Oscar", "Isla"] },
+      { title: "Beginner Scales PDF", desc: "Major and minor scales for beginners", shares: ["Ella", "Noah"] },
+      { title: "Grade 3 Pieces", desc: "ABRSM Grade 3 violin repertoire", shares: ["Sophia"] },
+      { title: "Guitar Chord Chart", desc: "Common open and barre chords", shares: ["Oscar", "Isla"] },
     ];
     for (const rd of resDefs) {
-      const resId = await findOrInsert("resources", { org_id: ORG_ID, name: rd.name }, {
-        resource_type: rd.type, description: rd.desc, file_type: "application/pdf", file_size: 51200,
-        file_url: `https://example.com/resources/${rd.name.toLowerCase().replace(/ /g, "-")}.pdf`, created_by: OWNER_USER_ID,
+      const resId = await findOrInsert("resources", { org_id: ORG_ID, title: rd.title }, {
+        description: rd.desc, file_type: "application/pdf", file_size_bytes: 51200,
+        file_name: `${rd.title.toLowerCase().replace(/ /g, "-")}.pdf`,
+        file_path: `resources/${rd.title.toLowerCase().replace(/ /g, "-")}.pdf`,
+        uploaded_by: OWNER_USER_ID,
       });
       for (const s of rd.shares) {
         const { data: ex } = await admin.from("resource_shares").select("id").eq("resource_id", resId).eq("student_id", students[s]).maybeSingle();
@@ -550,43 +583,8 @@ Deno.serve(async (req) => {
     // ═══════════════════════════════════════════════════════════════
     // 20. TERM CONTINUATION RUN
     // ═══════════════════════════════════════════════════════════════
-    const { data: exRun } = await admin.from("term_continuation_runs").select("id").eq("org_id", ORG_ID).eq("current_term_id", springTermId).eq("next_term_id", summerTermId).maybeSingle();
-    if (!exRun) {
-      const { data: run } = await admin.from("term_continuation_runs").insert({
-        org_id: ORG_ID, current_term_id: springTermId, next_term_id: summerTermId,
-        notice_deadline: "2026-03-20", assumed_continuing: true, reminder_schedule: [7, 14],
-        status: "sent", sent_at: "2026-02-24T10:00:00Z", created_by: OWNER_USER_ID,
-        summary: { total_students: 11, confirmed: 8, withdrawing: 1, pending: 2, no_response: 0, assumed_continuing: 0 },
-      }).select("id").single();
-
-      if (run) {
-        const contStudents = [
-          { s: "Ella", g: "Sarah Whitmore", r: "continuing" },
-          { s: "Noah", g: "Raj Patel", r: "continuing" },
-          { s: "Amelia", g: "Claire Brooks", r: "continuing" },
-          { s: "Oscar", g: "David Martinez", r: "continuing" },
-          { s: "Isla", g: "David Martinez", r: "continuing" },
-          { s: "Freddie", g: null, r: "continuing" },
-          { s: "Sophia", g: "Jenny Okafor", r: "continuing" },
-          { s: "Liam", g: "Anna Bennett", r: "continuing" },
-          { s: "Ruby", g: "Anna Bennett", r: "pending" },
-          { s: "George", g: "Claire Brooks", r: "withdrawing" },
-          { s: "Harry", g: "Sarah Whitmore", r: "pending" },
-        ];
-        for (const cs of contStudents) {
-          await admin.from("term_continuation_responses").insert({
-            org_id: ORG_ID, run_id: (run as any).id, student_id: students[cs.s],
-            guardian_id: cs.g ? guardians[cs.g] : null, response: cs.r,
-            lesson_summary: [], next_term_fee_minor: 35000,
-            initial_sent_at: "2026-02-24T10:00:00Z",
-            response_at: cs.r !== "pending" ? "2026-03-01T09:00:00Z" : null,
-            response_method: cs.r !== "pending" ? "email_link" : null,
-            withdrawal_reason: cs.r === "withdrawing" ? "Moving to a different area" : null,
-          });
-        }
-      }
-    }
-    L("20. Term continuation done");
+    // Term continuation tables don't exist yet — skipping
+    L("20. Term continuation skipped (tables not yet created)");
 
     // ═══════════════════════════════════════════════════════════════
     // DONE
