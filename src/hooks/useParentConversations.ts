@@ -44,6 +44,8 @@ export function useParentConversations(onNewMessage?: () => void) {
   newMessageCallbackRef.current = onNewMessage;
 
   // Realtime subscription for live updates
+  // TODO (PERF-M5): Subscribes to ALL message_log changes for the org, but only the
+  // guardian's own conversations matter. Consider filtering by recipient_id instead.
   useEffect(() => {
     if (!guardianId || !currentOrg?.id) return;
 

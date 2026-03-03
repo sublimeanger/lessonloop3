@@ -36,6 +36,8 @@ export function useInternalMessages(view: 'inbox' | 'sent' = 'inbox') {
   const queryClient = useQueryClient();
 
   // Realtime subscription for instant internal message updates
+  // TODO (PERF-M5): Subscribes to all INSERT events on internal_messages for the org.
+  // At scale, consider filtering by recipient or debouncing invalidation.
   useEffect(() => {
     if (!currentOrg?.id) return;
 

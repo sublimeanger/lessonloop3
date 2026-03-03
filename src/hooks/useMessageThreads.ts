@@ -109,6 +109,8 @@ export function useMessageThreads(filters?: MessageFilters) {
   const filtersActive = hasActiveFilters(filters);
 
   // Realtime subscription for instant message updates
+  // TODO (PERF-M5): Subscribes to all INSERT events on message_log for the org.
+  // At scale, consider filtering by channel/thread or debouncing invalidation.
   useEffect(() => {
     if (!currentOrg?.id) return;
 

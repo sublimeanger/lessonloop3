@@ -10,6 +10,11 @@ import { formatCurrencyMinor } from '@/lib/utils';
  * Subscribes to real-time invoice changes and invalidates
  * invoice-related queries (stats, list, urgent actions) on any change.
  * Also listens for payment_notifications to show teacher toast alerts.
+ *
+ * TODO (PERF-M5): This opens 4 org-wide postgres_changes listeners (invoices,
+ * payments, message_requests, payment_notifications). At scale, consider
+ * consolidating into a single channel with server-side aggregation or
+ * narrowing filters to reduce broadcast volume.
  */
 export function useRealtimeInvoices() {
   const queryClient = useQueryClient();
