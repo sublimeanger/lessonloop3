@@ -542,7 +542,7 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
   const { error } = await supabase
     .from("organisations")
     .update({
-      subscription_plan: plan || undefined,
+      subscription_plan: plan ?? null,
       subscription_status: status,
       max_students: limits.max_students,
       max_teachers: limits.max_teachers,
