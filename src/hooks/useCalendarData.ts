@@ -269,7 +269,8 @@ export function useTeachersAndLocations() {
           .eq('status', 'active')
           .is('deleted_at', null)
           .order('first_name')
-          .limit(500)
+          // Raised from 500 to support larger academies (audit CAL-M4)
+          .limit(2000)
       ]);
 
       const teachersList = (teachersResult.data || []).map((t: any) => ({

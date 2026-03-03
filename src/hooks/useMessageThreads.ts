@@ -260,7 +260,8 @@ export function useSearchMessageThreads(query: string) {
     queryFn: async (): Promise<MessageThread[]> => {
       if (!currentOrg) return [];
 
-      const pattern = `%${trimmed}%`;
+      const escapeLike = (s: string) => s.replace(/[%_\\]/g, '\\$&');
+      const pattern = `%${escapeLike(trimmed)}%`;
       const { data: messages, error } = await supabase
         .from('message_log')
         .select('id, subject, recipient_email, recipient_name, recipient_type, recipient_id, related_id, sender_user_id, status, created_at, sent_at, read_at, thread_id, parent_message_id, channel, message_type')

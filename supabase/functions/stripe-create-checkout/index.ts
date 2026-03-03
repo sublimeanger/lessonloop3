@@ -269,8 +269,9 @@ serve(async (req) => {
       };
     }
 
-    // Create Stripe Checkout Session with idempotency key
-    const idempotencyKey = `checkout_${invoiceId}_${resolvedInstallmentId || "full"}_${paymentAmount}_${Date.now()}`;
+    // Idempotency key is deterministic per invoice+installment+amount.
+    // Stripe expires keys after 24h, so abandoned sessions don't block retries indefinitely.
+    const idempotencyKey = `checkout_${invoiceId}_${resolvedInstallmentId || "full"}_${paymentAmount}`;
     const session = await stripe.checkout.sessions.create(sessionParams, {
       idempotencyKey,
     });
