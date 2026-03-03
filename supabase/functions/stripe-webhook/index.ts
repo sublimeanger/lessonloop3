@@ -284,6 +284,7 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
       provider: "stripe",
       provider_reference: paymentIntentId,
       paid_at: new Date().toISOString(),
+      installment_id: installmentId || null,
     })
     .select("id")
     .single();
@@ -697,6 +698,7 @@ async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe
       provider: "stripe",
       provider_reference: paymentIntent.id,
       paid_at: new Date().toISOString(),
+      installment_id: installmentId || null,
     })
     .select("id")
     .single();

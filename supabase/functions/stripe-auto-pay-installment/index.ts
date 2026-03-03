@@ -84,13 +84,11 @@ serve(async (req) => {
         continue;
       }
 
-      // Check if this installment was already paid
+      // Check if this installment was already paid (by installment_id)
       const { data: existingPayment } = await supabase
         .from("payments")
         .select("id")
-        .eq("invoice_id", inst.invoice_id)
-        .eq("amount_minor", inst.amount_minor)
-        .gte("paid_at", `${inst.due_date}T00:00:00Z`)
+        .eq("installment_id", inst.id)
         .maybeSingle();
 
       if (existingPayment) continue;
