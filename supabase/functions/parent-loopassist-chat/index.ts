@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { sanitiseMessage } from "../_shared/sanitise-ai-input.ts";
 
 const SYSTEM_PROMPT = `You are LoopAssist, the helpful assistant in the LessonLoop parent portal. You help parents stay informed about their children's music education.
 
@@ -70,13 +71,21 @@ serve(async (req) => {
       return rateLimitResponse(corsHeaders, rateCheck);
     }
 
-    const { messages } = await req.json();
+    let { messages } = await req.json();
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response(JSON.stringify({ error: "Messages required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Strip any role:"system" messages (prevents role injection) and sanitise user input
+    messages = messages
+      .filter((m: { role: string }) => m.role === "user" || m.role === "assistant")
+      .map((m: { role: string; content: string }) => ({
+        ...m,
+        content: m.role === "user" ? sanitiseMessage(m.content) : m.content,
+      }));
 
     // Find the parent's guardian record(s) and linked children
     const { data: guardians } = await supabaseUser
