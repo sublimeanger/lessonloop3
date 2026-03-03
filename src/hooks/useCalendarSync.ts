@@ -29,13 +29,16 @@ export function useCalendarSync() {
   );
 
   /**
-   * Sync multiple lessons at once (e.g. recurring series).
-   * Each call is independent and fire-and-forget.
+   * Sync multiple lessons in parallel chunks (e.g. recurring series).
+   * Processes CHUNK_SIZE at a time to avoid overloading the browser
+   * connection pool or triggering 429 rate limits on large batches.
    */
   const syncLessons = useCallback(
-    (lessonIds: string[], action: 'create' | 'update' | 'delete') => {
-      for (const id of lessonIds) {
-        syncLesson(id, action);
+    async (lessonIds: string[], action: 'create' | 'update' | 'delete') => {
+      const CHUNK_SIZE = 10;
+      for (let i = 0; i < lessonIds.length; i += CHUNK_SIZE) {
+        const chunk = lessonIds.slice(i, i + CHUNK_SIZE);
+        await Promise.all(chunk.map(id => syncLesson(id, action)));
       }
     },
     [syncLesson]
