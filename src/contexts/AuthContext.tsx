@@ -288,6 +288,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: {
         data: { full_name: fullName },
+        emailRedirectTo: `${window.location.origin}/verify-email`,
       },
     });
     return { error: error as Error | null };
