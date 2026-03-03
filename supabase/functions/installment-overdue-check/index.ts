@@ -39,7 +39,7 @@ serve(async (req) => {
 
   if (updateError) {
     console.error("Failed to mark overdue installments:", updateError);
-    return new Response(JSON.stringify({ success: false, error: updateError.message }), {
+    return new Response(JSON.stringify({ success: false, error: "An internal error occurred. Please try again." }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });

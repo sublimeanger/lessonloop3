@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
 
     if (insertError) {
       console.error("Failed to insert internal_messages:", insertError);
-      return new Response(JSON.stringify({ error: insertError.message }), {
+      return new Response(JSON.stringify({ error: "An internal error occurred. Please try again." }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -139,7 +139,7 @@ Deno.serve(async (req) => {
     );
   } catch (err) {
     console.error("Error:", err);
-    return new Response(JSON.stringify({ error: String(err) }), {
+    return new Response(JSON.stringify({ error: "An internal error occurred. Please try again." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -115,10 +115,9 @@ serve(async (req) => {
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
     console.error("Overdue reminders error:", error);
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: "An internal error occurred. Please try again." }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }

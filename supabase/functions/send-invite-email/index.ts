@@ -192,7 +192,7 @@ serve(async (req: Request): Promise<Response> => {
     console.error("Error in send-invite-email:", error?.message || "unknown error");
     const corsHeaders = getCorsHeaders(req);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: "An internal error occurred. Please try again." }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }

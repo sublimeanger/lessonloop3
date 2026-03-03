@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
       if (createProfileError && createProfileError.code !== '23505') {
         console.error('[onboarding-setup] Profile creation failed:', createProfileError);
         return new Response(
-          JSON.stringify({ error: `Profile creation failed: ${createProfileError.message}` }),
+          JSON.stringify({ error: "An internal error occurred. Please try again." }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
       if (profileError) {
         console.error('[onboarding-setup] Profile update failed:', profileError);
         return new Response(
-          JSON.stringify({ error: `Profile update failed: ${profileError.message}` }),
+          JSON.stringify({ error: "An internal error occurred. Please try again." }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -247,7 +247,7 @@ Deno.serve(async (req) => {
     if (orgError) {
       console.error('[onboarding-setup] Organisation creation failed:', orgError);
       return new Response(
-        JSON.stringify({ error: `Organisation creation failed: ${orgError.message}` }),
+        JSON.stringify({ error: "An internal error occurred. Please try again." }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -329,9 +329,8 @@ Deno.serve(async (req) => {
 
   } catch (error: unknown) {
     console.error('[onboarding-setup] Unexpected error:', error);
-    const message = error instanceof Error ? error.message : 'Internal server error';
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: "An internal error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

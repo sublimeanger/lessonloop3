@@ -1204,8 +1204,7 @@ serve(async (req) => {
   } catch (error: unknown) {
     console.error("CSV import error:", error);
     const corsHeaders = getCorsHeaders(req);
-    const message = error instanceof Error ? error.message : "Import failed";
-    return new Response(JSON.stringify({ error: message }), {
+    return new Response(JSON.stringify({ error: "An internal error occurred. Please try again." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

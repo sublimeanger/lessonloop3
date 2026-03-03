@@ -292,7 +292,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error) {
     console.error("send-enrolment-offer error:", error);
     return new Response(
-      JSON.stringify({ error: error.message || "Internal server error" }),
+      JSON.stringify({ error: "An internal error occurred. Please try again." }),
       { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
     );
   }

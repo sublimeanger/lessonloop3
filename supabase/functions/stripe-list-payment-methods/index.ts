@@ -102,10 +102,11 @@ serve(async (req) => {
     );
   } catch (error: any) {
     console.error("Error in stripe-list-payment-methods:", error);
+    const isUnauthorized = error.message === "Unauthorized";
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: isUnauthorized ? "Unauthorized" : "An internal error occurred. Please try again." }),
       {
-        status: error.message === "Unauthorized" ? 401 : 500,
+        status: isUnauthorized ? 401 : 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );

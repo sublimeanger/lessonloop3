@@ -380,7 +380,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
   } catch (error: any) {
     logError("Error in send-bulk-message function:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: "An internal error occurred. Please try again." }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
