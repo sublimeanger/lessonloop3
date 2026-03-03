@@ -79,7 +79,7 @@ async function sendSingleEmail(
       guardianId: guardian.id,
       email: guardian.email,
       success: false,
-      error: err.message,
+      error: "Failed to send email",
     };
   }
 }

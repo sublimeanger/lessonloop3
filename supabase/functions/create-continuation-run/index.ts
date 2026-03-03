@@ -218,7 +218,7 @@ Deno.serve(async (req: Request) => {
   } catch (err: any) {
     console.error("[create-continuation-run] Error:", err);
     return jsonResponse(
-      { error: err.message || "Internal error" },
+      { error: "An internal error occurred. Please try again." },
       corsHeaders,
       500
     );

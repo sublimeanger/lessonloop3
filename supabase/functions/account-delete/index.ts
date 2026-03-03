@@ -52,9 +52,34 @@ serve(async (req) => {
       return rateLimitResponse(corsHeaders, rateLimitResult);
     }
 
-    // 4. Delete user data using the service role client
+    // 4. Check if user is sole owner of any org
+    const { data: ownedOrgs } = await supabaseAdmin
+      .from('org_memberships')
+      .select('org_id')
+      .eq('user_id', user.id)
+      .eq('role', 'owner')
+      .eq('status', 'active');
 
-    // 4a. Remove all org memberships for this user
+    if (ownedOrgs && ownedOrgs.length > 0) {
+      for (const membership of ownedOrgs) {
+        const { count } = await supabaseAdmin
+          .from('org_memberships')
+          .select('id', { count: 'exact', head: true })
+          .eq('org_id', membership.org_id)
+          .eq('role', 'owner')
+          .eq('status', 'active')
+          .neq('user_id', user.id);
+        if (count === 0) {
+          return new Response(JSON.stringify({
+            error: 'You are the sole owner of an organisation. Please transfer ownership or delete the organisation before deleting your account.'
+          }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+    }
+
+    // 5. Delete user data using the service role client
+
+    // 5a. Remove all org memberships for this user
     const { error: membershipError } = await supabaseAdmin
       .from("org_memberships")
       .delete()
@@ -65,7 +90,7 @@ serve(async (req) => {
       throw membershipError;
     }
 
-    // 4b. Delete the user's profile record
+    // 5b. Delete the user's profile record
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .delete()
@@ -76,7 +101,7 @@ serve(async (req) => {
       throw profileError;
     }
 
-    // 4c. Delete the auth user (this also invalidates all sessions)
+    // 5c. Delete the auth user (this also invalidates all sessions)
     const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(
       user.id
     );

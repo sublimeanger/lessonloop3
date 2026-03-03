@@ -47,42 +47,29 @@ serve(async (req) => {
 
     // Get request body
     const body = await req.json();
-    const { action, entityType, entityId } = body;
+    const { action, entityType, entityId, org_id } = body;
 
-    if (!action || !entityType || !entityId) {
-      return new Response(JSON.stringify({ error: "Missing required fields: action, entityType, entityId" }), {
+    if (!action || !entityType || !entityId || !org_id) {
+      return new Response(JSON.stringify({ error: "Missing required fields: action, entityType, entityId, org_id" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Get user's current org
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("current_org_id")
-      .eq("id", user.id)
-      .single();
+    const orgId = org_id;
 
-    if (!profile?.current_org_id) {
-      return new Response(JSON.stringify({ error: "No organisation selected" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const orgId = profile.current_org_id;
-
-    // Check if user is admin/owner
+    // Verify user is owner/admin of this specific org
     const { data: membership } = await supabase
       .from("org_memberships")
       .select("role")
       .eq("org_id", orgId)
       .eq("user_id", user.id)
       .eq("status", "active")
-      .single();
+      .in("role", ["owner", "admin"])
+      .maybeSingle();
 
-    if (!membership || !["owner", "admin"].includes(membership.role)) {
-      return new Response(JSON.stringify({ error: "Permission denied" }), {
+    if (!membership) {
+      return new Response(JSON.stringify({ error: "Unauthorised" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

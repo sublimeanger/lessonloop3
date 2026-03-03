@@ -25,8 +25,10 @@ import { Download, Shield, UserX, Trash2, AlertTriangle, FileText, Users, Calend
 import { useGDPRExport, useGDPRDelete, useDeletionCandidates } from '@/hooks/useGDPR';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { formatDateUK } from '@/lib/utils';
+import { useOrg } from '@/contexts/OrgContext';
 
 export function PrivacyTab() {
+  const { currentOrg } = useOrg();
   const { exportData, isExporting } = useGDPRExport();
   const deleteMutation = useGDPRDelete();
   const { data: candidates, isLoading } = useDeletionCandidates();
@@ -46,6 +48,7 @@ export function PrivacyTab() {
       action: deleteDialog.action,
       entityType: deleteDialog.entityType,
       entityId: deleteDialog.entityId,
+      org_id: currentOrg!.id,
     });
     
     setDeleteDialog(null);

@@ -14,6 +14,7 @@ export function useUnreadMessagesCount() {
   const queryClient = useQueryClient();
 
   // Realtime subscription for instant unread count updates
+  // NOTE (PERF-M5): Already narrowly filtered by recipient_id — no change needed.
   useEffect(() => {
     if (!guardianId || !currentOrg?.id) return;
 

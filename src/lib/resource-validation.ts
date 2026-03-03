@@ -4,15 +4,13 @@ export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 export const ALLOWED_TYPES = [
   'application/pdf',
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'audio/mpeg',
-  'audio/mp3',
-  'audio/wav',
-  'video/mp4',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/png', 'image/jpeg', 'image/gif', 'image/webp',
+  'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/aac',
+  'video/mp4', 'video/webm',
+  'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain',
 ] as const;
 
 export function validateResourceFile(file: File): void {

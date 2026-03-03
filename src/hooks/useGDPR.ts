@@ -27,6 +27,7 @@ interface DeleteRequest {
   action: 'soft_delete' | 'anonymise';
   entityType: 'student' | 'guardian';
   entityId: string;
+  org_id: string;
 }
 
 export function useGDPRExport() {
