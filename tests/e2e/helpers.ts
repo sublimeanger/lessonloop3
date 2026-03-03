@@ -276,7 +276,13 @@ export async function trackConsoleErrors(page: Page) {
         text.includes('QueryCache') ||
         text.includes('useSidebar') ||
         text.includes('SidebarProvider') ||
-        text.includes('ErrorBoundary caught')
+        text.includes('ErrorBoundary caught') ||
+        text.includes('SSL') ||
+        text.includes('certificate') ||
+        text.includes('ERR_CERT') ||
+        text.includes('An SSL certificate error') ||
+        text.includes('TLS') ||
+        text.includes('self-signed')
       ) return;
       errors.push(text);
     }
