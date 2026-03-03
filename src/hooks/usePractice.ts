@@ -482,6 +482,9 @@ export function useAddPracticeFeedback() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['practice-logs'] });
       queryClient.invalidateQueries({ queryKey: ['parent-practice-logs'] });
+      // Reviewing practice clears "logs to review" badge (9.4)
+      queryClient.invalidateQueries({ queryKey: ['urgent-actions'] });
+      queryClient.invalidateQueries({ queryKey: ['proactive-alerts'] });
     },
   });
 }

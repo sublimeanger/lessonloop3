@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
@@ -63,6 +64,33 @@ export interface WaitlistMatchResult {
 
 export function useWaitlist(filters?: WaitlistFilters) {
   const { currentOrg } = useOrg();
+  const queryClient = useQueryClient();
+
+  // Realtime: staff sees parent waitlist acceptance/decline immediately (1.5)
+  useEffect(() => {
+    if (!currentOrg?.id) return;
+
+    const channel = supabase
+      .channel(`waitlist-changes-${currentOrg.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'make_up_waitlist',
+          filter: `org_id=eq.${currentOrg.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['make_up_waitlist'] });
+          queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_stats'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentOrg?.id, queryClient]);
 
   const { data: entries, isLoading, refetch } = useQuery({
     queryKey: ['make_up_waitlist', currentOrg?.id, filters],
@@ -194,6 +222,10 @@ export function useConfirmMakeUp() {
       queryClient.invalidateQueries({ queryKey: ['make_up_waitlist'] });
       queryClient.invalidateQueries({ queryKey: ['register'] });
       queryClient.invalidateQueries({ queryKey: ['lesson_participants'] });
+      // Makeup booking changes the calendar (1.6)
+      queryClient.invalidateQueries({ queryKey: ['calendar-lessons'] });
+      queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['register-lessons'] });
       const parts = [ctx.studentName, ctx.lessonTitle, ctx.lessonDate].filter(Boolean);
       toast({
         title: 'Make-up lesson confirmed! 🎉',

@@ -365,6 +365,10 @@ export function useRecordPayment() {
       queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
       queryClient.invalidateQueries({ queryKey: ['installments'] });
       queryClient.invalidateQueries({ queryKey: ['active-payment-plans'] });
+      // Refresh dashboard KPIs and analytics (3.9)
+      queryClient.invalidateQueries({ queryKey: ['payment-analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['teacher-dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['parent-summary'] });
       toast({ title: 'Payment recorded' });
     },
     onError: (error: unknown) => {

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { STALE_STABLE } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
@@ -186,6 +187,32 @@ interface ParticipantStudent {
 export function useParentLessons(options?: { studentId?: string; status?: string }) {
   const { user } = useAuth();
   const { currentOrg } = useOrg();
+  const queryClient = useQueryClient();
+
+  // Realtime: parent portal sees lesson cancellations/reschedules immediately (2.4)
+  useEffect(() => {
+    if (!currentOrg?.id) return;
+
+    const channel = supabase
+      .channel(`parent-lessons-realtime-${currentOrg.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'lessons',
+          filter: `org_id=eq.${currentOrg.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['parent-lessons'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentOrg?.id, queryClient]);
 
   return useQuery({
     queryKey: ['parent-lessons', user?.id, currentOrg?.id, options],

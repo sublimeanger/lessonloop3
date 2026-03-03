@@ -327,6 +327,8 @@ export function useSendMessage() {
       queryClient.invalidateQueries({ queryKey: ['message-log'] });
       queryClient.invalidateQueries({ queryKey: ['student-messages'] });
       queryClient.invalidateQueries({ queryKey: ['message-threads'] });
+      // Parent sees new message via realtime sub on message_log or email notification (5.4)
+      queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
       toast({ title: 'Message sent', description: 'Your message has been sent successfully.' });
     },
     onError: (error: unknown, _variables, context) => {

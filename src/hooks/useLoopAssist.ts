@@ -496,6 +496,27 @@ export function useLoopAssist(externalPageContext?: PageContext) {
       // Refresh proactive alerts and urgent actions so all banners update
       queryClient.invalidateQueries({ queryKey: ['proactive-alerts'] });
       queryClient.invalidateQueries({ queryKey: ['urgent-actions'] });
+
+      // Invalidate module-specific caches based on what the AI action did (6.1-6.5)
+      const proposal = pendingProposals.find(p => p.id === variables.proposalId);
+      const resolvedActionType = proposal?.proposal?.action_type || data?.action_type;
+      const actionInvalidations: Record<string, string[]> = {
+        generate_billing_run:  ['invoices', 'invoice-stats', 'billing-runs'],
+        send_invoice_reminders: ['message-log', 'message-threads', 'invoices'],
+        reschedule_lessons:    ['calendar-lessons', 'register-lessons', 'today-lessons'],
+        draft_email:           ['message-log', 'message-threads'],
+        mark_attendance:       ['register-lessons', 'attendance', 'today-lessons', 'make_up_credits', 'make_up_waitlist'],
+        cancel_lesson:         ['calendar-lessons', 'register-lessons', 'today-lessons'],
+        complete_lessons:      ['calendar-lessons', 'register-lessons', 'today-lessons', 'attendance'],
+        send_progress_report:  ['message-log', 'message-threads'],
+        send_bulk_reminders:   ['message-log', 'message-threads', 'invoices'],
+        bulk_complete_lessons: ['calendar-lessons', 'register-lessons', 'today-lessons', 'attendance'],
+      };
+      const keysToInvalidate = resolvedActionType ? (actionInvalidations[resolvedActionType] || []) : [];
+      for (const key of keysToInvalidate) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
+
       setTimeout(() => {
         const messagesContainer = document.querySelector('[data-loop-assist-messages]');
         if (messagesContainer) {

@@ -225,6 +225,32 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     };
   }, [user?.id, authInitialised, fetchOrganisations]);
 
+  // Realtime: refresh org data when the current organisation row changes (8.1)
+  // This ensures Stripe plan changes, settings updates, etc. reflect without page refresh.
+  useEffect(() => {
+    if (!currentOrg?.id) return;
+
+    const channel = supabase
+      .channel(`org-changes-${currentOrg.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'organisations',
+          filter: `id=eq.${currentOrg.id}`,
+        },
+        () => {
+          fetchOrganisations();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentOrg?.id, fetchOrganisations]);
+
   const setCurrentOrg = useCallback(async (orgId: string) => {
     const membership = memberships.find((m) => m.org_id === orgId);
     if (!membership) return;

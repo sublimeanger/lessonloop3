@@ -514,6 +514,9 @@ export function useDeleteLead() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['lead-stage-counts'] });
+      // Deletion changes funnel analytics (7.5)
+      queryClient.invalidateQueries({ queryKey: ['lead-funnel'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-analytics'] });
       toast({ title: 'Lead deleted' });
     },
     onError: (error: unknown) => {
@@ -663,6 +666,9 @@ export function useConvertLead() {
       queryClient.invalidateQueries({ queryKey: ['lead-stage-counts'] });
       queryClient.invalidateQueries({ queryKey: ['lead-funnel'] });
       queryClient.invalidateQueries({ queryKey: ['students'] });
+      // Conversion creates students + guardians — refresh usage counts (5.1, 7.2)
+      queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['guardians'] });
       toast({
         title: 'Lead converted',
         description: 'Students have been created and enrolled successfully.',
