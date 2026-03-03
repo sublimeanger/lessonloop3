@@ -242,23 +242,20 @@ export function useWaitlistStats() {
     queryFn: async () => {
       if (!currentOrg?.id) return { waiting: 0, matched: 0, offered: 0, accepted: 0, booked: 0 };
 
-      const statuses = ['waiting', 'matched', 'offered', 'accepted', 'booked'] as const;
+      const { data, error } = await supabase
+        .from('make_up_waitlist')
+        .select('status')
+        .eq('org_id', currentOrg.id)
+        .in('status', ['waiting', 'matched', 'offered', 'accepted', 'booked']);
 
-      const results = await Promise.all(
-        statuses.map((status) =>
-          supabase
-            .from('make_up_waitlist')
-            .select('*', { count: 'exact', head: true })
-            .eq('org_id', currentOrg.id)
-            .eq('status', status)
-        )
-      );
+      if (error) throw error;
 
       const counts = { waiting: 0, matched: 0, offered: 0, accepted: 0, booked: 0 };
-      statuses.forEach((status, i) => {
-        if (results[i].error) throw results[i].error;
-        counts[status] = results[i].count ?? 0;
-      });
+      for (const row of data || []) {
+        if (row.status in counts) {
+          counts[row.status as keyof typeof counts] += 1;
+        }
+      }
       return counts;
     },
     enabled: !!currentOrg?.id,

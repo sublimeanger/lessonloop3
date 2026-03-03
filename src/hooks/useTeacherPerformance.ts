@@ -154,13 +154,20 @@ export function useTeacherPerformanceReport(startDate: string, endDate: string) 
       const CHUNK_SIZE = 500;
       const invoiceItems: { linked_lesson_id: string | null; amount_minor: number }[] = [];
 
+      const chunks: string[][] = [];
       for (let i = 0; i < allLessonIds.length; i += CHUNK_SIZE) {
-        const chunk = allLessonIds.slice(i, i + CHUNK_SIZE);
-        const { data: items } = await supabase
-          .from('invoice_items')
-          .select('linked_lesson_id, amount_minor')
-          .eq('org_id', currentOrg.id)
-          .in('linked_lesson_id', chunk);
+        chunks.push(allLessonIds.slice(i, i + CHUNK_SIZE));
+      }
+      const chunkResults = await Promise.all(
+        chunks.map((chunk) =>
+          supabase
+            .from('invoice_items')
+            .select('linked_lesson_id, amount_minor')
+            .eq('org_id', currentOrg.id)
+            .in('linked_lesson_id', chunk)
+        )
+      );
+      for (const { data: items } of chunkResults) {
         if (items) invoiceItems.push(...items);
       }
 
