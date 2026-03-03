@@ -42,17 +42,24 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // Verify JWT and get user
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // User-scoped client: uses anon key + caller's JWT so RLS is enforced
+    const supabaseUser = createClient(
+      supabaseUrl,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
 
     // Rate limit: 10 messages per hour for parents
     const rateCheck = await checkRateLimit(user.id, "parent-loopassist-chat", {
@@ -72,7 +79,7 @@ serve(async (req) => {
     }
 
     // Find the parent's guardian record(s) and linked children
-    const { data: guardians } = await supabase
+    const { data: guardians } = await supabaseUser
       .from("guardians")
       .select("id, full_name, org_id")
       .eq("user_id", user.id)
@@ -89,14 +96,14 @@ serve(async (req) => {
     const guardianIds = guardians.map((g) => g.id);
 
     // Fetch org name for context
-    const { data: orgData } = await supabase
+    const { data: orgData } = await supabaseUser
       .from("organisations")
       .select("name, currency_code")
       .eq("id", orgId)
       .single();
 
     // Get linked student IDs
-    const { data: studentLinks } = await supabase
+    const { data: studentLinks } = await supabaseUser
       .from("student_guardians")
       .select("student_id")
       .in("guardian_id", guardianIds);
@@ -122,12 +129,12 @@ serve(async (req) => {
       invoicesResult,
     ] = await Promise.all([
       // Children details
-      supabase
+      supabaseUser
         .from("students")
         .select("id, first_name, last_name, status")
         .in("id", studentIds),
       // Upcoming lessons (next 14 days)
-      supabase
+      supabaseUser
         .from("lesson_participants")
         .select(`
           student_id,
@@ -136,7 +143,7 @@ serve(async (req) => {
         .in("student_id", studentIds)
         .eq("org_id", orgId),
       // Recent attendance (last 30 days)
-      supabase
+      supabaseUser
         .from("attendance_records")
         .select("student_id, attendance_status, recorded_at, lesson_id")
         .in("student_id", studentIds)
@@ -145,13 +152,13 @@ serve(async (req) => {
         .order("recorded_at", { ascending: false })
         .limit(50),
       // Practice streaks
-      supabase
+      supabaseUser
         .from("practice_streaks")
         .select("student_id, current_streak, longest_streak, total_minutes, last_practice_date")
         .in("student_id", studentIds)
         .eq("org_id", orgId),
       // Invoices where parent is payer
-      supabase
+      supabaseUser
         .from("invoices")
         .select("id, invoice_number, status, total_minor, due_date, issue_date, paid_minor, currency_code")
         .eq("org_id", orgId)
