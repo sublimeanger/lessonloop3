@@ -548,19 +548,47 @@ export function useConvertLead() {
 
       if (leadFetchError) throw leadFetchError;
 
-      // 1. Create guardian from lead contact info
-      const { data: guardian, error: guardianError } = await supabase
-        .from('guardians')
-        .insert({
-          org_id: currentOrg.id,
-          full_name: lead.contact_name,
-          email: lead.contact_email || null,
-          phone: lead.contact_phone || null,
-        })
-        .select()
-        .single();
+      // 1. Find existing guardian by email or create a new one
+      let guardianId: string;
 
-      if (guardianError) throw guardianError;
+      if (lead.contact_email) {
+        const { data: existing } = await supabase
+          .from('guardians')
+          .select('id')
+          .eq('org_id', currentOrg.id)
+          .eq('email', lead.contact_email)
+          .maybeSingle();
+
+        if (existing) {
+          guardianId = existing.id;
+        } else {
+          const { data: guardian, error: guardianError } = await supabase
+            .from('guardians')
+            .insert({
+              org_id: currentOrg.id,
+              full_name: lead.contact_name,
+              email: lead.contact_email,
+              phone: lead.contact_phone || null,
+            })
+            .select('id')
+            .single();
+          if (guardianError) throw guardianError;
+          guardianId = guardian.id;
+        }
+      } else {
+        const { data: guardian, error: guardianError } = await supabase
+          .from('guardians')
+          .insert({
+            org_id: currentOrg.id,
+            full_name: lead.contact_name,
+            email: null,
+            phone: lead.contact_phone || null,
+          })
+          .select('id')
+          .single();
+        if (guardianError) throw guardianError;
+        guardianId = guardian.id;
+      }
 
       // 2. Create students and link guardians
       for (const studentInput of input.students) {
@@ -584,10 +612,10 @@ export function useConvertLead() {
           .insert({
             org_id: currentOrg.id,
             student_id: student.id,
-            guardian_id: guardian.id,
-            relationship: 'parent' as any,
+            guardian_id: guardianId,
+            relationship: 'guardian',
             is_primary_payer: true,
-          } as any);
+          });
 
         if (linkError) throw linkError;
 
@@ -627,7 +655,7 @@ export function useConvertLead() {
 
       if (activityError) throw activityError;
 
-      return { leadId: input.leadId, guardianId: guardian.id };
+      return { leadId: input.leadId, guardianId };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
