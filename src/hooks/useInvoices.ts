@@ -290,10 +290,12 @@ export function useUpdateInvoiceStatus() {
         return { id, status, currentStatus };
       }
 
+      if (!currentOrg?.id) throw new Error('No organisation selected');
       const { error } = await supabase
         .from('invoices')
         .update({ status })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('org_id', currentOrg.id);
 
       if (error) throw error;
       return { id, status, currentStatus };
