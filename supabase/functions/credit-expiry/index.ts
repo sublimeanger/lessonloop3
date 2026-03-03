@@ -34,8 +34,27 @@ serve(async (req) => {
   const count = expired?.length || 0;
   console.log(`Credit expiry: ${count} credits marked as expired`);
 
+  // Expire waitlist entries linked to the now-expired credits (1.7)
+  let waitlistExpiredCount = 0;
+  if (expired && expired.length > 0) {
+    const creditIds = expired.map((c: { id: string }) => c.id);
+    const { data: expiredWaitlist, error: wlError } = await supabase
+      .from("make_up_waitlist")
+      .update({ status: "expired" })
+      .in("credit_id", creditIds)
+      .eq("status", "waiting")
+      .select("id");
+
+    if (wlError) {
+      console.error("Waitlist expiry error:", wlError.message);
+    } else {
+      waitlistExpiredCount = expiredWaitlist?.length || 0;
+      console.log(`Credit expiry: ${waitlistExpiredCount} waitlist entries expired`);
+    }
+  }
+
   return new Response(
-    JSON.stringify({ success: true, expired_count: count }),
+    JSON.stringify({ success: true, expired_count: count, waitlist_expired_count: waitlistExpiredCount }),
     { status: 200, headers: { "Content-Type": "application/json" } }
   );
 });
