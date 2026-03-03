@@ -171,9 +171,9 @@ serve(async (req) => {
     // Returning 500 causes Stripe to retry the webhook (up to ~16 times over 3 days).
     // Critical DB failures in handlers re-throw here to trigger retries.
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Webhook error:", message);
+    console.error("[stripe-webhook]", message);
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: "Webhook processing failed" }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
