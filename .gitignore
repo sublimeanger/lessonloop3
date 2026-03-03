@@ -33,6 +33,9 @@ vite.config.ts.timestamp-*
 tsconfig.app.tsbuildinfo
 tsconfig.node.tsbuildinfo
 
+# Supabase
+supabase/.temp/
+
 # Capacitor
 android/app/build/
 android/.gradle/
