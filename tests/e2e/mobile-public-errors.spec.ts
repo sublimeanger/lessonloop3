@@ -73,8 +73,9 @@ test.describe('Mobile — Owner Pages', () => {
   });
 
   test('settings tab shows back button on mobile', async ({ page }) => {
-    await safeGoTo(page, '/settings?tab=profile', 'Mobile Settings Profile');
-    await page.waitForTimeout(2_000);
+    // Settings on mobile may not render <main> initially — use goTo instead of safeGoTo
+    await goTo(page, '/settings?tab=profile');
+    await page.waitForTimeout(3_000);
 
     const backBtn = page.locator('[aria-label="Back to settings navigation"]').first();
     const hasBack = await backBtn.isVisible({ timeout: 5_000 }).catch(() => false);

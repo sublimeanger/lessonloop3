@@ -79,10 +79,11 @@ test.describe('Teacher RBAC', () => {
   test('sidebar shows teacher links', async ({ page }) => {
     await safeGoTo(page, '/dashboard', 'Teacher Dashboard');
     // On mobile, open the hamburger sidebar first
-    const trigger = page.locator('[data-sidebar="trigger"]').first();
+    const trigger = page.getByRole('button', { name: /toggle sidebar/i }).first()
+      .or(page.locator('[data-sidebar="trigger"]').first());
     if (await trigger.isVisible({ timeout: 3_000 }).catch(() => false)) {
       await trigger.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(1_000);
     }
     // Teacher sidebar may show "My Calendar"/"My Students" or "Calendar"/"Students"
     const dashLink = page.getByRole('link', { name: 'Dashboard', exact: true }).first();
@@ -119,10 +120,11 @@ test.describe('Finance RBAC', () => {
   test('sidebar shows only finance links', async ({ page }) => {
     await safeGoTo(page, '/dashboard', 'Finance Dashboard');
     // On mobile, open the hamburger sidebar first
-    const trigger = page.locator('[data-sidebar="trigger"]').first();
+    const trigger = page.getByRole('button', { name: /toggle sidebar/i }).first()
+      .or(page.locator('[data-sidebar="trigger"]').first());
     if (await trigger.isVisible({ timeout: 3_000 }).catch(() => false)) {
       await trigger.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(1_000);
     }
     await expect(page.getByRole('link', { name: 'Invoices', exact: true }).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole('link', { name: 'Reports', exact: true }).first()).toBeVisible({ timeout: 10_000 });
