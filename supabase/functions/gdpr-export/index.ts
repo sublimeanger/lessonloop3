@@ -2,6 +2,31 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
+// deno-lint-ignore no-explicit-any
+async function fetchAll(supabase: any, table: string, orgId: string) {
+  const PAGE_SIZE = 1000;
+  // deno-lint-ignore no-explicit-any
+  let allRows: any[] = [];
+  let offset = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from(table)
+      .select("*")
+      .eq("org_id", orgId)
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    allRows = allRows.concat(data);
+    offset += PAGE_SIZE;
+    if (data.length < PAGE_SIZE) break;
+    if (allRows.length > 50000) {
+      console.warn(`[gdpr-export] Safety cap hit for ${table}: ${allRows.length} rows`);
+      break;
+    }
+  }
+  return allRows;
+}
+
 serve(async (req) => {
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
@@ -61,12 +86,12 @@ serve(async (req) => {
       });
     }
 
-    const [studentsResult, guardiansResult, lessonsResult, invoicesResult, paymentsResult, orgResult] = await Promise.all([
-      supabase.from("students").select("*").eq("org_id", orgId),
-      supabase.from("guardians").select("*").eq("org_id", orgId),
-      supabase.from("lessons").select("*").eq("org_id", orgId),
-      supabase.from("invoices").select("*").eq("org_id", orgId),
-      supabase.from("payments").select("*").eq("org_id", orgId),
+    const [students, guardians, lessons, invoices, payments, orgResult] = await Promise.all([
+      fetchAll(supabase, "students", orgId),
+      fetchAll(supabase, "guardians", orgId),
+      fetchAll(supabase, "lessons", orgId),
+      fetchAll(supabase, "invoices", orgId),
+      fetchAll(supabase, "payments", orgId),
       supabase.from("organisations").select("name").eq("id", orgId).single(),
     ]);
 
@@ -91,18 +116,18 @@ serve(async (req) => {
       organisation: orgResult.data?.name || "organisation",
       exportedAt: new Date().toISOString(),
       files: {
-        students: toCSV(studentsResult.data || [], ["id", "first_name", "last_name", "email", "phone", "dob", "notes", "status", "created_at"]),
-        guardians: toCSV(guardiansResult.data || [], ["id", "full_name", "email", "phone", "created_at"]),
-        lessons: toCSV(lessonsResult.data || [], ["id", "title", "start_at", "end_at", "status", "lesson_type", "created_at"]),
-        invoices: toCSV(invoicesResult.data || [], ["id", "invoice_number", "status", "total_minor", "due_date", "created_at"]),
-        payments: toCSV(paymentsResult.data || [], ["id", "invoice_id", "amount_minor", "method", "paid_at"]),
+        students: toCSV(students, ["id", "first_name", "last_name", "email", "phone", "dob", "notes", "status", "created_at"]),
+        guardians: toCSV(guardians, ["id", "full_name", "email", "phone", "created_at"]),
+        lessons: toCSV(lessons, ["id", "title", "start_at", "end_at", "status", "lesson_type", "created_at"]),
+        invoices: toCSV(invoices, ["id", "invoice_number", "status", "total_minor", "due_date", "created_at"]),
+        payments: toCSV(payments, ["id", "invoice_id", "amount_minor", "method", "paid_at"]),
       },
       counts: {
-        students: studentsResult.data?.length || 0,
-        guardians: guardiansResult.data?.length || 0,
-        lessons: lessonsResult.data?.length || 0,
-        invoices: invoicesResult.data?.length || 0,
-        payments: paymentsResult.data?.length || 0,
+        students: students.length,
+        guardians: guardians.length,
+        lessons: lessons.length,
+        invoices: invoices.length,
+        payments: payments.length,
       },
     };
 
