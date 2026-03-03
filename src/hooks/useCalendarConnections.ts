@@ -225,8 +225,9 @@ export function useCalendarConnections() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendar-connections'] });
-      // Refresh calendar view after disconnect (11.4)
+      // Refresh calendar view and health dashboard after disconnect (11.4)
       queryClient.invalidateQueries({ queryKey: ['calendar-lessons'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-health'] });
       toast({ title: 'Calendar disconnected' });
     },
     onError: () => {
