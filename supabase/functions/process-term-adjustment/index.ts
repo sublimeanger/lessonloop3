@@ -153,7 +153,7 @@ Deno.serve(async (req: Request) => {
   } catch (err: any) {
     console.error("[process-term-adjustment] Error:", err);
     return jsonResponse(
-      { error: err.message || "Internal error" },
+      { error: "An error occurred processing the term adjustment. Please try again." },
       corsHeaders,
       500
     );
@@ -258,6 +258,7 @@ async function handlePreview(
     .from("students")
     .select("id, first_name, last_name, default_rate_card_id")
     .eq("id", body.student_id)
+    .eq("org_id", orgId)
     .single();
 
   if (!student) {
@@ -852,6 +853,7 @@ async function handleConfirm(
       .from("students")
       .select("first_name, last_name")
       .eq("id", adjustment.student_id)
+      .eq("org_id", orgId)
       .single();
 
     const studentName = student
