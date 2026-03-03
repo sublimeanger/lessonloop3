@@ -17,7 +17,8 @@ interface BookingRequest {
   slot: {
     date: string;
     start_time: string;
-    teacher_id: string;
+    teacher_id?: string;
+    teacher_ref?: string;
   };
   contact: {
     name: string;
@@ -59,9 +60,17 @@ Deno.serve(async (req) => {
     const body: BookingRequest = await req.json();
     const { slug, slot, contact, children, notes } = body;
 
-    // Validate required fields
-    if (!slug || !slot?.date || !slot?.start_time || !slot?.teacher_id) {
+    // Validate required fields — accept teacher_id (UUID) or teacher_ref (opaque)
+    if (!slug || !slot?.date || !slot?.start_time || (!slot?.teacher_id && !slot?.teacher_ref)) {
       return new Response(JSON.stringify({ error: 'Missing slot information' }), { status: 400, headers: jsonHeaders });
+    }
+
+    // Resolve opaque teacher ref back to UUID if needed
+    const rawTeacherRef = slot.teacher_ref || slot.teacher_id || '';
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (rawTeacherRef && !UUID_RE.test(rawTeacherRef) && /^[0-9a-f]{32}$/i.test(rawTeacherRef)) {
+      const r = rawTeacherRef;
+      slot.teacher_id = `${r.slice(0,8)}-${r.slice(8,12)}-${r.slice(12,16)}-${r.slice(16,20)}-${r.slice(20)}`;
     }
     if (!contact?.name || !contact?.email) {
       return new Response(JSON.stringify({ error: 'Name and email are required' }), { status: 400, headers: jsonHeaders });
