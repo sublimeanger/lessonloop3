@@ -463,9 +463,11 @@ export function useLogPractice() {
 export function useAddPracticeFeedback() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { currentOrg } = useOrg();
 
   return useMutation({
     mutationFn: async ({ logId, feedback }: { logId: string; feedback: string }) => {
+      if (!currentOrg?.id) throw new Error('No org');
       const { error } = await supabase
         .from('practice_logs')
         .update({
@@ -473,7 +475,8 @@ export function useAddPracticeFeedback() {
           reviewed_at: new Date().toISOString(),
           reviewed_by_user_id: user!.id,
         })
-        .eq('id', logId);
+        .eq('id', logId)
+        .eq('org_id', currentOrg.id);
       if (error) throw error;
     },
     onSuccess: () => {
