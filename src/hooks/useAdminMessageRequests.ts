@@ -259,10 +259,12 @@ export function useUpdateMessageRequest() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-message-requests'] });
       queryClient.invalidateQueries({ queryKey: ['pending-requests-count'] });
-      // Also invalidate calendar data since lessons may have changed
+      // Also invalidate calendar/register data since lessons may have changed (5.6)
       if (data.calendarAction) {
         queryClient.invalidateQueries({ queryKey: ['calendar-lessons'] });
         queryClient.invalidateQueries({ queryKey: ['today-lessons'] });
+        queryClient.invalidateQueries({ queryKey: ['register-lessons'] });
+        queryClient.invalidateQueries({ queryKey: ['urgent-actions'] });
       }
       const actionMsg = data.calendarAction === 'rescheduled' 
         ? ' Lesson rescheduled on the calendar.'
