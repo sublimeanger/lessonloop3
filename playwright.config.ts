@@ -7,6 +7,24 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 dotenv.config({ path: path.resolve(__dirname, '.env.test') });
 
+// Detect container egress proxy (used in sandboxed CI environments)
+function parseProxy() {
+  const raw = process.env.HTTPS_PROXY || process.env.https_proxy;
+  if (!raw) return undefined;
+  try {
+    const url = new URL(raw);
+    const server = `${url.protocol}//${url.hostname}:${url.port}`;
+    return {
+      server,
+      ...(url.username ? { username: decodeURIComponent(url.username) } : {}),
+      ...(url.password ? { password: decodeURIComponent(url.password) } : {}),
+    };
+  } catch {
+    return { server: raw };
+  }
+}
+const proxy = parseProxy();
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -21,6 +39,8 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'on-first-retry',
+    ignoreHTTPSErrors: true,
+    ...(proxy ? { proxy } : {}),
   },
   projects: [
     { name: 'auth-setup', testMatch: /auth\.setup\.ts/ },
