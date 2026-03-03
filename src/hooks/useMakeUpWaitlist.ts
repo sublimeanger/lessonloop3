@@ -194,6 +194,10 @@ export function useConfirmMakeUp() {
       queryClient.invalidateQueries({ queryKey: ['make_up_waitlist'] });
       queryClient.invalidateQueries({ queryKey: ['register'] });
       queryClient.invalidateQueries({ queryKey: ['lesson_participants'] });
+      // Makeup booking changes the calendar (1.6)
+      queryClient.invalidateQueries({ queryKey: ['calendar-lessons'] });
+      queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['register-lessons'] });
       const parts = [ctx.studentName, ctx.lessonTitle, ctx.lessonDate].filter(Boolean);
       toast({
         title: 'Make-up lesson confirmed! 🎉',

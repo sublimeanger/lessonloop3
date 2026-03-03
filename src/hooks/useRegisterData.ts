@@ -310,6 +310,11 @@ export function useUpdateAttendance() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['register-lessons'] });
+      // Attendance changes may trigger make-up credit/waitlist matching (1.1)
+      queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['make_up_waitlist'] });
+      queryClient.invalidateQueries({ queryKey: ['waitlist-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['available-credits-for-payer'] });
     },
   });
 }
@@ -589,6 +594,11 @@ export function useSaveBatchAttendance(dateKey: string) {
       // Refresh dashboard banners so counts update
       queryClient.invalidateQueries({ queryKey: ['proactive-alerts'] });
       queryClient.invalidateQueries({ queryKey: ['urgent-actions'] });
+      // Attendance changes may trigger make-up credit/waitlist matching (1.2)
+      queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['make_up_waitlist'] });
+      queryClient.invalidateQueries({ queryKey: ['waitlist-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['available-credits-for-payer'] });
     },
   });
 }
