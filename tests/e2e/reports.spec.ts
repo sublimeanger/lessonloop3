@@ -126,8 +126,7 @@ test.describe('Report Pages — Owner', () => {
     await safeGoTo(page, '/reports/cancellations', 'Cancellations');
     if (!page.url().includes('/reports')) return; // auth race
     await assertNoErrorBoundary(page);
-    const title = page.getByText('Cancellation Rate').first()
-      .or(page.getByText('Cancellation').first());
+    const title = page.getByRole('heading', { name: /cancellation/i }).first();
     await expect(title).toBeVisible({ timeout: 15_000 });
   });
 

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { AUTH, safeGoTo, assertNoErrorBoundary, trackConsoleErrors } from './helpers';
+import { AUTH, safeGoTo, goTo, assertNoErrorBoundary, trackConsoleErrors } from './helpers';
 
 // ═══════════════════════════════════════════════════════════════
 // OWNER — SETTINGS PAGE & NAVIGATION
@@ -15,8 +15,9 @@ test.describe('Settings — Owner', () => {
   });
 
   test('sidebar navigation shows all 5 groups for admin', async ({ page }) => {
-    await safeGoTo(page, '/settings?tab=profile', 'Settings');
-    await page.waitForTimeout(1_000);
+    // Settings on mobile may not render <main> — use goTo for resilience
+    await goTo(page, '/settings?tab=profile');
+    await page.waitForTimeout(2_000);
 
     const settingsNav = page.locator('nav[aria-label="Settings navigation"]').first();
     const hasNav = await settingsNav.isVisible({ timeout: 10_000 }).catch(() => false);
@@ -59,8 +60,9 @@ test.describe('Settings — Owner', () => {
   });
 
   test('clicking sidebar items switches tab content', async ({ page }) => {
-    await safeGoTo(page, '/settings?tab=profile', 'Settings');
-    await page.waitForTimeout(1_000);
+    // Settings on mobile may not render <main> — use goTo for resilience
+    await goTo(page, '/settings?tab=profile');
+    await page.waitForTimeout(2_000);
 
     const settingsNav = page.locator('nav[aria-label="Settings navigation"]').first();
     const hasNav = await settingsNav.isVisible({ timeout: 5_000 }).catch(() => false);
