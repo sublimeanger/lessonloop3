@@ -34,7 +34,7 @@ function loginViaCurl(email: string, password: string): any {
     }
     return session;
   } finally {
-    fs.unlinkSync(tmpFile);
+    try { fs.unlinkSync(tmpFile); } catch { /* already cleaned up */ }
   }
 }
 
