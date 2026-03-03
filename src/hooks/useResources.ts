@@ -311,6 +311,8 @@ export function useShareResource() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['resources'] });
+      // Invalidate parent-side resource queries so newly shared resources appear (10.3)
+      queryClient.invalidateQueries({ queryKey: ['shared-resources'] });
       toast({
         title: 'Sharing updated',
         description: 'Resource sharing has been updated.',
