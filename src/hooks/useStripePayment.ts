@@ -44,6 +44,8 @@ export function useStripePayment() {
 
       if (data?.url) {
         window.location.href = data.url;
+        // Reset loading state if navigation doesn't happen within 5s
+        setTimeout(() => { setIsLoading(false); }, 5000);
       } else {
         throw new Error('No checkout URL returned');
       }

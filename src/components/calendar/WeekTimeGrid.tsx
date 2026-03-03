@@ -338,7 +338,8 @@ export function WeekTimeGrid({
 
   // ─── Now-line position ────────────────────────────────────
   const nowTop = ((nowMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
-  const showNowLine = nowMinutes >= START_HOUR * 60 && nowMinutes <= END_HOUR * 60;
+  const weekContainsToday = days.some((day) => isToday(day));
+  const showNowLine = weekContainsToday && nowMinutes >= START_HOUR * 60 && nowMinutes <= END_HOUR * 60;
 
   // ─── Mobile: delegate ─────────────────────────────────────
   if (isMobile) {
