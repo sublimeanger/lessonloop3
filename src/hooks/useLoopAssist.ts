@@ -513,7 +513,14 @@ export function useLoopAssist(externalPageContext?: PageContext) {
         send_bulk_reminders:   ['message-log', 'message-threads', 'invoices'],
         bulk_complete_lessons: ['calendar-lessons', 'register-lessons', 'today-lessons', 'attendance'],
       };
-      const keysToInvalidate = resolvedActionType ? (actionInvalidations[resolvedActionType] || []) : [];
+      // Fallback: unknown/new action types get broad invalidation rather than nothing (6.5)
+      const FALLBACK_KEYS = [
+        'invoices', 'invoice-stats', 'students', 'calendar-lessons',
+        'register-lessons', 'today-lessons', 'message-log', 'urgent-actions',
+      ];
+      const keysToInvalidate = resolvedActionType
+        ? (actionInvalidations[resolvedActionType] || FALLBACK_KEYS)
+        : [];
       for (const key of keysToInvalidate) {
         queryClient.invalidateQueries({ queryKey: [key] });
       }
