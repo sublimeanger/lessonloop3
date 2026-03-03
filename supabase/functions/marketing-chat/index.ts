@@ -1,6 +1,7 @@
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "../_shared/rate-limit.ts";
+import { sanitiseMessage } from "../_shared/sanitise-ai-input.ts";
 const SYSTEM_PROMPT = `You are LessonLoop's friendly AI assistant on our marketing website. You help prospective customers learn about LessonLoop — the UK's purpose-built scheduling, invoicing, and management platform for music teachers, studios, and teaching agencies.
 
 ## Your Personality
@@ -185,7 +186,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { messages } = await req.json();
+    let { messages } = await req.json();
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response(JSON.stringify({ error: 'Messages array is required' }), {
@@ -193,6 +194,15 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Strip injected system/role messages, sanitise user input, cap context length
+    messages = messages
+      .filter((m: { role: string }) => m.role === "user" || m.role === "assistant")
+      .map((m: { role: string; content: string }) => ({
+        ...m,
+        content: m.role === "user" ? sanitiseMessage(m.content) : m.content,
+      }))
+      .slice(-20);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -213,7 +223,7 @@ Deno.serve(async (req) => {
         model: 'google/gemini-3-flash-preview',
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
-          ...messages.slice(-10), // Keep last 10 messages for context
+          ...messages,
         ],
         stream: true,
       }),
