@@ -258,13 +258,18 @@ export function useSendInternalMessage() {
 
 export function useMarkInternalRead() {
   const queryClient = useQueryClient();
+  const { currentOrg } = useOrg();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (messageId: string) => {
+      if (!currentOrg?.id || !user?.id) throw new Error('No organisation or user');
       const { error } = await supabase
         .from('internal_messages')
         .update({ read_at: new Date().toISOString() })
-        .eq('id', messageId);
+        .eq('id', messageId)
+        .eq('org_id', currentOrg.id)
+        .eq('recipient_user_id', user.id);
 
       if (error) throw error;
     },
