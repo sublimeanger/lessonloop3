@@ -36,10 +36,9 @@ CREATE TABLE public.term_adjustments (
 );
 
 -- Indexes
-CREATE INDEX idx_term_adjustments_org_id ON public.term_adjustments(org_id);
-CREATE INDEX idx_term_adjustments_student_id ON public.term_adjustments(student_id, org_id);
+CREATE INDEX idx_term_adjustments_org_student ON public.term_adjustments(org_id, student_id);
+CREATE INDEX idx_term_adjustments_org_status ON public.term_adjustments(org_id, status);
 CREATE INDEX idx_term_adjustments_term_id ON public.term_adjustments(term_id);
-CREATE INDEX idx_term_adjustments_status ON public.term_adjustments(status);
 
 -- RLS
 ALTER TABLE public.term_adjustments ENABLE ROW LEVEL SECURITY;
@@ -56,9 +55,7 @@ CREATE POLICY "Admins can update term adjustments"
   ON public.term_adjustments FOR UPDATE
   USING (is_org_admin(auth.uid(), org_id));
 
-CREATE POLICY "Admins can delete term adjustments"
-  ON public.term_adjustments FOR DELETE
-  USING (is_org_admin(auth.uid(), org_id));
+-- No DELETE policy: term_adjustments is an audit trail, rows are never deleted.
 
 -- Updated_at trigger
 CREATE TRIGGER set_term_adjustments_updated_at
