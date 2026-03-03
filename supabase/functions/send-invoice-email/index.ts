@@ -163,21 +163,32 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Thank you for your business,<br>${escapeHtml(orgName)}</p>
         </div>`;
 
-    // Log message to message_log
+    // Log message to message_log and capture the row ID for deterministic status update
+    let logEntryId: string | null = null;
     if (orgId && invoiceId) {
-      await supabaseService.from("message_log").insert({
-        org_id: orgId,
-        channel: "email",
-        subject,
-        body: htmlContent,
-        sender_user_id: user.id,
-        recipient_email: recipientEmail,
-        recipient_name: recipientName,
-        recipient_type: "guardian",
-        related_id: invoiceId,
-        message_type: isReminder ? "invoice_reminder" : "invoice",
-        status: resendApiKey ? "pending" : "logged",
-      });
+      const { data: logEntry, error: logError } = await supabaseService
+        .from("message_log")
+        .insert({
+          org_id: orgId,
+          channel: "email",
+          subject,
+          body: htmlContent,
+          sender_user_id: user.id,
+          recipient_email: recipientEmail,
+          recipient_name: recipientName,
+          recipient_type: "guardian",
+          related_id: invoiceId,
+          message_type: isReminder ? "invoice_reminder" : "invoice",
+          status: resendApiKey ? "pending" : "logged",
+        })
+        .select("id")
+        .single();
+
+      if (logError) {
+        console.warn("[send-invoice-email] message_log insert failed:", logError.message);
+      } else {
+        logEntryId = logEntry.id;
+      }
     }
 
     if (!resendApiKey) {
@@ -205,8 +216,8 @@ const handler = async (req: Request): Promise<Response> => {
     const result = await response.json();
     console.log("Email sent:", result);
 
-    // Update message log status
-    if (orgId && invoiceId) {
+    // Update message log status by primary key (deterministic)
+    if (logEntryId) {
       await supabaseService
         .from("message_log")
         .update({
@@ -214,10 +225,7 @@ const handler = async (req: Request): Promise<Response> => {
           sent_at: response.ok ? new Date().toISOString() : null,
           error_message: response.ok ? null : JSON.stringify(result),
         })
-        .eq("related_id", invoiceId)
-        .eq("message_type", isReminder ? "invoice_reminder" : "invoice")
-        .order("created_at", { ascending: false })
-        .limit(1);
+        .eq("id", logEntryId);
     }
 
     return new Response(JSON.stringify(result), {
