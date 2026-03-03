@@ -124,7 +124,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       // Verify the parent is the recipient of this message (or it's in their thread)
-      if (originalMsg.recipient_id !== guardian.id && originalMsg.recipient_type !== "guardian") {
+      if (originalMsg.recipient_id !== guardian.id || originalMsg.recipient_type !== "guardian") {
         // Check if the parent sent this message (thread continuity)
         if (originalMsg.sender_user_id !== user.id) {
           return new Response(JSON.stringify({ error: "You cannot reply to this message" }), { status: 403, headers: jsonHeaders });
