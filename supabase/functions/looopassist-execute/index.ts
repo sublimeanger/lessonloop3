@@ -114,6 +114,22 @@ serve(async (req) => {
         });
       }
 
+      // Atomically claim the proposal to prevent concurrent execution
+      const { data: claimed, error: claimError } = await supabase
+        .from("ai_action_proposals")
+        .update({ status: "executing" })
+        .eq("id", proposalId)
+        .eq("status", "proposed")
+        .select("id")
+        .single();
+
+      if (claimError || !claimed) {
+        return new Response(JSON.stringify({ error: "Proposal already processed" }), {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Role-based authorization check
       // Mirror of src/lib/action-registry.ts roles — keep in sync
       const ACTION_ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -308,7 +324,8 @@ serve(async (req) => {
               const { error: updateError } = await supabase
                 .from("lessons")
                 .update({ status: "completed" })
-                .eq("id", lesson.id);
+                .eq("id", lesson.id)
+                .eq("org_id", orgId);
               if (!updateError) {
                 completedCount++;
                 completeEntities.push({ type: "lesson", id: lesson.id, label: lesson.title, detail: "Marked complete" });
@@ -366,7 +383,7 @@ serve(async (req) => {
         ? `✓ ${result.message}${resultBlock}`
         : `✗ ${result.message || result.error}`;
 
-      // Update proposal status FIRST to prevent re-execution
+      // Update proposal status to final state
       const { error: statusError } = await supabase
         .from("ai_action_proposals")
         .update({
@@ -375,7 +392,7 @@ serve(async (req) => {
           executed_at: new Date().toISOString(),
         })
         .eq("id", proposalId)
-        .eq("status", "proposed"); // Only update if still "proposed"
+        .eq("status", "executing");
 
       if (statusError) {
         console.error("Failed to update proposal status:", statusError);
@@ -513,12 +530,6 @@ async function executeGenerateBillingRun(
   const uninvoicedLessons = (lessons || []).filter((l: BasicLesson) => !alreadyInvoicedIds.has(l.id));
   const skippedCount = (lessons?.length || 0) - uninvoicedLessons.length;
 
-  const { data: org } = await supabase
-    .from("organisations")
-    .select("vat_enabled, vat_rate, currency_code")
-    .eq("id", orgId)
-    .single();
-
   /**
    * Resolve the rate for a lesson + student combination.
    * Priority:
@@ -577,51 +588,29 @@ async function executeGenerateBillingRun(
   const invoiceNumbers: string[] = [];
 
   for (const [, payer] of payerMap) {
-    const { data: invoiceNumber } = await supabase.rpc("generate_invoice_number", { _org_id: orgId });
-
-    const subtotal = payer.lessons.reduce((sum, item) => sum + item.rate, 0);
-    const taxRate = org?.vat_enabled ? Number(org.vat_rate) : 0;
-    const tax = Math.round(subtotal * taxRate / 100);
-    const total = subtotal + tax;
-
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 14);
 
-    const { data: invoice, error: invoiceError } = await supabase
-      .from("invoices")
-      .insert({
-        org_id: orgId,
-        invoice_number: invoiceNumber,
-        payer_guardian_id: payer.type === 'guardian' ? payer.id : null,
-        payer_student_id: payer.type === 'student' ? payer.id : null,
-        subtotal_minor: subtotal,
-        tax_minor: tax,
-        total_minor: total,
-        vat_rate: taxRate,
-        currency_code: org?.currency_code || 'GBP',
-        due_date: dueDate.toISOString().split("T")[0],
-        status: 'draft',
-      })
-      .select()
-      .single();
-
-    if (invoiceError) throw invoiceError;
-
     const items = payer.lessons.map(({ lesson, student, rate }) => ({
-      org_id: orgId,
-      invoice_id: invoice.id,
       description: `Lesson: ${lesson.title} on ${new Date(lesson.start_at).toLocaleDateString('en-GB')}`,
       quantity: 1,
       unit_price_minor: rate,
-      amount_minor: rate,
       linked_lesson_id: lesson.id,
       student_id: student.id,
     }));
 
-    await supabase.from("invoice_items").insert(items);
+    const { data: rpcResult, error: rpcError } = await supabase.rpc("create_invoice_with_items", {
+      _org_id: orgId,
+      _due_date: dueDate.toISOString().split("T")[0],
+      _payer_guardian_id: payer.type === 'guardian' ? payer.id : undefined,
+      _payer_student_id: payer.type === 'student' ? payer.id : undefined,
+      _items: JSON.stringify(items),
+    });
+
+    if (rpcError) throw rpcError;
 
     invoicesCreated++;
-    invoiceNumbers.push(invoiceNumber);
+    invoiceNumbers.push(rpcResult.invoice_number);
   }
 
   await supabase.from("billing_runs").insert({
