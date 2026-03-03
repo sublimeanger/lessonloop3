@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     if (fetchError) {
       console.error('[profile-ensure] Error checking profile:', fetchError);
       return new Response(
-        JSON.stringify({ error: fetchError.message }),
+        JSON.stringify({ error: "An internal error occurred. Please try again." }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
 
       console.error('[profile-ensure] Error creating profile:', insertError);
       return new Response(
-        JSON.stringify({ error: insertError.message }),
+        JSON.stringify({ error: "An internal error occurred. Please try again." }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -124,9 +124,8 @@ Deno.serve(async (req) => {
 
   } catch (error: unknown) {
     console.error('[profile-ensure] Unexpected error:', error);
-    const message = error instanceof Error ? error.message : 'Internal server error';
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: "An internal error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

@@ -111,7 +111,7 @@ Deno.serve(async (req: Request) => {
   } catch (err: any) {
     console.error("[create-billing-run] Error:", err);
     return new Response(
-      JSON.stringify({ error: err.message || "Internal error" }),
+      JSON.stringify({ error: "An internal error occurred. Please try again." }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -231,7 +231,7 @@ async function handleCreate(
       .eq("id", billingRun.id);
 
     return new Response(
-      JSON.stringify({ error: innerError.message, billing_run_id: billingRun.id }),
+      JSON.stringify({ error: "An internal error occurred. Please try again.", billing_run_id: billingRun.id }),
       {
         status: 500,
         headers: { ...cors, "Content-Type": "application/json" },

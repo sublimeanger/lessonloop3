@@ -130,7 +130,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Trial reminder 3-day error:", error);
     return new Response(
-      JSON.stringify({ error: String(error) }),
+      JSON.stringify({ error: "An internal error occurred. Please try again." }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }

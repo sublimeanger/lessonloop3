@@ -220,9 +220,8 @@ const handler = async (req: Request): Promise<Response> => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Refund notification error:", message);
-    return new Response(JSON.stringify({ error: message }), {
+    console.error("Refund notification error:", error instanceof Error ? error.message : error);
+    return new Response(JSON.stringify({ error: "An internal error occurred. Please try again." }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });

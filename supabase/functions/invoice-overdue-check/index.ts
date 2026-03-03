@@ -21,7 +21,7 @@ serve(async (req) => {
 
   if (error) {
     console.error("Failed to update overdue invoices:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: "An internal error occurred. Please try again." }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });

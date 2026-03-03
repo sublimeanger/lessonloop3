@@ -26,7 +26,7 @@ serve(async (req) => {
   if (error) {
     console.error("Credit expiry error:", error.message);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: "An internal error occurred. Please try again." }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }

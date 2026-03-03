@@ -24,7 +24,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (fetchError) {
       console.error("Failed to fetch expired offers:", fetchError);
       return new Response(
-        JSON.stringify({ error: fetchError.message }),
+        JSON.stringify({ error: "An internal error occurred. Please try again." }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -76,7 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error) {
     console.error("enrolment-offer-expiry error:", error);
     return new Response(
-      JSON.stringify({ error: (error as Error).message || "Internal server error" }),
+      JSON.stringify({ error: "An internal error occurred. Please try again." }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }

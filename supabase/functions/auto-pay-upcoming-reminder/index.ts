@@ -198,7 +198,7 @@ serve(async (req) => {
   } catch (error: any) {
     console.error("Error in auto-pay-upcoming-reminder:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: "An internal error occurred. Please try again." }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }

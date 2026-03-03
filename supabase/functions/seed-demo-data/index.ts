@@ -628,7 +628,7 @@ Deno.serve(async (req) => {
 
   } catch (error: any) {
     L(`❌ ERROR: ${error.message}`);
-    return new Response(JSON.stringify({ success: false, error: error.message, log }), {
+    return new Response(JSON.stringify({ success: false, error: "An internal error occurred. Please try again.", log }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

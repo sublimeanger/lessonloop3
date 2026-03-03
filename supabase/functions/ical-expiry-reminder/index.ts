@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
 
     if (error) {
       console.error("Error fetching expiring connections:", error);
-      return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+      return new Response(JSON.stringify({ error: "An internal error occurred. Please try again." }), { status: 500 });
     }
 
     if (!expiring || expiring.length === 0) {
