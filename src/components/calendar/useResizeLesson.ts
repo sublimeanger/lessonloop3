@@ -103,23 +103,21 @@ export function useResizeLesson({
       return;
     }
 
-    // Compute new end time from currentBottom
-    const endMinutesFromGridTop = (currentBottom / hourHeight) * 60;
-    const totalEndMinutes = endMinutesFromGridTop + startHour * 60;
-    let endHr = Math.floor(totalEndMinutes / 60);
-    let endMinute = Math.round(totalEndMinutes % 60);
-    if (endMinute >= 60) {
-      endHr += 1;
-      endMinute = 0;
-    }
+    // Compute the resize delta in minutes from the pixel change.
+    // This is timezone-agnostic: the grid-pixel → minute ratio is the
+    // same regardless of display timezone, so we avoid the bug where
+    // setHours(orgLocalHour) on a browser-local Date shifts the lesson
+    // by the timezone offset when later converted to UTC via toISOString().
+    // (The drag code uses an equivalent UTC-anchored approach.)
+    const deltaMinutes = ((currentBottom - originalBottom) / hourHeight) * 60;
 
-    const originalStart = parseISO(lesson.start_at);
-    const newEnd = new Date(originalStart);
-    newEnd.setHours(endHr, endMinute, 0, 0);
+    // Apply the delta directly to the lesson's UTC end timestamp
+    const originalEnd = parseISO(lesson.end_at);
+    const newEnd = new Date(originalEnd.getTime() + deltaMinutes * 60 * 1000);
 
     setResizeState(null);
     onResize(lesson, newEnd);
-  }, [onResize, startHour, hourHeight]);
+  }, [onResize, hourHeight]);
 
   const cancelResize = useCallback(() => {
     isResizingRef.current = false;
