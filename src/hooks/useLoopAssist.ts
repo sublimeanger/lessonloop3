@@ -501,6 +501,7 @@ export function useLoopAssist(externalPageContext?: PageContext) {
       const proposal = pendingProposals.find(p => p.id === variables.proposalId);
       const resolvedActionType = proposal?.proposal?.action_type || data?.action_type;
       const actionInvalidations: Record<string, string[]> = {
+        create_invoice:        ['invoices', 'invoice-stats', 'make_up_credits'],
         generate_billing_run:  ['invoices', 'invoice-stats', 'billing-runs'],
         send_invoice_reminders: ['message-log', 'message-threads', 'invoices'],
         reschedule_lessons:    ['calendar-lessons', 'register-lessons', 'today-lessons'],
