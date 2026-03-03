@@ -317,5 +317,12 @@ export async function fetchBookingSlots(params: {
   });
 
   if (error) throw error;
-  return (data?.slots as TimeSlot[]) ?? [];
+  // Map opaque teacher refs from the edge function to the TimeSlot interface
+  const rawSlots = (data?.slots ?? []) as Array<Record<string, string>>;
+  return rawSlots.map((s) => ({
+    time: s.start_time || s.time,
+    teacher_id: s.teacher_ref || s.teacher_id,
+    teacher_name: s.teacher_first_name || s.teacher_name,
+    date: s.date,
+  }));
 }

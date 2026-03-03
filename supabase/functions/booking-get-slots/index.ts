@@ -1,7 +1,9 @@
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { checkRateLimit } from '../_shared/rate-limit.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const MAX_DAYS_AHEAD = 90;
 
 interface SlotRequest {
   slug: string;
@@ -14,8 +16,8 @@ interface Slot {
   date: string;
   start_time: string; // HH:MM
   end_time: string;   // HH:MM
-  teacher_id: string;
-  teacher_name: string;
+  teacher_ref: string;
+  teacher_first_name: string;
 }
 
 Deno.serve(async (req) => {
@@ -29,11 +31,47 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // PUB-M2: IP-based rate limiting — 20 requests per minute
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || req.headers.get('cf-connecting-ip')
+      || 'unknown';
+
+    const rlResult = await checkRateLimit(
+      `booking-slots-${clientIp}`,
+      'booking-get-slots',
+      { maxRequests: 20, windowMinutes: 1 }
+    );
+    if (!rlResult.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Too many requests. Please try again later.', retryAfterSeconds: rlResult.retryAfterSeconds }),
+        { status: 429, headers: jsonHeaders }
+      );
+    }
+
     const body: SlotRequest = await req.json();
     const { slug, date_from, date_to, teacher_id } = body;
 
     if (!slug || !date_from || !date_to) {
       return new Response(JSON.stringify({ error: 'slug, date_from, date_to are required' }), { status: 400, headers: jsonHeaders });
+    }
+
+    // PUB-M4: Validate date range
+    const dateFromParsed = new Date(date_from + 'T00:00:00Z');
+    const dateToParsed = new Date(date_to + 'T00:00:00Z');
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    if (isNaN(dateFromParsed.getTime()) || isNaN(dateToParsed.getTime())) {
+      return new Response(JSON.stringify({ error: 'Invalid date format. Use YYYY-MM-DD.' }), { status: 400, headers: jsonHeaders });
+    }
+
+    if (dateFromParsed < today) {
+      return new Response(JSON.stringify({ error: 'start_date cannot be in the past' }), { status: 400, headers: jsonHeaders });
+    }
+
+    const rangeDays = Math.ceil((dateToParsed.getTime() - dateFromParsed.getTime()) / (1000 * 60 * 60 * 24));
+    if (rangeDays < 0 || rangeDays > MAX_DAYS_AHEAD) {
+      return new Response(JSON.stringify({ error: `Date range must not exceed ${MAX_DAYS_AHEAD} days` }), { status: 400, headers: jsonHeaders });
     }
 
     // Use service role to bypass RLS for public access
@@ -54,7 +92,6 @@ Deno.serve(async (req) => {
     }
 
     const orgId = bookingPage.org_id;
-    const orgTz = bookingPage.org?.timezone || 'Europe/London';
     const durationMins = bookingPage.lesson_duration_mins;
     const bufferMins = bookingPage.buffer_minutes || 0;
     const minNoticeHours = bookingPage.min_notice_hours || 24;
@@ -69,16 +106,20 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ slots: [] }), { status: 200, headers: jsonHeaders });
     }
 
+    // PUB-M3: Build opaque teacher refs and extract first names only
     const teachers = bpTeachers
       .filter((t: any) => t.teacher)
       .map((t: any) => ({
         id: t.teacher.id,
-        name: t.teacher.display_name,
+        ref: t.teacher.id.replace(/-/g, ''),
+        first_name: (t.teacher.display_name || '').split(' ')[0] || 'Teacher',
         user_id: t.teacher.user_id,
       }));
 
-    // Optionally filter to a single teacher
-    const filteredTeachers = teacher_id ? teachers.filter((t: any) => t.id === teacher_id) : teachers;
+    // Filter by teacher_id if provided (accept either UUID or opaque ref)
+    const filteredTeachers = teacher_id
+      ? teachers.filter((t: any) => t.id === teacher_id || t.ref === teacher_id)
+      : teachers;
     if (filteredTeachers.length === 0) {
       return new Response(JSON.stringify({ slots: [] }), { status: 200, headers: jsonHeaders });
     }
@@ -182,8 +223,8 @@ Deno.serve(async (req) => {
               date: dateStr,
               start_time: slotStartTime,
               end_time: slotEndTime,
-              teacher_id: teacher.id,
-              teacher_name: teacher.name,
+              teacher_ref: teacher.ref,
+              teacher_first_name: teacher.first_name,
             });
           }
         }
