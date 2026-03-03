@@ -62,7 +62,7 @@ export function useStudentLessons(studentId: string | undefined) {
         `)
         .eq('student_id', studentId)
         .eq('org_id', currentOrg!.id)
-        .order('created_at', { ascending: false })
+        .order('start_at', { referencedTable: 'lessons', ascending: false })
         .range(from, to);
 
       if (error) {
