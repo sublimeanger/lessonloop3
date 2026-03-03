@@ -17,7 +17,7 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'http://localhost:8080',
+    baseURL: process.env.E2E_BASE_URL || 'https://app.lessonloop.net',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'on-first-retry',
@@ -43,10 +43,5 @@ export default defineConfig({
       dependencies: ['auth-setup'],
     },
   ],
-  webServer: process.env.CI ? undefined : {
-    command: 'npm run dev',
-    port: 8080,
-    reuseExistingServer: true,
-    timeout: 30_000,
-  },
+  webServer: undefined,
 });
