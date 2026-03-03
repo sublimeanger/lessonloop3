@@ -552,7 +552,7 @@ async function executeToolCall(
       query = query.order("last_name").limit(toolInput.limit || 20);
 
       const { data, error } = await query;
-      if (error) return `Error: ${error.message}`;
+      if (error) return "Tool execution failed. Please try a different approach.";
       if (!data || data.length === 0) return "No students found matching those criteria.";
 
       let result = `Found ${data.length} student(s):\n`;
@@ -587,7 +587,7 @@ async function executeToolCall(
       query = query.order("start_at", { ascending: true }).limit(toolInput.limit || 30);
 
       const { data, error } = await query;
-      if (error) return `Error: ${error.message}`;
+      if (error) return "Tool execution failed. Please try a different approach.";
       if (!data || data.length === 0) return "No lessons found matching those criteria.";
 
       let result = `Found ${data.length} lesson(s):\n`;
@@ -679,7 +679,7 @@ async function executeToolCall(
       query = query.order("due_date", { ascending: true }).limit(toolInput.limit || 20);
 
       const { data, error } = await query;
-      if (error) return `Error: ${error.message}`;
+      if (error) return "Tool execution failed. Please try a different approach.";
       if (!data || data.length === 0) return "No invoices found matching those criteria.";
 
       let result = `Found ${data.length} invoice(s):\n`;
@@ -735,7 +735,7 @@ async function executeToolCall(
         .lte("start_at", `${toolInput.end_date}T23:59:59`)
         .order("start_at", { ascending: true });
 
-      if (error) return `Error: ${error.message}`;
+      if (error) return "Tool execution failed. Please try a different approach.";
       if (!data || data.length === 0) return "No lessons found for this teacher in the given period.";
 
       let result = `${data.length} lesson(s) scheduled:\n`;
@@ -798,7 +798,7 @@ async function executeToolCall(
       query = query.order("recorded_at", { ascending: false }).limit(toolInput.limit || 200);
 
       const { data, error } = await query;
-      if (error) return `Error: ${error.message}`;
+      if (error) return "Tool execution failed. Please try a different approach.";
       if (!data || data.length === 0) return "No attendance records found for that period.";
 
       const counts: Record<string, number> = {};
@@ -839,7 +839,7 @@ async function executeToolCall(
         .gte("recorded_at", cutoff)
         .order("recorded_at", { ascending: false });
 
-      if (error) return `Error: ${error.message}`;
+      if (error) return "Tool execution failed. Please try a different approach.";
       if (!absences || absences.length === 0) return "No absences found in the last " + daysBack + " days. No students are currently at risk.";
 
       // Count per student
@@ -964,7 +964,7 @@ async function executeToolCall(
         .order("created_at", { ascending: false })
         .limit(10);
 
-      if (error) return `Error: ${error.message}`;
+      if (error) return "Tool execution failed. Please try a different approach.";
       if (!data || data.length === 0) return "No term adjustments found for this student.";
 
       let result = `Found ${data.length} term adjustment(s):\n`;
@@ -1768,10 +1768,14 @@ AI tier: ${isPro ? "Pro (Sonnet)" : "Standard (Haiku)"}`
             await pushSSE({ status: "thinking", detail: label });
 
             console.log(`Tool call [${toolRound}]: ${toolUse.name}`, JSON.stringify(toolUse.input));
-            const result = await executeToolCall(
+            const rawResult = await executeToolCall(
               supabase, orgId, userRole, currencyCode,
               toolUse.name, toolUse.input
             );
+            const MAX_TOOL_RESULT_LENGTH = 4000;
+            const result = rawResult.length > MAX_TOOL_RESULT_LENGTH
+              ? rawResult.slice(0, MAX_TOOL_RESULT_LENGTH) + "\n…(truncated)"
+              : rawResult;
             toolResults.push({
               type: "tool_result",
               tool_use_id: toolUse.id,
