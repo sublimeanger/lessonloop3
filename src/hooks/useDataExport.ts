@@ -17,6 +17,23 @@ function downloadCSV(content: string, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
+const PAGE_SIZE = 1000;
+const SAFETY_CAP = 10000;
+
+async function fetchAllPages<T>(queryBuilder: any): Promise<T[]> {
+  const all: T[] = [];
+  let offset = 0;
+  while (offset < SAFETY_CAP) {
+    const { data, error } = await queryBuilder.range(offset, offset + PAGE_SIZE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+  return all;
+}
+
 export function useDataExport() {
   const { currentOrg } = useOrg();
   const { toast } = useToast();
@@ -25,14 +42,15 @@ export function useDataExport() {
   const exportStudents = useCallback(async () => {
     if (!currentOrg) return;
     try {
-      const { data, error } = await supabase
-        .from('students')
-        .select('first_name, last_name, email, phone, dob, status, notes, created_at')
-        .eq('org_id', currentOrg.id)
-        .order('last_name');
+      const data = await fetchAllPages<any>(
+        supabase
+          .from('students')
+          .select('first_name, last_name, email, phone, dob, status, notes, created_at')
+          .eq('org_id', currentOrg.id)
+          .order('last_name'),
+      );
 
-      if (error) throw error;
-      if (!data || data.length === 0) {
+      if (data.length === 0) {
         toast({ title: 'No data to export', description: 'No student records found.' });
         return;
       }
@@ -63,14 +81,15 @@ export function useDataExport() {
   const exportTeachers = useCallback(async () => {
     if (!currentOrg) return;
     try {
-      const { data, error } = await supabase
-        .from('teachers')
-        .select('display_name, email, phone, instruments, employment_type, status, created_at')
-        .eq('org_id', currentOrg.id)
-        .order('display_name');
+      const data = await fetchAllPages<any>(
+        supabase
+          .from('teachers')
+          .select('display_name, email, phone, instruments, employment_type, status, created_at')
+          .eq('org_id', currentOrg.id)
+          .order('display_name'),
+      );
 
-      if (error) throw error;
-      if (!data || data.length === 0) {
+      if (data.length === 0) {
         toast({ title: 'No data to export', description: 'No teacher records found.' });
         return;
       }
@@ -100,18 +119,19 @@ export function useDataExport() {
   const exportInvoices = useCallback(async () => {
     if (!currentOrg) return;
     try {
-      const { data, error } = await supabase
-        .from('invoices')
-        .select(`
-          invoice_number, status, total_minor, currency_code, due_date, issue_date,
-          payer_guardian:guardians!invoices_payer_guardian_id_fkey(full_name),
-          payer_student:students!invoices_payer_student_id_fkey(first_name, last_name)
-        `)
-        .eq('org_id', currentOrg.id)
-        .order('issue_date', { ascending: false });
+      const data = await fetchAllPages<any>(
+        supabase
+          .from('invoices')
+          .select(`
+            invoice_number, status, total_minor, currency_code, due_date, issue_date,
+            payer_guardian:guardians!invoices_payer_guardian_id_fkey(full_name),
+            payer_student:students!invoices_payer_student_id_fkey(first_name, last_name)
+          `)
+          .eq('org_id', currentOrg.id)
+          .order('issue_date', { ascending: false }),
+      );
 
-      if (error) throw error;
-      if (!data || data.length === 0) {
+      if (data.length === 0) {
         toast({ title: 'No data to export', description: 'No invoice records found.' });
         return;
       }

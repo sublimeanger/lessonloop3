@@ -71,7 +71,8 @@ export function useInternalMessages(view: 'inbox' | 'sent' = 'inbox') {
         .from('internal_messages')
         .select('*')
         .eq('org_id', currentOrg.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(200);
 
       if (view === 'inbox') {
         query = query.eq('recipient_user_id', user.id);

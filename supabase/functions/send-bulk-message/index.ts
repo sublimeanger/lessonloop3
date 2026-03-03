@@ -428,25 +428,38 @@ async function fetchFilteredGuardians(
 
   const studentIds = students.map((s: any) => s.id);
 
-  const { data: studentGuardians, error: sgError } = await supabase
-    .from("student_guardians")
-    .select("guardian_id")
-    .in("student_id", studentIds);
+  // Chunk .in() calls to avoid Supabase/Postgres limits
+  const CHUNK = 500;
+  const studentGuardians: { guardian_id: string }[] = [];
+  for (let i = 0; i < studentIds.length; i += CHUNK) {
+    const { data, error } = await supabase
+      .from("student_guardians")
+      .select("guardian_id")
+      .in("student_id", studentIds.slice(i, i + CHUNK));
+    if (error) {
+      logError("Error fetching student_guardians:", error);
+      return [];
+    }
+    if (data) studentGuardians.push(...data);
+  }
 
-  if (sgError || !studentGuardians || studentGuardians.length === 0) return [];
+  if (studentGuardians.length === 0) return [];
 
   const guardianIds = [...new Set(studentGuardians.map((sg: any) => sg.guardian_id))];
 
-  const { data: guardians, error: guardianError } = await supabase
-    .from("guardians")
-    .select("id, full_name, email, user_id")
-    .in("id", guardianIds)
-    .is("deleted_at", null)
-    .not("email", "is", null);
-
-  if (guardianError) {
-    logError("Error fetching guardians:", guardianError);
-    return [];
+  const guardians: Guardian[] = [];
+  for (let i = 0; i < guardianIds.length; i += CHUNK) {
+    const { data, error } = await supabase
+      .from("guardians")
+      .select("id, full_name, email, user_id")
+      .in("id", guardianIds.slice(i, i + CHUNK))
+      .is("deleted_at", null)
+      .not("email", "is", null);
+    if (error) {
+      logError("Error fetching guardians:", error);
+      return [];
+    }
+    if (data) guardians.push(...data);
   }
 
   if (filters.has_overdue_invoice) {
