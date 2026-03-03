@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -188,6 +189,34 @@ export interface ConvertLeadInput {
  */
 export function useLeads(filters?: LeadFilters) {
   const { currentOrg } = useOrg();
+  const queryClient = useQueryClient();
+
+  // Realtime: booking submissions from public page appear on staff lead list immediately (7.1)
+  useEffect(() => {
+    if (!currentOrg?.id) return;
+
+    const channel = supabase
+      .channel(`lead-changes-${currentOrg.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'leads',
+          filter: `org_id=eq.${currentOrg.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['leads'] });
+          queryClient.invalidateQueries({ queryKey: ['lead-stage-counts'] });
+          queryClient.invalidateQueries({ queryKey: ['lead-funnel'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentOrg?.id, queryClient]);
 
   return useQuery({
     queryKey: ['leads', currentOrg?.id, filters],
