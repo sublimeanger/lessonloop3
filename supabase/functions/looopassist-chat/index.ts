@@ -83,6 +83,8 @@ interface Payment {
  * get_student_detail, search_invoices, etc.), which avoids 15+ sequential DB
  * queries on every message and cuts first-response latency from ~5-10s to ~1-2s.
  */
+// TODO (PERF-M4): Consider creating a single get_loopassist_context RPC that returns all 9 datasets
+// in one DB round-trip. Don't refactor this now — it works, it's just expensive at scale.
 async function buildLeanContext(supabase: SupabaseClient, orgId: string, currencyCode: string = 'GBP'): Promise<{
   snapshot: string;
   sections: Record<string, string>;

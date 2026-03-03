@@ -317,21 +317,23 @@ serve(async (req) => {
               .lt("start_at", `${cutoffDate}T00:00:00`)
               .limit(100);
 
-            let completedCount = 0;
             const completeEntities: any[] = [];
+            const lessonIds = (pastLessons || []).map((l: any) => l.id);
 
-            for (const lesson of pastLessons || []) {
-              const { error: updateError } = await supabase
+            if (lessonIds.length > 0) {
+              await supabase
                 .from("lessons")
                 .update({ status: "completed" })
-                .eq("id", lesson.id)
+                .in("id", lessonIds)
                 .eq("org_id", orgId);
-              if (!updateError) {
-                completedCount++;
+
+              for (const lesson of pastLessons || []) {
                 completeEntities.push({ type: "lesson", id: lesson.id, label: lesson.title, detail: "Marked complete" });
                 syncLessonToCalendar(lesson.id, 'update');
               }
             }
+
+            const completedCount = lessonIds.length;
 
             await supabase.from("audit_log").insert({
               org_id: orgId,

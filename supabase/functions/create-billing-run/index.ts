@@ -515,80 +515,90 @@ async function executeBillingLogic(
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 14);
     const dueDateStr = dueDate.toISOString().split("T")[0];
+    const vatRate = org.vat_enabled ? org.vat_rate : 0;
+
+    // Pre-compute all invoice rows and their associated items
+    const allInvoiceRows: any[] = [];
+    const payerItemsMap: Array<{ payer: any; lessonRates: number[]; total: number }> = [];
 
     for (const [, payer] of payerGroups) {
-      try {
-        // Calculate rates server-side
-        const lessonRates = payer.lessons.map(({ lesson }) => {
-          const start = new Date(lesson.start_at).getTime();
-          const end = new Date(lesson.end_at).getTime();
-          const durationMins = Math.round((end - start) / 60000);
-          return findRateForDuration(
-            durationMins,
-            rateCards || [],
-            fallbackRate
-          );
-        });
+      const lessonRates = payer.lessons.map(({ lesson }: any) => {
+        const start = new Date(lesson.start_at).getTime();
+        const end = new Date(lesson.end_at).getTime();
+        const durationMins = Math.round((end - start) / 60000);
+        return findRateForDuration(durationMins, rateCards || [], fallbackRate);
+      });
 
-        const subtotal = lessonRates.reduce((s: number, r: number) => s + r, 0);
-        const vatRate = org.vat_enabled ? org.vat_rate : 0;
-        const taxMinor = Math.round(subtotal * (vatRate / 100));
-        const total = subtotal + taxMinor;
+      const subtotal = lessonRates.reduce((s: number, r: number) => s + r, 0);
+      const taxMinor = Math.round(subtotal * (vatRate / 100));
+      const total = subtotal + taxMinor;
 
-        const { data: invoice, error: invoiceError } = await client
-          .from("invoices")
-          .insert({
-            org_id: orgId,
-            invoice_number: "",
-            due_date: dueDateStr,
-            payer_guardian_id:
-              payer.payerType === "guardian" ? payer.payerId : null,
-            payer_student_id:
-              payer.payerType === "student" ? payer.payerId : null,
-            subtotal_minor: subtotal,
-            tax_minor: taxMinor,
-            total_minor: total,
-            vat_rate: vatRate,
-            currency_code: org.currency_code,
-            status: "draft",
-            term_id: termId,
-          })
-          .select()
-          .single();
+      allInvoiceRows.push({
+        org_id: orgId,
+        invoice_number: "",
+        due_date: dueDateStr,
+        payer_guardian_id: payer.payerType === "guardian" ? payer.payerId : null,
+        payer_student_id: payer.payerType === "student" ? payer.payerId : null,
+        subtotal_minor: subtotal,
+        tax_minor: taxMinor,
+        total_minor: total,
+        vat_rate: vatRate,
+        currency_code: org.currency_code,
+        status: "draft",
+        term_id: termId,
+      });
+      payerItemsMap.push({ payer, lessonRates, total });
+    }
 
-        if (invoiceError) throw invoiceError;
+    if (allInvoiceRows.length > 0) {
+      // Batch insert all invoices
+      const { data: invoices, error: invoiceError } = await client
+        .from("invoices")
+        .insert(allInvoiceRows)
+        .select("id");
 
-        invoiceIds.push(invoice.id);
-        totalAmount += total;
+      if (invoiceError) {
+        console.error("[BillingRun] Batch invoice insert failed:", invoiceError);
+        for (const { payer } of payerItemsMap) {
+          failedPayers.push({
+            payerName: payer.payerName,
+            payerEmail: payer.payerEmail,
+            payerType: payer.payerType,
+            payerId: payer.payerId,
+            error: invoiceError.message || "Invoice creation failed",
+          });
+        }
+      } else if (invoices) {
+        // Batch insert all invoice items
+        const allItems: any[] = [];
+        for (let i = 0; i < invoices.length; i++) {
+          const inv = invoices[i];
+          const { payer, lessonRates, total } = payerItemsMap[i];
+          invoiceIds.push(inv.id);
+          totalAmount += total;
+          for (let j = 0; j < payer.lessons.length; j++) {
+            const { lesson, studentId } = payer.lessons[j];
+            allItems.push({
+              invoice_id: inv.id,
+              org_id: orgId,
+              description: lesson.title,
+              quantity: 1,
+              unit_price_minor: lessonRates[j],
+              amount_minor: lessonRates[j],
+              linked_lesson_id: lesson.id,
+              student_id: studentId,
+            });
+          }
+        }
 
-        const items = payer.lessons.map(({ lesson, studentId }, idx) => ({
-          invoice_id: invoice.id,
-          org_id: orgId,
-          description: lesson.title,
-          quantity: 1,
-          unit_price_minor: lessonRates[idx],
-          amount_minor: lessonRates[idx],
-          linked_lesson_id: lesson.id,
-          student_id: studentId,
-        }));
-
-        const { error: itemsError } = await client
-          .from("invoice_items")
-          .insert(items);
-
-        if (itemsError) throw itemsError;
-      } catch (payerError: any) {
-        console.error(
-          `[BillingRun] Failed for payer ${payer.payerName}:`,
-          payerError
-        );
-        failedPayers.push({
-          payerName: payer.payerName,
-          payerEmail: payer.payerEmail,
-          payerType: payer.payerType,
-          payerId: payer.payerId,
-          error: payerError.message || "Unknown error",
-        });
+        if (allItems.length > 0) {
+          const { error: itemsError } = await client
+            .from("invoice_items")
+            .insert(allItems);
+          if (itemsError) {
+            console.error("[BillingRun] Batch items insert failed:", itemsError);
+          }
+        }
       }
     }
   }
