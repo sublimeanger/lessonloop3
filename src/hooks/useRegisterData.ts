@@ -372,9 +372,10 @@ export function useMarkLessonComplete() {
     onSuccess: (_data, lessonId) => {
       queryClient.invalidateQueries({ queryKey: ['register-lessons'] });
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
-      // Refresh dashboard banners so counts update
+      // Refresh dashboard banners so counts update (2.5)
       queryClient.invalidateQueries({ queryKey: ['proactive-alerts'] });
       queryClient.invalidateQueries({ queryKey: ['urgent-actions'] });
+      queryClient.invalidateQueries({ queryKey: ['today-lessons'] });
       // Fire-and-forget calendar sync
       syncLesson(lessonId, 'update');
       toast({
@@ -594,6 +595,9 @@ export function useSaveBatchAttendance(dateKey: string) {
       // Refresh dashboard banners so counts update
       queryClient.invalidateQueries({ queryKey: ['proactive-alerts'] });
       queryClient.invalidateQueries({ queryKey: ['urgent-actions'] });
+      // Refresh today widget (2.6)
+      queryClient.invalidateQueries({ queryKey: ['today-lessons'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-lessons'] });
       // Attendance changes may trigger make-up credit/waitlist matching (1.2)
       queryClient.invalidateQueries({ queryKey: ['make_up_credits'] });
       queryClient.invalidateQueries({ queryKey: ['make_up_waitlist'] });
