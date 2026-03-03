@@ -78,6 +78,15 @@ test.describe('Teacher RBAC', () => {
 
   test('sidebar shows teacher links', async ({ page }) => {
     await safeGoTo(page, '/dashboard', 'Teacher Dashboard');
+
+    // On mobile, open the sidebar/hamburger menu first
+    const menuBtn = page.getByRole('button', { name: /menu|sidebar|toggle/i }).first()
+      .or(page.locator('button[aria-label*="menu" i], button[aria-label*="sidebar" i]').first());
+    if (await menuBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await menuBtn.click();
+      await page.waitForTimeout(500);
+    }
+
     // Teacher sidebar may show "My Calendar"/"My Students" or "Calendar"/"Students"
     const dashLink = page.getByRole('link', { name: 'Dashboard', exact: true }).first();
     await expect(dashLink).toBeVisible({ timeout: 10_000 });
@@ -112,6 +121,15 @@ test.describe('Finance RBAC', () => {
 
   test('sidebar shows only finance links', async ({ page }) => {
     await safeGoTo(page, '/dashboard', 'Finance Dashboard');
+
+    // On mobile, open the sidebar/hamburger menu first
+    const menuBtn = page.getByRole('button', { name: /menu|sidebar|toggle/i }).first()
+      .or(page.locator('button[aria-label*="menu" i], button[aria-label*="sidebar" i]').first());
+    if (await menuBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await menuBtn.click();
+      await page.waitForTimeout(500);
+    }
+
     await expect(page.getByRole('link', { name: 'Invoices', exact: true }).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole('link', { name: 'Reports', exact: true }).first()).toBeVisible({ timeout: 10_000 });
     // Teacher/student links should be hidden
