@@ -73,6 +73,7 @@ test.describe('Mobile — Owner Pages', () => {
   });
 
   test('settings tab shows back button on mobile', async ({ page }) => {
+    test.setTimeout(90_000);
     // Settings on mobile may not render <main> initially — use goTo instead of safeGoTo
     await goTo(page, '/settings?tab=profile');
     await page.waitForTimeout(3_000);

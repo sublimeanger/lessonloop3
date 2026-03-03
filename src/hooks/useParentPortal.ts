@@ -205,6 +205,7 @@ export function useParentLessons(options?: { studentId?: string; status?: string
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ['parent-lessons'] });
+          queryClient.invalidateQueries({ queryKey: ['parent-schedule'] });
         }
       )
       .subscribe();

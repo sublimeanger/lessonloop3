@@ -108,6 +108,9 @@ export function useToggleStudentStatus() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
+      // Archiving a student changes resource share counts (10.4)
+      queryClient.invalidateQueries({ queryKey: ['resources'] });
+      queryClient.invalidateQueries({ queryKey: ['shared-resources'] });
       if (user && result) {
         logAudit(result.orgId, user.id, 'student.status_changed', 'student', result.studentId, {
           after: { status: result.newStatus },

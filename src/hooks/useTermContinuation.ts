@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
@@ -166,6 +167,34 @@ export function useContinuationResponses(
   filter?: ContinuationResponseType
 ) {
   const { currentOrg } = useOrg();
+  const queryClient = useQueryClient();
+
+  // Realtime: staff sees parent continuation responses immediately (4.3)
+  useEffect(() => {
+    if (!currentOrg?.id || !runId) return;
+
+    const channel = supabase
+      .channel(`continuation-response-changes-${runId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'term_continuation_responses',
+          filter: `run_id=eq.${runId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['continuation-responses'] });
+          queryClient.invalidateQueries({ queryKey: ['continuation-run'] });
+          queryClient.invalidateQueries({ queryKey: ['continuation-runs'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentOrg?.id, runId, queryClient]);
 
   return useQuery({
     queryKey: ['continuation-responses', currentOrg?.id, runId, filter],
