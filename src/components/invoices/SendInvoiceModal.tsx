@@ -160,6 +160,8 @@ export function SendInvoiceModal({
 
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice'] });
+      // Sending invoice email creates a message_log entry (3.10)
+      queryClient.invalidateQueries({ queryKey: ['message-log'] });
 
       toast({ title: isReminder ? 'Reminder sent' : 'Invoice sent' });
       handleClose();

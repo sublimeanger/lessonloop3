@@ -39,11 +39,13 @@ export function useRefund() {
         throw new Error(data.error);
       }
 
-      // Invalidate related queries
+      // Invalidate related queries (12.1)
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoice'] });
       queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
       queryClient.invalidateQueries({ queryKey: ['payment-analytics'] });
       queryClient.invalidateQueries({ queryKey: ['parent-invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
 
       toast({
         title: 'Refund processed',

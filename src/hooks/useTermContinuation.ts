@@ -634,6 +634,9 @@ export function useBulkProcessContinuation() {
       queryClient.invalidateQueries({ queryKey: ['lessons'] });
       queryClient.invalidateQueries({ queryKey: ['billing-runs'] });
       queryClient.invalidateQueries({ queryKey: ['term-adjustments'] });
+      // Continuation may create invoices — refresh stats + dashboard (4.5)
+      queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['urgent-actions'] });
 
       const parts: string[] = [];
       if (data.extendedCount > 0) {
