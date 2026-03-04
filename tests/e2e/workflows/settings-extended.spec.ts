@@ -1,8 +1,35 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page, Locator } from '@playwright/test';
 import { AUTH, goTo, assertNoErrorBoundary } from '../helpers';
-import { supabaseDelete, supabaseSelect, getOrgId } from '../supabase-admin';
+import { supabaseDelete, getOrgId } from '../supabase-admin';
 
 const testId = `e2e-${Date.now()}`;
+
+/** Navigate to a settings tab using client-side sidebar clicks. */
+async function goToSettingsTab(page: Page, tab: string) {
+  await goTo(page, '/dashboard');
+  await page.waitForTimeout(2_000);
+  await page.getByRole('link', { name: 'Settings' }).first().click();
+  await page.waitForTimeout(3_000);
+  const labels: Record<string, string> = {
+    scheduling: 'Scheduling', 'rate-cards': 'Rate Cards',
+    availability: 'Availability', music: 'Music',
+    notifications: 'Notifications', members: 'Members',
+    audit: 'Audit Log', privacy: 'Privacy & GDPR',
+    messaging: 'Messaging',
+  };
+  // Scope to the settings navigation area (inside main) to avoid header buttons
+  const settingsNav = page.locator('main nav, main').first();
+  const btn = settingsNav.getByRole('button', { name: labels[tab] || tab, exact: true }).first();
+  if (await btn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await btn.click();
+    await page.waitForTimeout(2_000);
+  }
+}
+
+/** Scope to the visible desktop content area (avoids hidden mobile duplicate). */
+function dc(page: Page): Locator {
+  return page.locator('div.hidden.md\\:block');
+}
 
 /* ================================================================== */
 /*  AVAILABILITY                                                        */
@@ -11,32 +38,32 @@ test.describe('Settings — Availability', () => {
   test.use({ storageState: AUTH.owner });
 
   test('view and interact with availability tab', async ({ page }) => {
-    await goTo(page, '/settings?tab=availability');
-    await page.waitForTimeout(2_000);
+    await goToSettingsTab(page, 'availability');
     await assertNoErrorBoundary(page);
+    const content = dc(page);
 
-    // Should show weekly availability section — look for day names
-    const mondayText = page.getByText('Monday').first();
-    const hasMonday = await mondayText.isVisible({ timeout: 10_000 }).catch(() => false);
+    // Should show weekly availability section — look for "Weekly Availability" heading
+    const weeklyHeading = content.getByText('Weekly Availability').first();
+    const hasHeading = await weeklyHeading.isVisible({ timeout: 10_000 }).catch(() => false);
 
-    // "Add Availability" or "Add Time" button should exist
-    const addBtn = page.getByRole('button', { name: /Add Availability|Add Time/i }).first();
+    // "Add Hours" button should exist
+    const addBtn = content.getByRole('button', { name: /Add Hours/i }).first();
     const hasAddBtn = await addBtn.isVisible({ timeout: 5_000 }).catch(() => false);
 
     // At minimum the page should load without errors
-    expect(hasMonday || hasAddBtn).toBe(true);
+    expect(hasHeading || hasAddBtn).toBe(true);
   });
 
   test('add and remove availability block', async ({ page }) => {
-    await goTo(page, '/settings?tab=availability');
-    await page.waitForTimeout(2_000);
+    await goToSettingsTab(page, 'availability');
+    const content = dc(page);
 
     // Click add availability button
-    const addBtn = page.getByRole('button', { name: /Add Availability|Add Time/i }).first();
+    const addBtn = content.getByRole('button', { name: /Add Hours/i }).first();
     const hasAddBtn = await addBtn.isVisible({ timeout: 5_000 }).catch(() => false);
 
     if (!hasAddBtn) {
-      test.skip(true, 'Add availability button not found — may need teacher selection');
+      test.skip(true, 'Add Hours button not found — may need teacher selection');
       return;
     }
 
@@ -66,7 +93,6 @@ test.describe('Settings — Instruments', () => {
   const instrumentName = `E2E Instrument ${testId}`;
 
   test.afterAll(() => {
-    // Custom instruments are org-scoped; clean up via admin API
     const orgId = getOrgId();
     if (!orgId) return;
     const encodedPrefix = encodeURIComponent(`%${testId}%`);
@@ -74,15 +100,15 @@ test.describe('Settings — Instruments', () => {
   });
 
   test('add custom instrument', async ({ page }) => {
-    await goTo(page, '/settings?tab=music');
-    await page.waitForTimeout(2_000);
+    await goToSettingsTab(page, 'music');
     await assertNoErrorBoundary(page);
+    const content = dc(page);
 
     // Click add button for custom instruments
-    const addBtn = page.getByRole('button', { name: /Add|New/i })
+    const addBtn = content.getByRole('button', { name: /Add|New/i })
       .filter({ hasText: /instrument|custom|add/i }).first()
-      .or(page.getByRole('button', { name: /Add Custom Instrument/i }).first())
-      .or(page.getByRole('button', { name: /Add/i }).first());
+      .or(content.getByRole('button', { name: /Add Custom Instrument/i }).first())
+      .or(content.getByRole('button', { name: /Add/i }).first());
 
     const hasAdd = await addBtn.isVisible({ timeout: 5_000 }).catch(() => false);
 
@@ -101,23 +127,21 @@ test.describe('Settings — Instruments', () => {
     if (await nameInput.isVisible({ timeout: 3_000 }).catch(() => false)) {
       await nameInput.fill(instrumentName);
 
-      // Save
       const saveBtn = page.getByRole('button', { name: /Add|Save|Create/i }).last();
       await saveBtn.click();
       await page.waitForTimeout(2_000);
 
-      // Verify appears
-      const visible = await page.getByText(instrumentName).first()
+      const visible = await content.getByText(instrumentName).first()
         .isVisible({ timeout: 10_000 }).catch(() => false);
       expect(visible).toBe(true);
     }
   });
 
   test('delete custom instrument', async ({ page }) => {
-    await goTo(page, '/settings?tab=music');
-    await page.waitForTimeout(2_000);
+    await goToSettingsTab(page, 'music');
+    const content = dc(page);
 
-    const instrument = page.getByText(instrumentName).first();
+    const instrument = content.getByText(instrumentName).first();
     const exists = await instrument.isVisible({ timeout: 10_000 }).catch(() => false);
 
     if (!exists) {
@@ -133,14 +157,13 @@ test.describe('Settings — Instruments', () => {
     if (await deleteBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
       await deleteBtn.click();
 
-      // Confirm if AlertDialog appears
       const alertDialog = page.getByRole('alertdialog');
       if (await alertDialog.isVisible({ timeout: 2_000 }).catch(() => false)) {
         await alertDialog.getByRole('button', { name: /Delete|Confirm/i }).click();
       }
 
       await page.waitForTimeout(2_000);
-      const stillVisible = await page.getByText(instrumentName).first()
+      const stillVisible = await content.getByText(instrumentName).first()
         .isVisible({ timeout: 3_000 }).catch(() => false);
       expect(stillVisible).toBe(false);
     }
@@ -154,16 +177,16 @@ test.describe('Settings — Notifications', () => {
   test.use({ storageState: AUTH.owner });
 
   test('toggle notification and save', async ({ page }) => {
-    await goTo(page, '/settings?tab=notifications');
-    await page.waitForTimeout(2_000);
+    await goToSettingsTab(page, 'notifications');
     await assertNoErrorBoundary(page);
+    const content = dc(page);
 
     // Should show notification categories
-    await expect(page.getByText('Lessons & Scheduling').first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('Billing & Payments').first()).toBeVisible({ timeout: 10_000 });
+    await expect(content.getByText('Lessons & Scheduling').first()).toBeVisible({ timeout: 10_000 });
+    await expect(content.getByText('Billing & Payments').first()).toBeVisible({ timeout: 10_000 });
 
     // Find the "Marketing emails" toggle (last switch — usually off by default)
-    const marketingLabel = page.getByText('Marketing emails').first();
+    const marketingLabel = content.getByText('Marketing emails').first();
     await expect(marketingLabel).toBeVisible({ timeout: 5_000 });
 
     // Find the nearest switch
@@ -171,24 +194,22 @@ test.describe('Settings — Notifications', () => {
     const toggle = switchContainer.locator('button[role="switch"]').first();
 
     if (await toggle.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      // Get current state
       const wasChecked = await toggle.getAttribute('data-state') === 'checked';
 
-      // Toggle it
       await toggle.click();
       await page.waitForTimeout(500);
 
       // Save
-      const saveBtn = page.getByRole('button', { name: /Save Preferences/i });
+      const saveBtn = content.getByRole('button', { name: /Save Preferences/i });
       await expect(saveBtn).toBeEnabled({ timeout: 5_000 });
       await saveBtn.click();
       await page.waitForTimeout(2_000);
 
       // Reload and verify persistence
-      await goTo(page, '/settings?tab=notifications');
-      await page.waitForTimeout(2_000);
+      await goToSettingsTab(page, 'notifications');
+      const content2 = dc(page);
 
-      const switchAfterReload = page.getByText('Marketing emails').first()
+      const switchAfterReload = content2.getByText('Marketing emails').first()
         .locator('..').locator('..').locator('button[role="switch"]').first();
       const isNowChecked = await switchAfterReload.getAttribute('data-state') === 'checked';
       expect(isNowChecked).toBe(!wasChecked);
@@ -196,7 +217,7 @@ test.describe('Settings — Notifications', () => {
       // Toggle back to original state
       await switchAfterReload.click();
       await page.waitForTimeout(500);
-      await page.getByRole('button', { name: /Save Preferences/i }).click();
+      await content2.getByRole('button', { name: /Save Preferences/i }).click();
       await page.waitForTimeout(2_000);
     }
   });
@@ -211,7 +232,6 @@ test.describe('Settings — Members', () => {
   const inviteEmail = `e2e-invite-${testId}@test.com`;
 
   test.afterAll(() => {
-    // Clean up pending invites
     const orgId = getOrgId();
     if (!orgId) return;
     const encodedEmail = encodeURIComponent(inviteEmail);
@@ -219,25 +239,21 @@ test.describe('Settings — Members', () => {
   });
 
   test('view members list', async ({ page }) => {
-    await goTo(page, '/settings?tab=members');
-    await page.waitForTimeout(2_000);
+    await goToSettingsTab(page, 'members');
     await assertNoErrorBoundary(page);
+    const content = dc(page);
 
-    // Should show "Organisation Members" heading
-    await expect(page.getByText('Organisation Members').first()).toBeVisible({ timeout: 15_000 });
-
-    // Should have "Invite Member" button
+    await expect(content.getByText('Organisation Members').first()).toBeVisible({ timeout: 15_000 });
     await expect(
-      page.getByRole('button', { name: /Invite Member/i }).first(),
+      content.getByRole('button', { name: /Invite Member/i }).first(),
     ).toBeVisible({ timeout: 10_000 });
   });
 
   test('invite a member and revoke', async ({ page }) => {
-    await goTo(page, '/settings?tab=members');
-    await page.waitForTimeout(2_000);
+    await goToSettingsTab(page, 'members');
+    const content = dc(page);
 
-    // Click "Invite Member"
-    await page.getByRole('button', { name: /Invite Member/i }).first().click();
+    await content.getByRole('button', { name: /Invite Member/i }).first().click();
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible({ timeout: 5_000 });
@@ -264,15 +280,13 @@ test.describe('Settings — Members', () => {
     await sendBtn.click();
     await page.waitForTimeout(3_000);
 
-    // Dialog should close
     await expect(dialog).toBeHidden({ timeout: 10_000 });
 
     // Verify invite appears in pending list
-    const inviteText = page.getByText(inviteEmail).first();
+    const inviteText = content.getByText(inviteEmail).first();
     const inviteVisible = await inviteText.isVisible({ timeout: 10_000 }).catch(() => false);
 
     if (inviteVisible) {
-      // Find and click cancel/revoke button near the invite
       const inviteRow = inviteText.locator('..').locator('..');
       const cancelBtn = inviteRow.getByRole('button', { name: /cancel|revoke|remove/i }).first()
         .or(inviteRow.locator('button').last());
@@ -281,8 +295,7 @@ test.describe('Settings — Members', () => {
         await cancelBtn.click();
         await page.waitForTimeout(2_000);
 
-        // Verify removed
-        const stillVisible = await page.getByText(inviteEmail).first()
+        const stillVisible = await content.getByText(inviteEmail).first()
           .isVisible({ timeout: 3_000 }).catch(() => false);
         expect(stillVisible).toBe(false);
       }
@@ -297,33 +310,30 @@ test.describe('Settings — Audit Log', () => {
   test.use({ storageState: AUTH.owner });
 
   test('view audit log with filters', async ({ page }) => {
-    await goTo(page, '/settings?tab=audit');
-    await page.waitForTimeout(2_000);
+    await goToSettingsTab(page, 'audit');
     await assertNoErrorBoundary(page);
+    const content = dc(page);
 
-    // Should show "Audit Log" heading
-    await expect(page.getByText('Audit Log').first()).toBeVisible({ timeout: 15_000 });
+    await expect(content.getByText('Audit Log').first()).toBeVisible({ timeout: 15_000 });
 
     // Should show filter controls
-    await expect(page.getByText('Entity Type').first()).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText('Action').first()).toBeVisible({ timeout: 5_000 });
+    await expect(content.getByText('Entity Type').first()).toBeVisible({ timeout: 5_000 });
+    await expect(content.getByText('Action').first()).toBeVisible({ timeout: 5_000 });
 
-    // Should show at least some entries (table rows or empty state)
     await page.waitForTimeout(3_000);
-    const hasTable = await page.locator('table').first().isVisible({ timeout: 5_000 }).catch(() => false);
-    const hasEmptyState = await page.getByText(/no.*entries|no.*results|no.*logs/i).first()
+    const hasTable = await content.locator('table').first().isVisible({ timeout: 5_000 }).catch(() => false);
+    const hasEmptyState = await content.getByText(/no.*entries|no.*results|no.*logs/i).first()
       .isVisible({ timeout: 3_000 }).catch(() => false);
 
-    // Either there are log entries or an empty state — both valid
     expect(hasTable || hasEmptyState).toBe(true);
   });
 
   test('filter audit log by entity type', async ({ page }) => {
-    await goTo(page, '/settings?tab=audit');
-    await page.waitForTimeout(2_000);
+    await goToSettingsTab(page, 'audit');
+    const content = dc(page);
 
     // Click entity type filter
-    const entityFilter = page.getByLabel('Entity Type').first();
+    const entityFilter = content.getByLabel('Entity Type').first();
     if (await entityFilter.isVisible({ timeout: 5_000 }).catch(() => false)) {
       await entityFilter.click();
       await page.waitForTimeout(300);
@@ -345,25 +355,22 @@ test.describe('Settings — Privacy & GDPR', () => {
   test.use({ storageState: AUTH.owner });
 
   test('view privacy tab with GDPR sections', async ({ page }) => {
-    await goTo(page, '/settings?tab=privacy');
-    await page.waitForTimeout(2_000);
+    await goToSettingsTab(page, 'privacy');
     await assertNoErrorBoundary(page);
+    const content = dc(page);
 
-    // Should show Data Export section
-    await expect(page.getByText('Data Export').first()).toBeVisible({ timeout: 15_000 });
+    // "Data Export (GDPR Article 20)" heading
+    await expect(content.getByText('Data Export').first()).toBeVisible({ timeout: 15_000 });
 
-    // Should show GDPR Article references
-    await expect(page.getByText(/GDPR/i).first()).toBeVisible({ timeout: 5_000 });
+    // Should show GDPR references
+    await expect(content.getByText(/GDPR/i).first()).toBeVisible({ timeout: 5_000 });
 
-    // Should show data retention policy section
-    const retentionSection = page.getByText(/Data Retention|Retention Policy/i).first();
-    const hasRetention = await retentionSection.isVisible({ timeout: 5_000 }).catch(() => false);
+    // Data retention and/or deletion sections
+    const hasRetention = await content.getByText(/Data Retention/i).first()
+      .isVisible({ timeout: 5_000 }).catch(() => false);
+    const hasDeletion = await content.getByText(/Data Deletion/i).first()
+      .isVisible({ timeout: 5_000 }).catch(() => false);
 
-    // Data deletion section
-    const deletionSection = page.getByText(/Data Deletion/i).first();
-    const hasDeletion = await deletionSection.isVisible({ timeout: 5_000 }).catch(() => false);
-
-    // At least export section should be visible
     expect(hasRetention || hasDeletion).toBe(true);
   });
 });
@@ -375,16 +382,16 @@ test.describe('Settings — Messaging', () => {
   test.use({ storageState: AUTH.owner });
 
   test('view messaging settings with toggles', async ({ page }) => {
-    await goTo(page, '/settings?tab=messaging');
-    await page.waitForTimeout(2_000);
+    await goToSettingsTab(page, 'messaging');
     await assertNoErrorBoundary(page);
+    const content = dc(page);
 
-    // Should show messaging permission toggles
-    const parentMessaging = page.getByText(/Parent.*Messaging|Messaging.*Permission/i).first();
+    // "Parent Messaging Permissions" heading
+    const parentMessaging = content.getByText(/Parent Messaging Permissions/i).first();
     await expect(parentMessaging).toBeVisible({ timeout: 15_000 });
 
     // Should have switch toggles
-    const switches = page.locator('button[role="switch"]');
+    const switches = content.locator('button[role="switch"]');
     const switchCount = await switches.count();
     expect(switchCount).toBeGreaterThan(0);
   });
