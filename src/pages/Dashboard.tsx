@@ -328,7 +328,7 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
             <TodayTimeline className="order-last lg:order-none lg:col-span-5" />
           </SectionErrorBoundary>
           
-          <div className="order-first lg:order-none lg:col-span-4 space-y-4 sm:space-y-6">
+          <div className="order-first lg:order-none lg:col-span-4 flex flex-col gap-4 sm:gap-6">
             {/* Cancellation Alert Card */}
             <Card className="border-amber-200/50 bg-amber-50/30">
               <CardContent className="p-3 sm:p-4">
