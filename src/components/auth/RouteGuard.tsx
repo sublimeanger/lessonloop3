@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState, useRef } from 'react';
 import { logger } from '@/lib/logger';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
@@ -60,6 +60,30 @@ export function RouteGuard({
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Grace period: when isInitialised fires but profile is null (hard timeout race),
+  // wait up to 3s for the recovery effect in AuthContext to fill in the profile
+  // before redirecting to onboarding.
+  const profileGraceRef = useRef(false);
+  const [profileGraceDone, setProfileGraceDone] = useState(false);
+
+  useEffect(() => {
+    // Only start grace period when we have a user, are initialised, but profile is null
+    if (isInitialised && user && !profile && !profileGraceRef.current) {
+      profileGraceRef.current = true;
+      logger.debug('[RouteGuard] Profile null after init — waiting for recovery');
+      const timer = setTimeout(() => {
+        logger.debug('[RouteGuard] Profile grace period expired');
+        setProfileGraceDone(true);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+    // If profile arrives during grace, cancel it
+    if (profile && profileGraceRef.current) {
+      profileGraceRef.current = false;
+      setProfileGraceDone(false);
+    }
+  }, [isInitialised, user, profile]);
+
   const handleForceRedirect = () => {
     // If we have a user but profile load failed, go to onboarding
     // Onboarding will self-heal and create profile if needed
@@ -101,10 +125,15 @@ export function RouteGuard({
 
   // For protected routes, check onboarding status
   if (requireAuth && requireOnboarding) {
-    // If profile is null after auth init, treat as needing onboarding
-    // The onboarding page will self-heal and create profile if needed
+    // If profile is null after auth init, wait for the recovery grace period
+    // before redirecting — this prevents false onboarding redirects when the
+    // hard timeout fires before profile fetch completes.
     if (profile === null) {
-      logger.warn('[RouteGuard] Profile is null - redirecting to onboarding for self-heal');
+      if (!profileGraceDone) {
+        // Still waiting for recovery — show loading
+        return <AuthLoading onLogout={signOut} onForceRedirect={handleForceRedirect} />;
+      }
+      logger.warn('[RouteGuard] Profile still null after grace period - redirecting to onboarding');
       return <Navigate to="/onboarding" replace />;
     }
     if (!profile.has_completed_onboarding) {
