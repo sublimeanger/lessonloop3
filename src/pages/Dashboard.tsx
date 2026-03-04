@@ -462,7 +462,7 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
               <StatCard title="This Month" value={stats?.lessonsThisMonth ?? 0} subtitle="Lessons this month" icon={Clock} variant="coral" />
               <StatCard title="My Students" value={stats?.myStudentsCount ?? 0} subtitle="Assigned to you" icon={Users} href="/students" variant="violet" />
               <StatCard title="Hours (Week)" value={`${stats?.hoursThisWeek ?? 0}h`} subtitle="Teaching hours" icon={TrendingUp} variant="emerald" />
-            </div>
+            </StatsGrid>
           )}
         </motion.div>
 
