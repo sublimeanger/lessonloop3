@@ -159,7 +159,7 @@ export const MarketingFooter = React.forwardRef<HTMLElement>(function MarketingF
                 Keeping every lesson in the loop — scheduling, billing, and parent communication for music educators.
               </p>
               <div className="mt-5">
-                <AppStoreBadge variant="white" />
+                <AppStoreBadge variant="black" />
               </div>
               <a
                 href="https://ltpmusic.co.uk"

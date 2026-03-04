@@ -160,7 +160,7 @@ export function CTASection() {
                     </div>
 
                     <div className="flex justify-center mt-5">
-                      <AppStoreBadge variant="white" />
+                      <AppStoreBadge variant="black" />
                     </div>
 
                     <p className="text-center text-white/40 text-sm mt-6">
