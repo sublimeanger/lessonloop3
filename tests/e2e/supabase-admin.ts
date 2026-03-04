@@ -46,7 +46,7 @@ function getOwnerToken(): string {
  * Execute a Supabase PostgREST DELETE via curl.
  * Returns true on success, false on failure (best-effort).
  */
-function supabaseDelete(table: string, query: string): boolean {
+export function supabaseDelete(table: string, query: string): boolean {
   const token = getOwnerToken();
   try {
     execSync(
