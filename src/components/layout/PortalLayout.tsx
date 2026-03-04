@@ -43,7 +43,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
             <div className="px-4 pt-3 md:px-6">
               <ChildSwitcher compact className="w-full" />
             </div>
-            <main className="flex-1 overflow-auto p-6 pb-24">
+            <main className="flex-1 overflow-auto px-4 py-4 pb-24">
               <div className="max-w-4xl mx-auto">
                 {contentTransition}
               </div>
@@ -63,7 +63,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
           <PortalSidebar />
           <div className="flex-1 flex flex-col">
             <Header />
-            <main className="flex-1 overflow-auto p-6 md:p-8">
+            <main className="flex-1 overflow-auto px-4 py-4 md:px-6 md:py-5 lg:px-8 lg:py-6">
               <div className="max-w-4xl mx-auto">
                 {contentTransition}
               </div>

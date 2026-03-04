@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { usePageMeta } from '@/hooks/usePageMeta';
+import { StatsGrid } from '@/components/shared/StatsGrid';
 import { useRealtimeInvoices } from '@/hooks/useRealtimeInvoices';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -128,7 +129,7 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
   return (
     <AppLayout>
       <motion.div
-        className="space-y-4 sm:space-y-6"
+        className="flex flex-col gap-4 sm:gap-6"
         initial="hidden"
         animate="visible"
         variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
@@ -197,14 +198,14 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
           {isLoading ? (
             <GridSkeleton count={6} columns={4} />
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+            <StatsGrid>
               <StatCard title="Today's Lessons" value={stats?.todayLessons ?? 0} subtitle={currentOrg?.org_type === 'solo_teacher' ? 'Your schedule' : 'Across all teachers'} icon={Calendar} href="/calendar" variant="teal" />
               <StatCard title="Active Students" value={stats?.activeStudents ?? 0} subtitle="Currently enrolled" icon={Users} href="/students" variant="coral" />
               <StatCard title="This Week" value={`${stats?.lessonsThisWeek ?? 0} lessons`} subtitle={`${stats?.hoursThisWeek ?? 0} teaching hours`} icon={Clock} href="/calendar" variant="emerald" />
               <StatCard title="Revenue (MTD)" value={formatCurrency(stats?.revenueMTD ?? 0)} subtitle="Month to date" icon={PoundSterling} href="/reports/revenue" variant="violet" />
               <StatCard title="Outstanding" value={formatCurrency(stats?.outstandingAmount ?? 0)} subtitle={(stats?.overdueCount ?? 0) > 0 ? `${stats?.overdueCount} overdue` : (stats?.outstandingAmount ?? 0) > 0 ? 'Awaiting payment' : 'All invoices paid'} icon={Receipt} href="/invoices" variant="coral" />
               <StatCard title="Total Lessons" value={stats?.totalLessons ?? 0} subtitle="All time" icon={BookOpen} href="/reports/lessons" variant="teal" />
-            </div>
+            </StatsGrid>
           )}
         </motion.div>
 
@@ -247,7 +248,7 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
   return (
     <AppLayout>
       <motion.div
-        className="space-y-4 sm:space-y-6"
+        className="flex flex-col gap-4 sm:gap-6"
         initial="hidden"
         animate="visible"
         variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
@@ -310,14 +311,14 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
           {isLoading ? (
             <GridSkeleton count={6} columns={4} />
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+            <StatsGrid>
               <StatCard title="Today's Lessons" value={stats?.todayLessons ?? 0} subtitle="Across all teachers" icon={Calendar} href="/calendar" variant="teal" />
               <StatCard title="Active Students" value={stats?.activeStudents ?? 0} subtitle="Currently enrolled" icon={Users} href="/students" variant="coral" />
               <StatCard title="This Week" value={`${stats?.lessonsThisWeek ?? 0} lessons`} subtitle={`${stats?.hoursThisWeek ?? 0} teaching hours`} icon={Clock} href="/calendar" variant="emerald" />
               <StatCard title="Revenue (MTD)" value={formatCurrency(stats?.revenueMTD ?? 0)} subtitle="Month to date" icon={PoundSterling} href="/reports/revenue" variant="emerald" />
               <StatCard title="Outstanding" value={formatCurrency(stats?.outstandingAmount ?? 0)} subtitle={(stats?.overdueCount ?? 0) > 0 ? `${stats?.overdueCount} overdue` : (stats?.outstandingAmount ?? 0) > 0 ? 'Awaiting payment' : 'All invoices paid'} icon={Receipt} href="/invoices" variant="violet" />
               <StatCard title="Total Lessons" value={stats?.totalLessons ?? 0} subtitle="All time" icon={BookOpen} href="/reports/lessons" variant="teal" />
-            </div>
+            </StatsGrid>
           )}
         </motion.div>
 
@@ -327,7 +328,7 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
             <TodayTimeline className="order-last lg:order-none lg:col-span-5" />
           </SectionErrorBoundary>
           
-          <div className="order-first lg:order-none lg:col-span-4 space-y-4 sm:space-y-6">
+          <div className="order-first lg:order-none lg:col-span-4 flex flex-col gap-4 sm:gap-6">
             {/* Cancellation Alert Card */}
             <Card className="border-amber-200/50 bg-amber-50/30">
               <CardContent className="p-3 sm:p-4">
@@ -388,7 +389,7 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
   return (
     <AppLayout>
       <motion.div
-        className="space-y-4 sm:space-y-6 max-w-4xl"
+        className="flex flex-col gap-4 sm:gap-6 max-w-4xl"
         initial="hidden"
         animate="visible"
         variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
@@ -456,12 +457,12 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
           {isLoading ? (
             <GridSkeleton count={4} columns={4} />
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            <StatsGrid>
               <StatCard title="Today" value={stats?.todayLessons ?? 0} subtitle="Lessons today" icon={Calendar} variant="teal" />
               <StatCard title="This Month" value={stats?.lessonsThisMonth ?? 0} subtitle="Lessons this month" icon={Clock} variant="coral" />
               <StatCard title="My Students" value={stats?.myStudentsCount ?? 0} subtitle="Assigned to you" icon={Users} href="/students" variant="violet" />
               <StatCard title="Hours (Week)" value={`${stats?.hoursThisWeek ?? 0}h`} subtitle="Teaching hours" icon={TrendingUp} variant="emerald" />
-            </div>
+            </StatsGrid>
           )}
         </motion.div>
 
