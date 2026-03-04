@@ -216,7 +216,7 @@ export function ContinuationResponseDetail({
           {/* Admin Override */}
           {response.response === 'pending' && (
             <div className="space-y-3 border-t pt-4">
-              <Label className="text-sm font-medium">Admin Override</Label>
+              <Label>Admin Override</Label>
               <Select value={overrideResponse} onValueChange={setOverrideResponse}>
                 <SelectTrigger>
                   <SelectValue placeholder="Set response..." />
