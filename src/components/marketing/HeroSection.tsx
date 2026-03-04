@@ -1,8 +1,8 @@
 import { motion, useMotionValue, useTransform, useSpring } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Play, Calendar, Clock, CheckCircle2, Bell, X, Globe, CreditCard, LayoutDashboard, PoundSterling } from "lucide-react";
-import { useState } from "react";
+import { ChevronRight, Calendar, Clock, CheckCircle2, Bell, Globe, CreditCard, LayoutDashboard } from "lucide-react";
+import { AppStoreBadge } from "@/components/marketing/AppStoreBadge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { dashboardReal } from "@/assets/marketing";
 import { useAuth } from "@/contexts/AuthContext";
@@ -89,8 +89,6 @@ export function HeroSection() {
   };
 
   const headlineWords = ["The", "modern", "way", "to", "run", "your", "music", "school"];
-  const [showVideoModal, setShowVideoModal] = useState(false);
-
   return (
     <section 
       className="relative min-h-[90vh] flex flex-col items-center justify-center overflow-hidden"
@@ -278,17 +276,7 @@ export function HeroSection() {
                 </Button>
               </motion.div>
             </Link>
-            <motion.div
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => document.getElementById('product-showcase')?.scrollIntoView({ behavior: 'smooth' })}
-              className="flex items-center gap-3 px-6 py-3.5 text-white/80 hover:text-white font-medium transition-colors group cursor-pointer"
-            >
-              <span className="flex items-center justify-center w-12 h-12 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 group-hover:bg-white/10 group-hover:border-white/20 transition-all">
-                <Play className="w-5 h-5 ml-0.5" fill="currentColor" />
-              </span>
-              See how it works
-            </motion.div>
+            <AppStoreBadge variant="white" />
           </motion.div>
 
           {/* Trust Indicators */}
@@ -426,53 +414,6 @@ export function HeroSection() {
       {/* Bottom Gradient Fade */}
       <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-background to-transparent" />
 
-      {/* Video Modal */}
-      {showVideoModal && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-6"
-          onClick={() => setShowVideoModal(false)}
-        >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", damping: 25 }}
-            className="relative w-full max-w-2xl bg-card border border-border rounded-2xl p-8 text-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setShowVideoModal(false)}
-              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
-              <Play className="w-8 h-8 text-primary ml-1" fill="currentColor" />
-            </div>
-            <h3 className="text-2xl font-bold text-foreground mb-3">Demo video coming soon</h3>
-            <p className="text-muted-foreground mb-6">
-              We'll let you know when our demo video is ready.
-            </p>
-            <Link to={isLoggedIn ? dashboardHref : "/signup"}>
-              <Button size="lg" className="bg-gradient-to-r from-teal to-teal-dark text-white hover:from-teal-dark hover:to-teal font-bold">
-                {isLoggedIn ? (
-                  <>
-                    <LayoutDashboard className="w-4 h-4 mr-2" />
-                    Go to Dashboard
-                  </>
-                ) : (
-                  <>
-                    Start free trial instead
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </>
-                )}
-              </Button>
-            </Link>
-          </motion.div>
-        </motion.div>
-      )}
     </section>
   );
 }

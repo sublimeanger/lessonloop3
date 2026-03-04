@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Check, Shield, Clock, CreditCard, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { AppStoreBadge } from "@/components/marketing/AppStoreBadge";
 
 const guarantees = [
   { icon: Clock, text: "30-day free trial" },
@@ -152,7 +153,17 @@ export function CTASection() {
                       </motion.div>
                     </Link>
 
-                    <p className="text-center text-white/40 text-sm mt-4">
+                    <div className="flex items-center justify-center gap-3 mt-6">
+                      <div className="h-px flex-1 bg-white/10" />
+                      <span className="text-white/30 text-xs uppercase tracking-wider">or</span>
+                      <div className="h-px flex-1 bg-white/10" />
+                    </div>
+
+                    <div className="flex justify-center mt-5">
+                      <AppStoreBadge variant="white" />
+                    </div>
+
+                    <p className="text-center text-white/40 text-sm mt-6">
                       By signing up, you agree to our{" "}
                       <a href="/terms" className="underline hover:text-white/60">Terms</a>
                       {" "}and{" "}
