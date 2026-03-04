@@ -205,7 +205,7 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
               <StatCard title="Revenue (MTD)" value={formatCurrency(stats?.revenueMTD ?? 0)} subtitle="Month to date" icon={PoundSterling} href="/reports/revenue" variant="violet" />
               <StatCard title="Outstanding" value={formatCurrency(stats?.outstandingAmount ?? 0)} subtitle={(stats?.overdueCount ?? 0) > 0 ? `${stats?.overdueCount} overdue` : (stats?.outstandingAmount ?? 0) > 0 ? 'Awaiting payment' : 'All invoices paid'} icon={Receipt} href="/invoices" variant="coral" />
               <StatCard title="Total Lessons" value={stats?.totalLessons ?? 0} subtitle="All time" icon={BookOpen} href="/reports/lessons" variant="teal" />
-            </div>
+            </StatsGrid>
           )}
         </motion.div>
 
