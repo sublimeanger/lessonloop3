@@ -428,7 +428,7 @@ export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSet
                 <TableFooter>
                   <TableRow>
                     <TableCell />
-                    <TableCell className={cn('font-bold', customTotal !== remaining && 'text-destructive')}>
+                    <TableCell className={cn('font-semibold', customTotal !== remaining && 'text-destructive')}>
                       {formatCurrencyMinor(customTotal, currency)}
                       {customTotal !== remaining && (
                         <span className="block text-xs font-normal">

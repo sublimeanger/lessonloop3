@@ -96,7 +96,7 @@ export function LessonDetailSidePanel({
           <div className="space-y-1.5">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <h2 className="text-lg font-bold text-foreground truncate">{primaryStudentName}</h2>
+                <h2 className="text-section-title text-foreground truncate">{primaryStudentName}</h2>
                 <p className="text-sm text-muted-foreground truncate">
                   {lesson.title !== primaryStudentName ? lesson.title : ''}
                 </p>

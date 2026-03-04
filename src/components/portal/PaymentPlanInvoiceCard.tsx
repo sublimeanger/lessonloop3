@@ -140,7 +140,7 @@ export function PaymentPlanInvoiceCard({
                   <span className="text-sm font-medium">Next payment</span>
                   {nextIsOverdue && <Badge variant="destructive" className="text-xs">Overdue</Badge>}
                 </div>
-                <p className="text-xl font-bold mt-0.5">
+                <p className="text-xl font-semibold mt-0.5">
                   {formatCurrencyMinor(nextInstallment.amount_minor, currencyCode)}
                 </p>
                 <p className={cn(

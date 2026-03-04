@@ -347,7 +347,7 @@ export function ContinuationRunWizard({
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-lg font-bold">
+                  <div className="text-lg font-semibold">
                     {new Date(
                       config.noticeDeadline + 'T00:00:00'
                     ).toLocaleDateString('en-GB', {

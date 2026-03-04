@@ -138,7 +138,7 @@ export function InvoicePreview({ branding, className = '' }: InvoicePreviewProps
         </div>
         <div className="text-right shrink-0">
           <div
-            className="text-xs font-bold tracking-wider uppercase"
+            className="text-xs font-semibold tracking-wider uppercase"
             style={{ color: contrastText(brandColor), opacity: 0.9 }}
           >
             Invoice

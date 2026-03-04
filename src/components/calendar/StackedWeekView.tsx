@@ -166,7 +166,7 @@ export function StackedWeekView({
                   <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
                 )}
                 <span className={cn(
-                  'text-sm sm:text-lg font-bold leading-tight',
+                  'text-sm sm:text-lg font-semibold leading-tight',
                   today ? 'text-primary' : 'text-foreground'
                 )}>
                   {format(day, 'd')}

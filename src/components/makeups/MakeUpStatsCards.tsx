@@ -35,7 +35,7 @@ export function MakeUpStatsCards({ stats, isLoading }: MakeUpStatsCardsProps) {
                 {isLoading ? (
                   <Skeleton className="h-8 w-12 mt-1" />
                 ) : (
-                  <p className="text-2xl font-bold text-foreground mt-1">{stats?.[key] ?? 0}</p>
+                  <p className="text-2xl font-semibold text-foreground mt-1">{stats?.[key] ?? 0}</p>
                 )}
               </div>
               <div className={`p-2 rounded-xl bg-muted/50 ${color}`}>

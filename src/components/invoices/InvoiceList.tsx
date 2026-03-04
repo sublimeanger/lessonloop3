@@ -226,7 +226,7 @@ const MobileInvoiceCard = React.memo(function MobileInvoiceCard({
           </div>
         </div>
         <div className="text-right shrink-0">
-          <p className={cn('text-base font-bold tabular-nums', invoice.is_credit_note ? 'text-success' : 'text-foreground')}>
+          <p className={cn('text-base font-semibold tabular-nums', invoice.is_credit_note ? 'text-success' : 'text-foreground')}>
             {invoice.is_credit_note && invoice.total_minor > 0 ? '-' : ''}
             {formatCurrencyMinor(Math.abs(invoice.total_minor), currency)}
           </p>

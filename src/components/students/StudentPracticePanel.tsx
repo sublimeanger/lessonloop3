@@ -98,7 +98,7 @@ export function StudentPracticePanel({ studentId, studentName }: StudentPractice
                     style={{ width: `${progress.percentComplete}%` }}
                   />
                 </div>
-                <span className="text-sm font-bold w-12 text-right">
+                <span className="text-body-strong w-12 text-right">
                   {progress.percentComplete}%
                 </span>
               </div>

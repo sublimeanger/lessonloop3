@@ -219,7 +219,7 @@ export function MobileWeekView({
                 </div>
                 <div
                   className={cn(
-                    'text-lg font-bold leading-none',
+                    'text-lg font-semibold leading-none',
                     today && 'text-primary'
                   )}
                 >

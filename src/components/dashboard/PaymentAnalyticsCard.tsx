@@ -174,7 +174,7 @@ function MiniStat({ label, value, icon }: { label: string; value: string; icon: 
         {icon}
         <span className="text-xs text-muted-foreground">{label}</span>
       </div>
-      <p className="text-lg font-bold tabular-nums">{value}</p>
+      <p className="text-lg font-semibold tabular-nums">{value}</p>
     </div>
   );
 }

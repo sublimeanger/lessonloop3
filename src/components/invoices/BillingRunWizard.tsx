@@ -418,7 +418,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className="text-2xl font-semibold">
                     {formatCurrencyMinor(totalAmount, currency)}
                   </div>
                 </CardContent>

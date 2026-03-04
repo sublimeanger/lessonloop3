@@ -36,7 +36,7 @@ function ProgressRing({ actual, target }: { actual: number; target: number }) {
         </PieChart>
       </ResponsiveContainer>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-xs font-bold">{Math.round(pct * 100)}%</span>
+        <span className="text-xs font-semibold">{Math.round(pct * 100)}%</span>
       </div>
     </div>
   );

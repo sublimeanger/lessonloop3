@@ -57,7 +57,7 @@ export function MobileLessonSheet({
       <DrawerContent className="max-h-[85vh]">
         <DrawerHeader className="pb-2">
           <div className="flex items-center justify-between gap-2">
-            <DrawerTitle className="text-lg font-bold truncate">
+            <DrawerTitle className="text-section-title truncate">
               {primaryStudentName}
             </DrawerTitle>
             <Badge className={cn('text-micro shrink-0', statusInfo.className)}>
