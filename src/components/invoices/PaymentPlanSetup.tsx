@@ -362,7 +362,7 @@ export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSet
                   <TableFooter>
                     <TableRow>
                       <TableCell />
-                      <TableCell className="font-bold">{formatCurrencyMinor(remaining, currency)}</TableCell>
+                      <TableCell className="font-semibold">{formatCurrencyMinor(remaining, currency)}</TableCell>
                       <TableCell>Total</TableCell>
                       <TableCell />
                     </TableRow>
