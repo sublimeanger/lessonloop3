@@ -317,7 +317,7 @@ export function ContinuationRunWizard({
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className="text-2xl font-semibold">
                     {createResult.total_students}
                   </div>
                   <p className="text-xs text-muted-foreground">
