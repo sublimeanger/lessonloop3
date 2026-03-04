@@ -96,15 +96,15 @@ export function CalendarSyncHealth() {
         {/* Summary stats */}
         <div className="grid grid-cols-3 gap-3">
           <div className="text-center p-2 rounded-lg bg-muted/50">
-            <p className="text-xl font-bold">{connections.length}</p>
+            <p className="text-xl font-semibold">{connections.length}</p>
             <p className="text-xs text-muted-foreground">Connected</p>
           </div>
           <div className="text-center p-2 rounded-lg bg-muted/50">
-            <p className="text-xl font-bold text-green-600">{healthy}</p>
+            <p className="text-xl font-semibold text-green-600">{healthy}</p>
             <p className="text-xs text-muted-foreground">Healthy</p>
           </div>
           <div className="text-center p-2 rounded-lg bg-muted/50">
-            <p className={`text-xl font-bold ${needsAttention > 0 ? 'text-amber-600' : ''}`}>
+            <p className={`text-xl font-semibold ${needsAttention > 0 ? 'text-amber-600' : ''}`}>
               {needsAttention}
             </p>
             <p className="text-xs text-muted-foreground">Need Attention</p>

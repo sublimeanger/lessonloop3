@@ -213,7 +213,7 @@ export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSet
                 <TableFooter>
                   <TableRow>
                     <TableCell />
-                    <TableCell className="font-bold">
+                    <TableCell className="font-semibold">
                       {formatCurrencyMinor(existingInstallments.reduce((s, i) => s + i.amount_minor, 0), currency)}
                     </TableCell>
                     <TableCell>Total</TableCell>

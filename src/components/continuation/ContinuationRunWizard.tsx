@@ -333,7 +333,7 @@ export function ContinuationRunWizard({
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className="text-2xl font-semibold">
                     {formatCurrencyMinor(totalFee, currency)}
                   </div>
                   <p className="text-xs text-muted-foreground">next term</p>
