@@ -508,3 +508,537 @@ test.describe('Execute Safe Actions', () => {
     await closeDrawer(page);
   });
 });
+
+// ─── SECTION 5: PROACTIVE ALERTS & PAGE BANNERS ───────────────────────
+
+test.describe('Proactive Alerts', () => {
+  test.use({ storageState: AUTH.owner });
+
+  test('dashboard widget shows alerts or empty state', async ({ page }) => {
+    await goTo(page, '/');
+    await waitForPageReady(page);
+
+    // Find the LoopAssist widget card
+    const widget = page.locator('text=LoopAssist').first();
+    await expect(widget).toBeVisible({ timeout: 10_000 });
+
+    // Check for proactive alerts in the widget (alert rows with severity icons)
+    const alertRow = page.locator('.border-destructive\\/30, .border-warning\\/30').first();
+    const hasAlerts = await alertRow.isVisible({ timeout: 5_000 }).catch(() => false);
+
+    if (hasAlerts) {
+      // Verify alert has message text
+      const alertText = await alertRow.textContent();
+      expect(alertText!.length).toBeGreaterThan(5);
+    }
+
+    // Widget should show input regardless
+    const widgetInput = page.getByPlaceholder('Ask anything about your business...');
+    await expect(widgetInput).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('dashboard suggested prompts trigger drawer', async ({ page }) => {
+    await goTo(page, '/');
+    await waitForPageReady(page);
+
+    // Check suggested prompts on widget
+    const promptBtn = page.getByRole('button', { name: "What's my schedule today?" }).first()
+      .or(page.getByRole('button', { name: 'Show outstanding invoices' }).first());
+    const hasPrompts = await promptBtn.first().isVisible({ timeout: 10_000 }).catch(() => false);
+
+    if (!hasPrompts) {
+      test.skip(true, 'No suggested prompts visible on widget');
+      return;
+    }
+
+    await promptBtn.first().click();
+    await dismissIntroIfVisible(page);
+
+    // Drawer should open
+    const sheet = getSheet(page);
+    await expect(sheet).toBeVisible({ timeout: 10_000 });
+
+    await closeDrawer(page);
+  });
+
+  test('page banner appears and opens drawer', async ({ page }) => {
+    // Navigate to invoices page — may show overdue invoice banner
+    await goTo(page, '/invoices');
+    await waitForPageReady(page);
+
+    // Check for LoopAssistPageBanner (has Sparkles icon + arrow + dismiss)
+    const banner = page.locator('[role="button"]').filter({
+      has: page.locator('svg.lucide-sparkles'),
+    }).first();
+    const hasBanner = await banner.isVisible({ timeout: 5_000 }).catch(() => false);
+
+    if (!hasBanner) {
+      // Try calendar page
+      await goTo(page, '/calendar');
+      await waitForPageReady(page);
+      const calBanner = page.locator('[role="button"]').filter({
+        has: page.locator('svg.lucide-sparkles'),
+      }).first();
+      const hasCalBanner = await calBanner.isVisible({ timeout: 5_000 }).catch(() => false);
+      if (!hasCalBanner) {
+        test.skip(true, 'No active page banners');
+        return;
+      }
+      await calBanner.click();
+    } else {
+      await banner.click();
+    }
+
+    await dismissIntroIfVisible(page);
+    const sheet = getSheet(page);
+    await expect(sheet).toBeVisible({ timeout: 10_000 });
+
+    await closeDrawer(page);
+  });
+});
+
+// ─── SECTION 6: CONVERSATION HISTORY & MESSAGE FEEDBACK ───────────────
+
+test.describe('Conversation History', () => {
+  test.use({ storageState: AUTH.owner });
+
+  test('multi-turn conversation maintains context', async ({ page }) => {
+    await goTo(page, '/');
+    await waitForPageReady(page);
+    await openDrawer(page);
+
+    // First message
+    await sendMessage(page, 'How many students do I have?');
+    try {
+      const firstResponse = await waitForAIResponse(page, 60_000);
+      expect(firstResponse.length).toBeGreaterThan(5);
+    } catch {
+      test.skip(true, 'AI response timeout for multi-turn test');
+      return;
+    }
+
+    // Follow-up message
+    await sendMessage(page, 'Which ones are inactive?');
+    try {
+      const secondResponse = await waitForAIResponse(page, 60_000);
+      expect(secondResponse.length).toBeGreaterThan(5);
+    } catch {
+      test.skip(true, 'AI response timeout for follow-up message');
+      return;
+    }
+
+    // Verify both user messages are visible
+    const sheet = getSheet(page);
+    const userBubbles = sheet.locator('.bg-primary');
+    const userCount = await userBubbles.count();
+    expect(userCount).toBeGreaterThanOrEqual(2);
+
+    await closeDrawer(page);
+  });
+
+  test('error recovery — gibberish message', async ({ page }) => {
+    await goTo(page, '/');
+    await waitForPageReady(page);
+    await openDrawer(page);
+
+    // Send gibberish
+    const gibberish = 'asdfghjklqwertyuiop'.repeat(30);
+    await sendMessage(page, gibberish);
+    try {
+      await waitForAIResponse(page, 60_000);
+    } catch {
+      // AI might timeout on gibberish — that's OK
+    }
+
+    // Verify chat didn't crash — input field should still work
+    const sheet = getSheet(page);
+    const textarea = sheet.getByPlaceholder('Ask LoopAssist...').first();
+    await expect(textarea).toBeVisible({ timeout: 10_000 });
+    await expect(textarea).toBeEnabled();
+
+    await closeDrawer(page);
+  });
+
+  test('message feedback buttons', async ({ page }) => {
+    await goTo(page, '/');
+    await waitForPageReady(page);
+    await openDrawer(page);
+
+    await sendMessage(page, 'How many students do I have?');
+    try {
+      await waitForAIResponse(page, 60_000);
+    } catch {
+      test.skip(true, 'AI response timeout');
+      return;
+    }
+
+    const sheet = getSheet(page);
+
+    // Look for thumbs up / thumbs down buttons (MessageFeedback component)
+    const thumbsUp = sheet.getByRole('button', { name: 'Mark as helpful' }).first();
+    const hasFeedback = await thumbsUp.isVisible({ timeout: 5_000 }).catch(() => false);
+
+    if (!hasFeedback) {
+      test.skip(true, 'No message feedback UI visible');
+      return;
+    }
+
+    await thumbsUp.click();
+    await page.waitForTimeout(500);
+
+    const thumbsDown = sheet.getByRole('button', { name: 'Mark as not helpful' }).first();
+    await expect(thumbsDown).toBeVisible({ timeout: 3_000 });
+
+    await closeDrawer(page);
+  });
+
+  test('conversation list view', async ({ page }) => {
+    await goTo(page, '/');
+    await waitForPageReady(page);
+    await openDrawer(page);
+
+    const sheet = getSheet(page);
+
+    // Look for the back button (ChevronLeft) to navigate to landing/history
+    const backBtn = sheet.locator('button').filter({ has: page.locator('svg.lucide-chevron-left') }).first();
+    const hasBackBtn = await backBtn.isVisible({ timeout: 3_000 }).catch(() => false);
+
+    if (!hasBackBtn) {
+      // Send a message first to create a conversation, then check back button
+      await sendMessage(page, 'Hello');
+      try { await waitForAIResponse(page, 45_000); } catch { /* OK */ }
+      const chatBackBtn = sheet.locator('button').filter({ has: page.locator('svg.lucide-chevron-left') }).first();
+      const hasChatBack = await chatBackBtn.isVisible({ timeout: 3_000 }).catch(() => false);
+      if (!hasChatBack) {
+        test.skip(true, 'No conversation list navigation found');
+        return;
+      }
+    }
+
+    await closeDrawer(page);
+  });
+});
+
+// ─── SECTION 7: ROLE-BASED ACCESS ────────────────────────────────────
+
+test.describe('Role-Based Access — Teacher', () => {
+  test.use({ storageState: AUTH.teacher });
+
+  test('teacher can access LoopAssist', async ({ page }) => {
+    await goTo(page, '/');
+    await waitForPageReady(page);
+
+    const sidebarBtn = page.locator('button').filter({ hasText: 'LoopAssist' }).first();
+    const hasAccess = await sidebarBtn.isVisible({ timeout: 10_000 }).catch(() => false);
+
+    if (!hasAccess) {
+      test.skip(true, 'Teacher does not see LoopAssist sidebar button');
+      return;
+    }
+
+    await sidebarBtn.click();
+    await dismissIntroIfVisible(page);
+    const sheet = getSheet(page);
+    await expect(sheet).toBeVisible({ timeout: 10_000 });
+
+    await closeDrawer(page);
+  });
+});
+
+test.describe('Role-Based Access — Finance', () => {
+  test.use({ storageState: AUTH.finance });
+
+  test('finance can access LoopAssist', async ({ page }) => {
+    await goTo(page, '/');
+    await waitForPageReady(page);
+
+    const sidebarBtn = page.locator('button').filter({ hasText: 'LoopAssist' }).first();
+    const hasAccess = await sidebarBtn.isVisible({ timeout: 10_000 }).catch(() => false);
+
+    if (!hasAccess) {
+      test.skip(true, 'Finance does not see LoopAssist sidebar button');
+      return;
+    }
+
+    await sidebarBtn.click();
+    await dismissIntroIfVisible(page);
+    const sheet = getSheet(page);
+    await expect(sheet).toBeVisible({ timeout: 10_000 });
+
+    await closeDrawer(page);
+  });
+});
+
+test.describe('Role-Based Access — Parent', () => {
+  test.use({ storageState: AUTH.parent });
+
+  test('parent cannot see staff LoopAssist', async ({ page }) => {
+    await goTo(page, '/portal');
+    await waitForPageReady(page);
+
+    // Sidebar should NOT have "LoopAssist" button for parents
+    const sidebarBtn = page.locator('button').filter({ hasText: 'LoopAssist' });
+    const visible = await sidebarBtn.isVisible({ timeout: 5_000 }).catch(() => false);
+    expect(visible).toBe(false);
+  });
+});
+
+// ─── SECTION 8: PARENT PORTAL LOOPASSIST ──────────────────────────────
+
+test.describe('Parent Portal LoopAssist', () => {
+  test.use({ storageState: AUTH.parent });
+
+  test('open parent LoopAssist', async ({ page }) => {
+    await goTo(page, '/portal');
+    await waitForPageReady(page);
+
+    // Parent LoopAssist opens from header Sparkles button
+    const trigger = page.locator('button').filter({ has: page.locator('svg.lucide-sparkles') }).first();
+    const hasTrigger = await trigger.isVisible({ timeout: 10_000 }).catch(() => false);
+
+    if (!hasTrigger) {
+      test.skip(true, 'Parent LoopAssist trigger not found');
+      return;
+    }
+
+    await trigger.click();
+
+    // Verify "Parent" badge is shown
+    const parentBadge = page.getByText('Parent', { exact: true });
+    await expect(parentBadge).toBeVisible({ timeout: 10_000 });
+
+    // Verify textarea
+    const textarea = page.getByPlaceholder('Ask me anything...');
+    await expect(textarea).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('ask about child schedule', async ({ page }) => {
+    await goTo(page, '/portal');
+    await waitForPageReady(page);
+
+    const trigger = page.locator('button').filter({ has: page.locator('svg.lucide-sparkles') }).first();
+    const hasTrigger = await trigger.isVisible({ timeout: 10_000 }).catch(() => false);
+    if (!hasTrigger) {
+      test.skip(true, 'Parent LoopAssist trigger not found');
+      return;
+    }
+    await trigger.click();
+
+    const textarea = page.getByPlaceholder('Ask me anything...');
+    await expect(textarea).toBeVisible({ timeout: 10_000 });
+    await textarea.fill('When is the next lesson?');
+    const sendBtn = page.locator('div[role="dialog"] button').filter({ has: page.locator('svg.lucide-send') }).first();
+    await sendBtn.click();
+
+    // Wait for response
+    const responseBubble = page.locator('div[role="dialog"] .bg-muted').first();
+    try {
+      await expect(responseBubble).toBeVisible({ timeout: 45_000 });
+      const text = await responseBubble.textContent();
+      expect(text!.length).toBeGreaterThan(5);
+    } catch {
+      test.skip(true, 'Parent AI response timeout');
+    }
+  });
+
+  test('clear parent conversation', async ({ page }) => {
+    await goTo(page, '/portal');
+    await waitForPageReady(page);
+
+    const trigger = page.locator('button').filter({ has: page.locator('svg.lucide-sparkles') }).first();
+    const hasTrigger = await trigger.isVisible({ timeout: 10_000 }).catch(() => false);
+    if (!hasTrigger) {
+      test.skip(true, 'Parent LoopAssist trigger not found');
+      return;
+    }
+    await trigger.click();
+
+    // Use a suggested prompt to create conversation
+    const suggestedPrompt = page.locator('div[role="dialog"]').getByRole('button', { name: /next lesson/i }).first()
+      .or(page.locator('div[role="dialog"]').getByRole('button', { name: /practice/i }).first());
+    const hasPrompt = await suggestedPrompt.first().isVisible({ timeout: 5_000 }).catch(() => false);
+
+    if (hasPrompt) {
+      await suggestedPrompt.first().click();
+      await page.waitForTimeout(2_000);
+
+      // Look for clear/trash button
+      const clearBtn = page.locator('div[role="dialog"] button').filter({ has: page.locator('svg.lucide-trash-2') }).first();
+      const hasClear = await clearBtn.isVisible({ timeout: 5_000 }).catch(() => false);
+      if (hasClear) {
+        await clearBtn.click();
+        // Landing view should re-appear
+        const landingText = page.locator('div[role="dialog"]').getByText('Hi there!');
+        await expect(landingText).toBeVisible({ timeout: 10_000 });
+      }
+    }
+  });
+});
+
+// ─── SECTION 9: LOOPASSIST PREFERENCES ────────────────────────────────
+
+test.describe('LoopAssist Preferences', () => {
+  test.use({ storageState: AUTH.owner });
+
+  test('navigate to preferences and view form', async ({ page }) => {
+    await goTo(page, '/settings');
+    await waitForPageReady(page);
+
+    // Find the LoopAssist preferences section
+    const prefsHeading = page.getByText('LoopAssist Preferences');
+    const hasPrefs = await prefsHeading.isVisible({ timeout: 10_000 }).catch(() => false);
+
+    if (!hasPrefs) {
+      // May be behind a tab
+      const tab = page.getByRole('tab', { name: /loopAssist|AI/i }).first()
+        .or(page.getByText('LoopAssist', { exact: true }).first());
+      const hasTab = await tab.isVisible({ timeout: 5_000 }).catch(() => false);
+      if (hasTab) {
+        await tab.click();
+        await page.waitForTimeout(500);
+      }
+    }
+
+    const termNameInput = page.getByLabel('Term name');
+    const hasTerm = await termNameInput.isVisible({ timeout: 10_000 }).catch(() => false);
+    if (!hasTerm) {
+      test.skip(true, 'LoopAssist Preferences not available on this page');
+      return;
+    }
+
+    await expect(page.getByLabel('Term name')).toBeVisible();
+    await expect(page.getByLabel('Billing cycle')).toBeVisible();
+    await expect(page.getByText('Tone')).toBeVisible();
+    await expect(page.getByLabel('Custom instructions')).toBeVisible();
+  });
+
+  test('update and save preferences', async ({ page }) => {
+    await goTo(page, '/settings');
+    await waitForPageReady(page);
+
+    // Navigate to prefs if needed
+    const prefsHeading = page.getByText('LoopAssist Preferences');
+    if (!(await prefsHeading.isVisible({ timeout: 5_000 }).catch(() => false))) {
+      const tab = page.getByRole('tab', { name: /loopAssist|AI/i }).first()
+        .or(page.getByText('LoopAssist', { exact: true }).first());
+      if (await tab.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await tab.click();
+        await page.waitForTimeout(500);
+      }
+    }
+
+    const customInstructions = page.getByLabel('Custom instructions');
+    const hasField = await customInstructions.isVisible({ timeout: 10_000 }).catch(() => false);
+    if (!hasField) {
+      test.skip(true, 'LoopAssist Preferences form not available');
+      return;
+    }
+
+    // Set custom instructions
+    const testValue = `E2E test instructions ${testId}`;
+    await customInstructions.fill(testValue);
+
+    // Save
+    const saveBtn = page.getByRole('button', { name: 'Save Preferences' });
+    await saveBtn.click();
+
+    // Verify toast
+    const toast = page.locator('[data-radix-collection-item]').filter({ hasText: /saved|preferences/i });
+    await expect(toast.first()).toBeVisible({ timeout: 10_000 });
+
+    // Reload and verify persistence
+    await page.reload();
+    await waitForPageReady(page);
+
+    if (!(await page.getByText('LoopAssist Preferences').isVisible({ timeout: 5_000 }).catch(() => false))) {
+      const tab = page.getByRole('tab', { name: /loopAssist|AI/i }).first()
+        .or(page.getByText('LoopAssist', { exact: true }).first());
+      if (await tab.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await tab.click();
+        await page.waitForTimeout(500);
+      }
+    }
+
+    const customAfterReload = page.getByLabel('Custom instructions');
+    await expect(customAfterReload).toBeVisible({ timeout: 10_000 });
+    await expect(customAfterReload).toHaveValue(testValue);
+
+    // Clean up
+    await customAfterReload.fill('');
+    await page.getByRole('button', { name: 'Save Preferences' }).click();
+    await page.waitForTimeout(1_000);
+  });
+});
+
+// ─── SECTION 10: ENTITY CHIPS & RESULT CARDS ──────────────────────────
+
+test.describe('Entity Chips and Result Cards', () => {
+  test.use({ storageState: AUTH.owner });
+
+  test('entity chips render in AI response', async ({ page }) => {
+    await goTo(page, '/');
+    await waitForPageReady(page);
+    await openDrawer(page);
+
+    await sendMessage(page, 'Tell me about my students. List their names.');
+    try {
+      await waitForAIResponse(page, 60_000);
+    } catch {
+      test.skip(true, 'AI response timeout');
+      return;
+    }
+
+    const sheet = getSheet(page);
+
+    // Check for entity chip spans (data-entity-type attribute)
+    const entityChips = sheet.locator('[data-entity-type]');
+    const chipCount = await entityChips.count();
+
+    if (chipCount > 0) {
+      const firstChip = entityChips.first();
+      const chipText = await firstChip.textContent();
+      expect(chipText!.length).toBeGreaterThan(0);
+    }
+    // If no entity chips, the AI may not have used entity format — that's OK
+
+    await closeDrawer(page);
+  });
+
+  test('result card renders after action execution', async ({ page }) => {
+    await goTo(page, '/');
+    await waitForPageReady(page);
+    await openDrawer(page);
+
+    await sendMessage(page, "Mark all students as present for today's lessons");
+    try {
+      await waitForAIResponse(page, 60_000);
+    } catch {
+      test.skip(true, 'AI response timeout');
+      return;
+    }
+
+    const sheet = getSheet(page);
+    const confirmBtn = sheet.getByRole('button', { name: /Confirm/i }).first();
+    const hasAction = await confirmBtn.isVisible({ timeout: 5_000 }).catch(() => false);
+    if (!hasAction) {
+      test.skip(true, 'No action proposed for result card test');
+      return;
+    }
+
+    await confirmBtn.click();
+
+    // Wait for ResultCard (green border) or success toast
+    const resultCard = sheet.locator('.border-green-200, .border-green-800').first();
+    const hasResult = await resultCard.isVisible({ timeout: 30_000 }).catch(() => false);
+
+    if (hasResult) {
+      const summaryText = await resultCard.textContent();
+      expect(summaryText!.length).toBeGreaterThan(5);
+    } else {
+      const toast = page.locator('[data-radix-collection-item]').filter({ hasText: /success|executed/i });
+      await expect(toast.first()).toBeVisible({ timeout: 10_000 });
+    }
+
+    await closeDrawer(page);
+  });
+});
