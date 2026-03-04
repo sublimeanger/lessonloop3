@@ -70,7 +70,7 @@ export function StatCard({
           className
         )}
       >
-        <CardContent className="p-4 sm:p-5">
+        <CardContent className="p-3 sm:p-4">
           <div className="flex items-start justify-between">
             {/* Icon */}
             <div

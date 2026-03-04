@@ -55,7 +55,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
       <Header />
       <div className="flex flex-1">
         <AppSidebar />
-        <main className={`flex-1 overflow-auto p-4 md:p-6 lg:p-8 ${showBottomNav ? 'pb-24' : ''}`}>
+        <main className={`flex-1 overflow-auto px-4 py-4 md:px-6 md:py-5 lg:px-8 lg:py-6 ${showBottomNav ? 'pb-24' : ''}`}>
           <AutoBreadcrumbs />
           <SectionErrorBoundary name="Page" key={location.pathname}>
             <Suspense fallback={<PageTransitionFallback />}>

@@ -45,6 +45,6 @@ export function MakeUpStatsCards({ stats, isLoading }: MakeUpStatsCardsProps) {
           </CardContent>
         </Card>
       ))}
-    </div>
+    </StatsGrid>
   );
 }
