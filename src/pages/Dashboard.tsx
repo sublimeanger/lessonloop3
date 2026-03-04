@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { usePageMeta } from '@/hooks/usePageMeta';
+import { StatsGrid } from '@/components/shared/StatsGrid';
 import { useRealtimeInvoices } from '@/hooks/useRealtimeInvoices';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
