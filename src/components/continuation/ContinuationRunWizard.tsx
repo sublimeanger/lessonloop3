@@ -317,7 +317,7 @@ export function ContinuationRunWizard({
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className="text-2xl font-semibold">
                     {createResult.total_students}
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -333,7 +333,7 @@ export function ContinuationRunWizard({
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className="text-2xl font-semibold">
                     {formatCurrencyMinor(totalFee, currency)}
                   </div>
                   <p className="text-xs text-muted-foreground">next term</p>
@@ -347,7 +347,7 @@ export function ContinuationRunWizard({
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-lg font-bold">
+                  <div className="text-lg font-semibold">
                     {new Date(
                       config.noticeDeadline + 'T00:00:00'
                     ).toLocaleDateString('en-GB', {

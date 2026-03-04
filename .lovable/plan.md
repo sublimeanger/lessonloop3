@@ -1,71 +1,163 @@
 
 
-# UI Polish — Part 2: Typography Hierarchy
+# Additional Audit Phases Plan
 
-## Scope
-
-App components only. Marketing pages excluded (they'll be migrated to static HTML and have their own typographic needs with larger display sizes).
+Based on thorough codebase review, here are 6 additional phases covering the gaps you identified. Each phase lists the exact files to audit and the specific concerns to investigate.
 
 ---
 
-## 2.1 — Replace `font-bold` with design tokens
+## Phase 12: Subscription Enforcement & Feature Gating
 
-Audit every `font-bold` in non-marketing app components and replace with the correct token. Here's the mapping by file:
+**Files to audit:**
+- `src/hooks/useSubscription.ts` — client-side plan derivation
+- `src/hooks/useFeatureGate.ts` — feature matrix and access checks
+- `src/hooks/useUsageCounts.ts` — student/teacher limit checks
+- `src/components/subscription/FeatureGate.tsx` — UI gating components
+- `supabase/functions/stripe-webhook/index.ts` — plan sync from Stripe
+- `supabase/functions/_shared/plan-config.ts` — server-side limits
+- DB functions: `check_teacher_limit()`, `check_subscription_active()`, `is_org_active()`, `is_org_write_allowed()`, `protect_subscription_fields()`
+- `src/test/subscription/PlanGating.test.ts`
 
-| File | Current | Replace with |
-|------|---------|-------------|
-| `PaymentAnalyticsCard.tsx` | `text-lg font-bold` | `text-lg font-semibold` (numeric display) |
-| `CalendarMobileLayout.tsx` | `text-xl font-bold` | `text-xl font-semibold` |
-| `MobileWeekView.tsx` | `text-lg font-bold` | `text-lg font-semibold` |
-| `LessonCard.tsx` | `text-xl sm:text-2xl font-bold` | `text-xl sm:text-2xl font-semibold` |
-| `WeekTimeGrid.tsx` | `text-lg font-bold` | `text-lg font-semibold` |
-| `LessonDetailSidePanel.tsx` | `text-lg font-bold` (title) | `text-section-title` |
-| `LessonDetailSidePanel.tsx` | `text-micro font-bold` (avatar initial) | keep — decorative |
-| `WeekContextStrip.tsx` | `text-base sm:text-lg font-bold` | `text-base sm:text-lg font-semibold` |
-| `MobileLessonSheet.tsx` | `text-lg font-bold` (title) | `text-section-title` |
-| `MobileLessonSheet.tsx` | `text-micro font-bold` (avatar) | keep |
-| `StackedWeekView.tsx` | `text-sm sm:text-lg font-bold` | `text-sm sm:text-lg font-semibold` |
-| `RefundDialog.tsx` | `text-2xl font-bold` | `text-2xl font-semibold` |
-| `RefundDialog.tsx` | `font-bold text-lg` | `font-semibold text-lg` |
-| `InvoicePreview.tsx` | `text-sm font-bold` (logo initial) | keep — decorative |
-| `InvoicePreview.tsx` | `text-xs font-bold` (status badge) | `text-xs font-semibold` |
-| `InvoiceList.tsx` | `text-base font-bold` | `text-base font-semibold` |
-| `BillingRunWizard.tsx` | `text-2xl font-bold` (×3) | `text-2xl font-semibold` |
-| `PaymentPlansDashboard.tsx` | `text-2xl font-bold` | `text-2xl font-semibold` |
-| `PaymentPlanSetup.tsx` | `font-bold` in table cells (×3) | `font-semibold` |
-| `StudentPracticePanel.tsx` | `text-sm font-bold` | `text-body-strong` |
-| `PaymentPlanInvoiceCard.tsx` | `text-xl font-bold` | `text-xl font-semibold` |
-| `WeeklyProgressCard.tsx` | `text-xs font-bold` | `text-xs font-semibold` |
-| `PaymentDrawer.tsx` | `text-3xl font-bold` (×2) | `text-3xl font-semibold` |
-| `PracticeTimer.tsx` | `text-6xl font-bold` | `text-6xl font-semibold` |
-| `BillingTab.tsx` | `text-4xl font-bold` | `text-4xl font-semibold` |
-| `CalendarSyncHealth.tsx` | `text-xl font-bold` (×3) | `text-xl font-semibold` |
-| `NotificationBell.tsx` | `text-[9px] font-bold` | keep — badge, decorative |
-
-**Rule**: `font-bold` (700) is reserved for marketing hero text only. All app UI uses `font-semibold` (600) or the design system token classes which already encode the correct weight.
-
-## 2.2 — Heading semantic tokens
-
-The search shows app pages don't use raw `<h2>/<h3>` with custom classes — `PageHeader` handles `<h1>` with `text-page-title`, and section headings use `CardTitle`. Two specific fixes:
-
-- `LessonDetailSidePanel.tsx` line 99: `<h2 className="text-lg font-bold">` → `<h2 className="text-section-title">`
-- `MobileLessonSheet.tsx` line 60: `<DrawerTitle className="text-lg font-bold">` → `<DrawerTitle className="text-section-title">`
-
-No other raw heading issues found in app components.
-
-## 2.3 — Form label consistency
-
-The `Label` component already maps to `text-sm font-medium`. The design system token `text-body-strong` is `0.875rem / 600`. These are close but not identical (500 vs 600 weight).
-
-**Decision**: Leave the shadcn `Label` component as-is (it's the standard). The inconsistency is where code uses raw `<Label className="text-sm font-medium">` redundantly or uses `<span className="text-sm font-medium">` instead of `<Label>`. No changes needed to the Label component itself — just ensure all form labels use `<Label>` and don't override its built-in styling with redundant classes.
-
-Specific fixes:
-- `ContinuationResponseDetail.tsx`: Remove redundant `className="text-sm font-medium"` from 5 `<Label>` instances (lines 117, 126, 187, 205, 219)
-- `RescheduleSlotPicker.tsx`: `<CardTitle className="text-sm font-medium">` (lines 235, 254) → `<CardTitle className="text-body-strong">`
+**Concerns:**
+- SUB-H1 (from Phase 10): No server-side student limit trigger — is it still missing?
+- Can a cancelled/expired org bypass `check_subscription_active` for any table?
+- Do `CANCELLED_LIMITS` actually get applied on the DB rows, or only client-side?
+- Is `protect_subscription_fields()` trigger attached to the right table with the right timing?
+- Feature matrix gaps: are there features accessible without proper gating?
+- Grace period logic: is `PAST_DUE_GRACE_DAYS` consistent between frontend and backend?
+- Can a user downgrade and retain access to higher-plan features until cache expires?
 
 ---
 
-## Files touched (27 files)
+## Phase 13: Term Management & Practice/Resources
 
-All calendar, invoice, portal, dashboard, settings, and student component files listed above. Roughly 35 individual `font-bold` → `font-semibold` replacements plus 2 heading token fixes and 7 label cleanups.
+**Files to audit:**
+- `src/hooks/useTerms.ts` — CRUD operations
+- `src/components/settings/TermManagementCard.tsx` — overlap validation
+- `supabase/functions/process-term-adjustment/index.ts` — term adjustment wizard
+- `src/hooks/usePractice.ts` — practice log mutations
+- `src/hooks/useResources.ts` — resource upload/share/delete
+- DB function: `update_practice_streak()` trigger
+- `supabase/functions/streak-notification/index.ts`
+- `supabase/functions/credit-expiry/index.ts`, `credit-expiry-warning/index.ts`
+
+**Concerns:**
+- Term overlap validation: is it server-side or client-only?
+- `process-term-adjustment`: does it validate term ownership, lesson counts, and credit note amounts atomically?
+- Practice streak trigger: edge cases with backdated logs, timezone boundaries, same-day duplicates
+- Resource uploads: is file type validated server-side or just client-side? Can you upload a `.exe` disguised as `.pdf`?
+- Storage quota: enforced at DB/storage level or just client-side check?
+- Streak notifications: authenticated? Rate limited?
+
+---
+
+## Phase 14: LoopAssist AI (Staff Chat + Execute)
+
+**Files to audit:**
+- `supabase/functions/looopassist-chat/index.ts` (1907 lines) — full review
+- `supabase/functions/looopassist-execute/index.ts` (1391 lines) — full review
+- `src/hooks/useLoopAssist.ts` (552 lines) — client-side hook
+- `src/components/loopassist/ActionCard.tsx` — proposal parsing
+- `src/lib/action-registry.ts` — valid action types
+- `supabase/functions/parent-loopassist-chat/index.ts` — parent variant
+- `src/hooks/useParentLoopAssist.ts` — parent client hook
+- `supabase/functions/_shared/rate-limit.ts` — LoopAssist daily cap
+
+**Concerns:**
+- **Prompt injection**: sanitisation covers known patterns, but does the regex miss Unicode homoglyphs, RTL overrides, or base64-encoded payloads?
+- **Tool call security**: `executeToolCall` returns raw `error.message` from DB queries — internal schema leakage
+- **IDOR via tools**: `search_students`, `get_student_detail`, etc. pass `orgId` but is it always the verified org from the membership check, or could a crafted tool input override it?
+- **Action execution scope**: `bulk_complete_lessons` has a `.limit(100)` but no org_id check on the update itself (relies on select filter) — is the update safe if IDs leak?
+- **Billing run via AI**: `executeGenerateBillingRun` creates invoices with `org_id` but bypasses `create_invoice_with_items` RPC — does it skip any validations?
+- **Dead code**: line 992-993 in execute has `(lessons || []).length > 0 ? null : null` — dead reference
+- **Parent chat**: uses Anthropic directly with `ANTHROPIC_API_KEY` — leaks `e.message` on error (line 351), no message sanitisation of user input
+- **Model selection**: Pro orgs get Sonnet, others Haiku — is there a cost ceiling?
+- **Context hash**: SHA-256 truncated to 16 hex chars — collision risk acceptable?
+- **Tool result size**: no cap on tool result string length — could a 10K result blow the context window
+- **Concurrent proposals**: can a user confirm the same proposal twice in a race condition? (line 378 uses `eq("status", "proposed")` but no `FOR UPDATE`)
+
+---
+
+## Phase 15: Public Pages & Marketing Security
+
+**Files to audit:**
+- `supabase/functions/marketing-chat/index.ts` — public AI endpoint
+- `supabase/functions/booking-submit/index.ts` — public booking form
+- `supabase/functions/booking-get-slots/index.ts` — public slot query
+- `supabase/functions/send-contact-message/index.ts` — contact form
+- `supabase/functions/send-parent-enquiry/index.ts` — parent enquiry
+- `supabase/functions/invite-get/index.ts` — public invite retrieval
+- `src/components/marketing/MarketingChatWidget.tsx` — client-side chat
+
+**Concerns:**
+- All unauthenticated — are rate limits correctly configured and fail-closed?
+- `marketing-chat`: message array not sanitised — can inject system/assistant messages?
+- `booking-submit`: HTML injection in email templates (EF-L1 from Phase 11 — still open?)
+- `booking-get-slots`: does it leak teacher names, room details, or org internals?
+- `invite-get`: does it expose membership details or org info to unauthenticated users?
+- `send-contact-message` / `send-parent-enquiry`: email injection via headers? SMTP injection?
+- CORS configuration on public endpoints: wildcard or restricted?
+
+---
+
+## Phase 16: Performance at Scale
+
+**Files to audit:**
+- All hooks with unbounded queries (no `.limit()` or pagination)
+- `src/hooks/useReports.ts` (734 lines) — multiple aggregation queries
+- `src/hooks/useDataExport.ts` — export truncation (RPT-M5)
+- `supabase/functions/looopassist-chat/index.ts` — 9 parallel aggregate queries on every message
+- `supabase/functions/create-billing-run/index.ts` — batch processing
+- `supabase/functions/gdpr-export/index.ts` — 5 unbounded SELECTs
+- DB indexes: verify critical queries have covering indexes
+- Realtime subscriptions: are any too broad?
+
+**Concerns:**
+- 1000-row default limit: which queries will silently lose data?
+- N+1 patterns: execute functions loop with individual updates (`bulk_complete_lessons`, `send_bulk_reminders`)
+- LoopAssist context building: 9 parallel queries per message — acceptable for 100+ concurrent users?
+- `useTeacherPerformance`: waterfall sequential queries (RPT-M6)
+- Calendar queries: do they have date-windowed indexes?
+- Realtime: `useRealtimePortalPayments` subscribes to all org payments — too broad for large orgs?
+- Billing run: no batch insert for invoice items — creates them one-by-one per payer
+- Missing indexes on `attendance_records`, `practice_logs`, `message_log` for common query patterns
+
+---
+
+## Phase 17: Mobile & Capacitor
+
+**Files to audit:**
+- `src/lib/platform.ts` — platform detection
+- `src/lib/native/init.ts` — native initialisation
+- `src/lib/native/statusBar.ts`, `keyboard.ts`, `deepLinks.ts`
+- `capacitor.config.ts` — app configuration
+- `src/App.tsx` — `NativeInitializer` component
+- `src/components/layout/PortalLayout.tsx` — mobile layout
+- `src/components/layout/PortalBottomNav.tsx` — bottom navigation
+- `src/hooks/use-mobile.ts` — responsive breakpoint detection
+- PWA config in `vite.config.ts`
+
+**Concerns:**
+- Deep link handling: does `initDeepLinks` validate URLs before navigating? Could a malicious deep link navigate to an admin route?
+- Push notifications: is the token registration endpoint authenticated? Can tokens be registered for another user?
+- `capacitor.config.ts` — is `cleartext: true` safe for production? (allows HTTP)
+- Status bar configuration: does it handle notch/safe area on all devices?
+- Keyboard handling: does it prevent content from being hidden behind the keyboard?
+- Offline behaviour: what happens when Supabase queries fail on mobile? Is there any caching or queue?
+- Back button: does Android back button handle navigation correctly across all routes?
+- Session persistence: does the auth session survive app backgrounding/killing?
+- PWA service worker: does `navigateFallbackDenylist` include `/~oauth`?
+
+---
+
+## Execution Order (recommended)
+
+1. **Phase 14 (LoopAssist AI)** — largest attack surface, 3300+ lines of edge function code, tool execution with write access
+2. **Phase 12 (Subscription)** — revenue protection, known open issue (SUB-H1)
+3. **Phase 15 (Public Pages)** — unauthenticated endpoints, highest external exposure
+4. **Phase 16 (Performance)** — data loss risks from silent truncation
+5. **Phase 13 (Terms/Practice/Resources)** — moderate risk, some issues already flagged
+6. **Phase 17 (Mobile)** — lowest immediate risk but needed before app store submission
+
+Each phase follows the same pattern as Phases 1-11: read the files, run the test suite, log findings by severity, and list what passed.
 

@@ -179,7 +179,7 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
         )}
       >
         <div className="flex flex-col items-center text-center min-w-[50px] sm:min-w-[60px]">
-          <span className={cn('text-xl sm:text-2xl font-bold', colour.text)}>
+          <span className={cn('text-xl sm:text-2xl font-semibold', colour.text)}>
             {format(startTime, 'HH:mm')}
           </span>
           <span className="text-micro sm:text-xs text-muted-foreground">{format(endTime, 'HH:mm')}</span>

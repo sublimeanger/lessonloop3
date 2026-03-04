@@ -213,7 +213,7 @@ export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSet
                 <TableFooter>
                   <TableRow>
                     <TableCell />
-                    <TableCell className="font-bold">
+                    <TableCell className="font-semibold">
                       {formatCurrencyMinor(existingInstallments.reduce((s, i) => s + i.amount_minor, 0), currency)}
                     </TableCell>
                     <TableCell>Total</TableCell>
@@ -362,7 +362,7 @@ export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSet
                   <TableFooter>
                     <TableRow>
                       <TableCell />
-                      <TableCell className="font-bold">{formatCurrencyMinor(remaining, currency)}</TableCell>
+                      <TableCell className="font-semibold">{formatCurrencyMinor(remaining, currency)}</TableCell>
                       <TableCell>Total</TableCell>
                       <TableCell />
                     </TableRow>
@@ -428,7 +428,7 @@ export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSet
                 <TableFooter>
                   <TableRow>
                     <TableCell />
-                    <TableCell className={cn('font-bold', customTotal !== remaining && 'text-destructive')}>
+                    <TableCell className={cn('font-semibold', customTotal !== remaining && 'text-destructive')}>
                       {formatCurrencyMinor(customTotal, currency)}
                       {customTotal !== remaining && (
                         <span className="block text-xs font-normal">

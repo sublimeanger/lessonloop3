@@ -121,7 +121,7 @@ function PlanCard({
           </div>
           <div className="mt-4">
             <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-bold">£{currentPrice}</span>
+              <span className="text-4xl font-semibold">£{currentPrice}</span>
               <span className="text-muted-foreground">/month</span>
             </div>
             {billingInterval === 'yearly' && yearlyDiscount > 0 && (

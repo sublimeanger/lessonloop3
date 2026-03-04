@@ -114,7 +114,7 @@ export function ContinuationResponseDetail({
 
           {/* Guardian Info */}
           <div className="rounded-lg border p-3 space-y-2">
-            <Label className="text-sm font-medium">Guardian</Label>
+            <Label>Guardian</Label>
             <p className="text-sm">{guardian?.full_name || 'Unknown'}</p>
             {guardian?.email && (
               <p className="text-xs text-muted-foreground">{guardian.email}</p>
@@ -123,7 +123,7 @@ export function ContinuationResponseDetail({
 
           {/* Lesson Summary */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Lessons</Label>
+            <Label>Lessons</Label>
             {(response.lesson_summary || []).map((lesson, i) => (
               <div key={i} className="rounded-lg border p-3 space-y-1">
                 <div className="flex items-center justify-between">
@@ -156,7 +156,7 @@ export function ContinuationResponseDetail({
           {response.next_term_fee_minor != null && (
             <div className="flex items-center justify-between rounded-lg bg-muted p-3">
               <Label className="font-medium">Total Next Term Fee</Label>
-              <span className="text-lg font-bold">
+              <span className="text-lg font-semibold">
                 {formatCurrencyMinor(response.next_term_fee_minor, currency)}
               </span>
             </div>
@@ -184,7 +184,7 @@ export function ContinuationResponseDetail({
 
           {/* Notification Info */}
           <div className="rounded-lg border p-3 space-y-1">
-            <Label className="text-sm font-medium">Notifications</Label>
+            <Label>Notifications</Label>
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Initial sent</span>
               <span>
@@ -202,7 +202,7 @@ export function ContinuationResponseDetail({
           {/* Processing Info */}
           {response.is_processed && (
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-              <Label className="text-sm font-medium text-primary">
+              <Label className="text-primary">
                 Processed
               </Label>
               <p className="text-xs text-muted-foreground">
@@ -216,7 +216,7 @@ export function ContinuationResponseDetail({
           {/* Admin Override */}
           {response.response === 'pending' && (
             <div className="space-y-3 border-t pt-4">
-              <Label className="text-sm font-medium">Admin Override</Label>
+              <Label>Admin Override</Label>
               <Select value={overrideResponse} onValueChange={setOverrideResponse}>
                 <SelectTrigger>
                   <SelectValue placeholder="Set response..." />

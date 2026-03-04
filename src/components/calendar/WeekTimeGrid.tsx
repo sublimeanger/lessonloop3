@@ -393,7 +393,7 @@ export function WeekTimeGrid({
                     {format(day, 'EEE')}
                   </div>
                   <div className="flex items-center justify-center gap-1">
-                    <span className={cn('text-lg font-bold leading-none', today && 'text-primary')}>
+                    <span className={cn('text-lg font-semibold leading-none', today && 'text-primary')}>
                       {format(day, 'd')}
                     </span>
                     {(() => {

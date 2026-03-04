@@ -74,7 +74,7 @@ export function WeekContextStrip({
                 {format(day, 'EEE').toUpperCase()}
               </span>
               <span className={cn(
-                'text-base sm:text-lg font-bold leading-tight mt-0.5',
+                'text-base sm:text-lg font-semibold leading-tight mt-0.5',
               )}>
                 {format(day, 'd')}
               </span>

@@ -71,7 +71,7 @@ export function CalendarMobileLayout({
       <div className="sticky top-0 z-20 bg-background pb-2 space-y-2">
         <div className="flex items-center justify-between pt-2">
           <div>
-            <h1 className="text-xl font-bold text-foreground">{format(currentDate, 'MMMM d')}</h1>
+            <h1 className="text-xl font-semibold text-foreground">{format(currentDate, 'MMMM d')}</h1>
             <p className="text-xs text-muted-foreground">{format(currentDate, 'EEEE')}</p>
           </div>
           <Button variant="outline" size="sm" onClick={goToToday} className="h-8 px-3 text-xs">Today</Button>

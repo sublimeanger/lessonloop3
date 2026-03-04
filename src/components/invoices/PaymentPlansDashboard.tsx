@@ -358,7 +358,7 @@ function StatCard({
       onClick={onClick}
     >
       <CardContent className="p-4">
-        <p className={`text-2xl font-bold ${variantStyles[variant]}`}>{value}</p>
+        <p className={`text-2xl font-semibold ${variantStyles[variant]}`}>{value}</p>
         <p className="text-xs text-muted-foreground">{label}</p>
       </CardContent>
     </Card>

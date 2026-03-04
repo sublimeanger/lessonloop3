@@ -145,7 +145,7 @@ export function RefundDialog({
                   </Badge>
                 )}
               </div>
-              <p className="text-2xl font-bold tracking-tight">
+              <p className="text-2xl font-semibold tracking-tight">
                 {formatCurrencyMinor(paymentAmount, currencyCode)}
               </p>
               {paidAt && (
@@ -288,7 +288,7 @@ export function RefundDialog({
             <div className="rounded-xl bg-muted/50 p-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Refund amount</span>
-                <span className="font-bold text-lg">{formatCurrencyMinor(refundAmountMinor, currencyCode)}</span>
+                <span className="font-semibold text-lg">{formatCurrencyMinor(refundAmountMinor, currencyCode)}</span>
               </div>
               {reason && (
                 <div className="flex justify-between text-sm">
