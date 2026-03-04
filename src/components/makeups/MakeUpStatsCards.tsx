@@ -1,6 +1,7 @@
 import { Bell, Clock, Mail, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StatsGrid } from '@/components/shared/StatsGrid';
 
 interface Stats {
   waiting: number;
