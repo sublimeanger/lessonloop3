@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { AUTH, goTo, assertNoErrorBoundary, trackConsoleErrors } from './helpers';
+import { AUTH, goTo, assertNoErrorBoundary, trackConsoleErrors, waitForPageReady } from './helpers';
 
 /**
  * Navigate to a portal page and check for error boundary.
@@ -45,7 +45,7 @@ test.describe('Parent Portal — Home', () => {
 
   test('shows next lesson card or access issue state', async ({ page }) => {
     if (!(await portalGoTo(page, '/portal/home'))) return;
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Either next lesson card or access issue
     const nextLessonCard = page.locator('[aria-label="Next lesson"]').first();
@@ -63,7 +63,7 @@ test.describe('Parent Portal — Home', () => {
 
   test('outstanding balance card links to invoices', async ({ page }) => {
     if (!(await portalGoTo(page, '/portal/home'))) return;
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // May or may not have outstanding balance
     const outstandingCard = page.locator('[aria-label*="outstanding"]').first();
@@ -82,7 +82,7 @@ test.describe('Parent Portal — Home', () => {
 
   test('unread messages card links to messages', async ({ page }) => {
     if (!(await portalGoTo(page, '/portal/home'))) return;
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     const unreadCard = page.locator('[aria-label="Unread messages"]').first();
     const hasUnread = await unreadCard.isVisible({ timeout: 5_000 }).catch(() => false);
@@ -93,7 +93,7 @@ test.describe('Parent Portal — Home', () => {
   test('no console errors on portal home', async ({ page }) => {
     const checkErrors = await trackConsoleErrors(page);
     if (!(await portalGoTo(page, '/portal/home'))) return;
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
     checkErrors();
   });
 });
@@ -112,7 +112,7 @@ test.describe('Parent Portal — Schedule', () => {
 
   test('shows lesson cards or empty state', async ({ page }) => {
     if (!(await portalGoTo(page, '/portal/schedule'))) return;
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Look for lesson content or empty message
     const cards = page.locator('.rounded-2xl, .rounded-xl').filter({ hasText: /lesson|piano|guitar|violin|music/i });
@@ -144,7 +144,7 @@ test.describe('Parent Portal — Invoices', () => {
 
   test('shows outstanding summary or invoice list', async ({ page }) => {
     if (!(await portalGoTo(page, '/portal/invoices'))) return;
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Check for outstanding balance summary
     const outstandingLabel = page.getByText('Outstanding Balance').first();
@@ -228,7 +228,7 @@ test.describe('Parent Portal — Resources', () => {
 
   test('shows resource list or empty state', async ({ page }) => {
     if (!(await portalGoTo(page, '/portal/resources'))) return;
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Resources page should show description or resource list content
     const mainContent = await page.locator('main').textContent().catch(() => '');
@@ -317,7 +317,7 @@ test.describe('Parent Portal — Owner Access', () => {
 
   test('owner accessing /portal/home is redirected', async ({ page }) => {
     await page.goto('/portal/home');
-    await page.waitForTimeout(5_000);
+    await waitForPageReady(page);
 
     const url = page.url();
     // Owner should not see portal greeting — they should be redirected or see different content

@@ -173,7 +173,7 @@ test.describe('Invoices List — Owner', () => {
   test('invoice list shows data or empty state', async ({ page }) => {
     await safeGoTo(page, '/invoices', 'Invoices');
     if (!page.url().includes('/invoices')) return; // auth race
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     const invoiceList = page.locator('[data-tour="invoice-list"]');
     const hasInvoices = await invoiceList.isVisible({ timeout: 5_000 }).catch(() => false);
@@ -201,7 +201,7 @@ test.describe('Invoices List — Owner', () => {
 
   test('clicking an invoice row navigates to detail', async ({ page }) => {
     await safeGoTo(page, '/invoices', 'Invoices');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     const invoiceList = page.locator('[data-tour="invoice-list"]');
     const hasInvoices = await invoiceList.isVisible({ timeout: 5_000 }).catch(() => false);
@@ -222,7 +222,7 @@ test.describe('Invoices List — Owner', () => {
 
   test('invoice detail page loads without errors', async ({ page }) => {
     await safeGoTo(page, '/invoices', 'Invoices');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Navigate to first invoice
     const invoiceList = page.locator('[data-tour="invoice-list"]');
@@ -255,7 +255,7 @@ test.describe('Invoices List — Owner', () => {
     test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     const checkErrors = await trackConsoleErrors(page);
     await safeGoTo(page, '/invoices', 'Invoices');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
     checkErrors();
   });
 });
@@ -294,7 +294,7 @@ test.describe('Invoices — Finance', () => {
 
   test('finance can navigate to invoice detail', async ({ page }) => {
     await safeGoTo(page, '/invoices', 'Finance Invoices');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     const invoiceList = page.locator('[data-tour="invoice-list"]');
     if (!(await invoiceList.isVisible({ timeout: 5_000 }).catch(() => false))) {

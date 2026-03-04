@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { AUTH, safeGoTo, assertNoErrorBoundary, trackConsoleErrors } from './helpers';
+import { AUTH, safeGoTo, assertNoErrorBoundary, trackConsoleErrors, waitForPageReady } from './helpers';
 
 // ═══════════════════════════════════════════════════════════════
 // LEADS & CRM — Owner
@@ -26,7 +26,7 @@ test.describe('Leads — Owner', () => {
 
   test('view toggle between kanban and list', async ({ page }) => {
     await safeGoTo(page, '/leads', 'Leads');
-    await page.waitForTimeout(2_000);
+    await waitForPageReady(page);
 
     const kanbanBtn = page.locator('[aria-label="Kanban view"]').first();
     const listBtn = page.locator('[aria-label="List view"]').first();
@@ -80,7 +80,7 @@ test.describe('Leads — Owner', () => {
 
   test('lead detail page loads', async ({ page }) => {
     await safeGoTo(page, '/leads', 'Leads');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Switch to list view and click first row
     const listBtn = page.locator('[aria-label="List view"]').first();
@@ -190,7 +190,7 @@ test.describe('Make-Ups — Owner', () => {
 
   test('stats cards render', async ({ page }) => {
     await safeGoTo(page, '/make-ups', 'Make-Ups');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     const cards = page.locator('[class*="card"]');
     const count = await cards.count();
@@ -217,7 +217,7 @@ test.describe('Continuation — Owner', () => {
   test('create run button or empty state visible', async ({ page }) => {
     await safeGoTo(page, '/continuation', 'Continuation');
     if (!page.url().includes('/continuation')) return; // auth race
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     const newRunBtn = page.getByRole('button', { name: /new run/i }).first();
     const createRunBtn = page.getByRole('button', { name: /create continuation run/i }).first();
@@ -231,7 +231,7 @@ test.describe('Continuation — Owner', () => {
 
   test('wizard opens on button click', async ({ page }) => {
     await safeGoTo(page, '/continuation', 'Continuation');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     const btn = page.getByRole('button', { name: /new run|create continuation run/i }).first();
     const hasBtn = await btn.isVisible({ timeout: 5_000 }).catch(() => false);
@@ -275,7 +275,7 @@ test.describe('Daily Register — Owner', () => {
 
   test('lesson list or empty state visible', async ({ page }) => {
     await safeGoTo(page, '/register', 'Register');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     const hasLessons = await page.locator('[class*="card"]').first()
       .isVisible({ timeout: 5_000 }).catch(() => false);
@@ -323,7 +323,7 @@ test.describe('Batch Attendance — Owner', () => {
 
   test('mark all present button exists', async ({ page }) => {
     await safeGoTo(page, '/batch-attendance', 'Batch Attendance');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     const markAllBtn = page.getByRole('button', { name: /mark all present/i }).first();
     const hasMarkAll = await markAllBtn.isVisible({ timeout: 5_000 }).catch(() => false);
@@ -333,7 +333,7 @@ test.describe('Batch Attendance — Owner', () => {
 
   test('attendance toggle buttons render for lessons', async ({ page }) => {
     await safeGoTo(page, '/batch-attendance', 'Batch Attendance');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     const presentBtn = page.locator('[aria-label="Present"]').first();
     const hasPresent = await presentBtn.isVisible({ timeout: 5_000 }).catch(() => false);
@@ -401,7 +401,7 @@ test.describe('Practice — Owner', () => {
 
   test('stats cards visible', async ({ page }) => {
     await safeGoTo(page, '/practice', 'Practice');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     const activeAssignments = page.getByText(/active assignments/i).first();
     const hasStats = await activeAssignments.isVisible({ timeout: 5_000 }).catch(() => false);

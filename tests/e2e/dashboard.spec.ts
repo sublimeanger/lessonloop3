@@ -19,7 +19,7 @@ test.describe('Owner Dashboard', () => {
     await safeGoTo(page, '/dashboard', 'Dashboard');
     // Wait for loading spinner to disappear (stats load async)
     await page.locator('[role="status"]:has-text("Loading")').waitFor({ state: 'hidden', timeout: 20_000 }).catch(() => {});
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     const statTitles = [
       "Today's Lessons",
@@ -126,7 +126,7 @@ test.describe('Owner Dashboard', () => {
     const checkErrors = await trackConsoleErrors(page);
     await safeGoTo(page, '/dashboard', 'Dashboard');
     // Give time for all async data to load
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
     checkErrors();
   });
 
@@ -217,7 +217,7 @@ test.describe('Teacher Dashboard', () => {
 
   test('does NOT show owner stat cards', async ({ page }) => {
     await safeGoTo(page, '/dashboard', 'Teacher Dashboard');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Teacher should NOT see owner-specific stats in the main content area
     // Scope to main to avoid matching sidebar notification text like "outstanding invoices"

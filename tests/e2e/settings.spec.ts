@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { AUTH, safeGoTo, goTo, assertNoErrorBoundary, trackConsoleErrors } from './helpers';
+import { AUTH, safeGoTo, goTo, assertNoErrorBoundary, trackConsoleErrors, waitForPageReady } from './helpers';
 
 // ═══════════════════════════════════════════════════════════════
 // OWNER — SETTINGS PAGE & NAVIGATION
@@ -96,7 +96,7 @@ test.describe('Settings — Owner', () => {
   test('Billing tab shows plan cards', async ({ page }) => {
     await safeGoTo(page, '/settings?tab=billing', 'Settings Billing');
     if (!page.url().includes('/settings')) return; // auth race
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Should show "Current Plan" badge on one of the plans
     const currentPlan = page.getByText('Current Plan').first()
@@ -197,7 +197,7 @@ test.describe('Settings — Teacher', () => {
 
   test('teacher accessing admin tab redirects to profile', async ({ page }) => {
     await page.goto('/settings?tab=members');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
     if (!page.url().includes('/settings')) return; // auth race
 
     // Should redirect to profile since teacher is not admin

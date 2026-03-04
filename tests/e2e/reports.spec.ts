@@ -156,7 +156,7 @@ test.describe('Report Pages — Owner', () => {
   test('Revenue report loads (may be feature-gated)', async ({ page }) => {
     await safeGoTo(page, '/reports/revenue', 'Revenue');
     if (!page.url().includes('/reports')) return; // auth race
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // May load report, show feature gate, or have main content
     const mainContent = await page.locator('main').textContent().catch(() => '');
@@ -167,7 +167,7 @@ test.describe('Report Pages — Owner', () => {
   test('Payroll report loads (may be feature-gated)', async ({ page }) => {
     await safeGoTo(page, '/reports/payroll', 'Payroll');
     if (!page.url().includes('/reports')) return; // auth race
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // May load report, show feature gate, or have main content
     const mainContent = await page.locator('main').textContent().catch(() => '');
@@ -247,7 +247,7 @@ test.describe('Reports — Teacher', () => {
 
   test('teacher accessing /reports loads but with limited cards', async ({ page }) => {
     await page.goto('/reports');
-    await page.waitForTimeout(5_000);
+    await waitForPageReady(page);
 
     const url = page.url();
     // eslint-disable-next-line no-console
@@ -277,7 +277,7 @@ test.describe('Reports — Parent', () => {
 
   test('parent accessing /reports is redirected or shows no reports', async ({ page }) => {
     await page.goto('/reports');
-    await page.waitForTimeout(5_000);
+    await waitForPageReady(page);
 
     const url = page.url();
     // eslint-disable-next-line no-console

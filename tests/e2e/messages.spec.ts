@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { AUTH, safeGoTo, assertNoErrorBoundary, trackConsoleErrors } from './helpers';
+import { AUTH, safeGoTo, assertNoErrorBoundary, trackConsoleErrors, waitForPageReady } from './helpers';
 
 // ═══════════════════════════════════════════════════════════════
 // OWNER — MESSAGES
@@ -262,7 +262,7 @@ test.describe('Messages — Parent Portal', () => {
     // Navigate to portal — dismiss welcome dialog if present
     await page.goto('/portal/home');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
     // Dismiss welcome dialog via "Got it!" button or X close button
     try {
       await page.click('text="Got it!"', { timeout: 5_000 });
@@ -280,7 +280,7 @@ test.describe('Messages — Parent Portal', () => {
       await page.goto('/portal/messages');
     }
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(2_000);
+    await waitForPageReady(page);
     if (!page.url().includes('/portal/messages')) return; // portal redirect
 
     const inboxTab = page.getByRole('tab', { name: /inbox/i }).first()
@@ -317,7 +317,7 @@ test.describe('Messages — Parent Portal', () => {
   test('parent inbox shows empty state or messages', async ({ page }) => {
     test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/portal/messages', 'Parent Messages');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Either conversation cards or empty message
     const emptyMsg = page.getByText(/will appear here/i).first();

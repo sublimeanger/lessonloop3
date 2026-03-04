@@ -23,7 +23,7 @@ test.describe('Students List — Owner', () => {
     if (!page.url().includes('/students')) return; // auth race — skip gracefully
 
     // Wait for student data to load
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Check for at least one seed student by name
     const seedNames = ['Emma', 'James', 'Sophie'];
@@ -256,7 +256,7 @@ test.describe('Students List — Owner', () => {
 
   test('clicking a student row navigates to detail page', async ({ page }) => {
     await safeGoTo(page, '/students', 'Students');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Desktop: click a table row
     const tableRow = page.locator('[data-tour="student-list"] tbody tr').first();
@@ -310,7 +310,7 @@ test.describe('Student Detail — Owner', () => {
   test('navigates to a student and shows detail page with tabs', async ({ page }) => {
     // First go to students list to get a student ID
     await safeGoTo(page, '/students', 'Students');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Click first student
     const tableRow = page.locator('[data-tour="student-list"] tbody tr').first();
