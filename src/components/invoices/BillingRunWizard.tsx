@@ -396,7 +396,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{totalInvoices}</div>
+                  <div className="text-2xl font-semibold">{totalInvoices}</div>
                 </CardContent>
               </Card>
               <Card>
