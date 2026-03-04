@@ -184,7 +184,7 @@ export function ContinuationResponseDetail({
 
           {/* Notification Info */}
           <div className="rounded-lg border p-3 space-y-1">
-            <Label className="text-sm font-medium">Notifications</Label>
+            <Label>Notifications</Label>
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Initial sent</span>
               <span>
