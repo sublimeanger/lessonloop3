@@ -198,7 +198,7 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
           {isLoading ? (
             <GridSkeleton count={6} columns={4} />
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+            <StatsGrid>
               <StatCard title="Today's Lessons" value={stats?.todayLessons ?? 0} subtitle={currentOrg?.org_type === 'solo_teacher' ? 'Your schedule' : 'Across all teachers'} icon={Calendar} href="/calendar" variant="teal" />
               <StatCard title="Active Students" value={stats?.activeStudents ?? 0} subtitle="Currently enrolled" icon={Users} href="/students" variant="coral" />
               <StatCard title="This Week" value={`${stats?.lessonsThisWeek ?? 0} lessons`} subtitle={`${stats?.hoursThisWeek ?? 0} teaching hours`} icon={Clock} href="/calendar" variant="emerald" />
