@@ -18,12 +18,11 @@ test.describe('Students List — Owner', () => {
   });
 
   test('student list shows seed data (Emma, James, or Sophie)', async ({ page }) => {
-    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/students', 'Students');
     if (!page.url().includes('/students')) return; // auth race — skip gracefully
 
     // Wait for student data to load
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Check for at least one seed student by name
     const seedNames = ['Emma', 'James', 'Sophie'];
@@ -256,7 +255,7 @@ test.describe('Students List — Owner', () => {
 
   test('clicking a student row navigates to detail page', async ({ page }) => {
     await safeGoTo(page, '/students', 'Students');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Desktop: click a table row
     const tableRow = page.locator('[data-tour="student-list"] tbody tr').first();
@@ -284,7 +283,6 @@ test.describe('Students List — Owner', () => {
   });
 
   test('no console errors during students list interaction', async ({ page }) => {
-    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     const checkErrors = await trackConsoleErrors(page);
     await safeGoTo(page, '/students', 'Students');
     await page.waitForTimeout(2_000);
@@ -310,7 +308,7 @@ test.describe('Student Detail — Owner', () => {
   test('navigates to a student and shows detail page with tabs', async ({ page }) => {
     // First go to students list to get a student ID
     await safeGoTo(page, '/students', 'Students');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Click first student
     const tableRow = page.locator('[data-tour="student-list"] tbody tr').first();
@@ -498,18 +496,13 @@ test.describe('Students — Teacher', () => {
 test.describe('Students — Finance', () => {
   test.use({ storageState: AUTH.finance });
 
-  test('finance user accessing /students is redirected or restricted', async ({ page }) => {
+  test('finance user accessing /students is redirected to dashboard', async ({ page }) => {
     await page.goto('/students');
-    await page.waitForTimeout(5_000);
-
-    const url = page.url();
-    const onStudents = url.includes('/students');
-    const onDashboard = url.includes('/dashboard');
-
-    // eslint-disable-next-line no-console
-    console.log(`[finance-students] URL: ${url}, onStudents: ${onStudents}, redirected: ${onDashboard}`);
-
-    // Finance doesn't have Students in sidebar — should redirect or show limited view
-    await expect(page.locator('body')).toBeVisible();
+    // Finance is not allowed on /students — should redirect to /dashboard
+    await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 }).catch(async () => {
+      await page.goto('/students');
+      await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 });
+    });
+    expect(page.url(), 'Finance should be redirected away from /students').not.toContain('/students');
   });
 });

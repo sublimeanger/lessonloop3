@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { AUTH, goTo, assertNoErrorBoundary, trackConsoleErrors } from './helpers';
+import { AUTH, goTo, assertNoErrorBoundary, trackConsoleErrors, waitForPageReady } from './helpers';
 
 /**
  * Navigate to a portal page and check for error boundary.
@@ -40,14 +40,12 @@ test.describe('Parent Portal — Home', () => {
     await page.waitForTimeout(2_000);
 
     const hiGreeting = page.getByText(/^Hi .+! 👋$/).first();
-    const hasGreeting = await hiGreeting.isVisible({ timeout: 10_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[portal-home] Personalised greeting: ${hasGreeting}`);
+    await expect(hiGreeting).toBeVisible({ timeout: 10_000 });
   });
 
   test('shows next lesson card or access issue state', async ({ page }) => {
     if (!(await portalGoTo(page, '/portal/home'))) return;
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Either next lesson card or access issue
     const nextLessonCard = page.locator('[aria-label="Next lesson"]').first();
@@ -65,7 +63,7 @@ test.describe('Parent Portal — Home', () => {
 
   test('outstanding balance card links to invoices', async ({ page }) => {
     if (!(await portalGoTo(page, '/portal/home'))) return;
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // May or may not have outstanding balance
     const outstandingCard = page.locator('[aria-label*="outstanding"]').first();
@@ -84,7 +82,7 @@ test.describe('Parent Portal — Home', () => {
 
   test('unread messages card links to messages', async ({ page }) => {
     if (!(await portalGoTo(page, '/portal/home'))) return;
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     const unreadCard = page.locator('[aria-label="Unread messages"]').first();
     const hasUnread = await unreadCard.isVisible({ timeout: 5_000 }).catch(() => false);
@@ -95,7 +93,7 @@ test.describe('Parent Portal — Home', () => {
   test('no console errors on portal home', async ({ page }) => {
     const checkErrors = await trackConsoleErrors(page);
     if (!(await portalGoTo(page, '/portal/home'))) return;
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
     checkErrors();
   });
 });
@@ -114,13 +112,11 @@ test.describe('Parent Portal — Schedule', () => {
 
   test('shows lesson cards or empty state', async ({ page }) => {
     if (!(await portalGoTo(page, '/portal/schedule'))) return;
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Look for lesson content or empty message
     const cards = page.locator('.rounded-2xl, .rounded-xl').filter({ hasText: /lesson|piano|guitar|violin|music/i });
     const cardCount = await cards.count();
-    // eslint-disable-next-line no-console
-    console.log(`[portal-schedule] Lesson-related cards found: ${cardCount}`);
     await assertNoErrorBoundary(page);
   });
 
@@ -148,7 +144,7 @@ test.describe('Parent Portal — Invoices', () => {
 
   test('shows outstanding summary or invoice list', async ({ page }) => {
     if (!(await portalGoTo(page, '/portal/invoices'))) return;
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Check for outstanding balance summary
     const outstandingLabel = page.getByText('Outstanding Balance').first();
@@ -232,12 +228,11 @@ test.describe('Parent Portal — Resources', () => {
 
   test('shows resource list or empty state', async ({ page }) => {
     if (!(await portalGoTo(page, '/portal/resources'))) return;
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
-    const description = page.getByText('Teaching materials shared by your teacher').first();
-    const hasDesc = await description.isVisible({ timeout: 5_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[portal-resources] Description visible: ${hasDesc}`);
+    // Resources page should show description or resource list content
+    const mainContent = await page.locator('main').textContent().catch(() => '');
+    expect((mainContent ?? '').length, 'Resources page should have content').toBeGreaterThan(10);
     await assertNoErrorBoundary(page);
   });
 });
@@ -258,10 +253,9 @@ test.describe('Parent Portal — Profile', () => {
     if (!(await portalGoTo(page, '/portal/profile'))) return;
     await page.waitForTimeout(2_000);
 
-    const description = page.getByText('Manage your details and preferences').first();
-    const hasDesc = await description.isVisible({ timeout: 5_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[portal-profile] Description visible: ${hasDesc}`);
+    // Profile page should show description or profile content
+    const mainContent = await page.locator('main').textContent().catch(() => '');
+    expect((mainContent ?? '').length, 'Profile page should have content').toBeGreaterThan(10);
   });
 });
 
@@ -273,15 +267,21 @@ test.describe('Parent Portal — Navigation', () => {
 
   test('portal sidebar has all expected nav items', async ({ page }) => {
     if (!(await portalGoTo(page, '/portal/home'))) return;
-    await page.waitForTimeout(2_000);
+    // Dismiss welcome dialog if present
+    try {
+      await page.click('text="Got it!"', { timeout: 3_000 });
+      await page.waitForTimeout(500);
+    } catch { /* no welcome dialog */ }
+    await page.waitForTimeout(1_000);
 
-    const navItems = ['Home', 'Schedule', 'Practice', 'Resources', 'Invoices & Payments', 'Messages'];
+    const navItems = ['Home', 'Schedule', 'Practice', 'Resources', 'Invoices', 'Messages'];
+    let visibleCount = 0;
     for (const item of navItems) {
-      const navLink = page.getByRole('link', { name: item, exact: true }).first();
+      const navLink = page.getByRole('link', { name: new RegExp(item, 'i') }).first();
       const visible = await navLink.isVisible({ timeout: 3_000 }).catch(() => false);
-      // eslint-disable-next-line no-console
-      console.log(`[portal-nav] "${item}": ${visible}`);
+      if (visible) visibleCount++;
     }
+    expect(visibleCount, `Expected at least 4 of ${navItems.length} nav items to be visible, found ${visibleCount}`).toBeGreaterThanOrEqual(4);
   });
 
   test('clicking sidebar nav items navigates correctly', async ({ page }) => {
@@ -317,15 +317,10 @@ test.describe('Parent Portal — Owner Access', () => {
 
   test('owner accessing /portal/home is redirected', async ({ page }) => {
     await page.goto('/portal/home');
-    await page.waitForTimeout(5_000);
+    await waitForPageReady(page);
 
     const url = page.url();
-    // eslint-disable-next-line no-console
-    console.log(`[owner-portal] /portal/home → URL: ${url}`);
-    // Owner should not see portal greeting
-    const portalGreeting = page.getByText(/good (morning|afternoon|evening)/i).first();
-    const hasGreeting = await portalGreeting.isVisible({ timeout: 3_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[owner-portal] Portal greeting visible: ${hasGreeting}`);
+    // Owner should NOT land on the parent portal — should be redirected to /dashboard
+    expect(url, 'Owner should be redirected away from /portal/home').not.toContain('/portal/');
   });
 });

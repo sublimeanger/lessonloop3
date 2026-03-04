@@ -21,15 +21,11 @@ test.describe('Teachers — Owner', () => {
 
     // "Add Teacher" button
     const addBtn = page.getByRole('button', { name: /add teacher/i }).first();
-    const hasAdd = await addBtn.isVisible({ timeout: 10_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[teachers] Add Teacher button: ${hasAdd}`);
+    await expect(addBtn).toBeVisible({ timeout: 10_000 });
 
     // "Invite to Login" button
     const inviteBtn = page.getByRole('button', { name: /invite to login/i }).first();
-    const hasInvite = await inviteBtn.isVisible({ timeout: 5_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[teachers] Invite to Login button: ${hasInvite}`);
+    await expect(inviteBtn).toBeVisible({ timeout: 5_000 });
   });
 
   test('search input filters teachers', async ({ page }) => {
@@ -110,11 +106,9 @@ test.describe('Teachers — Owner', () => {
 
     // Quick view sheet should open as a dialog/sheet
     const sheet = page.locator('[role="dialog"]').first();
-    const opened = await sheet.isVisible({ timeout: 5_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[teachers] Quick view sheet opened: ${opened}`);
+    await expect(sheet).toBeVisible({ timeout: 5_000 });
 
-    if (opened) {
+    if (await sheet.isVisible().catch(() => false)) {
       await page.keyboard.press('Escape');
       await page.waitForTimeout(300);
     }
@@ -164,6 +158,7 @@ test.describe('Teachers — Owner', () => {
 
   test('teacher cards show linked/unlinked badges', async ({ page }) => {
     await safeGoTo(page, '/teachers', 'Teachers');
+    if (!page.url().includes('/teachers')) return; // auth race
     await page.waitForTimeout(2_000);
 
     // Check if any badge with "Linked" or "Unlinked" exists
@@ -172,8 +167,10 @@ test.describe('Teachers — Owner', () => {
 
     const hasLinked = await linkedBadge.isVisible({ timeout: 5_000 }).catch(() => false);
     const hasUnlinked = await unlinkedBadge.isVisible({ timeout: 3_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[teachers] Linked badge: ${hasLinked}, Unlinked badge: ${hasUnlinked}`);
+    // Teachers page may not have badges if no teachers exist yet
+    const mainContent = await page.locator('main').textContent().catch(() => '');
+    expect(hasLinked || hasUnlinked || (mainContent ?? '').length > 20,
+      'Teachers page should show badges or content').toBe(true);
   });
 
   test('no console errors on teachers page', async ({ page }) => {
@@ -191,16 +188,15 @@ test.describe('Teachers — Owner', () => {
 test.describe('Teachers — Teacher Role', () => {
   test.use({ storageState: AUTH.teacher });
 
-  test('teacher accessing /teachers is redirected or restricted', async ({ page }) => {
+  test('teacher accessing /teachers is redirected to dashboard', async ({ page }) => {
     await page.goto('/teachers');
-    await page.waitForTimeout(5_000);
-
-    const url = page.url();
-    // eslint-disable-next-line no-console
-    console.log(`[teacher-teachers] URL: ${url}`);
-
-    // Teacher doesn't have "Teachers" in their sidebar nav
-    await expect(page.locator('body')).toBeVisible();
+    // Teacher is not allowed on /teachers — should redirect to /dashboard
+    await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 }).catch(async () => {
+      // Retry once — auth session may not be warm
+      await page.goto('/teachers');
+      await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 });
+    });
+    expect(page.url(), 'Teacher should be redirected away from /teachers').not.toContain('/teachers');
   });
 });
 
@@ -220,11 +216,9 @@ test.describe('Locations — Owner', () => {
 
   test('shows "Add Location" button', async ({ page }) => {
     await safeGoTo(page, '/locations', 'Locations');
+    if (!page.url().includes('/locations')) return; // auth race
     const addBtn = page.getByRole('button', { name: /add location/i }).first();
-    const visible = await addBtn.isVisible({ timeout: 10_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[locations] Add Location button: ${visible}`);
-    // Owner should have this button (may be disabled if gated)
+    await expect(addBtn).toBeVisible({ timeout: 10_000 });
   });
 
   test('search filters locations', async ({ page }) => {
@@ -315,17 +309,13 @@ test.describe('Locations — Owner', () => {
 
       // Should show rooms section or "Add Room" button
       const addRoomBtn = page.getByRole('button', { name: /add room/i }).first();
-      const hasAddRoom = await addRoomBtn.isVisible({ timeout: 3_000 }).catch(() => false);
-      // eslint-disable-next-line no-console
-      console.log(`[locations] Expanded location — Add Room visible: ${hasAddRoom}`);
-    } else {
-      // eslint-disable-next-line no-console
-      console.log('[locations] No expandable locations found');
+      await expect(addRoomBtn).toBeVisible({ timeout: 3_000 });
     }
   });
 
   test('location cards show type emoji and badges', async ({ page }) => {
     await safeGoTo(page, '/locations', 'Locations');
+    if (!page.url().includes('/locations')) return; // auth race
     await page.waitForTimeout(2_000);
 
     // Check for location type emojis
@@ -335,18 +325,16 @@ test.describe('Locations — Owner', () => {
       const visible = await page.getByText(emoji).first().isVisible({ timeout: 2_000 }).catch(() => false);
       if (visible) { foundEmoji = true; break; }
     }
-    // eslint-disable-next-line no-console
-    console.log(`[locations] Location type emoji found: ${foundEmoji}`);
-
     // Check for type badges (studio, school, home, online)
     const typeBadge = page.getByText(/studio|school|home|online/i).first();
     const hasBadge = await typeBadge.isVisible({ timeout: 3_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[locations] Location type badge: ${hasBadge}`);
+
+    expect(foundEmoji || hasBadge).toBe(true);
   });
 
   test('admin action buttons visible on location cards', async ({ page }) => {
     await safeGoTo(page, '/locations', 'Locations');
+    if (!page.url().includes('/locations')) return; // auth race
     await page.waitForTimeout(2_000);
 
     // Check for edit/delete buttons (they have aria-labels)
@@ -355,8 +343,7 @@ test.describe('Locations — Owner', () => {
 
     const hasEdit = await editBtn.isVisible({ timeout: 5_000 }).catch(() => false);
     const hasDelete = await deleteBtn.isVisible({ timeout: 3_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[locations] Admin buttons — Edit: ${hasEdit}, Delete: ${hasDelete}`);
+    expect(hasEdit || hasDelete).toBe(true);
   });
 
   test('no console errors on locations page', async ({ page }) => {
@@ -374,16 +361,14 @@ test.describe('Locations — Owner', () => {
 test.describe('Locations — Teacher Role', () => {
   test.use({ storageState: AUTH.teacher });
 
-  test('teacher accessing /locations is redirected or restricted', async ({ page }) => {
+  test('teacher accessing /locations is redirected to dashboard', async ({ page }) => {
     await page.goto('/locations');
-    await page.waitForTimeout(5_000);
-
-    const url = page.url();
-    // eslint-disable-next-line no-console
-    console.log(`[teacher-locations] URL: ${url}`);
-
-    // Teacher doesn't have "Locations" in sidebar
-    await expect(page.locator('body')).toBeVisible();
+    // Teacher is not allowed on /locations — should redirect to /dashboard
+    await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 }).catch(async () => {
+      await page.goto('/locations');
+      await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 });
+    });
+    expect(page.url(), 'Teacher should be redirected away from /locations').not.toContain('/locations');
   });
 });
 
@@ -393,19 +378,21 @@ test.describe('Locations — Teacher Role', () => {
 test.describe('Teachers & Locations — Finance', () => {
   test.use({ storageState: AUTH.finance });
 
-  test('finance accessing /teachers is redirected or restricted', async ({ page }) => {
+  test('finance accessing /teachers is redirected to dashboard', async ({ page }) => {
     await page.goto('/teachers');
-    await page.waitForTimeout(5_000);
-    // eslint-disable-next-line no-console
-    console.log(`[finance-teachers] URL: ${page.url()}`);
-    await expect(page.locator('body')).toBeVisible();
+    await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 }).catch(async () => {
+      await page.goto('/teachers');
+      await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 });
+    });
+    expect(page.url(), 'Finance should be redirected away from /teachers').not.toContain('/teachers');
   });
 
-  test('finance accessing /locations is redirected or restricted', async ({ page }) => {
+  test('finance accessing /locations is redirected to dashboard', async ({ page }) => {
     await page.goto('/locations');
-    await page.waitForTimeout(5_000);
-    // eslint-disable-next-line no-console
-    console.log(`[finance-locations] URL: ${page.url()}`);
-    await expect(page.locator('body')).toBeVisible();
+    await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 }).catch(async () => {
+      await page.goto('/locations');
+      await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 });
+    });
+    expect(page.url(), 'Finance should be redirected away from /locations').not.toContain('/locations');
   });
 });

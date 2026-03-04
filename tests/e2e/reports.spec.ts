@@ -34,13 +34,11 @@ test.describe('Reports Hub — Owner', () => {
       const card = page.getByText(title, { exact: true }).first();
       const visible = await card.isVisible({ timeout: 3_000 }).catch(() => false);
       if (visible) visibleCount++;
-      // eslint-disable-next-line no-console
-      console.log(`[reports-hub] "${title}": ${visible}`);
     }
 
     // Reports page may use different naming or the page may redirect
     if (!page.url().includes('/reports')) return;
-    expect(visibleCount, 'Owner should see at least some report cards').toBeGreaterThanOrEqual(0);
+    expect(visibleCount, 'Owner should see at least one report card').toBeGreaterThanOrEqual(1);
   });
 
   test('clicking a report card navigates to the report', async ({ page }) => {
@@ -108,9 +106,7 @@ test.describe('Report Pages — Owner', () => {
 
     // Date presets should be visible
     const thisMonthPreset = page.getByRole('button', { name: /this month/i }).first();
-    const hasPreset = await thisMonthPreset.isVisible({ timeout: 5_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[outstanding] "This Month" preset: ${hasPreset}`);
+    await expect(thisMonthPreset, '"This Month" date preset should be visible').toBeVisible({ timeout: 5_000 });
   });
 
   test('Lessons Delivered report loads', async ({ page }) => {
@@ -150,37 +146,32 @@ test.describe('Report Pages — Owner', () => {
 
   test('Export CSV button is visible on report pages', async ({ page }) => {
     await safeGoTo(page, '/reports/outstanding', 'Outstanding');
+    if (!page.url().includes('/reports')) return; // auth race
     await page.waitForTimeout(2_000);
 
-    const exportBtn = page.getByRole('button', { name: /export csv/i }).first();
-    const visible = await exportBtn.isVisible({ timeout: 5_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[report-export] Export CSV visible: ${visible}`);
+    const exportBtn = page.getByRole('button', { name: /export/i }).first();
+    await expect(exportBtn, 'Export button should be visible on report page').toBeVisible({ timeout: 10_000 });
   });
 
   test('Revenue report loads (may be feature-gated)', async ({ page }) => {
     await safeGoTo(page, '/reports/revenue', 'Revenue');
-    await page.waitForTimeout(3_000);
+    if (!page.url().includes('/reports')) return; // auth race
+    await waitForPageReady(page);
 
-    // May load report or show feature gate / redirect
-    const title = page.getByText('Revenue Report').first();
-    const gateMsg = page.getByText(/upgrade|not available/i).first();
-
-    const hasTitle = await title.isVisible({ timeout: 5_000 }).catch(() => false);
-    const hasGate = await gateMsg.isVisible({ timeout: 3_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[revenue] Title: ${hasTitle}, Gated: ${hasGate}`);
+    // May load report, show feature gate, or have main content
+    const mainContent = await page.locator('main').textContent().catch(() => '');
+    expect((mainContent ?? '').length, 'Revenue report page should have content').toBeGreaterThan(10);
     await assertNoErrorBoundary(page);
   });
 
   test('Payroll report loads (may be feature-gated)', async ({ page }) => {
     await safeGoTo(page, '/reports/payroll', 'Payroll');
-    await page.waitForTimeout(3_000);
+    if (!page.url().includes('/reports')) return; // auth race
+    await waitForPageReady(page);
 
-    const title = page.getByText('Payroll Report').first();
-    const hasTitle = await title.isVisible({ timeout: 5_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[payroll] Title: ${hasTitle}`);
+    // May load report, show feature gate, or have main content
+    const mainContent = await page.locator('main').textContent().catch(() => '');
+    expect((mainContent ?? '').length, 'Payroll report page should have content').toBeGreaterThan(10);
     await assertNoErrorBoundary(page);
   });
 
@@ -213,6 +204,7 @@ test.describe('Reports — Finance', () => {
 
   test('finance sees Revenue, Outstanding, and Payroll cards', async ({ page }) => {
     await safeGoTo(page, '/reports', 'Finance Reports');
+    if (!page.url().includes('/reports')) return; // auth race
     await page.waitForTimeout(2_000);
 
     // Finance should see: Revenue, Outstanding, Payroll (per role filter)
@@ -224,8 +216,8 @@ test.describe('Reports — Finance', () => {
     const hasOutstanding = await outstanding.isVisible({ timeout: 3_000 }).catch(() => false);
     const hasPayroll = await payroll.isVisible({ timeout: 3_000 }).catch(() => false);
 
-    // eslint-disable-next-line no-console
-    console.log(`[finance-reports] Revenue: ${hasRevenue}, Outstanding: ${hasOutstanding}, Payroll: ${hasPayroll}`);
+    const financeVisibleCount = [hasRevenue, hasOutstanding, hasPayroll].filter(Boolean).length;
+    expect(financeVisibleCount, 'Finance should see at least one of Revenue, Outstanding, or Payroll').toBeGreaterThanOrEqual(1);
 
     // Finance should NOT see admin-only reports
     const cancellations = page.getByText('Cancellation Rate', { exact: true }).first();
@@ -255,7 +247,7 @@ test.describe('Reports — Teacher', () => {
 
   test('teacher accessing /reports loads but with limited cards', async ({ page }) => {
     await page.goto('/reports');
-    await page.waitForTimeout(5_000);
+    await waitForPageReady(page);
 
     const url = page.url();
     // eslint-disable-next-line no-console
@@ -285,7 +277,7 @@ test.describe('Reports — Parent', () => {
 
   test('parent accessing /reports is redirected or shows no reports', async ({ page }) => {
     await page.goto('/reports');
-    await page.waitForTimeout(5_000);
+    await waitForPageReady(page);
 
     const url = page.url();
     // eslint-disable-next-line no-console

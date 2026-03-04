@@ -100,11 +100,13 @@ test.describe('Calendar — Owner', () => {
 
   test('Agenda view shows "Group by teacher" toggle', async ({ page }) => {
     await safeGoTo(page, '/calendar?view=agenda', 'Calendar Agenda');
+    if (!page.url().includes('/calendar')) return; // auth race
 
-    const groupBtn = page.locator('[aria-label="Group by teacher"]').first();
+    const groupBtn = page.locator('[aria-label="Group by teacher"]').first()
+      .or(page.getByRole('button', { name: /group by teacher/i }).first());
     const visible = await groupBtn.isVisible({ timeout: 8_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[calendar] Group by teacher toggle in agenda: ${visible}`);
+    // TODO: Group by teacher toggle may not use aria-label — verify selector
+    expect(visible, 'Group by teacher toggle should be visible in agenda view').toBe(true);
 
     // When not in agenda view, it should be hidden
     await safeGoTo(page, '/calendar?view=week', 'Calendar Week');
@@ -236,19 +238,18 @@ test.describe('Calendar — Owner', () => {
 
     // Check key form fields exist
     const expectedFields = ['Teacher', 'Date', 'Time', 'Duration'];
+    let visibleCount = 0;
     for (const field of expectedFields) {
       const label = dialog.getByText(field, { exact: true }).first();
       const visible = await label.isVisible({ timeout: 5_000 }).catch(() => false);
-      // eslint-disable-next-line no-console
-      console.log(`[calendar] Form field "${field}": ${visible}`);
+      if (visible) visibleCount++;
     }
+    expect(visibleCount, 'At least 3 of 4 form fields should be visible').toBeGreaterThanOrEqual(3);
 
     // Teacher select should have placeholder
     const teacherSelect = dialog.getByText('Select teacher').first()
       .or(dialog.locator('[placeholder="Select teacher"]').first());
-    const hasTeacherSelect = await teacherSelect.isVisible({ timeout: 5_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[calendar] Teacher select: ${hasTeacherSelect}`);
+    await expect(teacherSelect).toBeVisible({ timeout: 5_000 });
 
     // Cancel button should work
     const cancelBtn = dialog.getByRole('button', { name: /cancel/i }).first();
@@ -320,10 +321,9 @@ test.describe('Calendar — Owner', () => {
     const panel = page.locator('[role="dialog"]')
       .or(page.locator('[data-state="open"]').first());
     const panelOpen = await panel.first().isVisible({ timeout: 5_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[calendar] Lesson detail panel opened: ${panelOpen}`);
 
     if (panelOpen) {
+      await expect(panel.first()).toBeVisible();
       // Close it
       await page.keyboard.press('Escape');
       await page.waitForTimeout(500);
@@ -402,9 +402,7 @@ test.describe('Calendar — Teacher', () => {
     const newLessonBtn = page.locator('[data-tour="create-lesson-button"]').first()
       .or(page.getByRole('button', { name: /new lesson/i }).first())
       .or(page.locator('[aria-label="New Lesson"]').first());
-    const visible = await newLessonBtn.isVisible({ timeout: 10_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[teacher-calendar] New Lesson button: ${visible}`);
+    await expect(newLessonBtn).toBeVisible({ timeout: 10_000 });
   });
 
   test('Today and navigation buttons work', async ({ page }) => {
@@ -418,11 +416,11 @@ test.describe('Calendar — Teacher', () => {
 
   test('filter bar is visible', async ({ page }) => {
     await safeGoTo(page, '/calendar', 'Teacher Calendar');
-    const filtersBar = page.locator('[data-tour="calendar-filters"]').first();
+    if (!page.url().includes('/calendar')) return; // auth race
+    const filtersBar = page.locator('[data-tour="calendar-filters"]').first()
+      .or(page.locator('main').getByText(/all|filter/i).first());
     const visible = await filtersBar.isVisible({ timeout: 10_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[teacher-calendar] Filters bar: ${visible}`);
-    // Filter bar should still be present even for teachers
+    expect(visible, 'Filter bar should be visible for teacher on calendar').toBe(true);
   });
 });
 
@@ -432,23 +430,14 @@ test.describe('Calendar — Teacher', () => {
 test.describe('Calendar — Finance', () => {
   test.use({ storageState: AUTH.finance });
 
-  test('finance user accessing /calendar is redirected or restricted', async ({ page }) => {
+  test('finance user accessing /calendar is redirected to dashboard', async ({ page }) => {
     await page.goto('/calendar');
-    await page.waitForTimeout(5_000);
-
-    // Finance role doesn't have Calendar in their sidebar nav.
-    // They may either get redirected or see a restricted view.
-    const url = page.url();
-    const onCalendar = url.includes('/calendar');
-    const onDashboard = url.includes('/dashboard');
-    const hasError = await page.getByText(/access|permission|denied|not found/i).first()
-      .isVisible({ timeout: 3_000 }).catch(() => false);
-
-    // eslint-disable-next-line no-console
-    console.log(`[finance-calendar] URL: ${url}, onCalendar: ${onCalendar}, redirected: ${onDashboard}, hasError: ${hasError}`);
-
-    // At least verify no crash happened
-    await expect(page.locator('body')).toBeVisible();
+    // Finance is not allowed on /calendar — should redirect to /dashboard
+    await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 }).catch(async () => {
+      await page.goto('/calendar');
+      await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 });
+    });
+    expect(page.url(), 'Finance should be redirected away from /calendar').not.toContain('/calendar');
   });
 });
 
@@ -459,7 +448,6 @@ test.describe('Calendar — Parent', () => {
   test.use({ storageState: AUTH.parent });
 
   test('parent sees "Schedule" heading, not "Calendar"', async ({ page }) => {
-    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/portal/schedule', 'Parent Schedule');
     // Parent portal may have its own schedule page
     await expect(page.locator('main').first()).toBeVisible({ timeout: 15_000 });
@@ -468,7 +456,6 @@ test.describe('Calendar — Parent', () => {
   });
 
   test('parent does NOT see New Lesson button or FAB', async ({ page }) => {
-    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/portal/schedule', 'Parent Schedule');
 
     const newLessonBtn = page.locator('[data-tour="create-lesson-button"]').first();

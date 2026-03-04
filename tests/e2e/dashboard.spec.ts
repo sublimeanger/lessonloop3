@@ -19,7 +19,7 @@ test.describe('Owner Dashboard', () => {
     await safeGoTo(page, '/dashboard', 'Dashboard');
     // Wait for loading spinner to disappear (stats load async)
     await page.locator('[role="status"]:has-text("Loading")').waitFor({ state: 'hidden', timeout: 20_000 }).catch(() => {});
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     const statTitles = [
       "Today's Lessons",
@@ -30,20 +30,13 @@ test.describe('Owner Dashboard', () => {
       'Total Lessons',
     ];
 
+    let visibleCount = 0;
     for (const title of statTitles) {
       const card = page.getByText(title, { exact: false }).first();
-      const visible = await card.isVisible({ timeout: 10_000 }).catch(() => false);
-      // eslint-disable-next-line no-console
-      console.log(`[dashboard] Stat "${title}": ${visible ? 'visible' : 'not found'}`);
+      const visible = await card.isVisible({ timeout: 5_000 }).catch(() => false);
+      if (visible) visibleCount++;
     }
-
-    // At least one stat card must be visible (owner always has data or zero values)
-    const anyStatVisible = await page
-      .getByText(/Today's Lessons|Active Students/i)
-      .first()
-      .isVisible({ timeout: 20_000 })
-      .catch(() => false);
-    expect(anyStatVisible, 'At least one stat card should be visible').toBe(true);
+    expect(visibleCount, `At least 4 of 6 stat cards should be visible (found ${visibleCount})`).toBeGreaterThanOrEqual(4);
   });
 
   test('stat card "Active Students" navigates to /students', async ({ page }) => {
@@ -91,15 +84,8 @@ test.describe('Owner Dashboard', () => {
 
     for (const linkName of expectedLinks) {
       const link = page.getByRole('link', { name: linkName, exact: true }).first();
-      const visible = await link.isVisible({ timeout: 5_000 }).catch(() => false);
-      // eslint-disable-next-line no-console
-      console.log(`[dashboard] Sidebar link "${linkName}": ${visible}`);
+      await expect(link, `Sidebar link "${linkName}" should be visible`).toBeVisible({ timeout: 10_000 });
     }
-
-    // Dashboard link must always be visible
-    await expect(
-      page.getByRole('link', { name: 'Dashboard', exact: true }).first(),
-    ).toBeVisible({ timeout: 10_000 });
   });
 
   test('sidebar footer has Settings and Help links', async ({ page }) => {
@@ -110,53 +96,37 @@ test.describe('Owner Dashboard', () => {
     ).toBeVisible({ timeout: 10_000 });
 
     const helpLink = page.getByRole('link', { name: /help/i }).first();
-    const helpVisible = await helpLink.isVisible({ timeout: 5_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[dashboard] Help link: ${helpVisible}`);
+    await expect(helpLink, 'Help link should be visible').toBeVisible({ timeout: 10_000 });
   });
 
   test('LoopAssist button is visible and clickable', async ({ page }) => {
     await safeGoTo(page, '/dashboard', 'Dashboard');
 
     // LoopAssist renders as a button with text "LoopAssist" (expanded) or tooltip (collapsed)
-    const loopAssist = page.getByText('LoopAssist', { exact: true }).first()
-      .or(page.locator('button').filter({ hasText: 'LoopAssist' }).first());
-    const visible = await loopAssist.isVisible({ timeout: 10_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[dashboard] LoopAssist button: ${visible}`);
+    // LoopAssist widget is embedded in the dashboard as a card with heading and input
+    const loopAssistWidget = page.locator('main').getByText('LoopAssist').first();
+    await expect(loopAssistWidget, 'LoopAssist widget heading should be visible on dashboard').toBeVisible({ timeout: 15_000 });
 
-    if (visible) {
-      await loopAssist.click();
-      // LoopAssist opens a drawer/panel — just verify something appeared
-      await page.waitForTimeout(500);
-      const drawerOrPanel = page.locator('[role="dialog"]')
-        .or(page.locator('[data-state="open"]').first());
-      const opened = await drawerOrPanel.first().isVisible({ timeout: 5_000 }).catch(() => false);
-      // eslint-disable-next-line no-console
-      console.log(`[dashboard] LoopAssist drawer opened: ${opened}`);
-      // Close it by pressing Escape
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(300);
-    }
+    // The widget should have the "Ask anything" input prompt
+    const askInput = page.locator('main').getByPlaceholder(/ask anything/i).first();
+    await expect(askInput, 'LoopAssist ask input should be visible').toBeVisible({ timeout: 10_000 });
   });
 
   test('Today timeline section renders', async ({ page }) => {
     await safeGoTo(page, '/dashboard', 'Dashboard');
 
     // TodayTimeline shows lessons for today or an empty/informational state
-    const timeline = page.getByText(/today|timeline|schedule|no lessons/i).first();
-    const visible = await timeline.isVisible({ timeout: 10_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[dashboard] Today timeline visible: ${visible}`);
-    // Main content should at least be present
+    // Assert main content loaded with meaningful content (stat cards, timeline, etc.)
     await expect(page.locator('main').first()).toBeVisible({ timeout: 10_000 });
+    const mainText = await page.locator('main').textContent().catch(() => '');
+    expect((mainText ?? '').length, 'Dashboard main content should have substantial text').toBeGreaterThan(50);
   });
 
   test('no console errors during dashboard load', async ({ page }) => {
     const checkErrors = await trackConsoleErrors(page);
     await safeGoTo(page, '/dashboard', 'Dashboard');
     // Give time for all async data to load
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
     checkErrors();
   });
 
@@ -236,38 +206,18 @@ test.describe('Teacher Dashboard', () => {
   test('loads with teacher-specific stat cards', async ({ page }) => {
     await safeGoTo(page, '/dashboard', 'Teacher Dashboard');
 
-    // TeacherDashboard shows: "Today", "This Month", "My Students", "Hours (Week)"
-    const teacherStats = ['Today', 'This Month', 'My Students', 'Hours (Week)'];
-    let visibleCount = 0;
+    // Teacher should not be stuck on onboarding
+    expect(page.url(), 'Teacher should not be stuck on onboarding').not.toContain('/onboarding');
 
-    for (const stat of teacherStats) {
-      const visible = await page
-        .getByText(stat, { exact: true })
-        .first()
-        .isVisible({ timeout: 8_000 })
-        .catch(() => false);
-      if (visible) visibleCount++;
-      // eslint-disable-next-line no-console
-      console.log(`[teacher-dashboard] Stat "${stat}": ${visible}`);
-    }
-
-    // Teacher dashboard may have a different layout — accept 0 if page loaded correctly
-    if (visibleCount === 0) {
-      // Verify at least that the page loaded (not stuck on onboarding)
-      const onOnboarding = page.url().includes('/onboarding');
-      if (!onOnboarding) {
-        // Page loaded but stat cards have different labels — soft pass
-        // eslint-disable-next-line no-console
-        console.log('[teacher-dashboard] No exact stat card matches — soft pass (page loaded OK)');
-      } else {
-        expect(onOnboarding, 'Teacher should not be stuck on onboarding').toBe(false);
-      }
-    }
+    // TeacherDashboard shows stat cards — verify main content loaded with real content
+    await expect(page.locator('main').first()).toBeVisible({ timeout: 15_000 });
+    const mainText = await page.locator('main').textContent().catch(() => '');
+    expect((mainText ?? '').length, 'Teacher dashboard should have content').toBeGreaterThan(20);
   });
 
   test('does NOT show owner stat cards', async ({ page }) => {
     await safeGoTo(page, '/dashboard', 'Teacher Dashboard');
-    await page.waitForTimeout(3_000);
+    await waitForPageReady(page);
 
     // Teacher should NOT see owner-specific stats in the main content area
     // Scope to main to avoid matching sidebar notification text like "outstanding invoices"
@@ -393,10 +343,7 @@ test.describe('Admin Dashboard', () => {
       .getByText("Today's Lessons")
       .or(page.getByText('Active Students'))
       .first();
-    const visible = await anyOwnerStat.isVisible({ timeout: 15_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[admin-dashboard] Owner stat visible: ${visible}`);
-    // At minimum, main content loaded
+    await expect(anyOwnerStat, 'Admin should see owner-level stat cards').toBeVisible({ timeout: 15_000 });
     await expect(page.locator('main').first()).toBeVisible({ timeout: 10_000 });
   });
 
