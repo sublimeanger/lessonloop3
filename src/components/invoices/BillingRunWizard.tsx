@@ -407,7 +407,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{unbilledLessons.length}</div>
+                  <div className="text-2xl font-semibold">{unbilledLessons.length}</div>
                 </CardContent>
               </Card>
               <Card>
