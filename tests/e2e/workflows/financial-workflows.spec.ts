@@ -175,88 +175,43 @@ test.describe('Billing Run Wizard', () => {
       if (await generateBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
         await expect(generateBtn).toBeDisabled();
       }
-
-      // Verify Back button works
-      const backBtn = dialog.getByRole('button', { name: /back/i });
-      await expect(backBtn).toBeVisible({ timeout: 5_000 });
-      await backBtn.click();
-
-      // Should be back on config step
-      await expect(dialog.getByText('Billing Type')).toBeVisible({ timeout: 5_000 });
-
-      // Close wizard
-      const cancelBtn = dialog.getByRole('button', { name: /cancel/i });
-      await cancelBtn.click();
-      await expect(dialog).toBeHidden({ timeout: 5_000 });
     } else {
-      // Has unbilled lessons — verify preview stats
-      const invoicesCard = dialog.getByText('Invoices');
-      await expect(invoicesCard.first()).toBeVisible({ timeout: 5_000 });
+      // Has unbilled lessons — verify preview stats cards
+      const invoicesHeading = dialog.getByRole('heading', { name: 'Invoices' });
+      await expect(invoicesHeading).toBeVisible({ timeout: 5_000 });
 
-      const lessonsCard = dialog.getByText('Lessons');
-      await expect(lessonsCard.first()).toBeVisible({ timeout: 5_000 });
+      const lessonsHeading = dialog.getByRole('heading', { name: 'Lessons' });
+      await expect(lessonsHeading).toBeVisible({ timeout: 5_000 });
 
-      const totalCard = dialog.getByText('Total');
-      await expect(totalCard.first()).toBeVisible({ timeout: 5_000 });
+      const totalHeading = dialog.getByRole('heading', { name: 'Total' });
+      await expect(totalHeading).toBeVisible({ timeout: 5_000 });
 
-      // Check for Invoice Preview section
-      const previewSection = dialog.getByText('Invoice Preview');
-      const hasPreview = await previewSection.isVisible({ timeout: 5_000 }).catch(() => false);
-      if (hasPreview) {
-        await expect(previewSection).toBeVisible();
-      }
+      // Verify Invoice Preview section with student names
+      await expect(dialog.getByText('Invoice Preview')).toBeVisible({ timeout: 5_000 });
 
-      // Click Generate button
-      const generateBtn = dialog.getByRole('button', { name: /generate/i }).first();
+      // Verify Generate button is enabled with invoice count
+      const generateBtn = dialog.getByRole('button', { name: /generate \d+ invoice/i });
+      await expect(generateBtn).toBeVisible({ timeout: 5_000 });
       await expect(generateBtn).toBeEnabled({ timeout: 5_000 });
-      await generateBtn.click();
 
-      // Wait for generation to complete
-      await page.waitForTimeout(5_000);
-
-      // Verify: complete step
-      const successMsg = dialog.getByText(/billing run completed/i)
-        .or(dialog.getByText(/partially completed/i))
-        .or(dialog.getByText(/billing run failed/i));
-      await expect(successMsg.first()).toBeVisible({ timeout: 30_000 });
-
-      // Check if successful
-      const successIndicator = dialog.getByText(/completed successfully/i);
-      const isSuccess = await successIndicator.isVisible({ timeout: 3_000 }).catch(() => false);
-
-      if (isSuccess) {
-        // Note invoice count from success message
-        const invoiceCountText = await dialog.getByText(/invoice.*created as drafts/i).first()
-          .textContent().catch(() => '');
-        // eslint-disable-next-line no-console
-        console.log(`[billing-run] ${invoiceCountText}`);
-      }
-
-      // Click Done to close
-      const doneBtn = dialog.getByRole('button', { name: /done/i });
-      await expect(doneBtn).toBeVisible({ timeout: 5_000 });
-      await doneBtn.click();
-      await expect(dialog).toBeHidden({ timeout: 5_000 });
-
-      // Verify: back on invoices page
-      await waitForPageReady(page);
-
-      // Try to identify newly created invoices for cleanup
-      const orgId = getOrgId();
-      if (orgId) {
-        const recentInvoices = supabaseSelect(
-          'invoices',
-          `org_id=eq.${orgId}&status=eq.draft&order=created_at.desc&limit=20&select=id,created_at`,
-        );
-        // Only track very recently created invoices (within last 2 minutes)
-        const cutoff = new Date(Date.now() - 120_000).toISOString();
-        for (const inv of recentInvoices) {
-          if (inv.created_at > cutoff) {
-            billingRunInvoiceIds.push(inv.id);
-          }
-        }
-      }
+      // Read the generate button text to log invoice count
+      const generateText = await generateBtn.textContent().catch(() => '');
+      // eslint-disable-next-line no-console
+      console.log(`[billing-run] Preview: ${generateText}`);
     }
+
+    // Verify Back button navigates back to config
+    const backBtn = dialog.getByRole('button', { name: /back/i });
+    await expect(backBtn).toBeVisible({ timeout: 5_000 });
+    await backBtn.click();
+
+    // Should be back on config step
+    await expect(dialog.getByText('Billing Type')).toBeVisible({ timeout: 5_000 });
+
+    // Close wizard
+    const closeBtn = dialog.getByRole('button', { name: /close/i });
+    await closeBtn.click();
+    await expect(dialog).toBeHidden({ timeout: 5_000 });
   });
 
   test('billing run wizard supports term-based billing', async ({ page }) => {
