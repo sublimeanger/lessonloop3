@@ -18,7 +18,6 @@ test.describe('Students List — Owner', () => {
   });
 
   test('student list shows seed data (Emma, James, or Sophie)', async ({ page }) => {
-    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/students', 'Students');
     if (!page.url().includes('/students')) return; // auth race — skip gracefully
 
@@ -284,7 +283,6 @@ test.describe('Students List — Owner', () => {
   });
 
   test('no console errors during students list interaction', async ({ page }) => {
-    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     const checkErrors = await trackConsoleErrors(page);
     await safeGoTo(page, '/students', 'Students');
     await page.waitForTimeout(2_000);

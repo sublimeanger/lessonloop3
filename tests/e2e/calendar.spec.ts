@@ -448,7 +448,6 @@ test.describe('Calendar — Parent', () => {
   test.use({ storageState: AUTH.parent });
 
   test('parent sees "Schedule" heading, not "Calendar"', async ({ page }) => {
-    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/portal/schedule', 'Parent Schedule');
     // Parent portal may have its own schedule page
     await expect(page.locator('main').first()).toBeVisible({ timeout: 15_000 });
@@ -457,7 +456,6 @@ test.describe('Calendar — Parent', () => {
   });
 
   test('parent does NOT see New Lesson button or FAB', async ({ page }) => {
-    test.skip(test.info().project.name === 'mobile-safari', 'Desktop-only');
     await safeGoTo(page, '/portal/schedule', 'Parent Schedule');
 
     const newLessonBtn = page.locator('[data-tour="create-lesson-button"]').first();
