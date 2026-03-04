@@ -246,25 +246,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    // Then get initial session
+    // Then get initial session — this triggers the INITIAL_SESSION event in
+    // onAuthStateChange which is the sole source of truth for initialisation.
+    // We intentionally do NOT set isInitialised here because getSession() may
+    // return null while a token refresh is in progress.  The onAuthStateChange
+    // handler (or the hard timeout) will mark us as initialised once the
+    // session state is definitively known.
     const initializeAuth = async () => {
       try {
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
           logger.error('getSession error:', error);
+          // Only mark initialised on hard errors — the onAuthStateChange
+          // INITIAL_SESSION event will still fire for recoverable cases.
+          if (mountedRef.current && !initialisedRef.current) {
+            setIsLoading(false);
+            setIsInitialised(true);
+            initialisedRef.current = true;
+          }
         }
         
         if (!mountedRef.current) return;
         
-        if (!initialSession) {
-          setIsLoading(false);
-          setIsInitialised(true);
-          initialisedRef.current = true;
-        }
+        // If getSession returned a session, onAuthStateChange will handle it.
+        // If it returned null, onAuthStateChange INITIAL_SESSION will also fire
+        // with null — that handler (line ~237) marks us as initialised.
+        // The hard timeout (4s) is the safety net for any edge cases.
+        logger.debug('[Auth] getSession returned:', initialSession ? 'session' : 'null');
       } catch (err) {
         logger.error('Auth init error:', err);
-        if (mountedRef.current) {
+        if (mountedRef.current && !initialisedRef.current) {
           setIsLoading(false);
           setIsInitialised(true);
           initialisedRef.current = true;
