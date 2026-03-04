@@ -125,10 +125,15 @@ export function RouteGuard({
 
   // For protected routes, check onboarding status
   if (requireAuth && requireOnboarding) {
-    // If profile is null after auth init, treat as needing onboarding
-    // The onboarding page will self-heal and create profile if needed
+    // If profile is null after auth init, wait for the recovery grace period
+    // before redirecting — this prevents false onboarding redirects when the
+    // hard timeout fires before profile fetch completes.
     if (profile === null) {
-      logger.warn('[RouteGuard] Profile is null - redirecting to onboarding for self-heal');
+      if (!profileGraceDone) {
+        // Still waiting for recovery — show loading
+        return <AuthLoading onLogout={signOut} onForceRedirect={handleForceRedirect} />;
+      }
+      logger.warn('[RouteGuard] Profile still null after grace period - redirecting to onboarding');
       return <Navigate to="/onboarding" replace />;
     }
     if (!profile.has_completed_onboarding) {
