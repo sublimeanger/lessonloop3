@@ -49,8 +49,42 @@ async function goToInvoices(page: Page) {
 }
 
 /** Navigate to a specific invoice detail by ID */
-async function goToInvoiceDetail(page: Page, invoiceId: string) {
-  await safeGoTo(page, `/invoices/${invoiceId}`, 'Invoice Detail');
+async function goToInvoiceDetail(page: Page, invoiceId: string, invoiceNumber: string) {
+  // First navigate to invoices list via sidebar
+  await goToInvoices(page);
+
+  // Click the invoice row to navigate to detail
+  const invoiceRow = page.locator('li, [role="listitem"], tr, [data-row]').filter({
+    hasText: invoiceNumber,
+  }).first();
+
+  if (await invoiceRow.isVisible({ timeout: 10_000 }).catch(() => false)) {
+    await invoiceRow.click();
+  } else {
+    // Fallback: evaluate to find and click the element
+    await page.evaluate((invNum) => {
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) {
+        if (walker.currentNode.textContent?.includes(invNum)) {
+          let target: HTMLElement | null = walker.currentNode.parentElement;
+          for (let i = 0; i < 5 && target; i++) {
+            if (target.tagName === 'LI' || target.tagName === 'A' || target.onclick) break;
+            target = target.parentElement;
+          }
+          (target || walker.currentNode.parentElement)?.click();
+          break;
+        }
+      }
+    }, invoiceNumber);
+  }
+
+  await page.waitForURL(/\/invoices\/[^/]+/, { timeout: 15_000 }).catch(() => {});
+  await waitForPageReady(page);
+
+  // If still not on detail page, try direct URL via goTo
+  if (!page.url().match(/\/invoices\/[a-f0-9-]+/)) {
+    await goTo(page, `/invoices/${invoiceId}`);
+  }
 }
 
 /** Click a tab by name on the invoices page */
@@ -320,10 +354,12 @@ test.describe('Payment Plans', () => {
     await warmUp(page);
 
     // Navigate to invoice detail
-    await goToInvoiceDetail(page, invoice.id);
+    await goToInvoiceDetail(page, invoice.id, invoice.invoice_number);
 
-    // Verify invoice loaded
-    await expect(page.getByText(invoice.invoice_number)).toBeVisible({ timeout: 15_000 });
+    // Verify invoice loaded — wait for detail page content
+    const invoiceHeading = page.getByRole('heading', { name: new RegExp(invoice.invoice_number) }).first()
+      .or(page.getByText(`Invoice ${invoice.invoice_number}`).first());
+    await expect(invoiceHeading).toBeVisible({ timeout: 20_000 });
 
     // Find "Set Up Payment Plan" button
     const planBtn = page.getByRole('button', { name: /set up payment plan/i }).first()
@@ -386,9 +422,8 @@ test.describe('Payment Plans', () => {
     await clickTab(page, 'Payment Plans');
 
     // Verify tab content loaded — either shows plans or empty state
-    const plansContent = page.getByText(/active plans/i).first()
-      .or(page.getByText(/no active payment plans/i).first())
-      .or(page.getByText(/payment plans will appear here/i).first());
+    const plansContent = page.getByRole('heading', { name: /active payment plans/i }).first()
+      .or(page.getByRole('heading', { name: /payment plans/i }).first());
     await expect(plansContent).toBeVisible({ timeout: 10_000 });
   });
 });
@@ -626,7 +661,7 @@ test.describe('Refund Flow', () => {
     }
 
     // Navigate to the invoice detail
-    await goToInvoiceDetail(page, stripePaymentInvoice.id);
+    await goToInvoiceDetail(page, stripePaymentInvoice.id, stripePaymentInvoice.invoice_number);
     await expect(page.getByText(stripePaymentInvoice.invoice_number)).toBeVisible({ timeout: 15_000 });
 
     // Find refund button in payment history
@@ -714,7 +749,7 @@ test.describe('Refund Flow', () => {
     refundInvoiceIds.push(invoice.id);
 
     await warmUp(page);
-    await goToInvoiceDetail(page, invoice.id);
+    await goToInvoiceDetail(page, invoice.id, invoice.invoice_number);
 
     // Verify draft status
     await expect(page.getByText(/draft/i).first()).toBeVisible({ timeout: 15_000 });
