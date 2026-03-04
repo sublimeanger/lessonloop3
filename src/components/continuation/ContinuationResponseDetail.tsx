@@ -114,7 +114,7 @@ export function ContinuationResponseDetail({
 
           {/* Guardian Info */}
           <div className="rounded-lg border p-3 space-y-2">
-            <Label className="text-sm font-medium">Guardian</Label>
+            <Label>Guardian</Label>
             <p className="text-sm">{guardian?.full_name || 'Unknown'}</p>
             {guardian?.email && (
               <p className="text-xs text-muted-foreground">{guardian.email}</p>
