@@ -150,7 +150,7 @@ export function HowItWorks() {
                 →
               </motion.span>
             </motion.a>
-            <AppStoreBadge variant="black" />
+            <AppStoreBadge variant="white" />
           </div>
         </motion.div>
       </div>

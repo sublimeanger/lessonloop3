@@ -276,7 +276,7 @@ export function HeroSection() {
                 </Button>
               </motion.div>
             </Link>
-            <AppStoreBadge variant="white" />
+            <AppStoreBadge variant="black" />
           </motion.div>
 
           {/* Trust Indicators */}
