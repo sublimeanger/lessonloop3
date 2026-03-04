@@ -457,7 +457,7 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
           {isLoading ? (
             <GridSkeleton count={4} columns={4} />
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            <StatsGrid>
               <StatCard title="Today" value={stats?.todayLessons ?? 0} subtitle="Lessons today" icon={Calendar} variant="teal" />
               <StatCard title="This Month" value={stats?.lessonsThisMonth ?? 0} subtitle="Lessons this month" icon={Clock} variant="coral" />
               <StatCard title="My Students" value={stats?.myStudentsCount ?? 0} subtitle="Assigned to you" icon={Users} href="/students" variant="violet" />
