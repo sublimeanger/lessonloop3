@@ -60,6 +60,30 @@ export function RouteGuard({
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Grace period: when isInitialised fires but profile is null (hard timeout race),
+  // wait up to 3s for the recovery effect in AuthContext to fill in the profile
+  // before redirecting to onboarding.
+  const profileGraceRef = useRef(false);
+  const [profileGraceDone, setProfileGraceDone] = useState(false);
+
+  useEffect(() => {
+    // Only start grace period when we have a user, are initialised, but profile is null
+    if (isInitialised && user && !profile && !profileGraceRef.current) {
+      profileGraceRef.current = true;
+      logger.debug('[RouteGuard] Profile null after init — waiting for recovery');
+      const timer = setTimeout(() => {
+        logger.debug('[RouteGuard] Profile grace period expired');
+        setProfileGraceDone(true);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+    // If profile arrives during grace, cancel it
+    if (profile && profileGraceRef.current) {
+      profileGraceRef.current = false;
+      setProfileGraceDone(false);
+    }
+  }, [isInitialised, user, profile]);
+
   const handleForceRedirect = () => {
     // If we have a user but profile load failed, go to onboarding
     // Onboarding will self-heal and create profile if needed
