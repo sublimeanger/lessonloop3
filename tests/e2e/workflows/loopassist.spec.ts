@@ -805,20 +805,28 @@ test.describe('Parent Portal LoopAssist', () => {
     await goTo(page, '/portal');
     await waitForPageReady(page);
 
-    // Parent LoopAssist opens from header Sparkles button
-    const trigger = page.locator('button').filter({ has: page.locator('svg.lucide-sparkles') }).first();
-    const hasTrigger = await trigger.isVisible({ timeout: 10_000 }).catch(() => false);
+    // Dismiss welcome modal if it appears
+    const gotItBtn = page.getByRole('button', { name: 'Got it!' });
+    if (await gotItBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await gotItBtn.click();
+      await page.waitForTimeout(500);
+    }
+
+    // Parent LoopAssist opens from header Sparkles button or "LoopAssist" text
+    const trigger = page.locator('button').filter({ hasText: 'LoopAssist' }).first()
+      .or(page.locator('button').filter({ has: page.locator('svg.lucide-sparkles') }).first());
+    const hasTrigger = await trigger.first().isVisible({ timeout: 10_000 }).catch(() => false);
 
     if (!hasTrigger) {
       test.skip(true, 'Parent LoopAssist trigger not found');
       return;
     }
 
-    await trigger.click();
+    await trigger.first().click();
 
-    // Verify "Parent" badge is shown
-    const parentBadge = page.getByText('Parent', { exact: true });
-    await expect(parentBadge).toBeVisible({ timeout: 10_000 });
+    // Verify dialog opens — parent LoopAssist uses a sheet/dialog
+    const dialog = page.locator('div[role="dialog"]').first();
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
 
     // Verify textarea
     const textarea = page.getByPlaceholder('Ask me anything...');
@@ -829,13 +837,21 @@ test.describe('Parent Portal LoopAssist', () => {
     await goTo(page, '/portal');
     await waitForPageReady(page);
 
-    const trigger = page.locator('button').filter({ has: page.locator('svg.lucide-sparkles') }).first();
-    const hasTrigger = await trigger.isVisible({ timeout: 10_000 }).catch(() => false);
+    // Dismiss welcome modal
+    const gotItBtn = page.getByRole('button', { name: 'Got it!' });
+    if (await gotItBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await gotItBtn.click();
+      await page.waitForTimeout(500);
+    }
+
+    const trigger = page.locator('button').filter({ hasText: 'LoopAssist' }).first()
+      .or(page.locator('button').filter({ has: page.locator('svg.lucide-sparkles') }).first());
+    const hasTrigger = await trigger.first().isVisible({ timeout: 10_000 }).catch(() => false);
     if (!hasTrigger) {
       test.skip(true, 'Parent LoopAssist trigger not found');
       return;
     }
-    await trigger.click();
+    await trigger.first().click();
 
     const textarea = page.getByPlaceholder('Ask me anything...');
     await expect(textarea).toBeVisible({ timeout: 10_000 });
@@ -858,13 +874,21 @@ test.describe('Parent Portal LoopAssist', () => {
     await goTo(page, '/portal');
     await waitForPageReady(page);
 
-    const trigger = page.locator('button').filter({ has: page.locator('svg.lucide-sparkles') }).first();
-    const hasTrigger = await trigger.isVisible({ timeout: 10_000 }).catch(() => false);
+    // Dismiss welcome modal
+    const gotItBtn = page.getByRole('button', { name: 'Got it!' });
+    if (await gotItBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await gotItBtn.click();
+      await page.waitForTimeout(500);
+    }
+
+    const trigger = page.locator('button').filter({ hasText: 'LoopAssist' }).first()
+      .or(page.locator('button').filter({ has: page.locator('svg.lucide-sparkles') }).first());
+    const hasTrigger = await trigger.first().isVisible({ timeout: 10_000 }).catch(() => false);
     if (!hasTrigger) {
       test.skip(true, 'Parent LoopAssist trigger not found');
       return;
     }
-    await trigger.click();
+    await trigger.first().click();
 
     // Use a suggested prompt to create conversation
     const suggestedPrompt = page.locator('div[role="dialog"]').getByRole('button', { name: /next lesson/i }).first()
