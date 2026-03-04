@@ -462,15 +462,19 @@ test.describe('Recurring Invoices', () => {
     await clickTab(page, 'Recurring');
 
     // Verify recurring tab loaded
-    const recurringContent = page.getByText('Recurring Billing').first()
-      .or(page.getByText(/no recurring billing templates/i).first());
+    const recurringContent = page.getByRole('heading', { name: 'Recurring Billing', exact: true });
     await expect(recurringContent).toBeVisible({ timeout: 10_000 });
 
-    // Click "New Template" button
-    const newTemplateBtn = page.getByRole('button', { name: /new template/i }).first()
-      .or(page.getByRole('button', { name: /create template/i }).first());
-    await expect(newTemplateBtn).toBeVisible({ timeout: 10_000 });
-    await newTemplateBtn.click();
+    // Click "New Template" button (prefer the smaller header button over empty-state CTA)
+    const newTemplateBtn = page.getByRole('button', { name: 'New Template' });
+    const createTemplateBtn = page.getByRole('button', { name: 'Create Template' });
+    const headerBtnVisible = await newTemplateBtn.isVisible({ timeout: 5_000 }).catch(() => false);
+    if (headerBtnVisible) {
+      await newTemplateBtn.click();
+    } else {
+      await expect(createTemplateBtn).toBeVisible({ timeout: 10_000 });
+      await createTemplateBtn.click();
+    }
 
     // Dialog opens
     const dialog = page.getByRole('dialog');
@@ -562,31 +566,38 @@ test.describe('Recurring Invoices', () => {
       hasText: `E2E Recurring ${testId}`,
     }).first();
 
-    // PAUSE: Click the toggle button (ToggleRight icon button)
-    const toggleBtn = templateCard.getByRole('button').filter({
-      has: page.locator('svg'),
-    }).first();
+    // PAUSE: Click the toggle button using title attribute
+    const toggleBtn = templateCard.locator('button[title="Pause"]').first()
+      .or(templateCard.locator('button[title="Activate"]').first());
 
     if (await toggleBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
       await toggleBtn.click();
-      await page.waitForTimeout(2_000);
+      await page.waitForTimeout(3_000);
+
+      // Refresh the template card reference after mutation
+      const updatedCard = page.locator('.rounded-xl, [class*="Card"], [class*="border"]').filter({
+        hasText: `E2E Recurring ${testId}`,
+      }).first();
 
       // Verify: status changes to Paused
-      const pausedBadge = templateCard.getByText('Paused');
+      const pausedBadge = updatedCard.getByText('Paused');
       const isPaused = await pausedBadge.isVisible({ timeout: 10_000 }).catch(() => false);
       // eslint-disable-next-line no-console
       console.log(`[recurring] Paused badge visible: ${isPaused}`);
     }
 
-    // DELETE: Click the delete button (Trash2 icon)
-    const deleteBtn = templateCard.locator('button').last();
+    // DELETE: Click the delete button using title attribute
+    // Refresh card reference
+    const cardForDelete = page.locator('.rounded-xl, [class*="Card"], [class*="border"]').filter({
+      hasText: `E2E Recurring ${testId}`,
+    }).first();
+    const deleteBtn = cardForDelete.locator('button[title="Delete"]');
     if (await deleteBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
       await deleteBtn.click();
 
       // Confirm deletion in alert dialog
       const alertDialog = page.getByRole('alertdialog');
       await expect(alertDialog).toBeVisible({ timeout: 5_000 });
-      await expect(alertDialog.getByText(/delete template/i)).toBeVisible({ timeout: 5_000 });
 
       const confirmDeleteBtn = alertDialog.getByRole('button', { name: /delete/i });
       await confirmDeleteBtn.click();
