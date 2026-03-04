@@ -123,7 +123,7 @@ export function ContinuationResponseDetail({
 
           {/* Lesson Summary */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Lessons</Label>
+            <Label>Lessons</Label>
             {(response.lesson_summary || []).map((lesson, i) => (
               <div key={i} className="rounded-lg border p-3 space-y-1">
                 <div className="flex items-center justify-between">
