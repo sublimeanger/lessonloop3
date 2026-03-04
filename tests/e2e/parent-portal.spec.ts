@@ -320,9 +320,7 @@ test.describe('Parent Portal — Owner Access', () => {
     await waitForPageReady(page);
 
     const url = page.url();
-    // Owner should not see portal greeting — they should be redirected or see different content
-    const portalGreeting = page.getByText(/good (morning|afternoon|evening)/i).first();
-    const hasGreeting = await portalGreeting.isVisible({ timeout: 3_000 }).catch(() => false);
-    expect(hasGreeting, `Owner should NOT see portal greeting, but URL is: ${url}`).toBe(false);
+    // Owner should NOT land on the parent portal — should be redirected to /dashboard
+    expect(url, 'Owner should be redirected away from /portal/home').not.toContain('/portal/');
   });
 });
