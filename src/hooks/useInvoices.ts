@@ -216,13 +216,13 @@ export function useCreateInvoice() {
         _payer_student_id: data.payer_student_id ?? undefined,
         _notes: data.notes ?? undefined,
         _credit_ids: data.credit_ids || [],
-        _items: JSON.stringify(data.items.map(item => ({
+        _items: data.items.map(item => ({
           description: item.description,
           quantity: item.quantity,
           unit_price_minor: item.unit_price_minor,
           linked_lesson_id: item.linked_lesson_id || null,
           student_id: item.student_id || null,
-        }))),
+        })),
       });
 
       if (error) throw error;
