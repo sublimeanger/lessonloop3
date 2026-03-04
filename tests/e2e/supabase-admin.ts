@@ -84,6 +84,34 @@ export function supabaseSelect(table: string, query: string): any[] {
 }
 
 /**
+ * Execute a Supabase PostgREST INSERT via curl.
+ * Returns parsed JSON result or null on failure.
+ */
+export function supabaseInsert(table: string, payload: Record<string, unknown>): any {
+  const token = getOwnerToken();
+  const data = JSON.stringify(payload);
+  const tmpFile = `/tmp/sb-insert-${Date.now()}.json`;
+  fs.writeFileSync(tmpFile, data);
+  try {
+    const result = execSync(
+      `curl -s -X POST "${SUPABASE_URL}/rest/v1/${table}" ` +
+      `-H "apikey: ${SUPABASE_ANON_KEY}" ` +
+      `-H "Authorization: Bearer ${token}" ` +
+      `-H "Content-Type: application/json" ` +
+      `-H "Prefer: return=representation" ` +
+      `-d @${tmpFile}`,
+      { encoding: 'utf-8', timeout: 15_000 },
+    );
+    const parsed = JSON.parse(result);
+    return Array.isArray(parsed) ? parsed[0] : parsed;
+  } catch {
+    return null;
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+  }
+}
+
+/**
  * Get the org_id for the test organisation.
  * Cached after first call.
  */
