@@ -116,7 +116,7 @@ export function PaymentDrawer({
               <span className="text-xs text-muted-foreground">Due: {dueDate}</span>
             )}
           </div>
-          <p className="text-3xl font-bold tracking-tight">
+          <p className="text-3xl font-semibold tracking-tight">
             {formatCurrencyMinor(amount || 0, currencyCode.toUpperCase())}
           </p>
         </div>
