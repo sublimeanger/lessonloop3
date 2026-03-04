@@ -156,7 +156,7 @@ export function ContinuationResponseDetail({
           {response.next_term_fee_minor != null && (
             <div className="flex items-center justify-between rounded-lg bg-muted p-3">
               <Label className="font-medium">Total Next Term Fee</Label>
-              <span className="text-lg font-bold">
+              <span className="text-lg font-semibold">
                 {formatCurrencyMinor(response.next_term_fee_minor, currency)}
               </span>
             </div>
