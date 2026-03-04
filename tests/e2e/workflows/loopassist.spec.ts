@@ -772,14 +772,27 @@ test.describe('Role-Based Access — Finance', () => {
 test.describe('Role-Based Access — Parent', () => {
   test.use({ storageState: AUTH.parent });
 
-  test('parent cannot see staff LoopAssist', async ({ page }) => {
+  test('parent sees parent LoopAssist, not staff sidebar', async ({ page }) => {
     await goTo(page, '/portal');
     await waitForPageReady(page);
 
-    // Sidebar should NOT have "LoopAssist" button for parents
-    const sidebarBtn = page.locator('button').filter({ hasText: 'LoopAssist' });
-    const visible = await sidebarBtn.isVisible({ timeout: 5_000 }).catch(() => false);
-    expect(visible).toBe(false);
+    // Dismiss welcome modal if it appears
+    const gotItBtn = page.getByRole('button', { name: 'Got it!' });
+    if (await gotItBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await gotItBtn.click();
+    }
+
+    // Parent should NOT have the staff sidebar LoopAssist (in SidebarFooter)
+    // The staff button is inside a <aside> sidebar with data-sidebar="sidebar"
+    const staffSidebarBtn = page.locator('[data-sidebar="sidebar"] button').filter({ hasText: 'LoopAssist' });
+    const hasStaffBtn = await staffSidebarBtn.isVisible({ timeout: 3_000 }).catch(() => false);
+    expect(hasStaffBtn, 'Parent should not see staff sidebar LoopAssist').toBe(false);
+
+    // Parent SHOULD have the header LoopAssist trigger (Sparkles icon in top bar)
+    const headerBtn = page.locator('header button, nav button').filter({ hasText: 'LoopAssist' }).first()
+      .or(page.locator('button').filter({ has: page.locator('svg.lucide-sparkles') }).first());
+    const hasParentBtn = await headerBtn.first().isVisible({ timeout: 5_000 }).catch(() => false);
+    expect(hasParentBtn, 'Parent should see their own LoopAssist trigger').toBe(true);
   });
 });
 
