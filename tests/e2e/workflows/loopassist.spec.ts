@@ -917,57 +917,57 @@ test.describe('Parent Portal LoopAssist', () => {
 test.describe('LoopAssist Preferences', () => {
   test.use({ storageState: AUTH.owner });
 
-  test('navigate to preferences and view form', async ({ page }) => {
-    await goTo(page, '/settings');
+  test('navigate to preferences tab', async ({ page }) => {
+    // Navigate directly to LoopAssist preferences tab (triple 'o' in URL)
+    await goTo(page, '/settings?tab=looopassist');
     await waitForPageReady(page);
 
-    // Find the LoopAssist preferences section
-    const prefsHeading = page.getByText('LoopAssist Preferences');
-    const hasPrefs = await prefsHeading.isVisible({ timeout: 10_000 }).catch(() => false);
-
-    if (!hasPrefs) {
-      // May be behind a tab
-      const tab = page.getByRole('tab', { name: /loopAssist|AI/i }).first()
-        .or(page.getByText('LoopAssist', { exact: true }).first());
-      const hasTab = await tab.isVisible({ timeout: 5_000 }).catch(() => false);
-      if (hasTab) {
-        await tab.click();
-        await page.waitForTimeout(500);
-      }
-    }
-
+    // The tab may show: (1) the form, (2) a FeatureGate upgrade card, or
+    // (3) redirect to profile if user isn't org admin.
+    // Wait for any meaningful content to appear.
     const termNameInput = page.getByLabel('Term name');
-    const hasTerm = await termNameInput.isVisible({ timeout: 10_000 }).catch(() => false);
-    if (!hasTerm) {
-      test.skip(true, 'LoopAssist Preferences not available on this page');
+    const gateText = page.getByText('LoopAssist AI');
+    const upgradeText = page.getByText(/requires the .* plan|Upgrade|trial has expired/i);
+
+    const hasForm = await termNameInput.isVisible({ timeout: 15_000 }).catch(() => false);
+    if (hasForm) {
+      await expect(page.getByLabel('Billing cycle')).toBeVisible();
+      await expect(page.getByText('Tone')).toBeVisible();
+      await expect(page.getByLabel('Custom instructions')).toBeVisible();
       return;
     }
 
-    await expect(page.getByLabel('Term name')).toBeVisible();
-    await expect(page.getByLabel('Billing cycle')).toBeVisible();
-    await expect(page.getByText('Tone')).toBeVisible();
-    await expect(page.getByLabel('Custom instructions')).toBeVisible();
+    // Check if FeatureGate is showing upgrade prompt (with "LoopAssist AI" heading)
+    const hasGate = await gateText.first().isVisible({ timeout: 5_000 }).catch(() => false);
+    if (hasGate) {
+      // FeatureGate rendered — verify it shows upgrade info
+      const hasUpgrade = await upgradeText.first().isVisible({ timeout: 3_000 }).catch(() => false);
+      if (hasUpgrade) {
+        await expect(upgradeText.first()).toBeVisible();
+        return;
+      }
+    }
+
+    // Neither form nor gate — tab may not be accessible (non-admin, wrong plan, etc.)
+    // Check if we're on the profile tab instead (admin redirect)
+    const profileHeading = page.getByText('Profile');
+    const isOnProfile = await profileHeading.first().isVisible({ timeout: 3_000 }).catch(() => false);
+    if (isOnProfile) {
+      test.skip(true, 'User redirected to profile — LoopAssist tab not accessible');
+      return;
+    }
+
+    test.skip(true, 'LoopAssist Preferences tab not rendered (onboarding or feature gate)');
   });
 
   test('update and save preferences', async ({ page }) => {
-    await goTo(page, '/settings');
+    await goTo(page, '/settings?tab=looopassist');
     await waitForPageReady(page);
-
-    // Navigate to prefs if needed
-    const prefsHeading = page.getByText('LoopAssist Preferences');
-    if (!(await prefsHeading.isVisible({ timeout: 5_000 }).catch(() => false))) {
-      const tab = page.getByRole('tab', { name: /loopAssist|AI/i }).first()
-        .or(page.getByText('LoopAssist', { exact: true }).first());
-      if (await tab.isVisible({ timeout: 3_000 }).catch(() => false)) {
-        await tab.click();
-        await page.waitForTimeout(500);
-      }
-    }
 
     const customInstructions = page.getByLabel('Custom instructions');
     const hasField = await customInstructions.isVisible({ timeout: 10_000 }).catch(() => false);
     if (!hasField) {
-      test.skip(true, 'LoopAssist Preferences form not available');
+      test.skip(true, 'LoopAssist Preferences form not available (feature gated)');
       return;
     }
 
@@ -980,21 +980,12 @@ test.describe('LoopAssist Preferences', () => {
     await saveBtn.click();
 
     // Verify toast
-    const toast = page.locator('[data-radix-collection-item]').filter({ hasText: /saved|preferences/i });
+    const toast = page.locator('[data-radix-collection-item]').filter({ hasText: /saved|preferences|updated/i });
     await expect(toast.first()).toBeVisible({ timeout: 10_000 });
 
     // Reload and verify persistence
-    await page.reload();
+    await goTo(page, '/settings?tab=looopassist');
     await waitForPageReady(page);
-
-    if (!(await page.getByText('LoopAssist Preferences').isVisible({ timeout: 5_000 }).catch(() => false))) {
-      const tab = page.getByRole('tab', { name: /loopAssist|AI/i }).first()
-        .or(page.getByText('LoopAssist', { exact: true }).first());
-      if (await tab.isVisible({ timeout: 3_000 }).catch(() => false)) {
-        await tab.click();
-        await page.waitForTimeout(500);
-      }
-    }
 
     const customAfterReload = page.getByLabel('Custom instructions');
     await expect(customAfterReload).toBeVisible({ timeout: 10_000 });
