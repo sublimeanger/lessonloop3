@@ -25,10 +25,10 @@ const cards = [
 
 export function MakeUpStatsCards({ stats, isLoading }: MakeUpStatsCardsProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
+    <StatsGrid>
       {cards.map(({ key, label, icon: Icon, color }) => (
         <Card key={key} className="border border-border bg-card">
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
