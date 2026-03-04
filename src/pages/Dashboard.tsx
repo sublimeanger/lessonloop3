@@ -389,7 +389,7 @@ function TeacherDashboard({ firstName }: { firstName: string }) {
   return (
     <AppLayout>
       <motion.div
-        className="space-y-4 sm:space-y-6 max-w-4xl"
+        className="flex flex-col gap-4 sm:gap-6 max-w-4xl"
         initial="hidden"
         animate="visible"
         variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
