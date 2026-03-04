@@ -145,7 +145,7 @@ export function RefundDialog({
                   </Badge>
                 )}
               </div>
-              <p className="text-2xl font-bold tracking-tight">
+              <p className="text-2xl font-semibold tracking-tight">
                 {formatCurrencyMinor(paymentAmount, currencyCode)}
               </p>
               {paidAt && (
