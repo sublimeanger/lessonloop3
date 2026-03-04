@@ -256,15 +256,19 @@ test.describe('Settings — Finance', () => {
 test.describe('Settings — Parent', () => {
   test.use({ storageState: AUTH.parent });
 
-  test('parent accessing /settings loads or redirects', async ({ page }) => {
+  test('parent accessing /settings is redirected to portal', async ({ page }) => {
     await page.goto('/settings');
-    await page.waitForTimeout(5_000);
-
-    const url = page.url();
-    // eslint-disable-next-line no-console
-    console.log(`[parent-settings] URL: ${url}`);
-
-    // Parent may be redirected to portal or see minimal settings
-    await expect(page.locator('body')).toBeVisible();
+    // Parent is not a staff role — should redirect to /portal/home or /dashboard
+    await page.waitForURL(
+      url => /\/portal\/home|\/dashboard/.test(url.toString()),
+      { timeout: 15_000 },
+    ).catch(async () => {
+      await page.goto('/settings');
+      await page.waitForURL(
+        url => /\/portal\/home|\/dashboard/.test(url.toString()),
+        { timeout: 15_000 },
+      );
+    });
+    expect(page.url(), 'Parent should be redirected away from /settings').not.toContain('/settings');
   });
 });

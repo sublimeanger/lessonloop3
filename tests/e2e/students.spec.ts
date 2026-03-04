@@ -498,18 +498,13 @@ test.describe('Students — Teacher', () => {
 test.describe('Students — Finance', () => {
   test.use({ storageState: AUTH.finance });
 
-  test('finance user accessing /students is redirected or restricted', async ({ page }) => {
+  test('finance user accessing /students is redirected to dashboard', async ({ page }) => {
     await page.goto('/students');
-    await page.waitForTimeout(5_000);
-
-    const url = page.url();
-    const onStudents = url.includes('/students');
-    const onDashboard = url.includes('/dashboard');
-
-    // eslint-disable-next-line no-console
-    console.log(`[finance-students] URL: ${url}, onStudents: ${onStudents}, redirected: ${onDashboard}`);
-
-    // Finance doesn't have Students in sidebar — should redirect or show limited view
-    await expect(page.locator('body')).toBeVisible();
+    // Finance is not allowed on /students — should redirect to /dashboard
+    await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 }).catch(async () => {
+      await page.goto('/students');
+      await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 });
+    });
+    expect(page.url(), 'Finance should be redirected away from /students').not.toContain('/students');
   });
 });

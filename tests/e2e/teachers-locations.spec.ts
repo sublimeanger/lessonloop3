@@ -188,16 +188,15 @@ test.describe('Teachers — Owner', () => {
 test.describe('Teachers — Teacher Role', () => {
   test.use({ storageState: AUTH.teacher });
 
-  test('teacher accessing /teachers is redirected or restricted', async ({ page }) => {
+  test('teacher accessing /teachers is redirected to dashboard', async ({ page }) => {
     await page.goto('/teachers');
-    await page.waitForTimeout(5_000);
-
-    const url = page.url();
-    // eslint-disable-next-line no-console
-    console.log(`[teacher-teachers] URL: ${url}`);
-
-    // Teacher doesn't have "Teachers" in their sidebar nav
-    await expect(page.locator('body')).toBeVisible();
+    // Teacher is not allowed on /teachers — should redirect to /dashboard
+    await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 }).catch(async () => {
+      // Retry once — auth session may not be warm
+      await page.goto('/teachers');
+      await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 });
+    });
+    expect(page.url(), 'Teacher should be redirected away from /teachers').not.toContain('/teachers');
   });
 });
 
@@ -362,16 +361,14 @@ test.describe('Locations — Owner', () => {
 test.describe('Locations — Teacher Role', () => {
   test.use({ storageState: AUTH.teacher });
 
-  test('teacher accessing /locations is redirected or restricted', async ({ page }) => {
+  test('teacher accessing /locations is redirected to dashboard', async ({ page }) => {
     await page.goto('/locations');
-    await page.waitForTimeout(5_000);
-
-    const url = page.url();
-    // eslint-disable-next-line no-console
-    console.log(`[teacher-locations] URL: ${url}`);
-
-    // Teacher doesn't have "Locations" in sidebar
-    await expect(page.locator('body')).toBeVisible();
+    // Teacher is not allowed on /locations — should redirect to /dashboard
+    await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 }).catch(async () => {
+      await page.goto('/locations');
+      await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 });
+    });
+    expect(page.url(), 'Teacher should be redirected away from /locations').not.toContain('/locations');
   });
 });
 
@@ -381,19 +378,21 @@ test.describe('Locations — Teacher Role', () => {
 test.describe('Teachers & Locations — Finance', () => {
   test.use({ storageState: AUTH.finance });
 
-  test('finance accessing /teachers is redirected or restricted', async ({ page }) => {
+  test('finance accessing /teachers is redirected to dashboard', async ({ page }) => {
     await page.goto('/teachers');
-    await page.waitForTimeout(5_000);
-    // eslint-disable-next-line no-console
-    console.log(`[finance-teachers] URL: ${page.url()}`);
-    await expect(page.locator('body')).toBeVisible();
+    await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 }).catch(async () => {
+      await page.goto('/teachers');
+      await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 });
+    });
+    expect(page.url(), 'Finance should be redirected away from /teachers').not.toContain('/teachers');
   });
 
-  test('finance accessing /locations is redirected or restricted', async ({ page }) => {
+  test('finance accessing /locations is redirected to dashboard', async ({ page }) => {
     await page.goto('/locations');
-    await page.waitForTimeout(5_000);
-    // eslint-disable-next-line no-console
-    console.log(`[finance-locations] URL: ${page.url()}`);
-    await expect(page.locator('body')).toBeVisible();
+    await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 }).catch(async () => {
+      await page.goto('/locations');
+      await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 });
+    });
+    expect(page.url(), 'Finance should be redirected away from /locations').not.toContain('/locations');
   });
 });

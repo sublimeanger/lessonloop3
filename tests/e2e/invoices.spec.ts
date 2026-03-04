@@ -321,19 +321,14 @@ test.describe('Invoices — Finance', () => {
 test.describe('Invoices — Teacher', () => {
   test.use({ storageState: AUTH.teacher });
 
-  test('teacher accessing /invoices is redirected or restricted', async ({ page }) => {
+  test('teacher accessing /invoices is redirected to dashboard', async ({ page }) => {
     await page.goto('/invoices');
-    await page.waitForTimeout(5_000);
-
-    const url = page.url();
-    const onInvoices = url.includes('/invoices');
-    const onDashboard = url.includes('/dashboard');
-
-    // eslint-disable-next-line no-console
-    console.log(`[teacher-invoices] URL: ${url}, onInvoices: ${onInvoices}, redirected: ${onDashboard}`);
-
-    // Teacher doesn't have Invoices in sidebar — should redirect or show restricted
-    await expect(page.locator('body')).toBeVisible();
+    // Teacher is not allowed on /invoices — should redirect to /dashboard
+    await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 }).catch(async () => {
+      await page.goto('/invoices');
+      await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 });
+    });
+    expect(page.url(), 'Teacher should be redirected away from /invoices').not.toContain('/invoices');
   });
 });
 

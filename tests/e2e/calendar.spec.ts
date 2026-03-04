@@ -430,23 +430,14 @@ test.describe('Calendar — Teacher', () => {
 test.describe('Calendar — Finance', () => {
   test.use({ storageState: AUTH.finance });
 
-  test('finance user accessing /calendar is redirected or restricted', async ({ page }) => {
+  test('finance user accessing /calendar is redirected to dashboard', async ({ page }) => {
     await page.goto('/calendar');
-    await page.waitForTimeout(5_000);
-
-    // Finance role doesn't have Calendar in their sidebar nav.
-    // They may either get redirected or see a restricted view.
-    const url = page.url();
-    const onCalendar = url.includes('/calendar');
-    const onDashboard = url.includes('/dashboard');
-    const hasError = await page.getByText(/access|permission|denied|not found/i).first()
-      .isVisible({ timeout: 3_000 }).catch(() => false);
-
-    // eslint-disable-next-line no-console
-    console.log(`[finance-calendar] URL: ${url}, onCalendar: ${onCalendar}, redirected: ${onDashboard}, hasError: ${hasError}`);
-
-    // At least verify no crash happened
-    await expect(page.locator('body')).toBeVisible();
+    // Finance is not allowed on /calendar — should redirect to /dashboard
+    await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 }).catch(async () => {
+      await page.goto('/calendar');
+      await page.waitForURL(url => /\/dashboard/.test(url.toString()), { timeout: 15_000 });
+    });
+    expect(page.url(), 'Finance should be redirected away from /calendar').not.toContain('/calendar');
   });
 });
 
