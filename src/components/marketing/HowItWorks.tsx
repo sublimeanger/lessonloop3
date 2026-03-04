@@ -1,6 +1,7 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import { UserPlus, Calendar, CreditCard, Sparkles } from "lucide-react";
+import { AppStoreBadge } from "@/components/marketing/AppStoreBadge";
 
 const steps = [
   {
@@ -134,20 +135,23 @@ export function HowItWorks() {
           <p className="text-muted-foreground mb-4">
             Ready to simplify your teaching admin?
           </p>
-          <motion.a
-            href="/signup"
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.98 }}
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-primary text-primary-foreground font-bold shadow-lg hover:shadow-xl transition-shadow"
-          >
-            Start free trial
-            <motion.span
-              animate={{ x: [0, 4, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <motion.a
+              href="/signup"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-primary text-primary-foreground font-bold shadow-lg hover:shadow-xl transition-shadow"
             >
-              →
-            </motion.span>
-          </motion.a>
+              Start free trial
+              <motion.span
+                animate={{ x: [0, 4, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              >
+                →
+              </motion.span>
+            </motion.a>
+            <AppStoreBadge variant="black" />
+          </div>
         </motion.div>
       </div>
     </section>

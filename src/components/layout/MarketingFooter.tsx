@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogoWordmark } from "@/components/brand/Logo";
 import { ArrowRight, Shield, MapPin, Clock } from "lucide-react";
+import { AppStoreBadge } from "@/components/marketing/AppStoreBadge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -157,6 +158,9 @@ export const MarketingFooter = React.forwardRef<HTMLElement>(function MarketingF
               <p className="mt-4 text-white/40 text-sm leading-relaxed max-w-xs">
                 Keeping every lesson in the loop — scheduling, billing, and parent communication for music educators.
               </p>
+              <div className="mt-5">
+                <AppStoreBadge variant="white" />
+              </div>
               <a
                 href="https://ltpmusic.co.uk"
                 target="_blank"
