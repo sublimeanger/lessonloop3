@@ -323,9 +323,18 @@ test.describe('Navigation Performance', () => {
 test.describe('Interaction Response Times', () => {
   test.use({ storageState: AUTH.owner });
 
-  test('Add Student wizard opens within 2s', async ({ page }) => {
-    await goTo(page, '/students');
+  /** Navigate to a page via sidebar after warming the session on dashboard */
+  async function warmAndNavigate(page: Page, href: string) {
+    await goTo(page, '/dashboard');
     await waitForPageReady(page);
+    const link = page.locator(`[data-tour="sidebar"] a[href="${href}"]`).first();
+    await link.click();
+    await waitForPageReady(page);
+    await page.waitForTimeout(2_000);
+  }
+
+  test('Add Student wizard opens within 2s', async ({ page }) => {
+    await warmAndNavigate(page, '/students');
     const addBtn = page.locator('[data-tour="add-student-button"]').first()
       .or(page.getByRole('button', { name: /add student/i }).first());
     await expect(addBtn).toBeVisible({ timeout: 10_000 });
@@ -340,9 +349,7 @@ test.describe('Interaction Response Times', () => {
   });
 
   test('Search filters students within 2s', async ({ page }) => {
-    await goTo(page, '/students');
-    await waitForPageReady(page);
-    await page.waitForTimeout(2_000); // let list fully render
+    await warmAndNavigate(page, '/students');
 
     const searchInput = page.getByPlaceholder('Search students...').first()
       .or(page.getByPlaceholder(/search/i).first())
@@ -364,8 +371,7 @@ test.describe('Interaction Response Times', () => {
   });
 
   test('Payment Plans tab switches within 2s', async ({ page }) => {
-    await goTo(page, '/invoices');
-    await waitForPageReady(page);
+    await warmAndNavigate(page, '/invoices');
 
     const plansTab = page.getByRole('tab', { name: 'Payment Plans' }).first();
     const visible = await plansTab.isVisible({ timeout: 8_000 }).catch(() => false);
@@ -384,14 +390,12 @@ test.describe('Interaction Response Times', () => {
   });
 
   test('Status filter pill applies within 2s', async ({ page }) => {
-    await goTo(page, '/students');
-    await waitForPageReady(page);
-    await page.waitForTimeout(2_000);
+    await warmAndNavigate(page, '/students');
 
-    const filterBar = page.locator('[aria-label="Student status filters"]').first()
-      .or(page.locator('[data-tour*="filter"]').first())
-      .or(page.locator('main').getByRole('group').first());
-    const hasFilter = await filterBar.isVisible({ timeout: 10_000 }).catch(() => false);
+    // Filter bar uses role="tablist" with aria-label="Student status filters"
+    // Buttons show "Active (N)" format
+    const filterBar = page.locator('[role="tablist"][aria-label="Student status filters"]').first();
+    const hasFilter = await filterBar.isVisible({ timeout: 15_000 }).catch(() => false);
     if (!hasFilter) {
       test.skip(true, 'Filter bar not found');
       return;
@@ -440,8 +444,7 @@ test.describe('Interaction Response Times', () => {
   });
 
   test('Dialog close responds within 500ms', async ({ page }) => {
-    await goTo(page, '/students');
-    await waitForPageReady(page);
+    await warmAndNavigate(page, '/students');
 
     const addBtn = page.locator('[data-tour="add-student-button"]').first()
       .or(page.getByRole('button', { name: /add student/i }).first());
