@@ -237,3 +237,64 @@ export function deleteResourceById(resourceId: string): void {
   supabaseDelete('resource_shares', `org_id=eq.${orgId}&resource_id=eq.${resourceId}`);
   supabaseDelete('resources', `org_id=eq.${orgId}&id=eq.${resourceId}`);
 }
+
+/**
+ * Call a Supabase RPC function via curl.
+ * Returns parsed JSON result.
+ */
+export function supabaseRpc(fnName: string, params: Record<string, unknown>): unknown {
+  const token = getOwnerToken();
+  const payload = JSON.stringify(params);
+  const tmpFile = `/tmp/sb-rpc-${Date.now()}.json`;
+  fs.writeFileSync(tmpFile, payload);
+  try {
+    const result = execSync(
+      `curl -s -X POST "${SUPABASE_URL}/rest/v1/rpc/${fnName}" ` +
+      `-H "apikey: ${SUPABASE_ANON_KEY}" ` +
+      `-H "Authorization: Bearer ${token}" ` +
+      `-H "Content-Type: application/json" ` +
+      `-H "Prefer: return=representation" ` +
+      `-d @${tmpFile}`,
+      { encoding: 'utf-8', timeout: 30_000 },
+    );
+    return JSON.parse(result);
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+  }
+}
+
+/**
+ * Create a test invoice via the RPC function (bypasses UI form).
+ * Returns { id, invoice_number, total_minor }.
+ */
+export function createTestInvoice(opts: {
+  dueDate: string;
+  payerGuardianId?: string;
+  payerStudentId?: string;
+  notes?: string;
+  items: Array<{ description: string; quantity: number; unit_price_minor: number }>;
+}): { id: string; invoice_number: string; total_minor: number } {
+  const orgId = getOrgId();
+  if (!orgId) throw new Error('No org ID found');
+
+  const result = supabaseRpc('create_invoice_with_items', {
+    _org_id: orgId,
+    _due_date: opts.dueDate,
+    _payer_guardian_id: opts.payerGuardianId ?? null,
+    _payer_student_id: opts.payerStudentId ?? null,
+    _notes: opts.notes ?? null,
+    _credit_ids: [],
+    _items: opts.items,
+  });
+  return result as { id: string; invoice_number: string; total_minor: number };
+}
+
+/**
+ * Get first guardian ID for the test org.
+ */
+export function getFirstGuardianId(): string {
+  const orgId = getOrgId();
+  if (!orgId) return '';
+  const guardians = supabaseSelect('guardians', `org_id=eq.${orgId}&deleted_at=is.null&select=id&limit=1&order=full_name`);
+  return guardians.length > 0 ? guardians[0].id : '';
+}
