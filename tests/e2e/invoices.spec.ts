@@ -22,8 +22,7 @@ test.describe('Invoices List — Owner', () => {
     const statsWidget = page.locator('[data-tour="invoice-stats"]').first()
       .or(page.locator('main').getByText(/total|outstanding|overdue|paid/i).first());
     const visible = await statsWidget.isVisible({ timeout: 10_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[invoices] Stats widget visible: ${visible}`);
+    expect(visible, 'Stats widget should be visible on invoices page').toBe(true);
   });
 
   test('has 3 tabs: Invoices, Payment Plans, Recurring', async ({ page }) => {
@@ -31,16 +30,15 @@ test.describe('Invoices List — Owner', () => {
     if (!page.url().includes('/invoices')) return; // auth race
 
     const expectedTabs = ['Invoices', 'Payment Plans', 'Recurring'];
+    let visibleCount = 0;
     for (const tabName of expectedTabs) {
       const tab = page.getByRole('tab', { name: tabName }).first()
         .or(page.getByText(tabName, { exact: true }).first());
       const visible = await tab.isVisible({ timeout: 8_000 }).catch(() => false);
-      // eslint-disable-next-line no-console
-      console.log(`[invoices] Tab "${tabName}": ${visible}`);
+      if (visible) visibleCount++;
     }
 
-    // The page should at least show the main content
-    await expect(page.locator('main').first()).toBeVisible({ timeout: 10_000 });
+    expect(visibleCount, 'At least 2 of 3 tabs (Invoices, Payment Plans, Recurring) should be visible').toBeGreaterThanOrEqual(2);
   });
 
   test('clicking Payment Plans tab loads content', async ({ page }) => {
@@ -69,17 +67,19 @@ test.describe('Invoices List — Owner', () => {
 
   test('status filter pills are interactive', async ({ page }) => {
     await safeGoTo(page, '/invoices', 'Invoices');
+    if (!page.url().includes('/invoices')) return; // auth race
     await page.waitForTimeout(2_000);
 
     // Status pills: All, Draft, Sent, Paid, Overdue, Cancelled
     const statusPills = ['All', 'Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled'];
+    let visiblePillCount = 0;
     for (const status of statusPills) {
       const pill = page.getByRole('button', { name: new RegExp(`^${status}`, 'i') }).first()
         .or(page.locator('button').filter({ hasText: new RegExp(`^${status}`) }).first());
       const visible = await pill.isVisible({ timeout: 3_000 }).catch(() => false);
-      // eslint-disable-next-line no-console
-      console.log(`[invoices] Status pill "${status}": ${visible}`);
+      if (visible) visiblePillCount++;
     }
+    expect(visiblePillCount, 'At least 3 status pills should be visible').toBeGreaterThanOrEqual(3);
 
     // Click "Draft" filter
     const draftPill = page.locator('button').filter({ hasText: /^Draft/ }).first();
@@ -159,14 +159,12 @@ test.describe('Invoices List — Owner', () => {
     // Should be on config step with description
     const configDesc = dialog.getByText(/configure.*billing/i).first();
     const hasConfig = await configDesc.isVisible({ timeout: 5_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[invoices] Billing Run config step: ${hasConfig}`);
+    expect(hasConfig, 'Billing Run config step should be visible').toBe(true);
 
     // Check for form labels
     const billingTypeLabel = dialog.getByText('Billing Type').first();
     const hasLabel = await billingTypeLabel.isVisible({ timeout: 5_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[invoices] Billing Type label: ${hasLabel}`);
+    expect(hasLabel, 'Billing Type label should be visible in wizard').toBe(true);
 
     // Close
     await page.keyboard.press('Escape');
@@ -174,33 +172,29 @@ test.describe('Invoices List — Owner', () => {
 
   test('invoice list shows data or empty state', async ({ page }) => {
     await safeGoTo(page, '/invoices', 'Invoices');
+    if (!page.url().includes('/invoices')) return; // auth race
     await page.waitForTimeout(3_000);
 
     const invoiceList = page.locator('[data-tour="invoice-list"]');
     const hasInvoices = await invoiceList.isVisible({ timeout: 5_000 }).catch(() => false);
 
     if (hasInvoices) {
-      // eslint-disable-next-line no-console
-      console.log('[invoices] Invoice list is populated');
       // Check that rows/items exist
       const rows = invoiceList.locator('tr, [role="listitem"]');
       const rowCount = await rows.count();
-      // eslint-disable-next-line no-console
-      console.log(`[invoices] Row count: ${rowCount}`);
+      expect(rowCount, 'Invoice list should contain at least one row').toBeGreaterThan(0);
     } else {
       // Should show empty state
       const emptyState = page.getByText('No invoices').first();
       const hasEmpty = await emptyState.isVisible({ timeout: 5_000 }).catch(() => false);
-      // eslint-disable-next-line no-console
-      console.log(`[invoices] Empty state visible: ${hasEmpty}`);
+      expect(hasEmpty, 'Empty state message should be visible when no invoices exist').toBe(true);
       if (hasEmpty) {
         // Empty state should have action buttons
         const billingRunAction = page.getByRole('button', { name: /start billing run/i }).first();
         const createAction = page.getByRole('button', { name: /create manually/i }).first();
         const hasBillingAction = await billingRunAction.isVisible({ timeout: 3_000 }).catch(() => false);
         const hasCreateAction = await createAction.isVisible({ timeout: 3_000 }).catch(() => false);
-        // eslint-disable-next-line no-console
-        console.log(`[invoices] Empty state — Billing Run: ${hasBillingAction}, Create: ${hasCreateAction}`);
+        expect(hasBillingAction || hasCreateAction, 'Empty state should show at least one action button').toBe(true);
       }
     }
   });
@@ -211,11 +205,7 @@ test.describe('Invoices List — Owner', () => {
 
     const invoiceList = page.locator('[data-tour="invoice-list"]');
     const hasInvoices = await invoiceList.isVisible({ timeout: 5_000 }).catch(() => false);
-    if (!hasInvoices) {
-      // eslint-disable-next-line no-console
-      console.log('[invoices] No invoices to click');
-      return;
-    }
+    if (!hasInvoices) return; // no invoices to click
 
     // Desktop: click a table row (but not a button/checkbox inside it)
     const row = invoiceList.locator('tr').filter({ hasText: /INV-|£/ }).first()
@@ -226,8 +216,7 @@ test.describe('Invoices List — Owner', () => {
       await row.click({ position: { x: 200, y: 10 } });
       await page.waitForURL(/\/invoices\/[\w-]+/, { timeout: 10_000 }).catch(() => {});
       const url = page.url();
-      // eslint-disable-next-line no-console
-      console.log(`[invoices] After row click, URL: ${url}`);
+      expect(url, 'URL should contain /invoices/ after clicking an invoice row').toContain('/invoices/');
     }
   });
 
@@ -253,14 +242,12 @@ test.describe('Invoices List — Owner', () => {
       // Should show status badge and invoice details
       const statusBadge = page.locator('[class*="badge"]').first();
       const hasBadge = await statusBadge.isVisible({ timeout: 5_000 }).catch(() => false);
-      // eslint-disable-next-line no-console
-      console.log(`[invoices] Detail page status badge: ${hasBadge}`);
+      expect(hasBadge, 'Invoice detail page should show a status badge').toBe(true);
 
       // Breadcrumb back to Invoices should exist
       const breadcrumb = page.getByRole('link', { name: 'Invoices' }).first();
       const hasBreadcrumb = await breadcrumb.isVisible({ timeout: 5_000 }).catch(() => false);
-      // eslint-disable-next-line no-console
-      console.log(`[invoices] Detail breadcrumb: ${hasBreadcrumb}`);
+      expect(hasBreadcrumb, 'Invoice detail page should show breadcrumb link back to Invoices').toBe(true);
     }
   });
 
@@ -291,16 +278,18 @@ test.describe('Invoices — Finance', () => {
 
   test('finance user sees Create Invoice and Billing Run buttons', async ({ page }) => {
     await safeGoTo(page, '/invoices', 'Finance Invoices');
+    if (!page.url().includes('/invoices')) return; // auth race
 
     // Finance role can manage invoices
-    const createBtn = page.locator('[data-tour="create-invoice-button"]');
-    const billingBtn = page.locator('[data-tour="billing-run-button"]');
+    const createBtn = page.locator('[data-tour="create-invoice-button"]')
+      .or(page.getByRole('button', { name: /create invoice/i }).first());
+    const billingBtn = page.locator('[data-tour="billing-run-button"]')
+      .or(page.getByRole('button', { name: /billing run/i }).first());
 
     const hasCreate = await createBtn.isVisible({ timeout: 10_000 }).catch(() => false);
     const hasBilling = await billingBtn.isVisible({ timeout: 5_000 }).catch(() => false);
 
-    // eslint-disable-next-line no-console
-    console.log(`[finance-invoices] Create: ${hasCreate}, Billing Run: ${hasBilling}`);
+    expect(hasCreate || hasBilling, 'Finance user should see at least one of Create Invoice or Billing Run buttons').toBe(true);
   });
 
   test('finance can navigate to invoice detail', async ({ page }) => {

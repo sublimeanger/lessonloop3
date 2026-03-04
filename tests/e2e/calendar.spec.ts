@@ -100,11 +100,13 @@ test.describe('Calendar — Owner', () => {
 
   test('Agenda view shows "Group by teacher" toggle', async ({ page }) => {
     await safeGoTo(page, '/calendar?view=agenda', 'Calendar Agenda');
+    if (!page.url().includes('/calendar')) return; // auth race
 
-    const groupBtn = page.locator('[aria-label="Group by teacher"]').first();
+    const groupBtn = page.locator('[aria-label="Group by teacher"]').first()
+      .or(page.getByRole('button', { name: /group by teacher/i }).first());
     const visible = await groupBtn.isVisible({ timeout: 8_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[calendar] Group by teacher toggle in agenda: ${visible}`);
+    // TODO: Group by teacher toggle may not use aria-label — verify selector
+    expect(visible, 'Group by teacher toggle should be visible in agenda view').toBe(true);
 
     // When not in agenda view, it should be hidden
     await safeGoTo(page, '/calendar?view=week', 'Calendar Week');
@@ -236,19 +238,18 @@ test.describe('Calendar — Owner', () => {
 
     // Check key form fields exist
     const expectedFields = ['Teacher', 'Date', 'Time', 'Duration'];
+    let visibleCount = 0;
     for (const field of expectedFields) {
       const label = dialog.getByText(field, { exact: true }).first();
       const visible = await label.isVisible({ timeout: 5_000 }).catch(() => false);
-      // eslint-disable-next-line no-console
-      console.log(`[calendar] Form field "${field}": ${visible}`);
+      if (visible) visibleCount++;
     }
+    expect(visibleCount, 'At least 3 of 4 form fields should be visible').toBeGreaterThanOrEqual(3);
 
     // Teacher select should have placeholder
     const teacherSelect = dialog.getByText('Select teacher').first()
       .or(dialog.locator('[placeholder="Select teacher"]').first());
-    const hasTeacherSelect = await teacherSelect.isVisible({ timeout: 5_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[calendar] Teacher select: ${hasTeacherSelect}`);
+    await expect(teacherSelect).toBeVisible({ timeout: 5_000 });
 
     // Cancel button should work
     const cancelBtn = dialog.getByRole('button', { name: /cancel/i }).first();
@@ -320,10 +321,9 @@ test.describe('Calendar — Owner', () => {
     const panel = page.locator('[role="dialog"]')
       .or(page.locator('[data-state="open"]').first());
     const panelOpen = await panel.first().isVisible({ timeout: 5_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[calendar] Lesson detail panel opened: ${panelOpen}`);
 
     if (panelOpen) {
+      await expect(panel.first()).toBeVisible();
       // Close it
       await page.keyboard.press('Escape');
       await page.waitForTimeout(500);
@@ -402,9 +402,7 @@ test.describe('Calendar — Teacher', () => {
     const newLessonBtn = page.locator('[data-tour="create-lesson-button"]').first()
       .or(page.getByRole('button', { name: /new lesson/i }).first())
       .or(page.locator('[aria-label="New Lesson"]').first());
-    const visible = await newLessonBtn.isVisible({ timeout: 10_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[teacher-calendar] New Lesson button: ${visible}`);
+    await expect(newLessonBtn).toBeVisible({ timeout: 10_000 });
   });
 
   test('Today and navigation buttons work', async ({ page }) => {
@@ -418,11 +416,11 @@ test.describe('Calendar — Teacher', () => {
 
   test('filter bar is visible', async ({ page }) => {
     await safeGoTo(page, '/calendar', 'Teacher Calendar');
-    const filtersBar = page.locator('[data-tour="calendar-filters"]').first();
+    if (!page.url().includes('/calendar')) return; // auth race
+    const filtersBar = page.locator('[data-tour="calendar-filters"]').first()
+      .or(page.locator('main').getByText(/all|filter/i).first());
     const visible = await filtersBar.isVisible({ timeout: 10_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[teacher-calendar] Filters bar: ${visible}`);
-    // Filter bar should still be present even for teachers
+    expect(visible, 'Filter bar should be visible for teacher on calendar').toBe(true);
   });
 });
 

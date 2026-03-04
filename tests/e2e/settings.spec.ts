@@ -21,16 +21,13 @@ test.describe('Settings — Owner', () => {
 
     const settingsNav = page.locator('nav[aria-label="Settings navigation"]').first();
     const hasNav = await settingsNav.isVisible({ timeout: 10_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[settings] Settings nav visible: ${hasNav}`);
+    if (!hasNav) return;
 
     // Check group headings
     const groups = ['Account', 'Organisation', 'Teaching', 'Business', 'Compliance'];
     for (const group of groups) {
       const heading = page.getByText(group, { exact: true }).first();
-      const visible = await heading.isVisible({ timeout: 3_000 }).catch(() => false);
-      // eslint-disable-next-line no-console
-      console.log(`[settings] Group "${group}": ${visible}`);
+      await expect(heading, `Settings nav group "${group}" should be visible`).toBeVisible({ timeout: 3_000 });
     }
   });
 
@@ -41,9 +38,7 @@ test.describe('Settings — Owner', () => {
 
     // Profile page may have various text
     const profileContent = page.getByText(/profile|account|personal/i).first();
-    const hasProfile = await profileContent.isVisible({ timeout: 10_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[settings] Profile content visible: ${hasProfile}`);
+    await expect(profileContent, 'Profile content should be visible').toBeVisible({ timeout: 10_000 });
     await assertNoErrorBoundary(page);
   });
 
@@ -53,9 +48,7 @@ test.describe('Settings — Owner', () => {
     await page.waitForTimeout(2_000);
 
     const orgContent = page.getByText(/organisation|organization|business/i).first();
-    const hasOrg = await orgContent.isVisible({ timeout: 10_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[settings] Organisation content visible: ${hasOrg}`);
+    await expect(orgContent, 'Organisation content should be visible').toBeVisible({ timeout: 10_000 });
     await assertNoErrorBoundary(page);
   });
 
@@ -102,13 +95,13 @@ test.describe('Settings — Owner', () => {
 
   test('Billing tab shows plan cards', async ({ page }) => {
     await safeGoTo(page, '/settings?tab=billing', 'Settings Billing');
+    if (!page.url().includes('/settings')) return; // auth race
     await page.waitForTimeout(3_000);
 
     // Should show "Current Plan" badge on one of the plans
-    const currentPlan = page.getByText('Current Plan').first();
-    const hasCurrent = await currentPlan.isVisible({ timeout: 10_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[settings] "Current Plan" badge: ${hasCurrent}`);
+    const currentPlan = page.getByText('Current Plan').first()
+      .or(page.getByText(/free|starter|pro|enterprise/i).first());
+    await expect(currentPlan, 'Billing tab should show plan information').toBeVisible({ timeout: 10_000 });
     await assertNoErrorBoundary(page);
   });
 
@@ -121,14 +114,14 @@ test.describe('Settings — Owner', () => {
 
   test('Availability tab loads with teacher selector for admin', async ({ page }) => {
     await safeGoTo(page, '/settings?tab=availability', 'Settings Availability');
+    if (!page.url().includes('/settings')) return; // auth race
     await page.waitForTimeout(2_000);
     await assertNoErrorBoundary(page);
 
-    // Admin should see "Viewing availability for" label
-    const selectorLabel = page.getByText('Viewing availability for').first();
-    const hasSelector = await selectorLabel.isVisible({ timeout: 5_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[settings] Availability teacher selector: ${hasSelector}`);
+    // Admin should see "Viewing availability for" label or availability content
+    const selectorLabel = page.getByText('Viewing availability for').first()
+      .or(page.getByText(/availability/i).first());
+    await expect(selectorLabel, 'Availability content should be visible').toBeVisible({ timeout: 10_000 });
   });
 
   test('Privacy & GDPR tab loads for admin', async ({ page }) => {
@@ -190,10 +183,8 @@ test.describe('Settings — Teacher', () => {
     // Should see Account and Teaching
     const account = settingsNav.getByText('Account', { exact: true }).first();
     const teaching = settingsNav.getByText('Teaching', { exact: true }).first();
-    const hasAccount = await account.isVisible({ timeout: 3_000 }).catch(() => false);
-    const hasTeaching = await teaching.isVisible({ timeout: 3_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[teacher-settings] Account: ${hasAccount}, Teaching: ${hasTeaching}`);
+    await expect(account, 'Teacher should see Account group').toBeVisible({ timeout: 3_000 });
+    await expect(teaching, 'Teacher should see Teaching group').toBeVisible({ timeout: 3_000 });
 
     // Should NOT see Business or Compliance
     const business = settingsNav.getByText('Business', { exact: true }).first();
@@ -207,16 +198,13 @@ test.describe('Settings — Teacher', () => {
   test('teacher accessing admin tab redirects to profile', async ({ page }) => {
     await page.goto('/settings?tab=members');
     await page.waitForTimeout(3_000);
+    if (!page.url().includes('/settings')) return; // auth race
 
     // Should redirect to profile since teacher is not admin
-    const url = page.url();
-    // eslint-disable-next-line no-console
-    console.log(`[teacher-settings] After ?tab=members, URL: ${url}`);
     // The tab should revert to "profile" (the code checks adminTabs and falls back)
-    const profileCard = page.getByText('Profile Information').first();
-    const onProfile = await profileCard.isVisible({ timeout: 5_000 }).catch(() => false);
-    // eslint-disable-next-line no-console
-    console.log(`[teacher-settings] Redirected to profile: ${onProfile}`);
+    const profileCard = page.getByText('Profile Information').first()
+      .or(page.getByText(/profile|account/i).first());
+    await expect(profileCard, 'Teacher should be on profile/account tab, not admin tab').toBeVisible({ timeout: 10_000 });
   });
 
   test('teacher can access Availability tab', async ({ page }) => {
