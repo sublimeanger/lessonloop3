@@ -248,7 +248,7 @@ function AcademyDashboard({ firstName, orgName }: { firstName: string; orgName?:
   return (
     <AppLayout>
       <motion.div
-        className="space-y-4 sm:space-y-6"
+        className="flex flex-col gap-4 sm:gap-6"
         initial="hidden"
         animate="visible"
         variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
