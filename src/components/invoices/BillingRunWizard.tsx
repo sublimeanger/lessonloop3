@@ -146,20 +146,29 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
   };
 
   const handleGenerate = async () => {
-    const result = await createBillingRun.mutateAsync({
-      run_type: config.runType,
-      start_date: config.startDate,
-      end_date: config.endDate,
-      generate_invoices: true,
-      billing_mode: config.billingMode,
-      term_id: config.termId || undefined,
-    });
+    try {
+      const result = await createBillingRun.mutateAsync({
+        run_type: config.runType,
+        start_date: config.startDate,
+        end_date: config.endDate,
+        generate_invoices: true,
+        billing_mode: config.billingMode,
+        term_id: config.termId || undefined,
+      });
 
-    setBillingResult({
-      billingRunId: result.id,
-      status: result.status,
-      summary: result.summary as BillingRunSummary,
-    });
+      setBillingResult({
+        billingRunId: result.id,
+        status: result.status,
+        summary: result.summary as BillingRunSummary,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setBillingResult({
+        billingRunId: '',
+        status: 'failed',
+        summary: { invoiceCount: 0, totalAmount: 0, failedPayers: [{ payerName: 'System', payerEmail: null, error: message }] },
+      });
+    }
     setStep('complete');
   };
 
@@ -512,7 +521,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                   Billing run failed
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  No invoices could be created
+                  {billingResult?.summary.failedPayers?.[0]?.error || 'No invoices could be created'}
                 </p>
               </div>
             )}
