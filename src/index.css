@@ -316,6 +316,7 @@ body.keyboard-open .message-composer {
 
 /* Smooth transitions for theme switching */
 html {
+  scroll-behavior: smooth;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
