@@ -27,6 +27,7 @@ export function MobileDayView({
   teacherColourMap,
   onLessonClick,
   savingLessonIds,
+  onLongPress,
 }: MobileDayViewProps) {
   // Filter lessons for the current day and sort chronologically
   const dayLessons = useMemo(() => {
