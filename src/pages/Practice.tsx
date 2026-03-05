@@ -90,7 +90,7 @@ export default function Practice() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-secondary/50 rounded-lg">
+              <div className="p-2 bg-secondary/50 rounded-xl">
                 <TrendingUp className="h-5 w-5 text-secondary-foreground" />
               </div>
               <div>
