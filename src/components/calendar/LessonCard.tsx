@@ -63,6 +63,8 @@ function buildSecondaryLine(lesson: LessonWithDetails): string {
 }
 
 export const LessonCard = React.memo(function LessonCard({ lesson, onClick, variant = 'calendar', teacherColour, showResizeHandle, onResizeStart, compact, isSaving }: LessonCardProps) {
+  const { selectionMode, selectedIds } = useBulkSelection();
+  const isSelected = selectionMode && selectedIds.has(lesson.id);
   const startTime = parseISO(lesson.start_at);
   const endTime = parseISO(lesson.end_at);
   const duration = differenceInMinutes(endTime, startTime);
@@ -72,6 +74,18 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
   const isOpenSlot = !!lesson.is_open_slot;
   const hasMakeup = (lesson.makeupStudentIds?.length ?? 0) > 0;
   const colour = teacherColour ?? TEACHER_COLOURS[0];
+
+  // Selection checkbox overlay element
+  const selectionCheckbox = selectionMode ? (
+    <div className={cn(
+      'absolute top-0.5 left-0.5 z-10 h-4 w-4 rounded-sm border flex items-center justify-center shrink-0 transition-colors',
+      isSelected
+        ? 'bg-primary border-primary text-primary-foreground'
+        : 'border-muted-foreground/40 bg-background/80'
+    )}>
+      {isSelected && <Check className="h-3 w-3" />}
+    </div>
+  ) : null;
 
   const studentDisplay = formatStudentNames(lesson.participants);
   const studentShort = formatStudentShort(lesson.participants);
