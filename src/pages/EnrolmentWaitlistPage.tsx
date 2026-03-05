@@ -63,14 +63,14 @@ const STATUS_LABELS: Record<WaitlistStatus, string> = {
 };
 
 const STATUS_COLORS: Record<WaitlistStatus, string> = {
-  waiting: 'bg-blue-100 text-blue-800',
-  offered: 'bg-amber-100 text-amber-800',
-  accepted: 'bg-emerald-100 text-emerald-800',
-  enrolled: 'bg-green-100 text-green-800',
-  declined: 'bg-red-100 text-red-800',
-  expired: 'bg-gray-100 text-gray-600',
-  withdrawn: 'bg-gray-100 text-gray-600',
-  lost: 'bg-gray-100 text-gray-600',
+  waiting: 'bg-info/10 text-info',
+  offered: 'bg-warning/10 text-warning',
+  accepted: 'bg-success/10 text-success',
+  enrolled: 'bg-success/10 text-success',
+  declined: 'bg-destructive/10 text-destructive',
+  expired: 'bg-muted text-muted-foreground',
+  withdrawn: 'bg-muted text-muted-foreground',
+  lost: 'bg-muted text-muted-foreground',
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
