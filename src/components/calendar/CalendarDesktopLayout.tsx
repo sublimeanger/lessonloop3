@@ -94,7 +94,10 @@ export function CalendarDesktopLayout({
   actions,
   refetch,
 }: CalendarDesktopLayoutProps) {
+  const [slotWizardOpen, setSlotWizardOpen] = useState(false);
   // hide_cancelled is now applied server-side in useCalendarData
+
+  const wizardTeachers = teachers.map(t => ({ id: t.id, display_name: t.name, user_id: t.userId }));
 
   return (
     <AppLayout>
@@ -107,10 +110,25 @@ export function CalendarDesktopLayout({
         ]}
         actions={
           !isParent && (
-            <Button onClick={() => actions.openNewLessonModal()} className="gap-2" data-tour="create-lesson-button" disabled={!isOnline}>
-              <Plus className="h-4 w-4" />
-              New Lesson <span className="ml-1 text-micro opacity-60 bg-primary-foreground/20 px-1 rounded">N</span>
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Button onClick={() => actions.openNewLessonModal()} className="gap-2" data-tour="create-lesson-button" disabled={!isOnline}>
+                <Plus className="h-4 w-4" />
+                New Lesson <span className="ml-1 text-micro opacity-60 bg-primary-foreground/20 px-1 rounded">N</span>
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" disabled={!isOnline} title="More actions">
+                    <Zap className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setSlotWizardOpen(true)}>
+                    <Zap className="h-4 w-4 mr-2" />
+                    Generate Open Slots
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           )
         }
       />
