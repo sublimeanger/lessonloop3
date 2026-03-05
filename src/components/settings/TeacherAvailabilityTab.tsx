@@ -276,7 +276,7 @@ export function TeacherAvailabilityTab({ teacherId, teacherUserId }: TeacherAvai
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7"
+                              className="h-7 w-7 min-h-11 min-w-11 sm:min-h-7 sm:min-w-7"
                               onClick={() => setDeleteAvailabilityId(block.id)}
                             >
                               <Trash2 className="h-3.5 w-3.5" />

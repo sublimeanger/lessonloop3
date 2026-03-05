@@ -199,7 +199,7 @@ export function InvoiceSettingsTab() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-7 text-xs gap-1"
+                    className="h-7 min-h-11 sm:min-h-9 text-xs gap-1"
                     onClick={() => addReminderDay(day)}
                   >
                     <Plus className="h-3 w-3" />

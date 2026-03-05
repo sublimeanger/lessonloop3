@@ -133,7 +133,7 @@ export function AbsenceReasonPicker({
       ) : (
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 gap-1 px-2 text-xs">
+            <Button variant="outline" size="sm" className="h-8 min-h-11 sm:min-h-9 gap-1 px-2 text-xs">
               <CalendarIcon className="h-3 w-3" />
               {format(notifiedAt, 'dd/MM')}
             </Button>

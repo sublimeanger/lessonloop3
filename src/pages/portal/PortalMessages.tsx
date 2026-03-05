@@ -285,9 +285,9 @@ export default function PortalMessages() {
         description="View your messages and requests"
         actions={
           canInitiate && (
-            <Button onClick={() => setRequestModalOpen(true)} className="gap-2 hidden sm:inline-flex">
+             <Button onClick={() => setRequestModalOpen(true)} className="gap-2" size="sm">
               <Plus className="h-4 w-4" />
-              New Message
+              <span className="hidden sm:inline">New Message</span>
             </Button>
           )
         }

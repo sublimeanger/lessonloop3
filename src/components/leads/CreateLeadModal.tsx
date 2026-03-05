@@ -242,7 +242,7 @@ export function CreateLeadModal({ open, onOpenChange }: CreateLeadModalProps) {
           <h4 className="text-sm font-medium text-muted-foreground">
             Children <span className="text-destructive">*</span>
           </h4>
-          <Button type="button" variant="outline" size="sm" onClick={addChild} className="h-7 text-xs gap-1">
+          <Button type="button" variant="outline" size="sm" onClick={addChild} className="h-7 min-h-11 sm:min-h-9 text-xs gap-1">
             <Plus className="h-3 w-3" />
             Add Child
           </Button>
