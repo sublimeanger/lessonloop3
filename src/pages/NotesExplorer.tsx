@@ -69,8 +69,8 @@ export default function NotesExplorer() {
     if (!data?.notes?.length) return;
     const headers = ['Date', 'Time', 'Student', 'Teacher', 'Content Covered', 'Homework', 'Focus Areas', 'Engagement', 'Parent Visible'];
     const rows = data.notes.map(n => [
-      formatDateUK(n.lesson_start_at, 'dd/MM/yyyy', timezone),
-      formatDateUK(n.lesson_start_at, 'HH:mm', timezone),
+      formatDate(n.lesson_start_at, 'dd/MM/yyyy'),
+      formatDate(n.lesson_start_at, 'HH:mm'),
       n.student_first_name ? `${n.student_first_name} ${n.student_last_name || ''}`.trim() : '',
       n.teacher_display_name || '',
       sanitiseCSVCell(n.content_covered || ''),
