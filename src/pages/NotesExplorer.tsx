@@ -23,7 +23,7 @@ const DEFAULT_FILTERS: NotesExplorerFilters = {
 };
 
 export default function NotesExplorer() {
-  usePageMeta({ title: 'Lesson Notes Explorer | LessonLoop' });
+  usePageMeta('Lesson Notes Explorer | LessonLoop', 'Review all lesson notes across students and dates');
 
   const { currentOrg, isOrgAdmin, currentRole } = useOrg();
   const timezone = useOrgTimezone();
