@@ -168,6 +168,7 @@ export default function CalendarPage() {
     lessons, lessonsByDay, isLoading, isParent, isOnline,
     filters, setFilters, teachers, locations, rooms, instruments,
     teachersWithColours, teacherColourMap, actions,
+    bulk,
   };
 
   return (
