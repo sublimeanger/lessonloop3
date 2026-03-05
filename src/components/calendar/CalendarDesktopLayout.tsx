@@ -63,6 +63,7 @@ interface CalendarDesktopLayoutProps {
   teachersWithColours: TeacherWithColour[];
   teacherColourMap: Map<string, TeacherWithColour>;
   actions: ReturnType<typeof useCalendarActions>;
+  bulk: ReturnType<typeof useBulkLessonActions>;
   refetch: () => void;
 }
 
