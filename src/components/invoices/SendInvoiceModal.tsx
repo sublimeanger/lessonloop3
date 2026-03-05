@@ -257,7 +257,7 @@ export function SendInvoiceModal({
           <>
             <div className="space-y-3">
               {/* Email metadata */}
-              <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 text-sm">
+              <div className="rounded-xl border bg-muted/30 p-3 space-y-1.5 text-sm">
                 <div className="flex gap-2">
                   <span className="text-muted-foreground font-medium w-12 shrink-0">To:</span>
                   <span className="text-foreground">{recipientName} &lt;{recipientEmail}&gt;</span>
