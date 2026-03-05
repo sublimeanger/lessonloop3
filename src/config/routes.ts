@@ -61,6 +61,7 @@ const LeadDetail = lazy(() => import('@/pages/LeadDetail'));
 const EnrolmentWaitlistPage = lazy(() => import('@/pages/EnrolmentWaitlistPage'));
 const TeacherPerformanceReport = lazy(() => import('@/pages/reports/TeacherPerformance'));
 const Continuation = lazy(() => import('@/pages/Continuation'));
+const NotesExplorer = lazy(() => import('@/pages/NotesExplorer'));
 
 // ─── Lazy: Public ───────────────────────────────────────
 const BookingPage = lazy(() => import('@/pages/public/BookingPage'));
