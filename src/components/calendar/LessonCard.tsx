@@ -114,6 +114,9 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
           {hasMakeup && (
             <span className="text-micro font-medium text-warning bg-warning/20 px-0.5 rounded shrink-0">MU</span>
           )}
+          {isOpenSlot && (
+            <span className="text-micro font-medium text-primary bg-primary/15 px-0.5 rounded shrink-0">Open</span>
+          )}
         </div>
       );
     }
