@@ -210,6 +210,6 @@ export default function CalendarPage() {
           rooms={rooms}
         />
       )}
-    </>
+    </BulkSelectionProvider>
   );
 }
