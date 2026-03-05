@@ -100,8 +100,7 @@ test.describe('Report Pages — Owner', () => {
     await safeGoTo(page, '/reports/outstanding', 'Outstanding');
     if (!page.url().includes('/reports')) return; // auth race
     await assertNoErrorBoundary(page);
-    const title = page.getByText('Outstanding Payments').first()
-      .or(page.getByText('Outstanding').first());
+    const title = page.getByRole('heading', { name: /outstanding/i }).first();
     await expect(title).toBeVisible({ timeout: 15_000 });
 
     // Date presets should be visible
