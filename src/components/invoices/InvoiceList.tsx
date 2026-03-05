@@ -207,7 +207,7 @@ const MobileInvoiceCard = React.memo(function MobileInvoiceCard({
     <div
       onClick={onNavigate}
       className={cn(
-        'rounded-xl border bg-card p-3 cursor-pointer transition-colors active:bg-muted/40',
+        'rounded-xl border bg-card p-3 cursor-pointer transition-all active:bg-muted/40 hover:shadow-card-hover active:scale-[0.995]',
         selected && 'ring-1 ring-primary bg-primary/5',
       )}
     >

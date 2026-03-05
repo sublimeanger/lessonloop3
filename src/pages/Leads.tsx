@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '@/components/ui/table';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { KanbanSkeleton } from '@/components/shared/LoadingState';
 import { FeatureGate } from '@/components/subscription/FeatureGate';
 import { LeadKanbanBoard } from '@/components/leads/LeadKanbanBoard';
 import { CreateLeadModal } from '@/components/leads/CreateLeadModal';

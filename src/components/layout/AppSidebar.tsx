@@ -209,7 +209,7 @@ function SidebarNavItem({ item, collapsed, badge }: { item: NavItem; collapsed: 
     <SidebarMenuButton asChild>
       <NavLink
         to={item.url}
-        className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sidebar-foreground transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-medium"
       >
         <item.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.5} />

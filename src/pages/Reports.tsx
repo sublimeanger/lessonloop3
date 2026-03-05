@@ -176,7 +176,7 @@ export default function Reports() {
             { label: 'Reports' },
           ]}
         />
-        <LoadingState />
+        <ReportGridSkeleton />
       </AppLayout>
     );
   }

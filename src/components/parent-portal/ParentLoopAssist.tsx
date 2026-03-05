@@ -196,10 +196,10 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
                 {isStreaming && !streamingContent && (
                   <div className="flex items-start">
                     <div className="rounded-lg bg-muted px-4 py-3">
-                      <div className="flex gap-1">
-                        <span className="h-2 w-2 rounded-full bg-primary/40 animate-bounce [animation-delay:0ms]" />
-                        <span className="h-2 w-2 rounded-full bg-primary/40 animate-bounce [animation-delay:150ms]" />
-                        <span className="h-2 w-2 rounded-full bg-primary/40 animate-bounce [animation-delay:300ms]" />
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-primary/50 animate-[typing-bounce_1.4s_ease-in-out_infinite]" />
+                        <span className="h-2 w-2 rounded-full bg-primary/50 animate-[typing-bounce_1.4s_ease-in-out_0.2s_infinite]" />
+                        <span className="h-2 w-2 rounded-full bg-primary/50 animate-[typing-bounce_1.4s_ease-in-out_0.4s_infinite]" />
                       </div>
                     </div>
                   </div>
