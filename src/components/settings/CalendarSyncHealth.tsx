@@ -139,7 +139,7 @@ export function CalendarSyncHealth() {
                         {color === 'green' && <span className="text-green-600">Active</span>}
                         {color === 'amber' && <span className="text-amber-600">Stale</span>}
                         {color === 'red' && <span className="text-red-600">Error</span>}
-                        {color === 'grey' && <span className="text-gray-500">Disabled</span>}
+                        {color === 'grey' && <span className="text-muted-foreground">Disabled</span>}
                         {isExpired && (
                           <Badge variant="destructive" className="text-xs ml-1">Needs Re-auth</Badge>
                         )}
