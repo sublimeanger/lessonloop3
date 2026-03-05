@@ -304,8 +304,19 @@ body.keyboard-open .message-composer {
   @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
 }
 
+/* On-brand text selection highlight */
+::selection {
+  background: hsl(174 80% 85%);
+  color: hsl(220 60% 12%);
+}
+.dark ::selection {
+  background: hsl(174 60% 25%);
+  color: hsl(220 20% 92%);
+}
+
 /* Smooth transitions for theme switching */
 html {
+  scroll-behavior: smooth;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
