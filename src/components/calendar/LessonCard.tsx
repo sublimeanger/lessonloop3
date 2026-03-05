@@ -239,6 +239,7 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
             'h-full w-full rounded-sm px-1.5 py-1 cursor-pointer overflow-hidden text-xs transition-all hover:shadow-md group relative',
             colour.bgLight,
             isCancelled && 'opacity-50',
+            isOpenSlot && 'border border-dashed border-primary/40',
             isSaving && 'animate-pulse ring-1 ring-primary/30'
           )}
         >
