@@ -94,6 +94,7 @@ export function MobileDayView({
               className={cn(
                 'w-full flex items-stretch gap-0 px-0 py-3 text-left transition-colors active:bg-muted/50',
                 isCancelled && 'opacity-40',
+                isOpenSlot && 'border-l-2 border-dashed border-primary/40',
                 isSaving && 'animate-pulse',
               )}
               style={{ minHeight: 64 }}
