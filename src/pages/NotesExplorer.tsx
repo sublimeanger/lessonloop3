@@ -196,7 +196,7 @@ export default function NotesExplorer() {
                       key={note.id}
                       note={note}
                       isAdmin={isOrgAdmin}
-                      timezone={timezone}
+                      timezone={timezone as string}
                     />
                   ))}
                 </div>
