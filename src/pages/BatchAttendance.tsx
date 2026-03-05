@@ -16,6 +16,7 @@ import { Loader2, CheckCircle2, Save, UserCheck, ChevronLeft, ChevronRight, Cale
 import { cn } from '@/lib/utils';
 import type { AttendanceStatus, AbsenceReason } from '@/hooks/useRegisterData';
 import { AbsenceReasonPicker, needsAbsenceReason, type AbsenceReasonValue } from '@/components/register/AbsenceReasonPicker';
+import { StudentNotesPopover } from '@/components/register/StudentNotesPopover';
 
 export default function BatchAttendance() {
   usePageMeta('Batch Attendance | LessonLoop', 'Mark attendance for multiple lessons at once');
