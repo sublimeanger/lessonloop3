@@ -20,6 +20,7 @@ import {
   FileText
 } from 'lucide-react';
 import { LessonNotesForm } from '@/components/calendar/LessonNotesForm';
+import { StudentNotesPopover } from '@/components/register/StudentNotesPopover';
 import { cn } from '@/lib/utils';
 import { AbsenceReasonPicker, needsAbsenceReason, type AbsenceReasonValue } from './AbsenceReasonPicker';
 
