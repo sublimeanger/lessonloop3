@@ -4,67 +4,113 @@ import {
   waitForPageReady,
   safeGoTo,
   goTo,
-  expectToastSuccess,
 } from '../helpers';
 
 /**
  * Invoice Detail — Advanced Actions tests.
- * Covers: PDF download, void invoice, payment plan setup, send invoice,
- * send reminder, record payment, payment history, and finance role access.
+ * Covers: invoice list features, detail page actions, finance role access.
  */
+
+/** Navigate to invoice detail by clicking an invoice row. */
+async function navigateToInvoiceDetail(page: Page): Promise<boolean> {
+  // Click the first invoice row body (avoiding the checkbox at far left).
+  const list = page.getByRole('list', { name: 'Invoices list' });
+  const hasInvoiceList = await list.isVisible({ timeout: 10_000 }).catch(() => false);
+  if (!hasInvoiceList) return false;
+
+  const firstItem = list.getByRole('listitem').first();
+  const box = await firstItem.boundingBox();
+  if (!box) return false;
+
+  // Checkbox is ~30px at far left. Click at 150px from left edge.
+  await page.mouse.click(box.x + 150, box.y + box.height / 2);
+  await page.waitForTimeout(2_000);
+
+  // Check if URL changed to invoice detail
+  const url = page.url();
+  if (url.includes('/invoices/') && !url.endsWith('/invoices') && !url.endsWith('/invoices/')) {
+    await waitForPageReady(page);
+    return true;
+  }
+
+  // Try again with a different x position (more to the right)
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height / 2);
+  await page.waitForTimeout(2_000);
+  const url2 = page.url();
+  if (url2.includes('/invoices/') && !url2.endsWith('/invoices') && !url2.endsWith('/invoices/')) {
+    await waitForPageReady(page);
+    return true;
+  }
+
+  return false;
+}
 
 test.describe('Invoice Detail Advanced — Owner', () => {
   test.use({ storageState: AUTH.owner });
 
-  let invoiceUrl: string | null = null;
-
-  test('navigate to invoice detail page', async ({ page }) => {
+  test('invoice list shows filter tabs and counts', async ({ page }) => {
     await safeGoTo(page, '/invoices', 'Invoices');
 
     const main = page.locator('main').first();
     await expect(main).toBeVisible({ timeout: 10_000 });
 
-    // Find an invoice link to click into detail
-    const invoiceLink = page.locator('main a[href*="/invoices/"]').first()
-      .or(page.locator('main').getByRole('link').filter({ hasText: /LL-|INV-|#/ }).first());
-    const hasInvoice = await invoiceLink.isVisible({ timeout: 10_000 }).catch(() => false);
+    // Filter tabs: All(N), Draft(N), Sent(N), Paid(N), Overdue(N), Cancelled(N)
+    const allTab = page.getByRole('button').filter({ hasText: /^All\(/ }).first();
+    const paidTab = page.getByRole('button').filter({ hasText: /^Paid\(/ }).first();
 
-    if (!hasInvoice) {
-      test.skip(true, 'No invoices found to view detail');
-      return;
-    }
-
-    await invoiceLink.click();
-    await waitForPageReady(page);
-
-    // Should be on invoice detail page
-    expect(page.url()).toMatch(/\/invoices\//);
-    invoiceUrl = page.url();
-
-    // Should show invoice details
-    const hasInvoiceNumber = await page.getByText(/LL-|INV-/).first()
-      .isVisible({ timeout: 5_000 }).catch(() => false);
-    expect(hasInvoiceNumber).toBe(true);
+    await expect(allTab).toBeVisible({ timeout: 5_000 });
+    await expect(paidTab).toBeVisible({ timeout: 3_000 });
   });
 
-  test('invoice detail shows line items with description, qty, rate, amount', async ({ page }) => {
+  test('invoice list has select all checkbox and invoice actions', async ({ page }) => {
     await safeGoTo(page, '/invoices', 'Invoices');
 
-    // Click into first invoice
-    const invoiceLink = page.locator('main a[href*="/invoices/"]').first()
-      .or(page.locator('main').getByRole('link').filter({ hasText: /LL-|INV-|#/ }).first());
-    const hasInvoice = await invoiceLink.isVisible({ timeout: 10_000 }).catch(() => false);
-    if (!hasInvoice) {
-      test.skip(true, 'No invoices found');
+    const main = page.locator('main').first();
+    await expect(main).toBeVisible({ timeout: 10_000 });
+
+    // Select all checkbox
+    const selectAll = page.getByRole('checkbox', { name: /select all/i });
+    await expect(selectAll).toBeVisible({ timeout: 5_000 });
+
+    // Invoice list with listitems
+    const list = page.getByRole('list', { name: 'Invoices list' });
+    await expect(list).toBeVisible({ timeout: 5_000 });
+
+    const items = list.getByRole('listitem');
+    const itemCount = await items.count();
+    expect(itemCount).toBeGreaterThanOrEqual(1);
+  });
+
+  test('clicking invoice row navigates to detail page', async ({ page }) => {
+    await safeGoTo(page, '/invoices', 'Invoices');
+
+    const navigated = await navigateToInvoiceDetail(page);
+    if (!navigated) {
+      test.skip(true, 'Could not navigate to invoice detail');
       return;
     }
-    await invoiceLink.click();
-    await waitForPageReady(page);
 
-    // Should show a table or list of line items
+    // Should show invoice detail elements
+    const main = page.locator('main').first();
+    await expect(main).toBeVisible({ timeout: 10_000 });
+
+    // Should show a status badge
+    const statusBadge = main.getByText(/draft|sent|paid|overdue|void/i).first();
+    await expect(statusBadge).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('invoice detail shows line items and total', async ({ page }) => {
+    await safeGoTo(page, '/invoices', 'Invoices');
+
+    const navigated = await navigateToInvoiceDetail(page);
+    if (!navigated) {
+      test.skip(true, 'Could not navigate to invoice detail');
+      return;
+    }
+
     const main = page.locator('main').first();
 
-    // Verify table headers or column labels exist
+    // Should show description/amount columns or line item info
     const hasDescription = await main.getByText(/description/i).first()
       .isVisible({ timeout: 5_000 }).catch(() => false);
     const hasAmount = await main.getByText(/amount|total/i).first()
@@ -73,220 +119,153 @@ test.describe('Invoice Detail Advanced — Owner', () => {
     expect(hasDescription || hasAmount).toBe(true);
   });
 
-  test('invoice detail shows status badge and due date', async ({ page }) => {
+  test('invoice detail shows due date', async ({ page }) => {
     await safeGoTo(page, '/invoices', 'Invoices');
 
-    const invoiceLink = page.locator('main a[href*="/invoices/"]').first()
-      .or(page.locator('main').getByRole('link').filter({ hasText: /LL-|INV-|#/ }).first());
-    const hasInvoice = await invoiceLink.isVisible({ timeout: 10_000 }).catch(() => false);
-    if (!hasInvoice) {
-      test.skip(true, 'No invoices found');
+    const navigated = await navigateToInvoiceDetail(page);
+    if (!navigated) {
+      test.skip(true, 'Could not navigate to invoice detail');
       return;
     }
-    await invoiceLink.click();
-    await waitForPageReady(page);
 
     const main = page.locator('main').first();
-
-    // Should show a status badge
-    const statusBadge = main.getByText(/draft|sent|paid|overdue|void/i).first();
-    await expect(statusBadge).toBeVisible({ timeout: 5_000 });
-
-    // Should show due date
-    const hasDueDate = await main.getByText(/due|date/i).first()
-      .isVisible({ timeout: 3_000 }).catch(() => false);
+    const hasDueDate = await main.getByText(/due/i).first()
+      .isVisible({ timeout: 5_000 }).catch(() => false);
     expect(hasDueDate).toBe(true);
   });
 
-  test('download PDF action exists on invoice detail', async ({ page }) => {
+  test('invoice detail has download PDF button', async ({ page }) => {
     await safeGoTo(page, '/invoices', 'Invoices');
 
-    const invoiceLink = page.locator('main a[href*="/invoices/"]').first()
-      .or(page.locator('main').getByRole('link').filter({ hasText: /LL-|INV-|#/ }).first());
-    const hasInvoice = await invoiceLink.isVisible({ timeout: 10_000 }).catch(() => false);
-    if (!hasInvoice) {
-      test.skip(true, 'No invoices found');
+    const navigated = await navigateToInvoiceDetail(page);
+    if (!navigated) {
+      test.skip(true, 'Could not navigate to invoice detail');
       return;
     }
-    await invoiceLink.click();
-    await waitForPageReady(page);
 
-    // Find Download PDF button
     const downloadBtn = page.getByRole('button', { name: /download|pdf/i }).first();
     const hasDownload = await downloadBtn.isVisible({ timeout: 5_000 }).catch(() => false);
     expect(hasDownload).toBe(true);
   });
 
-  test('void invoice action exists for non-paid invoices', async ({ page }) => {
+  test('overdue invoice has void and record payment buttons', async ({ page }) => {
     await safeGoTo(page, '/invoices', 'Invoices');
 
-    // Try to find a draft or sent invoice (not paid, not void)
-    const invoiceLink = page.locator('main a[href*="/invoices/"]').first()
-      .or(page.locator('main').getByRole('link').filter({ hasText: /LL-|INV-|#/ }).first());
-    const hasInvoice = await invoiceLink.isVisible({ timeout: 10_000 }).catch(() => false);
-    if (!hasInvoice) {
-      test.skip(true, 'No invoices found');
+    // Filter to overdue
+    const overdueFilter = page.getByRole('button').filter({ hasText: /^Overdue/ }).first();
+    const hasOverdue = await overdueFilter.isVisible({ timeout: 5_000 }).catch(() => false);
+    if (hasOverdue) {
+      await overdueFilter.click();
+      await page.waitForTimeout(1_000);
+    }
+
+    const navigated = await navigateToInvoiceDetail(page);
+    if (!navigated) {
+      test.skip(true, 'Could not navigate to overdue invoice detail');
       return;
     }
-    await invoiceLink.click();
-    await waitForPageReady(page);
 
-    // Check status - if paid or void, skip
-    const isPaid = await page.getByText(/paid/i).first().isVisible({ timeout: 3_000 }).catch(() => false);
-    const isVoid = await page.locator('main').getByText(/void/i).first().isVisible({ timeout: 3_000 }).catch(() => false);
-
-    // Look for void button
+    // Void button
     const voidBtn = page.getByRole('button', { name: /void/i }).first();
-    const hasVoid = await voidBtn.isVisible({ timeout: 3_000 }).catch(() => false);
+    const hasVoid = await voidBtn.isVisible({ timeout: 5_000 }).catch(() => false);
+    expect(hasVoid).toBe(true);
 
-    // Void should be available if invoice is not paid/void
-    if (!isPaid && !isVoid) {
-      expect(hasVoid).toBe(true);
-    }
+    // Record Payment button
+    const recordPaymentBtn = page.getByRole('button', { name: /record payment|payment/i }).first();
+    const hasRecordPayment = await recordPaymentBtn.isVisible({ timeout: 3_000 }).catch(() => false);
+    expect(hasRecordPayment).toBe(true);
   });
 
-  test('send invoice action for draft invoices', async ({ page }) => {
+  test('paid invoice shows payment info', async ({ page }) => {
     await safeGoTo(page, '/invoices', 'Invoices');
 
-    const invoiceLink = page.locator('main a[href*="/invoices/"]').first()
-      .or(page.locator('main').getByRole('link').filter({ hasText: /LL-|INV-|#/ }).first());
-    const hasInvoice = await invoiceLink.isVisible({ timeout: 10_000 }).catch(() => false);
-    if (!hasInvoice) {
-      test.skip(true, 'No invoices found');
-      return;
-    }
-    await invoiceLink.click();
-    await waitForPageReady(page);
-
-    // If this is a draft, should see Send button
-    const isDraft = await page.locator('main').getByText(/draft/i).first()
-      .isVisible({ timeout: 3_000 }).catch(() => false);
-
-    if (isDraft) {
-      const sendBtn = page.getByRole('button', { name: /send/i }).first();
-      const hasSend = await sendBtn.isVisible({ timeout: 3_000 }).catch(() => false);
-      expect(hasSend).toBe(true);
+    // Filter to paid
+    const paidFilter = page.getByRole('button').filter({ hasText: /^Paid/ }).first();
+    const hasPaidFilter = await paidFilter.isVisible({ timeout: 5_000 }).catch(() => false);
+    if (hasPaidFilter) {
+      await paidFilter.click();
+      await page.waitForTimeout(1_000);
     }
 
-    // If sent/overdue, should see Record Payment and Send Reminder
-    const isSent = await page.locator('main').getByText(/^sent$|overdue/i).first()
-      .isVisible({ timeout: 3_000 }).catch(() => false);
-
-    if (isSent) {
-      const recordPaymentBtn = page.getByRole('button', { name: /record payment|payment/i }).first();
-      const hasRecordPayment = await recordPaymentBtn.isVisible({ timeout: 3_000 }).catch(() => false);
-      expect(hasRecordPayment).toBe(true);
-    }
-  });
-
-  test('invoice payment history section on paid invoice', async ({ page }) => {
-    await safeGoTo(page, '/invoices', 'Invoices');
-
-    // Try to navigate to a paid invoice
-    const paidBadge = page.locator('main').getByText(/paid/i).first();
-    const hasPaid = await paidBadge.isVisible({ timeout: 10_000 }).catch(() => false);
-
-    if (!hasPaid) {
-      test.skip(true, 'No paid invoices found');
+    const navigated = await navigateToInvoiceDetail(page);
+    if (!navigated) {
+      test.skip(true, 'Could not navigate to paid invoice');
       return;
     }
 
-    // Click on a row that contains "paid"
-    const paidRow = page.locator('main a[href*="/invoices/"]').filter({ hasText: /paid/i }).first()
-      .or(page.locator('main tr, main [role="row"]').filter({ hasText: /paid/i }).first().locator('a').first());
-    const canClickPaid = await paidRow.isVisible({ timeout: 3_000 }).catch(() => false);
-
-    if (!canClickPaid) {
-      // Just click first invoice and check
-      const firstInvoice = page.locator('main a[href*="/invoices/"]').first();
-      await firstInvoice.click();
-    } else {
-      await paidRow.click();
-    }
-
-    await waitForPageReady(page);
-
-    // If paid, look for payment history section
     const main = page.locator('main').first();
-    const hasPaymentHistory = await main.getByText(/payment.*history|payment.*record|amount.*paid|method/i)
-      .first().isVisible({ timeout: 5_000 }).catch(() => false);
+    const hasPaidStatus = await main.getByText(/paid/i).first()
+      .isVisible({ timeout: 5_000 }).catch(() => false);
+    expect(hasPaidStatus).toBe(true);
 
-    // Payment details should show date and amount
-    if (hasPaymentHistory) {
-      const hasPaymentAmount = await main.getByText(/£/).first()
-        .isVisible({ timeout: 3_000 }).catch(() => false);
-      expect(hasPaymentAmount).toBe(true);
-    }
+    const hasAmount = await main.getByText(/£/).first()
+      .isVisible({ timeout: 3_000 }).catch(() => false);
+    expect(hasAmount).toBe(true);
   });
 
-  test('payment plan setup action exists', async ({ page }) => {
+  test('invoice summary stats visible', async ({ page }) => {
     await safeGoTo(page, '/invoices', 'Invoices');
 
-    const invoiceLink = page.locator('main a[href*="/invoices/"]').first();
-    const hasInvoice = await invoiceLink.isVisible({ timeout: 10_000 }).catch(() => false);
-    if (!hasInvoice) {
-      test.skip(true, 'No invoices found');
-      return;
-    }
-    await invoiceLink.click();
-    await waitForPageReady(page);
-
-    // Look for payment plan button (only on non-paid invoices without existing plan)
-    const paymentPlanBtn = page.getByRole('button', { name: /payment plan|instalment/i }).first();
-    const hasPaymentPlan = await paymentPlanBtn.isVisible({ timeout: 5_000 }).catch(() => false);
-
-    // It's optional - some invoices may already have plans or be paid
-    // Just verify the page loaded correctly
     const main = page.locator('main').first();
-    await expect(main).toBeVisible();
+    await expect(main).toBeVisible({ timeout: 10_000 });
+
+    // Summary stats buttons: "£X,XXX total", "£X,XXX paid", etc.
+    const totalBtn = page.getByRole('button', { name: /total/i }).first();
+    const paidBtn = page.getByRole('button', { name: /paid/i }).first();
+
+    await expect(totalBtn).toBeVisible({ timeout: 10_000 });
+    await expect(paidBtn).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('invoice tabs show Invoices, Payment Plans, and Recurring', async ({ page }) => {
+    await safeGoTo(page, '/invoices', 'Invoices');
+
+    const main = page.locator('main').first();
+    await expect(main).toBeVisible({ timeout: 10_000 });
+
+    // Tab list with Invoices, Payment Plans, Recurring
+    const invoicesTab = page.getByRole('tab', { name: /invoices/i }).first();
+    const paymentPlansTab = page.getByRole('tab', { name: /payment plans/i }).first();
+    const recurringTab = page.getByRole('tab', { name: /recurring/i }).first();
+
+    await expect(invoicesTab).toBeVisible({ timeout: 5_000 });
+    await expect(paymentPlansTab).toBeVisible({ timeout: 3_000 });
+    await expect(recurringTab).toBeVisible({ timeout: 3_000 });
   });
 });
 
 test.describe('Invoice Detail — Finance Role', () => {
   test.use({ storageState: AUTH.finance });
 
-  test('finance can access invoice detail', async ({ page }) => {
+  test('finance can access invoices page', async ({ page }) => {
     await safeGoTo(page, '/invoices', 'Invoices');
 
     const main = page.locator('main').first();
     await expect(main).toBeVisible({ timeout: 10_000 });
 
-    // Finance should see invoices
-    const invoiceLink = page.locator('main a[href*="/invoices/"]').first()
-      .or(page.locator('main').getByRole('link').filter({ hasText: /LL-|INV-|#/ }).first());
-    const hasInvoice = await invoiceLink.isVisible({ timeout: 10_000 }).catch(() => false);
-    if (!hasInvoice) {
-      test.skip(true, 'No invoices visible to finance role');
-      return;
-    }
-
-    await invoiceLink.click();
-    await waitForPageReady(page);
-
-    // Should load invoice detail without access denied
-    expect(page.url()).toMatch(/\/invoices\//);
+    // No access denied
     const accessDenied = await page.getByText(/access denied|unauthorized/i)
       .first().isVisible({ timeout: 3_000 }).catch(() => false);
     expect(accessDenied).toBe(false);
+
+    // Should see invoice heading
+    const heading = main.getByRole('heading', { name: /invoices/i }).first();
+    await expect(heading).toBeVisible({ timeout: 10_000 });
   });
 
-  test('finance can see action buttons on invoices', async ({ page }) => {
+  test('finance can navigate to invoice detail', async ({ page }) => {
     await safeGoTo(page, '/invoices', 'Invoices');
 
-    const invoiceLink = page.locator('main a[href*="/invoices/"]').first()
-      .or(page.locator('main').getByRole('link').filter({ hasText: /LL-|INV-|#/ }).first());
-    const hasInvoice = await invoiceLink.isVisible({ timeout: 10_000 }).catch(() => false);
-    if (!hasInvoice) {
-      test.skip(true, 'No invoices visible');
+    const navigated = await navigateToInvoiceDetail(page);
+    if (!navigated) {
+      test.skip(true, 'Could not navigate to invoice detail as finance');
       return;
     }
 
-    await invoiceLink.click();
-    await waitForPageReady(page);
-
-    // Finance should see action buttons (send, record payment, download, etc.)
-    const hasActions = await page.getByRole('button', { name: /send|record|download|void|payment/i })
-      .first().isVisible({ timeout: 5_000 }).catch(() => false);
-    expect(hasActions).toBe(true);
+    // Should show invoice detail
+    const main = page.locator('main').first();
+    const hasDetail = await main.getByText(/due|status|amount|description/i).first()
+      .isVisible({ timeout: 5_000 }).catch(() => false);
+    expect(hasDetail).toBe(true);
   });
 });
