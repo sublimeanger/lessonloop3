@@ -193,11 +193,7 @@ export default function Leads() {
 
         {/* Main content */}
         {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-48 rounded-xl bg-muted animate-pulse" />
-            ))}
-          </div>
+          <KanbanSkeleton />
         ) : leads.length === 0 && !search && stageFilter === 'all' && sourceFilter === 'all' ? (
           <EmptyState
             icon={UserPlus}
