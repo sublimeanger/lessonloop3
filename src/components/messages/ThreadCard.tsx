@@ -172,7 +172,7 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
             <div className="mx-2 sm:mx-3 my-2 sm:my-3 bg-muted/20 rounded-xl overflow-hidden">
               {messagesLoading ? (
                 <div className="p-4 space-y-3">
-                  <Skeleton className="h-4 w-3/4 rounded-lg" />
+                  <Skeleton className="h-4 w-3/4 rounded-xl" />
                   <Skeleton className="h-16 w-full rounded-xl" />
                 </div>
               ) : (
