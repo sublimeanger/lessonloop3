@@ -26,7 +26,7 @@ export default function NotesExplorer() {
   usePageMeta('Lesson Notes Explorer | LessonLoop', 'Review all lesson notes across students and dates');
 
   const { currentOrg, isOrgAdmin, currentRole } = useOrg();
-  const timezone = useOrgTimezone();
+  const { timezone, formatDate, formatTime } = useOrgTimezone();
   const isTeacherRole = currentRole === 'teacher';
 
   const [filters, setFilters] = useState<NotesExplorerFilters>(DEFAULT_FILTERS);
@@ -34,7 +34,7 @@ export default function NotesExplorer() {
 
   const { data: teachersList } = useTeachers();
   const teachers = useMemo(
-    () => (teachersList || []).map(t => ({ id: t.id, display_name: t.display_name || `${t.first_name} ${t.last_name}` })),
+    () => (teachersList || []).map(t => ({ id: t.id, display_name: t.display_name })),
     [teachersList],
   );
 
