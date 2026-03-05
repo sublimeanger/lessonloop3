@@ -130,6 +130,10 @@ export function CalendarDesktopLayout({
                     <Zap className="h-4 w-4 mr-2" />
                     Generate Open Slots
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => bulk.enterSelectionMode()}>
+                    <CheckSquare className="h-4 w-4 mr-2" />
+                    Select Lessons
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
