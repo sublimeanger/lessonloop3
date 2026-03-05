@@ -38,14 +38,14 @@ export function PortalLayout({ children }: PortalLayoutProps) {
     return (
       <ChildFilterProvider>
         <SidebarProvider>
-            <div className="min-h-screen flex flex-col bg-background overflow-x-hidden">
+            <div className="min-h-screen w-full flex flex-col bg-background overflow-x-hidden">
             <Header />
             <PortalSidebar />
-            <div className="px-4 pt-3 md:px-6">
+            <div className="w-full px-4 pt-3">
               <ChildSwitcher compact className="w-full" />
             </div>
-            <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pb-24">
-              <div className="max-w-4xl mx-auto w-full">
+            <main className="flex-1 w-full overflow-y-auto overflow-x-hidden px-4 py-4 pb-24">
+              <div className="w-full">
                 {contentTransition}
               </div>
             </main>
