@@ -189,6 +189,21 @@ export default function CalendarPage() {
       <LessonModal open={actions.isModalOpen} onClose={actions.handleModalClose} onSaved={actions.handleSaved} lesson={actions.selectedLesson} initialDate={actions.slotDate} initialEndDate={actions.slotEndDate} />
       <LessonDetailPanel lesson={actions.detailLesson} open={actions.detailPanelOpen} onClose={() => actions.setDetailPanelOpen(false)} onEdit={actions.handleEditFromDetail} onUpdated={refetch} />
       <RecurringActionDialog open={actions.recurringDialogOpen} onClose={actions.closeRecurringDialog} onSelect={actions.handleRecurringSelect} action="edit" />
+
+      {!isParent && bulk.selectionMode && (
+        <BulkSelectBar
+          count={bulk.selectedIds.size}
+          isBulkUpdating={bulk.isBulkUpdating}
+          bulkProgress={bulk.bulkProgress}
+          onClear={bulk.clearSelection}
+          onExit={bulk.exitSelectionMode}
+          onBulkUpdate={bulk.bulkUpdate}
+          onBulkCancel={bulk.bulkCancel}
+          teachers={teachers.map(t => ({ id: t.id, name: t.name }))}
+          locations={locations}
+          rooms={rooms}
+        />
+      )}
     </>
   );
 }
