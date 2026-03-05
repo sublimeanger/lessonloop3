@@ -145,8 +145,8 @@ export default function EnrolmentWaitlistPage() {
       <div className="grid grid-cols-2 gap-3 mb-4 sm:grid-cols-4 sm:gap-4">
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-blue-500/10 p-2">
-              <Clock className="h-4 w-4 text-blue-500" />
+            <div className="rounded-xl bg-info/10 p-2">
+              <Clock className="h-4 w-4 text-info" />
             </div>
             <div>
               <p className="text-2xl font-semibold">{stats?.waiting ?? 0}</p>
