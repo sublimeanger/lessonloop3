@@ -196,11 +196,13 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
         onClick={onClick}
         aria-label={`${lesson.title}, ${format(startTime, 'EEEE')} at ${format(startTime, 'h:mm a')}, ${lesson.status}`}
         className={cn(
-          'flex items-center gap-3 sm:gap-4 rounded-lg p-3 sm:p-4 cursor-pointer transition-colors',
+          'flex items-center gap-3 sm:gap-4 rounded-lg p-3 sm:p-4 cursor-pointer transition-colors relative',
           colour.bgLight,
-          isCancelled && 'opacity-50'
+          isCancelled && 'opacity-50',
+          isSelected && 'ring-2 ring-primary',
         )}
       >
+        {selectionCheckbox}
         <div className="flex flex-col items-center text-center min-w-[50px] sm:min-w-[60px]">
           <span className={cn('text-xl sm:text-2xl font-semibold', colour.text)}>
             {format(startTime, 'HH:mm')}
