@@ -177,7 +177,7 @@ export default {
           "50%": { opacity: "0.7", transform: "scale(0.96)" },
         },
         "page-fade-up": {
-          from: { opacity: "0", transform: "translateY(6px)" },
+          from: { opacity: "0", transform: "translateY(8px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
       },
