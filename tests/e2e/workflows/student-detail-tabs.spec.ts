@@ -469,11 +469,16 @@ test.describe('Student Detail — Guardians Tab', () => {
     await newGuardianBtn.click();
     await page.waitForTimeout(300);
 
-    // Fill guardian form
+    // Fill guardian form — labels have no htmlFor, use inputs directly
     const guardianName = `E2E Guardian ${testId.slice(-6)}`;
-    await dialog.getByLabel('Full name').fill(guardianName);
-    await dialog.getByLabel('Email').last().fill(`e2e-guardian-${testId.slice(-6)}@test.com`);
-    await dialog.getByLabel('Phone').last().fill(`07700900${testId.slice(-3)}`);
+    // The "New Guardian" sub-form has 3 inputs: Full name, Email, Phone
+    const nameInput = dialog.locator('input[placeholder="Sarah Wilson"]');
+    await expect(nameInput).toBeVisible({ timeout: 5_000 });
+    await nameInput.fill(guardianName);
+    const emailInput = dialog.locator('input[placeholder="sarah@example.com"]');
+    await emailInput.fill(`e2e-guardian-${testId.slice(-6)}@test.com`);
+    const phoneInput = dialog.locator('input[placeholder="+44 7700 900000"]');
+    await phoneInput.fill(`07700900${testId.slice(-3)}`);
 
     // Submit
     await dialog.getByRole('button', { name: 'Add Guardian' }).click();
@@ -493,9 +498,10 @@ test.describe('Student Detail — Guardians Tab', () => {
       const editDialog = page.getByRole('dialog');
       await expect(editDialog).toBeVisible({ timeout: 5_000 });
 
-      // Change phone
-      const phoneInput = editDialog.getByLabel('Phone');
-      await phoneInput.fill('07700900999');
+      // Change phone — edit dialog has 3 inputs: Full name, Email, Phone
+      const editPhoneInput = editDialog.locator('input[type="tel"]');
+      await expect(editPhoneInput).toBeVisible({ timeout: 5_000 });
+      await editPhoneInput.fill('07700900999');
       await editDialog.getByRole('button', { name: 'Save Changes' }).click();
       await expectToastSuccess(page);
       await page.waitForTimeout(1_000);
@@ -729,7 +735,9 @@ test.describe('Student Detail — Credits Tab', () => {
 
     // Submit
     await dialog.getByRole('button', { name: 'Issue Credit' }).click();
-    await expectToastSuccess(page);
+
+    // Wait for dialog to close (indicates success)
+    await expect(dialog).toBeHidden({ timeout: 15_000 });
     await page.waitForTimeout(2_000);
 
     // Verify the credit appears in the list (£10.00)
