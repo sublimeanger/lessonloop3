@@ -52,4 +52,5 @@ play-store-icon.png
 /playwright/.cache/
 /playwright/.auth/
 tests/e2e/.auth/
+tests/e2e/workflows/test-import-e2e-*.csv
 .env.test
