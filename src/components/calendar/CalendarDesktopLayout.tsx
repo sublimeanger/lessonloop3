@@ -95,6 +95,7 @@ export function CalendarDesktopLayout({
   teachersWithColours,
   teacherColourMap,
   actions,
+  bulk,
   refetch,
 }: CalendarDesktopLayoutProps) {
   const [slotWizardOpen, setSlotWizardOpen] = useState(false);
