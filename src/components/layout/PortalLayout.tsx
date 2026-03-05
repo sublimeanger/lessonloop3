@@ -40,6 +40,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
         <SidebarProvider>
             <div className="min-h-screen flex flex-col bg-background overflow-x-hidden">
             <Header />
+            <PortalSidebar />
             <div className="px-4 pt-3 md:px-6">
               <ChildSwitcher compact className="w-full" />
             </div>
