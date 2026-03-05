@@ -253,6 +253,20 @@ export function CalendarDesktopLayout({
       {!isParent && (
         <QuickCreatePopover open={actions.quickCreateOpen} onClose={() => actions.setQuickCreateOpen(false)} onSaved={actions.handleSaved} onOpenFullModal={actions.handleQuickCreateOpenFullModal} startDate={actions.quickCreateStart} endDate={actions.quickCreateEnd} />
       )}
+
+      <SlotGeneratorWizard
+        open={slotWizardOpen}
+        onOpenChange={setSlotWizardOpen}
+        teachers={wizardTeachers}
+        locations={locations}
+        rooms={rooms}
+        defaultDate={currentDate}
+        onComplete={(date) => {
+          setCurrentDate(date);
+          setView('day');
+          refetch();
+        }}
+      />
     </AppLayout>
   );
 }
