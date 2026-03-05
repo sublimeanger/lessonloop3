@@ -221,28 +221,31 @@ export function CalendarDesktopLayout({
                 onAction={() => actions.openNewLessonModal()}
               />
             ) : view === 'agenda' ? (
-              <AgendaView currentDate={currentDate} lessons={lessons} onLessonClick={actions.handleLessonClick} teacherColourMap={teacherColourMap} groupByTeacher={groupByTeacher} />
+              <AgendaView currentDate={currentDate} lessons={lessons} onLessonClick={handleLessonClickOrSelect} teacherColourMap={teacherColourMap} groupByTeacher={groupByTeacher} selectionMode={bulk.selectionMode} selectedIds={bulk.selectedIds} />
             ) : view === 'day' ? (
               <DayTimelineView
                 currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap}
-                onLessonClick={actions.handleLessonClick} onSlotClick={actions.handleSlotClick} onSlotDrag={actions.handleSlotDrag}
-                onLessonDrop={!isParent ? actions.handleLessonDrop : undefined} onLessonResize={!isParent ? actions.handleLessonResize : undefined}
+                onLessonClick={handleLessonClickOrSelect} onSlotClick={actions.handleSlotClick} onSlotDrag={actions.handleSlotDrag}
+                onLessonDrop={!isParent && !bulk.selectionMode ? actions.handleLessonDrop : undefined} onLessonResize={!isParent && !bulk.selectionMode ? actions.handleLessonResize : undefined}
                 isParent={isParent} savingLessonIds={actions.savingLessonIds}
+                selectionMode={bulk.selectionMode} selectedIds={bulk.selectedIds}
               />
             ) : view === 'stacked' ? (
               <StackedWeekView
                 currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap}
-                onLessonClick={actions.handleLessonClick}
+                onLessonClick={handleLessonClickOrSelect}
                 onDayClick={(date) => { if (!isParent) { actions.handleSlotClick(date); } }}
                 isParent={isParent} compact={isCompact}
+                selectionMode={bulk.selectionMode} selectedIds={bulk.selectedIds}
               />
             ) : (
               <div data-tour="calendar-grid" data-hint="calendar-grid">
                 <WeekTimeGrid
                   currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap}
-                  onLessonClick={actions.handleLessonClick} onSlotClick={actions.handleSlotClick} onSlotDrag={actions.handleSlotDrag}
-                  onLessonDrop={!isParent ? actions.handleLessonDrop : undefined} onLessonResize={!isParent ? actions.handleLessonResize : undefined}
+                  onLessonClick={handleLessonClickOrSelect} onSlotClick={actions.handleSlotClick} onSlotDrag={actions.handleSlotDrag}
+                  onLessonDrop={!isParent && !bulk.selectionMode ? actions.handleLessonDrop : undefined} onLessonResize={!isParent && !bulk.selectionMode ? actions.handleLessonResize : undefined}
                   isParent={isParent} savingLessonIds={actions.savingLessonIds}
+                  selectionMode={bulk.selectionMode} selectedIds={bulk.selectedIds}
                 />
                 {!isParent && (
                   <ContextualHint id="calendar-create-lesson" message="Click any time slot to create a lesson, or drag to set the duration. Grab a lesson card to reschedule it." position="top" targetSelector="[data-hint='calendar-grid']" />
