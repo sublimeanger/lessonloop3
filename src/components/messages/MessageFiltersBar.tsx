@@ -229,7 +229,7 @@ export function MessageFiltersBar({ filters, onFiltersChange }: MessageFiltersBa
             <ToggleGroupItem value="email" className="gap-1.5 px-2.5 rounded-xl text-xs h-7 data-[state=on]:bg-background data-[state=on]:shadow-sm">
               <Mail className="h-3.5 w-3.5" /> Email
             </ToggleGroupItem>
-            <ToggleGroupItem value="inapp" className="gap-1.5 px-2.5 rounded-lg text-xs h-7 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+            <ToggleGroupItem value="inapp" className="gap-1.5 px-2.5 rounded-xl text-xs h-7 data-[state=on]:bg-background data-[state=on]:shadow-sm">
               <Monitor className="h-3.5 w-3.5" /> In-App
             </ToggleGroupItem>
           </ToggleGroup>
