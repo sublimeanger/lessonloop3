@@ -157,7 +157,7 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, onRemove
 
         {/* Weekly Stats */}
         {weekStats && (
-          <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 mb-4">
+          <div className="flex items-center gap-2 rounded-xl border bg-muted/30 px-3 py-2 mb-4">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">
               This week: <span className="font-medium text-foreground">{weekStats.count} lesson{weekStats.count !== 1 ? 's' : ''}</span> · <span className="font-medium text-foreground">{weekStats.hours}h</span>
