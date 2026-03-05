@@ -18,6 +18,7 @@ interface MobileDayViewProps {
   teacherColourMap: Map<string, TeacherWithColour>;
   onLessonClick: (lesson: LessonWithDetails) => void;
   savingLessonIds?: Set<string>;
+  onLongPress?: (lesson: LessonWithDetails) => void;
 }
 
 export function MobileDayView({
