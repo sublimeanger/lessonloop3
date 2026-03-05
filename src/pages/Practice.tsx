@@ -62,7 +62,7 @@ export default function Practice() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-warning/10 rounded-lg">
+              <div className="p-2 bg-warning/10 rounded-xl">
                 <Target className="h-5 w-5 text-warning" />
               </div>
               <div>
