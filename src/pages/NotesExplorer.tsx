@@ -56,7 +56,7 @@ export default function NotesExplorer() {
     for (const [dateKey, notes] of dateMap) {
       groups.push({
         date: dateKey,
-        dateLabel: formatDateUK(parseISO(dateKey), 'EEEE, d MMMM yyyy', timezone),
+        dateLabel: formatDateUK(parseISO(dateKey), 'EEEE, d MMMM yyyy', timezone as string),
         notes: notes.sort((a, b) => a.lesson_start_at.localeCompare(b.lesson_start_at)),
       });
     }

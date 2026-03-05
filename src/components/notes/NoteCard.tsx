@@ -52,9 +52,9 @@ export function NoteCard({ note, isAdmin, timezone }: NoteCardProps) {
                 </>
               )}
               {note.parent_visible ? (
-                <Eye className="h-3 w-3 text-muted-foreground" title="Visible to parents" />
+                <span title="Visible to parents"><Eye className="h-3 w-3 text-muted-foreground" /></span>
               ) : (
-                <Lock className="h-3 w-3 text-muted-foreground" title="Private" />
+                <span title="Private"><Lock className="h-3 w-3 text-muted-foreground" /></span>
               )}
             </div>
           </div>
