@@ -54,7 +54,7 @@ const ACTIVITY_CONFIG: Record<
   },
   withdrawn: {
     icon: UserMinus,
-    color: 'text-gray-500 bg-gray-500/10',
+    color: 'text-muted-foreground bg-muted',
     label: 'Withdrawn',
   },
   offer_expired: {

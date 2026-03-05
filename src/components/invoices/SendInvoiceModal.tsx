@@ -213,7 +213,7 @@ export function SendInvoiceModal({
               )}
 
               {recipientEmail && (
-                <div className="rounded-lg border p-3">
+                <div className="rounded-xl border p-3">
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     <div>
@@ -257,7 +257,7 @@ export function SendInvoiceModal({
           <>
             <div className="space-y-3">
               {/* Email metadata */}
-              <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 text-sm">
+              <div className="rounded-xl border bg-muted/30 p-3 space-y-1.5 text-sm">
                 <div className="flex gap-2">
                   <span className="text-muted-foreground font-medium w-12 shrink-0">To:</span>
                   <span className="text-foreground">{recipientName} &lt;{recipientEmail}&gt;</span>
@@ -269,7 +269,7 @@ export function SendInvoiceModal({
               </div>
 
               {/* Email body preview */}
-              <div className="rounded-lg border bg-white overflow-hidden">
+              <div className="rounded-xl border bg-background overflow-hidden">
                 <div
                   className="p-1 max-h-[320px] overflow-y-auto"
                   dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewHtml) }}

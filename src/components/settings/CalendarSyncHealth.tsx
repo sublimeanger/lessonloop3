@@ -37,7 +37,7 @@ const STATUS_DOT: Record<StatusColor, string> = {
   green: 'bg-green-500',
   amber: 'bg-amber-500',
   red: 'bg-red-500',
-  grey: 'bg-gray-400',
+  grey: 'bg-muted-foreground',
 };
 
 export function CalendarSyncHealth() {
@@ -95,15 +95,15 @@ export function CalendarSyncHealth() {
       <CardContent className="space-y-4">
         {/* Summary stats */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="text-center p-2 rounded-lg bg-muted/50">
+          <div className="text-center p-2 rounded-xl bg-muted/50">
             <p className="text-xl font-semibold">{connections.length}</p>
             <p className="text-xs text-muted-foreground">Connected</p>
           </div>
-          <div className="text-center p-2 rounded-lg bg-muted/50">
+          <div className="text-center p-2 rounded-xl bg-muted/50">
             <p className="text-xl font-semibold text-green-600">{healthy}</p>
             <p className="text-xs text-muted-foreground">Healthy</p>
           </div>
-          <div className="text-center p-2 rounded-lg bg-muted/50">
+          <div className="text-center p-2 rounded-xl bg-muted/50">
             <p className={`text-xl font-semibold ${needsAttention > 0 ? 'text-amber-600' : ''}`}>
               {needsAttention}
             </p>
@@ -139,7 +139,7 @@ export function CalendarSyncHealth() {
                         {color === 'green' && <span className="text-green-600">Active</span>}
                         {color === 'amber' && <span className="text-amber-600">Stale</span>}
                         {color === 'red' && <span className="text-red-600">Error</span>}
-                        {color === 'grey' && <span className="text-gray-500">Disabled</span>}
+                        {color === 'grey' && <span className="text-muted-foreground">Disabled</span>}
                         {isExpired && (
                           <Badge variant="destructive" className="text-xs ml-1">Needs Re-auth</Badge>
                         )}

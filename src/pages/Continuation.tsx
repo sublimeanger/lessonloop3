@@ -326,7 +326,7 @@ export default function Continuation() {
 
           {/* Bulk Actions */}
           {run.status === 'deadline_passed' && (
-            <div className="flex flex-wrap gap-2 rounded-lg border p-3 bg-muted/50">
+            <div className="flex flex-wrap gap-2 rounded-xl border p-3 bg-muted/50">
               <span className="text-sm font-medium self-center mr-2">
                 Process:
               </span>
@@ -383,7 +383,7 @@ export default function Continuation() {
               </div>
             </div>
 
-            <div className="rounded-lg border">
+            <div className="rounded-xl border">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>

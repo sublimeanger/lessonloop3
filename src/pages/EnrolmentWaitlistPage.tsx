@@ -63,14 +63,14 @@ const STATUS_LABELS: Record<WaitlistStatus, string> = {
 };
 
 const STATUS_COLORS: Record<WaitlistStatus, string> = {
-  waiting: 'bg-blue-100 text-blue-800',
-  offered: 'bg-amber-100 text-amber-800',
-  accepted: 'bg-emerald-100 text-emerald-800',
-  enrolled: 'bg-green-100 text-green-800',
-  declined: 'bg-red-100 text-red-800',
-  expired: 'bg-gray-100 text-gray-600',
-  withdrawn: 'bg-gray-100 text-gray-600',
-  lost: 'bg-gray-100 text-gray-600',
+  waiting: 'bg-info/10 text-info',
+  offered: 'bg-warning/10 text-warning',
+  accepted: 'bg-success/10 text-success',
+  enrolled: 'bg-success/10 text-success',
+  declined: 'bg-destructive/10 text-destructive',
+  expired: 'bg-muted text-muted-foreground',
+  withdrawn: 'bg-muted text-muted-foreground',
+  lost: 'bg-muted text-muted-foreground',
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -145,8 +145,8 @@ export default function EnrolmentWaitlistPage() {
       <div className="grid grid-cols-2 gap-3 mb-4 sm:grid-cols-4 sm:gap-4">
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-blue-500/10 p-2">
-              <Clock className="h-4 w-4 text-blue-500" />
+            <div className="rounded-xl bg-info/10 p-2">
+              <Clock className="h-4 w-4 text-info" />
             </div>
             <div>
               <p className="text-2xl font-semibold">{stats?.waiting ?? 0}</p>
@@ -156,8 +156,8 @@ export default function EnrolmentWaitlistPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-amber-500/10 p-2">
-              <Send className="h-4 w-4 text-amber-500" />
+            <div className="rounded-xl bg-warning/10 p-2">
+              <Send className="h-4 w-4 text-warning" />
             </div>
             <div>
               <p className="text-2xl font-semibold">{stats?.offered ?? 0}</p>
@@ -167,8 +167,8 @@ export default function EnrolmentWaitlistPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-emerald-500/10 p-2">
-              <CheckCircle className="h-4 w-4 text-emerald-500" />
+            <div className="rounded-xl bg-success/10 p-2">
+              <CheckCircle className="h-4 w-4 text-success" />
             </div>
             <div>
               <p className="text-2xl font-semibold">{stats?.accepted ?? 0}</p>
@@ -178,8 +178,8 @@ export default function EnrolmentWaitlistPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-green-500/10 p-2">
-              <TrendingUp className="h-4 w-4 text-green-500" />
+            <div className="rounded-xl bg-success/10 p-2">
+              <TrendingUp className="h-4 w-4 text-success" />
             </div>
             <div>
               <p className="text-2xl font-semibold">{stats?.enrolled_this_term ?? 0}</p>
@@ -297,7 +297,7 @@ export default function EnrolmentWaitlistPage() {
         </div>
       ) : (
         /* Desktop: table */
-        <div className="rounded-lg border bg-card">
+        <div className="rounded-xl border bg-card">
           <Table>
             <TableHeader>
               <TableRow>

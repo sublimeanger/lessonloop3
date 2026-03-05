@@ -48,7 +48,7 @@ export default function Practice() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
+              <div className="p-2 bg-primary/10 rounded-xl">
                 <Music className="h-5 w-5 text-primary" />
               </div>
               <div>
@@ -62,7 +62,7 @@ export default function Practice() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-warning/10 rounded-lg">
+              <div className="p-2 bg-warning/10 rounded-xl">
                 <Target className="h-5 w-5 text-warning" />
               </div>
               <div>
@@ -76,7 +76,7 @@ export default function Practice() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-success/10 rounded-lg">
+              <div className="p-2 bg-success/10 rounded-xl">
                 <Users className="h-5 w-5 text-success" />
               </div>
               <div>
@@ -90,7 +90,7 @@ export default function Practice() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-secondary/50 rounded-lg">
+              <div className="p-2 bg-secondary/50 rounded-xl">
                 <TrendingUp className="h-5 w-5 text-secondary-foreground" />
               </div>
               <div>
@@ -235,7 +235,7 @@ export default function Practice() {
               {loadingAssignments ? (
                 <div className="space-y-3 py-4">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
+                    <div key={i} className="flex items-center gap-3 rounded-xl border p-3">
                       <Skeleton className="h-4 w-32" />
                       <Skeleton className="ml-auto h-4 w-16" />
                     </div>
@@ -261,7 +261,7 @@ export default function Practice() {
                     .map(assignment => (
                       <div 
                         key={assignment.id} 
-                        className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+                        className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between"
                       >
                         <div>
                           <p className="font-medium">{assignment.title}</p>

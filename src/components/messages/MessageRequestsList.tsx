@@ -264,13 +264,13 @@ export function MessageRequestsList({ className }: MessageRequestsListProps) {
                 </div>
 
                 {/* Message */}
-                <div className="rounded-lg bg-muted/50 p-3">
+                <div className="rounded-xl bg-muted/50 p-3">
                   <p className="text-sm whitespace-pre-wrap">{request.message}</p>
                 </div>
 
                 {/* Admin response if exists */}
                 {request.admin_response && (
-                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
                     <p className="text-xs font-medium text-primary mb-1">Admin Response:</p>
                     <p className="text-sm whitespace-pre-wrap">{request.admin_response}</p>
                   </div>
@@ -329,7 +329,7 @@ export function MessageRequestsList({ className }: MessageRequestsListProps) {
           <div className="space-y-4 py-4">
             {/* Current lesson details for reschedule/cancellation */}
             {selectedRequest?.lesson && (responseAction === 'approved') && (
-              <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+              <div className="rounded-xl border bg-muted/30 p-3 space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   Current Lesson
                 </p>
@@ -348,7 +348,7 @@ export function MessageRequestsList({ className }: MessageRequestsListProps) {
 
             {/* Cancellation warning */}
             {isCancellationApproval && (
-              <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+              <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
                 <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                 <div className="text-sm">
                   <p className="font-medium text-destructive">This will cancel the lesson</p>
@@ -362,7 +362,7 @@ export function MessageRequestsList({ className }: MessageRequestsListProps) {
 
             {/* Reschedule picker */}
             {isRescheduleApproval && (
-              <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+              <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
                 <div className="flex items-center gap-2">
                   <ArrowRight className="h-4 w-4 text-primary" />
                   <p className="text-sm font-medium text-primary">Reschedule To</p>

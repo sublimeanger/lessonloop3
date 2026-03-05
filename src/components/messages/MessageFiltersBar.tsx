@@ -226,10 +226,10 @@ export function MessageFiltersBar({ filters, onFiltersChange }: MessageFiltersBa
             onValueChange={v => updateFilter('channel', (v || undefined) as MessageFilters['channel'])}
             className="border rounded-xl p-0.5 h-9"
           >
-            <ToggleGroupItem value="email" className="gap-1.5 px-2.5 rounded-lg text-xs h-7 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+            <ToggleGroupItem value="email" className="gap-1.5 px-2.5 rounded-xl text-xs h-7 data-[state=on]:bg-background data-[state=on]:shadow-sm">
               <Mail className="h-3.5 w-3.5" /> Email
             </ToggleGroupItem>
-            <ToggleGroupItem value="inapp" className="gap-1.5 px-2.5 rounded-lg text-xs h-7 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+            <ToggleGroupItem value="inapp" className="gap-1.5 px-2.5 rounded-xl text-xs h-7 data-[state=on]:bg-background data-[state=on]:shadow-sm">
               <Monitor className="h-3.5 w-3.5" /> In-App
             </ToggleGroupItem>
           </ToggleGroup>
@@ -280,7 +280,7 @@ export function MessageFiltersBar({ filters, onFiltersChange }: MessageFiltersBa
 
           {/* Clear all */}
           {activeCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={clearAll} className="gap-1.5 text-xs h-8 min-h-11 sm:min-h-9 rounded-lg text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="sm" onClick={clearAll} className="gap-1.5 text-xs h-8 min-h-11 sm:min-h-9 rounded-xl text-muted-foreground hover:text-foreground">
               <X className="h-3.5 w-3.5" /> Clear all
             </Button>
           )}

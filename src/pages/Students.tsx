@@ -50,7 +50,7 @@ function StatusPills({
   counts: { all: number; active: number; inactive: number };
 }) {
   return (
-    <div className="flex w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted/50 p-0.5 sm:w-auto" role="tablist" aria-label="Student status filters">
+    <div className="flex w-full items-center gap-1 overflow-x-auto rounded-xl bg-muted/50 p-0.5 sm:w-auto" role="tablist" aria-label="Student status filters">
       {STATUS_FILTERS.map((s) => (
         <button
           key={s}

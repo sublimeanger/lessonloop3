@@ -157,7 +157,7 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, onRemove
 
         {/* Weekly Stats */}
         {weekStats && (
-          <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 mb-4">
+          <div className="flex items-center gap-2 rounded-xl border bg-muted/30 px-3 py-2 mb-4">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">
               This week: <span className="font-medium text-foreground">{weekStats.count} lesson{weekStats.count !== 1 ? 's' : ''}</span> · <span className="font-medium text-foreground">{weekStats.hours}h</span>
@@ -235,7 +235,7 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, onRemove
               {assignedStudents.map((s) => (
                 <div
                   key={s.id}
-                  className="flex min-h-11 items-center justify-between rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors hover:bg-accent"
+                  className="flex min-h-11 items-center justify-between rounded-xl border px-3 py-2 text-sm cursor-pointer transition-colors hover:bg-accent"
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { onOpenChange(false); navigate(`/students/${s.id}`); } }}
