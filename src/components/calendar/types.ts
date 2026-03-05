@@ -25,6 +25,7 @@ export interface Lesson {
   created_by: string;
   created_at: string;
   updated_at: string;
+  is_open_slot?: boolean;
 }
 
 export interface LessonWithDetails extends Lesson {
