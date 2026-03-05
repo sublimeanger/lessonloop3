@@ -285,9 +285,7 @@ export default function Resources() {
 
         {/* Content */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+          <ResourceGridSkeleton />
         ) : filteredResources.length === 0 ? (
           search ? (
             <div className="text-center py-12 text-muted-foreground">
