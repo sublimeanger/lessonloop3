@@ -37,7 +37,7 @@ const STATUS_DOT: Record<StatusColor, string> = {
   green: 'bg-green-500',
   amber: 'bg-amber-500',
   red: 'bg-red-500',
-  grey: 'bg-gray-400',
+  grey: 'bg-muted-foreground',
 };
 
 export function CalendarSyncHealth() {
