@@ -97,6 +97,20 @@ export default function CalendarPage() {
     checkConflicts, isOnline, isMobile, isDesktop, isParent,
   });
 
+  const bulk = useBulkLessonActions({
+    refetch,
+    orgId: currentOrg?.id ?? null,
+    userId: user?.id ?? null,
+  });
+
+  // Escape to exit selection mode
+  useEffect(() => {
+    if (!bulk.selectionMode) return;
+    const handleEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') bulk.exitSelectionMode(); };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [bulk.selectionMode, bulk.exitSelectionMode]);
+
   const lessonsByDay = useMemo(() => {
     const map = new Map<string, LessonWithDetails[]>();
     for (const lesson of lessons) {
