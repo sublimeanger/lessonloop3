@@ -235,7 +235,7 @@ export default function Practice() {
               {loadingAssignments ? (
                 <div className="space-y-3 py-4">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
+                    <div key={i} className="flex items-center gap-3 rounded-xl border p-3">
                       <Skeleton className="h-4 w-32" />
                       <Skeleton className="ml-auto h-4 w-16" />
                     </div>
