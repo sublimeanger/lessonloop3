@@ -109,7 +109,7 @@ export function CalendarMobileLayout({
             {!isParent && <p className="text-sm mt-1">Tap + to create a lesson</p>}
           </div>
         ) : (
-          <MobileDayView currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap} onLessonClick={actions.handleLessonClick} savingLessonIds={actions.savingLessonIds} />
+          <MobileDayView currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap} onLessonClick={bulk.selectionMode ? (l) => bulk.toggleSelection(l.id) : actions.handleLessonClick} savingLessonIds={actions.savingLessonIds} onLongPress={!isParent ? (l) => { bulk.enterSelectionMode(); bulk.toggleSelection(l.id); } : undefined} />
         )}
       </SectionErrorBoundary>
 
