@@ -21,6 +21,7 @@ import {
   UserPlus,
   ClipboardCheck,
   ArrowRightLeft,
+  Lightbulb,
   type LucideIcon,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
