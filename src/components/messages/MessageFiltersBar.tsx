@@ -280,7 +280,7 @@ export function MessageFiltersBar({ filters, onFiltersChange }: MessageFiltersBa
 
           {/* Clear all */}
           {activeCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={clearAll} className="gap-1.5 text-xs h-8 min-h-11 sm:min-h-9 rounded-lg text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="sm" onClick={clearAll} className="gap-1.5 text-xs h-8 min-h-11 sm:min-h-9 rounded-xl text-muted-foreground hover:text-foreground">
               <X className="h-3.5 w-3.5" /> Clear all
             </Button>
           )}

@@ -362,7 +362,7 @@ export function MessageRequestsList({ className }: MessageRequestsListProps) {
 
             {/* Reschedule picker */}
             {isRescheduleApproval && (
-              <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+              <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
                 <div className="flex items-center gap-2">
                   <ArrowRight className="h-4 w-4 text-primary" />
                   <p className="text-sm font-medium text-primary">Reschedule To</p>

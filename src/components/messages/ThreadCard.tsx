@@ -211,7 +211,7 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
                     rows={3}
                     className="rounded-xl resize-none focus-visible:ring-primary/20"
                   />
-                  <div className="flex items-center gap-3 rounded-lg border px-3 py-2">
+                  <div className="flex items-center gap-3 rounded-xl border px-3 py-2">
                     <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                     <Label htmlFor="reply-email-toggle" className="text-xs cursor-pointer flex-1">
                       Also send via email

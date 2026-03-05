@@ -178,8 +178,8 @@ export default function EnrolmentWaitlistPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-green-500/10 p-2">
-              <TrendingUp className="h-4 w-4 text-green-500" />
+            <div className="rounded-xl bg-success/10 p-2">
+              <TrendingUp className="h-4 w-4 text-success" />
             </div>
             <div>
               <p className="text-2xl font-semibold">{stats?.enrolled_this_term ?? 0}</p>

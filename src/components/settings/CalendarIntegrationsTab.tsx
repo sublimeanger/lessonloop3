@@ -347,7 +347,7 @@ export function CalendarIntegrationsTab() {
                 </Button>
               )}
 
-              <div className="rounded-lg bg-muted p-4 space-y-2">
+              <div className="rounded-xl bg-muted p-4 space-y-2">
                 <h5 className="font-medium text-sm">How to subscribe:</h5>
                 <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
                   <li>Copy the iCal URL above</li>

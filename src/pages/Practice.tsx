@@ -261,7 +261,7 @@ export default function Practice() {
                     .map(assignment => (
                       <div 
                         key={assignment.id} 
-                        className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+                        className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between"
                       >
                         <div>
                           <p className="font-medium">{assignment.title}</p>

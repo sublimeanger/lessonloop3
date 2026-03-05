@@ -149,7 +149,7 @@ export function StudentLessonNotes({ studentId }: StudentLessonNotesProps) {
         ) : (
           <div className="space-y-4">
             {notes.map((note) => (
-              <div key={note.id} className="rounded-lg border p-4 space-y-2">
+              <div key={note.id} className="rounded-xl border p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">

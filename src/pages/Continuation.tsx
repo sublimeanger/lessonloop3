@@ -383,7 +383,7 @@ export default function Continuation() {
               </div>
             </div>
 
-            <div className="rounded-lg border">
+            <div className="rounded-xl border">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>

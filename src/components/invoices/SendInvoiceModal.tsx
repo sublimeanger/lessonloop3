@@ -213,7 +213,7 @@ export function SendInvoiceModal({
               )}
 
               {recipientEmail && (
-                <div className="rounded-lg border p-3">
+                <div className="rounded-xl border p-3">
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     <div>
