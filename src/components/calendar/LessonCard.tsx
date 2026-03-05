@@ -259,9 +259,11 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
             colour.bgLight,
             isCancelled && 'opacity-50',
             isOpenSlot && 'border border-dashed border-primary/40',
-            isSaving && 'animate-pulse ring-1 ring-primary/30'
+            isSaving && 'animate-pulse ring-1 ring-primary/30',
+            isSelected && 'ring-2 ring-primary',
           )}
         >
+          {selectionCheckbox}
           <div className={cn(
             'flex items-center gap-1 font-semibold truncate',
             isCancelled && 'line-through'
