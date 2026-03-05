@@ -297,7 +297,7 @@ export default function EnrolmentWaitlistPage() {
         </div>
       ) : (
         /* Desktop: table */
-        <div className="rounded-lg border bg-card">
+        <div className="rounded-xl border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
