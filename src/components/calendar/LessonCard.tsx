@@ -2,10 +2,11 @@ import React from 'react';
 import { format, differenceInMinutes, parseISO } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { cn } from '@/lib/utils';
-import { Repeat, GripHorizontal } from 'lucide-react';
+import { Repeat, GripHorizontal, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { TeacherColourEntry, TEACHER_COLOURS } from './teacherColours';
+import { useBulkSelection } from './BulkSelectionContext';
 
 interface LessonCardProps {
   lesson: LessonWithDetails;
