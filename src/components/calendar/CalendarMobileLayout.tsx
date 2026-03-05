@@ -62,6 +62,7 @@ export function CalendarMobileLayout({
   teachersWithColours,
   teacherColourMap,
   actions,
+  bulk,
 }: CalendarMobileLayoutProps) {
   // hide_cancelled is now applied server-side in useCalendarData
 
