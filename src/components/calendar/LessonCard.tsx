@@ -2,10 +2,11 @@ import React from 'react';
 import { format, differenceInMinutes, parseISO } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { cn } from '@/lib/utils';
-import { Repeat, GripHorizontal } from 'lucide-react';
+import { Repeat, GripHorizontal, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { TeacherColourEntry, TEACHER_COLOURS } from './teacherColours';
+import { useBulkSelection } from './BulkSelectionContext';
 
 interface LessonCardProps {
   lesson: LessonWithDetails;
@@ -62,6 +63,8 @@ function buildSecondaryLine(lesson: LessonWithDetails): string {
 }
 
 export const LessonCard = React.memo(function LessonCard({ lesson, onClick, variant = 'calendar', teacherColour, showResizeHandle, onResizeStart, compact, isSaving }: LessonCardProps) {
+  const { selectionMode, selectedIds } = useBulkSelection();
+  const isSelected = selectionMode && selectedIds.has(lesson.id);
   const startTime = parseISO(lesson.start_at);
   const endTime = parseISO(lesson.end_at);
   const duration = differenceInMinutes(endTime, startTime);
@@ -71,6 +74,18 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
   const isOpenSlot = !!lesson.is_open_slot;
   const hasMakeup = (lesson.makeupStudentIds?.length ?? 0) > 0;
   const colour = teacherColour ?? TEACHER_COLOURS[0];
+
+  // Selection checkbox overlay element
+  const selectionCheckbox = selectionMode ? (
+    <div className={cn(
+      'absolute top-0.5 left-0.5 z-10 h-4 w-4 rounded-sm border flex items-center justify-center shrink-0 transition-colors',
+      isSelected
+        ? 'bg-primary border-primary text-primary-foreground'
+        : 'border-muted-foreground/40 bg-background/80'
+    )}>
+      {isSelected && <Check className="h-3 w-3" />}
+    </div>
+  ) : null;
 
   const studentDisplay = formatStudentNames(lesson.participants);
   const studentShort = formatStudentShort(lesson.participants);
@@ -126,13 +141,15 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
         onClick={onClick}
         aria-label={`${lesson.title}, ${format(startTime, 'EEEE')} at ${format(startTime, 'h:mm a')}, ${lesson.status}`}
         className={cn(
-          'px-1 sm:px-1.5 py-0.5 sm:py-1 cursor-pointer transition-colors rounded-sm',
+          'px-1 sm:px-1.5 py-0.5 sm:py-1 cursor-pointer transition-colors rounded-sm relative',
           colour.bgLight,
           isCancelled && 'opacity-40',
           isOpenSlot && 'border border-dashed border-primary/40',
-          isSaving && 'animate-pulse ring-1 ring-primary/30'
+          isSaving && 'animate-pulse ring-1 ring-primary/30',
+          isSelected && 'ring-2 ring-primary',
         )}
       >
+        {selectionCheckbox}
         {/* Time */}
         <div className={cn(
           'text-micro leading-tight tabular-nums',
@@ -179,11 +196,13 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
         onClick={onClick}
         aria-label={`${lesson.title}, ${format(startTime, 'EEEE')} at ${format(startTime, 'h:mm a')}, ${lesson.status}`}
         className={cn(
-          'flex items-center gap-3 sm:gap-4 rounded-lg p-3 sm:p-4 cursor-pointer transition-colors',
+          'flex items-center gap-3 sm:gap-4 rounded-lg p-3 sm:p-4 cursor-pointer transition-colors relative',
           colour.bgLight,
-          isCancelled && 'opacity-50'
+          isCancelled && 'opacity-50',
+          isSelected && 'ring-2 ring-primary',
         )}
       >
+        {selectionCheckbox}
         <div className="flex flex-col items-center text-center min-w-[50px] sm:min-w-[60px]">
           <span className={cn('text-xl sm:text-2xl font-semibold', colour.text)}>
             {format(startTime, 'HH:mm')}
@@ -240,9 +259,11 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
             colour.bgLight,
             isCancelled && 'opacity-50',
             isOpenSlot && 'border border-dashed border-primary/40',
-            isSaving && 'animate-pulse ring-1 ring-primary/30'
+            isSaving && 'animate-pulse ring-1 ring-primary/30',
+            isSelected && 'ring-2 ring-primary',
           )}
         >
+          {selectionCheckbox}
           <div className={cn(
             'flex items-center gap-1 font-semibold truncate',
             isCancelled && 'line-through'

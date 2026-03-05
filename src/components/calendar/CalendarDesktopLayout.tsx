@@ -18,7 +18,7 @@ import { CalendarSkeleton } from '@/components/shared/LoadingState';
 import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
 import { useUrgentActions } from '@/hooks/useUrgentActions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Columns3, Minimize2, Users, AlertTriangle, Calendar, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Columns3, Minimize2, Users, AlertTriangle, Calendar, Zap, CheckSquare } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Toggle } from '@/components/ui/toggle';
@@ -27,6 +27,7 @@ import { QuickCreatePopover } from './QuickCreatePopover';
 import { SlotGeneratorWizard } from './SlotGeneratorWizard';
 import type { CalendarView, CalendarFilters, LessonWithDetails } from './types';
 import type { useCalendarActions } from '@/hooks/useCalendarActions';
+import type { useBulkLessonActions } from '@/hooks/useBulkLessonActions';
 
 interface TeacherInfo {
   id: string;
@@ -62,6 +63,7 @@ interface CalendarDesktopLayoutProps {
   teachersWithColours: TeacherWithColour[];
   teacherColourMap: Map<string, TeacherWithColour>;
   actions: ReturnType<typeof useCalendarActions>;
+  bulk: ReturnType<typeof useBulkLessonActions>;
   refetch: () => void;
 }
 
@@ -93,12 +95,22 @@ export function CalendarDesktopLayout({
   teachersWithColours,
   teacherColourMap,
   actions,
+  bulk,
   refetch,
 }: CalendarDesktopLayoutProps) {
   const [slotWizardOpen, setSlotWizardOpen] = useState(false);
   // hide_cancelled is now applied server-side in useCalendarData
 
   const wizardTeachers = teachers.map(t => ({ id: t.id, display_name: t.name, user_id: t.userId }));
+
+  // When in selection mode, clicks toggle selection instead of opening details
+  const handleLessonClickOrSelect = (lesson: LessonWithDetails) => {
+    if (bulk.selectionMode) {
+      bulk.toggleSelection(lesson.id);
+    } else {
+      actions.handleLessonClick(lesson);
+    }
+  };
 
   return (
     <AppLayout>
@@ -126,6 +138,10 @@ export function CalendarDesktopLayout({
                   <DropdownMenuItem onClick={() => setSlotWizardOpen(true)}>
                     <Zap className="h-4 w-4 mr-2" />
                     Generate Open Slots
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => bulk.enterSelectionMode()}>
+                    <CheckSquare className="h-4 w-4 mr-2" />
+                    Select Lessons
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -205,18 +221,18 @@ export function CalendarDesktopLayout({
                 onAction={() => actions.openNewLessonModal()}
               />
             ) : view === 'agenda' ? (
-              <AgendaView currentDate={currentDate} lessons={lessons} onLessonClick={actions.handleLessonClick} teacherColourMap={teacherColourMap} groupByTeacher={groupByTeacher} />
+              <AgendaView currentDate={currentDate} lessons={lessons} onLessonClick={handleLessonClickOrSelect} teacherColourMap={teacherColourMap} groupByTeacher={groupByTeacher} />
             ) : view === 'day' ? (
               <DayTimelineView
                 currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap}
-                onLessonClick={actions.handleLessonClick} onSlotClick={actions.handleSlotClick} onSlotDrag={actions.handleSlotDrag}
-                onLessonDrop={!isParent ? actions.handleLessonDrop : undefined} onLessonResize={!isParent ? actions.handleLessonResize : undefined}
+                onLessonClick={handleLessonClickOrSelect} onSlotClick={actions.handleSlotClick} onSlotDrag={actions.handleSlotDrag}
+                onLessonDrop={!isParent && !bulk.selectionMode ? actions.handleLessonDrop : undefined} onLessonResize={!isParent && !bulk.selectionMode ? actions.handleLessonResize : undefined}
                 isParent={isParent} savingLessonIds={actions.savingLessonIds}
               />
             ) : view === 'stacked' ? (
               <StackedWeekView
                 currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap}
-                onLessonClick={actions.handleLessonClick}
+                onLessonClick={handleLessonClickOrSelect}
                 onDayClick={(date) => { if (!isParent) { actions.handleSlotClick(date); } }}
                 isParent={isParent} compact={isCompact}
               />
@@ -224,8 +240,8 @@ export function CalendarDesktopLayout({
               <div data-tour="calendar-grid" data-hint="calendar-grid">
                 <WeekTimeGrid
                   currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap}
-                  onLessonClick={actions.handleLessonClick} onSlotClick={actions.handleSlotClick} onSlotDrag={actions.handleSlotDrag}
-                  onLessonDrop={!isParent ? actions.handleLessonDrop : undefined} onLessonResize={!isParent ? actions.handleLessonResize : undefined}
+                  onLessonClick={handleLessonClickOrSelect} onSlotClick={actions.handleSlotClick} onSlotDrag={actions.handleSlotDrag}
+                  onLessonDrop={!isParent && !bulk.selectionMode ? actions.handleLessonDrop : undefined} onLessonResize={!isParent && !bulk.selectionMode ? actions.handleLessonResize : undefined}
                   isParent={isParent} savingLessonIds={actions.savingLessonIds}
                 />
                 {!isParent && (

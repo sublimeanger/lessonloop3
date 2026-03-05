@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useCallback } from 'react';
 import { format, parseISO, differenceInMinutes, isSameDay } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { TeacherWithColour, TeacherColourEntry, getTeacherColour } from './teacherColours';
@@ -18,6 +18,7 @@ interface MobileDayViewProps {
   teacherColourMap: Map<string, TeacherWithColour>;
   onLessonClick: (lesson: LessonWithDetails) => void;
   savingLessonIds?: Set<string>;
+  onLongPress?: (lesson: LessonWithDetails) => void;
 }
 
 export function MobileDayView({
@@ -26,6 +27,7 @@ export function MobileDayView({
   teacherColourMap,
   onLessonClick,
   savingLessonIds,
+  onLongPress,
 }: MobileDayViewProps) {
   // Filter lessons for the current day and sort chronologically
   const dayLessons = useMemo(() => {
@@ -91,6 +93,7 @@ export function MobileDayView({
             {/* Lesson card */}
             <button
               onClick={() => onLessonClick(lesson)}
+              onContextMenu={onLongPress ? (e) => { e.preventDefault(); onLongPress(lesson); } : undefined}
               className={cn(
                 'w-full flex items-stretch gap-0 px-0 py-3 text-left transition-colors active:bg-muted/50',
                 isCancelled && 'opacity-40',

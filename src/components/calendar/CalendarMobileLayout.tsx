@@ -13,6 +13,7 @@ import { getTeacherColour, TeacherWithColour } from './teacherColours';
 import { Plus, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import type { CalendarFilters, LessonWithDetails } from './types';
 import type { useCalendarActions } from '@/hooks/useCalendarActions';
+import type { useBulkLessonActions } from '@/hooks/useBulkLessonActions';
 
 interface TeacherInfo {
   id: string;
@@ -39,6 +40,7 @@ interface CalendarMobileLayoutProps {
   teachersWithColours: TeacherWithColour[];
   teacherColourMap: Map<string, TeacherWithColour>;
   actions: ReturnType<typeof useCalendarActions>;
+  bulk: ReturnType<typeof useBulkLessonActions>;
 }
 
 export function CalendarMobileLayout({
@@ -60,6 +62,7 @@ export function CalendarMobileLayout({
   teachersWithColours,
   teacherColourMap,
   actions,
+  bulk,
 }: CalendarMobileLayoutProps) {
   // hide_cancelled is now applied server-side in useCalendarData
 
@@ -106,7 +109,7 @@ export function CalendarMobileLayout({
             {!isParent && <p className="text-sm mt-1">Tap + to create a lesson</p>}
           </div>
         ) : (
-          <MobileDayView currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap} onLessonClick={actions.handleLessonClick} savingLessonIds={actions.savingLessonIds} />
+          <MobileDayView currentDate={currentDate} lessons={lessons} teacherColourMap={teacherColourMap} onLessonClick={bulk.selectionMode ? (l: LessonWithDetails) => bulk.toggleSelection(l.id) : actions.handleLessonClick} savingLessonIds={actions.savingLessonIds} onLongPress={!isParent ? (l: LessonWithDetails) => { bulk.enterSelectionMode(); bulk.toggleSelection(l.id); } : undefined} />
         )}
       </SectionErrorBoundary>
 

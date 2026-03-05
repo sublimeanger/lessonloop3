@@ -7,6 +7,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCalendarData, useTeachersAndLocations } from '@/hooks/useCalendarData';
 import { useCalendarActions } from '@/hooks/useCalendarActions';
+import { useBulkLessonActions } from '@/hooks/useBulkLessonActions';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
@@ -17,6 +18,8 @@ import { CalendarDesktopLayout } from '@/components/calendar/CalendarDesktopLayo
 import { LessonModal } from '@/components/calendar/LessonModal';
 import { LessonDetailPanel } from '@/components/calendar/LessonDetailPanel';
 import { RecurringActionDialog } from '@/components/calendar/RecurringActionDialog';
+import { BulkSelectBar } from '@/components/calendar/BulkSelectBar';
+import { BulkSelectionProvider } from '@/components/calendar/BulkSelectionContext';
 
 const LG_QUERY = '(min-width: 1024px)';
 const subscribe = (cb: () => void) => { const mql = window.matchMedia(LG_QUERY); mql.addEventListener('change', cb); return () => mql.removeEventListener('change', cb); };
@@ -95,6 +98,20 @@ export default function CalendarPage() {
     checkConflicts, isOnline, isMobile, isDesktop, isParent,
   });
 
+  const bulk = useBulkLessonActions({
+    refetch,
+    orgId: currentOrg?.id ?? null,
+    userId: user?.id ?? null,
+  });
+
+  // Escape to exit selection mode
+  useEffect(() => {
+    if (!bulk.selectionMode) return;
+    const handleEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') bulk.exitSelectionMode(); };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [bulk.selectionMode, bulk.exitSelectionMode]);
+
   const lessonsByDay = useMemo(() => {
     const map = new Map<string, LessonWithDetails[]>();
     for (const lesson of lessons) {
@@ -152,10 +169,16 @@ export default function CalendarPage() {
     lessons, lessonsByDay, isLoading, isParent, isOnline,
     filters, setFilters, teachers, locations, rooms, instruments,
     teachersWithColours, teacherColourMap, actions,
+    bulk,
   };
 
+  const bulkCtx = useMemo(() => ({
+    selectionMode: bulk.selectionMode,
+    selectedIds: bulk.selectedIds,
+  }), [bulk.selectionMode, bulk.selectedIds]);
+
   return (
-    <>
+    <BulkSelectionProvider value={bulkCtx}>
       {isMobile ? (
         <CalendarMobileLayout {...sharedProps} isCapReached={isCapReached} />
       ) : (
@@ -172,6 +195,21 @@ export default function CalendarPage() {
       <LessonModal open={actions.isModalOpen} onClose={actions.handleModalClose} onSaved={actions.handleSaved} lesson={actions.selectedLesson} initialDate={actions.slotDate} initialEndDate={actions.slotEndDate} />
       <LessonDetailPanel lesson={actions.detailLesson} open={actions.detailPanelOpen} onClose={() => actions.setDetailPanelOpen(false)} onEdit={actions.handleEditFromDetail} onUpdated={refetch} />
       <RecurringActionDialog open={actions.recurringDialogOpen} onClose={actions.closeRecurringDialog} onSelect={actions.handleRecurringSelect} action="edit" />
-    </>
+
+      {!isParent && bulk.selectionMode && (
+        <BulkSelectBar
+          count={bulk.selectedIds.size}
+          isBulkUpdating={bulk.isBulkUpdating}
+          bulkProgress={bulk.bulkProgress}
+          onClear={bulk.clearSelection}
+          onExit={bulk.exitSelectionMode}
+          onBulkUpdate={bulk.bulkUpdate}
+          onBulkCancel={bulk.bulkCancel}
+          teachers={teachers.map(t => ({ id: t.id, name: t.name }))}
+          locations={locations}
+          rooms={rooms}
+        />
+      )}
+    </BulkSelectionProvider>
   );
 }
