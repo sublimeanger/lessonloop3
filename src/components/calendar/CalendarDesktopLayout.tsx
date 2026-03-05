@@ -103,6 +103,15 @@ export function CalendarDesktopLayout({
 
   const wizardTeachers = teachers.map(t => ({ id: t.id, display_name: t.name, user_id: t.userId }));
 
+  // When in selection mode, clicks toggle selection instead of opening details
+  const handleLessonClickOrSelect = (lesson: LessonWithDetails) => {
+    if (bulk.selectionMode) {
+      bulk.toggleSelection(lesson.id);
+    } else {
+      actions.handleLessonClick(lesson);
+    }
+  };
+
   return (
     <AppLayout>
       <PageHeader
