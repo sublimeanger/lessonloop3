@@ -16,6 +16,7 @@ import { Loader2, CheckCircle2, Save, UserCheck, ChevronLeft, ChevronRight, Cale
 import { cn } from '@/lib/utils';
 import type { AttendanceStatus, AbsenceReason } from '@/hooks/useRegisterData';
 import { AbsenceReasonPicker, needsAbsenceReason, type AbsenceReasonValue } from '@/components/register/AbsenceReasonPicker';
+import { StudentNotesPopover } from '@/components/register/StudentNotesPopover';
 
 export default function BatchAttendance() {
   usePageMeta('Batch Attendance | LessonLoop', 'Mark attendance for multiple lessons at once');
@@ -292,6 +293,10 @@ export default function BatchAttendance() {
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                               <span className="flex items-center gap-1.5 text-sm font-medium">
                                 {p.student_name}
+                                <StudentNotesPopover
+                                  studentId={p.student_id}
+                                  studentName={p.student_name}
+                                />
                                 {needsAbsenceReason(currentStatus) && !currentReason && (
                                   <span title="Absence reason missing" className="text-warning">
                                     <AlertCircle className="h-3.5 w-3.5" />
