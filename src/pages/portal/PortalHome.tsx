@@ -305,7 +305,7 @@ export default function PortalHome() {
         {profile?.id && <PortalWelcomeDialog userId={profile.id} academyName={currentOrg?.name || 'your academy'} />}
         {/* 1. Hero Greeting */}
         <div className={cn(
-          'rounded-2xl p-6 md:p-8 text-white relative overflow-hidden',
+          'rounded-2xl p-4 sm:p-6 md:p-8 text-white relative overflow-hidden',
           new Date().getHours() < 12 ? 'bg-gradient-morning' :
           new Date().getHours() < 17 ? 'bg-gradient-afternoon' : 'bg-gradient-evening'
         )}>
