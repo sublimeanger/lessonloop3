@@ -2,6 +2,7 @@ import {
   Calendar,
   Users,
   GraduationCap,
+  FileText,
   MapPin,
   Receipt,
   BarChart3,
@@ -80,6 +81,7 @@ const ownerAdminGroups: NavGroup[] = [
       { title: 'Batch Attendance', url: '/batch-attendance', icon: UserCheck },
       { title: 'Practice', url: '/practice', icon: Music },
       { title: 'Resources', url: '/resources', icon: FolderOpen },
+      { title: 'Notes', url: '/notes', icon: FileText },
     ],
   },
   {
@@ -138,6 +140,7 @@ const teacherGroups: NavGroup[] = [
       { title: 'Batch Attendance', url: '/batch-attendance', icon: UserCheck },
       { title: 'Practice', url: '/practice', icon: Music },
       { title: 'Resources', url: '/resources', icon: FolderOpen },
+      { title: 'Notes', url: '/notes', icon: FileText },
     ],
   },
   {
