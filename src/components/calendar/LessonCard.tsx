@@ -254,6 +254,9 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
             {hasMakeup && !compact && (
               <span className="text-micro font-medium text-warning bg-warning/20 px-0.5 rounded shrink-0">MU</span>
             )}
+            {isOpenSlot && !compact && (
+              <Badge variant="outline" className="text-micro px-1 py-0 h-4 border-primary/50 text-primary bg-primary/10">Open</Badge>
+            )}
             <span className="truncate">{compactStudentName}</span>
           </div>
           {!compact && duration >= 30 && (

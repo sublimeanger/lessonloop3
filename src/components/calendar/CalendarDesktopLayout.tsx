@@ -23,6 +23,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Toggle } from '@/components/ui/toggle';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { QuickCreatePopover } from './QuickCreatePopover';
+import { SlotGeneratorWizard } from './SlotGeneratorWizard';
 import type { CalendarView, CalendarFilters, LessonWithDetails } from './types';
 import type { useCalendarActions } from '@/hooks/useCalendarActions';
 
