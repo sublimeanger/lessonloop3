@@ -57,6 +57,7 @@ export function MobileDayView({
         const colour = resolveColour(teacherColourMap, lesson.teacher_id);
         const isCancelled = lesson.status === 'cancelled';
         const isCompleted = lesson.status === 'completed';
+        const isOpenSlot = !!lesson.is_open_slot;
         const isSaving = savingLessonIds?.has(lesson.id);
 
         // Calculate gap from previous lesson
@@ -93,6 +94,7 @@ export function MobileDayView({
               className={cn(
                 'w-full flex items-stretch gap-0 px-0 py-3 text-left transition-colors active:bg-muted/50',
                 isCancelled && 'opacity-40',
+                isOpenSlot && 'border-l-2 border-dashed border-primary/40',
                 isSaving && 'animate-pulse',
               )}
               style={{ minHeight: 64 }}
@@ -130,6 +132,11 @@ export function MobileDayView({
                   {isCancelled && (
                     <span className="inline-flex items-center rounded-full bg-destructive/10 px-1.5 py-0.5 text-micro font-medium text-destructive shrink-0">
                       Cancelled
+                    </span>
+                  )}
+                  {isOpenSlot && (
+                    <span className="inline-flex items-center rounded-full bg-primary/10 px-1.5 py-0.5 text-micro font-medium text-primary shrink-0">
+                      Open
                     </span>
                   )}
                 </div>

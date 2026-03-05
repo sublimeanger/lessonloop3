@@ -68,6 +68,7 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
   const isRecurring = !!lesson.recurrence_id;
   const isEditedException = isRecurring && !!lesson.is_series_exception;
   const isCancelled = lesson.status === 'cancelled';
+  const isOpenSlot = !!lesson.is_open_slot;
   const hasMakeup = (lesson.makeupStudentIds?.length ?? 0) > 0;
   const colour = teacherColour ?? TEACHER_COLOURS[0];
 
@@ -87,6 +88,7 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
             'px-1 py-px cursor-pointer transition-colors rounded-sm flex items-center gap-1 min-h-0',
             colour.bgLight,
             isCancelled && 'opacity-40',
+            isOpenSlot && 'border border-dashed border-primary/40',
             isSaving && 'animate-pulse ring-1 ring-primary/30'
           )}
         >
@@ -112,6 +114,9 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
           {hasMakeup && (
             <span className="text-micro font-medium text-warning bg-warning/20 px-0.5 rounded shrink-0">MU</span>
           )}
+          {isOpenSlot && (
+            <span className="text-micro font-medium text-primary bg-primary/15 px-0.5 rounded shrink-0">Open</span>
+          )}
         </div>
       );
     }
@@ -124,6 +129,7 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
           'px-1 sm:px-1.5 py-0.5 sm:py-1 cursor-pointer transition-colors rounded-sm',
           colour.bgLight,
           isCancelled && 'opacity-40',
+          isOpenSlot && 'border border-dashed border-primary/40',
           isSaving && 'animate-pulse ring-1 ring-primary/30'
         )}
       >
@@ -233,6 +239,7 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
             'h-full w-full rounded-sm px-1.5 py-1 cursor-pointer overflow-hidden text-xs transition-all hover:shadow-md group relative',
             colour.bgLight,
             isCancelled && 'opacity-50',
+            isOpenSlot && 'border border-dashed border-primary/40',
             isSaving && 'animate-pulse ring-1 ring-primary/30'
           )}
         >
@@ -246,6 +253,9 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
             )}
             {hasMakeup && !compact && (
               <span className="text-micro font-medium text-warning bg-warning/20 px-0.5 rounded shrink-0">MU</span>
+            )}
+            {isOpenSlot && !compact && (
+              <Badge variant="outline" className="text-micro px-1 py-0 h-4 border-primary/50 text-primary bg-primary/10">Open</Badge>
             )}
             <span className="truncate">{compactStudentName}</span>
           </div>

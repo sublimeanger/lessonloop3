@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -17,11 +18,13 @@ import { CalendarSkeleton } from '@/components/shared/LoadingState';
 import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
 import { useUrgentActions } from '@/hooks/useUrgentActions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Columns3, Minimize2, Users, AlertTriangle, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Columns3, Minimize2, Users, AlertTriangle, Calendar, Zap } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Toggle } from '@/components/ui/toggle';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { QuickCreatePopover } from './QuickCreatePopover';
+import { SlotGeneratorWizard } from './SlotGeneratorWizard';
 import type { CalendarView, CalendarFilters, LessonWithDetails } from './types';
 import type { useCalendarActions } from '@/hooks/useCalendarActions';
 
@@ -92,7 +95,10 @@ export function CalendarDesktopLayout({
   actions,
   refetch,
 }: CalendarDesktopLayoutProps) {
+  const [slotWizardOpen, setSlotWizardOpen] = useState(false);
   // hide_cancelled is now applied server-side in useCalendarData
+
+  const wizardTeachers = teachers.map(t => ({ id: t.id, display_name: t.name, user_id: t.userId }));
 
   return (
     <AppLayout>
@@ -105,10 +111,25 @@ export function CalendarDesktopLayout({
         ]}
         actions={
           !isParent && (
-            <Button onClick={() => actions.openNewLessonModal()} className="gap-2" data-tour="create-lesson-button" disabled={!isOnline}>
-              <Plus className="h-4 w-4" />
-              New Lesson <span className="ml-1 text-micro opacity-60 bg-primary-foreground/20 px-1 rounded">N</span>
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Button onClick={() => actions.openNewLessonModal()} className="gap-2" data-tour="create-lesson-button" disabled={!isOnline}>
+                <Plus className="h-4 w-4" />
+                New Lesson <span className="ml-1 text-micro opacity-60 bg-primary-foreground/20 px-1 rounded">N</span>
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" disabled={!isOnline} title="More actions">
+                    <Zap className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setSlotWizardOpen(true)}>
+                    <Zap className="h-4 w-4 mr-2" />
+                    Generate Open Slots
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           )
         }
       />
@@ -232,6 +253,20 @@ export function CalendarDesktopLayout({
       {!isParent && (
         <QuickCreatePopover open={actions.quickCreateOpen} onClose={() => actions.setQuickCreateOpen(false)} onSaved={actions.handleSaved} onOpenFullModal={actions.handleQuickCreateOpenFullModal} startDate={actions.quickCreateStart} endDate={actions.quickCreateEnd} />
       )}
+
+      <SlotGeneratorWizard
+        open={slotWizardOpen}
+        onOpenChange={setSlotWizardOpen}
+        teachers={wizardTeachers}
+        locations={locations}
+        rooms={rooms}
+        defaultDate={currentDate}
+        onComplete={(date) => {
+          setCurrentDate(date);
+          setView('day');
+          refetch();
+        }}
+      />
     </AppLayout>
   );
 }
