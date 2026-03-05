@@ -140,6 +140,7 @@ const teacherGroups: NavGroup[] = [
       { title: 'Batch Attendance', url: '/batch-attendance', icon: UserCheck },
       { title: 'Practice', url: '/practice', icon: Music },
       { title: 'Resources', url: '/resources', icon: FolderOpen },
+      { title: 'Notes', url: '/notes', icon: FileText },
     ],
   },
   {
