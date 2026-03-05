@@ -18,7 +18,7 @@ import { CalendarSkeleton } from '@/components/shared/LoadingState';
 import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
 import { useUrgentActions } from '@/hooks/useUrgentActions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Columns3, Minimize2, Users, AlertTriangle, Calendar, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, List, LayoutGrid, Columns3, Minimize2, Users, AlertTriangle, Calendar, Zap, CheckSquare } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Toggle } from '@/components/ui/toggle';
@@ -27,6 +27,7 @@ import { QuickCreatePopover } from './QuickCreatePopover';
 import { SlotGeneratorWizard } from './SlotGeneratorWizard';
 import type { CalendarView, CalendarFilters, LessonWithDetails } from './types';
 import type { useCalendarActions } from '@/hooks/useCalendarActions';
+import type { useBulkLessonActions } from '@/hooks/useBulkLessonActions';
 
 interface TeacherInfo {
   id: string;
