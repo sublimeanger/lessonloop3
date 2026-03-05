@@ -1,130 +1,163 @@
-# UI Polish — Part 4: Mobile Responsiveness  
-  
-This is a clean, well-scoped plan. Lovable's done the homework — verified what's already correct, identified exactly what needs changing, and kept it tight. A few notes:
 
-**The dialog fix (4.6) is the most impactful single change.** `max-h-[85vh] overflow-y-auto` on DialogContent prevents every modal in the app from pushing submit buttons below the fold on mobile. That one line fixes a class of issues across all dialogs.
 
-**One thing to flag:** The dialog close button fix says `min-h-11 min-w-11 sm:min-h-auto sm:min-w-auto`. The `sm:min-h-auto` will reset to `auto` which is essentially removing the constraint — check that the close button doesn't shrink too small on tablets. `sm:min-h-9 sm:min-w-9` is safer.
+# Additional Audit Phases Plan
 
-**QuickCreatePopover skip is correct** — desktop-only popovers don't need mobile touch targets.
-
-**MessageFiltersBar toggle items (4.1) skip is correct** — they're inside a grouped container that's already 36px tall.
-
-Green light. Tell Lovable to proceed, then run the E2E suite after to check for regressions — touch target changes can accidentally shift layouts.
-
-## Scope
-
-App components only. Focus on touch targets, mobile button visibility, table responsiveness, dialog sizing, and safe area handling.
+Based on thorough codebase review, here are 6 additional phases covering the gaps you identified. Each phase lists the exact files to audit and the specific concerns to investigate.
 
 ---
 
-## 4.1 — Touch targets below 44px
+## Phase 12: Subscription Enforcement & Feature Gating
 
-Many `size="sm"` buttons use `h-7` (28px) or `h-8` (32px) without mobile-safe overrides. The pattern `min-h-11 sm:min-h-9` already exists in ~23 files but is missing from others.
+**Files to audit:**
+- `src/hooks/useSubscription.ts` — client-side plan derivation
+- `src/hooks/useFeatureGate.ts` — feature matrix and access checks
+- `src/hooks/useUsageCounts.ts` — student/teacher limit checks
+- `src/components/subscription/FeatureGate.tsx` — UI gating components
+- `supabase/functions/stripe-webhook/index.ts` — plan sync from Stripe
+- `supabase/functions/_shared/plan-config.ts` — server-side limits
+- DB functions: `check_teacher_limit()`, `check_subscription_active()`, `is_org_active()`, `is_org_write_allowed()`, `protect_subscription_fields()`
+- `src/test/subscription/PlanGating.test.ts`
 
-**Files needing `min-h-11 sm:min-h-9` added to their buttons:**
-
-
-| File                                    | Element                           | Current                                          |
-| --------------------------------------- | --------------------------------- | ------------------------------------------------ |
-| `CalendarMobileLayout.tsx` line 77      | "Today" button                    | `h-8` → add `min-h-11 sm:min-h-9`                |
-| `CreateLeadModal.tsx` line 245          | "Add Child" button                | `h-7` → `min-h-11 sm:min-h-9`                    |
-| `InvoiceSettingsTab.tsx` line 202       | Reminder day buttons              | `h-7` → `min-h-11 sm:min-h-9`                    |
-| `LeadTimeline.tsx` lines 176, 186       | "Cancel"/"Submit" note buttons    | `h-7` → `min-h-11 sm:min-h-9`                    |
-| `LessonDetailPanel.tsx` line 599        | Zoom sync button                  | `h-7` → `min-h-11 sm:min-h-9`                    |
-| `MusicSettingsTab.tsx` lines 254, 257   | Save/Cancel edit buttons          | `h-8` → `min-h-11 sm:min-h-9`                    |
-| `MessageFiltersBar.tsx` lines 229, 232  | Email/In-App toggle items         | `h-7` → already inside a `h-9` group, acceptable |
-| `ParentLoopAssist.tsx` line 176         | Retry button                      | `h-7` → `min-h-11 sm:min-h-9`                    |
-| `QuickCreatePopover.tsx` lines 206, 285 | "More details" and duration pills | `h-6`/`h-7` — desktop-only popover, skip         |
-| `AbsenceReasonPicker.tsx` line 136      | Date picker button                | `h-8` → `min-h-11 sm:min-h-9`                    |
-| `TeacherAvailabilityTab.tsx` line 279   | Delete availability button        | `h-7 w-7` → `h-11 w-11 sm:h-7 sm:w-7`            |
-| `MessageFiltersBar.tsx` line 283        | "Clear all" button                | `h-8` → `min-h-11 sm:min-h-9`                    |
-| `RecurringBillingTab.tsx` line 199      | "New Template" button             | no height override, needs `min-h-11 sm:min-h-9`  |
-
-
-**Dialog close button**: The `X` close button in `dialog.tsx` line 45 has no size constraint — it's an inline element. Add `min-h-11 min-w-11 sm:min-h-auto sm:min-w-auto flex items-center justify-center` to ensure the touch target is adequate on mobile.
-
-~15 files, ~20 individual button fixes.
-
-## 4.2 — Button text hidden on mobile with no icon fallback
-
-
-| File                                   | Issue                                                           | Fix                                                                               |
-| -------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `PortalMessages.tsx` line 288          | `hidden sm:inline-flex` — entire button disappears on mobile    | Change to icon-only on mobile: show `<Plus>` icon always, text `hidden sm:inline` |
-| `RecurringBillingTab.tsx` line 201     | `hidden sm:inline` on "New Template" — `<Plus>` icon is visible | Already correct, no fix needed                                                    |
-| All other `hidden sm:inline` instances | Verified — all have visible icons                               | No fixes needed                                                                   |
-
-
-Only 1 fix: `PortalMessages.tsx` — change the button from `hidden sm:inline-flex` to always show the icon, with text hidden on mobile.
-
-## 4.3 — Mobile bottom nav for web users
-
-Current: `showBottomNav = isMobile && platform.isNative` — web mobile users rely on hamburger sidebar.
-
-**Decision**: Keep current behavior (hamburger sidebar for web). The hamburger button is in the Header and is always visible. No breadcrumb overflow issue — `AutoBreadcrumbs` truncates gracefully. Mark as "no change needed" for MVP.
-
-## 4.4 — Table layouts at mobile viewport
-
-- **Invoice list**: Already uses card layout on mobile (verified — `MobileInvoiceCard` renders below `sm`). Desktop table only renders at `sm+`. Correct.
-- **Teacher list**: Need to verify.
-- **Leads list**: Kanban view on all viewports, cards are responsive. Correct.
-
-Check teacher list for table usage.
-
-## 4.5 — Calendar mobile view
-
-Already handled well:
-
-- Day view renders correctly (verified `CalendarMobileLayout`)
-- Nav arrows are 44px (`h-11 w-11`)
-- FAB button positioned with safe-area offset
-- Mobile forces day view (no week grid at mobile)
-
-**One fix**: The "Today" button at line 77 needs touch-target upgrade (covered in 4.1).
-
-## 4.6 — Dialog/sheet sizing on mobile
-
-The `DialogContent` in `dialog.tsx` already uses `left-4 right-4` positioning on mobile, which gives 16px margins. At `sm+` it centers with `left-[50%] translate-x-[-50%]`.
-
-**Fixes needed:**
-
-1. Add `max-h-[85vh] overflow-y-auto` to `DialogContent` to prevent content from pushing below the fold on small screens
-2. The close button `X` needs a larger touch target (covered in 4.1)
-
-## 4.7 — Safe area handling
-
-Already well-handled:
-
-- `StaffBottomNav`: `pb-[env(safe-area-inset-bottom)]` ✓
-- `PortalBottomNav`: `pb-[env(safe-area-inset-bottom)]` ✓
-- `OnboardingLayout`: `pb-[env(safe-area-inset-bottom,24px)]` ✓
-- Calendar FAB: `calc(5rem + env(safe-area-inset-bottom, 0px))` ✓
-- Teacher FAB: same pattern ✓
-- CSS variables defined in `index.css` ✓
-
-**No changes needed.**
+**Concerns:**
+- SUB-H1 (from Phase 10): No server-side student limit trigger — is it still missing?
+- Can a cancelled/expired org bypass `check_subscription_active` for any table?
+- Do `CANCELLED_LIMITS` actually get applied on the DB rows, or only client-side?
+- Is `protect_subscription_fields()` trigger attached to the right table with the right timing?
+- Feature matrix gaps: are there features accessible without proper gating?
+- Grace period logic: is `PAST_DUE_GRACE_DAYS` consistent between frontend and backend?
+- Can a user downgrade and retain access to higher-plan features until cache expires?
 
 ---
 
-## Summary of changes
+## Phase 13: Term Management & Practice/Resources
 
+**Files to audit:**
+- `src/hooks/useTerms.ts` — CRUD operations
+- `src/components/settings/TermManagementCard.tsx` — overlap validation
+- `supabase/functions/process-term-adjustment/index.ts` — term adjustment wizard
+- `src/hooks/usePractice.ts` — practice log mutations
+- `src/hooks/useResources.ts` — resource upload/share/delete
+- DB function: `update_practice_streak()` trigger
+- `supabase/functions/streak-notification/index.ts`
+- `supabase/functions/credit-expiry/index.ts`, `credit-expiry-warning/index.ts`
 
-| File                                                 | Change                                                                                     |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `src/components/ui/dialog.tsx`                       | Add `max-h-[85vh] overflow-y-auto` to content; enlarge close button touch target on mobile |
-| `src/components/calendar/CalendarMobileLayout.tsx`   | "Today" button: add `min-h-11 sm:min-h-9`                                                  |
-| `src/components/leads/CreateLeadModal.tsx`           | "Add Child" button: `h-7` → `min-h-11 sm:min-h-9`                                          |
-| `src/components/settings/InvoiceSettingsTab.tsx`     | Reminder buttons: `h-7` → `min-h-11 sm:min-h-9`                                            |
-| `src/components/leads/LeadTimeline.tsx`              | Note buttons: `h-7` → `min-h-11 sm:min-h-9`                                                |
-| `src/components/calendar/LessonDetailPanel.tsx`      | Zoom button: `h-7` → `min-h-11 sm:min-h-9`                                                 |
-| `src/components/settings/MusicSettingsTab.tsx`       | Save/Cancel buttons: `h-8` → `min-h-11 sm:min-h-9`                                         |
-| `src/components/parent-portal/ParentLoopAssist.tsx`  | Retry button: `h-7` → `min-h-11 sm:min-h-9`                                                |
-| `src/components/register/AbsenceReasonPicker.tsx`    | Date button: `h-8` → `min-h-11 sm:min-h-9`                                                 |
-| `src/components/settings/TeacherAvailabilityTab.tsx` | Delete button: add mobile size override                                                    |
-| `src/components/messages/MessageFiltersBar.tsx`      | "Clear all": `h-8` → `min-h-11 sm:min-h-9`                                                 |
-| `src/components/settings/RecurringBillingTab.tsx`    | "New Template": add `min-h-11 sm:min-h-9`                                                  |
-| `src/pages/portal/PortalMessages.tsx`                | Fix disappearing "New Message" button on mobile                                            |
+**Concerns:**
+- Term overlap validation: is it server-side or client-only?
+- `process-term-adjustment`: does it validate term ownership, lesson counts, and credit note amounts atomically?
+- Practice streak trigger: edge cases with backdated logs, timezone boundaries, same-day duplicates
+- Resource uploads: is file type validated server-side or just client-side? Can you upload a `.exe` disguised as `.pdf`?
+- Storage quota: enforced at DB/storage level or just client-side check?
+- Streak notifications: authenticated? Rate limited?
 
+---
 
-14 files, ~20 touch target fixes + 1 dialog enhancement + 1 button visibility fix.
+## Phase 14: LoopAssist AI (Staff Chat + Execute)
+
+**Files to audit:**
+- `supabase/functions/looopassist-chat/index.ts` (1907 lines) — full review
+- `supabase/functions/looopassist-execute/index.ts` (1391 lines) — full review
+- `src/hooks/useLoopAssist.ts` (552 lines) — client-side hook
+- `src/components/loopassist/ActionCard.tsx` — proposal parsing
+- `src/lib/action-registry.ts` — valid action types
+- `supabase/functions/parent-loopassist-chat/index.ts` — parent variant
+- `src/hooks/useParentLoopAssist.ts` — parent client hook
+- `supabase/functions/_shared/rate-limit.ts` — LoopAssist daily cap
+
+**Concerns:**
+- **Prompt injection**: sanitisation covers known patterns, but does the regex miss Unicode homoglyphs, RTL overrides, or base64-encoded payloads?
+- **Tool call security**: `executeToolCall` returns raw `error.message` from DB queries — internal schema leakage
+- **IDOR via tools**: `search_students`, `get_student_detail`, etc. pass `orgId` but is it always the verified org from the membership check, or could a crafted tool input override it?
+- **Action execution scope**: `bulk_complete_lessons` has a `.limit(100)` but no org_id check on the update itself (relies on select filter) — is the update safe if IDs leak?
+- **Billing run via AI**: `executeGenerateBillingRun` creates invoices with `org_id` but bypasses `create_invoice_with_items` RPC — does it skip any validations?
+- **Dead code**: line 992-993 in execute has `(lessons || []).length > 0 ? null : null` — dead reference
+- **Parent chat**: uses Anthropic directly with `ANTHROPIC_API_KEY` — leaks `e.message` on error (line 351), no message sanitisation of user input
+- **Model selection**: Pro orgs get Sonnet, others Haiku — is there a cost ceiling?
+- **Context hash**: SHA-256 truncated to 16 hex chars — collision risk acceptable?
+- **Tool result size**: no cap on tool result string length — could a 10K result blow the context window
+- **Concurrent proposals**: can a user confirm the same proposal twice in a race condition? (line 378 uses `eq("status", "proposed")` but no `FOR UPDATE`)
+
+---
+
+## Phase 15: Public Pages & Marketing Security
+
+**Files to audit:**
+- `supabase/functions/marketing-chat/index.ts` — public AI endpoint
+- `supabase/functions/booking-submit/index.ts` — public booking form
+- `supabase/functions/booking-get-slots/index.ts` — public slot query
+- `supabase/functions/send-contact-message/index.ts` — contact form
+- `supabase/functions/send-parent-enquiry/index.ts` — parent enquiry
+- `supabase/functions/invite-get/index.ts` — public invite retrieval
+- `src/components/marketing/MarketingChatWidget.tsx` — client-side chat
+
+**Concerns:**
+- All unauthenticated — are rate limits correctly configured and fail-closed?
+- `marketing-chat`: message array not sanitised — can inject system/assistant messages?
+- `booking-submit`: HTML injection in email templates (EF-L1 from Phase 11 — still open?)
+- `booking-get-slots`: does it leak teacher names, room details, or org internals?
+- `invite-get`: does it expose membership details or org info to unauthenticated users?
+- `send-contact-message` / `send-parent-enquiry`: email injection via headers? SMTP injection?
+- CORS configuration on public endpoints: wildcard or restricted?
+
+---
+
+## Phase 16: Performance at Scale
+
+**Files to audit:**
+- All hooks with unbounded queries (no `.limit()` or pagination)
+- `src/hooks/useReports.ts` (734 lines) — multiple aggregation queries
+- `src/hooks/useDataExport.ts` — export truncation (RPT-M5)
+- `supabase/functions/looopassist-chat/index.ts` — 9 parallel aggregate queries on every message
+- `supabase/functions/create-billing-run/index.ts` — batch processing
+- `supabase/functions/gdpr-export/index.ts` — 5 unbounded SELECTs
+- DB indexes: verify critical queries have covering indexes
+- Realtime subscriptions: are any too broad?
+
+**Concerns:**
+- 1000-row default limit: which queries will silently lose data?
+- N+1 patterns: execute functions loop with individual updates (`bulk_complete_lessons`, `send_bulk_reminders`)
+- LoopAssist context building: 9 parallel queries per message — acceptable for 100+ concurrent users?
+- `useTeacherPerformance`: waterfall sequential queries (RPT-M6)
+- Calendar queries: do they have date-windowed indexes?
+- Realtime: `useRealtimePortalPayments` subscribes to all org payments — too broad for large orgs?
+- Billing run: no batch insert for invoice items — creates them one-by-one per payer
+- Missing indexes on `attendance_records`, `practice_logs`, `message_log` for common query patterns
+
+---
+
+## Phase 17: Mobile & Capacitor
+
+**Files to audit:**
+- `src/lib/platform.ts` — platform detection
+- `src/lib/native/init.ts` — native initialisation
+- `src/lib/native/statusBar.ts`, `keyboard.ts`, `deepLinks.ts`
+- `capacitor.config.ts` — app configuration
+- `src/App.tsx` — `NativeInitializer` component
+- `src/components/layout/PortalLayout.tsx` — mobile layout
+- `src/components/layout/PortalBottomNav.tsx` — bottom navigation
+- `src/hooks/use-mobile.ts` — responsive breakpoint detection
+- PWA config in `vite.config.ts`
+
+**Concerns:**
+- Deep link handling: does `initDeepLinks` validate URLs before navigating? Could a malicious deep link navigate to an admin route?
+- Push notifications: is the token registration endpoint authenticated? Can tokens be registered for another user?
+- `capacitor.config.ts` — is `cleartext: true` safe for production? (allows HTTP)
+- Status bar configuration: does it handle notch/safe area on all devices?
+- Keyboard handling: does it prevent content from being hidden behind the keyboard?
+- Offline behaviour: what happens when Supabase queries fail on mobile? Is there any caching or queue?
+- Back button: does Android back button handle navigation correctly across all routes?
+- Session persistence: does the auth session survive app backgrounding/killing?
+- PWA service worker: does `navigateFallbackDenylist` include `/~oauth`?
+
+---
+
+## Execution Order (recommended)
+
+1. **Phase 14 (LoopAssist AI)** — largest attack surface, 3300+ lines of edge function code, tool execution with write access
+2. **Phase 12 (Subscription)** — revenue protection, known open issue (SUB-H1)
+3. **Phase 15 (Public Pages)** — unauthenticated endpoints, highest external exposure
+4. **Phase 16 (Performance)** — data loss risks from silent truncation
+5. **Phase 13 (Terms/Practice/Resources)** — moderate risk, some issues already flagged
+6. **Phase 17 (Mobile)** — lowest immediate risk but needed before app store submission
+
+Each phase follows the same pattern as Phases 1-11: read the files, run the test suite, log findings by severity, and list what passed.
+

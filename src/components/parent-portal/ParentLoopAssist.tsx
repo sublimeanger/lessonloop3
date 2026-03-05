@@ -173,7 +173,7 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="mt-1 h-7 gap-1 text-xs text-destructive hover:text-destructive"
+                      className="mt-1 h-7 min-h-11 sm:min-h-9 gap-1 text-xs text-destructive hover:text-destructive"
                       onClick={() => doSend(failedMessage)}
                     >
                       <RotateCcw className="h-3 w-3" />

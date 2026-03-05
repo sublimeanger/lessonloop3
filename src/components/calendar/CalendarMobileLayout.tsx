@@ -74,7 +74,7 @@ export function CalendarMobileLayout({
             <h1 className="text-xl font-semibold text-foreground">{format(currentDate, 'MMMM d')}</h1>
             <p className="text-xs text-muted-foreground">{format(currentDate, 'EEEE')}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={goToToday} className="h-8 px-3 text-xs">Today</Button>
+          <Button variant="outline" size="sm" onClick={goToToday} className="h-8 min-h-11 sm:min-h-9 px-3 text-xs">Today</Button>
         </div>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" onClick={navigatePrev} aria-label="Previous week">

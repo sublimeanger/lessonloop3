@@ -173,7 +173,7 @@ function AddNoteForm({ leadId }: { leadId: string }) {
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 text-xs"
+             className="h-7 min-h-11 sm:min-h-9 text-xs"
             onClick={() => {
               setIsExpanded(false);
               setNote('');
@@ -183,7 +183,7 @@ function AddNoteForm({ leadId }: { leadId: string }) {
           </Button>
           <Button
             size="sm"
-            className="h-7 text-xs gap-1"
+            className="h-7 min-h-11 sm:min-h-9 text-xs gap-1"
             onClick={handleSubmit}
             disabled={!note.trim() || addNote.isPending}
           >

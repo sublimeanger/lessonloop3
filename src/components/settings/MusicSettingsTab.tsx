@@ -251,10 +251,10 @@ export function MusicSettingsTab() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button size="sm" variant="default" className="h-8" onClick={handleUpdate} disabled={updateMutation.isPending}>
+                       <Button size="sm" variant="default" className="h-8 min-h-11 sm:min-h-9" onClick={handleUpdate} disabled={updateMutation.isPending}>
                         Save
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-8" onClick={() => setEditingId(null)}>
+                      <Button size="sm" variant="ghost" className="h-8 min-h-11 sm:min-h-9" onClick={() => setEditingId(null)}>
                         Cancel
                       </Button>
                     </div>

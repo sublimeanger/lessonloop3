@@ -196,7 +196,7 @@ export function RecurringBillingTab() {
             </CardDescription>
           </div>
           {canEdit && (
-            <Button size="sm" className="gap-1.5" onClick={openCreate}>
+            <Button size="sm" className="gap-1.5 min-h-11 sm:min-h-9" onClick={openCreate}>
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">New Template</span>
             </Button>

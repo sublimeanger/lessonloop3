@@ -596,7 +596,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 text-xs gap-1.5"
+                  className="h-7 min-h-11 sm:min-h-9 text-xs gap-1.5"
                   onClick={() => syncZoomMeeting(lesson.id, 'create')}
                 >
                   <RefreshCw className="h-3 w-3" />
