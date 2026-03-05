@@ -141,13 +141,15 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
         onClick={onClick}
         aria-label={`${lesson.title}, ${format(startTime, 'EEEE')} at ${format(startTime, 'h:mm a')}, ${lesson.status}`}
         className={cn(
-          'px-1 sm:px-1.5 py-0.5 sm:py-1 cursor-pointer transition-colors rounded-sm',
+          'px-1 sm:px-1.5 py-0.5 sm:py-1 cursor-pointer transition-colors rounded-sm relative',
           colour.bgLight,
           isCancelled && 'opacity-40',
           isOpenSlot && 'border border-dashed border-primary/40',
-          isSaving && 'animate-pulse ring-1 ring-primary/30'
+          isSaving && 'animate-pulse ring-1 ring-primary/30',
+          isSelected && 'ring-2 ring-primary',
         )}
       >
+        {selectionCheckbox}
         {/* Time */}
         <div className={cn(
           'text-micro leading-tight tabular-nums',
