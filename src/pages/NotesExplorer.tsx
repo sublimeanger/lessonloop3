@@ -116,7 +116,7 @@ export default function NotesExplorer() {
 
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
-        doc.text(`${formatDateUK(note.lesson_start_at, 'HH:mm', timezone)} — ${note.lesson_title} (${studentName})`, 18, y);
+        doc.text(`${formatDate(note.lesson_start_at, 'HH:mm')} — ${note.lesson_title} (${studentName})`, 18, y);
         y += 5;
 
         doc.setFont('helvetica', 'normal');
