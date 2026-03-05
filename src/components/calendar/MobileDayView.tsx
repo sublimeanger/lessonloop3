@@ -134,6 +134,11 @@ export function MobileDayView({
                       Cancelled
                     </span>
                   )}
+                  {isOpenSlot && (
+                    <span className="inline-flex items-center rounded-full bg-primary/10 px-1.5 py-0.5 text-micro font-medium text-primary shrink-0">
+                      Open
+                    </span>
+                  )}
                 </div>
                 <p className="text-caption text-muted-foreground truncate mt-0.5">
                   {lesson.title !== primaryName ? `${lesson.title} · ` : ''}
