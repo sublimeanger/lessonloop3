@@ -124,7 +124,7 @@ test.describe('Teachers — Owner', () => {
     await addBtn.click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible({ timeout: 10_000 });
-    await expect(dialog.getByText('Add Teacher')).toBeVisible({ timeout: 5_000 });
+    await expect(dialog.getByRole('heading', { name: 'Add Teacher' })).toBeVisible({ timeout: 5_000 });
 
     // Check form fields
     const displayNameField = dialog.getByPlaceholder('Amy Brown').first();
@@ -287,7 +287,7 @@ test.describe('Locations — Owner', () => {
     await addBtn.click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible({ timeout: 10_000 });
-    await expect(dialog.getByText('Add Location')).toBeVisible({ timeout: 5_000 });
+    await expect(dialog.getByRole('heading', { name: 'Add Location' })).toBeVisible({ timeout: 5_000 });
 
     // Cancel
     await dialog.getByRole('button', { name: /cancel/i }).first().click();
