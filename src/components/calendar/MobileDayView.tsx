@@ -57,6 +57,7 @@ export function MobileDayView({
         const colour = resolveColour(teacherColourMap, lesson.teacher_id);
         const isCancelled = lesson.status === 'cancelled';
         const isCompleted = lesson.status === 'completed';
+        const isOpenSlot = !!lesson.is_open_slot;
         const isSaving = savingLessonIds?.has(lesson.id);
 
         // Calculate gap from previous lesson
