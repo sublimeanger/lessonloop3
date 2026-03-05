@@ -172,8 +172,13 @@ export default function CalendarPage() {
     bulk,
   };
 
+  const bulkCtx = useMemo(() => ({
+    selectionMode: bulk.selectionMode,
+    selectedIds: bulk.selectedIds,
+  }), [bulk.selectionMode, bulk.selectedIds]);
+
   return (
-    <>
+    <BulkSelectionProvider value={bulkCtx}>
       {isMobile ? (
         <CalendarMobileLayout {...sharedProps} isCapReached={isCapReached} />
       ) : (
