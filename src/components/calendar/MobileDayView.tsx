@@ -93,6 +93,7 @@ export function MobileDayView({
             {/* Lesson card */}
             <button
               onClick={() => onLessonClick(lesson)}
+              onContextMenu={onLongPress ? (e) => { e.preventDefault(); onLongPress(lesson); } : undefined}
               className={cn(
                 'w-full flex items-stretch gap-0 px-0 py-3 text-left transition-colors active:bg-muted/50',
                 isCancelled && 'opacity-40',
