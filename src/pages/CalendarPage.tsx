@@ -7,6 +7,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCalendarData, useTeachersAndLocations } from '@/hooks/useCalendarData';
 import { useCalendarActions } from '@/hooks/useCalendarActions';
+import { useBulkLessonActions } from '@/hooks/useBulkLessonActions';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useConflictDetection } from '@/hooks/useConflictDetection';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
@@ -17,6 +18,7 @@ import { CalendarDesktopLayout } from '@/components/calendar/CalendarDesktopLayo
 import { LessonModal } from '@/components/calendar/LessonModal';
 import { LessonDetailPanel } from '@/components/calendar/LessonDetailPanel';
 import { RecurringActionDialog } from '@/components/calendar/RecurringActionDialog';
+import { BulkSelectBar } from '@/components/calendar/BulkSelectBar';
 
 const LG_QUERY = '(min-width: 1024px)';
 const subscribe = (cb: () => void) => { const mql = window.matchMedia(LG_QUERY); mql.addEventListener('change', cb); return () => mql.removeEventListener('change', cb); };
