@@ -327,3 +327,118 @@ export function FormSkeleton({ fields = 4 }: { fields?: number }) {
     </div>
   );
 }
+
+// ─── Invoices Skeleton ───────────────────────────────────────────────
+export function InvoicesSkeleton() {
+  return (
+    <div className="space-y-6" role="status" aria-label="Loading invoices">
+      {/* Stats row */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-xl border bg-card p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <Shimmer className="h-4 w-20" />
+              <Shimmer className="h-4 w-4 rounded-lg" />
+            </div>
+            <Shimmer className="h-7 w-16" />
+            <Shimmer className="h-3 w-24" />
+          </div>
+        ))}
+      </div>
+      {/* Table rows */}
+      <div className="rounded-xl border bg-card">
+        <div className="border-b px-4 py-3 flex gap-4">
+          {[80, 120, 100, 80, 60].map((w, i) => (
+            <Shimmer key={i} className="h-4" style={{ width: w }} />
+          ))}
+        </div>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-4 border-b px-4 py-3 last:border-0">
+            <Shimmer className="h-4 w-4 rounded" />
+            <Shimmer className={cn('h-4', i % 2 === 0 ? 'w-28' : 'w-36')} />
+            <Shimmer className="h-4 w-20" />
+            <Shimmer className="h-4 w-16" />
+            <Shimmer className="h-5 w-14 rounded-full" />
+            <Shimmer className="h-4 w-16 ml-auto" />
+          </div>
+        ))}
+      </div>
+      <span className="sr-only">Loading invoices...</span>
+    </div>
+  );
+}
+
+// ─── Kanban Skeleton ─────────────────────────────────────────────────
+export function KanbanSkeleton() {
+  const columnCards = [3, 2, 2, 1];
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4" role="status" aria-label="Loading pipeline">
+      {columnCards.map((count, col) => (
+        <div key={col} className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Shimmer className="h-5 w-20" />
+            <Shimmer className="h-5 w-6 rounded-full" />
+          </div>
+          {Array.from({ length: count }).map((_, i) => (
+            <div key={i} className="rounded-xl border bg-card p-3 space-y-2">
+              <Shimmer className={cn('h-4', i % 2 === 0 ? 'w-3/4' : 'w-2/3')} />
+              <div className="flex items-center gap-2">
+                <Shimmer className="h-3 w-8" />
+                <Shimmer className="h-4 w-14 rounded-full" />
+              </div>
+              <div className="flex items-center justify-between">
+                <Shimmer className="h-4 w-16 rounded-full" />
+                <Shimmer className="h-3 w-10" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+      <span className="sr-only">Loading pipeline...</span>
+    </div>
+  );
+}
+
+// ─── Report Grid Skeleton ────────────────────────────────────────────
+export function ReportGridSkeleton() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Loading reports">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="rounded-xl border bg-card p-5 space-y-3 min-h-[180px]">
+          <div className="flex items-center justify-between">
+            <Shimmer className="h-10 w-10 rounded-lg" />
+            <Shimmer className="h-5 w-5 rounded" />
+          </div>
+          <Shimmer className={cn('h-5 mt-3', i % 2 === 0 ? 'w-28' : 'w-32')} />
+          <Shimmer className="h-3 w-full" />
+          <Shimmer className="h-3 w-3/4" />
+        </div>
+      ))}
+      <span className="sr-only">Loading reports...</span>
+    </div>
+  );
+}
+
+// ─── Resource Grid Skeleton ──────────────────────────────────────────
+export function ResourceGridSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Loading resources">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="rounded-xl border bg-card p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <Shimmer className="h-12 w-12 rounded-lg shrink-0" />
+            <div className="flex-1 space-y-2 min-w-0">
+              <Shimmer className={cn('h-4', i % 2 === 0 ? 'w-3/4' : 'w-2/3')} />
+              <Shimmer className="h-3 w-full" />
+              <div className="flex gap-2">
+                <Shimmer className="h-5 w-12 rounded-full" />
+                <Shimmer className="h-5 w-16 rounded-full" />
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+      <span className="sr-only">Loading resources...</span>
+    </div>
+  );
+}

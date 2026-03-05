@@ -4,7 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { LoadingState } from '@/components/shared/LoadingState';
+import { ReportGridSkeleton } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useOrg } from '@/contexts/OrgContext';
 import { useFeatureGate, Feature } from '@/hooks/useFeatureGate';
@@ -176,7 +176,7 @@ export default function Reports() {
             { label: 'Reports' },
           ]}
         />
-        <LoadingState />
+        <ReportGridSkeleton />
       </AppLayout>
     );
   }

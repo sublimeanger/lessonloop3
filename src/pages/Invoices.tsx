@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { InvoicesSkeleton } from '@/components/shared/LoadingState';
 import { Receipt, Plus, PlayCircle, CreditCard, Download, CalendarClock } from 'lucide-react';
 import { useDataExport } from '@/hooks/useDataExport';
 import { useOrg } from '@/contexts/OrgContext';
@@ -147,7 +148,15 @@ export default function Invoices() {
   if (isLoading) {
     return (
       <AppLayout>
-        <LoadingState message="Loading invoices..." />
+        <PageHeader
+          title="Invoices"
+          description="Manage billing and payments"
+          breadcrumbs={[
+            { label: 'Dashboard', href: '/dashboard' },
+            { label: 'Invoices' },
+          ]}
+        />
+        <InvoicesSkeleton />
       </AppLayout>
     );
   }

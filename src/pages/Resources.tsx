@@ -4,7 +4,8 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, FolderOpen, Loader2, CheckSquare, Trash2, X, ArrowUpDown, LayoutGrid, List, Settings } from 'lucide-react';
+import { Plus, Search, FolderOpen, CheckSquare, Trash2, X, ArrowUpDown, LayoutGrid, List, Settings, Loader2 } from 'lucide-react';
+import { ResourceGridSkeleton } from '@/components/shared/LoadingState';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { safeGetItem, safeSetItem } from '@/lib/storage';
 import { useResourceCategories } from '@/hooks/useResourceCategories';
@@ -285,9 +286,7 @@ export default function Resources() {
 
         {/* Content */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+          <ResourceGridSkeleton />
         ) : filteredResources.length === 0 ? (
           search ? (
             <div className="text-center py-12 text-muted-foreground">
