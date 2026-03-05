@@ -2,6 +2,7 @@ import {
   Calendar,
   Users,
   GraduationCap,
+  FileText,
   MapPin,
   Receipt,
   BarChart3,
