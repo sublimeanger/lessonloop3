@@ -156,8 +156,8 @@ export default function EnrolmentWaitlistPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-amber-500/10 p-2">
-              <Send className="h-4 w-4 text-amber-500" />
+            <div className="rounded-xl bg-warning/10 p-2">
+              <Send className="h-4 w-4 text-warning" />
             </div>
             <div>
               <p className="text-2xl font-semibold">{stats?.offered ?? 0}</p>
