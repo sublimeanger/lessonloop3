@@ -264,7 +264,7 @@ export function MessageRequestsList({ className }: MessageRequestsListProps) {
                 </div>
 
                 {/* Message */}
-                <div className="rounded-lg bg-muted/50 p-3">
+                <div className="rounded-xl bg-muted/50 p-3">
                   <p className="text-sm whitespace-pre-wrap">{request.message}</p>
                 </div>
 
