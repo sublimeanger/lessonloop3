@@ -13,6 +13,7 @@ import { getTeacherColour, TeacherWithColour } from './teacherColours';
 import { Plus, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import type { CalendarFilters, LessonWithDetails } from './types';
 import type { useCalendarActions } from '@/hooks/useCalendarActions';
+import type { useBulkLessonActions } from '@/hooks/useBulkLessonActions';
 
 interface TeacherInfo {
   id: string;
