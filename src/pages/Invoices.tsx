@@ -147,7 +147,15 @@ export default function Invoices() {
   if (isLoading) {
     return (
       <AppLayout>
-        <LoadingState message="Loading invoices..." />
+        <PageHeader
+          title="Invoices"
+          description="Manage billing and payments"
+          breadcrumbs={[
+            { label: 'Dashboard', href: '/dashboard' },
+            { label: 'Invoices' },
+          ]}
+        />
+        <InvoicesSkeleton />
       </AppLayout>
     );
   }
