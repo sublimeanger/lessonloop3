@@ -68,6 +68,7 @@ export const LessonCard = React.memo(function LessonCard({ lesson, onClick, vari
   const isRecurring = !!lesson.recurrence_id;
   const isEditedException = isRecurring && !!lesson.is_series_exception;
   const isCancelled = lesson.status === 'cancelled';
+  const isOpenSlot = !!lesson.is_open_slot;
   const hasMakeup = (lesson.makeupStudentIds?.length ?? 0) > 0;
   const colour = teacherColour ?? TEACHER_COLOURS[0];
 
