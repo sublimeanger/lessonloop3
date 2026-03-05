@@ -117,17 +117,21 @@ export function useSlotGenerator() {
       }
 
       // Audit log
-      await logAudit({
-        orgId: currentOrg.id,
-        action: 'generate_lesson_slots',
-        entityType: 'lesson',
-        after: {
-          count: createdIds.length,
-          date: dateStr,
-          teacher_id: config.teacherId,
-          duration_mins: config.durationMins,
-        },
-      });
+      logAudit(
+        currentOrg.id,
+        user.id,
+        'generate_lesson_slots',
+        'lesson',
+        null,
+        {
+          after: {
+            count: createdIds.length,
+            date: dateStr,
+            teacher_id: config.teacherId,
+            duration_mins: config.durationMins,
+          },
+        }
+      );
 
       return createdIds;
     },
