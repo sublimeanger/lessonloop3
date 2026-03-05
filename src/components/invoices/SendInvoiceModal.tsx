@@ -269,7 +269,7 @@ export function SendInvoiceModal({
               </div>
 
               {/* Email body preview */}
-              <div className="rounded-lg border bg-white overflow-hidden">
+              <div className="rounded-xl border bg-background overflow-hidden">
                 <div
                   className="p-1 max-h-[320px] overflow-y-auto"
                   dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewHtml) }}
