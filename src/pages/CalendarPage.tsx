@@ -19,6 +19,7 @@ import { LessonModal } from '@/components/calendar/LessonModal';
 import { LessonDetailPanel } from '@/components/calendar/LessonDetailPanel';
 import { RecurringActionDialog } from '@/components/calendar/RecurringActionDialog';
 import { BulkSelectBar } from '@/components/calendar/BulkSelectBar';
+import { BulkSelectionProvider } from '@/components/calendar/BulkSelectionContext';
 
 const LG_QUERY = '(min-width: 1024px)';
 const subscribe = (cb: () => void) => { const mql = window.matchMedia(LG_QUERY); mql.addEventListener('change', cb); return () => mql.removeEventListener('change', cb); };
