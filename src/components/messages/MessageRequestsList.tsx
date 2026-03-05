@@ -270,7 +270,7 @@ export function MessageRequestsList({ className }: MessageRequestsListProps) {
 
                 {/* Admin response if exists */}
                 {request.admin_response && (
-                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
                     <p className="text-xs font-medium text-primary mb-1">Admin Response:</p>
                     <p className="text-sm whitespace-pre-wrap">{request.admin_response}</p>
                   </div>
