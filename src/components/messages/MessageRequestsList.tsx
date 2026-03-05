@@ -329,7 +329,7 @@ export function MessageRequestsList({ className }: MessageRequestsListProps) {
           <div className="space-y-4 py-4">
             {/* Current lesson details for reschedule/cancellation */}
             {selectedRequest?.lesson && (responseAction === 'approved') && (
-              <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+              <div className="rounded-xl border bg-muted/30 p-3 space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   Current Lesson
                 </p>
