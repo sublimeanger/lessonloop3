@@ -347,12 +347,15 @@ test.describe('Student Detail — Owner', () => {
     await page.waitForURL(/\/students\/[\w-]+/, { timeout: 10_000 });
     await waitForPageReady(page);
 
+    // Wait for skeleton to resolve and tabs to appear
+    await page.getByRole('tab').first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {});
+
     // Check that tabs exist
     const expectedTabs = ['Overview', 'Instruments', 'Teachers', 'Guardians', 'Lessons', 'Invoices', 'Notes'];
     let tabCount = 0;
     for (const tabName of expectedTabs) {
       const tab = page.getByRole('tab', { name: tabName }).first();
-      const visible = await tab.isVisible({ timeout: 5_000 }).catch(() => false);
+      const visible = await tab.isVisible({ timeout: 3_000 }).catch(() => false);
       if (visible) tabCount++;
       // eslint-disable-next-line no-console
       console.log(`[student-detail] Tab "${tabName}": ${visible}`);

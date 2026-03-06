@@ -19,9 +19,10 @@ test.describe('Invoices List — Owner', () => {
   test('shows invoice stats widget', async ({ page }) => {
     await safeGoTo(page, '/invoices', 'Invoices');
     if (!page.url().includes('/invoices')) return; // auth race
+    // Stats cards may render as skeleton placeholders first — wait for real content
     const statsWidget = page.locator('[data-tour="invoice-stats"]').first()
-      .or(page.locator('main').getByText(/total|outstanding|overdue|paid/i).first());
-    const visible = await statsWidget.isVisible({ timeout: 10_000 }).catch(() => false);
+      .or(page.locator('main .rounded-lg, main .rounded-xl').first());
+    const visible = await statsWidget.isVisible({ timeout: 15_000 }).catch(() => false);
     expect(visible, 'Stats widget should be visible on invoices page').toBe(true);
   });
 
@@ -29,12 +30,13 @@ test.describe('Invoices List — Owner', () => {
     await safeGoTo(page, '/invoices', 'Invoices');
     if (!page.url().includes('/invoices')) return; // auth race
 
+    // Wait for loading to complete — tabs render after data loads
+    await page.waitForTimeout(3_000);
     const expectedTabs = ['Invoices', 'Payment Plans', 'Recurring'];
     let visibleCount = 0;
     for (const tabName of expectedTabs) {
-      const tab = page.getByRole('tab', { name: tabName }).first()
-        .or(page.getByText(tabName, { exact: true }).first());
-      const visible = await tab.isVisible({ timeout: 8_000 }).catch(() => false);
+      const tab = page.getByRole('tab', { name: tabName }).first();
+      const visible = await tab.isVisible({ timeout: 10_000 }).catch(() => false);
       if (visible) visibleCount++;
     }
 

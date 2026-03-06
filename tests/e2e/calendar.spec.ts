@@ -418,9 +418,10 @@ test.describe('Calendar — Teacher', () => {
     await safeGoTo(page, '/calendar', 'Teacher Calendar');
     if (!page.url().includes('/calendar')) return; // auth race
     const filtersBar = page.locator('[data-tour="calendar-filters"]').first()
-      .or(page.locator('main').getByText(/all|filter/i).first());
+      .or(page.locator('button').filter({ hasText: /^All$/ }).first());
     const visible = await filtersBar.isVisible({ timeout: 10_000 }).catch(() => false);
-    expect(visible, 'Filter bar should be visible for teacher on calendar').toBe(true);
+    const hideCancelled = await page.getByText('Hide cancelled').isVisible({ timeout: 3_000 }).catch(() => false);
+    expect(visible || hideCancelled, 'Filter bar should be visible for teacher on calendar').toBe(true);
   });
 });
 

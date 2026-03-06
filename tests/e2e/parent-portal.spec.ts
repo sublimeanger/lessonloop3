@@ -137,8 +137,7 @@ test.describe('Parent Portal — Invoices', () => {
   test('invoices page loads with title', async ({ page }) => {
     if (!(await portalGoTo(page, '/portal/invoices'))) return;
     await assertNoErrorBoundary(page);
-    const title = page.getByText('Invoices & Payments').first()
-      .or(page.getByText('Invoices').first());
+    const title = page.getByRole('heading', { name: /invoices/i }).first();
     await expect(title).toBeVisible({ timeout: 15_000 });
   });
 
