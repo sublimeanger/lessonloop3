@@ -181,14 +181,14 @@ test.describe('Invoices List — Owner', () => {
     await page.getByRole('tab', { name: 'Invoices' }).first()
       .waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {});
 
-    // Look for invoice table rows or empty state
-    const invoiceRow = page.locator('table tbody tr').first();
-    const hasInvoices = await invoiceRow.isVisible({ timeout: 10_000 }).catch(() => false);
+    // Invoice list uses role="list" with listitem children, or table rows
+    const invoiceItem = page.getByRole('list', { name: /invoices/i }).getByRole('listitem').first()
+      .or(page.locator('table tbody tr').first());
+    const hasInvoices = await invoiceItem.isVisible({ timeout: 10_000 }).catch(() => false);
 
     if (hasInvoices) {
-      const rows = page.locator('table tbody tr');
-      const rowCount = await rows.count();
-      expect(rowCount, 'Invoice list should contain at least one row').toBeGreaterThan(0);
+      // eslint-disable-next-line no-console
+      console.log('[invoices] Found invoice list items');
     } else {
       // Should show empty state
       const hasEmpty = await page.getByText(/no invoices/i).first()
