@@ -177,8 +177,12 @@ test.describe('Invoices List — Owner', () => {
     if (!page.url().includes('/invoices')) return; // auth race
     await waitForPageReady(page);
 
+    // Wait for tabs to render (indicates loading is done)
+    await page.getByRole('tab', { name: 'Invoices' }).first()
+      .waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {});
+
     // Look for invoice table rows or empty state
-    const invoiceRow = page.locator('table tbody tr, [data-tour="invoice-list"] tr').first();
+    const invoiceRow = page.locator('table tbody tr').first();
     const hasInvoices = await invoiceRow.isVisible({ timeout: 10_000 }).catch(() => false);
 
     if (hasInvoices) {
@@ -186,12 +190,12 @@ test.describe('Invoices List — Owner', () => {
       const rowCount = await rows.count();
       expect(rowCount, 'Invoice list should contain at least one row').toBeGreaterThan(0);
     } else {
-      // Should show empty state or the tab content
-      const emptyState = page.getByText(/no invoices/i).first()
-        .or(page.getByText(/create your first/i).first());
-      const hasEmpty = await emptyState.isVisible({ timeout: 5_000 }).catch(() => false);
-      // It's ok if neither — the page may have tabs but no invoice-list data-tour
-      expect(hasInvoices || hasEmpty, 'Should show invoice data or empty state').toBe(true);
+      // Should show empty state
+      const hasEmpty = await page.getByText(/no invoices/i).first()
+        .isVisible({ timeout: 5_000 }).catch(() => false);
+      const hasCreateFirst = await page.getByText(/create your first/i).first()
+        .isVisible({ timeout: 3_000 }).catch(() => false);
+      expect(hasInvoices || hasEmpty || hasCreateFirst, 'Should show invoice data or empty state').toBe(true);
     }
   });
 

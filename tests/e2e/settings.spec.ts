@@ -98,12 +98,12 @@ test.describe('Settings — Owner', () => {
     if (!page.url().includes('/settings')) return; // auth race
     await waitForPageReady(page);
 
-    // Should show "Current Plan" badge on one of the plans
-    const hasBadge = await page.getByText('Current Plan', { exact: true }).first()
+    // Should show Subscription Status heading or plan cards
+    const hasSubscription = await page.getByRole('heading', { name: /subscription status/i }).first()
       .isVisible({ timeout: 10_000 }).catch(() => false);
-    const hasPlan = await page.getByRole('heading', { name: /free|starter|pro|enterprise/i }).first()
+    const hasChoosePlan = await page.getByText('Choose Your Plan').first()
       .isVisible({ timeout: 3_000 }).catch(() => false);
-    expect(hasBadge || hasPlan, 'Billing tab should show plan information').toBe(true);
+    expect(hasSubscription || hasChoosePlan, 'Billing tab should show plan information').toBe(true);
     await assertNoErrorBoundary(page);
   });
 
