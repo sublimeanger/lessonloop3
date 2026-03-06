@@ -48,10 +48,12 @@ test.describe('Mobile Responsiveness', () => {
 
   test('settings page shows mobile nav list', async ({ page }) => {
     await goTo(page, '/settings');
-    // On mobile, settings should show heading or main content
-    await expect(page.getByRole('heading', { name: /settings/i }).first()
-      .or(page.locator('main').first())
-    ).toBeVisible({ timeout: 15_000 });
+    // On mobile, settings should show heading or main content — check individually to avoid strict mode
+    const hasHeading = await page.getByRole('heading', { name: /settings/i }).first()
+      .isVisible({ timeout: 15_000 }).catch(() => false);
+    const hasMain = await page.locator('main').first()
+      .isVisible({ timeout: 3_000 }).catch(() => false);
+    expect(hasHeading || hasMain, 'Settings page should show heading or main content').toBe(true);
   });
 });
 

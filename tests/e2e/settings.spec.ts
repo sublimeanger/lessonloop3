@@ -99,9 +99,11 @@ test.describe('Settings — Owner', () => {
     await waitForPageReady(page);
 
     // Should show "Current Plan" badge on one of the plans
-    const currentPlan = page.getByText('Current Plan', { exact: true }).first()
-      .or(page.getByText(/\bfree\b|\bstarter\b|\bpro\b|\benterprise\b/i).first());
-    await expect(currentPlan, 'Billing tab should show plan information').toBeVisible({ timeout: 10_000 });
+    const hasBadge = await page.getByText('Current Plan', { exact: true }).first()
+      .isVisible({ timeout: 10_000 }).catch(() => false);
+    const hasPlan = await page.getByRole('heading', { name: /free|starter|pro|enterprise/i }).first()
+      .isVisible({ timeout: 3_000 }).catch(() => false);
+    expect(hasBadge || hasPlan, 'Billing tab should show plan information').toBe(true);
     await assertNoErrorBoundary(page);
   });
 
@@ -118,11 +120,12 @@ test.describe('Settings — Owner', () => {
     await page.waitForTimeout(2_000);
     await assertNoErrorBoundary(page);
 
-    // Admin should see "Viewing availability for" label or availability content in main area
-    const selectorLabel = page.getByText('Viewing availability for').first()
-      .or(page.locator('main, [class*="content"]').getByText(/availability/i).first());
-    const hasLabel = await selectorLabel.isVisible({ timeout: 10_000 }).catch(() => false);
-    expect(hasLabel, 'Availability content should be visible').toBe(true);
+    // Admin should see "Viewing availability for" label or availability heading
+    const hasLabel = await page.getByText('Viewing availability for').first()
+      .isVisible({ timeout: 10_000 }).catch(() => false);
+    const hasHeading = await page.getByRole('heading', { name: /availability/i }).first()
+      .isVisible({ timeout: 3_000 }).catch(() => false);
+    expect(hasLabel || hasHeading, 'Availability content should be visible').toBe(true);
   });
 
   test('Privacy & GDPR tab loads for admin', async ({ page }) => {
@@ -203,9 +206,11 @@ test.describe('Settings — Teacher', () => {
 
     // Should redirect to profile since teacher is not admin
     // The tab should revert to "profile" (the code checks adminTabs and falls back)
-    const profileCard = page.getByRole('heading', { name: /profile information/i }).first()
-      .or(page.getByRole('heading', { name: /profile|account/i }).first());
-    await expect(profileCard, 'Teacher should be on profile/account tab, not admin tab').toBeVisible({ timeout: 10_000 });
+    const hasProfileInfo = await page.getByRole('heading', { name: /profile information/i }).first()
+      .isVisible({ timeout: 10_000 }).catch(() => false);
+    const hasProfile = await page.getByText('Update your personal details').first()
+      .isVisible({ timeout: 3_000 }).catch(() => false);
+    expect(hasProfileInfo || hasProfile, 'Teacher should be on profile/account tab, not admin tab').toBe(true);
   });
 
   test('teacher can access Availability tab', async ({ page }) => {
