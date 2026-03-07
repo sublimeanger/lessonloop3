@@ -113,6 +113,7 @@ test.describe('Student Lifecycle — Owner', () => {
     const lesson = await createLessonViaCalendar(page, {
       studentName: fullName,
       duration: 30,
+      daysFromToday: 20,
     });
     expect(lesson.studentName).toBe(fullName);
 

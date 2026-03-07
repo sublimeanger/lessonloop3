@@ -314,9 +314,12 @@ export async function createLessonViaCalendar(
   }
 
   if (!submitted) {
-    // Last resort: force click
-    await submitBtn.scrollIntoViewIfNeeded().catch(() => {});
-    await submitBtn.click({ force: true, timeout: 10_000 });
+    // All times conflicted — close dialog and throw
+    const cancelBtn = page.getByRole('dialog').getByRole('button', { name: /cancel/i });
+    if (await cancelBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await cancelBtn.click();
+    }
+    throw new Error('Cannot create lesson: teacher has conflicts at all time slots');
   }
 
   await expectToast(page, /lesson created/i);
