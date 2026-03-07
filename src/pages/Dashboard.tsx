@@ -149,49 +149,33 @@ function SoloTeacherDashboard({ firstName }: { firstName: string }) {
           </SectionErrorBoundary>
         </motion.div>
 
-        <motion.div variants={itemVariants}>
-          <SectionErrorBoundary name="First Run Experience">
-            <FirstRunExperience />
-          </SectionErrorBoundary>
-        </motion.div>
+        <SectionErrorBoundary name="First Run Experience">
+          <FirstRunExperience />
+        </SectionErrorBoundary>
 
-        <motion.div variants={itemVariants}>
-          <SectionErrorBoundary name="Urgent Actions">
-            <UrgentActionsBar />
-          </SectionErrorBoundary>
-        </motion.div>
+        <SectionErrorBoundary name="Urgent Actions">
+          <UrgentActionsBar />
+        </SectionErrorBoundary>
 
-        <motion.div variants={itemVariants}>
-          <SectionErrorBoundary name="LoopAssist Alerts">
-            <LoopAssistAlerts />
-          </SectionErrorBoundary>
-        </motion.div>
+        <SectionErrorBoundary name="LoopAssist Alerts">
+          <LoopAssistAlerts />
+        </SectionErrorBoundary>
 
-        <motion.div variants={itemVariants}>
-          <CalendarSyncBanner />
-        </motion.div>
+        <CalendarSyncBanner />
 
-        <motion.div variants={itemVariants}>
-          <SectionErrorBoundary name="Upgrade Banner">
-            <UpgradeBanner />
-          </SectionErrorBoundary>
-        </motion.div>
+        <SectionErrorBoundary name="Upgrade Banner">
+          <UpgradeBanner />
+        </SectionErrorBoundary>
 
-        <motion.div variants={itemVariants}>
-          <SectionErrorBoundary name="Onboarding Checklist">
-            <OnboardingChecklist />
-          </SectionErrorBoundary>
-        </motion.div>
+        <SectionErrorBoundary name="Onboarding Checklist">
+          <OnboardingChecklist />
+        </SectionErrorBoundary>
 
-        <motion.div variants={itemVariants}>
-          <LoopAssistWidget />
-        </motion.div>
+        <LoopAssistWidget />
 
-        <motion.div variants={itemVariants}>
-          <SectionErrorBoundary name="Continuation Widget">
-            <ContinuationWidget />
-          </SectionErrorBoundary>
-        </motion.div>
+        <SectionErrorBoundary name="Continuation Widget">
+          <ContinuationWidget />
+        </SectionErrorBoundary>
 
         {/* Stats Grid — 6 cards, 2 cols mobile, 3 cols desktop */}
         <motion.div variants={itemVariants}>
