@@ -1185,7 +1185,7 @@ async function executeCompleteLessons(
     after: { lesson_ids: lessonIds, results },
   });
 
-  const entities = (lessons || []).map((l: BasicLesson) => ({
+  const entities = (lessons || []).map((l: { id: any; title: any; status: any }) => ({
     type: 'lesson' as const,
     id: l.id,
     label: l.title,
