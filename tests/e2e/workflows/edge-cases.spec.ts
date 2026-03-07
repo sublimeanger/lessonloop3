@@ -105,8 +105,8 @@ test.describe('Edge Cases — Owner', () => {
       await page.waitForTimeout(300);
     }
 
-    const firstStudent = page.locator('main a[href*="/students/"]').first()
-      .or(page.locator('main').locator('tr, [role="listitem"], [aria-label*="View"]').first());
+    const firstStudent = page.locator('main table tbody tr.cursor-pointer').first()
+      .or(page.locator('main table tbody tr').first());
     await expect(firstStudent).toBeVisible({ timeout: 15_000 });
     await firstStudent.click();
     await page.waitForURL(/\/students\//, { timeout: 10_000 });
@@ -150,12 +150,14 @@ test.describe('Edge Cases — Owner', () => {
     await goTo(page1, '/students');
     await waitForDataLoad(page1);
 
-    // Click the first actual student link (UUID-based, not /students/import)
-    // Use CSS :not() to exclude import/export links
-    const firstStudentLink = page1.locator('main a[href*="/students/"]:not([href*="import"]):not([href*="export"])').first();
-    await expect(firstStudentLink).toBeVisible({ timeout: 15_000 });
-    const studentName = await firstStudentLink.textContent();
-    await firstStudentLink.click();
+    // Student rows are <tr> with onClick navigate, not <a> links
+    const firstStudentRow = page1.locator('main table tbody tr.cursor-pointer').first()
+      .or(page1.locator('main table tbody tr').first());
+    await expect(firstStudentRow).toBeVisible({ timeout: 15_000 });
+    // Get just the first cell (name column) text, not the entire row
+    const firstCell = firstStudentRow.locator('td').first();
+    const studentName = await firstCell.textContent();
+    await firstStudentRow.click();
     await page1.waitForURL(/\/students\/[0-9a-f]/, { timeout: 10_000 });
     const studentUrl = page1.url();
 
@@ -442,29 +444,14 @@ test.describe('Edge Cases — Owner', () => {
     await waitForDataLoad(page);
 
     // ── 3. /leads/not-a-real-uuid ──
-    await page.goto('/leads/not-a-real-uuid');
-    await page.waitForTimeout(3_000);
-    await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {});
+    await checkNoCrash('/leads/not-a-real-uuid', 'Leads');
 
-    const leadCrash = await crashIndicator.isVisible({ timeout: 3_000 }).catch(() => false);
-    expect(leadCrash).toBeFalsy();
+    // Re-establish session
+    await goTo(page, '/dashboard');
+    await waitForDataLoad(page);
 
-    // Should show "Lead Not Found" or redirect
-    const leadNotFound = await page.getByText(/not found|back to leads/i).first()
-      .isVisible({ timeout: 5_000 }).catch(() => false);
-    const onLeadsList = page.url().includes('/leads') && !page.url().includes('not-a-real-uuid');
-    expect(leadNotFound || onLeadsList).toBeTruthy();
-
-    // ── 7. Navigate to /reports/not-a-real-route ──
-    await page.goto('/reports/not-a-real-route');
-    await page.waitForTimeout(2_000);
-    await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {});
-
-    const reportsCrash = await crashIndicator.isVisible({ timeout: 3_000 }).catch(() => false);
-    expect(reportsCrash).toBeFalsy();
-
-    // Should show 404 page or redirect — page rendered something
-    await expect(page.locator('body').first()).toBeVisible({ timeout: 5_000 });
+    // ── 4. /reports/not-a-real-route ──
+    await checkNoCrash('/reports/not-a-real-route', 'Reports');
   });
 
   // ─────────────────────────────────────────────────────────────
