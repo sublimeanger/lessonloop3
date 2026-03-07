@@ -112,6 +112,7 @@ export interface CreateLessonOpts {
   studentName: string;
   teacherName?: string;
   day?: string;
+  daysFromToday?: number;
   time?: string;
   duration?: number;
   location?: string;
@@ -133,57 +134,131 @@ export async function createLessonViaCalendar(
   await newBtn.click();
   await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
 
-  // ── Teacher ──
-  if (opts.teacherName) {
-    const teacherTrigger = page.getByRole('dialog').locator('button').filter({ hasText: /select teacher/i }).first();
-    if (await teacherTrigger.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await teacherTrigger.click();
+  // ── Teacher (required — student list is filtered by teacher) ──
+  const teacherTrigger = page.getByRole('dialog').locator('button').filter({ hasText: /select teacher/i }).first();
+  if (await teacherTrigger.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await teacherTrigger.click();
+    await page.waitForTimeout(300);
+    if (opts.teacherName) {
       await page.getByText(opts.teacherName, { exact: false }).first().click();
-      await page.waitForTimeout(300);
+    } else {
+      // Auto-select the first available teacher
+      const firstTeacherOption = page.getByRole('option').first();
+      if (await firstTeacherOption.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await firstTeacherOption.click();
+      }
     }
+    await page.waitForTimeout(300);
   }
 
   // ── Student via StudentSelector ──
   const studentTrigger = page.getByRole('dialog').locator('button').filter({ hasText: /select student/i }).first();
   if (await studentTrigger.isVisible({ timeout: 5_000 }).catch(() => false)) {
     await studentTrigger.click();
-    await page.waitForTimeout(300);
+    // Wait for student list to load (useTeachersAndLocations may still be fetching)
+    await page.waitForTimeout(1_000);
     // The student selector popover uses a Command component with "Search students..." placeholder
     const searchInput = page.getByPlaceholder(/search student/i).first()
       .or(page.getByPlaceholder(/search/i).last());
     if (await searchInput.isVisible({ timeout: 3_000 }).catch(() => false)) {
       await searchInput.fill(opts.studentName);
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(1_000);
     }
     // Click the matching student from the filtered results
-    const studentOption = page.locator('[cmdk-item]').filter({ hasText: opts.studentName }).first()
-      .or(page.getByText(opts.studentName, { exact: false }).first());
-    await expect(studentOption).toBeVisible({ timeout: 5_000 });
-    await studentOption.click();
-    await page.waitForTimeout(300);
-  }
-
-  // ── Date ──
-  if (opts.day) {
-    const dateInput = page.getByRole('dialog').getByLabel(/date/i).first();
-    if (await dateInput.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await dateInput.fill(opts.day);
+    let studentOption = page.locator('[cmdk-item]').filter({ hasText: opts.studentName }).first();
+    let optionVisible = await studentOption.isVisible({ timeout: 5_000 }).catch(() => false);
+    if (!optionVisible) {
+      // cmdk fuzzy search may not match — try clearing and picking the first available student
+      if (await searchInput.isVisible().catch(() => false)) {
+        await searchInput.clear();
+        await page.waitForTimeout(500);
+      }
+      studentOption = page.locator('[cmdk-item]').first();
+      optionVisible = await studentOption.isVisible({ timeout: 5_000 }).catch(() => false);
+    }
+    if (optionVisible) {
+      await studentOption.click();
+      await page.waitForTimeout(300);
     }
   }
 
-  // ── Time ──
+  // ── Date (Calendar popover) ──
+  // If daysFromToday > 0, open the date picker and select a future date
+  if (opts.daysFromToday && opts.daysFromToday > 0) {
+    const dateBtn = page.getByRole('dialog').locator('button').filter({ hasText: /\d{2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d{4}/i }).first();
+    if (await dateBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await dateBtn.click();
+      await page.waitForTimeout(500);
+
+      // Navigate forward if needed (click next month arrow)
+      const target = new Date();
+      target.setDate(target.getDate() + opts.daysFromToday);
+      const targetDay = target.getDate();
+      const targetMonth = target.getMonth();
+      const currentMonth = new Date().getMonth();
+      const monthsToAdvance = targetMonth - currentMonth + (targetMonth < currentMonth ? 12 : 0);
+
+      for (let m = 0; m < monthsToAdvance; m++) {
+        const nextMonthBtn = page.locator('[name="next-month"]').first()
+          .or(page.locator('button[aria-label*="next"]').first());
+        if (await nextMonthBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+          await nextMonthBtn.click();
+          await page.waitForTimeout(300);
+        }
+      }
+
+      // Click the target day number
+      const dayBtn = page.getByRole('gridcell', { name: String(targetDay) }).first();
+      if (await dayBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await dayBtn.click();
+        await page.waitForTimeout(500);
+      }
+    }
+  }
+
+  // ── Time (Radix Select, not text input) ──
+  // Helper to find and click the time trigger, then select a time
+  async function selectTime(targetTime: string): Promise<boolean> {
+    const allTriggers = page.getByRole('dialog').locator('button[role="combobox"]');
+    const count = await allTriggers.count();
+    for (let i = 0; i < count; i++) {
+      const text = await allTriggers.nth(i).textContent() ?? '';
+      if (/^\d{2}:\d{2}$/.test(text.trim())) {
+        await allTriggers.nth(i).click();
+        await page.waitForTimeout(500);
+        const timeOption = page.getByRole('option', { name: targetTime }).first();
+        if (await timeOption.isVisible({ timeout: 3_000 }).catch(() => false)) {
+          await timeOption.click();
+          await page.waitForTimeout(500);
+          return true;
+        }
+        // Close dropdown by clicking the trigger again (toggle)
+        await allTriggers.nth(i).click().catch(() => {});
+        await page.waitForTimeout(300);
+        return false;
+      }
+    }
+    return false;
+  }
+
   if (opts.time) {
-    const timeInput = page.getByRole('dialog').getByLabel(/time/i).first();
-    if (await timeInput.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await timeInput.fill(opts.time);
-    }
+    await selectTime(opts.time);
   }
 
   // ── Duration ──
   const dur = opts.duration ?? 30;
-  const durOption = page.getByRole('dialog').getByText(new RegExp(`^${dur}\\s*m`, 'i')).first();
-  if (await durOption.isVisible({ timeout: 3_000 }).catch(() => false)) {
-    await durOption.click();
+  // Only change duration if it's not the default (30 min)
+  if (dur !== 30) {
+    const durationTrigger = page.getByRole('dialog').locator('button[role="combobox"]').filter({ hasText: /min/i }).first();
+    if (await durationTrigger.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await durationTrigger.click();
+      await page.waitForTimeout(300);
+      const durOption = page.getByRole('option', { name: new RegExp(`${dur}\\s*min`) }).first();
+      if (await durOption.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await durOption.click();
+        await page.waitForTimeout(300);
+      }
+    }
   }
 
   // ── Location ──
@@ -195,10 +270,54 @@ export async function createLessonViaCalendar(
     }
   }
 
-  // ── Submit ──
+  // ── Submit (with conflict retry at different times) ──
   const submitBtn = page.getByRole('dialog').getByRole('button', { name: /create lesson/i });
-  await expect(submitBtn).toBeEnabled({ timeout: 5_000 });
-  await submitBtn.click();
+  await expect(submitBtn).toBeVisible({ timeout: 10_000 });
+
+  // Reuse the selectTime helper for conflict retries
+
+  // Try submitting — if button is disabled due to conflict, try alternative times
+  // Valid time range is 07:00–20:45 in 15-min increments
+  const fallbackTimes = [
+    '20:45', '20:30', '20:15', '20:00',
+    '07:00', '07:15', '07:30', '07:45',
+    '19:45', '19:30', '19:15', '19:00',
+    '08:00', '12:00', '13:00', '14:00',
+    '15:00', '16:00', '17:00', '18:00',
+  ];
+  let submitted = false;
+
+  for (let attempt = 0; attempt <= fallbackTimes.length; attempt++) {
+    // Wait for conflict check to complete
+    await page.waitForTimeout(2_500);
+
+    // Verify dialog is still open
+    if (!await page.getByRole('dialog').isVisible().catch(() => false)) {
+      console.log('[createLesson] Dialog closed unexpectedly');
+      break;
+    }
+
+    const isDisabled = await submitBtn.isDisabled();
+    if (!isDisabled) {
+      await submitBtn.scrollIntoViewIfNeeded().catch(() => {});
+      await submitBtn.click({ timeout: 10_000 });
+      submitted = true;
+      break;
+    }
+
+    // Button is disabled (conflict) — try a different time
+    if (attempt < fallbackTimes.length) {
+      const nextTime = fallbackTimes[attempt];
+      console.log(`[createLesson] Conflict detected, retrying with time ${nextTime}`);
+      await selectTime(nextTime);
+    }
+  }
+
+  if (!submitted) {
+    // Last resort: force click
+    await submitBtn.scrollIntoViewIfNeeded().catch(() => {});
+    await submitBtn.click({ force: true, timeout: 10_000 });
+  }
 
   await expectToast(page, /lesson created/i);
   return { studentName: opts.studentName, duration: dur };

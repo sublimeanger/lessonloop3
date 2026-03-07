@@ -27,10 +27,11 @@ async function navigateToFirstStudent(page: Page) {
   if (hasRow) {
     await tableRow.click();
   } else {
-    // Try link-based cards
-    const link = page.locator('main a[href*="/students/"]').first();
-    await expect(link).toBeVisible({ timeout: 10_000 });
-    await link.click();
+    // Try table row with cursor-pointer
+    const row = page.locator('main table tbody tr.cursor-pointer').first()
+      .or(page.locator('main table tbody tr').first());
+    await expect(row).toBeVisible({ timeout: 10_000 });
+    await row.click();
   }
   await page.waitForURL(/\/students\/[\w-]+/, { timeout: 15_000 });
   await waitForPageReady(page);
