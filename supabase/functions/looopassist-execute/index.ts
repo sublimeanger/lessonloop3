@@ -983,12 +983,11 @@ async function executeMarkAttendance(
     after: { records, results },
   });
 
-  const entities = (records || []).map((r: { lesson_id: string; student_id: string; attendance_status: string }) => {
-    const participant = (lessons || []).length > 0 ? null : null; // already logged in results
+  const entities = (records || []).map((r: { student_id: string; status: string }) => {
     return {
       type: 'student' as const,
       id: r.student_id,
-      label: r.student_id, // Will be resolved from results
+      label: r.student_id,
       detail: r.status,
     };
   });
