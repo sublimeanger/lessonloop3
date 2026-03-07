@@ -104,9 +104,9 @@ export function useSubscription(): SubscriptionState {
     const cancelsAt = cancelsAtRaw ? parseISO(cancelsAtRaw) : null;
     
     const isTrialing = status === 'trialing';
-    const isTrialExpired = trialEndsAt ? isPast(trialEndsAt) : false;
-    const trialDaysRemaining = trialEndsAt 
-      ? Math.max(0, differenceInDays(trialEndsAt, new Date())) 
+    const isTrialExpired = isTrialing && trialEndsAt ? isPast(trialEndsAt) : false;
+    const trialDaysRemaining = isTrialing && trialEndsAt
+      ? Math.max(0, differenceInDays(trialEndsAt, new Date()))
       : 0;
 
     // Use org's max_students/max_teachers if set, otherwise use plan defaults
