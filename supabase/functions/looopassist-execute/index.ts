@@ -691,9 +691,11 @@ async function executeSendInvoiceReminders(
   const results: string[] = [];
 
   for (const invoice of invoices || []) {
-    const recipientEmail = invoice.guardians?.email || invoice.students?.email;
-    const recipientName = invoice.guardians?.full_name || 
-      (invoice.students ? `${invoice.students.first_name} ${invoice.students.last_name}` : "Customer");
+    const guardian = Array.isArray(invoice.guardians) ? invoice.guardians[0] : invoice.guardians;
+    const student = Array.isArray(invoice.students) ? invoice.students[0] : invoice.students;
+    const recipientEmail = guardian?.email || student?.email;
+    const recipientName = guardian?.full_name || 
+      (student ? `${student.first_name} ${student.last_name}` : "Customer");
 
     if (!recipientEmail) {
       results.push(`${invoice.invoice_number}: No email address`);
