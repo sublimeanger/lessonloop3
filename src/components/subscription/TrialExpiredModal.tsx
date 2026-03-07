@@ -10,32 +10,36 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Sparkles, ArrowRight, Clock } from 'lucide-react';
+import { AlertTriangle, Sparkles, ArrowRight, Clock, Loader2 } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
-import { PRICING_CONFIG, PLAN_ORDER, formatLimit } from '@/lib/pricing-config';
+import { useSubscriptionCheckout } from '@/hooks/useSubscriptionCheckout';
+import { PRICING_CONFIG, PLAN_ORDER, DB_PLAN_MAP, formatLimit, type PlanKey } from '@/lib/pricing-config';
 import { platform } from '@/lib/platform';
 import { NativePaymentNotice } from '@/components/shared/NativePaymentNotice';
 
-export function TrialExpiredModal() {
+interface TrialExpiredModalProps {
+  onDismissed?: () => void;
+}
+
+export function TrialExpiredModal({ onDismissed }: TrialExpiredModalProps) {
   const { isTrialExpired } = useSubscription();
+  const { initiateSubscription, isLoading } = useSubscriptionCheckout();
   const [isOpen, setIsOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState<PlanKey | null>(null);
 
-  // Show modal when trial expires (and hasn't been dismissed this session)
   useEffect(() => {
     if (isTrialExpired && !dismissed) {
       setIsOpen(true);
     }
   }, [isTrialExpired, dismissed]);
 
-  // Re-show on navigation if trial is expired
   useEffect(() => {
     const handleNavigation = () => {
       if (isTrialExpired && !dismissed) {
         setIsOpen(true);
       }
     };
-    
     window.addEventListener('popstate', handleNavigation);
     return () => window.removeEventListener('popstate', handleNavigation);
   }, [isTrialExpired, dismissed]);
@@ -43,9 +47,17 @@ export function TrialExpiredModal() {
   const handleDismiss = () => {
     setIsOpen(false);
     setDismissed(true);
+    onDismissed?.();
   };
 
-  // Don't render if not expired
+  const handlePlanClick = async (planKey: PlanKey) => {
+    if (isLoading || loadingPlan) return;
+    setLoadingPlan(planKey);
+    const dbPlan = DB_PLAN_MAP[planKey] as 'solo_teacher' | 'academy' | 'agency';
+    await initiateSubscription(dbPlan);
+    setLoadingPlan(null);
+  };
+
   if (!isTrialExpired) return null;
 
   return (
@@ -67,18 +79,22 @@ export function TrialExpiredModal() {
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Quick plan comparison */}
           <div className="grid gap-3">
             {PLAN_ORDER.map((planKey) => {
               const plan = PRICING_CONFIG[planKey];
+              const isPlanLoading = loadingPlan === planKey;
+              const isDisabled = !!loadingPlan || isLoading;
               return (
-                <div
+                <button
                   key={planKey}
-                  className={`relative rounded-lg border p-4 transition-colors ${
+                  type="button"
+                  disabled={isDisabled}
+                  onClick={() => !platform.isNative && handlePlanClick(planKey)}
+                  className={`relative rounded-lg border p-4 text-left transition-colors ${
                     plan.isPopular
                       ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
                       : 'border-border hover:border-primary/50'
-                  }`}
+                  } ${isDisabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
                   {plan.isPopular && (
                     <Badge className="absolute -top-2 right-3 bg-primary text-primary-foreground">
@@ -92,17 +108,17 @@ export function TrialExpiredModal() {
                         {formatLimit(plan.limits.students)} students • {formatLimit(plan.limits.teachers)} teacher{plan.limits.teachers !== 1 ? 's' : ''}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex items-center gap-2">
+                      {isPlanLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
                       <span className="text-2xl font-bold">£{plan.price.monthly}</span>
                       <span className="text-muted-foreground">/mo</span>
                     </div>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
 
-          {/* What happens next */}
           <div className="rounded-lg bg-muted/50 p-4">
             <h4 className="flex items-center gap-2 font-medium text-sm mb-2">
               <Sparkles className="h-4 w-4 text-primary" />
@@ -127,9 +143,9 @@ export function TrialExpiredModal() {
             </>
           ) : (
             <>
-              <Button asChild size="lg">
+              <Button asChild variant="outline" size="sm">
                 <Link to="/settings?tab=billing">
-                  Choose a Plan
+                  View all plan details
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Link>
               </Button>
@@ -144,11 +160,15 @@ export function TrialExpiredModal() {
   );
 }
 
-// Persistent banner for dismissed modal
-export function TrialExpiredBanner() {
+// Persistent banner — only shown when `show` prop is true (after modal dismissed)
+interface TrialExpiredBannerProps {
+  show?: boolean;
+}
+
+export function TrialExpiredBanner({ show }: TrialExpiredBannerProps) {
   const { isTrialExpired } = useSubscription();
 
-  if (!isTrialExpired) return null;
+  if (!isTrialExpired || !show) return null;
 
   return (
     <AnimatePresence>

@@ -1,6 +1,5 @@
-import { ReactNode, Suspense, useRef } from 'react';
+import { ReactNode, Suspense, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-// framer-motion removed from this file — using CSS animation instead
 import { PageTransitionFallback } from '@/components/shared/PageTransitionFallback';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Header } from './Header';
@@ -29,8 +28,8 @@ function AppLayoutInner({ children }: AppLayoutProps) {
   const location = useLocation();
   const prevPathRef = useRef(location.pathname);
   const isMobile = useIsMobile();
+  const [trialModalDismissed, setTrialModalDismissed] = useState(false);
 
-  // Initialize keyboard shortcuts
   const {
     showShortcuts,
     setShowShortcuts,
@@ -39,19 +38,15 @@ function AppLayoutInner({ children }: AppLayoutProps) {
     shortcuts
   } = useKeyboardShortcuts();
 
-  // Only show LoopAssist for staff roles (not parents)
   const showLoopAssist = currentRole && currentRole !== 'parent';
-
-  // Show mobile bottom nav when running natively on a phone
   const showBottomNav = isMobile && platform.isNative;
 
-  // Track if path actually changed for a subtle fade
   const pathChanged = prevPathRef.current !== location.pathname;
   if (pathChanged) prevPathRef.current = location.pathname;
 
   return (
     <div className="flex min-h-screen w-full flex-col">
-      <TrialExpiredBanner />
+      <TrialExpiredBanner show={trialModalDismissed} />
       <Header />
       <div className="flex flex-1">
         <AppSidebar />
@@ -71,10 +66,9 @@ function AppLayoutInner({ children }: AppLayoutProps) {
       )}
       <TeacherFAB />
       {showBottomNav && <StaffBottomNav />}
-      <TrialExpiredModal />
+      <TrialExpiredModal onDismissed={() => setTrialModalDismissed(true)} />
       <TourTrigger />
 
-      {/* Keyboard Shortcuts UI */}
       <KeyboardShortcutsDialog
         open={showShortcuts}
         onOpenChange={setShowShortcuts}
