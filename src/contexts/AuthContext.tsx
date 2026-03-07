@@ -180,7 +180,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     mountedRef.current = true;
     
-    // Hard timeout - 4 seconds max for initial load
+    // Hard timeout - 6 seconds max for initial load (increased to allow
+    // getSession + profile fetch to complete on slow connections)
     const hardTimeout = setTimeout(() => {
       if (mountedRef.current && !initialisedRef.current) {
         logger.warn('Auth hard timeout - forcing completion');
@@ -188,13 +189,78 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsInitialised(true);
         initialisedRef.current = true;
       }
-    }, 4000);
+    }, 6000);
 
-    // Set up auth state listener FIRST
+    // ── Step 1: Restore session from localStorage via getSession() ──
+    // This MUST resolve before any redirect logic runs. We set user/session
+    // state from this call immediately, preventing a flash of "unauthenticated"
+    // that causes spurious redirects to /login on page reload.
+    const initializeAuth = async () => {
+      try {
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          logger.error('getSession error:', error);
+        }
+        
+        if (!mountedRef.current) return;
+        
+        logger.debug('[Auth] getSession returned:', initialSession ? 'session' : 'null');
+
+        // Set user/session immediately from stored session so that route
+        // guards see an authenticated user before the profile fetch completes.
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+
+        if (initialSession?.user) {
+          // Fetch profile and roles — this runs before isInitialised is set
+          // so route guards will show a loading state, not redirect.
+          fetchingRef.current = true;
+          const [profileData, rolesData] = await Promise.all([
+            fetchProfile(initialSession.user.id),
+            fetchRoles(initialSession.user.id),
+          ]);
+          
+          if (mountedRef.current) {
+            setProfile(profileData);
+            setRoles(rolesData);
+            setIsLoading(false);
+            setIsInitialised(true);
+            initialisedRef.current = true;
+            Sentry.setUser({ id: initialSession.user.id, email: initialSession.user.email });
+          }
+          fetchingRef.current = false;
+        } else {
+          // No session in storage — user is definitively not logged in
+          if (mountedRef.current && !initialisedRef.current) {
+            setIsLoading(false);
+            setIsInitialised(true);
+            initialisedRef.current = true;
+          }
+        }
+      } catch (err) {
+        logger.error('Auth init error:', err);
+        if (mountedRef.current && !initialisedRef.current) {
+          setIsLoading(false);
+          setIsInitialised(true);
+          initialisedRef.current = true;
+        }
+      }
+    };
+
+    // ── Step 2: Listen for subsequent auth changes (sign in/out/refresh) ──
+    // Set up BEFORE calling initializeAuth so we don't miss events that fire
+    // during getSession(). The INITIAL_SESSION event is handled by getSession
+    // above, so we skip it here to avoid double-processing.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mountedRef.current) return;
       
-      logger.debug('Auth state change:', event, 'isInitialised:', isInitialised);
+      logger.debug('Auth state change:', event);
+
+      // Skip INITIAL_SESSION — we handle it deterministically via getSession()
+      if (event === 'INITIAL_SESSION') {
+        return;
+      }
       
       setSession(newSession);
       setUser(newSession?.user ?? null);
@@ -245,44 +311,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     });
-
-    // Then get initial session — this triggers the INITIAL_SESSION event in
-    // onAuthStateChange which is the sole source of truth for initialisation.
-    // We intentionally do NOT set isInitialised here because getSession() may
-    // return null while a token refresh is in progress.  The onAuthStateChange
-    // handler (or the hard timeout) will mark us as initialised once the
-    // session state is definitively known.
-    const initializeAuth = async () => {
-      try {
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          logger.error('getSession error:', error);
-          // Only mark initialised on hard errors — the onAuthStateChange
-          // INITIAL_SESSION event will still fire for recoverable cases.
-          if (mountedRef.current && !initialisedRef.current) {
-            setIsLoading(false);
-            setIsInitialised(true);
-            initialisedRef.current = true;
-          }
-        }
-        
-        if (!mountedRef.current) return;
-        
-        // If getSession returned a session, onAuthStateChange will handle it.
-        // If it returned null, onAuthStateChange INITIAL_SESSION will also fire
-        // with null — that handler (line ~237) marks us as initialised.
-        // The hard timeout (4s) is the safety net for any edge cases.
-        logger.debug('[Auth] getSession returned:', initialSession ? 'session' : 'null');
-      } catch (err) {
-        logger.error('Auth init error:', err);
-        if (mountedRef.current && !initialisedRef.current) {
-          setIsLoading(false);
-          setIsInitialised(true);
-          initialisedRef.current = true;
-        }
-      }
-    };
 
     initializeAuth();
 

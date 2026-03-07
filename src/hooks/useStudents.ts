@@ -65,7 +65,8 @@ async function fetchStudentsForRole(
     .select('*, student_guardians(count)')
     .eq('org_id', orgId)
     .is('deleted_at', null)
-    .order('last_name', { ascending: true });
+    .order('last_name', { ascending: true })
+    .limit(5000);
 
   if (error) throw error;
   return (data || []).map(mapStudentWithGuardianCount);

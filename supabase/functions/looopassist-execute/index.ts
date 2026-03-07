@@ -1251,8 +1251,8 @@ async function executeSendProgressReport(
     .eq("student_id", studentId)
     .gte("created_at", startDate.toISOString());
 
-  const lessons = lessonParticipants?.map((lp: { lessons: BasicLesson | null }) => lp.lessons).filter(Boolean) || [];
-  const completedLessons = lessons.filter((l: BasicLesson) => l.status === "completed");
+  const lessons = lessonParticipants?.map((lp: any) => Array.isArray(lp.lessons) ? lp.lessons[0] : lp.lessons).filter(Boolean) || [];
+  const completedLessons = lessons.filter((l: any) => l.status === "completed");
 
   // Fetch attendance
   const { data: attendance } = await supabase
