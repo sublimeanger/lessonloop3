@@ -7,6 +7,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 dotenv.config({ path: path.resolve(__dirname, '.env.test') });
 
+const baseURL = process.env.E2E_BASE_URL || 'https://app.lessonloop.net';
+if (baseURL.includes('app.lessonloop.net') && !process.env.ALLOW_PRODUCTION_TESTS) {
+  throw new Error(
+    'SAFETY: E2E tests cannot target production by default. ' +
+    'Set E2E_BASE_URL to a staging/preview URL, or set ' +
+    'ALLOW_PRODUCTION_TESTS=true to override this guard.'
+  );
+}
+
 // Detect container egress proxy (used in sandboxed CI environments)
 function parseProxy() {
   const raw = process.env.HTTPS_PROXY || process.env.https_proxy;
@@ -35,7 +44,7 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'https://app.lessonloop.net',
+    baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'on-first-retry',
