@@ -100,19 +100,37 @@ test.describe('CRUD — Students', () => {
     await page.waitForTimeout(500);
 
     // ── STEP 4: Search for created student ──
-    // Navigate back to students list if we ended up elsewhere
-    if (!page.url().includes('/students') || page.url().includes('/students/')) {
-      await clickNav(page, '/students');
+    // Navigate back to students list to ensure fresh data
+    await clickNav(page, '/students');
+    await waitForPageReady(page);
+
+    // Switch search filter to "First name" since we search by firstName
+    const filterSelect = page.locator('button[role="combobox"], select').filter({ hasText: /last name|first name/i }).first();
+    if (await filterSelect.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await filterSelect.click();
+      const firstNameOpt = page.getByRole('option', { name: 'First name' }).first()
+        .or(page.locator('[role="option"]').filter({ hasText: 'First name' }).first());
+      if (await firstNameOpt.isVisible({ timeout: 3_000 }).catch(() => false)) await firstNameOpt.click();
+      await page.waitForTimeout(300);
     }
 
     const searchInput = page.getByPlaceholder('Search students...');
     await expect(searchInput).toBeVisible({ timeout: 15_000 });
     await searchInput.clear();
     await searchInput.fill(firstName);
-    await page.waitForTimeout(1_500);
+    await page.waitForTimeout(2_000);
 
     // Verify student appears
-    await expect(page.getByText(firstName).first()).toBeVisible({ timeout: 10_000 });
+    let studentVisible = await page.getByText(firstName).first().isVisible({ timeout: 10_000 }).catch(() => false);
+    if (!studentVisible) {
+      // Retry: clear search and try again (React Query might need time)
+      await searchInput.clear();
+      await page.waitForTimeout(1_000);
+      await searchInput.fill(firstName);
+      await page.waitForTimeout(2_000);
+      studentVisible = await page.getByText(firstName).first().isVisible({ timeout: 10_000 }).catch(() => false);
+    }
+    expect(studentVisible, `Student "${firstName}" should appear in search results`).toBe(true);
 
     // ── STEP 5: Click into student detail and verify tabs ──
     await page.getByText(firstName).first().click();

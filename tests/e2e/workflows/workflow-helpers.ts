@@ -148,12 +148,18 @@ export async function createLessonViaCalendar(
   if (await studentTrigger.isVisible({ timeout: 5_000 }).catch(() => false)) {
     await studentTrigger.click();
     await page.waitForTimeout(300);
-    const searchInput = page.getByPlaceholder(/search/i).last();
+    // The student selector popover uses a Command component with "Search students..." placeholder
+    const searchInput = page.getByPlaceholder(/search student/i).first()
+      .or(page.getByPlaceholder(/search/i).last());
     if (await searchInput.isVisible({ timeout: 3_000 }).catch(() => false)) {
       await searchInput.fill(opts.studentName);
       await page.waitForTimeout(500);
     }
-    await page.getByText(opts.studentName, { exact: false }).first().click();
+    // Click the matching student from the filtered results
+    const studentOption = page.locator('[cmdk-item]').filter({ hasText: opts.studentName }).first()
+      .or(page.getByText(opts.studentName, { exact: false }).first());
+    await expect(studentOption).toBeVisible({ timeout: 5_000 });
+    await studentOption.click();
     await page.waitForTimeout(300);
   }
 

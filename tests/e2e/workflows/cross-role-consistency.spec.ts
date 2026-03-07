@@ -10,6 +10,7 @@ const TS = Date.now().toString().slice(-6);
 // ═══════════════════════════════════════════════════════════════
 
 test.describe('Cross-Role Consistency', () => {
+  test.use({ storageState: AUTH.owner });
 
   // ─────────────────────────────────────────────────────────────
   // Student data consistent across owner, admin, and teacher
@@ -25,15 +26,20 @@ test.describe('Cross-Role Consistency', () => {
     await goTo(ownerPage, '/students');
     await waitForDataLoad(ownerPage);
 
-    // Search for Emma
+    // Find the first student visible in the list instead of searching for a specific name
     const ownerSearch = ownerPage.getByPlaceholder(/search/i).first();
-    if (await ownerSearch.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await ownerSearch.fill('Emma');
-      await ownerPage.waitForTimeout(500);
-    }
+    await expect(ownerSearch).toBeVisible({ timeout: 10_000 });
 
-    // Find Emma in the list and note status
-    const emmaRow = ownerPage.locator('main').getByText(/emma/i).first();
+    // Grab the first student name from the list
+    const firstStudentRow = ownerPage.locator('main a[href*="/students/"]').first();
+    await expect(firstStudentRow).toBeVisible({ timeout: 15_000 });
+    const studentFullName = (await firstStudentRow.textContent() ?? '').trim();
+    // Use the last name (first word) for search since default filter is "Last name"
+    const studentSearchTerm = studentFullName.split(/\s+/).pop() || studentFullName;
+    await ownerSearch.fill(studentSearchTerm);
+    await ownerPage.waitForTimeout(500);
+
+    const emmaRow = ownerPage.locator('main').getByText(studentSearchTerm, { exact: false }).first();
     await expect(emmaRow).toBeVisible({ timeout: 15_000 });
 
     // Capture the status text (active/inactive badge near Emma)
@@ -75,11 +81,11 @@ test.describe('Cross-Role Consistency', () => {
 
     const adminSearch = adminPage.getByPlaceholder(/search/i).first();
     if (await adminSearch.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await adminSearch.fill('Emma');
+      await adminSearch.fill(studentSearchTerm);
       await adminPage.waitForTimeout(500);
     }
 
-    const adminEmma = adminPage.locator('main').getByText(/emma/i).first();
+    const adminEmma = adminPage.locator('main').getByText(studentSearchTerm, { exact: false }).first();
     await expect(adminEmma).toBeVisible({ timeout: 15_000 });
 
     // Assert same status
@@ -136,12 +142,12 @@ test.describe('Cross-Role Consistency', () => {
 
     const teacherSearch = teacherPage.getByPlaceholder(/search/i).first();
     if (await teacherSearch.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await teacherSearch.fill('Emma');
+      await teacherSearch.fill(studentSearchTerm);
       await teacherPage.waitForTimeout(500);
     }
 
-    // Teacher may only see assigned students — Emma may or may not appear
-    const teacherEmma = teacherPage.locator('main').getByText(/emma/i).first();
+    // Teacher may only see assigned students — student may or may not appear
+    const teacherEmma = teacherPage.locator('main').getByText(studentSearchTerm, { exact: false }).first();
     const emmaVisibleForTeacher = await teacherEmma.isVisible({ timeout: 10_000 }).catch(() => false);
 
     if (emmaVisibleForTeacher) {
@@ -175,7 +181,6 @@ test.describe('Cross-Role Consistency', () => {
   // ─────────────────────────────────────────────────────────────
 
   test('Invoice data consistent between invoices page and student detail', async ({ page }) => {
-    test.use({ storageState: AUTH.owner });
     test.setTimeout(120_000);
 
     // ── 1. Navigate to /invoices ──
@@ -267,7 +272,6 @@ test.describe('Cross-Role Consistency', () => {
   // ─────────────────────────────────────────────────────────────
 
   test('Calendar data consistent with register for today', async ({ page }) => {
-    test.use({ storageState: AUTH.owner });
     test.setTimeout(120_000);
 
     // ── 1. Navigate to /calendar for today ──
@@ -373,7 +377,6 @@ test.describe('Cross-Role Consistency', () => {
   // ─────────────────────────────────────────────────────────────
 
   test('Settings changes cascade to correct places', async ({ page }) => {
-    test.use({ storageState: AUTH.owner });
     test.setTimeout(120_000);
 
     // ── 1. Navigate to /settings ──

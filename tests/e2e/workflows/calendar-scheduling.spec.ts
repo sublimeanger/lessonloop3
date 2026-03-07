@@ -28,13 +28,13 @@ test.describe('Calendar Scheduling — Owner', () => {
     await waitForDataLoad(page);
 
     // Grab the first visible student name to use for lesson creation
-    const firstStudentLink = page.locator('main').locator('a[href*="/students/"]').first()
-      .or(page.locator('main').locator('tr td, [role="row"]').first());
+    const firstStudentLink = page.locator('main a[href*="/students/"]').first();
     let studentName = 'Emma';
     if (await firstStudentLink.isVisible({ timeout: 10_000 }).catch(() => false)) {
       const text = await firstStudentLink.textContent();
       if (text && text.trim().length > 1) {
-        studentName = text.trim().split('\n')[0].trim();
+        // Extract just the first word (first name) to ensure reliable search
+        studentName = text.trim().split(/\s+/)[0].trim();
       }
     }
 
