@@ -48,7 +48,14 @@ test.describe('Leads — Owner', () => {
     const leadCard = page.locator('[class*="lead"], [class*="card"]').filter({ hasText: /enquiry|contact|lead/i }).first();
     if (await leadCard.isVisible().catch(() => false)) {
       await leadCard.click();
-      await expect(page).toHaveURL(/\/leads\//, { timeout: 5_000 });
+      // Kanban cards may open a side sheet/dialog OR navigate to /leads/:id
+      const navigated = await page.waitForURL(/\/leads\//, { timeout: 5_000 }).then(() => true).catch(() => false);
+      if (!navigated) {
+        // Check for detail panel/sheet/dialog
+        const detailPanel = page.getByRole('dialog').or(page.locator('[role="complementary"]')).or(page.locator('[data-state="open"]').first());
+        const hasPanel = await detailPanel.isVisible({ timeout: 3_000 }).catch(() => false);
+        expect(navigated || hasPanel, 'Clicking lead card should navigate to detail or open detail panel').toBe(true);
+      }
     }
   });
 

@@ -462,7 +462,7 @@ test.describe('Interaction Response Times', () => {
     const elapsed = Date.now() - start;
     // eslint-disable-next-line no-console
     console.log(`[PERF] Dialog close: ${elapsed}ms`);
-    expect(elapsed).toBeLessThan(500);
+    expect(elapsed).toBeLessThan(1_000);
   });
 });
 

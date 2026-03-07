@@ -222,16 +222,17 @@ test.describe('Lesson Notes — Owner', () => {
     await safeGoTo(page, '/students', 'Students');
     await page.waitForTimeout(3_000);
 
-    // Click first student
-    const studentLink = page.locator('main a[href*="/students/"]').first();
-    const hasStudent = await studentLink.isVisible({ timeout: 10_000 }).catch(() => false);
+    // Click first student (rows are <tr> with onClick, not <a> links)
+    const studentRow = page.locator('main table tbody tr.cursor-pointer').first()
+      .or(page.locator('main table tbody tr').first());
+    const hasStudent = await studentRow.isVisible({ timeout: 10_000 }).catch(() => false);
 
     if (!hasStudent) {
       test.skip(true, 'No students found');
       return;
     }
 
-    await studentLink.click();
+    await studentRow.click();
     await waitForPageReady(page);
     await assertNoErrorBoundary(page);
 
