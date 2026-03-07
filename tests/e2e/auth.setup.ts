@@ -22,7 +22,7 @@ function loginViaCurl(email: string, password: string): any {
 
   try {
     const result = execSync(
-      `curl -s -X POST '${SUPABASE_URL}/auth/v1/token?grant_type=password' ` +
+      `curl -sk -X POST '${SUPABASE_URL}/auth/v1/token?grant_type=password' ` +
       `-H 'apikey: ${SUPABASE_ANON_KEY}' ` +
       `-H 'Content-Type: application/json' ` +
       `-d @${tmpFile}`,
