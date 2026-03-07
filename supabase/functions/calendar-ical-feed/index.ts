@@ -23,8 +23,8 @@ function formatICalLocalDate(utcIso: string, timezone: string): string {
 // ── Timezone offset calculation ──────────────────────────────────────
 
 interface TZRule {
-  standard: { offsetFrom: string; offsetTo: string; name: string; month: number; day: 'lastSun' | number };
-  daylight: { offsetFrom: string; offsetTo: string; name: string; month: number; day: 'lastSun' | number } | null;
+  standard: { offsetFrom: string; offsetTo: string; name: string; month: number; day: string | number };
+  daylight: { offsetFrom: string; offsetTo: string; name: string; month: number; day: string | number } | null;
   baseOffsetMinutes: number;
   dstOffsetMinutes: number;
 }

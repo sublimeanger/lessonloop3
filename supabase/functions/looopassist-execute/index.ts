@@ -691,9 +691,11 @@ async function executeSendInvoiceReminders(
   const results: string[] = [];
 
   for (const invoice of invoices || []) {
-    const recipientEmail = invoice.guardians?.email || invoice.students?.email;
-    const recipientName = invoice.guardians?.full_name || 
-      (invoice.students ? `${invoice.students.first_name} ${invoice.students.last_name}` : "Customer");
+    const guardian = Array.isArray(invoice.guardians) ? invoice.guardians[0] : invoice.guardians;
+    const student = Array.isArray(invoice.students) ? invoice.students[0] : invoice.students;
+    const recipientEmail = guardian?.email || student?.email;
+    const recipientName = guardian?.full_name || 
+      (student ? `${student.first_name} ${student.last_name}` : "Customer");
 
     if (!recipientEmail) {
       results.push(`${invoice.invoice_number}: No email address`);
@@ -705,8 +707,8 @@ async function executeSendInvoiceReminders(
       sender_user_id: userId,
       recipient_email: recipientEmail,
       recipient_name: recipientName,
-      recipient_type: invoice.guardians ? "guardian" : "student",
-      recipient_id: invoice.guardians?.id || invoice.students?.id,
+      recipient_type: guardian ? "guardian" : "student",
+      recipient_id: guardian?.id || student?.id,
       subject: `Payment Reminder: Invoice ${invoice.invoice_number}`,
       body: `Dear ${recipientName},\n\nThis is a friendly reminder that invoice ${invoice.invoice_number} for ${fmtCurrency(invoice.total_minor)} is outstanding. The due date was ${invoice.due_date}.\n\nPlease arrange payment at your earliest convenience.\n\nThank you.`,
       message_type: "invoice_reminder",
@@ -962,11 +964,12 @@ async function executeMarkAttendance(
         onConflict: "lesson_id,student_id",
       });
 
+    const studentData = Array.isArray(participant.students) ? participant.students[0] : participant.students;
     if (attendanceError) {
-      results.push(`${participant.students?.first_name}: Failed - ${attendanceError.message}`);
+      results.push(`${studentData?.first_name}: Failed - ${attendanceError.message}`);
     } else {
       markedCount++;
-      results.push(`${participant.students?.first_name} ${participant.students?.last_name}: ${record.status}`);
+      results.push(`${studentData?.first_name} ${studentData?.last_name}: ${record.status}`);
     }
   }
 
@@ -980,12 +983,11 @@ async function executeMarkAttendance(
     after: { records, results },
   });
 
-  const entities = (records || []).map((r: { lesson_id: string; student_id: string; attendance_status: string }) => {
-    const participant = (lessons || []).length > 0 ? null : null; // already logged in results
+  const entities = (records || []).map((r: { student_id: string; status: string }) => {
     return {
       type: 'student' as const,
       id: r.student_id,
-      label: r.student_id, // Will be resolved from results
+      label: r.student_id,
       detail: r.status,
     };
   });
@@ -1183,7 +1185,7 @@ async function executeCompleteLessons(
     after: { lesson_ids: lessonIds, results },
   });
 
-  const entities = (lessons || []).map((l: BasicLesson) => ({
+  const entities = (lessons || []).map((l: { id: any; title: any; status: any }) => ({
     type: 'lesson' as const,
     id: l.id,
     label: l.title,
@@ -1249,8 +1251,8 @@ async function executeSendProgressReport(
     .eq("student_id", studentId)
     .gte("created_at", startDate.toISOString());
 
-  const lessons = lessonParticipants?.map((lp: { lessons: BasicLesson | null }) => lp.lessons).filter(Boolean) || [];
-  const completedLessons = lessons.filter((l: BasicLesson) => l.status === "completed");
+  const lessons = lessonParticipants?.map((lp: any) => Array.isArray(lp.lessons) ? lp.lessons[0] : lp.lessons).filter(Boolean) || [];
+  const completedLessons = lessons.filter((l: any) => l.status === "completed");
 
   // Fetch attendance
   const { data: attendance } = await supabase
