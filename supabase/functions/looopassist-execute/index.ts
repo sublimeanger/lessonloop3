@@ -964,11 +964,12 @@ async function executeMarkAttendance(
         onConflict: "lesson_id,student_id",
       });
 
+    const studentData = Array.isArray(participant.students) ? participant.students[0] : participant.students;
     if (attendanceError) {
-      results.push(`${participant.students?.first_name}: Failed - ${attendanceError.message}`);
+      results.push(`${studentData?.first_name}: Failed - ${attendanceError.message}`);
     } else {
       markedCount++;
-      results.push(`${participant.students?.first_name} ${participant.students?.last_name}: ${record.status}`);
+      results.push(`${studentData?.first_name} ${studentData?.last_name}: ${record.status}`);
     }
   }
 
