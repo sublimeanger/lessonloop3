@@ -1,15 +1,17 @@
 import { format } from 'date-fns';
-import { Mail, MailOpen, User, Reply as ReplyIcon, MessageSquare } from 'lucide-react';
+import { Mail, MailOpen, User, Reply as ReplyIcon, MessageSquare, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { 
   InternalMessage, 
   useInternalMessages, 
   useMarkInternalRead,
   useSendInternalMessage,
+  useDeleteInternalMessage,
 } from '@/hooks/useInternalMessages';
 import {
   Accordion,
