@@ -261,9 +261,10 @@ export default function Practice() {
                     .filter(a => a.status === 'active')
                     .slice(0, 5)
                     .map(assignment => (
-                      <div 
+                      <button 
                         key={assignment.id} 
-                        className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between"
+                        className="flex w-full cursor-pointer flex-col gap-2 rounded-xl border p-3 text-left transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
+                        onClick={() => setSelectedAssignment(assignment)}
                       >
                         <div>
                           <p className="font-medium">{assignment.title}</p>
@@ -275,7 +276,7 @@ export default function Practice() {
                           <p>{assignment.target_minutes_per_day} min/day</p>
                           <p>{assignment.target_days_per_week} days/week</p>
                         </div>
-                      </div>
+                      </button>
                     ))}
                 </div>
               )}
