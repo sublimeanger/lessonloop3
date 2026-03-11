@@ -21,6 +21,9 @@ export interface StudentListItem {
   guardian_count: number;
 }
 
+const STUDENT_FETCH_PAGE_SIZE = 1000;
+const STUDENT_FETCH_MAX = 5000;
+
 async function fetchStudentsForRole(
   orgId: string,
   role: string | null,
@@ -47,29 +50,51 @@ async function fetchStudentsForRole(
     const assignedIds = assignments?.map((a) => a.student_id) || [];
     if (assignedIds.length === 0) return [];
 
+    const rows: Record<string, unknown>[] = [];
+    for (let from = 0; from < STUDENT_FETCH_MAX; from += STUDENT_FETCH_PAGE_SIZE) {
+      const to = Math.min(from + STUDENT_FETCH_PAGE_SIZE - 1, STUDENT_FETCH_MAX - 1);
+      const { data, error } = await supabase
+        .from('students')
+        .select('*, student_guardians(count)')
+        .eq('org_id', orgId)
+        .is('deleted_at', null)
+        .in('id', assignedIds)
+        .order('last_name', { ascending: true })
+        .order('first_name', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to);
+
+      if (error) throw error;
+
+      const batch = (data || []) as Record<string, unknown>[];
+      rows.push(...batch);
+      if (batch.length < STUDENT_FETCH_PAGE_SIZE) break;
+    }
+
+    return rows.map(mapStudentWithGuardianCount);
+  }
+
+  const rows: Record<string, unknown>[] = [];
+  for (let from = 0; from < STUDENT_FETCH_MAX; from += STUDENT_FETCH_PAGE_SIZE) {
+    const to = Math.min(from + STUDENT_FETCH_PAGE_SIZE - 1, STUDENT_FETCH_MAX - 1);
     const { data, error } = await supabase
       .from('students')
       .select('*, student_guardians(count)')
       .eq('org_id', orgId)
       .is('deleted_at', null)
-      .in('id', assignedIds)
       .order('last_name', { ascending: true })
-      .limit(5000);
+      .order('first_name', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to);
 
     if (error) throw error;
-    return (data || []).map(mapStudentWithGuardianCount);
+
+    const batch = (data || []) as Record<string, unknown>[];
+    rows.push(...batch);
+    if (batch.length < STUDENT_FETCH_PAGE_SIZE) break;
   }
 
-  const { data, error } = await supabase
-    .from('students')
-    .select('*, student_guardians(count)')
-    .eq('org_id', orgId)
-    .is('deleted_at', null)
-    .order('last_name', { ascending: true })
-    .limit(5000);
-
-  if (error) throw error;
-  return (data || []).map(mapStudentWithGuardianCount);
+  return rows.map(mapStudentWithGuardianCount);
 }
 
 function mapStudentWithGuardianCount(row: Record<string, unknown>): StudentListItem {
