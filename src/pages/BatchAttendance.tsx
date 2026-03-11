@@ -346,6 +346,7 @@ export default function BatchAttendance() {
                                 <ToggleGroupItem
                                   value="late"
                                   aria-label="Late"
+                                  disabled={isFutureDate}
                                   className={cn(
                                     'h-11 px-3 text-sm sm:h-7 sm:px-2 sm:text-xs',
                                     currentStatus === 'late' && 'bg-warning/15 text-warning border-warning/30'
