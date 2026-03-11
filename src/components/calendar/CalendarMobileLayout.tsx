@@ -1,16 +1,18 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { format, addWeeks, subWeeks } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MobileDayView } from './MobileDayView';
 import { MobileLessonSheet } from './MobileLessonSheet';
 import { WeekContextStrip } from './WeekContextStrip';
 import { CalendarFiltersBar } from './CalendarFiltersBar';
+import { SlotGeneratorWizard } from './SlotGeneratorWizard';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { CalendarSkeleton } from '@/components/shared/LoadingState';
 import { getTeacherColour, TeacherWithColour } from './teacherColours';
-import { Plus, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, AlertTriangle, Zap, CheckSquare } from 'lucide-react';
 import type { CalendarFilters, LessonWithDetails } from './types';
 import type { useCalendarActions } from '@/hooks/useCalendarActions';
 import type { useBulkLessonActions } from '@/hooks/useBulkLessonActions';
@@ -41,6 +43,7 @@ interface CalendarMobileLayoutProps {
   teacherColourMap: Map<string, TeacherWithColour>;
   actions: ReturnType<typeof useCalendarActions>;
   bulk: ReturnType<typeof useBulkLessonActions>;
+  refetch: () => void;
 }
 
 export function CalendarMobileLayout({
@@ -63,8 +66,11 @@ export function CalendarMobileLayout({
   teacherColourMap,
   actions,
   bulk,
+  refetch,
 }: CalendarMobileLayoutProps) {
-  // hide_cancelled is now applied server-side in useCalendarData
+  const [slotWizardOpen, setSlotWizardOpen] = useState(false);
+
+  const wizardTeachers = teachers.map(t => ({ id: t.id, display_name: t.name, user_id: t.userId }));
 
   const navigatePrev = useCallback(() => setCurrentDate(subWeeks(currentDate, 1)), [currentDate, setCurrentDate]);
   const navigateNext = useCallback(() => setCurrentDate(addWeeks(currentDate, 1)), [currentDate, setCurrentDate]);
@@ -77,7 +83,28 @@ export function CalendarMobileLayout({
             <h1 className="text-xl font-semibold text-foreground">{format(currentDate, 'MMMM d')}</h1>
             <p className="text-xs text-muted-foreground">{format(currentDate, 'EEEE')}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={goToToday} className="h-8 min-h-11 sm:min-h-9 px-3 text-xs">Today</Button>
+          <div className="flex items-center gap-1.5">
+            {!isParent && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-8 w-8 min-h-11 min-w-11 sm:min-h-9 sm:min-w-9" disabled={!isOnline}>
+                    <Zap className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setSlotWizardOpen(true)}>
+                    <Zap className="h-4 w-4 mr-2" />
+                    Generate Open Slots
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => bulk.enterSelectionMode()}>
+                    <CheckSquare className="h-4 w-4 mr-2" />
+                    Select Lessons
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <Button variant="outline" size="sm" onClick={goToToday} className="h-8 min-h-11 sm:min-h-9 px-3 text-xs">Today</Button>
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" onClick={navigatePrev} aria-label="Previous week">
@@ -136,6 +163,19 @@ export function CalendarMobileLayout({
         onEdit={actions.openEditFromMobileSheet}
         onOpenDetail={actions.openDetailFromMobileSheet}
         teacherColour={getTeacherColour(teacherColourMap, actions.mobileSheetLesson?.teacher_id ?? null)}
+      />
+
+      <SlotGeneratorWizard
+        open={slotWizardOpen}
+        onOpenChange={setSlotWizardOpen}
+        teachers={wizardTeachers}
+        locations={locations}
+        rooms={rooms}
+        defaultDate={currentDate}
+        onComplete={(date) => {
+          setCurrentDate(date);
+          refetch();
+        }}
       />
     </AppLayout>
   );
