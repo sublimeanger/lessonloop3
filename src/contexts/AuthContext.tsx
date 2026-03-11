@@ -303,11 +303,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fetchingRef.current = false;
       } else {
         if (mountedRef.current) {
+          // If previously signed in and session dropped, notify user
+          if (event === 'SIGNED_OUT' && profileIdRef.current) {
+            toast.warning('Session expired — please sign in again');
+          }
           setProfile(null);
           setRoles([]);
           setIsLoading(false);
           setIsInitialised(true);
           initialisedRef.current = true;
+          profileIdRef.current = null;
           Sentry.setUser(null);
         }
       }
