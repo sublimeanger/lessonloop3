@@ -131,11 +131,24 @@ export function ShareResourceModal({ open, onOpenChange, resource }: ShareResour
             <>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">
-                  {selectedStudents.length} selected ({filteredStudents.filter(s => selectedStudents.includes(s.id)).length} shown)
+                  {selectedStudents.length} of {students.length} selected
                 </span>
-                <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-9" onClick={handleSelectAll}>
-                  {filteredStudents.every(s => selectedStudents.includes(s.id)) ? 'Deselect all' : 'Select all'}
-                </Button>
+                <div className="flex gap-1">
+                  {selectedStudents.length < students.length && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="min-h-9 text-xs"
+                      onClick={() => setSelectedStudents(students.map(s => s.id))}
+                    >
+                      <Users className="h-3.5 w-3.5 mr-1" />
+                      Share with all
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="sm" className="min-h-9 text-xs" onClick={handleSelectAll}>
+                    {filteredStudents.every(s => selectedStudents.includes(s.id)) ? 'Deselect shown' : 'Select shown'}
+                  </Button>
+                </div>
               </div>
 
               <ScrollArea className="h-[250px] border rounded-md">
