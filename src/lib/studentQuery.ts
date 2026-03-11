@@ -15,5 +15,6 @@ export function activeStudentsQuery(orgId: string) {
     .select()
     .eq('org_id', orgId)
     .eq('status', 'active' as any)
-    .is('deleted_at', null);
+    .is('deleted_at', null)
+    .limit(5000);
 }
