@@ -369,18 +369,6 @@ export function AppSidebar() {
           ))}
         </SidebarMenu>
 
-        {/* Suggest a feature */}
-        {!collapsed && (
-          <a
-            href="https://feedback.lessonloop.net"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-1.5 text-micro text-sidebar-foreground/50 hover:text-sidebar-foreground/80 transition-colors"
-          >
-            <Lightbulb className="h-3.5 w-3.5" />
-            Suggest a feature
-          </a>
-        )}
 
         <SidebarSeparator className="bg-sidebar-border" />
 
