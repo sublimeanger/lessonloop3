@@ -143,7 +143,7 @@ export default function DailyRegister() {
     <AppLayout>
       <PageHeader
         title="Daily Register"
-        description="Take attendance for today's lessons"
+        description="Mark each student's attendance status, then click Save."
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Register' },
