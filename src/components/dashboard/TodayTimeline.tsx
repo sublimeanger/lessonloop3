@@ -53,7 +53,12 @@ function LessonRow({ lesson }: { lesson: TodayLesson }) {
           )}>
             {studentName}
           </span>
-          {isCompleted && (
+          {isOpen && (
+            <span className="text-micro font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">
+              Open
+            </span>
+          )}
+          {isCompleted && !isOpen && (
             <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-success shrink-0" />
           )}
           {isNow && (
