@@ -959,6 +959,283 @@ export type Database = {
           },
         ]
       }
+      enrolment_waitlist: {
+        Row: {
+          child_age: number | null
+          child_first_name: string
+          child_last_name: string | null
+          contact_email: string | null
+          contact_name: string
+          contact_phone: string | null
+          converted_at: string | null
+          converted_student_id: string | null
+          created_at: string
+          created_by: string | null
+          experience_level: string | null
+          guardian_id: string | null
+          id: string
+          instrument_id: string | null
+          instrument_name: string
+          lead_id: string | null
+          lesson_duration_mins: number | null
+          notes: string | null
+          offer_expires_at: string | null
+          offer_message_id: string | null
+          offered_at: string | null
+          offered_location_id: string | null
+          offered_rate_minor: number | null
+          offered_slot_day: string | null
+          offered_slot_time: string | null
+          offered_teacher_id: string | null
+          org_id: string
+          position: number
+          preferred_days: string[] | null
+          preferred_location_id: string | null
+          preferred_teacher_id: string | null
+          preferred_time_earliest: string | null
+          preferred_time_latest: string | null
+          priority: string | null
+          responded_at: string | null
+          source: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          child_age?: number | null
+          child_first_name: string
+          child_last_name?: string | null
+          contact_email?: string | null
+          contact_name: string
+          contact_phone?: string | null
+          converted_at?: string | null
+          converted_student_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          experience_level?: string | null
+          guardian_id?: string | null
+          id?: string
+          instrument_id?: string | null
+          instrument_name: string
+          lead_id?: string | null
+          lesson_duration_mins?: number | null
+          notes?: string | null
+          offer_expires_at?: string | null
+          offer_message_id?: string | null
+          offered_at?: string | null
+          offered_location_id?: string | null
+          offered_rate_minor?: number | null
+          offered_slot_day?: string | null
+          offered_slot_time?: string | null
+          offered_teacher_id?: string | null
+          org_id: string
+          position?: number
+          preferred_days?: string[] | null
+          preferred_location_id?: string | null
+          preferred_teacher_id?: string | null
+          preferred_time_earliest?: string | null
+          preferred_time_latest?: string | null
+          priority?: string | null
+          responded_at?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          child_age?: number | null
+          child_first_name?: string
+          child_last_name?: string | null
+          contact_email?: string | null
+          contact_name?: string
+          contact_phone?: string | null
+          converted_at?: string | null
+          converted_student_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          experience_level?: string | null
+          guardian_id?: string | null
+          id?: string
+          instrument_id?: string | null
+          instrument_name?: string
+          lead_id?: string | null
+          lesson_duration_mins?: number | null
+          notes?: string | null
+          offer_expires_at?: string | null
+          offer_message_id?: string | null
+          offered_at?: string | null
+          offered_location_id?: string | null
+          offered_rate_minor?: number | null
+          offered_slot_day?: string | null
+          offered_slot_time?: string | null
+          offered_teacher_id?: string | null
+          org_id?: string
+          position?: number
+          preferred_days?: string[] | null
+          preferred_location_id?: string | null
+          preferred_teacher_id?: string | null
+          preferred_time_earliest?: string | null
+          preferred_time_latest?: string | null
+          priority?: string | null
+          responded_at?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrolment_waitlist_converted_student_id_fkey"
+            columns: ["converted_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolment_waitlist_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolment_waitlist_instrument_id_fkey"
+            columns: ["instrument_id"]
+            isOneToOne: false
+            referencedRelation: "instruments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolment_waitlist_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolment_waitlist_offered_location_id_fkey"
+            columns: ["offered_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolment_waitlist_offered_teacher_id_fkey"
+            columns: ["offered_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolment_waitlist_offered_teacher_id_fkey"
+            columns: ["offered_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolment_waitlist_offered_teacher_id_fkey"
+            columns: ["offered_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers_with_pay"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolment_waitlist_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolment_waitlist_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolment_waitlist_preferred_location_id_fkey"
+            columns: ["preferred_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolment_waitlist_preferred_teacher_id_fkey"
+            columns: ["preferred_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolment_waitlist_preferred_teacher_id_fkey"
+            columns: ["preferred_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolment_waitlist_preferred_teacher_id_fkey"
+            columns: ["preferred_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers_with_pay"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrolment_waitlist_activity: {
+        Row: {
+          activity_type: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          metadata: Json | null
+          org_id: string
+          waitlist_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          org_id: string
+          waitlist_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          org_id?: string
+          waitlist_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrolment_waitlist_activity_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolment_waitlist_activity_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "parent_org_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolment_waitlist_activity_waitlist_id_fkey"
+            columns: ["waitlist_id"]
+            isOneToOne: false
+            referencedRelation: "enrolment_waitlist"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_boards: {
         Row: {
           country_code: string
@@ -3192,6 +3469,7 @@ export type Database = {
           default_exam_board_id: string | null
           default_lesson_length_mins: number
           default_payment_terms_days: number | null
+          enrolment_offer_expiry_hours: number | null
           id: string
           invoice_footer_note: string | null
           invoice_from_address_line1: string | null
@@ -3226,6 +3504,7 @@ export type Database = {
           subscription_status: Database["public"]["Enums"]["subscription_status"]
           teacher_payment_analytics_enabled: boolean
           teacher_payment_notifications_enabled: boolean
+          terms_conditions_url: string | null
           timezone: string
           trial_ends_at: string | null
           vat_enabled: boolean
@@ -3255,6 +3534,7 @@ export type Database = {
           default_exam_board_id?: string | null
           default_lesson_length_mins?: number
           default_payment_terms_days?: number | null
+          enrolment_offer_expiry_hours?: number | null
           id?: string
           invoice_footer_note?: string | null
           invoice_from_address_line1?: string | null
@@ -3289,6 +3569,7 @@ export type Database = {
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
           teacher_payment_analytics_enabled?: boolean
           teacher_payment_notifications_enabled?: boolean
+          terms_conditions_url?: string | null
           timezone?: string
           trial_ends_at?: string | null
           vat_enabled?: boolean
@@ -3318,6 +3599,7 @@ export type Database = {
           default_exam_board_id?: string | null
           default_lesson_length_mins?: number
           default_payment_terms_days?: number | null
+          enrolment_offer_expiry_hours?: number | null
           id?: string
           invoice_footer_note?: string | null
           invoice_from_address_line1?: string | null
@@ -3352,6 +3634,7 @@ export type Database = {
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
           teacher_payment_analytics_enabled?: boolean
           teacher_payment_notifications_enabled?: boolean
+          terms_conditions_url?: string | null
           timezone?: string
           trial_ends_at?: string | null
           vat_enabled?: boolean
