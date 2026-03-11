@@ -83,7 +83,28 @@ export function CalendarMobileLayout({
             <h1 className="text-xl font-semibold text-foreground">{format(currentDate, 'MMMM d')}</h1>
             <p className="text-xs text-muted-foreground">{format(currentDate, 'EEEE')}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={goToToday} className="h-8 min-h-11 sm:min-h-9 px-3 text-xs">Today</Button>
+          <div className="flex items-center gap-1.5">
+            {!isParent && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-8 w-8 min-h-11 min-w-11 sm:min-h-9 sm:min-w-9" disabled={!isOnline}>
+                    <Zap className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setSlotWizardOpen(true)}>
+                    <Zap className="h-4 w-4 mr-2" />
+                    Generate Open Slots
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => bulk.enterSelectionMode()}>
+                    <CheckSquare className="h-4 w-4 mr-2" />
+                    Select Lessons
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <Button variant="outline" size="sm" onClick={goToToday} className="h-8 min-h-11 sm:min-h-9 px-3 text-xs">Today</Button>
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" onClick={navigatePrev} aria-label="Previous week">
