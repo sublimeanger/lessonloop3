@@ -4,11 +4,16 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreditBalanceBadge } from './CreditBalanceBadge';
 import { TeachingDefaultsCard } from './TeachingDefaultsCard';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { Loader2, Mail, Phone, Calendar, Edit } from 'lucide-react';
+import { useToggleStudentStatus } from '@/hooks/useStudents';
+import { useOrg } from '@/contexts/OrgContext';
+import { toast } from '@/hooks/use-toast';
 import type { Student } from '@/hooks/useStudentDetailPage';
+import type { StudentStatus } from '@/hooks/useStudents';
 
 interface StudentInfoCardProps {
   student: Student;
