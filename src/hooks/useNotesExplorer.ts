@@ -53,14 +53,16 @@ export function useNotesExplorer(filters: NotesExplorerFilters, page: number = 0
     queryFn: async (): Promise<{ notes: ExplorerNote[]; hasMore: boolean }> => {
       if (!currentOrg) return { notes: [], hasMore: false };
 
-      // Build the query using joins
+      // Build the query using joins.
+      // lesson is !inner because we filter on lesson.start_at.
+      // teacher is a left join so notes without teacher_id still appear.
       let query = supabase
         .from('lesson_notes')
         .select(`
           *,
           lesson:lessons!inner(id, title, start_at, status),
           student:students(id, first_name, last_name),
-          teacher:teachers!inner(id, display_name)
+          teacher:teachers(id, display_name)
         `)
         .eq('org_id', currentOrg.id)
         .gte('lesson.start_at', filters.startDate)

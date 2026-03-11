@@ -126,33 +126,20 @@ export function useStudentsImport() {
         }
       }
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData?.session?.access_token) {
-        throw new Error("Please log in again to import students");
-      }
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/csv-import-mapping`,
+      const { data: mappingData, error: mappingError } = await supabase.functions.invoke(
+        "csv-import-mapping",
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionData.session.access_token}`,
-          },
-          body: JSON.stringify({
+          body: {
             headers: csvHeaders,
             sampleRows: csvRows.slice(0, 5),
             orgId: currentOrg?.id,
             sourceSoftware: sourceSoftware !== "auto" ? sourceSoftware : undefined,
-          }),
+          },
         }
       );
 
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "Failed to get column mappings");
-      }
-
-      const mappingData = await response.json();
+      if (mappingError) throw mappingError;
+      if (mappingData?.error) throw new Error(mappingData.error);
       setMappings(mappingData.mappings);
       setTargetFields(mappingData.target_fields || []);
       setWarnings(mappingData.warnings || []);
@@ -228,19 +215,10 @@ export function useStudentsImport() {
     setDryRunResult(null);
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData?.session?.access_token) {
-        throw new Error("Please log in again to import students");
-      }
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/csv-import-execute`,
+      const { data: dryRunData, error: dryRunError } = await supabase.functions.invoke(
+        "csv-import-execute",
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionData.session.access_token}`,
-          },
-          body: JSON.stringify({
+          body: {
             rows: transformedRows,
             mappings: Object.fromEntries(
               mappings.filter(m => m.target_field).map(m => [m.csv_header, m.target_field])
@@ -248,16 +226,14 @@ export function useStudentsImport() {
             orgId: currentOrg.id,
             teacherId: importLessons ? selectedTeacher : undefined,
             dryRun: true,
-          }),
+          },
         }
       );
 
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "Validation failed");
-      }
+      if (dryRunError) throw dryRunError;
+      if (dryRunData?.error) throw new Error(dryRunData.error);
 
-      const result = await response.json() as DryRunResult;
+      const result = dryRunData as DryRunResult;
       setDryRunResult(result);
       setStep("preview");
     } catch (error: unknown) {
@@ -278,19 +254,10 @@ export function useStudentsImport() {
         .filter(s => s.status === "ready" || (!skipDuplicates && (s.status === "duplicate_csv" || s.status === "duplicate_db")))
         .map(s => s.row - 1);
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData?.session?.access_token) {
-        throw new Error("Please log in again to import students");
-      }
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/csv-import-execute`,
+      const { data: importData, error: importError } = await supabase.functions.invoke(
+        "csv-import-execute",
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionData.session.access_token}`,
-          },
-          body: JSON.stringify({
+          body: {
             rows: transformedRows,
             mappings: Object.fromEntries(
               mappings.filter(m => m.target_field).map(m => [m.csv_header, m.target_field])
@@ -300,16 +267,14 @@ export function useStudentsImport() {
             dryRun: false,
             skipDuplicates,
             rowsToImport,
-          }),
+          },
         }
       );
 
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "Import failed");
-      }
+      if (importError) throw importError;
+      if (importData?.error) throw new Error(importData.error);
 
-      const result = await response.json();
+      const result = importData;
       setImportResult(result);
       setStep("complete");
 

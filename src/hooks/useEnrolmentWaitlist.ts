@@ -213,7 +213,13 @@ export function useEnrolmentWaitlist(filters?: WaitlistFilters) {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes('schema cache') || error.code === '42P01') {
+          console.error('[Waitlist] Table enrolment_waitlist not found. Run migration: 20260227120000_enrolment_waitlist.sql');
+          throw new Error('The enrolment waitlist feature requires a database migration. Please contact support.');
+        }
+        throw error;
+      }
       return (data ?? []) as EnrolmentWaitlistEntry[];
     },
     enabled: !!currentOrg?.id,
@@ -462,7 +468,12 @@ export function useAddToEnrolmentWaitlist() {
       });
     },
     onError: (error: unknown) => {
-      toastError(error, 'Failed to add to waiting list');
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('schema cache') || msg.includes('42P01')) {
+        toastError(new Error('The enrolment waitlist feature requires a database migration. Please contact support.'), 'Waiting list unavailable');
+      } else {
+        toastError(error, 'Failed to add to waiting list');
+      }
     },
   });
 }
