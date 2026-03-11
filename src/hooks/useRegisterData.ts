@@ -100,7 +100,8 @@ export function useRegisterData(date: Date) {
             students (
               id,
               first_name,
-              last_name
+              last_name,
+              notes
             )
           ),
           attendance_records (
