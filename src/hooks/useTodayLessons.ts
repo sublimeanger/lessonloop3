@@ -135,6 +135,7 @@ export function useTodayLessons() {
             location: lesson.location ? { id: lesson.location.id, name: lesson.location.name } : undefined,
             room: lesson.room ? { id: lesson.room.id, name: lesson.room.name } : undefined,
             teacherName: (lesson as unknown as { teacher?: { display_name: string } | null }).teacher?.display_name || undefined,
+            isOpenSlot: !!(lesson as any).is_open_slot,
           };
         });
     },

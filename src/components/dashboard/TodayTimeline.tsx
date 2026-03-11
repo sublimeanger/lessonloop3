@@ -121,7 +121,7 @@ export function TodayTimeline({ className }: TodayTimelineProps) {
   const upcomingOrInProgress = nonSlotLessons.filter(l => l.status === 'upcoming' || l.status === 'in-progress');
   const completedCount = nonSlotLessons.filter(l => l.status === 'completed').length;
 
-  const allDone = activeLessons.length > 0 && upcomingOrInProgress.length === 0;
+  const allDone = nonSlotLessons.length > 0 && upcomingOrInProgress.length === 0;
 
   const displayLessons = allDone
     ? activeLessons.slice(-3)

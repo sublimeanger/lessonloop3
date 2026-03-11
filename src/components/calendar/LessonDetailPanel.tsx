@@ -692,7 +692,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           </div>
 
           {/* Structured Lesson Notes Form */}
-          {lesson.status !== 'cancelled' && lesson.participants && lesson.participants.length > 0 && (
+          {lesson.status !== 'cancelled' && lesson.participants && lesson.participants.length > 0 ? (
             <>
               <Separator />
               <LessonNotesForm
@@ -701,7 +701,12 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
                 isGroupLesson={lesson.lesson_type === 'group'}
               />
             </>
-          )}
+          ) : lesson.status !== 'cancelled' && (!lesson.participants || lesson.participants.length === 0) ? (
+            <>
+              <Separator />
+              <p className="text-sm text-muted-foreground py-3">Add students to this lesson to enable lesson notes.</p>
+            </>
+          ) : null}
 
           {/* Shared Notes */}
           {lesson.notes_shared && (

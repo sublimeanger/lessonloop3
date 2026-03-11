@@ -124,7 +124,7 @@ export function BulkEditDialog({ open, onOpenChange, count, onSubmit, teachers, 
         <DialogFooter>
           <Button variant="outline" onClick={() => { onOpenChange(false); resetForm(); }}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={!hasChanges}>
-            Apply to {count} lessons
+            Apply to {count} {count === 1 ? 'lesson' : 'lessons'}
           </Button>
         </DialogFooter>
       </DialogContent>

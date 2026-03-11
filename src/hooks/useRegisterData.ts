@@ -178,6 +178,7 @@ export function useRegisterData(date: Date) {
             attendance_status: attendance?.attendance_status || null,
             attendance_notes: attendance?.cancellation_reason || null,
             absence_reason_category: attendance?.absence_reason_category || null,
+            has_notes: !!lp.students?.notes,
           };
         });
 

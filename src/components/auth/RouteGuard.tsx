@@ -148,7 +148,9 @@ export function RouteGuard({
     }
     
     if (!currentRole) {
-      return <Navigate to="/dashboard" replace />;
+      // No org role found — user might be a parent (no staff membership)
+      // Redirect to portal instead of /dashboard to avoid infinite loop
+      return <Navigate to="/portal/home" replace />;
     }
     
     if (!allowedRoles.includes(currentRole)) {
