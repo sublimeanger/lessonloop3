@@ -228,7 +228,7 @@ export default function BatchAttendance() {
 
       {isFutureDate && (
         <div className="mb-4 rounded-md border border-warning/30 bg-warning/10 px-4 py-2 text-sm text-warning">
-          Attendance cannot be recorded for future dates.
+          Attendance can only be recorded for today or past dates.
         </div>
       )}
 
