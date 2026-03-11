@@ -62,6 +62,7 @@ export interface RegisterLesson {
     attendance_status: AttendanceStatus | null;
     attendance_notes: string | null;
     absence_reason_category?: string | null;
+    has_notes?: boolean;
   }>;
 }
 
