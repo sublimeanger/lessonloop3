@@ -257,8 +257,8 @@ export function LeadKanbanBoard({ leads: externalLeads, stageCounts: externalCou
       >
         <div
           className={cn(
-            'flex gap-3 pb-4',
-            isMobile ? 'overflow-x-auto snap-x snap-mandatory px-1 -mx-1' : '',
+            'flex gap-3 pb-4 overflow-x-auto',
+            isMobile ? 'snap-x snap-mandatory px-1 -mx-1' : '',
           )}
         >
           {LEAD_STAGES.map((stage, idx) => (
