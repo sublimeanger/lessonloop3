@@ -737,7 +737,7 @@ export default function Teachers() {
               disabled={
                 removal.isProcessing ||
                 (removal.lessonCount > 0 && removal.action === '') ||
-                (removal.action === 'reassign' && !removal.reassignTeacherId)
+                (removal.lessonCount > 0 && removal.action === 'reassign' && !removal.reassignTeacherId)
               }
             >
               {removal.isProcessing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</> : 'Remove Teacher'}
