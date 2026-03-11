@@ -30,6 +30,7 @@ export function InternalMessageList({ view }: InternalMessageListProps) {
   const { data: messages, isLoading } = useInternalMessages(view);
   const markRead = useMarkInternalRead();
   const sendReply = useSendInternalMessage();
+  const deleteMessage = useDeleteInternalMessage();
   const [expandedId, setExpandedId] = useState<string | undefined>();
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyBody, setReplyBody] = useState('');
