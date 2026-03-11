@@ -53,6 +53,7 @@ export function DayTimelineView({
   savingLessonIds = EMPTY_SAVING_SET,
 }: DayTimelineViewProps) {
   const { currentOrg } = useOrg();
+  const { selectionMode, selectedIds } = useBulkSelection();
   const orgStartHour = currentOrg?.schedule_start_hour ?? DEFAULT_START_HOUR;
   const orgEndHour = currentOrg?.schedule_end_hour ?? DEFAULT_END_HOUR;
 
