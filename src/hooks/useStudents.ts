@@ -26,10 +26,10 @@ async function fetchStudentsForRole(
   role: string | null,
   userId: string | undefined,
 ): Promise<StudentListItem[]> {
-  const { data, error } = await supabase.rpc('get_students_for_org', {
+  const { data, error } = await supabase.rpc('get_students_for_org' as any, {
     _org_id: orgId,
-    _role: role ?? null,
-    _user_id: userId ?? null,
+    _role: role ?? undefined,
+    _user_id: userId ?? undefined,
   });
 
   if (error) throw error;
