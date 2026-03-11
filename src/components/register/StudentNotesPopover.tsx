@@ -15,6 +15,8 @@ interface StudentNotesPopoverProps {
   studentName: string;
   /** If true, show a subtle teal dot on the icon */
   hasRecentUpdate?: boolean;
+  /** When false, hide the icon entirely (student has no notes). Undefined = always show. */
+  hasNotes?: boolean;
 }
 
 function NotesContent({
