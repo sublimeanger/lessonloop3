@@ -23,7 +23,7 @@ interface LessonAttendanceRecord {
 
 interface LessonParticipantJoin {
   student_id: string;
-  students: { id: string; first_name: string; last_name: string } | null;
+  students: { id: string; first_name: string; last_name: string; notes: string | null } | null;
 }
 
 interface LessonQueryRow {
@@ -62,6 +62,7 @@ export interface RegisterLesson {
     attendance_status: AttendanceStatus | null;
     attendance_notes: string | null;
     absence_reason_category?: string | null;
+    has_notes?: boolean;
   }>;
 }
 
@@ -99,7 +100,8 @@ export function useRegisterData(date: Date) {
             students (
               id,
               first_name,
-              last_name
+              last_name,
+              notes
             )
           ),
           attendance_records (
@@ -176,6 +178,7 @@ export function useRegisterData(date: Date) {
             attendance_status: attendance?.attendance_status || null,
             attendance_notes: attendance?.cancellation_reason || null,
             absence_reason_category: attendance?.absence_reason_category || null,
+            has_notes: !!lp.students?.notes,
           };
         });
 

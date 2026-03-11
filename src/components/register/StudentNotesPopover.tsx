@@ -15,6 +15,8 @@ interface StudentNotesPopoverProps {
   studentName: string;
   /** If true, show a subtle teal dot on the icon */
   hasRecentUpdate?: boolean;
+  /** When false, hide the icon entirely (student has no notes). Undefined = always show. */
+  hasNotes?: boolean;
 }
 
 function NotesContent({
@@ -114,9 +116,12 @@ function NotesContent({
   );
 }
 
-export function StudentNotesPopover({ studentId, studentName, hasRecentUpdate }: StudentNotesPopoverProps) {
+export function StudentNotesPopover({ studentId, studentName, hasRecentUpdate, hasNotes }: StudentNotesPopoverProps) {
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
+
+  // If explicitly told student has no notes, don't render
+  if (hasNotes === false) return null;
 
   const triggerButton = (
     <Button

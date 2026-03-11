@@ -28,6 +28,7 @@ export interface TodayLesson {
     name: string;
   };
   teacherName?: string;
+  isOpenSlot: boolean;
 }
 
 export function useTodayLessons() {
@@ -55,6 +56,7 @@ export function useTodayLessons() {
             end_at,
             status,
             lesson_type,
+            is_open_slot,
             teacher_id,
             teacher:teachers!lessons_teacher_id_fkey (display_name),
             lesson_participants (
@@ -133,6 +135,7 @@ export function useTodayLessons() {
             location: lesson.location ? { id: lesson.location.id, name: lesson.location.name } : undefined,
             room: lesson.room ? { id: lesson.room.id, name: lesson.room.name } : undefined,
             teacherName: (lesson as unknown as { teacher?: { display_name: string } | null }).teacher?.display_name || undefined,
+            isOpenSlot: !!(lesson as any).is_open_slot,
           };
         });
     },

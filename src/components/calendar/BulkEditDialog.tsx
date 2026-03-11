@@ -63,7 +63,7 @@ export function BulkEditDialog({ open, onOpenChange, count, onSubmit, teachers, 
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetForm(); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Edit {count} lessons</DialogTitle>
+          <DialogTitle>Edit {count} {count === 1 ? 'lesson' : 'lessons'}</DialogTitle>
           <DialogDescription>Only changed fields will be applied. Leave blank to keep existing values.</DialogDescription>
         </DialogHeader>
 
@@ -124,7 +124,7 @@ export function BulkEditDialog({ open, onOpenChange, count, onSubmit, teachers, 
         <DialogFooter>
           <Button variant="outline" onClick={() => { onOpenChange(false); resetForm(); }}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={!hasChanges}>
-            Apply to {count} lessons
+            Apply to {count} {count === 1 ? 'lesson' : 'lessons'}
           </Button>
         </DialogFooter>
       </DialogContent>

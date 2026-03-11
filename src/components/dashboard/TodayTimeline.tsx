@@ -16,8 +16,9 @@ function LessonRow({ lesson }: { lesson: TodayLesson }) {
   const isNow = lesson.status === 'in-progress';
   const isCancelled = lesson.status === 'cancelled';
   const isCompleted = lesson.status === 'completed';
+  const isOpen = lesson.isOpenSlot;
   const lessonDate = format(lesson.startAt, 'yyyy-MM-dd');
-  const studentName = lesson.students[0]?.name || lesson.title;
+  const studentName = isOpen ? 'Open Slot' : (lesson.students[0]?.name || lesson.title);
 
   return (
     <Link
@@ -25,6 +26,7 @@ function LessonRow({ lesson }: { lesson: TodayLesson }) {
       className={cn(
         'group flex min-h-11 items-stretch gap-0 rounded-xl px-1 py-2.5 sm:py-3 transition-colors hover:bg-muted/50',
         isCancelled && 'opacity-40',
+        isOpen && 'border border-dashed border-primary/30',
       )}
     >
       {/* Time */}
@@ -51,7 +53,12 @@ function LessonRow({ lesson }: { lesson: TodayLesson }) {
           )}>
             {studentName}
           </span>
-          {isCompleted && (
+          {isOpen && (
+            <span className="text-micro font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">
+              Open
+            </span>
+          )}
+          {isCompleted && !isOpen && (
             <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-success shrink-0" />
           )}
           {isNow && (
@@ -110,10 +117,11 @@ export function TodayTimeline({ className }: TodayTimelineProps) {
   const { data: lessons, isLoading, isError, refetch } = useTodayLessons();
 
   const activeLessons = lessons?.filter(l => l.status !== 'cancelled') || [];
-  const upcomingOrInProgress = activeLessons.filter(l => l.status === 'upcoming' || l.status === 'in-progress');
-  const completedCount = activeLessons.filter(l => l.status === 'completed').length;
+  const nonSlotLessons = activeLessons.filter(l => !l.isOpenSlot);
+  const upcomingOrInProgress = nonSlotLessons.filter(l => l.status === 'upcoming' || l.status === 'in-progress');
+  const completedCount = nonSlotLessons.filter(l => l.status === 'completed').length;
 
-  const allDone = activeLessons.length > 0 && upcomingOrInProgress.length === 0;
+  const allDone = nonSlotLessons.length > 0 && upcomingOrInProgress.length === 0;
 
   const displayLessons = allDone
     ? activeLessons.slice(-3)

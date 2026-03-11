@@ -229,10 +229,11 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                      <div className="flex flex-wrap items-center gap-2">
                        <span className="font-medium">{participant.student_name}</span>
-                       <StudentNotesPopover
-                         studentId={participant.student_id}
-                         studentName={participant.student_name}
-                       />
+                        <StudentNotesPopover
+                          studentId={participant.student_id}
+                          studentName={participant.student_name}
+                          hasNotes={participant.has_notes}
+                        />
                        <span className="hidden group-focus-visible/row:inline text-micro text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">P / A / L / T / S</span>
                       {needsAbsenceReason(currentStatus) && !participant.absence_reason_category && !absenceReasons[participant.student_id] && (
                         <span title="Absence reason missing" className="text-warning">
