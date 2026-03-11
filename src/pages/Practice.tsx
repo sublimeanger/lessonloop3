@@ -289,6 +289,12 @@ export default function Practice() {
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
       />
+
+      <AssignmentDetailDialog
+        assignment={selectedAssignment}
+        open={!!selectedAssignment}
+        onOpenChange={(o) => { if (!o) setSelectedAssignment(null); }}
+      />
     </AppLayout>
   );
 }
