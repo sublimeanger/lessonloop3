@@ -28,7 +28,7 @@ const soloActions: QuickAction[] = [
 ];
 
 const academyActions: QuickAction[] = [
-  { id: 'new-lesson', label: 'New Lesson', href: '/calendar', icon: Calendar, primary: true },
+  { id: 'new-lesson', label: 'New Lesson', href: '/calendar?action=new', icon: Calendar, primary: true },
   { id: 'attendance', label: 'Record Attendance', href: '/register', icon: ClipboardList },
   { id: 'billing', label: 'Run Billing', href: '/invoices', icon: Receipt },
   { id: 'message', label: 'Send Message', href: '/messages', icon: MessageSquare },

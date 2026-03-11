@@ -67,36 +67,7 @@ export function useKeyboardShortcuts() {
       displayKey: 'Esc'
     },
     
-    // Navigation
-    {
-      key: 'g h',
-      description: 'Go to Dashboard',
-      category: 'Navigation',
-      action: () => navigate('/dashboard'),
-      displayKey: 'G then H'
-    },
-    {
-      key: 'g c',
-      description: 'Go to Calendar',
-      category: 'Navigation',
-      action: () => navigate('/calendar'),
-      displayKey: 'G then C'
-    },
-    {
-      key: 'g s',
-      description: 'Go to Students',
-      category: 'Navigation',
-      action: () => navigate('/students'),
-      displayKey: 'G then S'
-    },
-    {
-      key: 'g i',
-      description: 'Go to Invoices',
-      category: 'Navigation',
-      action: () => navigate('/invoices'),
-      displayKey: 'G then I'
-    },
-
+    
     // Calendar specific (only active on calendar page)
     {
       key: 'n',
