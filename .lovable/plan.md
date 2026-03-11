@@ -1,163 +1,199 @@
+MY INPUT - PLEASE AMEND ACCORDINGLY.  
+  
+Plan looks good with 4 amendments:
 
+1. H-6 (Messages delete): Skip the database migration. Just add 
 
-# Additional Audit Phases Plan
+   a hard DELETE for now. We'll add soft-delete later.
 
-Based on thorough codebase review, here are 6 additional phases covering the gaps you identified. Each phase lists the exact files to audit and the specific concerns to investigate.
+2. H-7 (Teacher delete): The validation hook is correct per your 
 
----
+   analysis. Find what ELSE is disabling the button on the 
 
-## Phase 12: Subscription Enforcement & Feature Gating
+   Teachers page — there's another condition beyond the lesson 
 
-**Files to audit:**
-- `src/hooks/useSubscription.ts` — client-side plan derivation
-- `src/hooks/useFeatureGate.ts` — feature matrix and access checks
-- `src/hooks/useUsageCounts.ts` — student/teacher limit checks
-- `src/components/subscription/FeatureGate.tsx` — UI gating components
-- `supabase/functions/stripe-webhook/index.ts` — plan sync from Stripe
-- `supabase/functions/_shared/plan-config.ts` — server-side limits
-- DB functions: `check_teacher_limit()`, `check_subscription_active()`, `is_org_active()`, `is_org_write_allowed()`, `protect_subscription_fields()`
-- `src/test/subscription/PlanGating.test.ts`
+   check.
 
-**Concerns:**
-- SUB-H1 (from Phase 10): No server-side student limit trigger — is it still missing?
-- Can a cancelled/expired org bypass `check_subscription_active` for any table?
-- Do `CANCELLED_LIMITS` actually get applied on the DB rows, or only client-side?
-- Is `protect_subscription_fields()` trigger attached to the right table with the right timing?
-- Feature matrix gaps: are there features accessible without proper gating?
-- Grace period logic: is `PAST_DUE_GRACE_DAYS` consistent between frontend and backend?
-- Can a user downgrade and retain access to higher-plan features until cache expires?
+3. M-2 (Keyboard shortcuts): Don't implement two-key sequences. 
 
----
+   Just remove the broken g+h/g+c/g+s/g+i entries from the 
 
-## Phase 13: Term Management & Practice/Resources
+   shortcuts dialog. Keep only working shortcuts.
 
-**Files to audit:**
-- `src/hooks/useTerms.ts` — CRUD operations
-- `src/components/settings/TermManagementCard.tsx` — overlap validation
-- `supabase/functions/process-term-adjustment/index.ts` — term adjustment wizard
-- `src/hooks/usePractice.ts` — practice log mutations
-- `src/hooks/useResources.ts` — resource upload/share/delete
-- DB function: `update_practice_streak()` trigger
-- `supabase/functions/streak-notification/index.ts`
-- `supabase/functions/credit-expiry/index.ts`, `credit-expiry-warning/index.ts`
+4. M-11 (Room delete): If it already matches other delete dialogs, 
 
-**Concerns:**
-- Term overlap validation: is it server-side or client-only?
-- `process-term-adjustment`: does it validate term ownership, lesson counts, and credit note amounts atomically?
-- Practice streak trigger: edge cases with backdated logs, timezone boundaries, same-day duplicates
-- Resource uploads: is file type validated server-side or just client-side? Can you upload a `.exe` disguised as `.pdf`?
-- Storage quota: enforced at DB/storage level or just client-side check?
-- Streak notifications: authenticated? Rate limited?
+   skip it.
+
+Proceed with all other fixes as planned. One commit per fix.  
+  
+Bug Fix Plan — 24 Issues (Prioritized)
+
+This plan covers all 24 bugs in order: Launch Blockers first, then High Priority, then Medium. Each fix will be committed individually.
 
 ---
 
-## Phase 14: LoopAssist AI (Staff Chat + Execute)
+## LAUNCH BLOCKERS
 
-**Files to audit:**
-- `supabase/functions/looopassist-chat/index.ts` (1907 lines) — full review
-- `supabase/functions/looopassist-execute/index.ts` (1391 lines) — full review
-- `src/hooks/useLoopAssist.ts` (552 lines) — client-side hook
-- `src/components/loopassist/ActionCard.tsx` — proposal parsing
-- `src/lib/action-registry.ts` — valid action types
-- `supabase/functions/parent-loopassist-chat/index.ts` — parent variant
-- `src/hooks/useParentLoopAssist.ts` — parent client hook
-- `supabase/functions/_shared/rate-limit.ts` — LoopAssist daily cap
+### LB-2: Student List Capped at 1000 Rows
 
-**Concerns:**
-- **Prompt injection**: sanitisation covers known patterns, but does the regex miss Unicode homoglyphs, RTL overrides, or base64-encoded payloads?
-- **Tool call security**: `executeToolCall` returns raw `error.message` from DB queries — internal schema leakage
-- **IDOR via tools**: `search_students`, `get_student_detail`, etc. pass `orgId` but is it always the verified org from the membership check, or could a crafted tool input override it?
-- **Action execution scope**: `bulk_complete_lessons` has a `.limit(100)` but no org_id check on the update itself (relies on select filter) — is the update safe if IDs leak?
-- **Billing run via AI**: `executeGenerateBillingRun` creates invoices with `org_id` but bypasses `create_invoice_with_items` RPC — does it skip any validations?
-- **Dead code**: line 992-993 in execute has `(lessons || []).length > 0 ? null : null` — dead reference
-- **Parent chat**: uses Anthropic directly with `ANTHROPIC_API_KEY` — leaks `e.message` on error (line 351), no message sanitisation of user input
-- **Model selection**: Pro orgs get Sonnet, others Haiku — is there a cost ceiling?
-- **Context hash**: SHA-256 truncated to 16 hex chars — collision risk acceptable?
-- **Tool result size**: no cap on tool result string length — could a 10K result blow the context window
-- **Concurrent proposals**: can a user confirm the same proposal twice in a race condition? (line 378 uses `eq("status", "proposed")` but no `FOR UPDATE`)
+**Status**: Already fixed in the previous message. The `get_students_for_org` RPC function was created with `SECURITY DEFINER` to bypass PostgREST's row limit. `useStudents.ts` now calls this RPC. **No further action needed** — verify it works after deployment.
+
+### LB-7: Bulk Edit Lessons Does Nothing
+
+**Root cause**: `CalendarDesktopLayout.tsx` line 142 calls `bulk.enterSelectionMode()` — this is correctly wired. The `BulkSelectionContext` only exposes `selectionMode` and `selectedIds` (read-only). The `CalendarPage.tsx` wraps content in `BulkSelectionProvider` with the correct `bulkCtx`. The `LessonCard` reads from `useBulkSelection()` and shows checkboxes when `selectionMode` is true.
+
+Need to check if `enterSelectionMode` on the `bulk` object (from `useBulkLessonActions`) actually sets `selectionMode` to true and whether the context value propagates. The issue is likely that `enterSelectionMode` is called but `bulkCtx` memo doesn't update, OR the dropdown closes and steals focus. Will trace the `useBulkLessonActions` hook.
+
+**Fix**: Verify the `useBulkLessonActions.enterSelectionMode()` sets state that flows into `bulkCtx`. If the dropdown menu's `onSelect` auto-closes and prevents state update, add `e.preventDefault()` or use `onSelect` properly.
+
+### LB-8: Dead Feature Request Link
+
+**Files**: 
+
+- `src/components/layout/AppSidebar.tsx` lines 372-383: Remove the "Suggest a feature" link block
+- `src/pages/Help.tsx` lines 101-123: Remove the "Feature Requests" card
+- `tests/e2e/feature-request.spec.ts`: Remove or skip the test file
 
 ---
 
-## Phase 15: Public Pages & Marketing Security
+## HIGH PRIORITY
 
-**Files to audit:**
-- `supabase/functions/marketing-chat/index.ts` — public AI endpoint
-- `supabase/functions/booking-submit/index.ts` — public booking form
-- `supabase/functions/booking-get-slots/index.ts` — public slot query
-- `supabase/functions/send-contact-message/index.ts` — contact form
-- `supabase/functions/send-parent-enquiry/index.ts` — parent enquiry
-- `supabase/functions/invite-get/index.ts` — public invite retrieval
-- `src/components/marketing/MarketingChatWidget.tsx` — client-side chat
+### H-1: No Student Archive on Detail Page
 
-**Concerns:**
-- All unauthenticated — are rate limits correctly configured and fail-closed?
-- `marketing-chat`: message array not sanitised — can inject system/assistant messages?
-- `booking-submit`: HTML injection in email templates (EF-L1 from Phase 11 — still open?)
-- `booking-get-slots`: does it leak teacher names, room details, or org internals?
-- `invite-get`: does it expose membership details or org info to unauthenticated users?
-- `send-contact-message` / `send-parent-enquiry`: email injection via headers? SMTP injection?
-- CORS configuration on public endpoints: wildcard or restricted?
+**File**: `src/components/students/StudentInfoCard.tsx`
+**Fix**: Add a status dropdown (Active/Inactive) next to the existing status Badge in the header. Use `useToggleStudentStatus` mutation. Show confirmation dialog before changing. Update badge on success, show toast.
 
----
+### H-3: Future Attendance Can Be Marked
 
-## Phase 16: Performance at Scale
+**File**: `src/pages/BatchAttendance.tsx`
+**Status**: The `isFutureDate` guard already exists and disables buttons (lines 171, 177). However the attendance toggle buttons inside lesson cards (lines 306-374) are NOT disabled when `isFutureDate` is true — the `ToggleGroup` items lack a `disabled` prop.
+**Fix**: Pass `isFutureDate` as `disabled` to all `ToggleGroupItem` components. The warning banner at line 229 already shows — change text to "Attendance can only be recorded for today or past dates."
 
-**Files to audit:**
-- All hooks with unbounded queries (no `.limit()` or pagination)
-- `src/hooks/useReports.ts` (734 lines) — multiple aggregation queries
-- `src/hooks/useDataExport.ts` — export truncation (RPT-M5)
-- `supabase/functions/looopassist-chat/index.ts` — 9 parallel aggregate queries on every message
-- `supabase/functions/create-billing-run/index.ts` — batch processing
-- `supabase/functions/gdpr-export/index.ts` — 5 unbounded SELECTs
-- DB indexes: verify critical queries have covering indexes
-- Realtime subscriptions: are any too broad?
+### H-4: Attendance UX — Rename Ready/Complete
 
-**Concerns:**
-- 1000-row default limit: which queries will silently lose data?
-- N+1 patterns: execute functions loop with individual updates (`bulk_complete_lessons`, `send_bulk_reminders`)
-- LoopAssist context building: 9 parallel queries per message — acceptable for 100+ concurrent users?
-- `useTeacherPerformance`: waterfall sequential queries (RPT-M6)
-- Calendar queries: do they have date-windowed indexes?
-- Realtime: `useRealtimePortalPayments` subscribes to all org payments — too broad for large orgs?
-- Billing run: no batch insert for invoice items — creates them one-by-one per payer
-- Missing indexes on `attendance_records`, `practice_logs`, `message_log` for common query patterns
+**File**: `src/components/register/RegisterRow.tsx`
+**Fix**: 
 
----
+- Line 149: Change `"Ready"` → `"Pending"`
+- Line 146: Change `"Completed"` → `"Recorded"` (already says "Completed" which is fine, but rename to "Recorded")
+- `src/pages/DailyRegister.tsx`: Add a one-line description below the page header
+- Add tooltips on the status badges explaining meaning
 
-## Phase 17: Mobile & Capacitor
+### H-5: Internal Message Toast Says "Email Sent"
 
-**Files to audit:**
-- `src/lib/platform.ts` — platform detection
-- `src/lib/native/init.ts` — native initialisation
-- `src/lib/native/statusBar.ts`, `keyboard.ts`, `deepLinks.ts`
-- `capacitor.config.ts` — app configuration
-- `src/App.tsx` — `NativeInitializer` component
-- `src/components/layout/PortalLayout.tsx` — mobile layout
-- `src/components/layout/PortalBottomNav.tsx` — bottom navigation
-- `src/hooks/use-mobile.ts` — responsive breakpoint detection
-- PWA config in `vite.config.ts`
+**File**: `src/hooks/useInternalMessages.ts` line 254
+**Fix**: Change toast from `'Your message has been sent and the recipient notified by email.'` to `'Internal note sent successfully.'` — internal messages should not mention email notification. The email notification edge function call (lines 234-248) can remain (it's best-effort), but the toast should not reference it.
 
-**Concerns:**
-- Deep link handling: does `initDeepLinks` validate URLs before navigating? Could a malicious deep link navigate to an admin route?
-- Push notifications: is the token registration endpoint authenticated? Can tokens be registered for another user?
-- `capacitor.config.ts` — is `cleartext: true` safe for production? (allows HTTP)
-- Status bar configuration: does it handle notch/safe area on all devices?
-- Keyboard handling: does it prevent content from being hidden behind the keyboard?
-- Offline behaviour: what happens when Supabase queries fail on mobile? Is there any caching or queue?
-- Back button: does Android back button handle navigation correctly across all routes?
-- Session persistence: does the auth session survive app backgrounding/killing?
-- PWA service worker: does `navigateFallbackDenylist` include `/~oauth`?
+### H-6: Messages Cannot Be Deleted
+
+**Scope**: This requires:
+
+1. Database migration: Add `deleted_at` column to `internal_messages` table
+2. Update `useInternalMessages.ts` queries to filter `deleted_at IS NULL`
+3. Add delete mutation hook
+4. UI: Add trash icon to message items in `InternalMessageList.tsx`
+5. Add "Delete conversation" to thread overflow menu with confirmation dialog
+
+### H-7: Teacher Cannot Be Deleted
+
+**File**: `src/hooks/useDeleteValidation.ts` lines 143-186
+**Status**: Already correct! Lines 152-160 check `gte('start_at', now)` — this only checks future lessons. The guard already works correctly.
+**Investigation needed**: The user says "Remove Teacher button is greyed out" — need to check the Teachers page button disable condition. May be a separate UI issue.
+**Fix**: Check `src/pages/Teachers.tsx` for any additional disable conditions on the Remove Teacher button. Also add an "Archive" option as alternative.
+
+### H-8: Invoice Form Fields Not Labelled
+
+**File**: `src/components/invoices/CreateInvoiceModal.tsx` lines 340-381
+**Fix**: Add `<Label>` above each input in the grid:
+
+- "Description" above the description input
+- "Qty" above the quantity input  
+- "Price (£)" above the price input
+- Add labels as a header row above the first item, hide on mobile where single-column layout makes placeholder sufficient
+
+### H-9: No PDF Download on Paid Invoices
+
+**File**: `src/pages/InvoiceDetail.tsx`
+**Root cause**: Lines 491 — the sidebar "Actions" card only renders when `invoice.status !== 'void' && invoice.status !== 'paid'`. So paid invoices lose the PDF download in the sidebar. The header area (line 187-201) shows PDF for parents unconditionally, but the staff view doesn't have it in the header for paid status.
+**Fix**: For staff view, add the Download PDF button to the header actions for ALL statuses (currently only draft/sent/overdue have header actions). OR move PDF download out of the Actions card and show it independently regardless of status.
 
 ---
 
-## Execution Order (recommended)
+## MEDIUM PRIORITY
 
-1. **Phase 14 (LoopAssist AI)** — largest attack surface, 3300+ lines of edge function code, tool execution with write access
-2. **Phase 12 (Subscription)** — revenue protection, known open issue (SUB-H1)
-3. **Phase 15 (Public Pages)** — unauthenticated endpoints, highest external exposure
-4. **Phase 16 (Performance)** — data loss risks from silent truncation
-5. **Phase 13 (Terms/Practice/Resources)** — moderate risk, some issues already flagged
-6. **Phase 17 (Mobile)** — lowest immediate risk but needed before app store submission
+### M-1: Logo Not Clickable
 
-Each phase follows the same pattern as Phases 1-11: read the files, run the test suite, log findings by severity, and list what passed.
+**File**: `src/components/layout/Header.tsx` lines 31-34
+**Fix**: Wrap `Logo` and `LogoWordmark` in `<Link to="/dashboard">`.
 
+### M-2: Keyboard Shortcuts g+h Don't Work
+
+**File**: `src/hooks/useKeyboardShortcuts.ts`
+**Fix**: The shortcuts array defines `key: 'g h'` but the `handleKeyDown` only matches single keys. Implement a two-key sequence: track when 'g' is pressed, set a flag, clear after 500ms, and match the second key within that window.
+
+### M-3: Quick Actions "New Lesson" Opens Calendar Without Modal
+
+**File**: `src/components/dashboard/QuickActionsGrid.tsx` line 24 and 31
+**Fix**: Change `href: '/calendar'` to `href: '/calendar?action=new'` for the "New Lesson" action.
+
+### M-4: Student Picker Needs Polish
+
+**File**: `src/components/calendar/lesson-form/StudentSelector.tsx`
+**Fix**: Add avatar circles with initials, better padding, clearer selected state, "No results" message.
+
+### M-5: Auth Session Drops Randomly
+
+**File**: `src/contexts/AuthContext.tsx`
+**Status**: Token refresh handling already exists (lines 269-277). The `TOKEN_REFRESHED` event skips profile refetch and just ensures initialisation completes.
+**Fix**: Add a toast notification when token refresh fails (i.e., when `onAuthStateChange` fires with event `SIGNED_OUT` unexpectedly, or when the session is null after a refresh attempt). Currently the code silently sets `user` to null on line 304-310 — add a toast there.
+
+### M-6: Leads Kanban Not Scrollable
+
+**File**: `src/components/leads/LeadKanbanBoard.tsx` line 258-262
+**Status**: Already has `overflow-x-auto` on mobile with `snap-x`. Desktop doesn't have it.
+**Fix**: Add `overflow-x-auto` to the desktop case as well. Add `min-w-[260px]` to each column so they don't shrink. Add sticky stage headers.
+
+### M-7: Practice Assignment — No Student Search
+
+**File**: `src/components/practice/CreateAssignmentModal.tsx`
+**Fix**: Add a search `Input` above the student list. Filter students by name as user types.
+
+### M-8: Practice Assignments Not Clickable
+
+**File**: `src/pages/Practice.tsx`
+**Fix**: Make assignment cards clickable to open a detail panel/dialog showing full assignment info, practice logs, and edit/delete buttons.
+
+### M-9: Resource Sharing Modal Polish
+
+**File**: `src/components/resources/ShareResourceModal.tsx`
+**Status**: Already has "Select all" button, search, checkmarks. Fairly clean.
+**Fix**: Add "Share with all students" quick button, improve spacing, add location-based sharing dropdown if locations are available.
+
+### M-10: Resource Deletion Slow With No Feedback
+
+**File**: `src/components/resources/ResourceCard.tsx`
+**Fix**: Add `deleteMutation.isPending` loading state to the delete button. Show spinner and "Deleting..." text. Disable button during deletion.
+
+### M-11: Room Delete Modal Visually Rough
+
+**File**: `src/pages/Locations.tsx` lines 973-983
+**Status**: Already uses `DeleteValidationDialog` which uses the standard `AlertDialog` pattern. This is consistent with other delete confirmations.
+**Fix**: Check if the dialog's styling matches the design system. May need minor tweaks to the confirmation text.
+
+### M-12: Payment Plan Tab Confusing
+
+**File**: `src/pages/Invoices.tsx` and related components
+**Fix**: After creating a payment plan on a draft invoice, show an inline note: "Send the invoice to activate the payment plan."
+
+### M-13: Recurring Invoice Pause UX Unclear
+
+**File**: `src/components/settings/RecurringBillingTab.tsx` lines 84-86
+**Fix**: Replace the plain icon-only toggle button with a labeled button showing "Pause"/"Resume" text with pause/play icons. Add tooltip explaining what pausing does.
+
+---
+
+## Implementation Order
+
+Each fix = 1 commit. Starting with LB-7, LB-8, then H-1 through H-9, then M-1 through M-13. LB-2 is already done.
+
+Total: ~23 commits (LB-2 already done).
