@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { logger } from '@/lib/logger';
-import { format, addMinutes, setHours, setMinutes, startOfDay } from 'date-fns';
-import { fromZonedTime } from 'date-fns-tz';
+import { format, addMinutes } from 'date-fns';
 import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -52,8 +51,6 @@ export function QuickCreatePopover({
   const [isSaving, setIsSaving] = useState(false);
   const [studentSearchOpen, setStudentSearchOpen] = useState(false);
 
-  const orgTimezone = currentOrg?.timezone || 'Europe/London';
-
   // Reset form when opened
   useEffect(() => {
     if (!open) return;
@@ -91,9 +88,12 @@ export function QuickCreatePopover({
 
     setIsSaving(true);
     try {
-      const [hour, minute] = [startDate.getHours(), startDate.getMinutes()];
-      const localDateTime = setMinutes(setHours(startOfDay(startDate), hour), minute);
-      const startAtUtc = fromZonedTime(localDateTime, orgTimezone);
+      // startDate already has the correct local wall-clock time from the
+      // calendar grid (via setHours/setMinutes). Use it directly —
+      // .toISOString() converts to UTC automatically. No extra timezone
+      // conversion needed; fromZonedTime would double-convert and shift
+      // the time by the UTC offset.
+      const startAtUtc = startDate;
       const endAtUtc = addMinutes(startAtUtc, duration);
 
       const student = students.find(s => s.id === studentId);
