@@ -1,15 +1,17 @@
 import { format } from 'date-fns';
-import { Mail, MailOpen, User, Reply as ReplyIcon, MessageSquare } from 'lucide-react';
+import { Mail, MailOpen, User, Reply as ReplyIcon, MessageSquare, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { 
   InternalMessage, 
   useInternalMessages, 
   useMarkInternalRead,
   useSendInternalMessage,
+  useDeleteInternalMessage,
 } from '@/hooks/useInternalMessages';
 import {
   Accordion,
@@ -28,6 +30,7 @@ export function InternalMessageList({ view }: InternalMessageListProps) {
   const { data: messages, isLoading } = useInternalMessages(view);
   const markRead = useMarkInternalRead();
   const sendReply = useSendInternalMessage();
+  const deleteMessage = useDeleteInternalMessage();
   const [expandedId, setExpandedId] = useState<string | undefined>();
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyBody, setReplyBody] = useState('');
@@ -150,57 +153,89 @@ export function InternalMessageList({ view }: InternalMessageListProps) {
                 {msg.body}
               </div>
 
-              {/* Reply section for inbox messages */}
-              {view === 'inbox' && (
-                <div className="mt-3">
-                  {replyingToId === msg.id ? (
-                    <div className="space-y-3">
-                      <Textarea
-                        placeholder="Write your reply..."
-                        value={replyBody}
-                        onChange={(e) => setReplyBody(e.target.value)}
-                        onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleReply(msg); } }}
-                        rows={3}
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">Press Ctrl+Enter to send</p>
-                      <div className="flex items-center gap-2 justify-end">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setReplyingToId(null);
-                            setReplyBody('');
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => handleReply(msg)}
-                          disabled={!replyBody.trim() || sendReply.isPending}
-                        >
-                          {sendReply.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          ) : (
-                            <ReplyIcon className="h-4 w-4 mr-2" />
-                          )}
-                          Send Reply
-                        </Button>
+              {/* Actions row */}
+              <div className="mt-3 flex items-center gap-2">
+                {/* Reply for inbox */}
+                {view === 'inbox' && (
+                  <>
+                    {replyingToId === msg.id ? (
+                      <div className="flex-1 space-y-3">
+                        <Textarea
+                          placeholder="Write your reply..."
+                          value={replyBody}
+                          onChange={(e) => setReplyBody(e.target.value)}
+                          onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleReply(msg); } }}
+                          rows={3}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Press Ctrl+Enter to send</p>
+                        <div className="flex items-center gap-2 justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setReplyingToId(null);
+                              setReplyBody('');
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleReply(msg)}
+                            disabled={!replyBody.trim() || sendReply.isPending}
+                          >
+                            {sendReply.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                              <ReplyIcon className="h-4 w-4 mr-2" />
+                            )}
+                            Send Reply
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setReplyingToId(msg.id)}
-                      className="gap-2"
-                    >
-                      <ReplyIcon className="h-4 w-4" />
-                      Reply
-                    </Button>
-                  )}
-                </div>
-              )}
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setReplyingToId(msg.id)}
+                        className="gap-2"
+                      >
+                        <ReplyIcon className="h-4 w-4" />
+                        Reply
+                      </Button>
+                    )}
+                  </>
+                )}
+
+                {/* Delete */}
+                {replyingToId !== msg.id && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="gap-2 text-destructive hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete message?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete this message. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteMessage.mutate(msg.id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
             </AccordionContent>
           </AccordionItem>
         );

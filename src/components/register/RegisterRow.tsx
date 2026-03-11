@@ -143,10 +143,10 @@ export function RegisterRow({ lesson }: RegisterRowProps) {
       return <Badge variant="outline" className="text-muted-foreground">Cancelled</Badge>;
     }
     if (isCompleted) {
-      return <Badge variant="outline" className="text-success border-success/20 bg-success/10">Completed</Badge>;
+      return <Badge variant="outline" className="text-success border-success/20 bg-success/10" title="All attendance has been recorded and saved">Recorded</Badge>;
     }
     if (allMarked) {
-      return <Badge variant="outline" className="text-primary border-primary/20 bg-primary/10">Ready</Badge>;
+      return <Badge variant="outline" className="text-primary border-primary/20 bg-primary/10" title="All students marked — click Save to record">Pending</Badge>;
     }
     return <Badge variant="outline">Scheduled</Badge>;
   };

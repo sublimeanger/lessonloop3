@@ -9,6 +9,8 @@ import { useResizeLesson } from './useResizeLesson';
 import { DEFAULT_START_HOUR, DEFAULT_END_HOUR } from './calendarConstants';
 import { useOrg } from '@/contexts/OrgContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useBulkSelection } from './BulkSelectionContext';
+import { Check } from 'lucide-react';
 
 const DAY_HOUR_HEIGHT = 72;
 
@@ -51,6 +53,7 @@ export function DayTimelineView({
   savingLessonIds = EMPTY_SAVING_SET,
 }: DayTimelineViewProps) {
   const { currentOrg } = useOrg();
+  const { selectionMode, selectedIds } = useBulkSelection();
   const orgStartHour = currentOrg?.schedule_start_hour ?? DEFAULT_START_HOUR;
   const orgEndHour = currentOrg?.schedule_end_hour ?? DEFAULT_END_HOUR;
 
@@ -288,6 +291,7 @@ export function DayTimelineView({
             const isSaving = savingLessonIds.has(lesson.id);
             const isDragGhost = dragState?.lesson.id === lesson.id;
             const isBeingResized = resizeState?.lesson.id === lesson.id;
+            const isSelected = selectionMode && selectedIds.has(lesson.id);
 
             const height = isBeingResized
               ? resizeState!.currentBottom - resizeState!.top
@@ -316,8 +320,10 @@ export function DayTimelineView({
                   isCancelled && 'opacity-40',
                   isSaving && 'animate-pulse',
                   isDragGhost && 'opacity-30',
-                  !isDragGhost && !isParent && 'cursor-grab',
+                  !isDragGhost && !isParent && !selectionMode && 'cursor-grab',
+                  selectionMode && 'cursor-pointer',
                   isBeingResized && 'z-40 shadow-float opacity-80',
+                  isSelected && 'ring-2 ring-primary ring-offset-1',
                 )}
                 style={{
                   top: pos.top,
@@ -325,25 +331,37 @@ export function DayTimelineView({
                   left: `calc(${left} + 2px)`,
                   width,
                   borderLeft: `3px solid ${colorHex}`,
-                  backgroundColor: `${colorHex}0F`,
+                  backgroundColor: isSelected ? `${colorHex}25` : `${colorHex}0F`,
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (!isLessonDragging && !isResizing) onLessonClick(lesson);
                 }}
                 onMouseDown={(e) => {
-                  if (!isParent && onLessonDrop) startDragIntent(lesson, e);
+                  if (!isParent && onLessonDrop && !selectionMode) startDragIntent(lesson, e);
                 }}
                 onMouseUp={() => {
                   if (!isLessonDragging) cancelDragIntent();
                 }}
                 onTouchStart={(e) => {
-                  if (!isParent && onLessonDrop) startDragIntent(lesson, e);
+                  if (!isParent && onLessonDrop && !selectionMode) startDragIntent(lesson, e);
                 }}
                 onTouchEnd={() => {
                   if (!isLessonDragging) cancelDragIntent();
                 }}
               >
+                {/* Selection checkbox */}
+                {selectionMode && (
+                  <div className={cn(
+                    'absolute top-1 left-1 z-20 h-4 w-4 rounded-sm border flex items-center justify-center shrink-0 transition-colors',
+                    isSelected
+                      ? 'bg-primary border-primary text-primary-foreground'
+                      : 'border-muted-foreground/40 bg-background/80'
+                  )}>
+                    {isSelected && <Check className="h-3 w-3" />}
+                  </div>
+                )}
+
                 {/* Hover ring */}
                 <div
                   className="absolute inset-0 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none"
@@ -351,7 +369,7 @@ export function DayTimelineView({
                 />
 
                 {/* Content */}
-                <div className="relative z-10 min-w-0">
+                <div className={cn('relative z-10 min-w-0', selectionMode && 'pl-5')}>
                   <p className={cn(
                     'text-body-strong truncate leading-tight',
                     isCancelled && 'line-through'

@@ -15,7 +15,7 @@ import {
 } from '@/components/help/helpArticles';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Sparkles, MessageSquare, Mail, ExternalLink, Lightbulb } from 'lucide-react';
+import { Sparkles, MessageSquare, Mail, ExternalLink } from 'lucide-react';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 
 export default function Help() {
@@ -97,30 +97,6 @@ export default function Help() {
                 onClick={() => setSelectedCategory(category)}
               />
             ))}
-
-            {/* Feature Requests Card */}
-            <Card
-              className="cursor-pointer transition-all hover:shadow-elevated hover:border-primary/20 border-dashed"
-              onClick={() => window.open('https://feedback.lessonloop.net', '_blank')}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center">
-                    <Lightbulb className="h-5 w-5 text-primary" />
-                  </div>
-                </div>
-                <CardTitle className="text-lg mt-3">Feature Requests</CardTitle>
-                <CardDescription className="text-sm">
-                  Have an idea? Vote on what gets built next.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex items-center text-sm text-primary font-medium">
-                  Submit a request
-                  <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
-                </div>
-              </CardContent>
-            </Card>
           </div>
         )}
 

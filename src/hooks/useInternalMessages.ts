@@ -251,7 +251,7 @@ export function useSendInternalMessage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['internal-messages'] });
-      toast({ title: 'Message sent', description: 'Your message has been sent and the recipient notified by email.' });
+      toast({ title: 'Message sent', description: 'Internal note sent successfully.' });
     },
     onError: (error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -279,6 +279,34 @@ export function useMarkInternalRead() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['internal-messages'] });
       queryClient.invalidateQueries({ queryKey: ['internal-messages-unread'] });
+    },
+  });
+}
+
+export function useDeleteInternalMessage() {
+  const queryClient = useQueryClient();
+  const { currentOrg } = useOrg();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (messageId: string) => {
+      if (!currentOrg?.id || !user?.id) throw new Error('No organisation or user');
+      const { error } = await supabase
+        .from('internal_messages')
+        .delete()
+        .eq('id', messageId)
+        .eq('org_id', currentOrg.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['internal-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['internal-messages-unread'] });
+      toast({ title: 'Message deleted' });
+    },
+    onError: (error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     },
   });
 }

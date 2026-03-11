@@ -4,11 +4,16 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreditBalanceBadge } from './CreditBalanceBadge';
 import { TeachingDefaultsCard } from './TeachingDefaultsCard';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { Loader2, Mail, Phone, Calendar, Edit } from 'lucide-react';
+import { useToggleStudentStatus } from '@/hooks/useStudents';
+import { useOrg } from '@/contexts/OrgContext';
+import { toast } from '@/hooks/use-toast';
 import type { Student } from '@/hooks/useStudentDetailPage';
+import type { StudentStatus } from '@/hooks/useStudents';
 
 interface StudentInfoCardProps {
   student: Student;
@@ -47,6 +52,22 @@ export function StudentInfoCard({
   handleToggleEdit,
   fetchStudent,
 }: StudentInfoCardProps) {
+  const { currentOrg } = useOrg();
+  const toggleMutation = useToggleStudentStatus();
+
+  const handleStatusChange = (newStatus: string) => {
+    if (!currentOrg || newStatus === student.status) return;
+    toggleMutation.mutate(
+      { studentId: student.id, newStatus: newStatus as StudentStatus, orgId: currentOrg.id },
+      {
+        onSuccess: () => {
+          toast({ title: `Student marked as ${newStatus}` });
+          fetchStudent();
+        },
+      }
+    );
+  };
+
   return (
     <SectionErrorBoundary name="Overview">
       <Card>
@@ -58,7 +79,19 @@ export function StudentInfoCard({
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <CreditBalanceBadge studentId={student.id} />
-              <Badge variant={student.status === 'active' ? 'success' : 'secondary'} className="capitalize">{student.status}</Badge>
+              {isOrgAdmin ? (
+                <Select value={student.status} onValueChange={handleStatusChange} disabled={toggleMutation.isPending}>
+                  <SelectTrigger className="h-7 w-auto min-w-[100px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Badge variant={student.status === 'active' ? 'success' : 'secondary'} className="capitalize">{student.status}</Badge>
+              )}
               {(() => {
                 const checks = [
                   { label: 'Email', done: !!student.email },

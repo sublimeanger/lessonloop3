@@ -228,7 +228,7 @@ export default function BatchAttendance() {
 
       {isFutureDate && (
         <div className="mb-4 rounded-md border border-warning/30 bg-warning/10 px-4 py-2 text-sm text-warning">
-          Attendance cannot be recorded for future dates.
+          Attendance can only be recorded for today or past dates.
         </div>
       )}
 
@@ -324,6 +324,7 @@ export default function BatchAttendance() {
                                 <ToggleGroupItem
                                   value="present"
                                   aria-label="Present"
+                                  disabled={isFutureDate}
                                   className={cn(
                                     'h-11 px-3 text-sm sm:h-7 sm:px-2 sm:text-xs',
                                     currentStatus === 'present' && 'bg-primary/15 text-primary border-primary/30'
@@ -334,6 +335,7 @@ export default function BatchAttendance() {
                                 <ToggleGroupItem
                                   value="absent"
                                   aria-label="Absent"
+                                  disabled={isFutureDate}
                                   className={cn(
                                     'h-11 px-3 text-sm sm:h-7 sm:px-2 sm:text-xs',
                                     currentStatus === 'absent' && 'bg-destructive/15 text-destructive border-destructive/30'
@@ -344,6 +346,7 @@ export default function BatchAttendance() {
                                 <ToggleGroupItem
                                   value="late"
                                   aria-label="Late"
+                                  disabled={isFutureDate}
                                   className={cn(
                                     'h-11 px-3 text-sm sm:h-7 sm:px-2 sm:text-xs',
                                     currentStatus === 'late' && 'bg-warning/15 text-warning border-warning/30'
@@ -354,6 +357,7 @@ export default function BatchAttendance() {
                                 <ToggleGroupItem
                                   value="cancelled_by_teacher"
                                   aria-label="Cancelled by Teacher"
+                                  disabled={isFutureDate}
                                   className={cn(
                                     'h-11 px-3 text-sm sm:h-7 sm:px-2 sm:text-xs',
                                     currentStatus === 'cancelled_by_teacher' && 'bg-muted text-muted-foreground border-muted-foreground/30'
@@ -364,6 +368,7 @@ export default function BatchAttendance() {
                                 <ToggleGroupItem
                                   value="cancelled_by_student"
                                   aria-label="Cancelled by Student"
+                                  disabled={isFutureDate}
                                   className={cn(
                                     'h-11 px-3 text-sm sm:h-7 sm:px-2 sm:text-xs',
                                     currentStatus === 'cancelled_by_student' && 'bg-muted text-muted-foreground border-muted-foreground/30'
