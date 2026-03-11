@@ -16,8 +16,9 @@ function LessonRow({ lesson }: { lesson: TodayLesson }) {
   const isNow = lesson.status === 'in-progress';
   const isCancelled = lesson.status === 'cancelled';
   const isCompleted = lesson.status === 'completed';
+  const isOpen = lesson.isOpenSlot;
   const lessonDate = format(lesson.startAt, 'yyyy-MM-dd');
-  const studentName = lesson.students[0]?.name || lesson.title;
+  const studentName = isOpen ? 'Open Slot' : (lesson.students[0]?.name || lesson.title);
 
   return (
     <Link
@@ -25,6 +26,7 @@ function LessonRow({ lesson }: { lesson: TodayLesson }) {
       className={cn(
         'group flex min-h-11 items-stretch gap-0 rounded-xl px-1 py-2.5 sm:py-3 transition-colors hover:bg-muted/50',
         isCancelled && 'opacity-40',
+        isOpen && 'border border-dashed border-primary/30',
       )}
     >
       {/* Time */}
