@@ -9,6 +9,8 @@ import { useResizeLesson } from './useResizeLesson';
 import { DEFAULT_START_HOUR, DEFAULT_END_HOUR } from './calendarConstants';
 import { useOrg } from '@/contexts/OrgContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useBulkSelection } from './BulkSelectionContext';
+import { Check } from 'lucide-react';
 
 const DAY_HOUR_HEIGHT = 72;
 
