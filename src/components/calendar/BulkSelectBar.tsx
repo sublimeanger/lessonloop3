@@ -36,7 +36,7 @@ export function BulkSelectBar({
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-foreground text-background p-3 shadow-elevated flex items-center justify-between gap-3 sm:bottom-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-auto sm:min-w-[420px] sm:max-w-[600px] sm:rounded-xl" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
+      <div className="fixed left-0 right-0 z-50 bg-foreground text-background p-3 shadow-elevated flex items-center justify-between gap-3 sm:bottom-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-auto sm:min-w-[420px] sm:max-w-[600px] sm:rounded-xl" style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))', paddingBottom: '0.75rem' }}>
         {isBulkUpdating ? (
           <div className="flex items-center gap-3 flex-1">
             <Loader2 className="h-4 w-4 animate-spin" />

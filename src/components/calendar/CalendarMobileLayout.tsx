@@ -164,6 +164,19 @@ export function CalendarMobileLayout({
         onOpenDetail={actions.openDetailFromMobileSheet}
         teacherColour={getTeacherColour(teacherColourMap, actions.mobileSheetLesson?.teacher_id ?? null)}
       />
+
+      <SlotGeneratorWizard
+        open={slotWizardOpen}
+        onOpenChange={setSlotWizardOpen}
+        teachers={wizardTeachers}
+        locations={locations}
+        rooms={rooms}
+        defaultDate={currentDate}
+        onComplete={(date) => {
+          setCurrentDate(date);
+          refetch();
+        }}
+      />
     </AppLayout>
   );
 }
