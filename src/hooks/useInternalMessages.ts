@@ -251,7 +251,7 @@ export function useSendInternalMessage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['internal-messages'] });
-      toast({ title: 'Message sent', description: 'Your message has been sent and the recipient notified by email.' });
+      toast({ title: 'Message sent', description: 'Internal note sent successfully.' });
     },
     onError: (error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
