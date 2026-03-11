@@ -117,8 +117,9 @@ export function TodayTimeline({ className }: TodayTimelineProps) {
   const { data: lessons, isLoading, isError, refetch } = useTodayLessons();
 
   const activeLessons = lessons?.filter(l => l.status !== 'cancelled') || [];
-  const upcomingOrInProgress = activeLessons.filter(l => l.status === 'upcoming' || l.status === 'in-progress');
-  const completedCount = activeLessons.filter(l => l.status === 'completed').length;
+  const nonSlotLessons = activeLessons.filter(l => !l.isOpenSlot);
+  const upcomingOrInProgress = nonSlotLessons.filter(l => l.status === 'upcoming' || l.status === 'in-progress');
+  const completedCount = nonSlotLessons.filter(l => l.status === 'completed').length;
 
   const allDone = activeLessons.length > 0 && upcomingOrInProgress.length === 0;
 
