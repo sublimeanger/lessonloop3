@@ -247,6 +247,18 @@ export function LessonNotesForm({
             className="min-h-[44px] resize-none"
           />
         </div>
+
+        {/* Parent Visible Toggle */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">Visible to parents</span>
+          </div>
+          <Switch
+            checked={form.parentVisible}
+            onCheckedChange={(checked) => updateField(key, 'parentVisible', checked)}
+          />
+        </div>
       </div>
     );
   };
