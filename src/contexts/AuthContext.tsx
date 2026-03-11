@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Sentry } from '@/lib/sentry';
 import { logger } from '@/lib/logger';
 import { safeRemoveItem } from '@/lib/storage';
+import { toast } from 'sonner';
 
 export type AppRole = 'owner' | 'admin' | 'teacher' | 'finance' | 'parent';
 
