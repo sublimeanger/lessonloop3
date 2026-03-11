@@ -56,6 +56,7 @@ export function useTodayLessons() {
             end_at,
             status,
             lesson_type,
+            is_open_slot,
             teacher_id,
             teacher:teachers!lessons_teacher_id_fkey (display_name),
             lesson_participants (
