@@ -357,6 +357,7 @@ export default function BatchAttendance() {
                                 <ToggleGroupItem
                                   value="cancelled_by_teacher"
                                   aria-label="Cancelled by Teacher"
+                                  disabled={isFutureDate}
                                   className={cn(
                                     'h-11 px-3 text-sm sm:h-7 sm:px-2 sm:text-xs',
                                     currentStatus === 'cancelled_by_teacher' && 'bg-muted text-muted-foreground border-muted-foreground/30'
