@@ -216,6 +216,19 @@ export default function InvoiceDetail() {
               </>
             ) : (
               <>
+                <Button 
+                  variant="outline" 
+                  className="min-h-11 gap-2 sm:min-h-9"
+                  onClick={handleDownloadPdf}
+                  disabled={isPdfLoading}
+                >
+                  {isPdfLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  {isPdfLoading ? 'Generating...' : 'Download PDF'}
+                </Button>
                 {invoice.status === 'draft' && (
                   <Button className="min-h-11 gap-2 sm:min-h-9" onClick={() => setSendModalOpen(true)}>
                     <Send className="h-4 w-4" />

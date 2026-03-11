@@ -88,7 +88,7 @@ function KanbanColumn({ stage, leads, count, isFirst, onAddClick }: KanbanColumn
       )}
     >
       {/* Column header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/50">
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/50 sticky top-0 bg-muted/40 z-10 rounded-t-xl">
         <div className="flex items-center gap-2 min-w-0">
           <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
           <span className="text-sm font-medium truncate">{STAGE_LABELS[stage]}</span>
@@ -257,8 +257,8 @@ export function LeadKanbanBoard({ leads: externalLeads, stageCounts: externalCou
       >
         <div
           className={cn(
-            'flex gap-3 pb-4',
-            isMobile ? 'overflow-x-auto snap-x snap-mandatory px-1 -mx-1' : '',
+            'flex gap-3 pb-4 overflow-x-auto',
+            isMobile ? 'snap-x snap-mandatory px-1 -mx-1' : '',
           )}
         >
           {LEAD_STAGES.map((stage, idx) => (

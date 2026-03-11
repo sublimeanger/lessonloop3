@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { toast } from 'sonner';
 import { format, parseISO, addDays, addWeeks, addMonths, isBefore, startOfToday } from 'date-fns';
 import { CalendarIcon, Trash2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -138,20 +139,26 @@ export function PaymentPlanSetup({ invoice, open, onOpenChange }: PaymentPlanSet
   };
 
   const handleConfirm = () => {
+    const onSuccess = () => {
+      onOpenChange(false);
+      if (invoice.status === 'draft') {
+        toast.info('Send the invoice to activate the payment plan and see it on the Payment Plans tab.');
+      }
+    };
     if (mode === 'equal') {
       generateMutation.mutate({
         invoiceId: invoice.id,
         count,
         frequency,
         startDate: format(startDate, 'yyyy-MM-dd'),
-      }, { onSuccess: () => onOpenChange(false) });
+      }, { onSuccess });
     } else {
       generateMutation.mutate({
         invoiceId: invoice.id,
         count: customRows.length,
-        frequency: 'monthly', // ignored for custom
+        frequency: 'monthly',
         customSchedule: customRows,
-      }, { onSuccess: () => onOpenChange(false) });
+      }, { onSuccess });
     }
   };
 

@@ -82,8 +82,18 @@ function TemplateCard({
       </div>
       {canEdit && (
         <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => onToggle(template)} title={template.active ? 'Pause' : 'Resume'}>
-            {template.active ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
+          <Button
+            variant={template.active ? 'outline' : 'default'}
+            size="sm"
+            className="h-9 gap-1.5 px-3 text-xs"
+            onClick={() => onToggle(template)}
+            title={template.active ? 'Pause recurring billing — no new invoices will be generated until resumed' : 'Resume recurring billing — invoices will be generated on schedule'}
+          >
+            {template.active ? (
+              <><ToggleRight className="h-3.5 w-3.5" />Pause</>
+            ) : (
+              <><ToggleLeft className="h-3.5 w-3.5" />Resume</>
+            )}
           </Button>
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => onEdit(template)}>
             <Pencil className="h-4 w-4" />

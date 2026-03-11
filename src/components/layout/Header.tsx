@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Sparkles, ChevronDown, Check } from 'lucide-react';
@@ -28,10 +29,10 @@ export function Header() {
         <SidebarTrigger className="h-11 w-11 md:hidden" />
 
         {/* Brand logo */}
-        <div className="flex items-center gap-2">
+        <Link to="/dashboard" className="flex items-center gap-2">
           <Logo size="lg" />
           <LogoWordmark className="text-lg hidden sm:block" />
-        </div>
+        </Link>
 
         {/* Org switcher — only if multiple orgs */}
         {currentOrg && hasMultipleOrgs && (

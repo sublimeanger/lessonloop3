@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TeacherPracticeReview } from '@/components/practice/TeacherPracticeReview';
 import { CreateAssignmentModal } from '@/components/practice/CreateAssignmentModal';
+import { AssignmentDetailDialog } from '@/components/practice/AssignmentDetailDialog';
 import { usePracticeAssignments, usePracticeLogs, useWeeklyProgress } from '@/hooks/usePractice';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Music, Target, Users, TrendingUp, Circle } from 'lucide-react';
@@ -16,6 +17,7 @@ import { cn } from '@/lib/utils';
 export default function Practice() {
   usePageMeta('Practice | LessonLoop', 'Manage practice assignments and track student progress');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   
   const { data: assignments = [], isLoading: loadingAssignments } = usePracticeAssignments();
   const { data: recentLogsData } = usePracticeLogs({ limit: 10 });
@@ -259,9 +261,10 @@ export default function Practice() {
                     .filter(a => a.status === 'active')
                     .slice(0, 5)
                     .map(assignment => (
-                      <div 
+                      <button 
                         key={assignment.id} 
-                        className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between"
+                        className="flex w-full cursor-pointer flex-col gap-2 rounded-xl border p-3 text-left transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
+                        onClick={() => setSelectedAssignment(assignment)}
                       >
                         <div>
                           <p className="font-medium">{assignment.title}</p>
@@ -273,7 +276,7 @@ export default function Practice() {
                           <p>{assignment.target_minutes_per_day} min/day</p>
                           <p>{assignment.target_days_per_week} days/week</p>
                         </div>
-                      </div>
+                      </button>
                     ))}
                 </div>
               )}
@@ -285,6 +288,12 @@ export default function Practice() {
       <CreateAssignmentModal
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
+      />
+
+      <AssignmentDetailDialog
+        assignment={selectedAssignment}
+        open={!!selectedAssignment}
+        onOpenChange={(o) => { if (!o) setSelectedAssignment(null); }}
       />
     </AppLayout>
   );
