@@ -173,14 +173,27 @@ export function CreateAssignmentModal({
             <Label htmlFor="student">Student *</Label>
             <Select value={studentId} onValueChange={setStudentId}>
               <SelectTrigger className="min-h-11 sm:min-h-9">
-                <SelectValue placeholder="Select student" />
+                <SelectValue placeholder="Search or select student..." />
               </SelectTrigger>
               <SelectContent>
-                {students.map(student => (
-                  <SelectItem key={student.id} value={student.id}>
-                    {student.first_name} {student.last_name}
-                  </SelectItem>
-                ))}
+                <div className="p-2">
+                  <Input
+                    placeholder="Search students..."
+                    value={studentSearch}
+                    onChange={(e) => setStudentSearch(e.target.value)}
+                    className="min-h-9"
+                    autoFocus={false}
+                  />
+                </div>
+                {filteredStudents.length === 0 ? (
+                  <div className="py-4 text-center text-sm text-muted-foreground">No students found</div>
+                ) : (
+                  filteredStudents.map(student => (
+                    <SelectItem key={student.id} value={student.id}>
+                      {student.first_name} {student.last_name}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
