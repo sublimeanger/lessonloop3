@@ -66,8 +66,11 @@ export function CalendarMobileLayout({
   teacherColourMap,
   actions,
   bulk,
+  refetch,
 }: CalendarMobileLayoutProps) {
-  // hide_cancelled is now applied server-side in useCalendarData
+  const [slotWizardOpen, setSlotWizardOpen] = useState(false);
+
+  const wizardTeachers = teachers.map(t => ({ id: t.id, display_name: t.name, user_id: t.userId }));
 
   const navigatePrev = useCallback(() => setCurrentDate(subWeeks(currentDate, 1)), [currentDate, setCurrentDate]);
   const navigateNext = useCallback(() => setCurrentDate(addWeeks(currentDate, 1)), [currentDate, setCurrentDate]);
