@@ -446,7 +446,8 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent className="w-full sm:max-w-md">
+      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+        <div className="overflow-y-auto max-h-[calc(100vh-4rem)] pb-8">
         <SheetHeader className="space-y-1">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-xl">{lesson.title}</SheetTitle>
