@@ -15,7 +15,7 @@ import {
 } from '@/components/help/helpArticles';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Sparkles, MessageSquare, Mail, ExternalLink, Lightbulb } from 'lucide-react';
+import { Sparkles, MessageSquare, Mail, ExternalLink } from 'lucide-react';
 import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 
 export default function Help() {
