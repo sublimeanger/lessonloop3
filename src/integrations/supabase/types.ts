@@ -5378,6 +5378,21 @@ export type Database = {
         Args: { _user_id: string }
         Returns: string[]
       }
+      get_students_for_org: {
+        Args: { _org_id: string; _role?: string; _user_id?: string }
+        Returns: {
+          created_at: string
+          dob: string
+          email: string
+          first_name: string
+          guardian_count: number
+          id: string
+          last_name: string
+          notes: string
+          phone: string
+          status: string
+        }[]
+      }
       get_teacher_id_for_user: {
         Args: { _org_id: string; _user_id: string }
         Returns: string
