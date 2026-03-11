@@ -28,6 +28,7 @@ export interface TodayLesson {
     name: string;
   };
   teacherName?: string;
+  isOpenSlot: boolean;
 }
 
 export function useTodayLessons() {
