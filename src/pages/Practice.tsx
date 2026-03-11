@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TeacherPracticeReview } from '@/components/practice/TeacherPracticeReview';
 import { CreateAssignmentModal } from '@/components/practice/CreateAssignmentModal';
+import { AssignmentDetailDialog } from '@/components/practice/AssignmentDetailDialog';
 import { usePracticeAssignments, usePracticeLogs, useWeeklyProgress } from '@/hooks/usePractice';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Music, Target, Users, TrendingUp, Circle } from 'lucide-react';
