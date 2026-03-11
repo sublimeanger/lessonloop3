@@ -308,7 +308,7 @@ export default function Teachers() {
       lessonCount: count ?? 0,
       lessons: futureLessons || [],
       reassignTeacherId: '',
-      action: (count ?? 0) > 0 ? '' : 'none',
+      action: (count ?? 0) > 0 ? '' : 'reassign',
       isProcessing: false,
     });
   };
