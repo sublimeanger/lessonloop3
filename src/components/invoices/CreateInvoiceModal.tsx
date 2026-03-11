@@ -338,34 +338,50 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                 </div>
 
                 <div className="space-y-2">
+                  {/* Column headers — desktop only */}
+                  <div className="hidden sm:grid sm:grid-cols-[1fr_auto_auto_auto] gap-2 px-1">
+                    <Label className="text-xs text-muted-foreground">Description</Label>
+                    <Label className="text-xs text-muted-foreground w-20">Qty</Label>
+                    <Label className="text-xs text-muted-foreground w-24">Price ({currentOrg?.currency_code === 'GBP' ? '£' : currentOrg?.currency_code || '£'})</Label>
+                    <div className="w-10" />
+                  </div>
                   {fields.map((field, index) => (
                     <div key={field.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
-                      <Input
-                        placeholder="Description"
-                        {...register(`items.${index}.description`, { required: true })}
-                        className="flex-1"
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Qty"
-                        {...register(`items.${index}.quantity`, {
-                          required: true,
-                          valueAsNumber: true,
-                          min: 1,
-                        })}
-                        className="w-full sm:w-20"
-                      />
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="Price"
-                        {...register(`items.${index}.unitPrice`, {
-                          required: true,
-                          valueAsNumber: true,
-                          min: 0.01,
-                        })}
-                        className="w-full sm:w-24"
-                      />
+                      <div className="space-y-1 sm:space-y-0">
+                        <Label className="text-xs text-muted-foreground sm:hidden">Description</Label>
+                        <Input
+                          placeholder="Description"
+                          {...register(`items.${index}.description`, { required: true })}
+                          className="flex-1"
+                        />
+                      </div>
+                      <div className="space-y-1 sm:space-y-0">
+                        <Label className="text-xs text-muted-foreground sm:hidden">Qty</Label>
+                        <Input
+                          type="number"
+                          placeholder="Qty"
+                          {...register(`items.${index}.quantity`, {
+                            required: true,
+                            valueAsNumber: true,
+                            min: 1,
+                          })}
+                          className="w-full sm:w-20"
+                        />
+                      </div>
+                      <div className="space-y-1 sm:space-y-0">
+                        <Label className="text-xs text-muted-foreground sm:hidden">Price ({currentOrg?.currency_code === 'GBP' ? '£' : currentOrg?.currency_code || '£'})</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Price"
+                          {...register(`items.${index}.unitPrice`, {
+                            required: true,
+                            valueAsNumber: true,
+                            min: 0.01,
+                          })}
+                          className="w-full sm:w-24"
+                        />
+                      </div>
                       {fields.length > 1 && (
                         <Button
                           type="button"
