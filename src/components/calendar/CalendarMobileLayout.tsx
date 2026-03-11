@@ -43,6 +43,7 @@ interface CalendarMobileLayoutProps {
   teacherColourMap: Map<string, TeacherWithColour>;
   actions: ReturnType<typeof useCalendarActions>;
   bulk: ReturnType<typeof useBulkLessonActions>;
+  refetch: () => void;
 }
 
 export function CalendarMobileLayout({
