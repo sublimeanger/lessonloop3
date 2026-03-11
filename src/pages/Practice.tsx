@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 export default function Practice() {
   usePageMeta('Practice | LessonLoop', 'Manage practice assignments and track student progress');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   
   const { data: assignments = [], isLoading: loadingAssignments } = usePracticeAssignments();
   const { data: recentLogsData } = usePracticeLogs({ limit: 10 });
