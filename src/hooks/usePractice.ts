@@ -488,3 +488,49 @@ export function useAddPracticeFeedback() {
     },
   });
 }
+
+// Mutation to update an assignment
+export function useUpdateAssignment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...data }: {
+      id: string;
+      title?: string;
+      description?: string | null;
+      target_minutes_per_day?: number;
+      target_days_per_week?: number;
+      end_date?: string | null;
+      status?: string;
+    }) => {
+      const { error } = await supabase
+        .from('practice_assignments')
+        .update(data as any)
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['practice-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['parent-practice-assignments'] });
+    },
+  });
+}
+
+// Mutation to delete an assignment
+export function useDeleteAssignment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('practice_assignments')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['practice-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['parent-practice-assignments'] });
+    },
+  });
+}
