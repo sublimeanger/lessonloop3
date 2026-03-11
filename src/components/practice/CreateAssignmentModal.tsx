@@ -55,6 +55,15 @@ export function CreateAssignmentModal({
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState('');
   const [gradeLevelId, setGradeLevelId] = useState('');
+  const [studentSearch, setStudentSearch] = useState('');
+
+  const filteredStudents = useMemo(() => {
+    if (!studentSearch.trim()) return students;
+    const q = studentSearch.toLowerCase();
+    return students.filter(s => 
+      `${s.first_name} ${s.last_name}`.toLowerCase().includes(q)
+    );
+  }, [students, studentSearch]);
 
   const createAssignment = useCreateAssignment();
   const { data: studentInstruments } = useStudentInstruments(studentId || undefined);
