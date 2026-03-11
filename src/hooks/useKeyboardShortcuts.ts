@@ -5,7 +5,7 @@ import { useLoopAssistUI } from '@/contexts/LoopAssistContext';
 export interface Shortcut {
   key: string;
   description: string;
-  category: 'Global' | 'Calendar' | 'Navigation';
+  category: 'Global' | 'Calendar';
   action: () => void;
   displayKey?: string;
 }
