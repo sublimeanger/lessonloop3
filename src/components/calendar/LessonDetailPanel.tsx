@@ -753,6 +753,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
             </>
           )}
         </div>
+        </div>
       </SheetContent>
 
       {/* Recurring Action Dialog */}
