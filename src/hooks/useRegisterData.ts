@@ -23,7 +23,7 @@ interface LessonAttendanceRecord {
 
 interface LessonParticipantJoin {
   student_id: string;
-  students: { id: string; first_name: string; last_name: string } | null;
+  students: { id: string; first_name: string; last_name: string; notes: string | null } | null;
 }
 
 interface LessonQueryRow {
