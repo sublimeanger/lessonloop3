@@ -261,10 +261,10 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Location</Label>
-                <Select value={locationId} onValueChange={(v) => { setLocationId(v); setRoomId(''); }}>
+                <Select value={locationId || '__none__'} onValueChange={(v) => { setLocationId(v === '__none__' ? '' : v); setRoomId(''); }}>
                   <SelectTrigger className="mt-1"><SelectValue placeholder="Optional" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {locations.map(l => (
                       <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
                     ))}
@@ -273,10 +273,10 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
               </div>
               <div>
                 <Label>Room</Label>
-                <Select value={roomId} onValueChange={setRoomId} disabled={!locationId}>
+                <Select value={roomId || '__none__'} onValueChange={(v) => setRoomId(v === '__none__' ? '' : v)} disabled={!locationId}>
                   <SelectTrigger className="mt-1"><SelectValue placeholder="Optional" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {filteredRooms.map(r => (
                       <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                     ))}
