@@ -5,8 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { X } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
+import { X, Check } from 'lucide-react';
 import { LessonType } from '../types';
 
 interface StudentSelectorProps {
@@ -21,6 +20,19 @@ interface StudentSelectorProps {
   setStudentSheetOpen: (open: boolean) => void;
   onStudentToggle: (studentId: string) => void;
   studentSelectorRef: RefObject<HTMLButtonElement>;
+}
+
+function StudentInitials({ name }: { name: string }) {
+  const parts = name.trim().split(/\s+/);
+  const initials = parts.length >= 2
+    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    : name.slice(0, 2).toUpperCase();
+
+  return (
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+      {initials}
+    </span>
+  );
 }
 
 export function StudentSelector({
@@ -40,21 +52,26 @@ export function StudentSelector({
     <Command>
       <CommandInput placeholder="Search students..." className="min-h-[44px]" />
       <CommandList className={isMobile ? "max-h-[60vh]" : ""}>
-        <CommandEmpty>No students found.</CommandEmpty>
+        <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+          No students found. Try a different search term.
+        </CommandEmpty>
         <CommandGroup>
-          {students.map((student) => (
-            <CommandItem
-              key={student.id}
-              onSelect={() => onStudentToggle(student.id)}
-              className="min-h-[44px]"
-            >
-              <Checkbox
-                checked={selectedStudents.includes(student.id)}
-                className="mr-2"
-              />
-              {student.name}
-            </CommandItem>
-          ))}
+          {students.map((student) => {
+            const isSelected = selectedStudents.includes(student.id);
+            return (
+              <CommandItem
+                key={student.id}
+                onSelect={() => onStudentToggle(student.id)}
+                className="min-h-[44px] gap-3 px-3"
+              >
+                <StudentInitials name={student.name} />
+                <span className="flex-1 truncate">{student.name}</span>
+                {isSelected && (
+                  <Check className="h-4 w-4 shrink-0 text-primary" />
+                )}
+              </CommandItem>
+            );
+          })}
         </CommandGroup>
       </CommandList>
     </Command>
