@@ -406,7 +406,9 @@ export default function PortalHome() {
             {/* 2. Next Lesson Hero Card */}
             {nextLesson && (
               <Card className="overflow-hidden rounded-2xl shadow-card hover:shadow-elevated transition-all duration-150 relative" role="region" aria-label="Next lesson">
-                <CardContent className="p-5 md:p-6">
+                <CardContent className="p-5 md:p-6 pl-6">
+                  {/* Left teal accent */}
+                  <div className="absolute inset-y-0 left-0 w-[3px] bg-primary rounded-l-2xl" />
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1.5 min-w-0">
                       {nextLessonChild && (
