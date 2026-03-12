@@ -291,6 +291,54 @@ async function purgeProductionCss() {
   return { before: size, after: statSync(cssPath).size };
 }
 
+/** Inline critical CSS (font-face + base layout) into each HTML file's <head>. */
+function inlineCriticalCss() {
+  const cssPath = join(OUT_DIR, CSS_FILENAME);
+  if (!existsSync(cssPath)) return;
+  const fullCss = readFileSync(cssPath, 'utf-8');
+
+  // Extract @font-face declarations from fonts.css if available
+  let fontFaceCss = '';
+  const fontsCssPath = join(OUT_DIR, 'fonts', 'fonts.css');
+  if (existsSync(fontsCssPath)) {
+    const fontsCss = readFileSync(fontsCssPath, 'utf-8');
+    const fontFaceMatches = fontsCss.match(/@font-face\s*\{[^}]+\}/g);
+    if (fontFaceMatches) fontFaceCss = fontFaceMatches.join('\n');
+  }
+
+  // Extract critical CSS rules from styles.css: CSS custom properties, base styles
+  const criticalPatterns = [];
+  // CSS custom properties (:root / html)
+  const rootMatch = fullCss.match(/:root\s*\{[^}]+\}/g);
+  if (rootMatch) criticalPatterns.push(...rootMatch);
+  // html, body base styles
+  const htmlBodyMatch = fullCss.match(/(?:^|[,}])\s*(html|body)\s*\{[^}]+\}/g);
+  if (htmlBodyMatch) criticalPatterns.push(...htmlBodyMatch);
+
+  // Minimal critical CSS for above-the-fold rendering
+  const criticalInline = `<style data-ssg="critical">
+${fontFaceCss}
+${criticalPatterns.join('\n')}
+*,::before,::after{box-sizing:border-box}
+html{line-height:1.5;-webkit-text-size-adjust:100%;tab-size:4;font-family:"DM Sans",ui-sans-serif,system-ui,sans-serif}
+body{margin:0;line-height:inherit}
+img,svg{display:block;max-width:100%}
+</style>`;
+
+  const htmlFiles = collectFiles(OUT_DIR, ['.html']);
+  for (const file of htmlFiles) {
+    let html = readFileSync(file, 'utf-8');
+    // Insert critical CSS right after <meta charset>
+    if (html.includes('<meta charset="UTF-8">')) {
+      html = html.replace('<meta charset="UTF-8">', `<meta charset="UTF-8">\n${criticalInline}`);
+    } else {
+      html = html.replace('</head>', `${criticalInline}\n</head>`);
+    }
+    writeFileSync(file, html, 'utf-8');
+  }
+  console.log(`  ✓ Inlined critical CSS (font-face + base layout) in all pages`);
+}
+
 /** Remove all .mp4 files from OUT_DIR. */
 function removeMp4Files() {
   const mp4s = collectFiles(OUT_DIR, ['.mp4']);
@@ -1393,8 +1441,8 @@ async function main() {
         head = head.replace(/<script[^>]*@vite\/client[^>]*>[\s\S]*?<\/script>/gi, '');
         head = head.replace(/<script[^>]*type="module"[^>]*>[\s\S]*?<\/script>/gi, '');
 
-        // Add link to production CSS
-        finalHtml += `<head>\n${head}\n<link rel="stylesheet" href="/${CSS_FILENAME}">\n</head>\n`;
+        // Add link to production CSS (async loading — critical CSS is inlined later)
+        finalHtml += `<head>\n${head}\n<link rel="preload" href="/${CSS_FILENAME}" as="style" onload="this.onload=null;this.rel='stylesheet'">\n<noscript><link rel="stylesheet" href="/${CSS_FILENAME}"></noscript>\n</head>\n`;
         finalHtml += `<body>\n${bodyMatch[1]}\n</body>\n`;
       } else {
         // Fallback: use raw HTML
@@ -1457,8 +1505,11 @@ async function main() {
   // 5. CSS (purge disabled — full production CSS is kept as-is)
   const cssStats = await purgeProductionCss();
   if (cssStats) {
-    console.log(`  ✓ Production CSS: ${(cssStats.after / 1024).toFixed(1)} KB (no purge)`);
+    console.log(`  ✓ Production CSS: ${(cssStats.before / 1024).toFixed(1)} KB → ${(cssStats.after / 1024).toFixed(1)} KB`);
   }
+
+  // 5b. Inline critical CSS for faster first paint
+  inlineCriticalCss();
 
   // 6. Remove unreferenced .mp4 files
   const mp4sRemoved = removeMp4Files();
