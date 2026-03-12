@@ -535,6 +535,39 @@ function cleanupHtml() {
   }
 }
 
+/** Best practices fixes: charset position, blank lines, external link rels. */
+function fixBestPractices() {
+  const htmlFiles = collectFiles(OUT_DIR, ['.html']);
+  for (const file of htmlFiles) {
+    let html = readFileSync(file, 'utf-8');
+
+    // 1. Ensure <meta charset="UTF-8"> is first element in <head>
+    // Remove it from wherever it is
+    html = html.replace(/<meta\s+charset="UTF-8">\n?/gi, '');
+    // Re-add it as first element after <head>
+    html = html.replace(/<head>\n?/, '<head>\n<meta charset="UTF-8">\n');
+
+    // 2. Clean up excessive blank lines in <head>
+    html = html.replace(/<head>\n(<meta charset="UTF-8">\n)\s+/g, '<head>\n$1');
+
+    // 3. Ensure DOCTYPE is uppercase
+    html = html.replace(/<!doctype html>/i, '<!DOCTYPE html>');
+
+    // 4. External links with target="_blank" need rel="noopener"
+    // (also handled in fixAccessibility, but double-check)
+    html = html.replace(/<a\s([^>]*target="_blank"[^>]*)>/gi, (match, attrs) => {
+      if (/rel="[^"]*noopener/.test(attrs)) return match;
+      if (/rel="/.test(attrs)) {
+        return match.replace(/rel="([^"]*)"/, 'rel="$1 noopener"');
+      }
+      return `<a ${attrs} rel="noopener">`;
+    });
+
+    writeFileSync(file, html, 'utf-8');
+  }
+  console.log('  ✓ Applied best practices fixes (charset, DOCTYPE, external links)');
+}
+
 /** Extract FAQ Q&A pairs from compare pages and inject FAQPage schema. */
 function addFaqSchemaToComparePages() {
   const compareDir = join(OUT_DIR, 'compare');
@@ -1746,6 +1779,9 @@ async function main() {
   // 8. Clean up React artifacts
   cleanupHtml();
   console.log('  ✓ Cleaned up React artifacts');
+
+  // 8b. Best practices fixes
+  fixBestPractices();
 
   // 9. FAQ schema for compare pages
   addFaqSchemaToComparePages();
