@@ -1092,7 +1092,7 @@ async function main() {
   // Start Vite dev server on a random port
   const vite = await createServer({
     root: ROOT,
-    server: { port: 0, strictPort: false },
+    server: { port: 0, strictPort: false, host: '127.0.0.1' },
     logLevel: 'warn',
   });
   const server = await vite.listen();
@@ -1153,7 +1153,7 @@ async function main() {
     });
 
     try {
-      await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
+      await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
 
       // Wait for React to finish rendering (Suspense / lazy)
       await page.waitForFunction(
