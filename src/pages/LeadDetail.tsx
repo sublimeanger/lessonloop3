@@ -176,26 +176,26 @@ export default function LeadDetail() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {lead.stage !== 'enrolled' && lead.stage !== 'lost' && !lead.trial_lesson_id && (
-              <Button onClick={() => setShowBookTrial(true)} variant="outline" size="sm" className="gap-2">
+              <Button onClick={() => setShowBookTrial(true)} variant="outline" size="sm" className="min-h-11 sm:min-h-9 gap-2">
                 <CalendarPlus className="h-4 w-4" />
                 Book Trial
               </Button>
             )}
             {lead.stage !== 'enrolled' && lead.stage !== 'lost' && (
-              <Button onClick={() => setShowConvert(true)} size="sm" className="gap-2">
+              <Button onClick={() => setShowConvert(true)} size="sm" className="min-h-11 sm:min-h-9 gap-2">
                 <UserCheck className="h-4 w-4" />
                 Convert
               </Button>
             )}
             {lead.stage !== 'enrolled' && lead.stage !== 'lost' && (
-              <Button onClick={() => setShowAddToWaitlist(true)} variant="outline" size="sm" className="gap-2">
+              <Button onClick={() => setShowAddToWaitlist(true)} variant="outline" size="sm" className="min-h-11 sm:min-h-9 gap-2">
                 <ClipboardCheck className="h-4 w-4" />
                 Waiting List
               </Button>
             )}
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-9 text-destructive hover:text-destructive">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </AlertDialogTrigger>

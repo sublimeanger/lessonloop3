@@ -355,7 +355,7 @@ export default function PortalSchedule() {
                 <div className="sm:hidden">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Lesson actions">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 min-h-11 min-w-11 sm:min-h-9 sm:min-w-9" aria-label="Lesson actions">
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>

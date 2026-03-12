@@ -142,7 +142,7 @@ function StudentCard({
       tabIndex={0}
       role="link"
       aria-label={`View ${fullName}`}
-      className="flex items-center gap-3 rounded-xl border bg-card p-3 sm:p-4 shadow-card transition-all hover:shadow-card-hover cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="flex items-center gap-3 rounded-xl border bg-card p-3 sm:p-4 shadow-card transition-all hover:shadow-card-hover active:shadow-card-hover cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
       <div
         className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"

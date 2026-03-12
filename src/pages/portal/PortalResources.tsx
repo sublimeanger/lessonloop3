@@ -67,6 +67,7 @@ function ResourceDownloadButton({ filePath, fileName }: ResourceDownloadButtonPr
     <Button
       variant="ghost"
       size="icon"
+      className="min-h-11 min-w-11 sm:min-h-9 sm:min-w-9"
       onClick={handleDownload}
       disabled={isDownloading}
       title="Download"

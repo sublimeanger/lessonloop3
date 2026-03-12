@@ -100,7 +100,7 @@ function KanbanColumn({ stage, leads, count, isFirst, onAddClick }: KanbanColumn
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 shrink-0"
+            className="h-8 w-8 min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 shrink-0"
             onClick={onAddClick}
             aria-label="Add new lead"
           >
@@ -255,12 +255,19 @@ export function LeadKanbanBoard({ leads: externalLeads, stageCounts: externalCou
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div
-          className={cn(
-            'flex gap-3 pb-4 overflow-x-auto',
-            isMobile ? 'snap-x snap-mandatory px-1 -mx-1' : '',
+        <div className="relative">
+          {isMobile && (
+            <>
+              <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-4 z-10 bg-gradient-to-r from-background to-transparent" />
+              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-4 z-10 bg-gradient-to-l from-background to-transparent" />
+            </>
           )}
-        >
+          <div
+            className={cn(
+              'flex gap-3 pb-4 overflow-x-auto',
+              isMobile ? 'snap-x snap-mandatory px-1 -mx-1' : '',
+            )}
+          >
           {LEAD_STAGES.map((stage, idx) => (
             <KanbanColumn
               key={stage}
@@ -271,6 +278,7 @@ export function LeadKanbanBoard({ leads: externalLeads, stageCounts: externalCou
               onAddClick={onAddLead || (() => setCreateOpen(true))}
             />
           ))}
+          </div>
         </div>
 
         <DragOverlay dropAnimation={null}>
