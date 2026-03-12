@@ -215,7 +215,7 @@ export default function Invoices() {
       )}
 
       {!isParent ? (
-        <Tabs defaultValue="invoices" className="space-y-4">
+        <Tabs defaultValue="invoices" className="space-y-6">
           <TabsList>
             <TabsTrigger value="invoices" className="gap-1.5">
               <Receipt className="h-3.5 w-3.5" />
@@ -231,7 +231,7 @@ export default function Invoices() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="invoices" className="space-y-4">
+          <TabsContent value="invoices" className="space-y-6">
             <InvoiceFiltersBar
               filters={filters}
               onFiltersChange={handleFiltersChange}
@@ -285,7 +285,7 @@ export default function Invoices() {
           </TabsContent>
         </Tabs>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {invoices.length === 0 ? (
             <EmptyState
               icon={Receipt}

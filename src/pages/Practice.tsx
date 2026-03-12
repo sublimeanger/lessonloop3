@@ -54,7 +54,7 @@ export default function Practice() {
                 <Music className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{activeAssignments}</p>
+                <p className="text-2xl font-semibold">{activeAssignments}</p>
                 <p className="text-sm text-muted-foreground">Active Assignments</p>
               </div>
             </div>
@@ -68,7 +68,7 @@ export default function Practice() {
                 <Target className="h-5 w-5 text-warning" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{unreviewedLogs}</p>
+                <p className="text-2xl font-semibold">{unreviewedLogs}</p>
                 <p className="text-sm text-muted-foreground">Pending Review</p>
               </div>
             </div>
@@ -82,7 +82,7 @@ export default function Practice() {
                 <Users className="h-5 w-5 text-success" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{studentsWithProgress}</p>
+                <p className="text-2xl font-semibold">{studentsWithProgress}</p>
                 <p className="text-sm text-muted-foreground">Students Practicing</p>
               </div>
             </div>
@@ -96,7 +96,7 @@ export default function Practice() {
                 <TrendingUp className="h-5 w-5 text-secondary-foreground" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-semibold">
                   {weeklyProgress.length > 0 
                     ? Math.round(weeklyProgress.reduce((sum, p) => sum + p.percentComplete, 0) / weeklyProgress.length)
                     : 0}%

@@ -286,7 +286,7 @@ export default function LeadDetail() {
               ) : (
                 <div className="space-y-3">
                   {students.map((s: any) => (
-                    <div key={s.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <div key={s.id} className="flex items-start gap-3 p-3 rounded-xl bg-muted/50">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-medium shrink-0">
                         {s.first_name[0]}{s.last_name?.[0] || ''}
                       </div>
@@ -376,7 +376,7 @@ export default function LeadDetail() {
                     <div
                       key={fu.id}
                       className={cn(
-                        'flex items-center gap-3 p-2 rounded-lg text-sm',
+                        'flex items-center gap-3 p-2 rounded-xl text-sm',
                         isOverdue ? 'bg-destructive/10' : 'bg-muted/50'
                       )}
                     >

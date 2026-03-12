@@ -467,7 +467,7 @@ export default function Teachers() {
 
       {/* Self-add banner for owners/admins who also teach */}
       {showSelfAddBanner && (
-        <div className="mb-4 flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
           <Music className="h-5 w-5 text-primary shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">Do you also teach?</p>
@@ -498,7 +498,7 @@ export default function Teachers() {
             />
           </div>
 
-          <div className="flex w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted/50 p-0.5 sm:w-fit" role="tablist" aria-label="Teacher filters">
+          <div className="flex w-full items-center gap-1 overflow-x-auto rounded-xl bg-muted/50 p-0.5 sm:w-fit" role="tablist" aria-label="Teacher filters">
             {FILTER_PILLS.map((pill) => (
               <button
                 key={pill.value}
@@ -585,7 +585,7 @@ export default function Teachers() {
 
       {/* Create Teacher Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) resetCreateForm(); }}>
-        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-lg sm:p-6">
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-xl sm:p-6">
           <DialogHeader>
             <DialogTitle>Add Teacher</DialogTitle>
             <DialogDescription>
@@ -608,7 +608,7 @@ export default function Teachers() {
 
       {/* Edit Teacher Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-lg sm:p-6">
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-xl sm:p-6">
           <DialogHeader>
             <DialogTitle>Edit Teacher</DialogTitle>
             <DialogDescription>
@@ -662,7 +662,7 @@ export default function Teachers() {
                     </p>
 
                     <div className="space-y-2 pt-1">
-                      <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent transition-colors">
+                      <label className="flex items-start gap-3 p-3 rounded-xl border cursor-pointer hover:bg-accent transition-colors">
                         <input
                           type="radio"
                           name="removal-action"
@@ -692,7 +692,7 @@ export default function Teachers() {
                         </div>
                       )}
 
-                      <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent transition-colors">
+                      <label className="flex items-start gap-3 p-3 rounded-xl border cursor-pointer hover:bg-accent transition-colors">
                         <input
                           type="radio"
                           name="removal-action"
@@ -777,7 +777,7 @@ function TeacherCard({ teacher, studentCount, isAdmin, onRemove, onEdit, onReact
   return (
     <div 
       className={cn(
-        "group flex flex-col items-start gap-3 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md cursor-pointer sm:flex-row sm:items-center sm:gap-4",
+        "group flex flex-col items-start gap-3 rounded-xl border bg-card p-4 shadow-card transition-all hover:shadow-card-hover cursor-pointer sm:flex-row sm:items-center sm:gap-4",
         isInactiveView && "opacity-60"
       )}
       onClick={() => onQuickView(teacher)}

@@ -15,7 +15,7 @@ export function OnboardingLayout({ currentStepIndex, showProgress = true, onLogo
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-background via-background to-muted/30 flex flex-col">
       {/* Header with subtle shadow */}
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 backdrop-blur-sm px-4 py-3 sm:px-6 sm:py-4 shrink-0 shadow-sm">
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 backdrop-blur-sm px-4 py-3 sm:px-6 sm:py-4 shrink-0 shadow-card">
         <LogoHorizontal className="h-7 sm:h-8" />
         <Button
           variant="ghost"

@@ -229,7 +229,7 @@ export default function DailyRegister() {
             <ClipboardList className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{activeLessons}</div>
+            <div className="text-2xl font-semibold">{activeLessons}</div>
           </CardContent>
         </Card>
         <Card>
@@ -238,7 +238,7 @@ export default function DailyRegister() {
             <CheckCircle2 className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">{completedLessons}</div>
+            <div className="text-2xl font-semibold text-success">{completedLessons}</div>
           </CardContent>
         </Card>
         <Card>
@@ -247,7 +247,7 @@ export default function DailyRegister() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{scheduledLessons}</div>
+            <div className="text-2xl font-semibold">{scheduledLessons}</div>
           </CardContent>
         </Card>
         {cancelledLessons > 0 && (
@@ -257,7 +257,7 @@ export default function DailyRegister() {
               <XCircle className="h-4 w-4 text-destructive" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-destructive">{cancelledLessons}</div>
+              <div className="text-2xl font-semibold text-destructive">{cancelledLessons}</div>
             </CardContent>
           </Card>
         )}
@@ -267,7 +267,7 @@ export default function DailyRegister() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalStudents}</div>
+            <div className="text-2xl font-semibold">{totalStudents}</div>
           </CardContent>
         </Card>
       </div>

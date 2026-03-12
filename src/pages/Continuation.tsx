@@ -239,7 +239,7 @@ export default function Continuation() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{totalConfirmed}</div>
+                    <div className="text-2xl font-semibold">{totalConfirmed}</div>
                     <p className="text-xs text-muted-foreground">
                       {progressPercent}%
                     </p>
@@ -253,7 +253,7 @@ export default function Continuation() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
+                    <div className="text-2xl font-semibold">
                       {summary.pending}
                     </div>
                   </CardContent>
@@ -266,7 +266,7 @@ export default function Continuation() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
+                    <div className="text-2xl font-semibold">
                       {summary.withdrawing}
                     </div>
                   </CardContent>
@@ -279,7 +279,7 @@ export default function Continuation() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
+                    <div className="text-2xl font-semibold">
                       {summary.no_response + summary.assumed_continuing}
                     </div>
                   </CardContent>
@@ -476,7 +476,7 @@ export default function Continuation() {
                 {pastRuns.map((pastRun) => (
                   <div
                     key={pastRun.id}
-                    className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/30 cursor-pointer transition-colors"
+                    className="flex items-center justify-between rounded-xl border p-3 hover:bg-muted/30 cursor-pointer transition-colors"
                     onClick={() => setSelectedRunId(pastRun.id)}
                   >
                     <div>

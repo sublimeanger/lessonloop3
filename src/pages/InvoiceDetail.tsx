@@ -275,7 +275,7 @@ export default function InvoiceDetail() {
             <CardContent>
               <div className="space-y-6">
                 {isCreditNote && (
-                  <div className="rounded-lg border border-sky-200/50 bg-sky-50/50 p-3 flex items-start gap-2">
+                  <div className="rounded-xl border border-sky-200/50 bg-sky-50/50 p-3 flex items-start gap-2">
                     <Info className="h-4 w-4 text-sky-600 mt-0.5 shrink-0" />
                     <div className="text-sm text-muted-foreground">
                       This credit note was generated from a term adjustment.
@@ -374,7 +374,7 @@ export default function InvoiceDetail() {
                           <span>-{formatCurrencyMinor(totalPaid, currency)}</span>
                         </div>
                         <Separator />
-                        <div className="flex justify-between font-bold">
+                        <div className="flex justify-between font-semibold">
                           <span>Amount Due</span>
                           <span>{formatCurrencyMinor(amountDue, currency)}</span>
                         </div>
@@ -407,7 +407,7 @@ export default function InvoiceDetail() {
                   {invoice.payments.map((payment: any) => (
                     <div
                       key={payment.id}
-                      className="flex items-center justify-between rounded-lg border p-3"
+                      className="flex items-center justify-between rounded-xl border p-3"
                     >
                       <div className="flex items-center gap-3">
                         <CheckCircle2 className="h-5 w-5 text-success" />

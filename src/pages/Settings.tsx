@@ -45,7 +45,7 @@ function AvailabilityTabWithSelector({ isOrgAdmin }: { isOrgAdmin: boolean }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="space-y-1.5 w-full max-w-xs">
         <Label className="text-sm text-muted-foreground">Viewing availability for</Label>
         <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>

@@ -168,7 +168,7 @@ export default function Leads() {
             </SelectContent>
           </Select>
 
-          <div className="ml-auto flex items-center gap-1 border rounded-lg p-0.5">
+          <div className="ml-auto flex items-center gap-1 border rounded-xl p-0.5">
             <button
               onClick={() => setView('kanban')}
               className={cn(
