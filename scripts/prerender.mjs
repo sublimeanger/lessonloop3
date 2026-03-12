@@ -494,6 +494,34 @@ function generateRobotsTxt() {
     `User-agent: *\nAllow: /\n\nSitemap: ${SITE_DOMAIN}/sitemap.xml\n`, 'utf-8');
 }
 
+/** Generate Cloudflare Pages _headers file for caching and security. */
+function generateHeaders() {
+  const headers = `/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://app.lessonloop.net; connect-src 'self'
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/images/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.css
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+`;
+  writeFileSync(join(OUT_DIR, '_headers'), headers, 'utf-8');
+}
+
 /** Calculate total size of a directory recursively (bytes). */
 function dirSizeBytes(dir) {
   let total = 0;
@@ -1578,10 +1606,11 @@ async function main() {
   addFaqSchemaToComparePages();
   console.log('  ✓ Added FAQ schema to compare pages');
 
-  // 10. Generate sitemap.xml and robots.txt
+  // 10. Generate sitemap.xml, robots.txt, and _headers
   generateSitemap(routes);
   generateRobotsTxt();
-  console.log('  ✓ Generated sitemap.xml and robots.txt');
+  generateHeaders();
+  console.log('  ✓ Generated sitemap.xml, robots.txt, and _headers');
 
   // ─── Summary ────────────────────────────────────────────────────
 
