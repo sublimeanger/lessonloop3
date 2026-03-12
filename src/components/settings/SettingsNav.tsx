@@ -136,7 +136,7 @@ export function SettingsSidebar({ activeTab, onTabChange, isOrgAdmin }: Settings
       <div className="sticky top-4 space-y-6">
         {groups.map((group) => (
           <div key={group.title}>
-            <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground px-3 mb-1.5">
+            <h2 className="text-micro font-medium uppercase tracking-widest text-muted-foreground px-3 mb-1.5">
               {group.title}
             </h2>
             <div className="space-y-0.5">
