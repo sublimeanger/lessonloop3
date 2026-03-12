@@ -35,9 +35,9 @@ async function refreshZoomAccessToken(
 
   if (!response.ok) {
     console.error('Zoom token refresh failed:', await response.text());
-    await supabase
+    await (supabase as any)
       .from('calendar_connections')
-      .update({ sync_status: 'error' })
+      .update({ sync_status: 'error' } as any)
       .eq('id', connectionId);
     return null;
   }
