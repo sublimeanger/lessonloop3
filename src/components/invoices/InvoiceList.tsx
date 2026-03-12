@@ -417,7 +417,7 @@ export function InvoiceList({
                 <span className="text-sm font-semibold text-foreground truncate block">
                   {getPayerName(invoice)}
                 </span>
-                <span className="text-xs tabular-nums text-muted-foreground">
+                <span className="text-xs font-mono tabular-nums text-muted-foreground">
                   {invoice.invoice_number}
                 </span>
               </div>
