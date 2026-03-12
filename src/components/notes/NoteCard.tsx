@@ -33,8 +33,8 @@ export function NoteCard({ note, isAdmin, timezone }: NoteCardProps) {
       : 'No content';
 
   return (
-    <Card className="transition-shadow hover:shadow-sm">
-      <CardContent className="p-4">
+    <Card className="transition-shadow hover:shadow-card-hover">
+      <CardContent className="p-3 sm:p-4">
         {/* Header row */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
