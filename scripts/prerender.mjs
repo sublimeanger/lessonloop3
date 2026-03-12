@@ -199,6 +199,8 @@ async function selfHostGoogleFonts() {
     }
     // Ensure font-display: swap in every @font-face
     css = css.replace(/@font-face\s*\{(?![^}]*font-display)/g, '@font-face {\n  font-display: swap;');
+    // Force any existing font-display values to swap
+    css = css.replace(/font-display:\s*\w+/g, 'font-display: swap');
     writeFileSync(cachedCss, css, 'utf-8');
     return urls.length;
   } catch (err) {
@@ -209,23 +211,63 @@ async function selfHostGoogleFonts() {
 
 /** Replace external Google Fonts links with self-hosted version in all HTML. */
 function updateFontReferences() {
-  if (!existsSync(join(OUT_DIR, 'fonts', 'fonts.css'))) return;
+  const fontsDir = join(OUT_DIR, 'fonts');
+  const hasFontsCss = existsSync(join(fontsDir, 'fonts.css'));
+
+  // Find critical woff2 files for preload hints (DM Sans 400 and 600)
+  let preloadHints = '';
+  if (hasFontsCss && existsSync(fontsDir)) {
+    const fontsCss = readFileSync(join(fontsDir, 'fonts.css'), 'utf-8');
+    const woff2Files = readdirSync(fontsDir).filter(f => f.endsWith('.woff2'));
+    // Parse fonts.css to find DM Sans latin 400 and 600 woff2 filenames
+    const fontFaceBlocks = fontsCss.split('@font-face');
+    const criticalFiles = [];
+    for (const block of fontFaceBlocks) {
+      // Match DM Sans with weight 400 or 600 and latin (not latin-ext) unicode range
+      const isDMSans = /font-family:\s*['"]?DM Sans/i.test(block);
+      const weight = block.match(/font-weight:\s*(\d+)/);
+      const urlMatch = block.match(/url\(\/fonts\/([^)]+\.woff2)\)/);
+      const isLatin = /unicode-range:.*U\+0000/i.test(block) && !/latin-ext/i.test(block.split('unicode-range')[0]?.slice(-50) || '');
+      if (isDMSans && weight && urlMatch && (weight[1] === '400' || weight[1] === '600')) {
+        criticalFiles.push(urlMatch[1]);
+      }
+    }
+    // Deduplicate and take at most 2 (400 and 600)
+    const uniqueFiles = [...new Set(criticalFiles)].slice(0, 2);
+    preloadHints = uniqueFiles.map(f =>
+      `<link rel="preload" href="/fonts/${f}" as="font" type="font/woff2" crossorigin>`
+    ).join('\n  ');
+    if (preloadHints) console.log(`  ✓ Added font preload hints for: ${uniqueFiles.join(', ')}`);
+  }
+
   const htmlFiles = collectFiles(OUT_DIR, ['.html']);
   for (const file of htmlFiles) {
     let html = readFileSync(file, 'utf-8');
+    // Remove preconnect hints for Google Fonts
     html = html.replace(/<link[^>]*rel=["']preconnect["'][^>]*href=["']https:\/\/fonts\.googleapis\.com["'][^>]*>\n?/gi, '');
     html = html.replace(/<link[^>]*href=["']https:\/\/fonts\.googleapis\.com["'][^>]*rel=["']preconnect["'][^>]*>\n?/gi, '');
     html = html.replace(/<link[^>]*rel=["']preconnect["'][^>]*href=["']https:\/\/fonts\.gstatic\.com["'][^>]*>\n?/gi, '');
     html = html.replace(/<link[^>]*href=["']https:\/\/fonts\.gstatic\.com["'][^>]*rel=["']preconnect["'][^>]*>\n?/gi, '');
+    // Remove dns-prefetch for Google Fonts
+    html = html.replace(/<link[^>]*rel=["']dns-prefetch["'][^>]*href=["']https:\/\/fonts\.googleapis\.com["'][^>]*>\n?/gi, '');
+    html = html.replace(/<link[^>]*rel=["']dns-prefetch["'][^>]*href=["']https:\/\/fonts\.gstatic\.com["'][^>]*>\n?/gi, '');
+    // Replace external Google Fonts CSS link with self-hosted
     html = html.replace(/<link[^>]*href=["']https:\/\/fonts\.googleapis\.com\/css2[^"']*["'][^>]*>/gi,
-      '<link rel="stylesheet" href="/fonts/fonts.css">');
+      hasFontsCss ? '<link rel="stylesheet" href="/fonts/fonts.css">' : '');
+    // Add font preload hints before the fonts.css link
+    if (preloadHints && html.includes('/fonts/fonts.css')) {
+      html = html.replace(
+        /<link rel="stylesheet" href="\/fonts\/fonts.css">/,
+        `${preloadHints}\n  <link rel="stylesheet" href="/fonts/fonts.css">`
+      );
+    }
     writeFileSync(file, html, 'utf-8');
   }
   // Remove @import from styles.css
   const cssPath = join(OUT_DIR, CSS_FILENAME);
   if (existsSync(cssPath)) {
     let css = readFileSync(cssPath, 'utf-8');
-    css = css.replace(/@import\s+url\(['"]?https:\/\/fonts\.googleapis\.com[^)]*['"]?\)\s*;?/gi, '');
+    css = css.replace(/@import\s*(?:url\()?['"]?https?:\/\/fonts\.googleapis\.com[^;]*;?\s*/gi, '');
     writeFileSync(cssPath, css, 'utf-8');
   }
 }
@@ -785,10 +827,9 @@ function postProcess(html, routePath, blogSlugs) {
     '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
   );
 
-  // Ensure Google Fonts link is present
-  const fontsLink = '<link rel="preconnect" href="https://fonts.googleapis.com">\n  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">';
-  if (!html.includes('fonts.googleapis.com/css2')) {
-    html = html.replace('</head>', `  ${fontsLink}\n  </head>`);
+  // Ensure self-hosted fonts CSS is linked (NOT external Google Fonts)
+  if (!html.includes('/fonts/fonts.css')) {
+    html = html.replace('</head>', `  <link rel="stylesheet" href="/fonts/fonts.css">\n  </head>`);
   }
 
   // Make sure we have theme-color
@@ -825,13 +866,7 @@ function postProcess(html, routePath, blogSlugs) {
     `  <link rel="alternate" hreflang="en" href="${hreflangUrl}">\n` +
     `  <link rel="alternate" hreflang="x-default" href="${hreflangUrl}">\n</head>`);
 
-  // ── SEO: DNS prefetch hints ──
-  if (!html.includes('dns-prefetch')) {
-    html = html.replace('</head>',
-      '  <link rel="dns-prefetch" href="https://fonts.googleapis.com">\n' +
-      '  <link rel="dns-prefetch" href="https://fonts.gstatic.com">\n' +
-      '  <meta http-equiv="x-dns-prefetch-control" content="on">\n</head>');
-  }
+  // DNS prefetch hints removed — fonts are self-hosted, no external origins needed
 
   // ── SEO: BreadcrumbList schema for nested pages ──
   const pathParts = routePath.split('/').filter(Boolean);
@@ -1414,9 +1449,10 @@ async function main() {
   // 4. Self-host Google Fonts
   const fontCount = await selfHostGoogleFonts();
   if (fontCount > 0) {
-    updateFontReferences();
     console.log(`  ✓ Self-hosted ${fontCount} Google Font files`);
   }
+  // Always update font references to remove external Google Fonts links
+  updateFontReferences();
 
   // 5. CSS (purge disabled — full production CSS is kept as-is)
   const cssStats = await purgeProductionCss();
