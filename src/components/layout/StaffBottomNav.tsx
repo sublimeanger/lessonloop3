@@ -157,7 +157,7 @@ export function StaffBottomNav() {
               <MoreHorizontal className={cn('h-5 w-5', isMoreActive && 'stroke-[2.5]')} />
               <span>More</span>
               {isMoreActive && (
-                <span className="absolute bottom-1 h-1 w-5 rounded-full bg-primary" />
+                <span className="absolute bottom-1 h-[3px] w-5 rounded-full bg-primary" />
               )}
             </button>
           </SheetTrigger>

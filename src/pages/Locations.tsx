@@ -775,7 +775,7 @@ export default function Locations() {
                             {location.is_archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                           </Button>
                           {location.is_archived && (
-                            <Button variant="ghost" size="icon" className="h-9 w-9" aria-label={`Delete ${location.name}`} onClick={() => initiateDeleteLocation(location)}>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 min-h-11 min-w-11 sm:min-h-9 sm:min-w-9" aria-label={`Delete ${location.name}`} onClick={() => initiateDeleteLocation(location)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
