@@ -291,6 +291,53 @@ async function purgeProductionCss() {
   return { before: size, after: statSync(cssPath).size };
 }
 
+/** Optimise images: add loading=lazy to non-hero images, preload LCP image, fix og-home.png. */
+function optimizeImages() {
+  // 1. Copy og-image.png → og-home.png if missing
+  const ogHome = join(OUT_DIR, 'og-home.png');
+  const ogImage = join(OUT_DIR, 'og-image.png');
+  if (!existsSync(ogHome) && existsSync(ogImage)) {
+    copyFileSync(ogImage, ogHome);
+    console.log('  ✓ Created og-home.png from og-image.png');
+  }
+
+  const htmlFiles = collectFiles(OUT_DIR, ['.html']);
+  for (const file of htmlFiles) {
+    let html = readFileSync(file, 'utf-8');
+
+    // 2. Add loading="lazy" to all <img> tags that don't have a loading attribute
+    //    (SVGs used in nav/footer are small, lazy is fine for them)
+    html = html.replace(/<img\s((?!loading=)[^>]*)>/gi, (match, attrs) => {
+      // Skip if already has loading
+      if (/\bloading\s*=/.test(attrs)) return match;
+      return `<img ${attrs} loading="lazy">`;
+    });
+
+    // 3. Find the LCP/hero image and ensure it has correct attributes
+    //    Hero image is the first large content image (usually dashboard-real.webp)
+    html = html.replace(/<img\s([^>]*loading="eager"[^>]*)>/gi, (match, attrs) => {
+      let a = attrs;
+      if (!/fetchpriority/.test(a)) a += ' fetchpriority="high"';
+      return `<img ${a}>`;
+    });
+
+    // 4. Add hero image preload in <head> for the homepage
+    const heroMatch = html.match(/<img\s[^>]*loading="eager"[^>]*src="([^"]+)"[^>]*>/i) ||
+                      html.match(/<img\s[^>]*src="([^"]+)"[^>]*loading="eager"[^>]*>/i);
+    if (heroMatch) {
+      const heroSrc = heroMatch[1];
+      const isWebp = heroSrc.endsWith('.webp');
+      const preloadTag = `<link rel="preload" as="image" href="${heroSrc}"${isWebp ? ' type="image/webp"' : ''}>`;
+      if (!html.includes(preloadTag)) {
+        html = html.replace('</head>', `  ${preloadTag}\n</head>`);
+      }
+    }
+
+    writeFileSync(file, html, 'utf-8');
+  }
+  console.log('  ✓ Optimized image loading attributes (lazy/eager/preload)');
+}
+
 /** Inline critical CSS (font-face + base layout) into each HTML file's <head>. */
 function inlineCriticalCss() {
   const cssPath = join(OUT_DIR, CSS_FILENAME);
@@ -512,6 +559,7 @@ function copyStaticAssets() {
     'favicon.svg',
     'favicon.ico',
     'og-image.png',
+    'og-home.png',
     'placeholder.svg',
   ];
   for (const file of publicFiles) {
@@ -1493,6 +1541,9 @@ async function main() {
   // 3. Add responsive srcset + width/height to images
   addResponsiveImagesAndDimensions();
   console.log('  ✓ Added srcset, width, and height to images');
+
+  // 3b. Optimize image loading (lazy/eager, preload LCP, og-home.png)
+  optimizeImages();
 
   // 4. Self-host Google Fonts
   const fontCount = await selfHostGoogleFonts();
