@@ -253,7 +253,7 @@ export default function Continuation() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
+                    <div className="text-2xl font-semibold">
                       {summary.pending}
                     </div>
                   </CardContent>
