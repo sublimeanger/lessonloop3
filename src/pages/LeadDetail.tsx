@@ -188,7 +188,7 @@ export default function LeadDetail() {
               </Button>
             )}
             {lead.stage !== 'enrolled' && lead.stage !== 'lost' && (
-              <Button onClick={() => setShowAddToWaitlist(true)} variant="outline" size="sm" className="gap-2">
+              <Button onClick={() => setShowAddToWaitlist(true)} variant="outline" size="sm" className="min-h-11 sm:min-h-9 gap-2">
                 <ClipboardCheck className="h-4 w-4" />
                 Waiting List
               </Button>
