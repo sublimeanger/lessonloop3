@@ -98,7 +98,7 @@ export default function ResetPassword() {
           </CardHeader>
           <CardContent className="text-center">
             <XCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-foreground mb-2">Reset link expired</h2>
+            <h2 className="text-2xl font-semibold text-foreground mb-2">Reset link expired</h2>
             <p className="text-muted-foreground mb-6">
               This password reset link is no longer valid. Please request a new one.
             </p>
