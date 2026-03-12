@@ -100,7 +100,7 @@ function KanbanColumn({ stage, leads, count, isFirst, onAddClick }: KanbanColumn
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 shrink-0"
+            className="h-8 w-8 min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 shrink-0"
             onClick={onAddClick}
             aria-label="Add new lead"
           >
