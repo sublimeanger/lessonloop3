@@ -185,7 +185,7 @@ export function SettingsMobileNav({ onTabChange, isOrgAdmin }: SettingsMobileNav
         const GroupIcon = group.icon;
         return (
           <div key={group.title}>
-            <h2 className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground px-1 mb-2">
+            <h2 className="flex items-center gap-2 text-micro font-medium uppercase tracking-widest text-muted-foreground px-1 mb-2">
               <GroupIcon className="h-3.5 w-3.5" />
               {group.title}
             </h2>
