@@ -327,7 +327,7 @@ interface OverdueInstallment {
 }
 
 // deno-lint-ignore no-explicit-any
-async function processInstallmentReminder(supabase: ReturnType<typeof createClient>, installment: OverdueInstallment, today: Date, resendApiKey: string | undefined): Promise<string> {
+async function processInstallmentReminder(supabase: any, installment: OverdueInstallment, today: Date, resendApiKey: string | undefined): Promise<string> {
   const invoice = installment.invoice;
   const org = invoice.organisation;
   const guardian = invoice.payer_guardian;
