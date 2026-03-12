@@ -204,7 +204,62 @@ async function selfHostGoogleFonts() {
     writeFileSync(cachedCss, css, 'utf-8');
     return urls.length;
   } catch (err) {
-    console.warn(`  ⚠ Could not self-host Google Fonts: ${err.message} (keeping external link)`);
+    console.warn(`  ⚠ Could not self-host Google Fonts: ${err.message}`);
+    // Create fallback fonts.css with system font stack
+    if (!existsSync(cachedCss)) {
+      const fallback = `/* Fallback: Google Fonts unavailable at build time */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: local('DM Sans Light'), local('DMSans-Light');
+}
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('DM Sans'), local('DMSans-Regular');
+}
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: local('DM Sans Medium'), local('DMSans-Medium');
+}
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: local('DM Sans SemiBold'), local('DMSans-SemiBold');
+}
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('DM Sans Bold'), local('DMSans-Bold');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('JetBrains Mono'), local('JetBrainsMono-Regular');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: local('JetBrains Mono Medium'), local('JetBrainsMono-Medium');
+}`;
+      writeFileSync(cachedCss, fallback, 'utf-8');
+      console.log('  ✓ Created fallback fonts.css with local font sources');
+    }
     return 0;
   }
 }
@@ -1426,7 +1481,7 @@ async function main() {
   // Start Vite dev server on a random port
   const vite = await createServer({
     root: ROOT,
-    server: { port: 0, strictPort: false },
+    server: { port: 0, strictPort: false, host: '127.0.0.1' },
     logLevel: 'warn',
   });
   const server = await vite.listen();
@@ -1487,7 +1542,7 @@ async function main() {
     });
 
     try {
-      await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
+      await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
 
       // Wait for React to finish rendering (Suspense / lazy)
       await page.waitForFunction(
