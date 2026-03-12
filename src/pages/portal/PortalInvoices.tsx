@@ -505,7 +505,7 @@ function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, i
           </div>
 
           <div className="text-right shrink-0">
-            <p className="text-2xl font-bold">
+            <p className="text-2xl font-semibold tabular-nums">
               {formatCurrencyMinor(invoice.total_minor, currencyCode)}
             </p>
             {isPaid && (
