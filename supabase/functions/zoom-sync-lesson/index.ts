@@ -59,7 +59,7 @@ async function refreshZoomAccessToken(
 }
 
 async function getValidAccessToken(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   connection: { id: string; access_token: string; refresh_token: string; token_expires_at: string }
 ): Promise<string | null> {
   const expiresAt = new Date(connection.token_expires_at);
