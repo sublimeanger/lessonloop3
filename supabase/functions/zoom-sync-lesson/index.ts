@@ -46,13 +46,13 @@ async function refreshZoomAccessToken(
   const tokenExpiresAt = new Date(Date.now() + (tokens.expires_in * 1000));
 
   // Update stored tokens
-  await supabase
+  await (supabase as any)
     .from('calendar_connections')
     .update({
       access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token || refreshToken, // Zoom may return a new refresh token
+      refresh_token: tokens.refresh_token || refreshToken,
       token_expires_at: tokenExpiresAt.toISOString(),
-    })
+    } as any)
     .eq('id', connectionId);
 
   return tokens.access_token;
