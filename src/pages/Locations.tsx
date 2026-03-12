@@ -761,7 +761,7 @@ export default function Locations() {
                           >
                             <Star className={cn('h-4 w-4', location.is_primary && 'fill-primary text-primary')} />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-9 w-9" aria-label={`Edit ${location.name}`} onClick={() => openLocationDialog(location)} disabled={location.is_archived}>
+                          <Button variant="ghost" size="icon" className="h-9 w-9 min-h-11 min-w-11 sm:min-h-9 sm:min-w-9" aria-label={`Edit ${location.name}`} onClick={() => openLocationDialog(location)} disabled={location.is_archived}>
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
