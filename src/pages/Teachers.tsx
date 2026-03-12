@@ -621,18 +621,42 @@ export default function Teachers() {
       />
 
       {/* Create Teacher Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) resetCreateForm(); }}>
+      <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) { resetCreateForm(); setSendInvite(true); } }}>
         <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-xl sm:p-6">
           <DialogHeader>
             <DialogTitle>Add Teacher</DialogTitle>
             <DialogDescription>
-              Create a teacher record without login access. They can be linked to an account later via invitation.
+              Create a teacher record. You can also send them a login invite so they can access the system.
             </DialogDescription>
           </DialogHeader>
           <Form {...createForm}>
             <form onSubmit={createForm.handleSubmit(handleCreateTeacher)}>
               <TeacherFormFields />
-              <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+
+              {/* Send login invite toggle */}
+              <div className="rounded-lg border bg-muted/30 p-3 sm:p-4">
+                <label className="flex min-h-11 items-center gap-3 cursor-pointer sm:min-h-0">
+                  <Checkbox
+                    checked={sendInvite}
+                    onCheckedChange={(checked) => setSendInvite(checked === true)}
+                    disabled={!createForm.watch('email')?.trim()}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium">Send login invite</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      They'll receive an email to create their account and access the system.
+                    </p>
+                  </div>
+                </label>
+                {!createForm.watch('email')?.trim() && (
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Info className="h-3.5 w-3.5 shrink-0" />
+                    No email — you can invite them later from Settings → Members
+                  </p>
+                )}
+              </div>
+
+              <DialogFooter className="mt-4 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button variant="outline" type="button" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={isSaving}>
                   {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</> : 'Add Teacher'}
