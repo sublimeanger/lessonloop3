@@ -68,7 +68,7 @@ serve(async (req) => {
       limit: 12,
     });
 
-    const invoices = stripeInvoices.data.map((inv) => ({
+    const invoices = stripeInvoices.data.map((inv: any) => ({
       id: inv.id,
       date: inv.created,
       amount: inv.amount_paid ?? inv.total ?? 0,

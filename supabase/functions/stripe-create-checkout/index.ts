@@ -229,7 +229,7 @@ serve(async (req) => {
       customer: customerId,
       customer_email: customerId ? undefined : payerEmail,
       payment_method_types: orgConnect?.payment_methods_enabled?.length > 0
-        ? orgConnect.payment_methods_enabled
+        ? orgConnect!.payment_methods_enabled
         : ["card"],
       mode: "payment",
       line_items: [

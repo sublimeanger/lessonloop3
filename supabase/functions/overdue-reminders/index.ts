@@ -14,7 +14,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase: any = createClient(supabaseUrl, supabaseServiceKey);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -141,7 +141,7 @@ function formatDateGB(dateStr: string): string {
 
 // deno-lint-ignore no-explicit-any
 async function shouldSkipGuardian(
-  supabase: ReturnType<typeof createClient>, orgId: string, guardian: { email?: string; user_id?: string | null } | null, relatedId: string, messageType: string, today: Date
+  supabase: any, orgId: string, guardian: { email?: string; user_id?: string | null } | null, relatedId: string, messageType: string, today: Date
 ): Promise<boolean> {
   if (!guardian?.email) return true;
 
@@ -169,7 +169,7 @@ async function shouldSkipGuardian(
 
 // deno-lint-ignore no-explicit-any
 async function logAndSend(
-  supabase: ReturnType<typeof createClient>, resendApiKey: string | undefined,
+  supabase: any, resendApiKey: string | undefined,
   opts: { orgId: string; orgName: string; subject: string; html: string; recipientEmail: string; recipientName: string; guardianId: string; relatedId: string; messageType: string }
 ): Promise<boolean> {
   const status = resendApiKey ? "pending" : "logged";
@@ -242,7 +242,7 @@ interface OverdueInvoice {
 }
 
 // deno-lint-ignore no-explicit-any
-async function processInvoiceReminder(supabase: ReturnType<typeof createClient>, invoice: OverdueInvoice, today: Date, resendApiKey: string | undefined): Promise<string> {
+async function processInvoiceReminder(supabase: any, invoice: OverdueInvoice, today: Date, resendApiKey: string | undefined): Promise<string> {
   const org = invoice.organisation;
   const reminderDays: number[] = org?.overdue_reminder_days || [7, 14, 30];
   const daysOverdue = calcDaysOverdue(invoice.due_date, today);
@@ -250,6 +250,7 @@ async function processInvoiceReminder(supabase: ReturnType<typeof createClient>,
   if (!reminderDays.includes(daysOverdue)) return "skip";
 
   const guardian = invoice.payer_guardian;
+  if (!guardian?.email) return "skip";
   if (await shouldSkipGuardian(supabase, invoice.org_id, guardian, invoice.id, "overdue_reminder", today)) return "skip";
 
   const orgName = org?.name || "LessonLoop";
@@ -326,10 +327,11 @@ interface OverdueInstallment {
 }
 
 // deno-lint-ignore no-explicit-any
-async function processInstallmentReminder(supabase: ReturnType<typeof createClient>, installment: OverdueInstallment, today: Date, resendApiKey: string | undefined): Promise<string> {
+async function processInstallmentReminder(supabase: any, installment: OverdueInstallment, today: Date, resendApiKey: string | undefined): Promise<string> {
   const invoice = installment.invoice;
   const org = invoice.organisation;
   const guardian = invoice.payer_guardian;
+  if (!guardian?.email) return "skip";
   const reminderDays: number[] = org?.overdue_reminder_days || [7, 14, 30];
   const daysOverdue = calcDaysOverdue(installment.due_date, today);
 

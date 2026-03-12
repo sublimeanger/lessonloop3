@@ -227,7 +227,7 @@ serve(async (req) => {
       description,
       setup_future_usage: "off_session",
       payment_method_types: orgConnect?.payment_methods_enabled?.length > 0
-        ? orgConnect.payment_methods_enabled
+        ? orgConnect!.payment_methods_enabled
         : ["card"],
       metadata: {
         lessonloop_invoice_id: invoiceId,

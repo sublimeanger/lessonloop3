@@ -7,7 +7,7 @@ interface SyncPayload {
 }
 
 async function refreshZoomAccessToken(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   connectionId: string,
   refreshToken: string
 ): Promise<string | null> {
@@ -35,9 +35,9 @@ async function refreshZoomAccessToken(
 
   if (!response.ok) {
     console.error('Zoom token refresh failed:', await response.text());
-    await supabase
+    await (supabase as any)
       .from('calendar_connections')
-      .update({ sync_status: 'error' })
+      .update({ sync_status: 'error' } as any)
       .eq('id', connectionId);
     return null;
   }
@@ -46,20 +46,20 @@ async function refreshZoomAccessToken(
   const tokenExpiresAt = new Date(Date.now() + (tokens.expires_in * 1000));
 
   // Update stored tokens
-  await supabase
+  await (supabase as any)
     .from('calendar_connections')
     .update({
       access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token || refreshToken, // Zoom may return a new refresh token
+      refresh_token: tokens.refresh_token || refreshToken,
       token_expires_at: tokenExpiresAt.toISOString(),
-    })
+    } as any)
     .eq('id', connectionId);
 
   return tokens.access_token;
 }
 
 async function getValidAccessToken(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   connection: { id: string; access_token: string; refresh_token: string; token_expires_at: string }
 ): Promise<string | null> {
   const expiresAt = new Date(connection.token_expires_at);
@@ -163,8 +163,9 @@ Deno.serve(async (req) => {
         .single();
 
       if (mapping?.connection) {
-        teacherUserId = (mapping.connection as { user_id: string }).user_id;
-        orgId = (mapping.connection as { org_id: string }).org_id;
+        const conn = (Array.isArray(mapping.connection) ? mapping.connection[0] : mapping.connection) as { user_id: string; org_id: string };
+        teacherUserId = conn?.user_id;
+        orgId = conn?.org_id;
       }
     }
 
