@@ -162,7 +162,7 @@ export default function AuditLogTab() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{entry.actor_name}</span>
+                        <span className="text-sm truncate max-w-[120px]" title={entry.actor_name}>{entry.actor_name}</span>
                       </div>
                     </TableCell>
                     <TableCell>
