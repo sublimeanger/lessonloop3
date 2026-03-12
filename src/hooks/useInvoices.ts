@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { STALE_VOLATILE } from '@/config/query-stale-times';
+import { STALE_VOLATILE, STALE_STABLE } from '@/config/query-stale-times';
 import { logger } from '@/lib/logger';
 import { logAudit } from '@/lib/auditLog';
 import { supabase } from '@/integrations/supabase/client';
@@ -183,7 +183,7 @@ export function useInvoiceStats() {
       };
     },
     enabled: !!currentOrg?.id,
-    // Uses default SEMI_STABLE (2 min)
+    staleTime: STALE_STABLE, // Invoice stats are expensive aggregation — cache 5 min
   });
 }
 
