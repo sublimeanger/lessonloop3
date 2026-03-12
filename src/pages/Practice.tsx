@@ -82,7 +82,7 @@ export default function Practice() {
                 <Users className="h-5 w-5 text-success" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{studentsWithProgress}</p>
+                <p className="text-2xl font-semibold">{studentsWithProgress}</p>
                 <p className="text-sm text-muted-foreground">Students Practicing</p>
               </div>
             </div>
