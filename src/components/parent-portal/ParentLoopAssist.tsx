@@ -148,7 +148,7 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
                     key={i}
                     variant="outline"
                     size="sm"
-                    className="h-auto whitespace-normal text-left text-xs"
+                    className="h-auto whitespace-normal text-left text-xs rounded-full px-4"
                     onClick={() => doSend(prompt)}
                   >
                     {prompt}
@@ -246,8 +246,8 @@ function MessageBubble({ message }: { message: ParentAIMessage }) {
     <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
       <div
         className={cn(
-          'max-w-[85%] rounded-lg px-3 py-2 text-sm',
-          isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'
+          'max-w-[85%] rounded-2xl px-4 py-2.5 text-sm',
+          isUser ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-muted rounded-bl-sm'
         )}
       >
         {isUser ? (

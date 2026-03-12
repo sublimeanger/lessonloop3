@@ -405,8 +405,10 @@ export default function PortalHome() {
           <>
             {/* 2. Next Lesson Hero Card */}
             {nextLesson && (
-              <Card className="overflow-hidden rounded-2xl border-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-card hover:shadow-elevated transition-all duration-150" role="region" aria-label="Next lesson">
-                <CardContent className="p-5 md:p-6">
+              <Card className="overflow-hidden rounded-2xl shadow-card hover:shadow-elevated transition-all duration-150 relative" role="region" aria-label="Next lesson">
+                <CardContent className="p-5 md:p-6 pl-6">
+                  {/* Left teal accent */}
+                  <div className="absolute inset-y-0 left-0 w-[3px] bg-primary rounded-l-2xl" />
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1.5 min-w-0">
                       {nextLessonChild && (
@@ -470,7 +472,7 @@ export default function PortalHome() {
                     <Card
                       key={child.id}
                       data-interactive
-                      className="min-w-[220px] snap-start sm:min-w-0 rounded-2xl overflow-hidden"
+                      className={cn("min-w-[220px] snap-start sm:min-w-0 rounded-2xl overflow-hidden", child.id === selectedChildId && "ring-2 ring-primary")}
                       onClick={() => navigate(`/portal/schedule?child=${child.id}`)}
                     >
                       <CardContent className="p-4 relative">

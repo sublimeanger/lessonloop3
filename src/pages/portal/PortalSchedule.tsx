@@ -248,12 +248,12 @@ export default function PortalSchedule() {
   const LessonCard = ({ lesson, isPast }: { lesson: Lesson; isPast?: boolean }) => {
     const isCancelled = lesson.status === 'cancelled';
 
-    const accentColor = isCancelled ? 'bg-destructive' : isPast ? 'bg-muted-foreground/30' : 'bg-success';
+    const accentColor = isCancelled ? 'bg-destructive' : isPast ? 'bg-muted-foreground/30' : 'bg-primary';
     
     return (
       <Card className={cn('overflow-hidden rounded-2xl shadow-card hover:shadow-elevated transition-all duration-150 relative', isCancelled && 'opacity-60')}>
         {/* Left accent bar */}
-        <div className={cn('absolute inset-y-0 left-0 w-1 rounded-l-2xl', accentColor)} />
+        <div className={cn('absolute inset-y-0 left-0 w-[3px] rounded-l-2xl', accentColor)} />
         <CardContent className="p-4 pl-5">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">

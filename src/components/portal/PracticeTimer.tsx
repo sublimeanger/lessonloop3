@@ -383,7 +383,7 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
               {/* Timer display */}
               <div className="text-center py-6">
                 <div className={cn(
-                  'text-6xl font-semibold tabular-nums transition-colors',
+                  'text-5xl sm:text-6xl font-mono tabular-nums transition-colors',
                   isRunning ? 'text-primary' : 'text-muted-foreground'
                 )}>
                   {formatTime(elapsedSeconds)}
@@ -402,10 +402,10 @@ export function PracticeTimer({ onComplete }: PracticeTimerProps) {
                     size="lg"
                     onClick={handleStart}
                     disabled={!selectedStudentId}
-                    className="gap-2 active:scale-[0.98] transition-transform"
+                    className="gap-2 h-14 min-w-[140px] rounded-full active:scale-[0.98] transition-transform"
                   >
                     <Play className="h-5 w-5" />
-                    {elapsedSeconds > 0 ? 'Resume' : 'Start'}
+                    {elapsedSeconds > 0 ? 'Resume' : 'Start Practice'}
                   </Button>
                 ) : (
                   <Button size="lg" variant="secondary" onClick={handlePause} className="gap-2 active:scale-[0.98] transition-transform">
