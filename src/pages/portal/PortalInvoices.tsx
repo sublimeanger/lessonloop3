@@ -289,7 +289,7 @@ export default function PortalInvoices() {
                 </div>
                 <div>
                   <p className="font-medium text-sm">Outstanding Balance</p>
-                  <p className="text-2xl font-bold text-warning">
+                  <p className="text-2xl sm:text-3xl font-semibold text-warning tabular-nums">
                     {formatCurrencyMinor(totalOutstanding, currentOrg?.currency_code || 'GBP')}
                   </p>
                 </div>

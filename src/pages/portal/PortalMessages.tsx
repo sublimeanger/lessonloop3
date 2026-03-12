@@ -415,8 +415,8 @@ export default function PortalMessages() {
       {canInitiate && (
         <button
           onClick={() => setRequestModalOpen(true)}
-          className="fixed bottom-20 right-4 z-40 sm:hidden h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
-          aria-label="New request"
+          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-40 sm:hidden h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-float flex items-center justify-center active:scale-95 transition-transform"
+          aria-label="New message"
         >
           <Pencil className="h-5 w-5" />
         </button>

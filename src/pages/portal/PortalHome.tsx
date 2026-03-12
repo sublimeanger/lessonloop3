@@ -472,7 +472,7 @@ export default function PortalHome() {
                     <Card
                       key={child.id}
                       data-interactive
-                      className="min-w-[220px] snap-start sm:min-w-0 rounded-2xl overflow-hidden"
+                      className={cn("min-w-[220px] snap-start sm:min-w-0 rounded-2xl overflow-hidden", child.id === selectedChildId && "ring-2 ring-primary")}
                       onClick={() => navigate(`/portal/schedule?child=${child.id}`)}
                     >
                       <CardContent className="p-4 relative">
