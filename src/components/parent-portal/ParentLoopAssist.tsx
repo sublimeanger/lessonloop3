@@ -148,7 +148,7 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
                     key={i}
                     variant="outline"
                     size="sm"
-                    className="h-auto whitespace-normal text-left text-xs"
+                    className="h-auto whitespace-normal text-left text-xs rounded-full px-4"
                     onClick={() => doSend(prompt)}
                   >
                     {prompt}
