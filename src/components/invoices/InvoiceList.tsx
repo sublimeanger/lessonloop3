@@ -96,14 +96,14 @@ function StatusBadge({ status, dueDate, isCreditNote }: { status: InvoiceStatus;
 
   const config: Record<string, { label: string; className: string; dot?: string }> = {
     draft: { label: 'Draft', className: 'bg-muted text-muted-foreground border-transparent' },
-    sent: { label: 'Sent', className: 'bg-primary/10 text-primary border-primary/20' },
+    sent: { label: 'Sent', className: 'bg-info/10 text-info border-info/20' },
     paid: { label: 'Paid', className: 'bg-success/10 text-success border-success/20' },
     overdue: {
       label: 'Overdue',
       className: 'bg-destructive/10 text-destructive border-destructive/20',
       dot: 'bg-destructive animate-pulse',
     },
-    void: { label: 'Void', className: 'bg-muted text-muted-foreground border-transparent' },
+    void: { label: 'Void', className: 'bg-muted text-muted-foreground/60 border-transparent line-through' },
   };
 
   const c = config[effectiveStatus] || config.draft;
@@ -222,7 +222,7 @@ const MobileInvoiceCard = React.memo(function MobileInvoiceCard({
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground truncate">{getPayerName(invoice)}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{invoice.invoice_number}</p>
+            <p className="text-xs font-mono tabular-nums text-muted-foreground mt-0.5">{invoice.invoice_number}</p>
           </div>
         </div>
         <div className="text-right shrink-0">
@@ -325,7 +325,7 @@ export function InvoiceList({
 
   const paginationFooter = effectiveTotal > INVOICES_PAGE_SIZE ? (
     <div className="flex items-center justify-between px-2 py-3">
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs tabular-nums text-muted-foreground">
         {startIndex + 1}–{endIndex} of {effectiveTotal}
       </p>
       <div className="flex items-center gap-1">
@@ -417,7 +417,7 @@ export function InvoiceList({
                 <span className="text-sm font-semibold text-foreground truncate block">
                   {getPayerName(invoice)}
                 </span>
-                <span className="text-xs tabular-nums text-muted-foreground">
+                <span className="text-xs font-mono tabular-nums text-muted-foreground">
                   {invoice.invoice_number}
                 </span>
               </div>

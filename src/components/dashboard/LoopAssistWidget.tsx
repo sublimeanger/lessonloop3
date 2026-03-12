@@ -101,16 +101,14 @@ export function LoopAssistWidget() {
           {/* Suggested prompts — horizontal scroll on mobile, wrap on desktop */}
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x scrollbar-hide sm:flex-wrap sm:overflow-visible sm:pb-0 sm:mx-0 sm:px-0">
             {SUGGESTED_PROMPTS.map((prompt) => (
-              <Button
+              <button
                 key={prompt}
                 type="button"
-                variant="outline"
-                size="sm"
-                className="min-h-11 text-body font-normal whitespace-nowrap snap-start shrink-0 sm:whitespace-normal sm:shrink"
+                className="inline-flex min-h-11 items-center rounded-full border border-border bg-background/80 px-3 py-1.5 text-body font-normal whitespace-nowrap snap-start shrink-0 transition-colors hover:bg-muted hover:border-primary/30 active:scale-[0.98] sm:whitespace-normal sm:shrink"
                 onClick={() => handlePromptClick(prompt)}
               >
                 {prompt}
-              </Button>
+              </button>
             ))}
           </div>
         </div>

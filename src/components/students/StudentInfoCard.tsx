@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -133,7 +134,7 @@ export function StudentInfoCard({
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className={cn(isEditing && 'bg-primary/5 rounded-b-xl')}>
           {isEditing ? (
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -165,7 +166,7 @@ export function StudentInfoCard({
                 <Textarea id="edit-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
               </div>
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Button variant="outline" onClick={() => {
+                <Button variant="ghost" onClick={() => {
                   setFirstName(student.first_name);
                   setLastName(student.last_name);
                   setEmail(student.email || '');
