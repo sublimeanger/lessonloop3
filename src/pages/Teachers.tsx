@@ -240,8 +240,44 @@ export default function Teachers() {
         employment_type: values.employment_type,
         bio: values.bio || undefined,
       });
+
+      // Send login invite if toggled on and email provided
+      const teacherEmail = values.email?.trim().toLowerCase();
+      if (sendInvite && teacherEmail && currentOrg) {
+        try {
+          const { data: invite, error: inviteError } = await supabase
+            .from('invites')
+            .insert({
+              org_id: currentOrg.id,
+              email: teacherEmail,
+              role: 'teacher' as const,
+            })
+            .select()
+            .single();
+
+          if (inviteError) {
+            if (inviteError.message.includes('duplicate')) {
+              toast({ title: 'Already invited', description: 'This email already has a pending invite.', variant: 'destructive' });
+            } else {
+              logger.error('Invite insert error:', inviteError);
+              toast({ title: 'Teacher created', description: 'Could not send login invite. You can invite them later from Settings → Members.' });
+            }
+          } else if (invite) {
+            await supabase.functions.invoke('send-invite-email', {
+              body: { inviteId: invite.id },
+            });
+            toast({ title: 'Invite sent', description: `Login invite sent to ${teacherEmail}` });
+          }
+        } catch (emailErr: any) {
+          logger.error('Invite email error:', emailErr);
+          toast({ title: 'Teacher created', description: 'Invite email may not have been sent.' });
+        }
+      }
+
       setIsCreateDialogOpen(false);
       resetCreateForm();
+      setSendInvite(true);
+      setInviteRefreshKey(k => k + 1);
     } catch {
       // Error handled by mutation's onError
     } finally {
