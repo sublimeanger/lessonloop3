@@ -189,7 +189,7 @@ export default function NotesExplorer() {
           <div className="space-y-6">
             {groupedNotes.map(group => (
               <div key={group.date}>
-                <h3 className="text-sm font-semibold text-muted-foreground mb-3">{group.dateLabel}</h3>
+                <h3 className="text-sm font-semibold text-muted-foreground mb-3 sticky top-0 bg-background/95 backdrop-blur-sm py-2 -mt-2 z-10">{group.dateLabel}</h3>
                 <div className="space-y-2">
                   {group.notes.map(note => (
                     <NoteCard
