@@ -34,7 +34,7 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
 
   return (
     <Tabs defaultValue="overview" className="space-y-6" onValueChange={() => hook.setIsEditing(false)}>
-      <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto pb-1">
+      <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto pb-1 scrollbar-hide border-b border-border rounded-none bg-transparent p-0">
         <TabsTrigger value="overview" className="shrink-0">Overview</TabsTrigger>
         <TabsTrigger value="instruments" className="gap-1.5 shrink-0">
           <Music className="h-3.5 w-3.5" />

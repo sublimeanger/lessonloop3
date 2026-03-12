@@ -325,7 +325,7 @@ export function InvoiceList({
 
   const paginationFooter = effectiveTotal > INVOICES_PAGE_SIZE ? (
     <div className="flex items-center justify-between px-2 py-3">
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs tabular-nums text-muted-foreground">
         {startIndex + 1}–{endIndex} of {effectiveTotal}
       </p>
       <div className="flex items-center gap-1">

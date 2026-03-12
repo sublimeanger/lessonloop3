@@ -165,7 +165,7 @@ export function StudentInfoCard({
                 <Textarea id="edit-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
               </div>
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Button variant="outline" onClick={() => {
+                <Button variant="ghost" onClick={() => {
                   setFirstName(student.first_name);
                   setLastName(student.last_name);
                   setEmail(student.email || '');
