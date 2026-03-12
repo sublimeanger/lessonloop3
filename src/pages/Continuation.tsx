@@ -279,7 +279,7 @@ export default function Continuation() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
+                    <div className="text-2xl font-semibold">
                       {summary.no_response + summary.assumed_continuing}
                     </div>
                   </CardContent>
