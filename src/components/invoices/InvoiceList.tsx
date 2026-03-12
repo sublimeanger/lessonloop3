@@ -222,7 +222,7 @@ const MobileInvoiceCard = React.memo(function MobileInvoiceCard({
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground truncate">{getPayerName(invoice)}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{invoice.invoice_number}</p>
+            <p className="text-xs font-mono tabular-nums text-muted-foreground mt-0.5">{invoice.invoice_number}</p>
           </div>
         </div>
         <div className="text-right shrink-0">

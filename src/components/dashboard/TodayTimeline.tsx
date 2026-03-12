@@ -40,7 +40,7 @@ function LessonRow({ lesson }: { lesson: TodayLesson }) {
       <div
         className={cn(
           'w-[3px] rounded-full shrink-0 self-stretch',
-          isNow ? 'bg-primary' : isCompleted ? 'bg-success' : 'bg-border',
+          isNow ? 'bg-primary' : isCompleted ? 'bg-success' : isOpen ? 'bg-primary/40' : 'bg-primary/20',
         )}
       />
 
