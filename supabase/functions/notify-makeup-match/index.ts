@@ -72,10 +72,10 @@ Deno.serve(async (req) => {
           "en-GB",
           { hour: "2-digit", minute: "2-digit" }
         );
-        const lessonTeachers = matchedLesson.teachers as { display_name: string } | null;
-        const lessonLocations = matchedLesson.locations as { name: string } | null;
-        const teacher = lessonTeachers?.display_name || "their teacher";
-        const location = lessonLocations?.name || "the usual location";
+        const lessonTeachers = matchedLesson.teachers as unknown as { display_name: string } | { display_name: string }[] | null;
+        const lessonLocations = matchedLesson.locations as unknown as { name: string } | { name: string }[] | null;
+        const teacher = (Array.isArray(lessonTeachers) ? lessonTeachers[0]?.display_name : lessonTeachers?.display_name) || "their teacher";
+        const location = (Array.isArray(lessonLocations) ? lessonLocations[0]?.name : lessonLocations?.name) || "the usual location";
         matchedLessonInfo = `${date} at ${time} with ${teacher} at ${location}`;
       }
     }
