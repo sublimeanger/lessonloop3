@@ -638,7 +638,7 @@ export default function Locations() {
             />
           </div>
 
-          <div className="flex w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted/50 p-1 sm:w-fit">
+          <div className="flex w-full items-center gap-1 overflow-x-auto rounded-xl bg-muted/50 p-1 sm:w-fit">
             {FILTER_PILLS.map((pill) => (
               <button
                 type="button"
