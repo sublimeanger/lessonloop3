@@ -275,7 +275,7 @@ export default function InvoiceDetail() {
             <CardContent>
               <div className="space-y-6">
                 {isCreditNote && (
-                  <div className="rounded-lg border border-sky-200/50 bg-sky-50/50 p-3 flex items-start gap-2">
+                  <div className="rounded-xl border border-sky-200/50 bg-sky-50/50 p-3 flex items-start gap-2">
                     <Info className="h-4 w-4 text-sky-600 mt-0.5 shrink-0" />
                     <div className="text-sm text-muted-foreground">
                       This credit note was generated from a term adjustment.
