@@ -238,7 +238,7 @@ export default function DailyRegister() {
             <CheckCircle2 className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">{completedLessons}</div>
+            <div className="text-2xl font-semibold text-success">{completedLessons}</div>
           </CardContent>
         </Card>
         <Card>
