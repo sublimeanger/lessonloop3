@@ -182,7 +182,7 @@ export default function LeadDetail() {
               </Button>
             )}
             {lead.stage !== 'enrolled' && lead.stage !== 'lost' && (
-              <Button onClick={() => setShowConvert(true)} size="sm" className="gap-2">
+              <Button onClick={() => setShowConvert(true)} size="sm" className="min-h-11 sm:min-h-9 gap-2">
                 <UserCheck className="h-4 w-4" />
                 Convert
               </Button>
