@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback, useMemo, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth, AppRole } from './AuthContext';
 import { Sentry } from '@/lib/sentry';
 import { logger } from '@/lib/logger';
+import { STALE_SEMI_STABLE, STALE_VOLATILE } from '@/config/query-stale-times';
 
 export type OrgType = 'solo_teacher' | 'studio' | 'academy' | 'agency';
 export type MembershipStatus = 'active' | 'invited' | 'disabled';
@@ -97,6 +99,7 @@ const OrgContext = createContext<OrgContextType | undefined>(undefined);
 
 export function OrgProvider({ children }: { children: ReactNode }) {
   const { user, profile, isInitialised: authInitialised } = useAuth();
+  const queryClient = useQueryClient();
   const [currentOrg, setCurrentOrgState] = useState<Organisation | null>(null);
   const [currentRole, setCurrentRole] = useState<AppRole | null>(null);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
@@ -201,6 +204,39 @@ export function OrgProvider({ children }: { children: ReactNode }) {
 
       if (selectedOrg) {
         Sentry.setTag('org_id', selectedOrg.id);
+
+        // Prefetch dashboard data while the route is still resolving.
+        // This means the Dashboard component renders with cached data
+        // instead of showing loading skeletons.
+        const orgId = selectedOrg.id;
+        const orgTz = selectedOrg.timezone || 'Europe/London';
+        queryClient.prefetchQuery({
+          queryKey: ['dashboard-stats', orgId],
+          queryFn: async () => {
+            const { data } = await supabase.rpc('get_invoice_stats', { _org_id: orgId });
+            return data;
+          },
+          staleTime: STALE_SEMI_STABLE,
+        });
+        queryClient.prefetchQuery({
+          queryKey: ['today-lessons', orgId],
+          queryFn: async () => {
+            const { format } = await import('date-fns');
+            const { fromZonedTime } = await import('date-fns-tz');
+            const todayStr = format(new Date(), 'yyyy-MM-dd');
+            const todayStart = fromZonedTime(new Date(`${todayStr}T00:00:00`), orgTz).toISOString();
+            const todayEnd = fromZonedTime(new Date(`${todayStr}T23:59:59`), orgTz).toISOString();
+            const { data } = await supabase
+              .from('lessons')
+              .select('id, start_at, end_at, status, teacher_id')
+              .eq('org_id', orgId)
+              .gte('start_at', todayStart)
+              .lte('start_at', todayEnd)
+              .neq('status', 'cancelled');
+            return data;
+          },
+          staleTime: STALE_VOLATILE,
+        });
       }
     } catch (error) {
       logger.error('Error in fetchOrganisations:', error);
