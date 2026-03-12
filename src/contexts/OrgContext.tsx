@@ -263,6 +263,10 @@ export function OrgProvider({ children }: { children: ReactNode }) {
 
   // Realtime: refresh org data when the current organisation row changes (8.1)
   // This ensures Stripe plan changes, settings updates, etc. reflect without page refresh.
+  // PERF AUDIT: This is the only context-level subscription. All other realtime
+  // subscriptions (11 hooks) are page-scoped and unsubscribe on unmount. Verified:
+  // useLeads, useMakeUpWaitlist, useParentPortal, useRealtimePortalPayments — all
+  // subscribe only when their page component mounts, not globally.
   useEffect(() => {
     if (!currentOrg?.id) return;
 
