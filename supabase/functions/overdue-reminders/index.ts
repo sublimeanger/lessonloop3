@@ -331,6 +331,7 @@ async function processInstallmentReminder(supabase: any, installment: OverdueIns
   const invoice = installment.invoice;
   const org = invoice.organisation;
   const guardian = invoice.payer_guardian;
+  if (!guardian?.email) return "skip";
   const reminderDays: number[] = org?.overdue_reminder_days || [7, 14, 30];
   const daysOverdue = calcDaysOverdue(installment.due_date, today);
 
