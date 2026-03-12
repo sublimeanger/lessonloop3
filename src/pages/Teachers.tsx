@@ -585,7 +585,7 @@ export default function Teachers() {
 
       {/* Create Teacher Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) resetCreateForm(); }}>
-        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-lg sm:p-6">
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-xl sm:p-6">
           <DialogHeader>
             <DialogTitle>Add Teacher</DialogTitle>
             <DialogDescription>
