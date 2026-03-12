@@ -57,7 +57,8 @@ const queryClient = new QueryClient({
       // Default: SEMI_STABLE tier (2 min). See src/config/query-stale-times.ts for all tiers.
       staleTime: 2 * 60 * 1000,
       gcTime: 10 * 60 * 1000,
-      retry: 3,
+      refetchOnMount: true,   // Refetch stale data on mount (stale-while-revalidate)
+      retry: 1,               // Fail fast — 1 retry instead of 3
     },
     mutations: {
       retry: false,
