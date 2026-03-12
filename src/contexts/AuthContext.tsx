@@ -133,8 +133,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profileIdRef.current = profile?.id ?? null;
   }, [profile]);
 
-  // Self-healing: ensure profile exists via edge function if missing
-  const ensureProfileExists = useCallback(async (accessToken: string): Promise<boolean> => {
+  // Self-healing: ensure profile exists via edge function if missing.
+  // Uses a localStorage flag to skip the expensive edge function call
+  // on subsequent logins (saves 500-1500ms per page load).
+  const ensureProfileExists = useCallback(async (userId: string, accessToken: string): Promise<boolean> => {
+    const flagKey = `ll-profile-ensured-${userId}`;
+
+    // If we've already ensured this user's profile, skip the edge function
+    // and do a fast direct fetch instead (~50-100ms vs 500-1500ms).
+    if (localStorage.getItem(flagKey)) {
+      logger.debug('[Auth] Profile already ensured (cached flag) — skipping edge function');
+      const directProfile = await fetchProfile(userId);
+      if (directProfile) return true;
+      // Profile was deleted or missing — fall through to edge function
+      logger.warn('[Auth] Profile flag set but profile missing — calling profile-ensure as fallback');
+      localStorage.removeItem(flagKey);
+    }
+
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const response = await fetch(`${supabaseUrl}/functions/v1/profile-ensure`, {
@@ -145,10 +160,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
         signal: AbortSignal.timeout(5000),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         logger.debug('[Auth] Profile ensure result:', data.created ? 'created' : 'exists');
+        // Set the flag so we skip this on future logins
+        try { localStorage.setItem(flagKey, '1'); } catch { /* quota exceeded — non-critical */ }
         return true;
       }
       return false;
@@ -165,7 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       const recoverProfile = async () => {
         // First try to ensure profile exists via edge function
-        await ensureProfileExists(session.access_token);
+        await ensureProfileExists(user.id, session.access_token);
         // Always attempt direct DB fetch regardless of edge function result
         // The profile may already exist even if profile-ensure failed
         if (mountedRef.current) {
