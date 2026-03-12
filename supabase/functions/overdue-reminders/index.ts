@@ -250,6 +250,7 @@ async function processInvoiceReminder(supabase: any, invoice: OverdueInvoice, to
   if (!reminderDays.includes(daysOverdue)) return "skip";
 
   const guardian = invoice.payer_guardian;
+  if (!guardian?.email) return "skip";
   if (await shouldSkipGuardian(supabase, invoice.org_id, guardian, invoice.id, "overdue_reminder", today)) return "skip";
 
   const orgName = org?.name || "LessonLoop";
