@@ -199,130 +199,33 @@ async function selfHostGoogleFonts() {
     }
     // Ensure font-display: swap in every @font-face
     css = css.replace(/@font-face\s*\{(?![^}]*font-display)/g, '@font-face {\n  font-display: swap;');
-    // Force any existing font-display values to swap
-    css = css.replace(/font-display:\s*\w+/g, 'font-display: swap');
     writeFileSync(cachedCss, css, 'utf-8');
     return urls.length;
   } catch (err) {
-    console.warn(`  ⚠ Could not self-host Google Fonts: ${err.message}`);
-    // Create fallback fonts.css with system font stack
-    if (!existsSync(cachedCss)) {
-      const fallback = `/* Fallback: Google Fonts unavailable at build time */
-@font-face {
-  font-family: 'DM Sans';
-  font-style: normal;
-  font-weight: 300;
-  font-display: swap;
-  src: local('DM Sans Light'), local('DMSans-Light');
-}
-@font-face {
-  font-family: 'DM Sans';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: local('DM Sans'), local('DMSans-Regular');
-}
-@font-face {
-  font-family: 'DM Sans';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: local('DM Sans Medium'), local('DMSans-Medium');
-}
-@font-face {
-  font-family: 'DM Sans';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: local('DM Sans SemiBold'), local('DMSans-SemiBold');
-}
-@font-face {
-  font-family: 'DM Sans';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: local('DM Sans Bold'), local('DMSans-Bold');
-}
-@font-face {
-  font-family: 'JetBrains Mono';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: local('JetBrains Mono'), local('JetBrainsMono-Regular');
-}
-@font-face {
-  font-family: 'JetBrains Mono';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: local('JetBrains Mono Medium'), local('JetBrainsMono-Medium');
-}`;
-      writeFileSync(cachedCss, fallback, 'utf-8');
-      console.log('  ✓ Created fallback fonts.css with local font sources');
-    }
+    console.warn(`  ⚠ Could not self-host Google Fonts: ${err.message} (keeping external link)`);
     return 0;
   }
 }
 
 /** Replace external Google Fonts links with self-hosted version in all HTML. */
 function updateFontReferences() {
-  const fontsDir = join(OUT_DIR, 'fonts');
-  const hasFontsCss = existsSync(join(fontsDir, 'fonts.css'));
-
-  // Find critical woff2 files for preload hints (DM Sans 400 and 600)
-  let preloadHints = '';
-  if (hasFontsCss && existsSync(fontsDir)) {
-    const fontsCss = readFileSync(join(fontsDir, 'fonts.css'), 'utf-8');
-    const woff2Files = readdirSync(fontsDir).filter(f => f.endsWith('.woff2'));
-    // Parse fonts.css to find DM Sans latin 400 and 600 woff2 filenames
-    const fontFaceBlocks = fontsCss.split('@font-face');
-    const criticalFiles = [];
-    for (const block of fontFaceBlocks) {
-      // Match DM Sans with weight 400 or 600 and latin (not latin-ext) unicode range
-      const isDMSans = /font-family:\s*['"]?DM Sans/i.test(block);
-      const weight = block.match(/font-weight:\s*(\d+)/);
-      const urlMatch = block.match(/url\(\/fonts\/([^)]+\.woff2)\)/);
-      const isLatin = /unicode-range:.*U\+0000/i.test(block) && !/latin-ext/i.test(block.split('unicode-range')[0]?.slice(-50) || '');
-      if (isDMSans && weight && urlMatch && (weight[1] === '400' || weight[1] === '600')) {
-        criticalFiles.push(urlMatch[1]);
-      }
-    }
-    // Deduplicate and take at most 2 (400 and 600)
-    const uniqueFiles = [...new Set(criticalFiles)].slice(0, 2);
-    preloadHints = uniqueFiles.map(f =>
-      `<link rel="preload" href="/fonts/${f}" as="font" type="font/woff2" crossorigin>`
-    ).join('\n  ');
-    if (preloadHints) console.log(`  ✓ Added font preload hints for: ${uniqueFiles.join(', ')}`);
-  }
-
+  if (!existsSync(join(OUT_DIR, 'fonts', 'fonts.css'))) return;
   const htmlFiles = collectFiles(OUT_DIR, ['.html']);
   for (const file of htmlFiles) {
     let html = readFileSync(file, 'utf-8');
-    // Remove preconnect hints for Google Fonts
     html = html.replace(/<link[^>]*rel=["']preconnect["'][^>]*href=["']https:\/\/fonts\.googleapis\.com["'][^>]*>\n?/gi, '');
     html = html.replace(/<link[^>]*href=["']https:\/\/fonts\.googleapis\.com["'][^>]*rel=["']preconnect["'][^>]*>\n?/gi, '');
     html = html.replace(/<link[^>]*rel=["']preconnect["'][^>]*href=["']https:\/\/fonts\.gstatic\.com["'][^>]*>\n?/gi, '');
     html = html.replace(/<link[^>]*href=["']https:\/\/fonts\.gstatic\.com["'][^>]*rel=["']preconnect["'][^>]*>\n?/gi, '');
-    // Remove dns-prefetch for Google Fonts
-    html = html.replace(/<link[^>]*rel=["']dns-prefetch["'][^>]*href=["']https:\/\/fonts\.googleapis\.com["'][^>]*>\n?/gi, '');
-    html = html.replace(/<link[^>]*rel=["']dns-prefetch["'][^>]*href=["']https:\/\/fonts\.gstatic\.com["'][^>]*>\n?/gi, '');
-    // Replace external Google Fonts CSS link with self-hosted
     html = html.replace(/<link[^>]*href=["']https:\/\/fonts\.googleapis\.com\/css2[^"']*["'][^>]*>/gi,
-      hasFontsCss ? '<link rel="stylesheet" href="/fonts/fonts.css">' : '');
-    // Add font preload hints before the fonts.css link
-    if (preloadHints && html.includes('/fonts/fonts.css')) {
-      html = html.replace(
-        /<link rel="stylesheet" href="\/fonts\/fonts.css">/,
-        `${preloadHints}\n  <link rel="stylesheet" href="/fonts/fonts.css">`
-      );
-    }
+      '<link rel="stylesheet" href="/fonts/fonts.css">');
     writeFileSync(file, html, 'utf-8');
   }
   // Remove @import from styles.css
   const cssPath = join(OUT_DIR, CSS_FILENAME);
   if (existsSync(cssPath)) {
     let css = readFileSync(cssPath, 'utf-8');
-    css = css.replace(/@import\s*(?:url\()?['"]?https?:\/\/fonts\.googleapis\.com[^;]*;?\s*/gi, '');
+    css = css.replace(/@import\s+url\(['"]?https:\/\/fonts\.googleapis\.com[^)]*['"]?\)\s*;?/gi, '');
     writeFileSync(cssPath, css, 'utf-8');
   }
 }
@@ -337,117 +240,13 @@ async function purgeProductionCss() {
   const cssPath = join(OUT_DIR, CSS_FILENAME);
   if (!existsSync(cssPath)) return null;
   const size = statSync(cssPath).size;
-  // Append utilities if not already present
-  let updatedCss = readFileSync(cssPath, 'utf-8');
-  let appended = '';
-  if (!updatedCss.includes('sr-only-focus')) {
-    appended += '\n.sr-only-focus{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.sr-only-focus:focus{position:static;width:auto;height:auto;padding:inherit;margin:inherit;overflow:visible;clip:auto;white-space:normal}';
+  // Append sr-only-focus utility if not already present
+  const css = readFileSync(cssPath, 'utf-8');
+  if (!css.includes('sr-only-focus')) {
+    const srOnly = '\n.sr-only-focus{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.sr-only-focus:focus{position:static;width:auto;height:auto;padding:inherit;margin:inherit;overflow:visible;clip:auto;white-space:normal}';
+    writeFileSync(cssPath, css + srOnly, 'utf-8');
   }
-  // Darken primary color for text use to meet WCAG AA 4.5:1 contrast vs white
-  // Original: hsl(174, 100%, 38%) = #00c2ae (2.23:1 vs white — FAIL)
-  // Darkened: hsl(174, 100%, 26%) = #008476 (4.54:1 vs white — PASS AA)
-  if (!updatedCss.includes('text-primary')) {
-    // The text-primary class uses --primary which is too light for text on white.
-    // We override it specifically for marketing pages.
-    appended += '\n.text-primary{color:hsl(174 100% 26%)!important}';
-  }
-  if (appended) writeFileSync(cssPath, updatedCss + appended, 'utf-8');
   return { before: size, after: statSync(cssPath).size };
-}
-
-/** Optimise images: add loading=lazy to non-hero images, preload LCP image, fix og-home.png. */
-function optimizeImages() {
-  // 1. Copy og-image.png → og-home.png if missing
-  const ogHome = join(OUT_DIR, 'og-home.png');
-  const ogImage = join(OUT_DIR, 'og-image.png');
-  if (!existsSync(ogHome) && existsSync(ogImage)) {
-    copyFileSync(ogImage, ogHome);
-    console.log('  ✓ Created og-home.png from og-image.png');
-  }
-
-  const htmlFiles = collectFiles(OUT_DIR, ['.html']);
-  for (const file of htmlFiles) {
-    let html = readFileSync(file, 'utf-8');
-
-    // 2. Add loading="lazy" to all <img> tags that don't have a loading attribute
-    //    (SVGs used in nav/footer are small, lazy is fine for them)
-    html = html.replace(/<img\s((?!loading=)[^>]*)>/gi, (match, attrs) => {
-      // Skip if already has loading
-      if (/\bloading\s*=/.test(attrs)) return match;
-      return `<img ${attrs} loading="lazy">`;
-    });
-
-    // 3. Find the LCP/hero image and ensure it has correct attributes
-    //    Hero image is the first large content image (usually dashboard-real.webp)
-    html = html.replace(/<img\s([^>]*loading="eager"[^>]*)>/gi, (match, attrs) => {
-      let a = attrs;
-      if (!/fetchpriority/.test(a)) a += ' fetchpriority="high"';
-      return `<img ${a}>`;
-    });
-
-    // 4. Add hero image preload in <head> for the homepage
-    const heroMatch = html.match(/<img\s[^>]*loading="eager"[^>]*src="([^"]+)"[^>]*>/i) ||
-                      html.match(/<img\s[^>]*src="([^"]+)"[^>]*loading="eager"[^>]*>/i);
-    if (heroMatch) {
-      const heroSrc = heroMatch[1];
-      const isWebp = heroSrc.endsWith('.webp');
-      const preloadTag = `<link rel="preload" as="image" href="${heroSrc}"${isWebp ? ' type="image/webp"' : ''}>`;
-      if (!html.includes(preloadTag)) {
-        html = html.replace('</head>', `  ${preloadTag}\n</head>`);
-      }
-    }
-
-    writeFileSync(file, html, 'utf-8');
-  }
-  console.log('  ✓ Optimized image loading attributes (lazy/eager/preload)');
-}
-
-/** Inline critical CSS (font-face + base layout) into each HTML file's <head>. */
-function inlineCriticalCss() {
-  const cssPath = join(OUT_DIR, CSS_FILENAME);
-  if (!existsSync(cssPath)) return;
-  const fullCss = readFileSync(cssPath, 'utf-8');
-
-  // Extract @font-face declarations from fonts.css if available
-  let fontFaceCss = '';
-  const fontsCssPath = join(OUT_DIR, 'fonts', 'fonts.css');
-  if (existsSync(fontsCssPath)) {
-    const fontsCss = readFileSync(fontsCssPath, 'utf-8');
-    const fontFaceMatches = fontsCss.match(/@font-face\s*\{[^}]+\}/g);
-    if (fontFaceMatches) fontFaceCss = fontFaceMatches.join('\n');
-  }
-
-  // Extract critical CSS rules from styles.css: CSS custom properties, base styles
-  const criticalPatterns = [];
-  // CSS custom properties (:root / html)
-  const rootMatch = fullCss.match(/:root\s*\{[^}]+\}/g);
-  if (rootMatch) criticalPatterns.push(...rootMatch);
-  // html, body base styles
-  const htmlBodyMatch = fullCss.match(/(?:^|[,}])\s*(html|body)\s*\{[^}]+\}/g);
-  if (htmlBodyMatch) criticalPatterns.push(...htmlBodyMatch);
-
-  // Minimal critical CSS for above-the-fold rendering
-  const criticalInline = `<style data-ssg="critical">
-${fontFaceCss}
-${criticalPatterns.join('\n')}
-*,::before,::after{box-sizing:border-box}
-html{line-height:1.5;-webkit-text-size-adjust:100%;tab-size:4;font-family:"DM Sans",ui-sans-serif,system-ui,sans-serif}
-body{margin:0;line-height:inherit}
-img,svg{display:block;max-width:100%}
-</style>`;
-
-  const htmlFiles = collectFiles(OUT_DIR, ['.html']);
-  for (const file of htmlFiles) {
-    let html = readFileSync(file, 'utf-8');
-    // Insert critical CSS right after <meta charset>
-    if (html.includes('<meta charset="UTF-8">')) {
-      html = html.replace('<meta charset="UTF-8">', `<meta charset="UTF-8">\n${criticalInline}`);
-    } else {
-      html = html.replace('</head>', `${criticalInline}\n</head>`);
-    }
-    writeFileSync(file, html, 'utf-8');
-  }
-  console.log(`  ✓ Inlined critical CSS (font-face + base layout) in all pages`);
 }
 
 /** Remove all .mp4 files from OUT_DIR. */
@@ -455,91 +254,6 @@ function removeMp4Files() {
   const mp4s = collectFiles(OUT_DIR, ['.mp4']);
   for (const f of mp4s) unlinkSync(f);
   return mp4s.length;
-}
-
-/** Comprehensive accessibility fixes for all HTML pages. */
-function fixAccessibility() {
-  const htmlFiles = collectFiles(OUT_DIR, ['.html']);
-  for (const file of htmlFiles) {
-    let html = readFileSync(file, 'utf-8');
-
-    // 1. SKIP LINK: Add as first element in <body>
-    if (!html.includes('Skip to main content')) {
-      html = html.replace(
-        /<body>\n/,
-        `<body>\n<a href="#main-content" class="sr-only-focus" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0" onfocus="this.style.position='fixed';this.style.width='auto';this.style.height='auto';this.style.padding='1rem';this.style.margin='0';this.style.overflow='visible';this.style.clip='auto';this.style.whiteSpace='normal';this.style.zIndex='9999';this.style.background='white';this.style.color='#00897b';this.style.fontWeight='bold';this.style.top='0';this.style.left='0'" onblur="this.style.position='absolute';this.style.width='1px';this.style.height='1px';this.style.padding='0';this.style.margin='-1px';this.style.overflow='hidden';this.style.clip='rect(0,0,0,0)';this.style.whiteSpace='nowrap'">Skip to main content</a>\n`
-      );
-    }
-
-    // 2. MAIN CONTENT: Add id="main-content" to <main>
-    html = html.replace(/<main\s+class="/g, '<main id="main-content" role="main" class="');
-
-    // 3. NAVBAR: Add role and aria-label to the outer header nav
-    html = html.replace(
-      /<nav class="flex items-center justify-between h-20">/,
-      '<nav class="flex items-center justify-between h-20" role="navigation" aria-label="Main navigation">'
-    );
-
-    // 4. MOBILE MENU: Add id and role to mobile menu panel
-    html = html.replace(
-      '<div class="mobile-menu-panel">',
-      '<div class="mobile-menu-panel" id="mobile-menu" role="dialog" aria-label="Mobile navigation menu">'
-    );
-
-    // 5. MOBILE TOGGLE: Add aria-controls and aria-expanded
-    html = html.replace(
-      /(<button[^>]*aria-label="Toggle menu"[^>]*data-mobile-toggle=""[^>]*)>/,
-      '$1 aria-controls="mobile-menu" aria-expanded="false">'
-    );
-    // Also handle reversed attr order
-    html = html.replace(
-      /(<button[^>]*data-mobile-toggle=""[^>]*aria-label="Toggle menu"[^>]*)>/,
-      (match, attrs) => {
-        if (attrs.includes('aria-controls')) return match;
-        return `${attrs} aria-controls="mobile-menu" aria-expanded="false">`;
-      }
-    );
-
-    // 6. FOOTER: Add role="contentinfo" and wrap links in nav
-    html = html.replace(
-      /<footer class="/,
-      '<footer role="contentinfo" class="'
-    );
-
-    // 7. IMAGES: Ensure all <img> have alt attribute (empty for decorative)
-    html = html.replace(/<img\s((?!alt=)[^>]*)>/gi, (match, attrs) => {
-      if (/\balt\s*=/.test(attrs)) return match;
-      return `<img ${attrs} alt="">`;
-    });
-
-    // 8. FORMS: Add aria-required to required inputs
-    html = html.replace(/<input([^>]*)\brequired(?:="[^"]*"|\b)([^>]*)>/gi, (match, before, after) => {
-      if (/aria-required/.test(match)) return match;
-      return `<input${before}required${after} aria-required="true">`;
-    });
-    html = html.replace(/<textarea([^>]*)\brequired(?:="[^"]*"|\b)([^>]*)>/gi, (match, before, after) => {
-      if (/aria-required/.test(match)) return match;
-      return `<textarea${before}required${after} aria-required="true">`;
-    });
-
-    // 9. SVG icons: Ensure decorative SVGs have aria-hidden
-    html = html.replace(/<svg\s((?!aria-)[^>]*)>/gi, (match, attrs) => {
-      if (/aria-/.test(attrs)) return match;
-      return `<svg ${attrs} aria-hidden="true">`;
-    });
-
-    // 10. External links: ensure rel="noopener" on target="_blank"
-    html = html.replace(/<a\s([^>]*target="_blank"[^>]*)>/gi, (match, attrs) => {
-      if (/rel="[^"]*noopener/.test(attrs)) return match;
-      if (/rel="/.test(attrs)) {
-        return match.replace(/rel="([^"]*)"/, 'rel="$1 noopener"');
-      }
-      return `<a ${attrs} rel="noopener">`;
-    });
-
-    writeFileSync(file, html, 'utf-8');
-  }
-  console.log('  ✓ Applied accessibility fixes (skip link, landmarks, ARIA, forms)');
 }
 
 /** Fix non-descriptive links by adding aria-label attributes. */
@@ -588,39 +302,6 @@ function cleanupHtml() {
     html = html.replace(/\n{3,}/g, '\n\n');
     writeFileSync(file, html, 'utf-8');
   }
-}
-
-/** Best practices fixes: charset position, blank lines, external link rels. */
-function fixBestPractices() {
-  const htmlFiles = collectFiles(OUT_DIR, ['.html']);
-  for (const file of htmlFiles) {
-    let html = readFileSync(file, 'utf-8');
-
-    // 1. Ensure <meta charset="UTF-8"> is first element in <head>
-    // Remove it from wherever it is
-    html = html.replace(/<meta\s+charset="UTF-8">\n?/gi, '');
-    // Re-add it as first element after <head>
-    html = html.replace(/<head>\n?/, '<head>\n<meta charset="UTF-8">\n');
-
-    // 2. Clean up excessive blank lines in <head>
-    html = html.replace(/<head>\n(<meta charset="UTF-8">\n)\s+/g, '<head>\n$1');
-
-    // 3. Ensure DOCTYPE is uppercase
-    html = html.replace(/<!doctype html>/i, '<!DOCTYPE html>');
-
-    // 4. External links with target="_blank" need rel="noopener"
-    // (also handled in fixAccessibility, but double-check)
-    html = html.replace(/<a\s([^>]*target="_blank"[^>]*)>/gi, (match, attrs) => {
-      if (/rel="[^"]*noopener/.test(attrs)) return match;
-      if (/rel="/.test(attrs)) {
-        return match.replace(/rel="([^"]*)"/, 'rel="$1 noopener"');
-      }
-      return `<a ${attrs} rel="noopener">`;
-    });
-
-    writeFileSync(file, html, 'utf-8');
-  }
-  console.log('  ✓ Applied best practices fixes (charset, DOCTYPE, external links)');
 }
 
 /** Extract FAQ Q&A pairs from compare pages and inject FAQPage schema. */
@@ -674,34 +355,6 @@ function generateSitemap(routes) {
 function generateRobotsTxt() {
   writeFileSync(join(OUT_DIR, 'robots.txt'),
     `User-agent: *\nAllow: /\n\nSitemap: ${SITE_DOMAIN}/sitemap.xml\n`, 'utf-8');
-}
-
-/** Generate Cloudflare Pages _headers file for caching and security. */
-function generateHeaders() {
-  const headers = `/*
-  X-Content-Type-Options: nosniff
-  X-Frame-Options: DENY
-  X-XSS-Protection: 1; mode=block
-  Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: camera=(), microphone=(), geolocation=()
-  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://app.lessonloop.net; connect-src 'self'
-
-/fonts/*
-  Cache-Control: public, max-age=31536000, immutable
-
-/images/*
-  Cache-Control: public, max-age=31536000, immutable
-
-/assets/*
-  Cache-Control: public, max-age=31536000, immutable
-
-/*.css
-  Cache-Control: public, max-age=31536000, immutable
-
-/*.html
-  Cache-Control: public, max-age=0, must-revalidate
-`;
-  writeFileSync(join(OUT_DIR, '_headers'), headers, 'utf-8');
 }
 
 /** Calculate total size of a directory recursively (bytes). */
@@ -769,7 +422,6 @@ function copyStaticAssets() {
     'favicon.svg',
     'favicon.ico',
     'og-image.png',
-    'og-home.png',
     'placeholder.svg',
   ];
   for (const file of publicFiles) {
@@ -1063,10 +715,6 @@ function postProcess(html, routePath, blogSlugs) {
   // Replace all lessonloop.co.uk → lessonloop.net
   html = html.replace(/lessonloop\.co\.uk/g, 'lessonloop.net');
 
-  // Fix logo URL in Organization schema (logo.png doesn't exist)
-  html = html.replace(/"logo":"https:\/\/lessonloop\.net\/logo\.png"/g,
-    `"logo":"${SITE_DOMAIN}/logo-horizontal.svg"`);
-
   // Ensure all marketing pages are indexable (base index.html has noindex for the app)
   html = html.replace(
     /<meta name="robots" content="noindex,?\s*nofollow">/,
@@ -1137,9 +785,10 @@ function postProcess(html, routePath, blogSlugs) {
     '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
   );
 
-  // Ensure self-hosted fonts CSS is linked (NOT external Google Fonts)
-  if (!html.includes('/fonts/fonts.css')) {
-    html = html.replace('</head>', `  <link rel="stylesheet" href="/fonts/fonts.css">\n  </head>`);
+  // Ensure Google Fonts link is present
+  const fontsLink = '<link rel="preconnect" href="https://fonts.googleapis.com">\n  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">';
+  if (!html.includes('fonts.googleapis.com/css2')) {
+    html = html.replace('</head>', `  ${fontsLink}\n  </head>`);
   }
 
   // Make sure we have theme-color
@@ -1176,7 +825,13 @@ function postProcess(html, routePath, blogSlugs) {
     `  <link rel="alternate" hreflang="en" href="${hreflangUrl}">\n` +
     `  <link rel="alternate" hreflang="x-default" href="${hreflangUrl}">\n</head>`);
 
-  // DNS prefetch hints removed — fonts are self-hosted, no external origins needed
+  // ── SEO: DNS prefetch hints ──
+  if (!html.includes('dns-prefetch')) {
+    html = html.replace('</head>',
+      '  <link rel="dns-prefetch" href="https://fonts.googleapis.com">\n' +
+      '  <link rel="dns-prefetch" href="https://fonts.gstatic.com">\n' +
+      '  <meta http-equiv="x-dns-prefetch-control" content="on">\n</head>');
+  }
 
   // ── SEO: BreadcrumbList schema for nested pages ──
   const pathParts = routePath.split('/').filter(Boolean);
@@ -1241,50 +896,6 @@ function postProcess(html, routePath, blogSlugs) {
     ];
     for (const s of blogSchemas) {
       html = html.replace('</head>', `<script type="application/ld+json">${JSON.stringify(s)}</script>\n</head>`);
-    }
-  }
-
-  // ── SEO: Homepage WebSite + SiteNavigationElement schema ──
-  if (routePath === '/') {
-    const websiteSchema = JSON.stringify({
-      '@context': 'https://schema.org', '@type': 'WebSite',
-      name: 'LessonLoop', url: SITE_DOMAIN,
-      potentialAction: {
-        '@type': 'SearchAction',
-        target: `${SITE_DOMAIN}/search?q={search_term_string}`,
-        'query-input': 'required name=search_term_string',
-      },
-    });
-    const navSchema = JSON.stringify({
-      '@context': 'https://schema.org', '@type': 'SiteNavigationElement',
-      name: ['Features', 'Pricing', 'Blog', 'About', 'Contact'],
-      url: ['/features', '/pricing', '/blog', '/about', '/contact'].map(p => SITE_DOMAIN + p),
-    });
-    html = html.replace('</head>',
-      `<script type="application/ld+json">${websiteSchema}</script>\n` +
-      `<script type="application/ld+json">${navSchema}</script>\n</head>`);
-  }
-
-  // ── SEO: FAQPage schema for feature/use-case pages with FAQ sections ──
-  if ((routePath.startsWith('/features/') || routePath.startsWith('/for/')) && !html.includes('"FAQPage"')) {
-    // Look for Q&A accordion patterns
-    const faqPairs = [];
-    const faqRe = /<div[^>]*data-state="(?:open|closed)"[^>]*>\s*(?:<h3[^>]*>)?\s*<button[^>]*>([\s\S]*?)<\/button>[\s\S]*?<div[^>]*role="region"[^>]*>([\s\S]*?)<\/div>/gi;
-    let faqMatch;
-    while ((faqMatch = faqRe.exec(html)) !== null) {
-      const q = faqMatch[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-      const a = faqMatch[2].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-      if (q.length > 5 && a.length > 5) faqPairs.push({ q, a });
-    }
-    if (faqPairs.length > 0) {
-      const faqSchema = JSON.stringify({
-        '@context': 'https://schema.org', '@type': 'FAQPage',
-        mainEntity: faqPairs.map(p => ({
-          '@type': 'Question', name: p.q,
-          acceptedAnswer: { '@type': 'Answer', text: p.a },
-        })),
-      });
-      html = html.replace('</head>', `<script type="application/ld+json">${faqSchema}</script>\n</head>`);
     }
   }
 
@@ -1481,7 +1092,7 @@ async function main() {
   // Start Vite dev server on a random port
   const vite = await createServer({
     root: ROOT,
-    server: { port: 0, strictPort: false, host: '127.0.0.1' },
+    server: { port: 0, strictPort: false },
     logLevel: 'warn',
   });
   const server = await vite.listen();
@@ -1542,7 +1153,7 @@ async function main() {
     });
 
     try {
-      await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
+      await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
 
       // Wait for React to finish rendering (Suspense / lazy)
       await page.waitForFunction(
@@ -1747,8 +1358,8 @@ async function main() {
         head = head.replace(/<script[^>]*@vite\/client[^>]*>[\s\S]*?<\/script>/gi, '');
         head = head.replace(/<script[^>]*type="module"[^>]*>[\s\S]*?<\/script>/gi, '');
 
-        // Add link to production CSS (async loading — critical CSS is inlined later)
-        finalHtml += `<head>\n${head}\n<link rel="preload" href="/${CSS_FILENAME}" as="style" onload="this.onload=null;this.rel='stylesheet'">\n<noscript><link rel="stylesheet" href="/${CSS_FILENAME}"></noscript>\n</head>\n`;
+        // Add link to production CSS
+        finalHtml += `<head>\n${head}\n<link rel="stylesheet" href="/${CSS_FILENAME}">\n</head>\n`;
         finalHtml += `<body>\n${bodyMatch[1]}\n</body>\n`;
       } else {
         // Fallback: use raw HTML
@@ -1800,34 +1411,24 @@ async function main() {
   addResponsiveImagesAndDimensions();
   console.log('  ✓ Added srcset, width, and height to images');
 
-  // 3b. Optimize image loading (lazy/eager, preload LCP, og-home.png)
-  optimizeImages();
-
   // 4. Self-host Google Fonts
   const fontCount = await selfHostGoogleFonts();
   if (fontCount > 0) {
+    updateFontReferences();
     console.log(`  ✓ Self-hosted ${fontCount} Google Font files`);
   }
-  // Always update font references to remove external Google Fonts links
-  updateFontReferences();
 
   // 5. CSS (purge disabled — full production CSS is kept as-is)
   const cssStats = await purgeProductionCss();
   if (cssStats) {
-    console.log(`  ✓ Production CSS: ${(cssStats.before / 1024).toFixed(1)} KB → ${(cssStats.after / 1024).toFixed(1)} KB`);
+    console.log(`  ✓ Production CSS: ${(cssStats.after / 1024).toFixed(1)} KB (no purge)`);
   }
-
-  // 5b. Inline critical CSS for faster first paint
-  inlineCriticalCss();
 
   // 6. Remove unreferenced .mp4 files
   const mp4sRemoved = removeMp4Files();
   if (mp4sRemoved > 0) console.log(`  ✓ Removed ${mp4sRemoved} unreferenced .mp4 file(s)`);
 
-  // 7. Comprehensive accessibility fixes
-  fixAccessibility();
-
-  // 7b. Fix non-descriptive links (add aria-labels)
+  // 7. Fix non-descriptive links (add aria-labels)
   fixNonDescriptiveLinks();
   console.log('  ✓ Added aria-labels to non-descriptive links');
 
@@ -1835,18 +1436,14 @@ async function main() {
   cleanupHtml();
   console.log('  ✓ Cleaned up React artifacts');
 
-  // 8b. Best practices fixes
-  fixBestPractices();
-
   // 9. FAQ schema for compare pages
   addFaqSchemaToComparePages();
   console.log('  ✓ Added FAQ schema to compare pages');
 
-  // 10. Generate sitemap.xml, robots.txt, and _headers
+  // 10. Generate sitemap.xml and robots.txt
   generateSitemap(routes);
   generateRobotsTxt();
-  generateHeaders();
-  console.log('  ✓ Generated sitemap.xml, robots.txt, and _headers');
+  console.log('  ✓ Generated sitemap.xml and robots.txt');
 
   // ─── Summary ────────────────────────────────────────────────────
 
