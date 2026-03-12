@@ -242,7 +242,7 @@ interface OverdueInvoice {
 }
 
 // deno-lint-ignore no-explicit-any
-async function processInvoiceReminder(supabase: ReturnType<typeof createClient>, invoice: OverdueInvoice, today: Date, resendApiKey: string | undefined): Promise<string> {
+async function processInvoiceReminder(supabase: any, invoice: OverdueInvoice, today: Date, resendApiKey: string | undefined): Promise<string> {
   const org = invoice.organisation;
   const reminderDays: number[] = org?.overdue_reminder_days || [7, 14, 30];
   const daysOverdue = calcDaysOverdue(invoice.due_date, today);
