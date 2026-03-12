@@ -96,14 +96,14 @@ function StatusBadge({ status, dueDate, isCreditNote }: { status: InvoiceStatus;
 
   const config: Record<string, { label: string; className: string; dot?: string }> = {
     draft: { label: 'Draft', className: 'bg-muted text-muted-foreground border-transparent' },
-    sent: { label: 'Sent', className: 'bg-primary/10 text-primary border-primary/20' },
+    sent: { label: 'Sent', className: 'bg-info/10 text-info border-info/20' },
     paid: { label: 'Paid', className: 'bg-success/10 text-success border-success/20' },
     overdue: {
       label: 'Overdue',
       className: 'bg-destructive/10 text-destructive border-destructive/20',
       dot: 'bg-destructive animate-pulse',
     },
-    void: { label: 'Void', className: 'bg-muted text-muted-foreground border-transparent' },
+    void: { label: 'Void', className: 'bg-muted text-muted-foreground/60 border-transparent line-through' },
   };
 
   const c = config[effectiveStatus] || config.draft;
