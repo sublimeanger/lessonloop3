@@ -127,6 +127,7 @@ export default function Teachers() {
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [selfAddDismissed, setSelfAddDismissed] = useState(false);
   const [isSelfAdding, setIsSelfAdding] = useState(false);
+  const [sendInvite, setSendInvite] = useState(true);
 
   // Pre-check validation dialog
   const [preCheckDialog, setPreCheckDialog] = useState<{
