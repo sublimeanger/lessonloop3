@@ -195,7 +195,7 @@ export default function LeadDetail() {
             )}
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-9 text-destructive hover:text-destructive">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </AlertDialogTrigger>

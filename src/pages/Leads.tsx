@@ -172,7 +172,7 @@ export default function Leads() {
             <button
               onClick={() => setView('kanban')}
               className={cn(
-                'rounded-md p-2 transition-colors',
+                'rounded-md p-2 min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 flex items-center justify-center transition-colors',
                 view === 'kanban' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
               )}
               aria-label="Kanban view"
@@ -182,7 +182,7 @@ export default function Leads() {
             <button
               onClick={() => setView('list')}
               className={cn(
-                'rounded-md p-2 transition-colors',
+                'rounded-md p-2 min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 flex items-center justify-center transition-colors',
                 view === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
               )}
               aria-label="List view"

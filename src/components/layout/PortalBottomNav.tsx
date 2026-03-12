@@ -71,7 +71,7 @@ export function PortalBottomNav() {
                   </div>
                   <span>{tab.label}</span>
                   {isActive && (
-                    <span className="absolute bottom-1 h-1 w-5 rounded-full bg-primary" />
+                    <span className="absolute bottom-1 h-[3px] w-5 rounded-full bg-primary" />
                   )}
                 </>
               )}
