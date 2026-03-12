@@ -975,6 +975,10 @@ function postProcess(html, routePath, blogSlugs) {
   // Replace all lessonloop.co.uk → lessonloop.net
   html = html.replace(/lessonloop\.co\.uk/g, 'lessonloop.net');
 
+  // Fix logo URL in Organization schema (logo.png doesn't exist)
+  html = html.replace(/"logo":"https:\/\/lessonloop\.net\/logo\.png"/g,
+    `"logo":"${SITE_DOMAIN}/logo-horizontal.svg"`);
+
   // Ensure all marketing pages are indexable (base index.html has noindex for the app)
   html = html.replace(
     /<meta name="robots" content="noindex,?\s*nofollow">/,
@@ -1149,6 +1153,50 @@ function postProcess(html, routePath, blogSlugs) {
     ];
     for (const s of blogSchemas) {
       html = html.replace('</head>', `<script type="application/ld+json">${JSON.stringify(s)}</script>\n</head>`);
+    }
+  }
+
+  // ── SEO: Homepage WebSite + SiteNavigationElement schema ──
+  if (routePath === '/') {
+    const websiteSchema = JSON.stringify({
+      '@context': 'https://schema.org', '@type': 'WebSite',
+      name: 'LessonLoop', url: SITE_DOMAIN,
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: `${SITE_DOMAIN}/search?q={search_term_string}`,
+        'query-input': 'required name=search_term_string',
+      },
+    });
+    const navSchema = JSON.stringify({
+      '@context': 'https://schema.org', '@type': 'SiteNavigationElement',
+      name: ['Features', 'Pricing', 'Blog', 'About', 'Contact'],
+      url: ['/features', '/pricing', '/blog', '/about', '/contact'].map(p => SITE_DOMAIN + p),
+    });
+    html = html.replace('</head>',
+      `<script type="application/ld+json">${websiteSchema}</script>\n` +
+      `<script type="application/ld+json">${navSchema}</script>\n</head>`);
+  }
+
+  // ── SEO: FAQPage schema for feature/use-case pages with FAQ sections ──
+  if ((routePath.startsWith('/features/') || routePath.startsWith('/for/')) && !html.includes('"FAQPage"')) {
+    // Look for Q&A accordion patterns
+    const faqPairs = [];
+    const faqRe = /<div[^>]*data-state="(?:open|closed)"[^>]*>\s*(?:<h3[^>]*>)?\s*<button[^>]*>([\s\S]*?)<\/button>[\s\S]*?<div[^>]*role="region"[^>]*>([\s\S]*?)<\/div>/gi;
+    let faqMatch;
+    while ((faqMatch = faqRe.exec(html)) !== null) {
+      const q = faqMatch[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+      const a = faqMatch[2].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+      if (q.length > 5 && a.length > 5) faqPairs.push({ q, a });
+    }
+    if (faqPairs.length > 0) {
+      const faqSchema = JSON.stringify({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: faqPairs.map(p => ({
+          '@type': 'Question', name: p.q,
+          acceptedAnswer: { '@type': 'Answer', text: p.a },
+        })),
+      });
+      html = html.replace('</head>', `<script type="application/ld+json">${faqSchema}</script>\n</head>`);
     }
   }
 
