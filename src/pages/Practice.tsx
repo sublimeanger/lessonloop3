@@ -54,7 +54,7 @@ export default function Practice() {
                 <Music className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{activeAssignments}</p>
+                <p className="text-2xl font-semibold">{activeAssignments}</p>
                 <p className="text-sm text-muted-foreground">Active Assignments</p>
               </div>
             </div>
