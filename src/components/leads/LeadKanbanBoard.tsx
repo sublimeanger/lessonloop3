@@ -278,6 +278,7 @@ export function LeadKanbanBoard({ leads: externalLeads, stageCounts: externalCou
               onAddClick={onAddLead || (() => setCreateOpen(true))}
             />
           ))}
+          </div>
         </div>
 
         <DragOverlay dropAnimation={null}>
