@@ -155,8 +155,8 @@ export default function AuditLogTab() {
               </TableHeader>
               <TableBody>
                 {logs.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                  <TableRow key={entry.id} className="odd:bg-muted/30">
+                    <TableCell className="text-sm text-muted-foreground whitespace-nowrap tabular-nums">
                       {format(new Date(entry.created_at), 'd MMM yyyy, HH:mm')}
                     </TableCell>
                     <TableCell>
