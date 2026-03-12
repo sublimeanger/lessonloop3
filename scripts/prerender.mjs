@@ -282,12 +282,21 @@ async function purgeProductionCss() {
   const cssPath = join(OUT_DIR, CSS_FILENAME);
   if (!existsSync(cssPath)) return null;
   const size = statSync(cssPath).size;
-  // Append sr-only-focus utility if not already present
-  const css = readFileSync(cssPath, 'utf-8');
-  if (!css.includes('sr-only-focus')) {
-    const srOnly = '\n.sr-only-focus{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.sr-only-focus:focus{position:static;width:auto;height:auto;padding:inherit;margin:inherit;overflow:visible;clip:auto;white-space:normal}';
-    writeFileSync(cssPath, css + srOnly, 'utf-8');
+  // Append utilities if not already present
+  let updatedCss = readFileSync(cssPath, 'utf-8');
+  let appended = '';
+  if (!updatedCss.includes('sr-only-focus')) {
+    appended += '\n.sr-only-focus{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.sr-only-focus:focus{position:static;width:auto;height:auto;padding:inherit;margin:inherit;overflow:visible;clip:auto;white-space:normal}';
   }
+  // Darken primary color for text use to meet WCAG AA 4.5:1 contrast vs white
+  // Original: hsl(174, 100%, 38%) = #00c2ae (2.23:1 vs white — FAIL)
+  // Darkened: hsl(174, 100%, 26%) = #008476 (4.54:1 vs white — PASS AA)
+  if (!updatedCss.includes('text-primary')) {
+    // The text-primary class uses --primary which is too light for text on white.
+    // We override it specifically for marketing pages.
+    appended += '\n.text-primary{color:hsl(174 100% 26%)!important}';
+  }
+  if (appended) writeFileSync(cssPath, updatedCss + appended, 'utf-8');
   return { before: size, after: statSync(cssPath).size };
 }
 
@@ -391,6 +400,91 @@ function removeMp4Files() {
   const mp4s = collectFiles(OUT_DIR, ['.mp4']);
   for (const f of mp4s) unlinkSync(f);
   return mp4s.length;
+}
+
+/** Comprehensive accessibility fixes for all HTML pages. */
+function fixAccessibility() {
+  const htmlFiles = collectFiles(OUT_DIR, ['.html']);
+  for (const file of htmlFiles) {
+    let html = readFileSync(file, 'utf-8');
+
+    // 1. SKIP LINK: Add as first element in <body>
+    if (!html.includes('Skip to main content')) {
+      html = html.replace(
+        /<body>\n/,
+        `<body>\n<a href="#main-content" class="sr-only-focus" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0" onfocus="this.style.position='fixed';this.style.width='auto';this.style.height='auto';this.style.padding='1rem';this.style.margin='0';this.style.overflow='visible';this.style.clip='auto';this.style.whiteSpace='normal';this.style.zIndex='9999';this.style.background='white';this.style.color='#00897b';this.style.fontWeight='bold';this.style.top='0';this.style.left='0'" onblur="this.style.position='absolute';this.style.width='1px';this.style.height='1px';this.style.padding='0';this.style.margin='-1px';this.style.overflow='hidden';this.style.clip='rect(0,0,0,0)';this.style.whiteSpace='nowrap'">Skip to main content</a>\n`
+      );
+    }
+
+    // 2. MAIN CONTENT: Add id="main-content" to <main>
+    html = html.replace(/<main\s+class="/g, '<main id="main-content" role="main" class="');
+
+    // 3. NAVBAR: Add role and aria-label to the outer header nav
+    html = html.replace(
+      /<nav class="flex items-center justify-between h-20">/,
+      '<nav class="flex items-center justify-between h-20" role="navigation" aria-label="Main navigation">'
+    );
+
+    // 4. MOBILE MENU: Add id and role to mobile menu panel
+    html = html.replace(
+      '<div class="mobile-menu-panel">',
+      '<div class="mobile-menu-panel" id="mobile-menu" role="dialog" aria-label="Mobile navigation menu">'
+    );
+
+    // 5. MOBILE TOGGLE: Add aria-controls and aria-expanded
+    html = html.replace(
+      /(<button[^>]*aria-label="Toggle menu"[^>]*data-mobile-toggle=""[^>]*)>/,
+      '$1 aria-controls="mobile-menu" aria-expanded="false">'
+    );
+    // Also handle reversed attr order
+    html = html.replace(
+      /(<button[^>]*data-mobile-toggle=""[^>]*aria-label="Toggle menu"[^>]*)>/,
+      (match, attrs) => {
+        if (attrs.includes('aria-controls')) return match;
+        return `${attrs} aria-controls="mobile-menu" aria-expanded="false">`;
+      }
+    );
+
+    // 6. FOOTER: Add role="contentinfo" and wrap links in nav
+    html = html.replace(
+      /<footer class="/,
+      '<footer role="contentinfo" class="'
+    );
+
+    // 7. IMAGES: Ensure all <img> have alt attribute (empty for decorative)
+    html = html.replace(/<img\s((?!alt=)[^>]*)>/gi, (match, attrs) => {
+      if (/\balt\s*=/.test(attrs)) return match;
+      return `<img ${attrs} alt="">`;
+    });
+
+    // 8. FORMS: Add aria-required to required inputs
+    html = html.replace(/<input([^>]*)\brequired(?:="[^"]*"|\b)([^>]*)>/gi, (match, before, after) => {
+      if (/aria-required/.test(match)) return match;
+      return `<input${before}required${after} aria-required="true">`;
+    });
+    html = html.replace(/<textarea([^>]*)\brequired(?:="[^"]*"|\b)([^>]*)>/gi, (match, before, after) => {
+      if (/aria-required/.test(match)) return match;
+      return `<textarea${before}required${after} aria-required="true">`;
+    });
+
+    // 9. SVG icons: Ensure decorative SVGs have aria-hidden
+    html = html.replace(/<svg\s((?!aria-)[^>]*)>/gi, (match, attrs) => {
+      if (/aria-/.test(attrs)) return match;
+      return `<svg ${attrs} aria-hidden="true">`;
+    });
+
+    // 10. External links: ensure rel="noopener" on target="_blank"
+    html = html.replace(/<a\s([^>]*target="_blank"[^>]*)>/gi, (match, attrs) => {
+      if (/rel="[^"]*noopener/.test(attrs)) return match;
+      if (/rel="/.test(attrs)) {
+        return match.replace(/rel="([^"]*)"/, 'rel="$1 noopener"');
+      }
+      return `<a ${attrs} rel="noopener">`;
+    });
+
+    writeFileSync(file, html, 'utf-8');
+  }
+  console.log('  ✓ Applied accessibility fixes (skip link, landmarks, ARIA, forms)');
 }
 
 /** Fix non-descriptive links by adding aria-label attributes. */
@@ -1594,7 +1688,10 @@ async function main() {
   const mp4sRemoved = removeMp4Files();
   if (mp4sRemoved > 0) console.log(`  ✓ Removed ${mp4sRemoved} unreferenced .mp4 file(s)`);
 
-  // 7. Fix non-descriptive links (add aria-labels)
+  // 7. Comprehensive accessibility fixes
+  fixAccessibility();
+
+  // 7b. Fix non-descriptive links (add aria-labels)
   fixNonDescriptiveLinks();
   console.log('  ✓ Added aria-labels to non-descriptive links');
 
