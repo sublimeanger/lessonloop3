@@ -467,7 +467,7 @@ export default function Teachers() {
 
       {/* Self-add banner for owners/admins who also teach */}
       {showSelfAddBanner && (
-        <div className="mb-4 flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
           <Music className="h-5 w-5 text-primary shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">Do you also teach?</p>
