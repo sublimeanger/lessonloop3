@@ -141,7 +141,7 @@ function formatDateGB(dateStr: string): string {
 
 // deno-lint-ignore no-explicit-any
 async function shouldSkipGuardian(
-  supabase: ReturnType<typeof createClient>, orgId: string, guardian: { email?: string; user_id?: string | null } | null, relatedId: string, messageType: string, today: Date
+  supabase: any, orgId: string, guardian: { email?: string; user_id?: string | null } | null, relatedId: string, messageType: string, today: Date
 ): Promise<boolean> {
   if (!guardian?.email) return true;
 
