@@ -214,15 +214,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // state from this call immediately, preventing a flash of "unauthenticated"
     // that causes spurious redirects to /login on page reload.
     const initializeAuth = async () => {
+      console.time('auth-init');
       try {
+        console.time('auth-init:getSession');
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-        
+        console.timeEnd('auth-init:getSession');
+
         if (error) {
           logger.error('getSession error:', error);
         }
-        
-        if (!mountedRef.current) return;
-        
+
+        if (!mountedRef.current) { console.timeEnd('auth-init'); return; }
+
         logger.debug('[Auth] getSession returned:', initialSession ? 'session' : 'null');
 
         // Set user/session immediately from stored session so that route
@@ -231,14 +234,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(initialSession?.user ?? null);
 
         if (initialSession?.user) {
-          // Fetch profile and roles — this runs before isInitialised is set
-          // so route guards will show a loading state, not redirect.
+          // Fetch profile and roles in parallel — this runs before isInitialised
+          // is set so route guards will show a loading state, not redirect.
           fetchingRef.current = true;
+          console.time('auth-init:profile+roles');
           const [profileData, rolesData] = await Promise.all([
             fetchProfile(initialSession.user.id),
             fetchRoles(initialSession.user.id),
           ]);
-          
+          console.timeEnd('auth-init:profile+roles');
+
           if (mountedRef.current) {
             setProfile(profileData);
             setRoles(rolesData);
@@ -264,6 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           initialisedRef.current = true;
         }
       }
+      console.timeEnd('auth-init');
     };
 
     // ── Step 2: Listen for subsequent auth changes (sign in/out/refresh) ──
