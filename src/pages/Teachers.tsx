@@ -777,7 +777,7 @@ function TeacherCard({ teacher, studentCount, isAdmin, onRemove, onEdit, onReact
   return (
     <div 
       className={cn(
-        "group flex flex-col items-start gap-3 rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md cursor-pointer sm:flex-row sm:items-center sm:gap-4",
+        "group flex flex-col items-start gap-3 rounded-xl border bg-card p-4 shadow-card transition-all hover:shadow-card-hover cursor-pointer sm:flex-row sm:items-center sm:gap-4",
         isInactiveView && "opacity-60"
       )}
       onClick={() => onQuickView(teacher)}
