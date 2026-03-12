@@ -239,7 +239,7 @@ export default function Continuation() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{totalConfirmed}</div>
+                    <div className="text-2xl font-semibold">{totalConfirmed}</div>
                     <p className="text-xs text-muted-foreground">
                       {progressPercent}%
                     </p>
