@@ -374,7 +374,7 @@ export default function InvoiceDetail() {
                           <span>-{formatCurrencyMinor(totalPaid, currency)}</span>
                         </div>
                         <Separator />
-                        <div className="flex justify-between font-bold">
+                        <div className="flex justify-between font-semibold">
                           <span>Amount Due</span>
                           <span>{formatCurrencyMinor(amountDue, currency)}</span>
                         </div>
