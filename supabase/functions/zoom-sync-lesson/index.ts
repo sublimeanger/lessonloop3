@@ -163,8 +163,9 @@ Deno.serve(async (req) => {
         .single();
 
       if (mapping?.connection) {
-        teacherUserId = (mapping.connection as { user_id: string }).user_id;
-        orgId = (mapping.connection as { org_id: string }).org_id;
+        const conn = (Array.isArray(mapping.connection) ? mapping.connection[0] : mapping.connection) as { user_id: string; org_id: string };
+        teacherUserId = conn?.user_id;
+        orgId = conn?.org_id;
       }
     }
 

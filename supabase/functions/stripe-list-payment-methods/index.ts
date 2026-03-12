@@ -81,7 +81,7 @@ serve(async (req) => {
       stripeOpts
     );
 
-    const paymentMethods = methods.data.map((pm) => ({
+    const paymentMethods = methods.data.map((pm: any) => ({
       id: pm.id,
       brand: pm.card?.brand || "unknown",
       last4: pm.card?.last4 || "****",

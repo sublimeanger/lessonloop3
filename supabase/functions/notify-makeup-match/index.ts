@@ -109,9 +109,9 @@ Deno.serve(async (req) => {
     interface AdminWithProfile {
       user_id: string;
       role?: string;
-      profiles: { email: string; full_name: string };
+      profiles: { email: string; full_name: string } | { email: string; full_name: string }[];
     }
-    const messages = (admins as AdminWithProfile[]).map((admin) => ({
+    const messages = (admins as unknown as AdminWithProfile[]).map((admin) => ({
       org_id: entry.org_id,
       sender_user_id: admin.user_id,
       sender_role: "system",
