@@ -15,7 +15,7 @@ function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ cl
           <Icon className="h-4 w-4 text-primary" />
         </div>
         <div>
-          <p className="text-2xl font-bold text-foreground">{value}</p>
+          <p className="text-2xl font-semibold text-foreground">{value}</p>
           <p className="text-xs text-muted-foreground">{label}</p>
         </div>
       </CardContent>

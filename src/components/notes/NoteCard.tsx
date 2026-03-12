@@ -33,8 +33,8 @@ export function NoteCard({ note, isAdmin, timezone }: NoteCardProps) {
       : 'No content';
 
   return (
-    <Card className="transition-shadow hover:shadow-sm">
-      <CardContent className="p-4">
+    <Card className="transition-shadow hover:shadow-card-hover">
+      <CardContent className="p-3 sm:p-4">
         {/* Header row */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
@@ -64,7 +64,7 @@ export function NoteCard({ note, isAdmin, timezone }: NoteCardProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="h-9 w-9 min-h-11 min-w-11 sm:min-h-9 sm:min-w-9"
               onClick={() => setExpanded(!expanded)}
             >
               {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}

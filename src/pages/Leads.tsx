@@ -46,12 +46,12 @@ const STAGE_LABELS: Record<LeadStage, string> = {
 };
 
 const STAGE_COLORS: Record<LeadStage, string> = {
-  enquiry: 'bg-teal-100 text-teal-800',
-  contacted: 'bg-blue-100 text-blue-800',
-  trial_booked: 'bg-amber-100 text-amber-800',
-  trial_completed: 'bg-purple-100 text-purple-800',
-  enrolled: 'bg-emerald-100 text-emerald-800',
-  lost: 'bg-gray-100 text-gray-600',
+  enquiry: 'bg-primary/10 text-primary',
+  contacted: 'bg-info/10 text-info',
+  trial_booked: 'bg-warning/10 text-warning',
+  trial_completed: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
+  enrolled: 'bg-success/10 text-success',
+  lost: 'bg-muted text-muted-foreground',
 };
 
 const SOURCE_LABELS: Record<LeadSource, string> = {
