@@ -490,7 +490,7 @@ function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, i
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-medium tabular-nums">{invoice.invoice_number}</span>
+              <span className="text-sm font-medium font-mono tabular-nums">{invoice.invoice_number}</span>
               {getStatusBadge(invoice.status, invoice.due_date)}
             </div>
             <p className="text-sm text-muted-foreground">
