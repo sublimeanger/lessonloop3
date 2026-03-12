@@ -767,7 +767,7 @@ export default function Locations() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-9 w-9"
+                            className="h-9 w-9 min-h-11 min-w-11 sm:min-h-9 sm:min-w-9"
                             aria-label={location.is_archived ? `Restore ${location.name}` : `Archive ${location.name}`}
                             title={location.is_archived ? 'Restore location' : 'Archive location'}
                             onClick={() => handleArchiveLocation(location)}
