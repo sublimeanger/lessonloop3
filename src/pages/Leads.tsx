@@ -118,7 +118,7 @@ export default function Leads() {
           actions={
             <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap">
               {leads.length > 0 && (
-                <Button onClick={handleExport} variant="outline" size="sm" className="gap-2">
+                <Button onClick={handleExport} variant="outline" size="sm" className="min-h-11 sm:min-h-9 gap-2">
                   <Download className="h-4 w-4" />
                   <span className="hidden sm:inline">Export</span>
                 </Button>
