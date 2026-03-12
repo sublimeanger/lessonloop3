@@ -405,7 +405,7 @@ export default function PortalHome() {
           <>
             {/* 2. Next Lesson Hero Card */}
             {nextLesson && (
-              <Card className="overflow-hidden rounded-2xl border-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-card hover:shadow-elevated transition-all duration-150" role="region" aria-label="Next lesson">
+              <Card className="overflow-hidden rounded-2xl shadow-card hover:shadow-elevated transition-all duration-150 relative" role="region" aria-label="Next lesson">
                 <CardContent className="p-5 md:p-6">
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1.5 min-w-0">
