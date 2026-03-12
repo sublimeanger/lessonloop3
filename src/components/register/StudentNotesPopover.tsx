@@ -127,10 +127,10 @@ export function StudentNotesPopover({ studentId, studentName, hasRecentUpdate, h
     <Button
       variant="ghost"
       size="icon"
-      className="h-7 w-7 shrink-0 relative"
+      className="h-9 w-9 min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 shrink-0 relative group/notes"
       title={`Notes for ${studentName}`}
     >
-      <StickyNote className="h-3.5 w-3.5 text-muted-foreground" />
+      <StickyNote className="h-3.5 w-3.5 text-muted-foreground transition-colors group-hover/notes:text-primary" />
       {hasRecentUpdate && (
         <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary" />
       )}

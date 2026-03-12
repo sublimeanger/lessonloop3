@@ -119,7 +119,7 @@ export function ResourceCard({ resource, onShare, selectionMode, selected, onTog
       <Card
         role="article"
         aria-label={resource.title}
-        className={`group hover:shadow-md transition-shadow ${selectionMode ? 'cursor-pointer' : ''} ${selected ? 'ring-2 ring-primary' : ''}`}
+        className={`group hover:shadow-card-hover transition-shadow ${selectionMode ? 'cursor-pointer' : ''} ${selected ? 'ring-2 ring-primary' : ''}`}
         onClick={selectionMode ? () => onToggleSelect?.(resource.id) : undefined}
       >
         <CardContent className="p-4">

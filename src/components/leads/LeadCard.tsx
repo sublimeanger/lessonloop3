@@ -36,7 +36,7 @@ export function LeadCard({ lead, isDragging }: LeadCardProps) {
         }
       }}
       className={cn(
-        'relative cursor-pointer select-none overflow-hidden rounded-lg border bg-card p-3 transition-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+        'relative cursor-pointer select-none overflow-hidden rounded-xl border bg-card p-3 transition-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
         isDragging && 'rotate-2 shadow-lg ring-2 ring-primary/30',
       )}
     >

@@ -64,7 +64,7 @@ export function NoteCard({ note, isAdmin, timezone }: NoteCardProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="h-9 w-9 min-h-11 min-w-11 sm:min-h-9 sm:min-w-9"
               onClick={() => setExpanded(!expanded)}
             >
               {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
