@@ -662,7 +662,7 @@ export default function Teachers() {
                     </p>
 
                     <div className="space-y-2 pt-1">
-                      <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent transition-colors">
+                      <label className="flex items-start gap-3 p-3 rounded-xl border cursor-pointer hover:bg-accent transition-colors">
                         <input
                           type="radio"
                           name="removal-action"
