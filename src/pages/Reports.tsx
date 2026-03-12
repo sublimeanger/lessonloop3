@@ -148,7 +148,7 @@ function ReportCard({ report }: { report: Report }) {
       <Card className="h-full min-h-[180px] cursor-pointer rounded-xl border bg-card transition-shadow hover:border-primary/50 hover:shadow-card-hover">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
               <Icon className="h-5 w-5 text-primary" />
             </div>
             <ChevronRight className="h-5 w-5 text-muted-foreground" />

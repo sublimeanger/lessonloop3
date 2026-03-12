@@ -476,7 +476,7 @@ export default function Continuation() {
                 {pastRuns.map((pastRun) => (
                   <div
                     key={pastRun.id}
-                    className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/30 cursor-pointer transition-colors"
+                    className="flex items-center justify-between rounded-xl border p-3 hover:bg-muted/30 cursor-pointer transition-colors"
                     onClick={() => setSelectedRunId(pastRun.id)}
                   >
                     <div>

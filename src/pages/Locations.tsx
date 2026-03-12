@@ -818,7 +818,7 @@ export default function Locations() {
                     ) : (
                       <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                         {location.rooms.map((room) => (
-                          <div key={room.id} className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
+                          <div key={room.id} className="flex items-center justify-between rounded-xl border bg-muted/30 p-3">
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
                                 <DoorOpen className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />

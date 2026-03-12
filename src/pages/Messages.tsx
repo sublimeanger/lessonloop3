@@ -203,7 +203,7 @@ export default function Messages() {
                 placeholder="Search messages…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 rounded-xl shadow-sm"
+                className="pl-9 rounded-xl shadow-card"
               />
             </div>
             <div className="flex items-center gap-2">

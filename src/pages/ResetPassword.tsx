@@ -125,7 +125,7 @@ export default function ResetPassword() {
           </CardHeader>
           <CardContent className="text-center">
             <CheckCircle className="w-16 h-16 text-success mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-foreground mb-2">Password updated</h2>
+            <h2 className="text-2xl font-semibold text-foreground mb-2">Password updated</h2>
             <p className="text-muted-foreground">
               Your password has been successfully reset. Redirecting to your dashboard…
             </p>

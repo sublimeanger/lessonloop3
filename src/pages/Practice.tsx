@@ -96,7 +96,7 @@ export default function Practice() {
                 <TrendingUp className="h-5 w-5 text-secondary-foreground" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-semibold">
                   {weeklyProgress.length > 0 
                     ? Math.round(weeklyProgress.reduce((sum, p) => sum + p.percentComplete, 0) / weeklyProgress.length)
                     : 0}%

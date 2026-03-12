@@ -53,9 +53,9 @@ export default function StudentsImport() {
                       flex h-9 w-9 items-center justify-center rounded-full text-xs font-medium
                       transition-all duration-300
                       ${isCompleted
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : isCurrent
-                          ? "bg-primary text-primary-foreground shadow-md ring-4 ring-primary/20"
+                         ? "bg-primary text-primary-foreground shadow-card"
+                         : isCurrent
+                           ? "bg-primary text-primary-foreground shadow-card-hover ring-4 ring-primary/20"
                           : "bg-muted text-muted-foreground"
                       }
                     `}

@@ -376,7 +376,7 @@ export default function LeadDetail() {
                     <div
                       key={fu.id}
                       className={cn(
-                        'flex items-center gap-3 p-2 rounded-lg text-sm',
+                        'flex items-center gap-3 p-2 rounded-xl text-sm',
                         isOverdue ? 'bg-destructive/10' : 'bg-muted/50'
                       )}
                     >

@@ -285,7 +285,7 @@ export default function Invoices() {
           </TabsContent>
         </Tabs>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {invoices.length === 0 ? (
             <EmptyState
               icon={Receipt}

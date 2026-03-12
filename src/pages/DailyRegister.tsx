@@ -267,7 +267,7 @@ export default function DailyRegister() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalStudents}</div>
+            <div className="text-2xl font-semibold">{totalStudents}</div>
           </CardContent>
         </Card>
       </div>

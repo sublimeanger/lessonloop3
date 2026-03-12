@@ -407,7 +407,7 @@ export default function InvoiceDetail() {
                   {invoice.payments.map((payment: any) => (
                     <div
                       key={payment.id}
-                      className="flex items-center justify-between rounded-lg border p-3"
+                      className="flex items-center justify-between rounded-xl border p-3"
                     >
                       <div className="flex items-center gap-3">
                         <CheckCircle2 className="h-5 w-5 text-success" />

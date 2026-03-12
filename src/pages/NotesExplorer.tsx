@@ -176,7 +176,7 @@ export default function NotesExplorer() {
         {isLoading ? (
           <div className="space-y-4">
             {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 rounded-lg" />
+              <Skeleton key={i} className="h-24 rounded-xl" />
             ))}
           </div>
         ) : groupedNotes.length === 0 ? (
