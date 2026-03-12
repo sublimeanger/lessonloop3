@@ -694,7 +694,7 @@ export default function Locations() {
               open={expandedLocations.has(location.id)}
               onOpenChange={() => toggleExpanded(location.id)}
             >
-              <div className="rounded-xl border bg-card shadow-sm transition-all hover:shadow-md">
+              <div className="rounded-xl border bg-card shadow-card transition-all hover:shadow-card-hover">
                 {/* Location header */}
                 <div className="p-4">
                   {/* Top row: icon + name + badges */}
