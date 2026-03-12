@@ -608,7 +608,7 @@ export default function Teachers() {
 
       {/* Edit Teacher Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-lg sm:p-6">
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none p-4 sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-xl sm:p-6">
           <DialogHeader>
             <DialogTitle>Edit Teacher</DialogTitle>
             <DialogDescription>
