@@ -68,7 +68,7 @@ export default function Practice() {
                 <Target className="h-5 w-5 text-warning" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{unreviewedLogs}</p>
+                <p className="text-2xl font-semibold">{unreviewedLogs}</p>
                 <p className="text-sm text-muted-foreground">Pending Review</p>
               </div>
             </div>
