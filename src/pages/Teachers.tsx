@@ -498,7 +498,7 @@ export default function Teachers() {
             />
           </div>
 
-          <div className="flex w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted/50 p-0.5 sm:w-fit" role="tablist" aria-label="Teacher filters">
+          <div className="flex w-full items-center gap-1 overflow-x-auto rounded-xl bg-muted/50 p-0.5 sm:w-fit" role="tablist" aria-label="Teacher filters">
             {FILTER_PILLS.map((pill) => (
               <button
                 key={pill.value}
