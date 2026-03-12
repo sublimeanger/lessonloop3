@@ -14,7 +14,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase: any = createClient(supabaseUrl, supabaseServiceKey);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
