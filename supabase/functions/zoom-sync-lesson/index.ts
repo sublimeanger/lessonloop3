@@ -7,7 +7,7 @@ interface SyncPayload {
 }
 
 async function refreshZoomAccessToken(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   connectionId: string,
   refreshToken: string
 ): Promise<string | null> {
