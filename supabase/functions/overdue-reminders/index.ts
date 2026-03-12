@@ -169,7 +169,7 @@ async function shouldSkipGuardian(
 
 // deno-lint-ignore no-explicit-any
 async function logAndSend(
-  supabase: ReturnType<typeof createClient>, resendApiKey: string | undefined,
+  supabase: any, resendApiKey: string | undefined,
   opts: { orgId: string; orgName: string; subject: string; html: string; recipientEmail: string; recipientName: string; guardianId: string; relatedId: string; messageType: string }
 ): Promise<boolean> {
   const status = resendApiKey ? "pending" : "logged";
