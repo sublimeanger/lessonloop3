@@ -231,7 +231,7 @@ export default function Invoices() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="invoices" className="space-y-4">
+          <TabsContent value="invoices" className="space-y-6">
             <InvoiceFiltersBar
               filters={filters}
               onFiltersChange={handleFiltersChange}
