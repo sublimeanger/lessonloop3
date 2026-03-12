@@ -176,7 +176,7 @@ export default function LeadDetail() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {lead.stage !== 'enrolled' && lead.stage !== 'lost' && !lead.trial_lesson_id && (
-              <Button onClick={() => setShowBookTrial(true)} variant="outline" size="sm" className="gap-2">
+              <Button onClick={() => setShowBookTrial(true)} variant="outline" size="sm" className="min-h-11 sm:min-h-9 gap-2">
                 <CalendarPlus className="h-4 w-4" />
                 Book Trial
               </Button>
