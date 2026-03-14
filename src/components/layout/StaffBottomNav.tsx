@@ -7,6 +7,11 @@ import {
   MoreHorizontal,
   ClipboardList,
   Settings,
+  BarChart3,
+  Music,
+  FolderOpen,
+  FileText,
+  UserCheck,
   type LucideIcon,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
