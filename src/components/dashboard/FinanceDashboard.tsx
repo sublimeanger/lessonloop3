@@ -69,25 +69,25 @@ export function FinanceDashboard({ firstName }: FinanceDashboardProps) {
               <StatCard
                 title="Outstanding"
                 value={formatCurrency(stats?.outstandingAmount ?? 0)}
-                subtitle={`${stats?.outstandingCount ?? 0} invoices awaiting payment`}
+                subtitle="Awaiting payment"
                 icon={Receipt}
                 href="/invoices"
                 variant="violet"
               />
               <StatCard
                 title="Overdue"
-                value={formatCurrency(stats?.overdueAmount ?? 0)}
-                subtitle={`${stats?.overdueCount ?? 0} overdue invoices`}
+                value={`${stats?.overdueCount ?? 0} invoices`}
+                subtitle="Require follow-up"
                 icon={AlertTriangle}
                 href="/invoices?status=overdue"
                 variant="coral"
               />
               <StatCard
-                title="Total Invoices"
-                value={stats?.totalInvoices ?? 0}
+                title="Total Lessons"
+                value={stats?.totalLessons ?? 0}
                 subtitle="All time"
                 icon={FileText}
-                href="/invoices"
+                href="/reports"
                 variant="teal"
               />
             </StatsGrid>
