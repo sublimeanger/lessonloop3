@@ -103,7 +103,7 @@ function getTabsForRole(role: string | null, orgType?: string | null): { tabs: T
 }
 
 export function StaffBottomNav() {
-  const { currentRole } = useOrg();
+  const { currentRole, currentOrg } = useOrg();
   const { data: unreadInternal = 0 } = useUnreadInternalCount();
   const { data: pendingRequests = 0 } = usePendingRequestsCount();
   const messageBadge = unreadInternal + pendingRequests;
