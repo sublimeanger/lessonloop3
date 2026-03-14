@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
+import { currencySymbol as getCurrencySymbol } from '@/lib/utils';
 
 interface IssueCreditModalProps {
   open: boolean;
@@ -34,7 +35,7 @@ export function IssueCreditModal({
   const [expiryOption, setExpiryOption] = useState<string>('3months');
   const [notes, setNotes] = useState('');
 
-  const currencySymbol = currentOrg?.currency_code === 'GBP' ? '£' : '$';
+  const symbol = getCurrencySymbol(currentOrg?.currency_code || 'GBP');
 
   const getExpiryDate = (): string | undefined => {
     const now = new Date();
@@ -92,7 +93,7 @@ export function IssueCreditModal({
             <Label htmlFor="amount">Credit Amount</Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                {currencySymbol}
+                {symbol}
               </span>
               <Input
                 id="amount"

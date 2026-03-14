@@ -10,6 +10,7 @@ import { STALE_VOLATILE } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { TEACHER_COLOURS } from '@/components/calendar/teacherColours';
+import { formatCurrencyMinor } from '@/lib/utils';
 import { startOfWeek, endOfWeek } from 'date-fns';
 
 interface TeacherQuickViewProps {
@@ -197,7 +198,7 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, onRemove
               <div>
                 <p className="text-xs text-muted-foreground">Pay Rate</p>
                 <p className="text-sm">
-                  £{(teacher.pay_rate_value ?? 0).toFixed(2)}{' '}
+                  {formatCurrencyMinor(Math.round((teacher.pay_rate_value ?? 0) * 100), currentOrg?.currency_code)}{' '}
                   {teacher.pay_rate_type === 'per_lesson' ? '/ lesson' : teacher.pay_rate_type === 'hourly' ? '/ hour' : '(%)'}
                 </p>
               </div>

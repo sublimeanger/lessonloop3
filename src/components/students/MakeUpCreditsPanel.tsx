@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Gift, Calendar, Clock, Trash2, Plus, CheckCircle2 } from 'lucide-react';
+import { formatCurrencyMinor } from '@/lib/utils';
 import { IssueCreditModal } from './IssueCreditModal';
 
 interface MakeUpCreditsPanelProps {
@@ -24,12 +25,7 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
   const visibleCredits = useMemo(() => (credits || []).slice(0, visibleCount), [credits, visibleCount]);
   const hasMore = (credits?.length || 0) > visibleCount;
 
-  const formatCurrency = (minor: number) => {
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: currentOrg?.currency_code || 'GBP',
-    }).format(minor / 100);
-  };
+  const fmtCurrency = (minor: number) => formatCurrencyMinor(minor, currentOrg?.currency_code);
 
   const getCreditStatus = (credit: MakeUpCredit): { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' } => {
     if (credit.redeemed_at) {
@@ -90,7 +86,7 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
               <div>
                 <p className="text-sm text-muted-foreground">Available Balance</p>
                 <p className="text-section-title text-primary">
-                  {formatCurrency(totalAvailableValue)}
+                  {fmtCurrency(totalAvailableValue)}
                 </p>
               </div>
               <div className="text-left sm:text-right">
@@ -128,7 +124,7 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
                   >
                     <div className="flex-1 min-w-0">
                       <div className="mb-1 flex flex-wrap items-center gap-2">
-                        <span className="font-medium">{formatCurrency(credit.credit_value_minor)}</span>
+                        <span className="font-medium">{fmtCurrency(credit.credit_value_minor)}</span>
                         <Badge variant={status.variant}>{status.label}</Badge>
                       </div>
                       

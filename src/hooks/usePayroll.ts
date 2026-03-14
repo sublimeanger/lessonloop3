@@ -109,8 +109,7 @@ export function usePayroll(startDate: string, endDate: string) {
       }
 
       // Fetch teacher details with pay data via secure RPC (checks owner/admin/finance role)
-      const { data: teachersData, error: tError } = await supabase
-        .rpc('get_teachers_with_pay', {
+      const { data: teachersData, error: tError } = await (supabase.rpc as any)('get_teachers_with_pay', {
           p_org_id: currentOrg.id,
           p_teacher_ids: teacherIds,
         });
@@ -148,7 +147,7 @@ export function usePayroll(startDate: string, endDate: string) {
       }>();
 
       for (const tid of teacherIds) {
-        const teacherData = teachersData?.find(t => t.id === tid);
+        const teacherData = (teachersData as any[])?.find((t: any) => t.id === tid);
         
         teacherMap.set(tid, {
           name: teacherData?.display_name || 'Unknown',

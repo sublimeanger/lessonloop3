@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { logAudit } from '@/lib/auditLog';
 import { MapPin, User, Receipt, Edit, Loader2, Check, X } from 'lucide-react';
+import { formatCurrencyMinor } from '@/lib/utils';
 import { useTeachersAndLocations } from '@/hooks/useCalendarData';
 import { useRateCards } from '@/hooks/useRateCards';
 
@@ -187,7 +188,7 @@ export function TeachingDefaultsCard({
                   <SelectItem value="none">No default</SelectItem>
                   {rateCards.map(rate => (
                     <SelectItem key={rate.id} value={rate.id}>
-                      {rate.name} - £{(rate.rate_amount / 100).toFixed(2)}
+                      {rate.name} - {formatCurrencyMinor(rate.rate_amount, currentOrg?.currency_code)}
                     </SelectItem>
                   ))}
                 </SelectContent>

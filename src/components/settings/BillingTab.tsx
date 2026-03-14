@@ -42,7 +42,7 @@ import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { useStripeConnect } from '@/hooks/useStripeConnect';
 import { LimitReached } from '@/components/subscription/FeatureGate';
 import { useOrg } from '@/contexts/OrgContext';
-import { cn } from '@/lib/utils';
+import { cn, currencySymbol, formatCurrencyMinor } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
@@ -121,7 +121,7 @@ function PlanCard({
           </div>
           <div className="mt-4">
             <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-semibold">£{currentPrice}</span>
+              <span className="text-4xl font-semibold">{currencySymbol('GBP')}{currentPrice}</span>
               <span className="text-muted-foreground">/month</span>
             </div>
             {billingInterval === 'yearly' && yearlyDiscount > 0 && (
@@ -989,12 +989,8 @@ function BillingHistoryCard({ orgId }: { orgId: string }) {
     // Uses default SEMI_STABLE (2 min)
   });
 
-  const formatAmount = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: currency.toUpperCase(),
-    }).format(amount / 100);
-  };
+  const formatAmount = (amount: number, currency: string) =>
+    formatCurrencyMinor(amount, currency);
 
   const getStatusBadge = (status: string | null) => {
     switch (status) {

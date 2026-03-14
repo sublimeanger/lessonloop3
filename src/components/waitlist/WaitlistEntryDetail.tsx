@@ -21,7 +21,8 @@ import {
   type EnrolmentWaitlistEntry,
 } from '@/hooks/useEnrolmentWaitlist';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrencyMinor } from '@/lib/utils';
+import { useOrg } from '@/contexts/OrgContext';
 import {
   Send,
   UserMinus,
@@ -75,6 +76,7 @@ export function WaitlistEntryDetail({
   onWithdraw,
 }: WaitlistEntryDetailProps) {
   const isMobile = useIsMobile();
+  const { currentOrg } = useOrg();
   const { activities, isActivityLoading } = useEnrolmentWaitlistEntry(entry.id);
   const convertMutation = useConvertWaitlistToStudent();
   const respondMutation = useRespondToOffer();
@@ -196,7 +198,7 @@ export function WaitlistEntryDetail({
                 <p>Location: {entry.offered_location.name}</p>
               )}
               {entry.offered_rate_minor != null && (
-                <p>Rate: £{(entry.offered_rate_minor / 100).toFixed(2)} per lesson</p>
+                <p>Rate: {formatCurrencyMinor(entry.offered_rate_minor, currentOrg?.currency_code)} per lesson</p>
               )}
               {entry.offer_expires_at && entry.status === 'offered' && (
                 <p className="text-xs text-muted-foreground">
