@@ -29,6 +29,21 @@ interface TabItem {
   icon: LucideIcon;
 }
 
+// Solo teacher tabs (owner of solo_teacher org)
+const soloOwnerTabs: TabItem[] = [
+  { label: 'Home', path: '/dashboard', icon: LayoutDashboard },
+  { label: 'Calendar', path: '/calendar', icon: Calendar },
+  { label: 'Students', path: '/students', icon: Users },
+  { label: 'Messages', path: '/messages', icon: MessageSquare },
+];
+
+const soloOwnerMore: TabItem[] = [
+  { label: 'Invoices', path: '/invoices', icon: ClipboardList },
+  { label: 'Register', path: '/register', icon: ClipboardList },
+  { label: 'Practice', path: '/practice', icon: ClipboardList },
+  { label: 'Settings', path: '/settings', icon: Settings },
+];
+
 // Owner/Admin tabs
 const ownerAdminTabs: TabItem[] = [
   { label: 'Home', path: '/dashboard', icon: LayoutDashboard },
