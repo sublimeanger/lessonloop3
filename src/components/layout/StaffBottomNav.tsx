@@ -29,6 +29,21 @@ interface TabItem {
   icon: LucideIcon;
 }
 
+// Solo teacher tabs (owner of solo_teacher org)
+const soloOwnerTabs: TabItem[] = [
+  { label: 'Home', path: '/dashboard', icon: LayoutDashboard },
+  { label: 'Calendar', path: '/calendar', icon: Calendar },
+  { label: 'Students', path: '/students', icon: Users },
+  { label: 'Messages', path: '/messages', icon: MessageSquare },
+];
+
+const soloOwnerMore: TabItem[] = [
+  { label: 'Invoices', path: '/invoices', icon: ClipboardList },
+  { label: 'Register', path: '/register', icon: ClipboardList },
+  { label: 'Practice', path: '/practice', icon: ClipboardList },
+  { label: 'Settings', path: '/settings', icon: Settings },
+];
+
 // Owner/Admin tabs
 const ownerAdminTabs: TabItem[] = [
   { label: 'Home', path: '/dashboard', icon: LayoutDashboard },
@@ -70,7 +85,10 @@ const financeMore: TabItem[] = [
   { label: 'Settings', path: '/settings', icon: Settings },
 ];
 
-function getTabsForRole(role: string | null): { tabs: TabItem[]; more: TabItem[] } {
+function getTabsForRole(role: string | null, orgType?: string | null): { tabs: TabItem[]; more: TabItem[] } {
+  if ((role === 'owner' || role === 'admin') && orgType === 'solo_teacher') {
+    return { tabs: soloOwnerTabs, more: soloOwnerMore };
+  }
   switch (role) {
     case 'owner':
     case 'admin':
@@ -85,13 +103,13 @@ function getTabsForRole(role: string | null): { tabs: TabItem[]; more: TabItem[]
 }
 
 export function StaffBottomNav() {
-  const { currentRole } = useOrg();
+  const { currentRole, currentOrg } = useOrg();
   const { data: unreadInternal = 0 } = useUnreadInternalCount();
   const { data: pendingRequests = 0 } = usePendingRequestsCount();
   const messageBadge = unreadInternal + pendingRequests;
   const location = useLocation();
 
-  const { tabs, more } = useMemo(() => getTabsForRole(currentRole), [currentRole]);
+  const { tabs, more } = useMemo(() => getTabsForRole(currentRole, currentOrg?.org_type), [currentRole, currentOrg?.org_type]);
 
   // Check if current location is in the "More" section
   const isMoreActive = more.some((item) => location.pathname.startsWith(item.path));

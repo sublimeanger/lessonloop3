@@ -43,7 +43,6 @@ const CHECKLIST_CONFIG: Record<OrgType, ChecklistConfigItem[]> = {
   solo_teacher: [
     { id: 'add-student', title: 'Add your first student', description: 'Start managing your student roster', href: '/students', icon: Users, checkKey: 'hasStudents' },
     { id: 'schedule-lesson', title: 'Schedule a lesson', description: 'Create your first lesson in the calendar', href: '/calendar', icon: Calendar, checkKey: 'hasLessons' },
-    { id: 'add-location', title: 'Add a teaching location', description: 'Set up your teaching venues', href: '/locations', icon: Building, checkKey: 'hasLocations' },
     { id: 'create-invoice', title: 'Create your first invoice', description: 'Bill your students for lessons', href: '/invoices', icon: Receipt, checkKey: 'hasInvoices' },
   ],
   studio: [

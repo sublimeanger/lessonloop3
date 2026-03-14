@@ -64,6 +64,34 @@ interface NavGroup {
   items: NavItem[];
 }
 
+// ─── Solo Teacher (owner of solo_teacher org) ───
+const soloOwnerGroups: NavGroup[] = [
+  {
+    items: [
+      { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+      { title: 'Calendar', url: '/calendar', icon: Calendar },
+    ],
+  },
+  {
+    label: 'Teaching',
+    items: [
+      { title: 'Students', url: '/students', icon: Users },
+      { title: 'Register', url: '/register', icon: ClipboardList },
+      { title: 'Practice', url: '/practice', icon: Music },
+      { title: 'Resources', url: '/resources', icon: FolderOpen },
+      { title: 'Notes', url: '/notes', icon: FileText },
+    ],
+  },
+  {
+    label: 'Business',
+    items: [
+      { title: 'Invoices', url: '/invoices', icon: Receipt },
+      { title: 'Messages', url: '/messages', icon: MessageSquare },
+      { title: 'Reports', url: '/reports', icon: BarChart3 },
+    ],
+  },
+];
+
 // ─── Owner / Admin grouped nav ───
 const ownerAdminGroups: NavGroup[] = [
   {
@@ -169,8 +197,11 @@ const footerNav: NavItem[] = [
   { title: 'Help', url: '/help', icon: HelpCircle },
 ];
 
-function getNavGroups(role: AppRole | null): NavGroup[] {
+function getNavGroups(role: AppRole | null, orgType?: string | null): NavGroup[] {
   if (!role) return [];
+  if ((role === 'owner' || role === 'admin') && orgType === 'solo_teacher') {
+    return soloOwnerGroups;
+  }
   switch (role) {
     case 'owner':
     case 'admin':
@@ -254,7 +285,7 @@ function SidebarNavItem({ item, collapsed, badge }: { item: NavItem; collapsed: 
 
 export function AppSidebar() {
   const { profile, signOut } = useAuth();
-  const { currentRole } = useOrg();
+  const { currentRole, currentOrg } = useOrg();
   const navigate = useNavigate();
   const { state } = useSidebar();
   const { setIsOpen: openLoopAssist } = useLoopAssistUI();
@@ -263,7 +294,7 @@ export function AppSidebar() {
   const { data: pendingRequests = 0 } = usePendingRequestsCount();
   const messageBadge = unreadInternal + pendingRequests;
   const collapsed = state === 'collapsed';
-  const navGroups = getNavGroups(currentRole);
+  const navGroups = getNavGroups(currentRole, currentOrg?.org_type);
   const showLoopAssist = currentRole && currentRole !== 'parent';
 
   const handleSignOut = async () => {
