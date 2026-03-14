@@ -62,6 +62,7 @@ interface NavItem {
 interface NavGroup {
   label?: string;
   items: NavItem[];
+  collapsible?: boolean;
 }
 
 // ─── Solo Teacher (owner of solo_teacher org) ───
