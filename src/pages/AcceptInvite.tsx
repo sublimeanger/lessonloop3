@@ -253,9 +253,8 @@ export default function AcceptInvite() {
 
         // Retry refreshProfile to ensure has_completed_onboarding is set by edge function
         for (let attempt = 0; attempt < 3; attempt++) {
-          const profile = await refreshProfile();
-          if (profile?.has_completed_onboarding) break;
-          await new Promise(r => setTimeout(r, 500));
+          await refreshProfile();
+          if (attempt < 2) await new Promise(r => setTimeout(r, 500));
         }
 
         if (data.role === 'parent') {
