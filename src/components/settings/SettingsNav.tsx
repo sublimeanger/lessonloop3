@@ -59,8 +59,8 @@ export const SETTINGS_NAV_GROUPS: NavGroup[] = [
     title: 'Organisation',
     icon: Building2,
     items: [
-      { value: 'organisation', label: 'Organisation', icon: Building2 },
-      { value: 'branding', label: 'Branding', icon: Palette },
+      { value: 'organisation', label: 'Organisation', icon: Building2, adminOnly: true },
+      { value: 'branding', label: 'Branding', icon: Palette, adminOnly: true },
       { value: 'members', label: 'Members', icon: Users, adminOnly: true },
       { value: 'data-import', label: 'Data & Import', icon: Upload, adminOnly: true },
     ],
