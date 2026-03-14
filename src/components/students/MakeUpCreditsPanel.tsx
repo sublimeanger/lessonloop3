@@ -124,7 +124,7 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
                   >
                     <div className="flex-1 min-w-0">
                       <div className="mb-1 flex flex-wrap items-center gap-2">
-                        <span className="font-medium">{formatCurrency(credit.credit_value_minor)}</span>
+                        <span className="font-medium">{fmtCurrency(credit.credit_value_minor)}</span>
                         <Badge variant={status.variant}>{status.label}</Badge>
                       </div>
                       
