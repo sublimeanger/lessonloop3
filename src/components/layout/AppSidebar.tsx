@@ -116,18 +116,19 @@ const ownerAdminGroups: NavGroup[] = [
     label: 'Business',
     items: [
       { title: 'Invoices', url: '/invoices', icon: Receipt },
+      { title: 'Reports', url: '/reports', icon: BarChart3 },
+      { title: 'Locations', url: '/locations', icon: MapPin },
+      { title: 'Messages', url: '/messages', icon: MessageSquare },
+    ],
+  },
+  {
+    label: 'Pipeline',
+    collapsible: true,
+    items: [
       { title: 'Leads', url: '/leads', icon: UserPlus },
       { title: 'Waiting List', url: '/waitlist', icon: ClipboardCheck },
       { title: 'Make-Ups', url: '/make-ups', icon: RefreshCw },
       { title: 'Continuation', url: '/continuation', icon: ArrowRightLeft },
-      { title: 'Reports', url: '/reports', icon: BarChart3 },
-      { title: 'Locations', url: '/locations', icon: MapPin },
-    ],
-  },
-  {
-    label: 'Communication',
-    items: [
-      { title: 'Messages', url: '/messages', icon: MessageSquare },
     ],
   },
 ];

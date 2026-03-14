@@ -90,7 +90,7 @@ const teacherMore: TabItem[] = [
 ];
 
 const financeMore: TabItem[] = [
-  { label: 'Reports', path: '/reports', icon: ClipboardList },
+  { label: 'Reports', path: '/reports', icon: BarChart3 },
   { label: 'Settings', path: '/settings', icon: Settings },
 ];
 
