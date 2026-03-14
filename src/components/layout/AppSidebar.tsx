@@ -64,6 +64,34 @@ interface NavGroup {
   items: NavItem[];
 }
 
+// ─── Solo Teacher (owner of solo_teacher org) ───
+const soloOwnerGroups: NavGroup[] = [
+  {
+    items: [
+      { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+      { title: 'Calendar', url: '/calendar', icon: Calendar },
+    ],
+  },
+  {
+    label: 'Teaching',
+    items: [
+      { title: 'Students', url: '/students', icon: Users },
+      { title: 'Register', url: '/register', icon: ClipboardList },
+      { title: 'Practice', url: '/practice', icon: Music },
+      { title: 'Resources', url: '/resources', icon: FolderOpen },
+      { title: 'Notes', url: '/notes', icon: FileText },
+    ],
+  },
+  {
+    label: 'Business',
+    items: [
+      { title: 'Invoices', url: '/invoices', icon: Receipt },
+      { title: 'Messages', url: '/messages', icon: MessageSquare },
+      { title: 'Reports', url: '/reports', icon: BarChart3 },
+    ],
+  },
+];
+
 // ─── Owner / Admin grouped nav ───
 const ownerAdminGroups: NavGroup[] = [
   {
