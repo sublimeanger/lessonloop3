@@ -32,7 +32,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useAvailableCreditsForPayer } from '@/hooks/useAvailableCredits';
 import { Badge } from '@/components/ui/badge';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import { formatCurrencyMinor } from '@/lib/utils';
+import { formatCurrencyMinor, currencySymbol } from '@/lib/utils';
 
 interface CreateInvoiceModalProps {
   open: boolean;
