@@ -108,12 +108,12 @@ export function usePayroll(startDate: string, endDate: string) {
         };
       }
 
-      // Fetch teacher details from the new teachers table (includes pay rates)
+      // Fetch teacher details with pay data via secure RPC (checks owner/admin/finance role)
       const { data: teachersData, error: tError } = await supabase
-        .from('teachers_with_pay')  // Use view that includes pay data for admins
-        .select('id, display_name, pay_rate_type, pay_rate_value')
-        .eq('org_id', currentOrg.id)
-        .in('id', teacherIds);
+        .rpc('get_teachers_with_pay', {
+          p_org_id: currentOrg.id,
+          p_teacher_ids: teacherIds,
+        });
       if (tError) {
         // Fallback to base teachers table if view fails
         const { data: fallbackTeachers } = await supabase
