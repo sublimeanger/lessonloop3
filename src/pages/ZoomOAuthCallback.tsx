@@ -18,9 +18,17 @@ export default function ZoomOAuthCallback() {
 
     if (zoomError) {
       // Parse state to get redirect_uri, then redirect with error
+      const ALLOWED_HOSTS = ['lessonloop.net', 'app.lessonloop.net', 'localhost'];
       try {
         const stateData = JSON.parse(atob(state || ''));
-        window.location.href = `${stateData.redirect_uri || '/settings'}?zoom_error=${encodeURIComponent(zoomError)}`;
+        const raw = stateData.redirect_uri || '/settings';
+        // Validate redirect_uri against allowlist to prevent open redirect
+        const url = new URL(raw, window.location.origin);
+        if (!ALLOWED_HOSTS.includes(url.hostname)) {
+          window.location.href = `/settings?zoom_error=${encodeURIComponent(zoomError)}`;
+          return;
+        }
+        window.location.href = `${raw}?zoom_error=${encodeURIComponent(zoomError)}`;
       } catch {
         window.location.href = `/settings?zoom_error=${encodeURIComponent(zoomError)}`;
       }
