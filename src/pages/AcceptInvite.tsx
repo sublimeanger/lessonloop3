@@ -145,7 +145,12 @@ export default function AcceptInvite() {
         description: `You've joined ${organisation?.name || 'the organisation'}`
       });
 
-      await refreshProfile();
+      // Retry refreshProfile to ensure has_completed_onboarding is set by edge function
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await refreshProfile();
+        // Short delay between retries to allow edge function DB write to propagate
+        if (attempt < 2) await new Promise(r => setTimeout(r, 500));
+      }
 
       if (data.role === 'parent') {
         navigate('/portal/home');
@@ -246,7 +251,11 @@ export default function AcceptInvite() {
           description: `Welcome to ${organisation?.name || 'the organisation'}`
         });
 
-        await refreshProfile();
+        // Retry refreshProfile to ensure has_completed_onboarding is set by edge function
+        for (let attempt = 0; attempt < 3; attempt++) {
+          await refreshProfile();
+          if (attempt < 2) await new Promise(r => setTimeout(r, 500));
+        }
 
         if (data.role === 'parent') {
           navigate('/portal/home');

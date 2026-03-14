@@ -21,7 +21,8 @@ export function Header() {
   const { setIsOpen } = useLoopAssistUI();
   const { totalActionable, hasCritical } = useProactiveAlerts();
   const hasMultipleOrgs = organisations.length > 1;
-  const isStaff = currentRole && ['owner', 'admin', 'teacher', 'finance'].includes(currentRole);
+  const showNotifications = currentRole && ['owner', 'admin', 'teacher'].includes(currentRole);
+  const showLoopAssist = currentRole && ['owner', 'admin', 'teacher'].includes(currentRole);
 
   return (
     <header className={cn('sticky top-0 z-50 flex min-h-14 items-center justify-between border-b bg-background px-4', platform.isNative && 'pt-[env(safe-area-inset-top)]')}>
@@ -66,10 +67,10 @@ export function Header() {
 
       <div className="flex items-center gap-1.5">
         {/* Notification bell — staff only */}
-        {isStaff && <NotificationBell />}
+        {showNotifications && <NotificationBell />}
 
         {/* LoopAssist */}
-      <Button
+      {showLoopAssist && <Button
         variant="ghost"
         size="sm"
         className={cn(
@@ -93,7 +94,7 @@ export function Header() {
             {totalActionable > 9 ? '9+' : totalActionable}
           </span>
         )}
-      </Button>
+      </Button>}
       </div>
     </header>
   );
