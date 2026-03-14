@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Gift, Calendar, Clock, Trash2, Plus, CheckCircle2 } from 'lucide-react';
+import { formatCurrencyMinor } from '@/lib/utils';
 import { IssueCreditModal } from './IssueCreditModal';
 
 interface MakeUpCreditsPanelProps {
