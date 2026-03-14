@@ -294,7 +294,7 @@ export function AppSidebar() {
   const { data: pendingRequests = 0 } = usePendingRequestsCount();
   const messageBadge = unreadInternal + pendingRequests;
   const collapsed = state === 'collapsed';
-  const navGroups = getNavGroups(currentRole);
+  const navGroups = getNavGroups(currentRole, currentOrg?.org_type);
   const showLoopAssist = currentRole && currentRole !== 'parent';
 
   const handleSignOut = async () => {

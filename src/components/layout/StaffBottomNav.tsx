@@ -109,7 +109,7 @@ export function StaffBottomNav() {
   const messageBadge = unreadInternal + pendingRequests;
   const location = useLocation();
 
-  const { tabs, more } = useMemo(() => getTabsForRole(currentRole), [currentRole]);
+  const { tabs, more } = useMemo(() => getTabsForRole(currentRole, currentOrg?.org_type), [currentRole, currentOrg?.org_type]);
 
   // Check if current location is in the "More" section
   const isMoreActive = more.some((item) => location.pathname.startsWith(item.path));
