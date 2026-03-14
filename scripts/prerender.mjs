@@ -446,7 +446,21 @@ function copyStaticAssets() {
     console.log(`  ✓ Copied blog SVGs → blog/`);
   }
 
-  // 4b. Copy public/images/blog/ featured images → marketing-html/images/blog/
+  // 4b. Copy public/images/ root-level assets (e.g. App Store badges)
+  const imagesSrc = join(publicDir, 'images');
+  if (existsSync(imagesSrc)) {
+    const imagesDest = join(OUT_DIR, 'images');
+    mkdirSync(imagesDest, { recursive: true });
+    for (const file of readdirSync(imagesSrc)) {
+      const srcPath = join(imagesSrc, file);
+      if (statSync(srcPath).isFile()) {
+        copyFileSync(srcPath, join(imagesDest, file));
+      }
+    }
+    console.log(`  ✓ Copied public/images/ root assets`);
+  }
+
+  // 4c. Copy public/images/blog/ featured images → marketing-html/images/blog/
   const blogImgSrc = join(publicDir, 'images', 'blog');
   if (existsSync(blogImgSrc)) {
     const blogImgDest = join(OUT_DIR, 'images', 'blog');
