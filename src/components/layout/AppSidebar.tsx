@@ -197,8 +197,11 @@ const footerNav: NavItem[] = [
   { title: 'Help', url: '/help', icon: HelpCircle },
 ];
 
-function getNavGroups(role: AppRole | null): NavGroup[] {
+function getNavGroups(role: AppRole | null, orgType?: string | null): NavGroup[] {
   if (!role) return [];
+  if ((role === 'owner' || role === 'admin') && orgType === 'solo_teacher') {
+    return soloOwnerGroups;
+  }
   switch (role) {
     case 'owner':
     case 'admin':
