@@ -82,6 +82,10 @@ const ownerAdminMore: TabItem[] = [
 
 const teacherMore: TabItem[] = [
   { label: 'Register', path: '/register', icon: ClipboardList },
+  { label: 'Attendance', path: '/batch-attendance', icon: UserCheck },
+  { label: 'Practice', path: '/practice', icon: Music },
+  { label: 'Resources', path: '/resources', icon: FolderOpen },
+  { label: 'Notes', path: '/notes', icon: FileText },
   { label: 'Settings', path: '/settings', icon: Settings },
 ];
 
