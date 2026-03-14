@@ -76,6 +76,7 @@ export function WaitlistEntryDetail({
   onWithdraw,
 }: WaitlistEntryDetailProps) {
   const isMobile = useIsMobile();
+  const { currentOrg } = useOrg();
   const { activities, isActivityLoading } = useEnrolmentWaitlistEntry(entry.id);
   const convertMutation = useConvertWaitlistToStudent();
   const respondMutation = useRespondToOffer();
