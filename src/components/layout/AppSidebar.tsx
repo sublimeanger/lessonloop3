@@ -287,6 +287,42 @@ function SidebarNavItem({ item, collapsed, badge }: { item: NavItem; collapsed: 
   );
 }
 
+function CollapsibleNavGroup({ group, collapsed, messageBadge }: { group: NavGroup; collapsed: boolean; messageBadge: number }) {
+  const location = useLocation();
+  const isActive = group.items.some((item) => location.pathname.startsWith(item.url));
+  const [open, setOpen] = useState(isActive);
+
+  return (
+    <SidebarGroup className="py-1">
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger className="flex w-full items-center gap-1 px-4 mb-0.5 group cursor-pointer">
+          <ChevronRight className={cn(
+            'h-3 w-3 text-sidebar-foreground/40 transition-transform duration-200',
+            open && 'rotate-90'
+          )} />
+          <span className="text-micro font-semibold uppercase tracking-widest text-sidebar-foreground/60">
+            {group.label}
+          </span>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {group.items.map((item) => (
+                <SidebarNavItem
+                  key={item.url}
+                  item={item}
+                  collapsed={collapsed}
+                  badge={item.url === '/messages' ? messageBadge : undefined}
+                />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </CollapsibleContent>
+      </Collapsible>
+    </SidebarGroup>
+  );
+}
+
 export function AppSidebar() {
   const { profile, signOut } = useAuth();
   const { currentRole, currentOrg } = useOrg();
