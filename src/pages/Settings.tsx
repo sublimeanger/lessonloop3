@@ -108,7 +108,7 @@ function SettingsContent({ activeTab, isOrgAdmin }: { activeTab: string; isOrgAd
       return <BookingPageTab />;
     case 'data-import':
       return <DataImportTab />;
-    case 'looopassist':
+    case 'loopassist':
       return <LoopAssistPreferencesTab />;
     case 'notifications':
       return <NotificationsTab />;
