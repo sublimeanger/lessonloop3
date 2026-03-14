@@ -285,7 +285,7 @@ function SidebarNavItem({ item, collapsed, badge }: { item: NavItem; collapsed: 
 
 export function AppSidebar() {
   const { profile, signOut } = useAuth();
-  const { currentRole } = useOrg();
+  const { currentRole, currentOrg } = useOrg();
   const navigate = useNavigate();
   const { state } = useSidebar();
   const { setIsOpen: openLoopAssist } = useLoopAssistUI();
