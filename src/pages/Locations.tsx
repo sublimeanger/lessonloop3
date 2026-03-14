@@ -17,6 +17,8 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
+import { useOrgTimezone } from '@/hooks/useOrgTimezone';
+import { fromZonedTime } from 'date-fns-tz';
 import { supabase } from '@/integrations/supabase/client';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { FeatureGate } from '@/components/subscription';
@@ -73,6 +75,7 @@ const FILTER_PILLS: { value: FilterTab; label: string }[] = [
 export default function Locations() {
   usePageMeta('Locations | LessonLoop', 'Manage your teaching locations and rooms');
   const { currentOrg, isOrgAdmin } = useOrg();
+  const { timezone: orgTimezone } = useOrgTimezone();
   const { toast } = useToast();
   const { hasAccess: hasMultiLocation, requiredPlanName } = useFeatureGate('multi_location');
   const { checkLocationDeletion, checkRoomDeletion } = useDeleteValidation();
@@ -188,7 +191,7 @@ export default function Locations() {
           .eq('org_id', currentOrg.id)
           .in('location_id', locationIds)
           .not('room_id', 'is', null)
-          .gte('start_at', new Date().toISOString())
+          .gte('start_at', fromZonedTime(new Date(), orgTimezone).toISOString())
           .neq('status', 'cancelled')
           .limit(500),
       ]);
@@ -499,7 +502,7 @@ export default function Locations() {
             .select('id, title, start_at, lesson_participants(id)')
             .eq('room_id', editingRoom.id)
             .eq('org_id', currentOrg.id)
-            .gte('start_at', new Date().toISOString())
+            .gte('start_at', fromZonedTime(new Date(), orgTimezone).toISOString())
             .neq('status', 'cancelled');
 
           const overCapacity = (futureLessons || []).filter(

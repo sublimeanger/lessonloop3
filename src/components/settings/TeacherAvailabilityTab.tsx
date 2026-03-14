@@ -46,6 +46,8 @@ import {
 import { EmptyState } from '@/components/shared/EmptyState';
 import { cn } from '@/lib/utils';
 import { useOrg } from '@/contexts/OrgContext';
+import { useOrgTimezone } from '@/hooks/useOrgTimezone';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { supabase } from '@/integrations/supabase/client';
 
 // Time slot options (15-min increments)
@@ -88,6 +90,7 @@ interface TeacherAvailabilityTabProps {
 
 export function TeacherAvailabilityTab({ teacherId, teacherUserId }: TeacherAvailabilityTabProps = {}) {
   const { currentOrg } = useOrg();
+  const { timezone: orgTimezone } = useOrgTimezone();
   const { data: availabilityBlocks = [], isLoading: loadingAvailability } = useAvailabilityBlocks(teacherId);
   const { data: timeOffBlocks = [], isLoading: loadingTimeOff } = useTimeOffBlocks(teacherId);
   
@@ -127,12 +130,12 @@ export function TeacherAvailabilityTab({ teacherId, teacherUserId }: TeacherAvai
         .eq('org_id', currentOrg.id)
         .eq('teacher_id', teacherId)
         .eq('status', 'scheduled')
-        .gte('start_at', new Date().toISOString());
+        .gte('start_at', fromZonedTime(new Date(), orgTimezone).toISOString());
 
       if (!lessons) { setAffectedLessonCount(0); return; }
 
       const count = lessons.filter(l => {
-        const d = new Date(l.start_at);
+        const d = toZonedTime(new Date(l.start_at), orgTimezone);
         if (d.getDay() !== jsDayOfWeek) return false;
         const timeStr = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
         return timeStr >= block.start_time_local && timeStr < block.end_time_local;

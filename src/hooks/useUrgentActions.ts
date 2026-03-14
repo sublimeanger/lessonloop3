@@ -4,6 +4,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { subDays, format } from 'date-fns';
+import { fromZonedTime } from 'date-fns-tz';
 
 export interface UrgentAction {
   id: string;
@@ -16,6 +17,7 @@ export interface UrgentAction {
 
 export function useUrgentActions() {
   const { currentOrg, currentRole } = useOrg();
+  const orgTimezone = currentOrg?.timezone || 'Europe/London';
   const { user } = useAuth();
 
   const isAdmin = currentRole === 'owner' || currentRole === 'admin';
@@ -38,7 +40,7 @@ export function useUrgentActions() {
             .select('id', { count: 'exact', head: true })
             .eq('org_id', currentOrg.id)
             .eq('status', 'scheduled')
-            .lt('end_at', new Date().toISOString())
+            .lt('end_at', fromZonedTime(new Date(), orgTimezone).toISOString())
             .gte('end_at', thirtyDaysAgo.toISOString());
 
           if (isTeacher && !isAdmin) {
