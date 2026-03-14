@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { logAudit } from '@/lib/auditLog';
 import { MapPin, User, Receipt, Edit, Loader2, Check, X } from 'lucide-react';
+import { formatCurrencyMinor } from '@/lib/utils';
 import { useTeachersAndLocations } from '@/hooks/useCalendarData';
 import { useRateCards } from '@/hooks/useRateCards';
 
