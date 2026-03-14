@@ -248,7 +248,10 @@ export default function Locations() {
 
   const archivedCount = useMemo(() => locations.filter(l => l.is_archived).length, [locations]);
 
-  const invalidateLocations = () => queryClient.invalidateQueries({ queryKey: ['locations'] });
+  const invalidateLocations = () => {
+    queryClient.invalidateQueries({ queryKey: ['locations'] });
+    queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] });
+  };
 
   const toggleExpanded = (id: string) => {
     setExpandedLocations(prev => {

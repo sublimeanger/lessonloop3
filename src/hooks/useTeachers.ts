@@ -97,6 +97,7 @@ export function useTeacherMutations() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] });
     },
     onError: (error: unknown) => {
       toastError(error, 'Failed to create teacher');

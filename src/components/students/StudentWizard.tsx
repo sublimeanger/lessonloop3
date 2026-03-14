@@ -215,6 +215,34 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
         }
       }
 
+      // 1c. Create student_teacher_assignments record if teacher selected
+      if (teachingData.teacherId) {
+        try {
+          const { data: teacherRecord } = await supabase
+            .from('teachers')
+            .select('id, user_id')
+            .eq('id', teachingData.teacherId)
+            .single();
+
+          if (teacherRecord) {
+            const { error: staError } = await supabase
+              .from('student_teacher_assignments')
+              .insert({
+                org_id: currentOrg.id,
+                student_id: createdStudent.id,
+                teacher_id: teacherRecord.id,
+                teacher_user_id: teacherRecord.user_id || null,
+                is_primary: true,
+              });
+            if (staError) {
+              logger.error('Student-teacher assignment failed:', staError);
+            }
+          }
+        } catch (err) {
+          logger.error('Failed to create teacher assignment:', err);
+        }
+      }
+
       let guardianInfo: CreatedData['guardian'] = undefined;
       
       // 2. Handle guardian if requested
@@ -301,6 +329,7 @@ export function StudentWizard({ open, onOpenChange, onSuccess }: StudentWizardPr
       setCurrentStep('success');
       toast({ title: 'Student created' });
       queryClient.invalidateQueries({ queryKey: ['usage-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] });
       if (currentOrg && user) {
         logAudit(currentOrg.id, user.id, 'student.created', 'student', createdStudent.id, {
           after: { first_name: createdStudent.first_name, last_name: createdStudent.last_name, email: createdStudent.email },
