@@ -42,7 +42,7 @@ import { useUsageCounts } from '@/hooks/useUsageCounts';
 import { useStripeConnect } from '@/hooks/useStripeConnect';
 import { LimitReached } from '@/components/subscription/FeatureGate';
 import { useOrg } from '@/contexts/OrgContext';
-import { cn } from '@/lib/utils';
+import { cn, currencySymbol, formatCurrencyMinor } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
