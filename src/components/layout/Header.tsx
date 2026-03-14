@@ -94,7 +94,7 @@ export function Header() {
             {totalActionable > 9 ? '9+' : totalActionable}
           </span>
         )}
-      </Button>
+      </Button>}
       </div>
     </header>
   );

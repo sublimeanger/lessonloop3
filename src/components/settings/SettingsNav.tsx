@@ -84,7 +84,7 @@ export const SETTINGS_NAV_GROUPS: NavGroup[] = [
       { value: 'rate-cards', label: 'Rate Cards', icon: Tags, adminOnly: true },
       { value: 'messaging', label: 'Messaging', icon: MessageSquare, adminOnly: true },
       { value: 'booking-page', label: 'Booking Page', icon: Globe, adminOnly: true },
-      { value: 'looopassist', label: 'LoopAssist AI', icon: Sparkles, adminOnly: true },
+      { value: 'loopassist', label: 'LoopAssist AI', icon: Sparkles, adminOnly: true },
       { value: 'continuation', label: 'Continuation', icon: ArrowRightLeft, adminOnly: true },
     ],
   },

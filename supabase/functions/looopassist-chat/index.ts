@@ -1653,7 +1653,17 @@ AI tier: ${isPro ? "Pro (Sonnet)" : "Standard (Haiku)"}`
     const dateTimeStr = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ', ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     const timeContext = `\n\nCurrent date and time: ${dateTimeStr}`;
 
-    const fullContext = SYSTEM_PROMPT + timeContext + orgContext + preferencesContext + pageContextInfo + dataContext;
+    // Role-specific restrictions to prevent data leakage via AI
+    let roleInstructions = "";
+    if (userRole === "teacher") {
+      roleInstructions = "\n\nROLE RESTRICTIONS: You are assisting a teacher. Only discuss their own lessons, students, and schedule. Do not reveal financial data (revenue, invoice totals, payment details), other teachers' information, or organisation-level settings.";
+    } else if (userRole === "finance") {
+      roleInstructions = "\n\nROLE RESTRICTIONS: You are assisting a finance team member. Focus on invoices, payments, and revenue. Do not reveal teacher pay rates, lesson notes, or student practice data.";
+    } else if (userRole === "parent") {
+      roleInstructions = "\n\nROLE RESTRICTIONS: You are assisting a parent. Only discuss their children's lessons, practice, and invoices. Do not reveal other families' data, teacher schedules, or organisation financials.";
+    }
+
+    const fullContext = SYSTEM_PROMPT + timeContext + orgContext + roleInstructions + preferencesContext + pageContextInfo + dataContext;
 
     const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
     if (!ANTHROPIC_API_KEY) {
