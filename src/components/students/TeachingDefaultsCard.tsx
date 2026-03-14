@@ -188,7 +188,7 @@ export function TeachingDefaultsCard({
                   <SelectItem value="none">No default</SelectItem>
                   {rateCards.map(rate => (
                     <SelectItem key={rate.id} value={rate.id}>
-                      {rate.name} - £{(rate.rate_amount / 100).toFixed(2)}
+                      {rate.name} - {formatCurrencyMinor(rate.rate_amount, currentOrg?.currency_code)}
                     </SelectItem>
                   ))}
                 </SelectContent>

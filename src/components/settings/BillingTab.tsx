@@ -989,12 +989,8 @@ function BillingHistoryCard({ orgId }: { orgId: string }) {
     // Uses default SEMI_STABLE (2 min)
   });
 
-  const formatAmount = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: currency.toUpperCase(),
-    }).format(amount / 100);
-  };
+  const formatAmount = (amount: number, currency: string) =>
+    formatCurrencyMinor(amount, currency);
 
   const getStatusBadge = (status: string | null) => {
     switch (status) {

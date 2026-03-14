@@ -25,12 +25,7 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
   const visibleCredits = useMemo(() => (credits || []).slice(0, visibleCount), [credits, visibleCount]);
   const hasMore = (credits?.length || 0) > visibleCount;
 
-  const formatCurrency = (minor: number) => {
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: currentOrg?.currency_code || 'GBP',
-    }).format(minor / 100);
-  };
+  const fmtCurrency = (minor: number) => formatCurrencyMinor(minor, currentOrg?.currency_code);
 
   const getCreditStatus = (credit: MakeUpCredit): { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' } => {
     if (credit.redeemed_at) {

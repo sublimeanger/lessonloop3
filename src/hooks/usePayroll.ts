@@ -147,7 +147,7 @@ export function usePayroll(startDate: string, endDate: string) {
       }>();
 
       for (const tid of teacherIds) {
-        const teacherData = teachersData?.find(t => t.id === tid);
+        const teacherData = (teachersData as any[])?.find((t: any) => t.id === tid);
         
         teacherMap.set(tid, {
           name: teacherData?.display_name || 'Unknown',

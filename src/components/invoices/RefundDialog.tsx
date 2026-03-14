@@ -201,7 +201,7 @@ export function RefundDialog({
                 </Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                    {currencyCode === 'GBP' ? '£' : currencyCode === 'EUR' ? '€' : '$'}
+                    {currencySymbol(currencyCode || 'GBP')}
                   </span>
                   <Input
                     id="refund-amount"

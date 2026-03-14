@@ -21,7 +21,8 @@ import {
   type EnrolmentWaitlistEntry,
 } from '@/hooks/useEnrolmentWaitlist';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrencyMinor } from '@/lib/utils';
+import { useOrg } from '@/contexts/OrgContext';
 import {
   Send,
   UserMinus,

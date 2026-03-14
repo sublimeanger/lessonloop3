@@ -35,7 +35,7 @@ export function IssueCreditModal({
   const [expiryOption, setExpiryOption] = useState<string>('3months');
   const [notes, setNotes] = useState('');
 
-  const currencySymbol = currentOrg?.currency_code === 'GBP' ? '£' : '$';
+  const symbol = getCurrencySymbol(currentOrg?.currency_code || 'GBP');
 
   const getExpiryDate = (): string | undefined => {
     const now = new Date();

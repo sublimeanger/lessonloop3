@@ -369,7 +369,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                         />
                       </div>
                       <div className="space-y-1 sm:space-y-0">
-                        <Label className="text-xs text-muted-foreground sm:hidden">Price ({currentOrg?.currency_code === 'GBP' ? '£' : currentOrg?.currency_code || '£'})</Label>
+                        <Label className="text-xs text-muted-foreground sm:hidden">Price ({currencySymbol(currentOrg?.currency_code || 'GBP')})</Label>
                         <Input
                           type="number"
                           step="0.01"
