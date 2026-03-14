@@ -323,30 +323,42 @@ export function AppSidebar() {
         <SidebarSeparator className="bg-sidebar-border mb-1" />
 
         {/* Nav groups */}
-        {navGroups.map((group, gi) => (
-          <SidebarGroup key={gi} className="py-1">
-            {group.label && !collapsed && (
-              <SidebarGroupLabel className="text-micro font-semibold uppercase tracking-widest text-sidebar-foreground/60 px-4 mb-0.5">
-                {group.label}
-              </SidebarGroupLabel>
-            )}
-            {group.label && collapsed && (
-              <SidebarSeparator className="bg-sidebar-border mx-2 my-1" />
-            )}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarNavItem
-                    key={item.url}
-                    item={item}
-                    collapsed={collapsed}
-                    badge={item.url === '/messages' ? messageBadge : undefined}
-                  />
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        {navGroups.map((group, gi) => {
+          if (group.collapsible && !collapsed) {
+            return (
+              <CollapsibleNavGroup
+                key={gi}
+                group={group}
+                collapsed={collapsed}
+                messageBadge={messageBadge}
+              />
+            );
+          }
+          return (
+            <SidebarGroup key={gi} className="py-1">
+              {group.label && !collapsed && (
+                <SidebarGroupLabel className="text-micro font-semibold uppercase tracking-widest text-sidebar-foreground/60 px-4 mb-0.5">
+                  {group.label}
+                </SidebarGroupLabel>
+              )}
+              {group.label && collapsed && (
+                <SidebarSeparator className="bg-sidebar-border mx-2 my-1" />
+              )}
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {group.items.map((item) => (
+                    <SidebarNavItem
+                      key={item.url}
+                      item={item}
+                      collapsed={collapsed}
+                      badge={item.url === '/messages' ? messageBadge : undefined}
+                    />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-2 space-y-1">
