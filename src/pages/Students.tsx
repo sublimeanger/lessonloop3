@@ -444,7 +444,7 @@ function StudentsOverdueBanner() {
         .eq('org_id', currentOrg!.id)
         .in('status', ['overdue'])
         .not('payer_student_id', 'is', null);
-      return new Set(data?.map(d => d.payer_student_id)).size;
+      return new Set(data?.map(d => d.payer_student_id) ?? []).size;
     },
     enabled: !!currentOrg,
     // Uses default SEMI_STABLE (2 min)

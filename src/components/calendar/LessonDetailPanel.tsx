@@ -412,11 +412,16 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         toast({ title: 'Lesson deleted' });
       } else {
         // Delete this and all future lessons in series
-        const { data: futureLessons } = await supabase
+        const { data: futureLessons, error: fetchError } = await supabase
           .from('lessons')
           .select('id')
           .eq('recurrence_id', lesson.recurrence_id!)
           .gte('start_at', lesson.start_at);
+
+        if (fetchError) {
+          toast({ title: 'Error', description: 'Could not fetch recurring lessons. Deletion cancelled.', variant: 'destructive' });
+          return;
+        }
 
         const deletedIds = (futureLessons || []).map(l => l.id);
 
