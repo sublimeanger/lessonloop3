@@ -70,7 +70,7 @@ export function Header() {
         {showNotifications && <NotificationBell />}
 
         {/* LoopAssist */}
-      <Button
+      {showLoopAssist && <Button
         variant="ghost"
         size="sm"
         className={cn(
