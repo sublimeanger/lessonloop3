@@ -35,7 +35,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useRefund } from '@/hooks/useRefund';
-import { formatCurrencyMinor } from '@/lib/utils';
+import { formatCurrencyMinor, currencySymbol } from '@/lib/utils';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
 const REFUND_REASONS = [
