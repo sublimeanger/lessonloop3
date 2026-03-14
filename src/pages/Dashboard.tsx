@@ -99,6 +99,12 @@ export default function Dashboard() {
     );
   }
 
+  const isFinance = currentRole === 'finance';
+
+  if (isFinance) {
+    return <FinanceDashboard firstName={firstName} />;
+  }
+
   if (isTeacher && isAcademyOrAgency) {
     return <TeacherDashboard firstName={firstName} />;
   }
