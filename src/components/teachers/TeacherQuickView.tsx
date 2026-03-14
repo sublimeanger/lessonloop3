@@ -10,6 +10,7 @@ import { STALE_VOLATILE } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
 import { TEACHER_COLOURS } from '@/components/calendar/teacherColours';
+import { formatCurrencyMinor } from '@/lib/utils';
 import { startOfWeek, endOfWeek } from 'date-fns';
 
 interface TeacherQuickViewProps {
