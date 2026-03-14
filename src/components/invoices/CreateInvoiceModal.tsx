@@ -342,7 +342,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                   <div className="hidden sm:grid sm:grid-cols-[1fr_auto_auto_auto] gap-2 px-1">
                     <Label className="text-xs text-muted-foreground">Description</Label>
                     <Label className="text-xs text-muted-foreground w-20">Qty</Label>
-                    <Label className="text-xs text-muted-foreground w-24">Price ({currentOrg?.currency_code === 'GBP' ? '£' : currentOrg?.currency_code || '£'})</Label>
+                    <Label className="text-xs text-muted-foreground w-24">Price ({currencySymbol(currentOrg?.currency_code || 'GBP')})</Label>
                     <div className="w-10" />
                   </div>
                   {fields.map((field, index) => (
