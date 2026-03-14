@@ -37,7 +37,7 @@ serve(async (req) => {
       console.log(`Marked ${markedOverdue?.length || 0} installments as overdue`);
 
       // Also update parent invoice status for newly overdue installments
-      const invoiceIds = [...new Set((markedOverdue || []).map((i) => i.invoice_id))];
+      const invoiceIds = [...new Set((markedOverdue || []).map((i: { invoice_id: string }) => i.invoice_id))];
       if (invoiceIds.length > 0) {
         await supabase
           .from("invoices")

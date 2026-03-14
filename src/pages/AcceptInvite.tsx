@@ -246,6 +246,8 @@ export default function AcceptInvite() {
           description: `Welcome to ${organisation?.name || 'the organisation'}`
         });
 
+        await refreshProfile();
+
         if (data.role === 'parent') {
           navigate('/portal/home');
         } else {

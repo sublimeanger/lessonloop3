@@ -49,6 +49,30 @@ export default function Onboarding() {
         return;
       }
 
+      // Safety net: if user already has org memberships (e.g. accepted invite),
+      // skip onboarding entirely — they don't need to create a new org.
+      if (profile && !isNewOrg) {
+        const { data: memberships } = await supabase
+          .from('org_memberships')
+          .select('id, role')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .limit(1);
+
+        if (memberships && memberships.length > 0) {
+          logger.debug('[Onboarding] User has active org membership — skipping onboarding');
+          // Mark onboarding complete via profile-ensure or refreshProfile
+          await refreshProfile();
+          const role = memberships[0].role;
+          if (role === 'parent') {
+            navigate('/portal/home', { replace: true });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
+          return;
+        }
+      }
+
       if (profile) {
         setProfileReady(true);
         return;
