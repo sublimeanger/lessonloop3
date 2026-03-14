@@ -198,7 +198,7 @@ export function WaitlistEntryDetail({
                 <p>Location: {entry.offered_location.name}</p>
               )}
               {entry.offered_rate_minor != null && (
-                <p>Rate: £{(entry.offered_rate_minor / 100).toFixed(2)} per lesson</p>
+                <p>Rate: {formatCurrencyMinor(entry.offered_rate_minor, currentOrg?.currency_code)} per lesson</p>
               )}
               {entry.offer_expires_at && entry.status === 'offered' && (
                 <p className="text-xs text-muted-foreground">
