@@ -7,6 +7,11 @@ import {
   MoreHorizontal,
   ClipboardList,
   Settings,
+  BarChart3,
+  Music,
+  FolderOpen,
+  FileText,
+  UserCheck,
   type LucideIcon,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -77,11 +82,15 @@ const ownerAdminMore: TabItem[] = [
 
 const teacherMore: TabItem[] = [
   { label: 'Register', path: '/register', icon: ClipboardList },
+  { label: 'Attendance', path: '/batch-attendance', icon: UserCheck },
+  { label: 'Practice', path: '/practice', icon: Music },
+  { label: 'Resources', path: '/resources', icon: FolderOpen },
+  { label: 'Notes', path: '/notes', icon: FileText },
   { label: 'Settings', path: '/settings', icon: Settings },
 ];
 
 const financeMore: TabItem[] = [
-  { label: 'Reports', path: '/reports', icon: ClipboardList },
+  { label: 'Reports', path: '/reports', icon: BarChart3 },
   { label: 'Settings', path: '/settings', icon: Settings },
 ];
 

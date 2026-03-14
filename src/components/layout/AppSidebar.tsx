@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Calendar,
   Users,
@@ -25,7 +26,7 @@ import {
   
   type LucideIcon,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -52,6 +53,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Logo, LogoWordmark } from '@/components/brand/Logo';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronRight } from 'lucide-react';
 
 interface NavItem {
   title: string;
@@ -62,6 +65,7 @@ interface NavItem {
 interface NavGroup {
   label?: string;
   items: NavItem[];
+  collapsible?: boolean;
 }
 
 // ─── Solo Teacher (owner of solo_teacher org) ───
@@ -116,18 +120,19 @@ const ownerAdminGroups: NavGroup[] = [
     label: 'Business',
     items: [
       { title: 'Invoices', url: '/invoices', icon: Receipt },
+      { title: 'Reports', url: '/reports', icon: BarChart3 },
+      { title: 'Locations', url: '/locations', icon: MapPin },
+      { title: 'Messages', url: '/messages', icon: MessageSquare },
+    ],
+  },
+  {
+    label: 'Pipeline',
+    collapsible: true,
+    items: [
       { title: 'Leads', url: '/leads', icon: UserPlus },
       { title: 'Waiting List', url: '/waitlist', icon: ClipboardCheck },
       { title: 'Make-Ups', url: '/make-ups', icon: RefreshCw },
       { title: 'Continuation', url: '/continuation', icon: ArrowRightLeft },
-      { title: 'Reports', url: '/reports', icon: BarChart3 },
-      { title: 'Locations', url: '/locations', icon: MapPin },
-    ],
-  },
-  {
-    label: 'Communication',
-    items: [
-      { title: 'Messages', url: '/messages', icon: MessageSquare },
     ],
   },
 ];
@@ -283,6 +288,42 @@ function SidebarNavItem({ item, collapsed, badge }: { item: NavItem; collapsed: 
   );
 }
 
+function CollapsibleNavGroup({ group, collapsed, messageBadge }: { group: NavGroup; collapsed: boolean; messageBadge: number }) {
+  const location = useLocation();
+  const isActive = group.items.some((item) => location.pathname.startsWith(item.url));
+  const [open, setOpen] = useState(isActive);
+
+  return (
+    <SidebarGroup className="py-1">
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger className="flex w-full items-center gap-1 px-4 mb-0.5 group cursor-pointer">
+          <ChevronRight className={cn(
+            'h-3 w-3 text-sidebar-foreground/40 transition-transform duration-200',
+            open && 'rotate-90'
+          )} />
+          <span className="text-micro font-semibold uppercase tracking-widest text-sidebar-foreground/60">
+            {group.label}
+          </span>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {group.items.map((item) => (
+                <SidebarNavItem
+                  key={item.url}
+                  item={item}
+                  collapsed={collapsed}
+                  badge={item.url === '/messages' ? messageBadge : undefined}
+                />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </CollapsibleContent>
+      </Collapsible>
+    </SidebarGroup>
+  );
+}
+
 export function AppSidebar() {
   const { profile, signOut } = useAuth();
   const { currentRole, currentOrg } = useOrg();
@@ -319,30 +360,42 @@ export function AppSidebar() {
         <SidebarSeparator className="bg-sidebar-border mb-1" />
 
         {/* Nav groups */}
-        {navGroups.map((group, gi) => (
-          <SidebarGroup key={gi} className="py-1">
-            {group.label && !collapsed && (
-              <SidebarGroupLabel className="text-micro font-semibold uppercase tracking-widest text-sidebar-foreground/60 px-4 mb-0.5">
-                {group.label}
-              </SidebarGroupLabel>
-            )}
-            {group.label && collapsed && (
-              <SidebarSeparator className="bg-sidebar-border mx-2 my-1" />
-            )}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarNavItem
-                    key={item.url}
-                    item={item}
-                    collapsed={collapsed}
-                    badge={item.url === '/messages' ? messageBadge : undefined}
-                  />
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        {navGroups.map((group, gi) => {
+          if (group.collapsible && !collapsed) {
+            return (
+              <CollapsibleNavGroup
+                key={gi}
+                group={group}
+                collapsed={collapsed}
+                messageBadge={messageBadge}
+              />
+            );
+          }
+          return (
+            <SidebarGroup key={gi} className="py-1">
+              {group.label && !collapsed && (
+                <SidebarGroupLabel className="text-micro font-semibold uppercase tracking-widest text-sidebar-foreground/60 px-4 mb-0.5">
+                  {group.label}
+                </SidebarGroupLabel>
+              )}
+              {group.label && collapsed && (
+                <SidebarSeparator className="bg-sidebar-border mx-2 my-1" />
+              )}
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {group.items.map((item) => (
+                    <SidebarNavItem
+                      key={item.url}
+                      item={item}
+                      collapsed={collapsed}
+                      badge={item.url === '/messages' ? messageBadge : undefined}
+                    />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-2 space-y-1">
