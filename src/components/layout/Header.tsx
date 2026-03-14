@@ -67,7 +67,7 @@ export function Header() {
 
       <div className="flex items-center gap-1.5">
         {/* Notification bell — staff only */}
-        {isStaff && <NotificationBell />}
+        {showNotifications && <NotificationBell />}
 
         {/* LoopAssist */}
       <Button
