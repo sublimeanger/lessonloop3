@@ -86,7 +86,7 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
               <div>
                 <p className="text-sm text-muted-foreground">Available Balance</p>
                 <p className="text-section-title text-primary">
-                  {formatCurrency(totalAvailableValue)}
+                  {fmtCurrency(totalAvailableValue)}
                 </p>
               </div>
               <div className="text-left sm:text-right">
