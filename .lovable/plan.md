@@ -1,163 +1,73 @@
 
 
-# Additional Audit Phases Plan
+## Solo Teacher Journey Audit
 
-Based on thorough codebase review, here are 6 additional phases covering the gaps you identified. Each phase lists the exact files to audit and the specific concerns to investigate.
+I traced the full solo teacher path — from signup through daily use. Here's what's in place and what's not.
 
----
+### What's Working Well
 
-## Phase 12: Subscription Enforcement & Feature Gating
+1. **Onboarding wizard** — Fully tailored. Solo teachers get a streamlined "About Your Teaching" step (student count + instrument chips, no org name field). Plan recommendation correctly maps to the Teacher plan.
 
-**Files to audit:**
-- `src/hooks/useSubscription.ts` — client-side plan derivation
-- `src/hooks/useFeatureGate.ts` — feature matrix and access checks
-- `src/hooks/useUsageCounts.ts` — student/teacher limit checks
-- `src/components/subscription/FeatureGate.tsx` — UI gating components
-- `supabase/functions/stripe-webhook/index.ts` — plan sync from Stripe
-- `supabase/functions/_shared/plan-config.ts` — server-side limits
-- DB functions: `check_teacher_limit()`, `check_subscription_active()`, `is_org_active()`, `is_org_write_allowed()`, `protect_subscription_fields()`
-- `src/test/subscription/PlanGating.test.ts`
+2. **Dashboard** — Dedicated `SoloTeacherDashboard` component with solo-appropriate stats (Today's Lessons, Active Students, Revenue MTD, Outstanding). Quick Actions are solo-specific (New Lesson, Record Attendance, Create Invoice, Send Message).
 
-**Concerns:**
-- SUB-H1 (from Phase 10): No server-side student limit trigger — is it still missing?
-- Can a cancelled/expired org bypass `check_subscription_active` for any table?
-- Do `CANCELLED_LIMITS` actually get applied on the DB rows, or only client-side?
-- Is `protect_subscription_fields()` trigger attached to the right table with the right timing?
-- Feature matrix gaps: are there features accessible without proper gating?
-- Grace period logic: is `PAST_DUE_GRACE_DAYS` consistent between frontend and backend?
-- Can a user downgrade and retain access to higher-plan features until cache expires?
+3. **First-run checklist** — Solo-specific 2-step path: "Add your first student" then "Schedule a lesson". Simpler than academy/agency paths. Auto-advances when queries are invalidated (fixed in prior session).
 
----
+4. **Onboarding checklist (persistent)** — Has a solo_teacher config with 4 items: add student, schedule lesson, add location, create invoice. Progress ring, celebration on completion.
 
-## Phase 13: Term Management & Practice/Resources
+5. **Feature gating** — Solo teachers get access to most features (reports, billing runs, practice tracking, resource library, lead pipeline, calendar sync, parent portal). Multi-location and custom branding are correctly gated to academy+.
 
-**Files to audit:**
-- `src/hooks/useTerms.ts` — CRUD operations
-- `src/components/settings/TermManagementCard.tsx` — overlap validation
-- `supabase/functions/process-term-adjustment/index.ts` — term adjustment wizard
-- `src/hooks/usePractice.ts` — practice log mutations
-- `src/hooks/useResources.ts` — resource upload/share/delete
-- DB function: `update_practice_streak()` trigger
-- `supabase/functions/streak-notification/index.ts`
-- `supabase/functions/credit-expiry/index.ts`, `credit-expiry-warning/index.ts`
+6. **Pricing/billing** — £12/mo Teacher plan correctly mapped through all layers (frontend config, Stripe webhook, checkout edge function, plan limits).
 
-**Concerns:**
-- Term overlap validation: is it server-side or client-only?
-- `process-term-adjustment`: does it validate term ownership, lesson counts, and credit note amounts atomically?
-- Practice streak trigger: edge cases with backdated logs, timezone boundaries, same-day duplicates
-- Resource uploads: is file type validated server-side or just client-side? Can you upload a `.exe` disguised as `.pdf`?
-- Storage quota: enforced at DB/storage level or just client-side check?
-- Streak notifications: authenticated? Rate limited?
+### Issues Found
 
----
+**Issue 1: Sidebar shows multi-tenant features to solo teachers**
+The `AppSidebar` uses `ownerAdminGroups` for both solo teachers (owner role) and academy owners. This means solo teachers see:
+- **Teachers** — links to `/teachers` (managing a team). A solo teacher doesn't have a team.
+- **Locations** — links to `/locations`. While useful, it's not a priority item.
+- **Batch Attendance** — designed for multi-teacher orgs.
+- **Leads**, **Waiting List**, **Make-Ups**, **Continuation** — advanced business features that may overwhelm a solo teacher.
 
-## Phase 14: LoopAssist AI (Staff Chat + Execute)
+The nav has **15+ items** visible to a solo teacher owner, which is the same as an academy owner managing 20 teachers. There's no simplification.
 
-**Files to audit:**
-- `supabase/functions/looopassist-chat/index.ts` (1907 lines) — full review
-- `supabase/functions/looopassist-execute/index.ts` (1391 lines) — full review
-- `src/hooks/useLoopAssist.ts` (552 lines) — client-side hook
-- `src/components/loopassist/ActionCard.tsx` — proposal parsing
-- `src/lib/action-registry.ts` — valid action types
-- `supabase/functions/parent-loopassist-chat/index.ts` — parent variant
-- `src/hooks/useParentLoopAssist.ts` — parent client hook
-- `supabase/functions/_shared/rate-limit.ts` — LoopAssist daily cap
+**Issue 2: Bottom nav (mobile/native) also ignores org type**
+`StaffBottomNav` switches based on `currentRole` (owner/admin/teacher/finance) but never checks `org_type`. A solo teacher owner sees the same bottom nav as an academy owner — including "Teachers" in the More menu.
 
-**Concerns:**
-- **Prompt injection**: sanitisation covers known patterns, but does the regex miss Unicode homoglyphs, RTL overrides, or base64-encoded payloads?
-- **Tool call security**: `executeToolCall` returns raw `error.message` from DB queries — internal schema leakage
-- **IDOR via tools**: `search_students`, `get_student_detail`, etc. pass `orgId` but is it always the verified org from the membership check, or could a crafted tool input override it?
-- **Action execution scope**: `bulk_complete_lessons` has a `.limit(100)` but no org_id check on the update itself (relies on select filter) — is the update safe if IDs leak?
-- **Billing run via AI**: `executeGenerateBillingRun` creates invoices with `org_id` but bypasses `create_invoice_with_items` RPC — does it skip any validations?
-- **Dead code**: line 992-993 in execute has `(lessons || []).length > 0 ? null : null` — dead reference
-- **Parent chat**: uses Anthropic directly with `ANTHROPIC_API_KEY` — leaks `e.message` on error (line 351), no message sanitisation of user input
-- **Model selection**: Pro orgs get Sonnet, others Haiku — is there a cost ceiling?
-- **Context hash**: SHA-256 truncated to 16 hex chars — collision risk acceptable?
-- **Tool result size**: no cap on tool result string length — could a 10K result blow the context window
-- **Concurrent proposals**: can a user confirm the same proposal twice in a race condition? (line 378 uses `eq("status", "proposed")` but no `FOR UPDATE`)
+**Issue 3: Onboarding checklist inconsistency**
+The persistent `OnboardingChecklist` asks solo teachers to "Add a teaching location" (step 3) and "Create your first invoice" (step 4), but the `FirstRunExperience` hook only has 2 steps (add student, schedule lesson). These are two separate checklist systems with different step counts for the same user type.
 
----
+**Issue 4: No solo-specific nav simplification anywhere**
+The sidebar, bottom nav, header, and route structure are entirely role-based, never org-type-aware. A solo teacher sees the exact same navigation complexity as a 50-teacher academy owner.
 
-## Phase 15: Public Pages & Marketing Security
+### Recommended Fix Plan
 
-**Files to audit:**
-- `supabase/functions/marketing-chat/index.ts` — public AI endpoint
-- `supabase/functions/booking-submit/index.ts` — public booking form
-- `supabase/functions/booking-get-slots/index.ts` — public slot query
-- `supabase/functions/send-contact-message/index.ts` — contact form
-- `supabase/functions/send-parent-enquiry/index.ts` — parent enquiry
-- `supabase/functions/invite-get/index.ts` — public invite retrieval
-- `src/components/marketing/MarketingChatWidget.tsx` — client-side chat
+**Change 1: Create a solo-teacher sidebar nav group** in `AppSidebar.tsx`
+- New `soloOwnerGroups` that shows: Dashboard, Calendar, Students, Register, Practice, Resources, Notes | Invoices, Messages | Settings, Help
+- Remove: Teachers, Locations, Batch Attendance, Leads, Waiting List, Make-Ups, Continuation, Reports (or simplify to a single "Revenue" link)
+- In `getNavGroups()`, check both `role` AND `org_type` — if `role === 'owner' && org_type === 'solo_teacher'`, use the simplified nav
 
-**Concerns:**
-- All unauthenticated — are rate limits correctly configured and fail-closed?
-- `marketing-chat`: message array not sanitised — can inject system/assistant messages?
-- `booking-submit`: HTML injection in email templates (EF-L1 from Phase 11 — still open?)
-- `booking-get-slots`: does it leak teacher names, room details, or org internals?
-- `invite-get`: does it expose membership details or org info to unauthenticated users?
-- `send-contact-message` / `send-parent-enquiry`: email injection via headers? SMTP injection?
-- CORS configuration on public endpoints: wildcard or restricted?
+**Change 2: Create solo-teacher bottom nav** in `StaffBottomNav.tsx`
+- New `soloOwnerTabs` with Home, Calendar, Students, Messages (same 4 tabs)
+- New `soloOwnerMore` without Teachers link — just Invoices, Register, Settings
+- Pass `org_type` to `getTabsForRole()` or create a new selector
 
----
+**Change 3: Align the two checklist systems**
+- Update `OnboardingChecklist` solo_teacher config to match `FirstRunExperience` (2 core steps: add student, schedule lesson) — or keep 4 steps but make them the same in both systems
+- The location step is debatable for solo teachers — many teach from home and don't need a formal location record
 
-## Phase 16: Performance at Scale
+**Change 4: (Optional) Contextual quick actions**
+- The `QuickActionsGrid` solo variant is already good — no changes needed there
 
-**Files to audit:**
-- All hooks with unbounded queries (no `.limit()` or pagination)
-- `src/hooks/useReports.ts` (734 lines) — multiple aggregation queries
-- `src/hooks/useDataExport.ts` — export truncation (RPT-M5)
-- `supabase/functions/looopassist-chat/index.ts` — 9 parallel aggregate queries on every message
-- `supabase/functions/create-billing-run/index.ts` — batch processing
-- `supabase/functions/gdpr-export/index.ts` — 5 unbounded SELECTs
-- DB indexes: verify critical queries have covering indexes
-- Realtime subscriptions: are any too broad?
+### Impact Assessment
 
-**Concerns:**
-- 1000-row default limit: which queries will silently lose data?
-- N+1 patterns: execute functions loop with individual updates (`bulk_complete_lessons`, `send_bulk_reminders`)
-- LoopAssist context building: 9 parallel queries per message — acceptable for 100+ concurrent users?
-- `useTeacherPerformance`: waterfall sequential queries (RPT-M6)
-- Calendar queries: do they have date-windowed indexes?
-- Realtime: `useRealtimePortalPayments` subscribes to all org payments — too broad for large orgs?
-- Billing run: no batch insert for invoice items — creates them one-by-one per payer
-- Missing indexes on `attendance_records`, `practice_logs`, `message_log` for common query patterns
+These are UX polish issues, not functional bugs. A solo teacher *can* use the app today — they just see an intimidating amount of navigation meant for larger organisations. For your biggest user segment, reducing cognitive load in the nav is high-impact.
 
----
+### Files to Modify
 
-## Phase 17: Mobile & Capacitor
+| File | Change |
+|------|--------|
+| `src/components/layout/AppSidebar.tsx` | Add `soloOwnerGroups`, update `getNavGroups` to accept org_type |
+| `src/components/layout/StaffBottomNav.tsx` | Add solo-specific tabs/more, update selector |
+| `src/components/shared/OnboardingChecklist.tsx` | Optionally trim solo_teacher steps to match FirstRunExperience |
 
-**Files to audit:**
-- `src/lib/platform.ts` — platform detection
-- `src/lib/native/init.ts` — native initialisation
-- `src/lib/native/statusBar.ts`, `keyboard.ts`, `deepLinks.ts`
-- `capacitor.config.ts` — app configuration
-- `src/App.tsx` — `NativeInitializer` component
-- `src/components/layout/PortalLayout.tsx` — mobile layout
-- `src/components/layout/PortalBottomNav.tsx` — bottom navigation
-- `src/hooks/use-mobile.ts` — responsive breakpoint detection
-- PWA config in `vite.config.ts`
-
-**Concerns:**
-- Deep link handling: does `initDeepLinks` validate URLs before navigating? Could a malicious deep link navigate to an admin route?
-- Push notifications: is the token registration endpoint authenticated? Can tokens be registered for another user?
-- `capacitor.config.ts` — is `cleartext: true` safe for production? (allows HTTP)
-- Status bar configuration: does it handle notch/safe area on all devices?
-- Keyboard handling: does it prevent content from being hidden behind the keyboard?
-- Offline behaviour: what happens when Supabase queries fail on mobile? Is there any caching or queue?
-- Back button: does Android back button handle navigation correctly across all routes?
-- Session persistence: does the auth session survive app backgrounding/killing?
-- PWA service worker: does `navigateFallbackDenylist` include `/~oauth`?
-
----
-
-## Execution Order (recommended)
-
-1. **Phase 14 (LoopAssist AI)** — largest attack surface, 3300+ lines of edge function code, tool execution with write access
-2. **Phase 12 (Subscription)** — revenue protection, known open issue (SUB-H1)
-3. **Phase 15 (Public Pages)** — unauthenticated endpoints, highest external exposure
-4. **Phase 16 (Performance)** — data loss risks from silent truncation
-5. **Phase 13 (Terms/Practice/Resources)** — moderate risk, some issues already flagged
-6. **Phase 17 (Mobile)** — lowest immediate risk but needed before app store submission
-
-Each phase follows the same pattern as Phases 1-11: read the files, run the test suite, log findings by severity, and list what passed.
+Estimated scope: ~100 lines of changes across 3 files.
 
