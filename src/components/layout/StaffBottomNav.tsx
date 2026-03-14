@@ -85,7 +85,10 @@ const financeMore: TabItem[] = [
   { label: 'Settings', path: '/settings', icon: Settings },
 ];
 
-function getTabsForRole(role: string | null): { tabs: TabItem[]; more: TabItem[] } {
+function getTabsForRole(role: string | null, orgType?: string | null): { tabs: TabItem[]; more: TabItem[] } {
+  if ((role === 'owner' || role === 'admin') && orgType === 'solo_teacher') {
+    return { tabs: soloOwnerTabs, more: soloOwnerMore };
+  }
   switch (role) {
     case 'owner':
     case 'admin':
