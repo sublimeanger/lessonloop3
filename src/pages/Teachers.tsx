@@ -21,6 +21,8 @@ import { EmptyState, InlineEmptyState } from '@/components/shared/EmptyState';
 import { ListSkeleton } from '@/components/shared/LoadingState';
 import { useToast } from '@/hooks/use-toast';
 import { useOrg } from '@/contexts/OrgContext';
+import { useOrgTimezone } from '@/hooks/useOrgTimezone';
+import { fromZonedTime } from 'date-fns-tz';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useUsageCounts } from '@/hooks/useUsageCounts';
@@ -114,6 +116,7 @@ function TeacherFormFields() {
 export default function Teachers() {
   usePageMeta('Teachers | LessonLoop', 'Manage your teaching staff');
   const { currentOrg, isOrgAdmin } = useOrg();
+  const { timezone: orgTimezone } = useOrgTimezone();
   const { user } = useAuth();
   const { toast } = useToast();
   const { limits, canAddTeacher, usage } = useUsageCounts();
@@ -336,7 +339,7 @@ export default function Teachers() {
       .select('id, title, start_at', { count: 'exact' })
       .eq('teacher_id', teacher.id)
       .eq('status', 'scheduled')
-      .gte('start_at', new Date().toISOString())
+      .gte('start_at', fromZonedTime(new Date(), orgTimezone).toISOString())
       .order('start_at', { ascending: true })
       .limit(10);
 
@@ -371,7 +374,7 @@ export default function Teachers() {
             })
             .eq('teacher_id', teacher.id)
             .eq('status', 'scheduled')
-            .gte('start_at', new Date().toISOString());
+            .gte('start_at', fromZonedTime(new Date(), orgTimezone).toISOString());
 
           if (error) throw error;
           reassignedCount = lessonCount;
@@ -385,7 +388,7 @@ export default function Teachers() {
             })
             .eq('teacher_id', teacher.id)
             .eq('status', 'scheduled')
-            .gte('start_at', new Date().toISOString());
+            .gte('start_at', fromZonedTime(new Date(), orgTimezone).toISOString());
 
           if (error) throw error;
           cancelledCount = lessonCount;

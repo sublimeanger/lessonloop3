@@ -42,6 +42,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { parseISO, formatDistanceToNowStrict, isBefore, isToday, isTomorrow, isAfter, addMinutes } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
@@ -306,12 +307,12 @@ export default function PortalHome() {
         {/* 1. Hero Greeting */}
         <div className={cn(
           'rounded-2xl p-4 sm:p-6 md:p-8 text-white relative overflow-hidden',
-          new Date().getHours() < 12 ? 'bg-gradient-morning' :
-          new Date().getHours() < 17 ? 'bg-gradient-afternoon' : 'bg-gradient-evening'
+          toZonedTime(new Date(), tz).getHours() < 12 ? 'bg-gradient-morning' :
+          toZonedTime(new Date(), tz).getHours() < 17 ? 'bg-gradient-afternoon' : 'bg-gradient-evening'
         )}>
           <div className="relative z-10">
             <p className="text-xs font-medium uppercase tracking-widest text-white/60 mb-1">
-              {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening'}
+              {toZonedTime(new Date(), tz).getHours() < 12 ? 'Good morning' : toZonedTime(new Date(), tz).getHours() < 17 ? 'Good afternoon' : 'Good evening'}
             </p>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
               Hi {firstName}! 👋
