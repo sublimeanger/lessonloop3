@@ -232,6 +232,12 @@ export default function Invoices() {
               <CalendarClock className="h-3.5 w-3.5" />
               Recurring
             </TabsTrigger>
+            {(currentRole === 'owner' || currentRole === 'admin') && (
+              <TabsTrigger value="run-history" className="gap-1.5">
+                <History className="h-3.5 w-3.5" />
+                Run History
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="invoices" className="space-y-6">
