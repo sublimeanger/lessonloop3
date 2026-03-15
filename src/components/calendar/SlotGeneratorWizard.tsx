@@ -351,8 +351,10 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
             </Button>
           )}
           {step === 2 && (
-            <Button onClick={goToStep3} disabled={!teacherId}>
-              Preview Slots
+            <Button onClick={goToStep3} disabled={!teacherId || isCheckingConflicts}>
+              {isCheckingConflicts ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />Checking conflicts…</>
+              ) : 'Preview Slots'}
             </Button>
           )}
           {step === 3 && (
