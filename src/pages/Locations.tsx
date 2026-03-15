@@ -562,34 +562,12 @@ export default function Locations() {
   const handleSetPrimary = async (locationId: string) => {
     if (!currentOrg) return;
 
-    // Find current primary so we can rollback if needed
-    const currentPrimary = locations.find(l => l.is_primary);
-
     try {
-      const { error: clearError } = await supabase
-        .from('locations')
-        .update({ is_primary: false })
-        .eq('org_id', currentOrg.id);
-
-      if (clearError) throw clearError;
-
-      const { error: setError } = await supabase
-        .from('locations')
-        .update({ is_primary: true })
-        .eq('id', locationId)
-        .eq('org_id', currentOrg.id);
-
-      if (setError) {
-        // Rollback: restore previous primary
-        if (currentPrimary) {
-          await supabase
-            .from('locations')
-            .update({ is_primary: true })
-            .eq('id', currentPrimary.id)
-            .eq('org_id', currentOrg.id);
-        }
-        throw setError;
-      }
+      const { error } = await (supabase.rpc as any)('set_primary_location', {
+        p_org_id: currentOrg.id,
+        p_location_id: locationId,
+      });
+      if (error) throw error;
 
       invalidateLocations();
       toast({ title: 'Primary location updated' });
@@ -599,7 +577,8 @@ export default function Locations() {
     }
   };
 
-  const canAddLocation = hasMultiLocation || locations.length === 0;
+  const activeLocationCount = locations.filter(l => !l.is_archived).length;
+  const canAddLocation = hasMultiLocation || activeLocationCount === 0;
 
   return (
     <AppLayout>

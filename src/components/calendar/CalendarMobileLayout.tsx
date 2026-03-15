@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useOrg } from '@/contexts/OrgContext';
 import { format, addWeeks, subWeeks } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -68,6 +69,7 @@ export function CalendarMobileLayout({
   bulk,
   refetch,
 }: CalendarMobileLayoutProps) {
+  const { isOrgAdmin } = useOrg();
   const [slotWizardOpen, setSlotWizardOpen] = useState(false);
 
   const wizardTeachers = teachers.map(t => ({ id: t.id, display_name: t.name, user_id: t.userId }));
@@ -92,10 +94,12 @@ export function CalendarMobileLayout({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setSlotWizardOpen(true)}>
-                    <Zap className="h-4 w-4 mr-2" />
-                    Generate Open Slots
-                  </DropdownMenuItem>
+                  {isOrgAdmin && (
+                    <DropdownMenuItem onClick={() => setSlotWizardOpen(true)}>
+                      <Zap className="h-4 w-4 mr-2" />
+                      Generate Open Slots
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => bulk.enterSelectionMode()}>
                     <CheckSquare className="h-4 w-4 mr-2" />
                     Select Lessons

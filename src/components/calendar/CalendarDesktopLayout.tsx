@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useOrg } from '@/contexts/OrgContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -98,6 +99,7 @@ export function CalendarDesktopLayout({
   bulk,
   refetch,
 }: CalendarDesktopLayoutProps) {
+  const { isOrgAdmin } = useOrg();
   const [slotWizardOpen, setSlotWizardOpen] = useState(false);
   // hide_cancelled is now applied server-side in useCalendarData
 
@@ -135,10 +137,12 @@ export function CalendarDesktopLayout({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setSlotWizardOpen(true)}>
-                    <Zap className="h-4 w-4 mr-2" />
-                    Generate Open Slots
-                  </DropdownMenuItem>
+                  {isOrgAdmin && (
+                    <DropdownMenuItem onClick={() => setSlotWizardOpen(true)}>
+                      <Zap className="h-4 w-4 mr-2" />
+                      Generate Open Slots
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => bulk.enterSelectionMode()}>
                     <CheckSquare className="h-4 w-4 mr-2" />
                     Select Lessons

@@ -85,6 +85,21 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
   const selectedTeacher = teachers.find(t => t.id === teacherId);
   const filteredRooms = locationId ? rooms.filter(r => r.location_id === locationId) : rooms;
 
+  // Reset state when dialog closes
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      setStep(1);
+      setSlots([]);
+      setTeacherId('');
+      setLocationId('');
+      setRoomId('');
+      setLessonType('private');
+      setMaxParticipants(1);
+      setNotes('');
+    }
+    onOpenChange(isOpen);
+  };
+
   const parseTime = (t: string) => {
     const [h, m] = t.split(':').map(Number);
     return { hour: h, minute: m };
@@ -150,17 +165,14 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
     };
 
     await generateMutation.mutateAsync({ config, slots, timezone });
-    onOpenChange(false);
+    handleOpenChange(false);
     onComplete?.(date);
-    // Reset
-    setStep(1);
-    setSlots([]);
   };
 
   const activeSlotCount = slots.filter(s => !s.excluded).length;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -260,14 +272,18 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
           <div className="space-y-4">
             <div>
               <Label>Teacher <span className="text-destructive">*</span></Label>
-              <Select value={teacherId} onValueChange={setTeacherId}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select teacher" /></SelectTrigger>
-                <SelectContent>
-                  {teachers.map(t => (
-                    <SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {teachers.length === 0 ? (
+                <p className="text-sm text-muted-foreground mt-1">No teachers available. Add a teacher first.</p>
+              ) : (
+                <Select value={teacherId} onValueChange={setTeacherId}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select teacher" /></SelectTrigger>
+                  <SelectContent>
+                    {teachers.map(t => (
+                      <SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -315,7 +331,10 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
                   min={1}
                   max={30}
                   value={maxParticipants}
-                  onChange={(e) => setMaxParticipants(Number(e.target.value))}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10);
+                    setMaxParticipants(Math.max(1, Math.min(30, isNaN(v) ? 1 : v)));
+                  }}
                   className="mt-1"
                 />
               </div>
@@ -335,7 +354,14 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
         )}
 
         {step === 3 && (
-          <SlotPreviewTimeline slots={slots} onToggleSlot={toggleSlot} />
+          <div className="space-y-3">
+            <SlotPreviewTimeline slots={slots} onToggleSlot={toggleSlot} />
+            {activeSlotCount === 0 && slots.length > 0 && (
+              <p className="text-sm text-destructive text-center">
+                All slots have conflicts. Go back and choose a different date or time range.
+              </p>
+            )}
+          </div>
         )}
 
         <DialogFooter className="flex gap-2">

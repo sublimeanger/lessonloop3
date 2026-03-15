@@ -258,6 +258,28 @@ export function useDeleteValidation() {
       warnings.push('This is the primary location. Another location will need to be set as primary.');
     }
 
+    // Check for make-up waitlist references (LOC-09)
+    const { count: makeUpCount, error: muErr } = await supabase
+      .from('make_up_waitlist')
+      .select('id', { count: 'exact', head: true })
+      .eq('location_id', locationId);
+    if (muErr) throw muErr;
+
+    if (makeUpCount && makeUpCount > 0) {
+      warnings.push(`${makeUpCount} make-up waitlist entr${makeUpCount > 1 ? 'ies' : 'y'} reference this location. The location reference will be cleared.`);
+    }
+
+    // Check for enrolment waitlist offered_location references (LOC-09)
+    const { count: enrolCount, error: enErr } = await supabase
+      .from('enrolment_waitlist')
+      .select('id', { count: 'exact', head: true })
+      .eq('offered_location_id', locationId);
+    if (enErr) throw enErr;
+
+    if (enrolCount && enrolCount > 0) {
+      warnings.push(`${enrolCount} enrolment waitlist entr${enrolCount > 1 ? 'ies' : 'y'} reference this location. The location reference will be cleared.`);
+    }
+
     return {
       canDelete: blocks.length === 0,
       blocks,
