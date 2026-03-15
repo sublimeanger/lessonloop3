@@ -202,7 +202,7 @@ export default function InvoiceDetail() {
                   )}
                   {isPdfLoading ? 'Generating...' : 'Download PDF'}
                 </Button>
-                {invoice.status !== 'paid' && invoice.status !== 'void' && onlinePaymentsEnabled && !platform.isNative && (
+                {invoice.status !== 'paid' && invoice.status !== 'void' && amountDue > 0 && onlinePaymentsEnabled && !platform.isNative && (
                   <Button
                     className="min-h-11 gap-2 sm:min-h-9"
                     onClick={handlePayNow}
@@ -213,7 +213,7 @@ export default function InvoiceDetail() {
                     ) : (
                       <CreditCard className="h-4 w-4" />
                     )}
-                    {isPaymentLoading ? 'Processing...' : 'Pay Now'}
+                    {isPaymentLoading ? 'Processing...' : `Pay ${formatCurrencyMinor(amountDue, currency)}`}
                   </Button>
                 )}
               </>

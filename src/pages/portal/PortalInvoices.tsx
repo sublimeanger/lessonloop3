@@ -546,7 +546,7 @@ function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, i
               ) : (
                 <CreditCard className="h-5 w-5" />
               )}
-              {isPaying ? 'Processing...' : `Pay ${formatCurrencyMinor(invoice.total_minor, currencyCode)}`}
+              {isPaying ? 'Processing...' : `Pay ${formatCurrencyMinor(remainingMinor, currencyCode)}`}
             </Button>
           )}
           {isPayable && platform.isNative && (
