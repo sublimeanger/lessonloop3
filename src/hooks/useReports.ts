@@ -10,12 +10,13 @@ import { sanitiseCSVCell, currencySymbol } from '@/lib/utils';
 
 // Helper: resolve teacher_id for the current user (returns null if not a teacher)
 async function resolveTeacherId(orgId: string, userId: string): Promise<string | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('teachers')
     .select('id')
     .eq('org_id', orgId)
     .eq('user_id', userId)
     .maybeSingle();
+  if (error) throw error;
   return data?.id ?? null;
 }
 
@@ -309,18 +310,20 @@ export function useLessonsDeliveredReport(startDate: string, endDate: string) {
       const locationIds = [...new Set((lessons || []).filter(l => l.location_id).map(l => l.location_id!))];
 
       // Fetch teachers
-      const { data: teachers } = teacherIds.length > 0
+      const { data: teachers, error: tErr } = teacherIds.length > 0
         ? await supabase
             .from('teachers')
             .select('id, display_name')
             .in('id', teacherIds)
-        : { data: [] };
+        : { data: [] as { id: string; display_name: string }[], error: null };
+      if (tErr) throw tErr;
 
       // Fetch locations
-      const { data: locations } = await supabase
+      const { data: locations, error: lErr } = await supabase
         .from('locations')
         .select('id, name')
         .in('id', locationIds);
+      if (lErr) throw lErr;
 
       // Build maps
       const teacherNameMap = new Map<string, string>();
@@ -457,24 +460,26 @@ export function useCancellationReport(startDate: string, endDate: string) {
 
       // Fetch attendance records for cancellation reasons
       const lessonIds = (lessons || []).filter(l => l.status === 'cancelled').map(l => l.id);
-      const { data: attendance } = lessonIds.length > 0 
+      const { data: attendance, error: attErr } = lessonIds.length > 0 
         ? await supabase
             .from('attendance_records')
             .select('lesson_id, attendance_status, cancellation_reason')
             .in('lesson_id', lessonIds)
             .limit(10000)
-        : { data: [] };
+        : { data: [] as { lesson_id: string; attendance_status: string; cancellation_reason: string | null }[], error: null };
+      if (attErr) throw attErr;
 
       // Get teacher IDs
       const teacherIds = [...new Set((lessons || []).map(l => l.teacher_id).filter(Boolean) as string[])];
       
       // Fetch teachers
-      const { data: teachers } = teacherIds.length > 0
+      const { data: teachers, error: tErr2 } = teacherIds.length > 0
         ? await supabase
             .from('teachers')
             .select('id, display_name')
             .in('id', teacherIds)
-        : { data: [] };
+        : { data: [] as { id: string; display_name: string }[], error: null };
+      if (tErr2) throw tErr2;
 
       const teacherNameMap = new Map<string, string>();
       for (const t of teachers || []) {

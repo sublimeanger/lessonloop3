@@ -138,6 +138,12 @@ function InvoiceActions({
   alwaysVisible?: boolean;
 }) {
   const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const guard = (fn: (inv: InvoiceWithDetails) => void) => {
+    if (busy) return;
+    setBusy(true);
+    fn(invoice);
+  };
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -151,18 +157,18 @@ function InvoiceActions({
           View
         </DropdownMenuItem>
         {invoice.status === 'draft' && (
-          <DropdownMenuItem onClick={() => onSend(invoice)}>
+          <DropdownMenuItem onClick={() => guard(onSend)} disabled={busy}>
             <Send className="mr-2 h-4 w-4" />
             Send
           </DropdownMenuItem>
         )}
         {(invoice.status === 'sent' || invoice.status === 'overdue') && (
           <>
-            <DropdownMenuItem onClick={() => onMarkPaid(invoice)}>
+            <DropdownMenuItem onClick={() => guard(onMarkPaid)} disabled={busy}>
               <CreditCard className="mr-2 h-4 w-4" />
               Record Payment
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onSendReminder(invoice)}>
+            <DropdownMenuItem onClick={() => guard(onSendReminder)} disabled={busy}>
               <Bell className="mr-2 h-4 w-4" />
               Send Reminder
             </DropdownMenuItem>
@@ -171,7 +177,7 @@ function InvoiceActions({
         {invoice.status !== 'void' && invoice.status !== 'paid' && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onVoid(invoice)} className="text-destructive">
+            <DropdownMenuItem onClick={() => guard(onVoid)} disabled={busy} className="text-destructive">
               <XCircle className="mr-2 h-4 w-4" />
               Void
             </DropdownMenuItem>

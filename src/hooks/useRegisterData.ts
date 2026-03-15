@@ -119,12 +119,13 @@ export function useRegisterData(date: Date) {
       // Filter by teacher_id for teacher role
       if (isTeacher && user) {
         // Look up teacher record by user_id, then filter by teacher_id
-        const { data: teacherRecord } = await supabase
+        const { data: teacherRecord, error: trErr } = await supabase
           .from('teachers')
           .select('id')
           .eq('user_id', user.id)
           .eq('org_id', currentOrg.id)
           .maybeSingle();
+        if (trErr) throw trErr;
         
         if (teacherRecord) {
           query = query.eq('teacher_id', teacherRecord.id);
@@ -147,18 +148,20 @@ export function useRegisterData(date: Date) {
       let roomMap = new Map<string, string>();
 
       if (locationIds.length > 0) {
-        const { data: locations } = await supabase
+        const { data: locations, error: locErr } = await supabase
           .from('locations')
           .select('id, name')
           .in('id', locationIds);
+        if (locErr) throw locErr;
         locationMap = new Map((locations || []).map(l => [l.id, l.name]));
       }
 
       if (roomIds.length > 0) {
-        const { data: rooms } = await supabase
+        const { data: rooms, error: rmErr } = await supabase
           .from('rooms')
           .select('id, name')
           .in('id', roomIds);
+        if (rmErr) throw rmErr;
         roomMap = new Map((rooms || []).map(r => [r.id, r.name]));
       }
 
@@ -229,24 +232,26 @@ export function useUpdateAttendance() {
       if (!currentOrg || !user) throw new Error('No organisation or user');
 
       // Authorisation guard: verify user is the lesson's teacher or an admin
-      const { data: lesson } = await supabase
+      const { data: lesson, error: lessonErr } = await supabase
         .from('lessons')
         .select('teacher_user_id')
         .eq('id', lessonId)
         .single();
+      if (lessonErr) throw lessonErr;
 
       if (!lesson) throw new Error('Lesson not found');
 
       const isAssignedTeacher = lesson.teacher_user_id === user.id;
       if (!isAssignedTeacher) {
         // Check if user is owner/admin
-        const { data: membership } = await supabase
+        const { data: membership, error: memErr } = await supabase
           .from('org_memberships')
           .select('role')
           .eq('user_id', user.id)
           .eq('org_id', currentOrg.id)
           .eq('status', 'active')
           .maybeSingle();
+        if (memErr) throw memErr;
 
         const isAdmin = membership?.role === 'owner' || membership?.role === 'admin';
         if (!isAdmin) {
@@ -342,15 +347,17 @@ export function useMarkLessonComplete() {
       if (error) throw error;
 
       // Back-fill 'present' for any participant without an attendance record
-      const { data: participants } = await supabase
+      const { data: participants, error: partErr } = await supabase
         .from('lesson_participants')
         .select('student_id')
         .eq('lesson_id', lessonId);
+      if (partErr) throw partErr;
 
-      const { data: existing } = await supabase
+      const { data: existing, error: exErr } = await supabase
         .from('attendance_records')
         .select('student_id')
         .eq('lesson_id', lessonId);
+      if (exErr) throw exErr;
 
       const existingSet = new Set((existing || []).map(e => e.student_id));
       const missing = (participants || []).filter(p => !existingSet.has(p.student_id));
@@ -437,12 +444,13 @@ export function useBatchAttendanceLessons(date: Date) {
 
       // Teacher role: only show their own lessons
       if (currentRole === 'teacher' && user) {
-        const { data: teacherRecord } = await supabase
+        const { data: teacherRecord, error: trErr2 } = await supabase
           .from('teachers')
           .select('id')
           .eq('user_id', user.id)
           .eq('org_id', currentOrg.id)
           .maybeSingle();
+        if (trErr2) throw trErr2;
 
         if (teacherRecord) {
           query = query.eq('teacher_id', teacherRecord.id);

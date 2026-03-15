@@ -94,11 +94,12 @@ export function useRecipientPreview(filters: FilterCriteria) {
 
       let studentIds: string[] = [];
       if (filters.teacher_ids && filters.teacher_ids.length > 0) {
-        const { data: assignments } = await supabase
+        const { data: assignments, error: assignErr } = await supabase
           .from('student_teacher_assignments')
           .select('student_id')
           .eq('org_id', currentOrg.id)
           .in('teacher_id', filters.teacher_ids);
+        if (assignErr) throw new Error(`Failed to fetch teacher assignments: ${assignErr.message}`);
 
         if (!assignments || assignments.length === 0) {
           return { count: 0, guardians: [] };
@@ -107,17 +108,19 @@ export function useRecipientPreview(filters: FilterCriteria) {
         studentQuery = studentQuery.in('id', studentIds);
       }
 
-      const { data: students } = await studentQuery;
+      const { data: students, error: studentErr } = await studentQuery;
+      if (studentErr) throw new Error(`Failed to fetch students: ${studentErr.message}`);
       if (!students || students.length === 0) {
         return { count: 0, guardians: [] };
       }
 
       const allStudentIds = students.map(s => s.id);
 
-      const { data: studentGuardians } = await supabase
+      const { data: studentGuardians, error: sgErr } = await supabase
         .from('student_guardians')
         .select('guardian_id')
         .in('student_id', allStudentIds);
+      if (sgErr) throw new Error(`Failed to fetch guardians: ${sgErr.message}`);
 
       if (!studentGuardians || studentGuardians.length === 0) {
         return { count: 0, guardians: [] };
@@ -132,17 +135,19 @@ export function useRecipientPreview(filters: FilterCriteria) {
         .is('deleted_at', null)
         .not('email', 'is', null);
 
-      const { data: guardians } = await guardianQuery;
+      const { data: guardians, error: gErr } = await guardianQuery;
+      if (gErr) throw new Error(`Failed to fetch guardian details: ${gErr.message}`);
 
       let filteredGuardians = guardians || [];
 
       if (filters.has_overdue_invoice) {
-        const { data: overdueInvoices } = await supabase
+        const { data: overdueInvoices, error: oErr } = await supabase
           .from('invoices')
           .select('payer_guardian_id')
           .eq('org_id', currentOrg.id)
           .eq('status', 'overdue')
           .not('payer_guardian_id', 'is', null);
+        if (oErr) throw new Error(`Failed to fetch overdue invoices: ${oErr.message}`);
 
         if (overdueInvoices && overdueInvoices.length > 0) {
           const overdueGuardianIds = new Set(overdueInvoices.map(i => i.payer_guardian_id));

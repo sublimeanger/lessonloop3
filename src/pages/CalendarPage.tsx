@@ -31,7 +31,7 @@ export default function CalendarPage() {
   const { currentRole, currentOrg } = useOrg();
   const { user } = useAuth();
   const isParent = currentRole === 'parent';
-  const { teachers, locations, rooms, instruments } = useTeachersAndLocations();
+  const { teachers = [], locations = [], rooms = [], instruments = [] } = useTeachersAndLocations();
   const [searchParams] = useSearchParams();
   const { checkConflicts } = useConflictDetection();
   const { isOnline } = useOnlineStatus();
@@ -205,7 +205,7 @@ export default function CalendarPage() {
           onExit={bulk.exitSelectionMode}
           onBulkUpdate={bulk.bulkUpdate}
           onBulkCancel={bulk.bulkCancel}
-          teachers={teachers.map(t => ({ id: t.id, name: t.name }))}
+          teachers={(teachers ?? []).map(t => ({ id: t.id, name: t.name }))}
           locations={locations}
           rooms={rooms}
         />
