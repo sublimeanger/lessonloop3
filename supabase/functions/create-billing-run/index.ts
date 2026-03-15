@@ -530,6 +530,8 @@ async function executeBillingLogic(
       });
 
       const subtotal = lessonRates.reduce((s: number, r: number) => s + r, 0);
+      // NOTE: VAT is calculated on invoice subtotal, not per-item.
+      // Per-item VAT display would require additional rounding logic.
       const taxMinor = Math.round(subtotal * (vatRate / 100));
       const total = subtotal + taxMinor;
 
