@@ -28,6 +28,8 @@ export function BulkSelectBar({
   onExit,
   onBulkUpdate,
   onBulkCancel,
+  onSelectAll,
+  totalVisible,
   teachers,
   locations,
   rooms,
