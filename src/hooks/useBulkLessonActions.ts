@@ -49,7 +49,12 @@ export function useBulkLessonActions({ refetch, orgId, userId, currentRole, teac
   }, []);
 
   const selectAll = useCallback((lessons: LessonWithDetails[]) => {
-    setSelectedIds(new Set(lessons.map(l => l.id)));
+    if (lessons.length > MAX_BULK) {
+      toast({ title: 'Selection limit reached', description: `Only the first ${MAX_BULK} lessons were selected.` });
+      setSelectedIds(new Set(lessons.slice(0, MAX_BULK).map(l => l.id)));
+    } else {
+      setSelectedIds(new Set(lessons.map(l => l.id)));
+    }
   }, []);
 
   const clearSelection = useCallback(() => {

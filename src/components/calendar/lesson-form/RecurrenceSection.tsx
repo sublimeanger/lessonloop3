@@ -90,6 +90,11 @@ export function RecurrenceSection({
                 />
               </PopoverContent>
             </Popover>
+            {!recurrenceEndDate && (
+              <p className="text-xs text-muted-foreground">
+                Lessons will be created through {format(new Date(selectedDate.getTime() + 12 * 7 * 24 * 60 * 60 * 1000), 'dd MMM yyyy')} (12 weeks). You can extend later.
+              </p>
+            )}
           </div>
 
           {closureCheck.hasConflicts && (

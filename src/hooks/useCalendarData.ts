@@ -145,7 +145,7 @@ async function fetchCalendarLessons(
     teacher: teacherMap.get(lesson.teacher_id ?? '') ?? undefined,
     location: lesson.location ? { name: lesson.location.name, is_archived: lesson.location.is_archived } : undefined,
     room: lesson.room ? { name: lesson.room.name } : undefined,
-    participants: (participantsMap.get(lesson.id) || []) as LessonWithDetails['participants'],
+    participants: (participantsMap.get(lesson.id) || []).filter(p => p.student != null) as LessonWithDetails['participants'],
     attendance: (attendanceMap.get(lesson.id) || []) as LessonWithDetails['attendance'],
     makeupStudentIds: makeupMap.get(lesson.id) || [],
     makeupDetails: makeupDetailsMap.get(lesson.id) || {},
