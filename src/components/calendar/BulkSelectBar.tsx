@@ -13,6 +13,8 @@ interface BulkSelectBarProps {
   onExit: () => void;
   onBulkUpdate: (payload: BulkEditPayload) => Promise<void>;
   onBulkCancel: () => Promise<void>;
+  onSelectAll?: () => void;
+  totalVisible?: number;
   teachers: { id: string; name: string }[];
   locations: { id: string; name: string }[];
   rooms: { id: string; name: string; location_id: string }[];
