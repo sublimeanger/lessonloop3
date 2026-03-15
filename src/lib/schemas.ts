@@ -42,7 +42,10 @@ export const studentSchema = z.object({
   lastName: z.string().trim().min(1, 'Last name is required.').max(100),
   email: optionalEmail,
   phone: optionalPhone,
-  dob: z.string().optional(),
+  dob: z.string().optional().refine(
+    (val) => !val || new Date(val) <= new Date(),
+    'Date of birth cannot be in the future.',
+  ),
   notes: z.string().trim().max(5000).optional(),
 });
 
