@@ -173,7 +173,7 @@ export function useBulkLessonActions({ refetch, orgId, userId }: UseBulkLessonAc
     setBulkProgress({ done: 0, total: ids.length });
 
     try {
-      const { data, error } = await supabase.rpc('bulk_cancel_lessons', {
+      const { data, error } = await (supabase.rpc as any)('bulk_cancel_lessons', {
         p_lesson_ids: ids,
       });
 
