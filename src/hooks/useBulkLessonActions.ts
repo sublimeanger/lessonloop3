@@ -84,7 +84,7 @@ export function useBulkLessonActions({ refetch, orgId, userId }: UseBulkLessonAc
 
     try {
       // Build changes object — only include fields that were set
-      const changes: Record<string, string | null> = {};
+      const changes: Record<string, string | null> = {} as any;
       if (payload.teacher_id !== undefined) changes.teacher_id = payload.teacher_id;
       if (payload.location_id !== undefined) changes.location_id = payload.location_id;
       if (payload.room_id !== undefined) changes.room_id = payload.room_id;
