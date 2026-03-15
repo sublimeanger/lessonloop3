@@ -475,7 +475,8 @@ interface InvoiceCardProps {
 }
 
 function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, isHighlighted, showPayButton = true }: InvoiceCardProps) {
-  const isPayable = ['sent', 'overdue'].includes(invoice.status) && showPayButton;
+  const remainingMinor = invoice.total_minor - (invoice.paid_minor || 0);
+  const isPayable = ['sent', 'overdue'].includes(invoice.status) && showPayButton && remainingMinor > 0;
   const isPaid = invoice.status === 'paid';
   const { downloadPdf, isLoading: isPdfLoading } = useInvoicePdf();
 
