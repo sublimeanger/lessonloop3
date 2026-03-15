@@ -74,52 +74,17 @@ export default function PortalHome() {
 
     const handleMakeupAction = async () => {
       try {
-        // Resolve guardian_id for the current user
-        const { data: guardian, error: gErr } = await supabase
-          .from('guardians')
-          .select('id')
-          .eq('user_id', (await supabase.auth.getUser()).data.user?.id ?? '')
-          .is('deleted_at', null)
-          .maybeSingle();
-        if (gErr) throw gErr;
-        if (!guardian) {
-          toast({ title: 'Guardian record not found', description: 'Please contact the academy.', variant: 'destructive' });
-          return;
-        }
+        if (action !== 'accept' && action !== 'decline') return;
+
+        const { data, error } = await supabase.rpc('respond_to_makeup_offer', {
+          _waitlist_id: id,
+          _action: action,
+        });
+        if (error) throw error;
 
         if (action === 'accept') {
-          const { data, error } = await supabase
-            .from('make_up_waitlist')
-            .update({ status: 'accepted', responded_at: new Date().toISOString() })
-            .eq('id', id)
-            .eq('guardian_id', guardian.id)
-            .eq('status', 'offered')
-            .select('id');
-          if (error) throw error;
-          if (!data?.length) {
-            toast({ title: 'Unable to accept', description: 'This offer may have expired or already been actioned.', variant: 'destructive' });
-            return;
-          }
           toast({ title: 'Make-up accepted! The academy will confirm the booking shortly.' });
-        } else if (action === 'decline') {
-          const { data, error: declineErr } = await supabase
-            .from('make_up_waitlist')
-            .update({
-              status: 'waiting',
-              responded_at: new Date().toISOString(),
-              matched_lesson_id: null,
-              matched_at: null,
-              offered_at: null,
-            })
-            .eq('id', id)
-            .eq('guardian_id', guardian.id)
-            .eq('status', 'offered')
-            .select('id');
-          if (declineErr) throw declineErr;
-          if (!data?.length) {
-            toast({ title: 'Unable to decline', description: 'This offer may have expired or already been actioned.', variant: 'destructive' });
-            return;
-          }
+        } else {
           toast({ title: "Slot declined. We'll keep looking for another available time." });
         }
       } catch (err: unknown) {
@@ -150,43 +115,20 @@ export default function PortalHome() {
     ['waiting', 'matched', 'offered', 'accepted', 'booked'].includes(e.status)
   );
 
-  const resolveGuardianId = async (): Promise<string | null> => {
-    const { data: guardian, error } = await supabase
-      .from('guardians')
-      .select('id')
-      .eq('user_id', (await supabase.auth.getUser()).data.user?.id ?? '')
-      .is('deleted_at', null)
-      .maybeSingle();
-    if (error || !guardian) return null;
-    return guardian.id;
-  };
-
   const handleInlineAccept = async (id: string) => {
     const entry = activeWaitlist.find((e) => e.id === id);
     try {
-      const guardianId = await resolveGuardianId();
-      if (!guardianId) {
-        toast({ title: 'Guardian record not found', description: 'Please contact the academy.', variant: 'destructive' });
-        return;
-      }
-      const { data, error } = await supabase
-        .from('make_up_waitlist')
-        .update({ status: 'accepted', responded_at: new Date().toISOString() })
-        .eq('id', id)
-        .eq('guardian_id', guardianId)
-        .eq('status', 'offered')
-        .select('id');
+      const { error } = await supabase.rpc('respond_to_makeup_offer', {
+        _waitlist_id: id,
+        _action: 'accept',
+      });
       if (error) throw error;
-      if (!data?.length) {
-        toast({ title: 'Unable to accept', description: 'This offer may have expired or already been actioned.', variant: 'destructive' });
-        return;
-      }
       const matched = entry?.matched_lesson;
       const lessonInfo = matched
         ? `${matched.title} — ${formatDateUK(parseISO(matched.start_at), 'EEEE d MMM')} at ${formatTimeUK(parseISO(matched.start_at))}`
         : '';
       toast({
-        title: 'Make-up lesson accepted! 🎉',
+        title: 'Make-up lesson accepted!',
         description: lessonInfo
           ? `${lessonInfo}. The academy will confirm your booking shortly.`
           : 'The academy will confirm the booking shortly.',
@@ -201,39 +143,25 @@ export default function PortalHome() {
 
   const handleInlineDecline = async (id: string) => {
     try {
-      const guardianId = await resolveGuardianId();
-      if (!guardianId) {
-        toast({ title: 'Guardian record not found', description: 'Please contact the academy.', variant: 'destructive' });
-        return;
-      }
-
-      // FIX 5: Get entry info for admin notification before declining
+      // Get entry info for admin notification before declining
       const entry = activeWaitlist.find((e) => e.id === id);
       const studentName = entry?.student
         ? `${entry.student.first_name} ${entry.student.last_name}`
         : 'Student';
 
-      const { data, error: declineErr } = await supabase
-        .from('make_up_waitlist')
-        .update({
-          status: 'waiting',
-          responded_at: new Date().toISOString(),
-          matched_lesson_id: null,
-          matched_at: null,
-          offered_at: null,
-        })
-        .eq('id', id)
-        .eq('guardian_id', guardianId)
-        .eq('status', 'offered')
-        .select('id, org_id');
-      if (declineErr) throw declineErr;
+      // Use atomic RPC for decline action
+      const { error } = await supabase.rpc('respond_to_makeup_offer', {
+        _waitlist_id: id,
+        _action: 'decline',
+      });
+      if (error) throw error;
 
       // FIX 5: Notify admin via audit log (visible in admin dashboard)
-      if (data?.length && data[0].org_id) {
+      if (entry?.org_id) {
         supabase
           .from('audit_log')
           .insert({
-            org_id: data[0].org_id,
+            org_id: entry.org_id,
             actor_user_id: (await supabase.auth.getUser()).data.user?.id || null,
             action: 'makeup_offer_declined',
             entity_type: 'make_up_waitlist',
