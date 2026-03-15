@@ -372,6 +372,9 @@ students.deleted_at = now(), status = 'inactive'
   └── enrolment_waitlist (converted_student_id) → PRESERVED
 ```
 
+**Additional soft-delete side effects:**
+- `resource_shares` → trigger `trg_cleanup_resource_shares_on_student_archive` auto-deletes shares when student archived or deactivated
+
 **If a student were HARD deleted** (which the app never does, but CASCADE effects exist):
 
 ```
@@ -384,13 +387,17 @@ DELETE FROM students WHERE id = X
   ├── make_up_waitlist → CASCADE DELETE (all waitlist entries lost)
   ├── practice_assignments → CASCADE DELETE
   ├── practice_logs → CASCADE DELETE
+  ├── practice_streaks → CASCADE DELETE
   ├── lesson_notes → CASCADE DELETE
   ├── student_teacher_assignments → CASCADE DELETE
+  ├── student_instruments → CASCADE DELETE
+  ├── grade_changes → CASCADE DELETE
   ├── term_continuation_responses → CASCADE DELETE
   ├── invoices.payer_student_id → SET NULL (invoice preserved, payer link cleared)
   ├── invoice_items.student_id → SET NULL (item preserved, student link cleared)
   ├── message_requests.student_id → SET NULL
-  └── enrolment_waitlist.converted_student_id → no FK constraint defined (would remain as orphan)
+  ├── term_adjustments.student_id → no CASCADE (would fail if rows exist)
+  └── enrolment_waitlist.converted_student_id → no CASCADE defined
 ```
 
 **Guard against hard delete:** The RLS DELETE policy on students requires `is_org_admin`. The app code only does soft delete (sets `deleted_at`). There is no explicit DB guard preventing a hard `DELETE FROM students` by an admin via RLS — the RLS policy permits it. However, no app code path triggers hard delete.
