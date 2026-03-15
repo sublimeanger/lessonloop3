@@ -104,7 +104,9 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
     setStep(2);
   };
 
-  const goToStep3 = () => {
+  const [isCheckingConflicts, setIsCheckingConflicts] = useState(false);
+
+  const goToStep3 = async () => {
     if (!teacherId) return;
     const s = parseTime(startTime);
     const e = parseTime(endTime);
@@ -117,7 +119,12 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
       locationId: locationId || null, roomId: roomId || null,
       lessonType, maxParticipants, notes,
     };
-    setSlots(computeSlots(config));
+    const rawSlots = computeSlots(config);
+    // FIX 3: Check for conflicts with existing lessons
+    setIsCheckingConflicts(true);
+    const checkedSlots = await checkSlotConflicts(rawSlots, teacherId, date, timezone);
+    setIsCheckingConflicts(false);
+    setSlots(checkedSlots);
     setStep(3);
   };
 
