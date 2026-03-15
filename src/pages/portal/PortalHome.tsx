@@ -206,6 +206,13 @@ export default function PortalHome() {
         toast({ title: 'Guardian record not found', description: 'Please contact the academy.', variant: 'destructive' });
         return;
       }
+
+      // FIX 5: Get entry info for admin notification before declining
+      const entry = activeWaitlist.find((e) => e.id === id);
+      const studentName = entry?.student
+        ? `${entry.student.first_name} ${entry.student.last_name}`
+        : 'Student';
+
       const { data, error: declineErr } = await supabase
         .from('make_up_waitlist')
         .update({
@@ -218,8 +225,23 @@ export default function PortalHome() {
         .eq('id', id)
         .eq('guardian_id', guardianId)
         .eq('status', 'offered')
-        .select('id');
+        .select('id, org_id');
       if (declineErr) throw declineErr;
+
+      // FIX 5: Notify admin via audit log (visible in admin dashboard)
+      if (data?.length && data[0].org_id) {
+        supabase
+          .from('audit_log')
+          .insert({
+            org_id: data[0].org_id,
+            actor_user_id: (await supabase.auth.getUser()).data.user?.id || null,
+            action: 'makeup_offer_declined',
+            entity_type: 'make_up_waitlist',
+            entity_id: id,
+            after: { student_name: studentName, lesson_title: entry?.lesson_title } as any,
+          })
+          .then(() => {});
+      }
 
       toast({ title: "Slot declined. We'll keep looking for another available time." });
       queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_parent'] });
