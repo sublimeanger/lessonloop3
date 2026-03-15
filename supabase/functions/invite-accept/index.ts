@@ -193,6 +193,7 @@ Deno.serve(async (req) => {
 
         if (!existingLink) {
           await supabaseAdmin.from("student_guardians").insert({
+            org_id: invite.org_id,
             guardian_id: guardianId,
             student_id: invite.related_student_id,
             relationship: "parent",

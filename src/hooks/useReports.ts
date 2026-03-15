@@ -602,7 +602,7 @@ export function useDashboardStats() {
           .limit(5000),
         supabase
           .from('invoices')
-          .select('total_minor')
+          .select('paid_minor')
           .eq('org_id', currentOrg.id)
           .eq('status', 'paid')
           .gte('issue_date', monthStart)
@@ -635,7 +635,7 @@ export function useDashboardStats() {
         hoursThisWeek += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
       }
 
-      const revenueMTD = (mtdInvoices || []).reduce((sum, inv) => sum + inv.total_minor, 0) / 100;
+      const revenueMTD = (mtdInvoices || []).reduce((sum, inv) => sum + (inv.paid_minor || 0), 0) / 100;
 
       return { 
         todayLessons, 

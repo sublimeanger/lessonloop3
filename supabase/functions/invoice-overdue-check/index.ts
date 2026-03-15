@@ -11,26 +11,46 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  // Transition all sent invoices past their due date to overdue
-  const { data, error } = await supabase
-    .from("invoices")
-    .update({ status: "overdue" })
-    .eq("status", "sent")
-    .lt("due_date", new Date().toISOString().split("T")[0])
-    .select("id");
+  // Get all orgs with their timezones so we compare due_date against
+  // the org's local date, not UTC.
+  const { data: orgs, error: orgError } = await supabase
+    .from("organisations")
+    .select("id, timezone");
 
-  if (error) {
-    console.error("Failed to update overdue invoices:", error);
+  if (orgError) {
+    console.error("Failed to fetch organisations:", orgError);
     return new Response(JSON.stringify({ error: "An internal error occurred. Please try again." }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  const count = data?.length ?? 0;
-  console.log(`Marked ${count} invoice(s) as overdue`);
+  let totalUpdated = 0;
 
-  return new Response(JSON.stringify({ updated: count }), {
+  for (const org of orgs || []) {
+    const tz = org.timezone || "Europe/London";
+    // Get today's date in the org's timezone
+    const todayInOrg = new Date().toLocaleDateString("en-CA", { timeZone: tz }); // YYYY-MM-DD
+
+    const { data, error } = await supabase
+      .from("invoices")
+      .update({ status: "overdue" })
+      .eq("status", "sent")
+      .eq("org_id", org.id)
+      .lt("due_date", todayInOrg)
+      .select("id");
+
+    if (error) {
+      console.error(`Failed to update overdue invoices for org ${org.id}:`, error);
+      continue;
+    }
+
+    totalUpdated += data?.length ?? 0;
+  }
+
+  console.log(`Marked ${totalUpdated} invoice(s) as overdue`);
+
+  return new Response(JSON.stringify({ updated: totalUpdated }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
