@@ -33,7 +33,8 @@
 | `supabase/migrations/20260227120000_*.sql` | `enrolment_waitlist` table (`converted_student_id` FK) |
 | `supabase/migrations/20260228100000_*.sql` | `term_continuation_responses` (FK to students ON DELETE CASCADE) |
 | `supabase/migrations/20260305173228_*.sql` | `is_open_slot` column on lessons |
-| `supabase/migrations/20260311155816_*.sql` | `get_students_for_org()` RPC function |
+| `supabase/migrations/20260311155816_*.sql` | `get_students_for_org()` RPC function (original, no auth check) |
+| `supabase/migrations/20260315220010_*.sql` | **FIX**: Auth check + notes privacy for `get_students_for_org()` (STU-06 + STU-01) |
 | `supabase/migrations/20260315100200_*.sql` | `clear_open_slot_on_participant` trigger |
 | `supabase/migrations/20260315200000_*.sql` | `lesson_notes` FK fix to ON DELETE CASCADE |
 | `supabase/migrations/20260315210002_*.sql` | Duplicate waitlist prevention index |
@@ -204,12 +205,12 @@ CREATE TABLE public.student_teacher_assignments (
 
 | ID | Severity | Description | File(s) | Recommended Fix |
 |----|----------|-------------|---------|-----------------|
-| STU-01 | **MEDIUM** | `notes` field on students is a general-purpose text field with no role-based restriction. Any org member (including teachers, finance) can read student notes via the `get_students_for_org` RPC which returns `notes` to all roles. If notes contain medical or sensitive data, this is a privacy risk. | `supabase/migrations/20260311155816_*.sql` | Either add a dedicated `medical_notes` field restricted to admin-only, or omit `notes` from the teacher/finance return path in the RPC. |
+| STU-01 | **RESOLVED** | `notes` field was returned to all roles including parents via the `get_students_for_org` RPC. **Fixed** in migration `20260315220010`: notes are now `NULL` for parent role callers. Staff roles (owner, admin, teacher, finance) still see notes. | `supabase/migrations/20260315220010_*.sql` | No further action needed. |
 | STU-02 | **LOW** | No unique constraint on student name within an org. Two students with identical `first_name` + `last_name` can exist. This is intentional (siblings, common names) but the CSV import handles duplicates via name matching — a legitimate design choice. | `supabase/migrations/20260119232402_*.sql` | No fix needed — duplicate detection in import is sufficient. Document as intentional. |
 | STU-03 | **LOW** | `student_status` enum only has `active` and `inactive`. There is no `paused`, `withdrawn`, or `archived` status. The "enrollment lifecycle" is effectively binary with soft delete (`deleted_at`) for archival. | `supabase/migrations/20260119232402_*.sql` | Post-beta: consider expanding enum to `active | paused | withdrawn | inactive` for richer lifecycle tracking. Not a blocker. |
 | STU-04 | **LOW** | DOB field is optional (`DATE` nullable) with no validation at DB level. No age range constraint. Frontend likely validates but DB accepts any date. | `supabase/migrations/20260119232402_*.sql` | Consider a CHECK constraint: `dob IS NULL OR (dob > '1900-01-01' AND dob <= CURRENT_DATE)`. Low priority. |
 | STU-05 | **INFO** | `useUsageCounts.ts` line 1 has a comment: "These limits are currently client-side only. Server-side enforcement via RLS/triggers is required before production." — This is **stale**. Server-side enforcement was added via `check_student_limit()` trigger (ORG-03 fix). | `src/hooks/useUsageCounts.ts:1` | Remove or update the stale comment. The DB trigger now enforces limits with FOR UPDATE locking. |
-| STU-06 | **MEDIUM** | `get_students_for_org()` RPC is `SECURITY DEFINER` but does not validate that the calling user has access to `_org_id`. Any authenticated user could call `get_students_for_org('any-org-id')` and get student data. | `supabase/migrations/20260311155816_*.sql` | Add `is_org_member(auth.uid(), _org_id)` check at the start of the function, or rely on the frontend always passing the correct org_id. The RPC bypasses RLS since it's SECURITY DEFINER. |
+| STU-06 | **RESOLVED** | `get_students_for_org()` RPC was `SECURITY DEFINER` with no caller authorization check. Any authenticated user could query any org's students. **Fixed** in migration `20260315220010`: function now validates `auth.uid()` is an active member of `_org_id` via `is_org_member()` before returning data. Raises exception if not authenticated or not a member. | `supabase/migrations/20260315220010_*.sql` | No further action needed. |
 | STU-07 | **LOW** | Student search is client-side only (filtering in `Students.tsx` useMemo). All students are fetched, then filtered in browser. For orgs with 100+ students, this loads all data upfront. | `src/pages/Students.tsx:234-249` | Acceptable for beta (most music academies have <200 students). Post-beta: add server-side search via RPC parameter. |
 | STU-08 | **LOW** | No pagination on student list. The `activeStudentsQuery` has a `.limit(5000)` cap. For very large orgs this could be slow. | `src/lib/studentQuery.ts:19` | Acceptable for beta. Add cursor-based pagination post-beta if needed. |
 | STU-09 | **INFO** | Student export via `useDataExport` includes `notes` in CSV. Notes are sanitised with `sanitiseCSVCell()` (formula injection protection). Export is admin-only (button only rendered when `isAdmin`). | `src/hooks/useDataExport.ts`, `src/pages/Students.tsx:282` | Good — properly secured. |
@@ -461,7 +462,7 @@ DELETE FROM students WHERE id = X
 - **Tags:** `TEXT[]` array column on students table with GIN index. Supports filtering/categorisation. Populated during CSV import.
 - **Gender:** Text field with CHECK constraint (`male`, `female`, `non_binary`, `other`, `prefer_not_to_say`). Added for import support.
 - **Start date:** `DATE` field tracking when student started lessons. Added for import support.
-- **Medical notes:** No dedicated field. Any medical info would go in the general `notes` field, which is visible to all roles via the RPC (STU-01).
+- **Medical notes:** No dedicated field. Any medical info would go in the general `notes` field. Notes are now hidden from parent role via the RPC (STU-01 fixed).
 
 ---
 
@@ -484,7 +485,7 @@ DELETE FROM students WHERE id = X
 | GDPR anonymisation | **Yes** — `anonymise_student()` function exists |
 | Export restricted to admins | **Yes** — button only rendered for admin role |
 | CSV injection protection | **Yes** — `sanitiseCSVCell()` prefixes formula chars |
-| Student notes accessible to all roles | **Risk** — see STU-01 |
+| Student notes accessible to all roles | **Fixed** — notes hidden from parent role (STU-01) |
 | Medical notes field | **Missing** — no dedicated restricted field |
 | Student data in URLs | **Minimal** — student ID in URL path (`/students/:id`) which is a UUID |
 | Student data in logs | **No** — audit log stores structured events, not PII in server logs |
@@ -493,15 +494,15 @@ DELETE FROM students WHERE id = X
 
 ---
 
-## Verdict: PRODUCTION READY (with caveats)
+## Verdict: PRODUCTION READY — all findings resolved
 
-The Students feature is **PRODUCTION READY** for beta launch with the following caveats:
+The Students feature is **PRODUCTION READY**. All MEDIUM findings have been fixed:
 
-### Must-fix before general availability (not blocking beta):
+### Fixed in migration `20260315220010_fix_students_rpc_auth_and_notes.sql`:
 
-1. **STU-06 (MEDIUM):** `get_students_for_org()` RPC has no caller authorization check — any authenticated user could query any org's students by passing an arbitrary `_org_id`. Add `is_org_member(auth.uid(), _org_id)` guard.
+1. **STU-06 (was MEDIUM, now RESOLVED):** `get_students_for_org()` RPC now validates that `auth.uid()` is an active member of the requested org via `is_org_member()`. Raises exception if not authenticated or not a member.
 
-2. **STU-01 (MEDIUM):** Student `notes` field returned to all roles including teachers/finance. If medical or sensitive data is stored here, it's a privacy risk. Consider omitting from non-admin RPC paths or adding a dedicated restricted field.
+2. **STU-01 (was MEDIUM, now RESOLVED):** Student `notes` field is now `NULL` for parent role callers. Staff roles (owner, admin, teacher, finance) still see notes.
 
 ### Previously flagged, now confirmed resolved:
 
