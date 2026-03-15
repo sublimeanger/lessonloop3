@@ -533,12 +533,32 @@ export function useBulkProcessContinuation() {
       let extendedCount = 0;
       let withdrawnCount = 0;
 
+      const conflictWarnings: string[] = [];
+
       for (const resp of responses || []) {
         if (['continuing', 'assumed_continuing'].includes(resp.response)) {
           // Extend recurrences into next term
           const lessons = resp.lesson_summary || [];
           for (const lesson of lessons) {
             if (!lesson.recurrence_id) continue;
+
+            // FIX 1: Check for teacher conflicts in the new term date range
+            if (lesson.teacher_id) {
+              const { data: conflicts } = await supabase
+                .from('lessons')
+                .select('id, start_at, title')
+                .eq('teacher_id', lesson.teacher_id)
+                .gte('start_at', data.next_term_start_date)
+                .lte('start_at', data.next_term_end_date)
+                .neq('status', 'cancelled');
+
+              if (conflicts && conflicts.length > 0) {
+                const studentName = resp.student_id;
+                conflictWarnings.push(
+                  `${lesson.teacher_name || 'Teacher'} has ${conflicts.length} existing lesson(s) in the new term period`
+                );
+              }
+            }
 
             // Check current end_date of recurrence
             const { data: rec } = await (supabase as any)
