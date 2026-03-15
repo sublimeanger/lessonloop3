@@ -322,7 +322,22 @@ export default function Continuation() {
                   )}
                   Process Deadline
                 </Button>
-              )}
+               )}
+              {/* FIX 3: Delete run button */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:bg-destructive/10"
+                onClick={() => handleDeleteRun(run)}
+                disabled={deleteRun.isPending}
+              >
+                {deleteRun.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
+                Delete Run
+              </Button>
             </div>
           </div>
 
