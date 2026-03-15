@@ -108,6 +108,8 @@ export function OrganisationTab() {
   const [currencyCode, setCurrencyCode] = useState('GBP');
   const [showTimezoneWarning, setShowTimezoneWarning] = useState(false);
   const [pendingTimezone, setPendingTimezone] = useState<string | null>(null);
+  const [showCurrencyWarning, setShowCurrencyWarning] = useState(false);
+  const [pendingCurrency, setPendingCurrency] = useState<string | null>(null);
   const [teacherPaymentNotifications, setTeacherPaymentNotifications] = useState(true);
   const [teacherPaymentAnalytics, setTeacherPaymentAnalytics] = useState(true);
 
