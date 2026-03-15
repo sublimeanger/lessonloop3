@@ -184,11 +184,24 @@ export function useNotesStats(filters: NotesExplorerFilters) {
       const { data, error } = await query;
       if (error) throw error;
 
-      const rows = data || [];
+      let rows = data || [];
+
+      // Client-side text search to match explorer
+      if (filters.searchQuery) {
+        const q = filters.searchQuery.toLowerCase();
+        rows = rows.filter((r: any) =>
+          (r.content_covered?.toLowerCase().includes(q)) ||
+          (r.homework?.toLowerCase().includes(q)) ||
+          (r.focus_areas?.toLowerCase().includes(q)) ||
+          (r.student?.first_name?.toLowerCase().includes(q)) ||
+          (r.student?.last_name?.toLowerCase().includes(q))
+        );
+      }
+
       const studentIds = new Set(rows.map(r => r.student_id).filter(Boolean));
       const ratings = rows.map(r => r.engagement_rating).filter((r): r is number => r !== null);
       const avgEngagement = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
-      const withoutHomework = rows.filter(r => !r.homework || r.homework.trim() === '').length;
+      const withoutHomework = rows.filter(r => !r.homework || (r.homework as string).trim() === '').length;
 
       return {
         totalNotes: rows.length,
