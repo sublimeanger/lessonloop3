@@ -296,7 +296,7 @@ export default function BatchAttendance() {
                                 <StudentNotesPopover
                                   studentId={p.student_id}
                                   studentName={p.student_name}
-                                  hasNotes={true}
+                                  hasNotes={p.has_notes}
                                 />
                                 {needsAbsenceReason(currentStatus) && !currentReason && (
                                   <span title="Absence reason missing" className="text-warning">
