@@ -10,12 +10,13 @@ import { sanitiseCSVCell, currencySymbol } from '@/lib/utils';
 
 // Helper: resolve teacher_id for the current user (returns null if not a teacher)
 async function resolveTeacherId(orgId: string, userId: string): Promise<string | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('teachers')
     .select('id')
     .eq('org_id', orgId)
     .eq('user_id', userId)
     .maybeSingle();
+  if (error) throw error;
   return data?.id ?? null;
 }
 
