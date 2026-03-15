@@ -85,6 +85,21 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
   const selectedTeacher = teachers.find(t => t.id === teacherId);
   const filteredRooms = locationId ? rooms.filter(r => r.location_id === locationId) : rooms;
 
+  // Reset state when dialog closes
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      setStep(1);
+      setSlots([]);
+      setTeacherId('');
+      setLocationId('');
+      setRoomId('');
+      setLessonType('private');
+      setMaxParticipants(1);
+      setNotes('');
+    }
+    onOpenChange(isOpen);
+  };
+
   const parseTime = (t: string) => {
     const [h, m] = t.split(':').map(Number);
     return { hour: h, minute: m };
