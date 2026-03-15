@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Pencil, Mail, Phone, Music, Briefcase, GraduationCap, FileText, Link2, Link2Off, Trash2, Clock } from 'lucide-react';
+import { Calendar, Pencil, Mail, Phone, Music, Briefcase, GraduationCap, FileText, Link2, Link2Off, Trash2, Clock, Settings } from 'lucide-react';
 import { Teacher } from '@/hooks/useTeachers';
 import { useQuery } from '@tanstack/react-query';
 import { STALE_VOLATILE } from '@/config/query-stale-times';

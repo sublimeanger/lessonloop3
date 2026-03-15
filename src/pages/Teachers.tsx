@@ -316,6 +316,7 @@ export default function Teachers() {
         bio: values.bio || null,
       });
       setEditDialogOpen(false);
+      toast({ title: 'Teacher updated', description: `${values.display_name}'s details have been saved.` });
     } catch {
       // Error handled by mutation's onError
     } finally {
