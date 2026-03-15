@@ -151,28 +151,14 @@ export function useSaveLessonNote() {
         updated_at: new Date().toISOString(),
       };
 
-      if (input.id) {
-        // Update existing note
-        const { data, error } = await supabase
-          .from('lesson_notes')
-          .update(noteData)
-          .eq('id', input.id)
-          .select()
-          .single();
+      const { data, error } = await supabase
+        .from('lesson_notes')
+        .upsert(noteData, { onConflict: 'lesson_id,student_id,teacher_id' })
+        .select()
+        .single();
 
-        if (error) throw error;
-        return data;
-      } else {
-        // Insert new note
-        const { data, error } = await supabase
-          .from('lesson_notes')
-          .insert(noteData)
-          .select()
-          .single();
-
-        if (error) throw error;
-        return data;
-      }
+      if (error) throw error;
+      return data;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['lesson-notes', variables.lesson_id] });
