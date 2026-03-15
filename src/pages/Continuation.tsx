@@ -14,6 +14,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Plus,
   CheckCircle2,
   Clock,
@@ -24,6 +34,7 @@ import {
   Loader2,
   Search,
   Download,
+  Trash2,
 } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import {
@@ -33,16 +44,19 @@ import {
   useSendContinuationReminders,
   useProcessDeadline,
   useBulkProcessContinuation,
+  usePreviewBulkProcess,
+  useDeleteContinuationRun,
 } from '@/hooks/useTermContinuation';
 import type {
   ContinuationRun,
   ContinuationResponseEntry,
   ContinuationResponseType,
+  BulkProcessPreview,
 } from '@/hooks/useTermContinuation';
 import { ContinuationRunWizard } from '@/components/continuation/ContinuationRunWizard';
 import { ContinuationResponseDetail } from '@/components/continuation/ContinuationResponseDetail';
 import { formatCurrencyMinor } from '@/lib/utils';
-import { differenceInDays, isPast } from 'date-fns';
+import { differenceInDays, isPast, format } from 'date-fns';
 
 const RESPONSE_BADGE: Record<
   ContinuationResponseType,
