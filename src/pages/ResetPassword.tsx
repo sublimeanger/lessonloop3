@@ -24,6 +24,8 @@ export default function ResetPassword() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+
   useEffect(() => {
     let mounted = true;
 
@@ -31,6 +33,16 @@ export default function ResetPassword() {
       if (!mounted) return;
       if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
         setSessionError(false);
+        setIsCheckingSession(false);
+      }
+    });
+
+    // Check session immediately
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      if (session) {
+        setSessionError(false);
+        setIsCheckingSession(false);
       }
     });
 
@@ -40,6 +52,7 @@ export default function ResetPassword() {
       if (!session && mounted) {
         setSessionError(true);
       }
+      if (mounted) setIsCheckingSession(false);
     }, 5000);
 
     return () => {
