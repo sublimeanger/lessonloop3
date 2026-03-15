@@ -696,6 +696,16 @@ export function useBulkProcessContinuation() {
         parts.push(`${data.withdrawnCount} withdrawal${data.withdrawnCount !== 1 ? 's' : ''} processed`);
       }
 
+      // FIX 1: Show conflict warnings
+      if (data.conflictWarnings && data.conflictWarnings.length > 0) {
+        const unique = [...new Set(data.conflictWarnings)];
+        toast({
+          title: 'Schedule conflicts detected',
+          description: unique.slice(0, 3).join('; ') + (unique.length > 3 ? `… and ${unique.length - 3} more` : ''),
+          variant: 'warning' as any,
+        });
+      }
+
       toast({
         title: 'Processing complete',
         description: parts.join(', ') || `${data.processedCount} responses processed`,
