@@ -109,6 +109,18 @@ export default function Continuation() {
   const processDeadline = useProcessDeadline();
   const bulkProcess = useBulkProcessContinuation();
 
+  const previewBulk = usePreviewBulkProcess();
+  const deleteRun = useDeleteContinuationRun();
+
+  // FIX 2: Preview dialog state
+  const [bulkPreview, setBulkPreview] = useState<BulkProcessPreview | null>(null);
+  const [pendingProcessType, setPendingProcessType] = useState<'confirmed' | 'withdrawals' | 'all' | null>(null);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+
+  // FIX 3: Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [runToDelete, setRunToDelete] = useState<ContinuationRun | null>(null);
+
   const currency = currentOrg?.currency_code || 'GBP';
   const run = runDetail || runToShow;
   const summary = run?.summary;
