@@ -186,6 +186,7 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
                     mode="single"
                     selected={date}
                     onSelect={(d) => d && setDate(d)}
+                    disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
                     className="p-3 pointer-events-auto"
                   />
                 </PopoverContent>
