@@ -58,13 +58,13 @@ export function ContinuationSettingsTab() {
     }
 
     setIsSaving(true);
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from('organisations')
       .update({
         continuation_notice_weeks: noticeWeeks,
         continuation_assumed_continuing: assumedContinuing,
         continuation_reminder_days: parsedReminderDays,
-      })
+      } as any)
       .eq('id', currentOrg.id);
 
     setIsSaving(false);
@@ -72,24 +72,6 @@ export function ContinuationSettingsTab() {
       toast({ title: 'Error saving settings', variant: 'destructive' });
     } else {
       toast({ title: 'Continuation settings updated' });
-      refreshOrganisations();
-    }
-  };
-
-  const handleAssumedContinuingChange = async (checked: boolean) => {
-    if (!currentOrg) return;
-    setAssumedContinuing(checked);
-
-    const { error } = await (supabase as any)
-      .from('organisations')
-      .update({ continuation_assumed_continuing: checked })
-      .eq('id', currentOrg.id);
-
-    if (error) {
-      toast({ title: 'Error saving setting', variant: 'destructive' });
-      setAssumedContinuing(!checked);
-    } else {
-      toast({ title: 'Setting updated' });
       refreshOrganisations();
     }
   };
