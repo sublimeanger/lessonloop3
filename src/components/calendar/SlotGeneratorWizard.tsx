@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { SlotPreviewTimeline } from './SlotPreviewTimeline';
 import { computeSlots, checkSlotConflicts, useSlotGenerator, type SlotGeneratorConfig, type GeneratedSlot } from '@/hooks/useSlotGenerator';
 import { useOrgTimezone } from '@/hooks/useOrgTimezone';
+import { useOrg } from '@/contexts/OrgContext';
 import { cn } from '@/lib/utils';
 
 interface Teacher {
@@ -60,6 +61,7 @@ const TIME_OPTIONS = timeOptions();
 
 export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, rooms, defaultDate, onComplete }: SlotGeneratorWizardProps) {
   const { timezone } = useOrgTimezone();
+  const { currentOrg } = useOrg();
   const generateMutation = useSlotGenerator();
 
   const [step, setStep] = useState(1);
@@ -135,9 +137,14 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
       lessonType, maxParticipants, notes,
     };
     const rawSlots = computeSlots(config);
-    // FIX 3: Check for conflicts with existing lessons
+    // SG-01..04: Check for conflicts (teacher, room, closure, time-off, availability)
     setIsCheckingConflicts(true);
-    const checkedSlots = await checkSlotConflicts(rawSlots, teacherId, date, timezone);
+    const checkedSlots = await checkSlotConflicts(
+      rawSlots,
+      { teacherId, roomId: roomId || null, locationId: locationId || null, orgId: currentOrg?.id || '' },
+      date,
+      timezone,
+    );
     setIsCheckingConflicts(false);
     setSlots(checkedSlots);
     setStep(3);
