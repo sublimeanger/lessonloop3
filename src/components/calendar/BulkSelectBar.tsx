@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Edit, Trash2, Loader2 } from 'lucide-react';
+import { X, Edit, Trash2, Loader2, CheckSquare } from 'lucide-react';
 import { BulkEditDialog } from './BulkEditDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import type { BulkEditPayload } from '@/hooks/useBulkLessonActions';
