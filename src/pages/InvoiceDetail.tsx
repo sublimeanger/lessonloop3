@@ -89,6 +89,7 @@ export default function InvoiceDetail() {
   const [paymentPlanOpen, setPaymentPlanOpen] = useState(false);
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [refundPayment, setRefundPayment] = useState<any>(null);
+  const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false);
   const { data: orgPaymentPrefs } = useOrgPaymentPreferences();
 
   const onlinePaymentsEnabled = orgPaymentPrefs?.online_payments_enabled !== false;
