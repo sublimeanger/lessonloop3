@@ -447,6 +447,7 @@ async function handleCreate(
   // 5. Build response rows
   const responseRows: any[] = [];
   const preview: any[] = [];
+  const skippedStudents: { name: string; reason: string }[] = [];
 
   for (const [studentId, recMap] of studentRecurrences) {
     if (!activeStudentIds.has(studentId)) continue;
@@ -454,7 +455,11 @@ async function handleCreate(
     const student = studentMap.get(studentId);
     const guardian = guardianMap.get(studentId);
 
-    if (!student || !guardian) continue;
+    if (!student) continue;
+    if (!guardian) {
+      skippedStudents.push({ name: `${student.first_name} ${student.last_name}`, reason: 'no_guardian' });
+      continue;
+    }
 
     const lessonSummary: any[] = [];
     let totalFee = 0;
@@ -565,6 +570,7 @@ async function handleCreate(
       total_students: responseRows.length,
       summary,
       preview,
+      skipped_students: skippedStudents,
     },
     cors
   );
@@ -746,16 +752,25 @@ async function handleCreateFallback(
   // Build response rows
   const responseRows: any[] = [];
   const preview: any[] = [];
+  const skippedStudents: { name: string; reason: string }[] = [];
 
   for (const [studentId, recMap] of studentRecurrences) {
     if (!activeStudentIds.has(studentId)) continue;
 
     const student = studentMap.get(studentId);
+    if (!student) continue;
+
     const guardianId = guardianIdMap.get(studentId);
-    if (!student || !guardianId) continue;
+    if (!guardianId) {
+      skippedStudents.push({ name: `${student.first_name} ${student.last_name}`, reason: 'no_guardian' });
+      continue;
+    }
 
     const guardian = guardianDetailMap.get(guardianId);
-    if (!guardian) continue;
+    if (!guardian) {
+      skippedStudents.push({ name: `${student.first_name} ${student.last_name}`, reason: 'no_guardian' });
+      continue;
+    }
 
     const lessonSummary: any[] = [];
     let totalFee = 0;
@@ -855,7 +870,7 @@ async function handleCreateFallback(
   });
 
   return jsonResponse(
-    { run_id: run.id, total_students: responseRows.length, summary, preview },
+    { run_id: run.id, total_students: responseRows.length, summary, preview, skipped_students: skippedStudents },
     cors
   );
 }
