@@ -460,9 +460,9 @@ export default function AcceptInvite() {
             </div>
             <p className="text-xs text-muted-foreground text-center">
               By creating an account, you agree to our{' '}
-              <a href="https://lessonloop.net/terms" className="font-medium text-primary hover:underline" target="_blank" rel="noopener noreferrer">Terms of Service</a>{' '}
+              <Link to="/terms" className="font-medium text-primary hover:underline">Terms of Service</Link>{' '}
               and{' '}
-              <a href="https://lessonloop.net/privacy" className="font-medium text-primary hover:underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+              <Link to="/privacy" className="font-medium text-primary hover:underline">Privacy Policy</Link>.
             </p>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
