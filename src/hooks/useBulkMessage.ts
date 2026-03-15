@@ -94,11 +94,12 @@ export function useRecipientPreview(filters: FilterCriteria) {
 
       let studentIds: string[] = [];
       if (filters.teacher_ids && filters.teacher_ids.length > 0) {
-        const { data: assignments } = await supabase
+        const { data: assignments, error: assignErr } = await supabase
           .from('student_teacher_assignments')
           .select('student_id')
           .eq('org_id', currentOrg.id)
           .in('teacher_id', filters.teacher_ids);
+        if (assignErr) throw new Error(`Failed to fetch teacher assignments: ${assignErr.message}`);
 
         if (!assignments || assignments.length === 0) {
           return { count: 0, guardians: [] };
