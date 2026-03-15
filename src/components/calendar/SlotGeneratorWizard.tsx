@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { SlotPreviewTimeline } from './SlotPreviewTimeline';
-import { computeSlots, useSlotGenerator, type SlotGeneratorConfig, type GeneratedSlot } from '@/hooks/useSlotGenerator';
+import { computeSlots, checkSlotConflicts, useSlotGenerator, type SlotGeneratorConfig, type GeneratedSlot } from '@/hooks/useSlotGenerator';
 import { useOrgTimezone } from '@/hooks/useOrgTimezone';
 import { cn } from '@/lib/utils';
 
@@ -104,7 +104,9 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
     setStep(2);
   };
 
-  const goToStep3 = () => {
+  const [isCheckingConflicts, setIsCheckingConflicts] = useState(false);
+
+  const goToStep3 = async () => {
     if (!teacherId) return;
     const s = parseTime(startTime);
     const e = parseTime(endTime);
@@ -117,12 +119,21 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
       locationId: locationId || null, roomId: roomId || null,
       lessonType, maxParticipants, notes,
     };
-    setSlots(computeSlots(config));
+    const rawSlots = computeSlots(config);
+    // FIX 3: Check for conflicts with existing lessons
+    setIsCheckingConflicts(true);
+    const checkedSlots = await checkSlotConflicts(rawSlots, teacherId, date, timezone);
+    setIsCheckingConflicts(false);
+    setSlots(checkedSlots);
     setStep(3);
   };
 
   const toggleSlot = (id: string) => {
-    setSlots(prev => prev.map(s => s.id === id ? { ...s, excluded: !s.excluded } : s));
+    setSlots(prev => prev.map(s => {
+      // Don't allow toggling conflict slots back on
+      if (s.id === id && s.conflictMessage) return s;
+      return s.id === id ? { ...s, excluded: !s.excluded } : s;
+    }));
   };
 
   const handleGenerate = async () => {
@@ -175,6 +186,7 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
                     mode="single"
                     selected={date}
                     onSelect={(d) => d && setDate(d)}
+                    disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
                     className="p-3 pointer-events-auto"
                   />
                 </PopoverContent>
@@ -339,8 +351,10 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
             </Button>
           )}
           {step === 2 && (
-            <Button onClick={goToStep3} disabled={!teacherId}>
-              Preview Slots
+            <Button onClick={goToStep3} disabled={!teacherId || isCheckingConflicts}>
+              {isCheckingConflicts ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />Checking conflicts…</>
+              ) : 'Preview Slots'}
             </Button>
           )}
           {step === 3 && (

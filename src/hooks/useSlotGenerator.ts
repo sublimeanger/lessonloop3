@@ -5,8 +5,8 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { logAudit } from '@/lib/auditLog';
 import { toast } from '@/hooks/use-toast';
-import { addMinutes, format, setHours, setMinutes } from 'date-fns';
-import { fromZonedTime } from 'date-fns-tz';
+import { addMinutes, format, setHours, setMinutes, startOfDay, endOfDay } from 'date-fns';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 
 export interface SlotGeneratorConfig {
   date: Date;
@@ -64,6 +64,47 @@ export function computeSlots(config: SlotGeneratorConfig): GeneratedSlot[] {
   return slots;
 }
 
+/** FIX 3: Check for existing lessons and mark conflicting slots */
+export async function checkSlotConflicts(
+  slots: GeneratedSlot[],
+  teacherId: string,
+  date: Date,
+  timezone: string,
+): Promise<GeneratedSlot[]> {
+  const dayStart = fromZonedTime(startOfDay(date), timezone).toISOString();
+  const dayEnd = fromZonedTime(endOfDay(date), timezone).toISOString();
+
+  const { data: existingLessons } = await supabase
+    .from('lessons')
+    .select('start_at, end_at')
+    .eq('teacher_id', teacherId)
+    .gte('start_at', dayStart)
+    .lte('start_at', dayEnd)
+    .neq('status', 'cancelled');
+
+  const conflicts = existingLessons || [];
+  if (conflicts.length === 0) return slots;
+
+  return slots.map(slot => {
+    // Build local datetimes for comparison
+    const [sh, sm] = slot.startTime.split(':').map(Number);
+    const [eh, em] = slot.endTime.split(':').map(Number);
+    const slotStartUtc = fromZonedTime(setMinutes(setHours(date, sh), sm), timezone).getTime();
+    const slotEndUtc = fromZonedTime(setMinutes(setHours(date, eh), em), timezone).getTime();
+
+    const hasConflict = conflicts.some(existing => {
+      const eStart = new Date(existing.start_at).getTime();
+      const eEnd = new Date(existing.end_at).getTime();
+      return slotStartUtc < eEnd && slotEndUtc > eStart;
+    });
+
+    if (hasConflict) {
+      return { ...slot, excluded: true, conflictMessage: 'Conflicts with existing lesson' };
+    }
+    return slot;
+  });
+}
+
 export function useSlotGenerator() {
   const { currentOrg } = useOrg();
   const { user } = useAuth();
@@ -76,6 +117,17 @@ export function useSlotGenerator() {
       const activeSlots = slots.filter(s => !s.excluded);
       if (activeSlots.length === 0) throw new Error('No slots to generate');
       if (activeSlots.length > 50) throw new Error('Maximum 50 slots per batch');
+
+      // FIX 5: Server-side past date validation
+      const now = new Date();
+      for (const slot of activeSlots) {
+        const [sh, sm] = slot.startTime.split(':').map(Number);
+        const localStart = setMinutes(setHours(config.date, sh), sm);
+        const utcStart = fromZonedTime(localStart, timezone);
+        if (utcStart < now) {
+          throw new Error('Cannot generate slots in the past');
+        }
+      }
 
       const createdIds: string[] = [];
       const dateStr = format(config.date, 'yyyy-MM-dd');

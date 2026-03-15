@@ -17,9 +17,11 @@ interface UseBulkLessonActionsParams {
   refetch: () => void;
   orgId: string | null;
   userId: string | null;
+  currentRole?: string | null;
+  teacherId?: string | null;
 }
 
-export function useBulkLessonActions({ refetch, orgId, userId }: UseBulkLessonActionsParams) {
+export function useBulkLessonActions({ refetch, orgId, userId, currentRole, teacherId: myTeacherId }: UseBulkLessonActionsParams) {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
@@ -55,7 +57,63 @@ export function useBulkLessonActions({ refetch, orgId, userId }: UseBulkLessonAc
     if (selectedIds.size === 0 || !orgId || !userId) return;
 
     setIsBulkUpdating(true);
-    const ids = Array.from(selectedIds);
+    let ids = Array.from(selectedIds);
+
+    // FIX 1: Role check — teachers can only edit their own lessons
+    if (currentRole === 'teacher' && userId) {
+      const filterQuery = supabase
+        .from('lessons')
+        .select('id')
+        .in('id', ids);
+
+      if (myTeacherId) {
+        filterQuery.or(`teacher_user_id.eq.${userId},teacher_id.eq.${myTeacherId}`);
+      } else {
+        filterQuery.eq('teacher_user_id', userId);
+      }
+
+      const { data: myLessons, error: filterErr } = await filterQuery;
+      if (filterErr) {
+        logger.warn('[bulk-edit] Failed to filter lessons by ownership:', filterErr.message);
+      }
+
+      const allowedIds = new Set((myLessons || []).map(l => l.id));
+      const skipped = ids.length - allowedIds.size;
+      ids = ids.filter(id => allowedIds.has(id));
+
+      if (skipped > 0) {
+        toast({
+          title: 'Some lessons skipped',
+          description: `${skipped} lesson${skipped !== 1 ? 's' : ''} belong to other teachers and were not modified.`,
+        });
+      }
+    }
+
+    // FIX 2: Prevent cancelling completed lessons
+    if (payload.status === 'cancelled' && ids.length > 0) {
+      const { data: completedLessons } = await supabase
+        .from('lessons')
+        .select('id')
+        .in('id', ids)
+        .eq('status', 'completed');
+
+      const completedIds = new Set((completedLessons || []).map(l => l.id));
+      if (completedIds.size > 0) {
+        ids = ids.filter(id => !completedIds.has(id));
+        toast({
+          title: 'Completed lessons skipped',
+          description: `${completedIds.size} completed lesson${completedIds.size !== 1 ? 's' : ''} cannot be cancelled.`,
+        });
+      }
+    }
+
+    if (ids.length === 0) {
+      setIsBulkUpdating(false);
+      toast({ title: 'No lessons to update', description: 'All selected lessons were filtered out.' });
+      exitSelectionMode();
+      return;
+    }
+
     setBulkProgress({ done: 0, total: ids.length });
 
     let successCount = 0;
@@ -100,7 +158,7 @@ export function useBulkLessonActions({ refetch, orgId, userId }: UseBulkLessonAc
 
     exitSelectionMode();
     refetch();
-  }, [selectedIds, orgId, userId, refetch, exitSelectionMode]);
+  }, [selectedIds, orgId, userId, currentRole, myTeacherId, refetch, exitSelectionMode]);
 
   const bulkCancel = useCallback(async () => {
     await bulkUpdate({ status: 'cancelled' as LessonStatus });
