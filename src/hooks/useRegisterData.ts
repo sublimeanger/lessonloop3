@@ -232,24 +232,26 @@ export function useUpdateAttendance() {
       if (!currentOrg || !user) throw new Error('No organisation or user');
 
       // Authorisation guard: verify user is the lesson's teacher or an admin
-      const { data: lesson } = await supabase
+      const { data: lesson, error: lessonErr } = await supabase
         .from('lessons')
         .select('teacher_user_id')
         .eq('id', lessonId)
         .single();
+      if (lessonErr) throw lessonErr;
 
       if (!lesson) throw new Error('Lesson not found');
 
       const isAssignedTeacher = lesson.teacher_user_id === user.id;
       if (!isAssignedTeacher) {
         // Check if user is owner/admin
-        const { data: membership } = await supabase
+        const { data: membership, error: memErr } = await supabase
           .from('org_memberships')
           .select('role')
           .eq('user_id', user.id)
           .eq('org_id', currentOrg.id)
           .eq('status', 'active')
           .maybeSingle();
+        if (memErr) throw memErr;
 
         const isAdmin = membership?.role === 'owner' || membership?.role === 'admin';
         if (!isAdmin) {
