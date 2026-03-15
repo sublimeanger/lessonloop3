@@ -197,14 +197,14 @@ export function InvoicePreview({ branding, className = '' }: InvoicePreviewProps
             <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-3 py-2 items-center">
               <span>Piano lesson (60 min)</span>
               <span className="text-right text-gray-500">4</span>
-              <span className="text-right text-gray-500">&pound;45.00</span>
-              <span className="text-right font-medium text-gray-900">&pound;180.00</span>
+              <span className="text-right text-gray-500">{sym}45.00</span>
+              <span className="text-right font-medium text-gray-900">{sym}180.00</span>
             </div>
             <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-3 py-2 items-center">
               <span>Theory workbook</span>
               <span className="text-right text-gray-500">1</span>
-              <span className="text-right text-gray-500">&pound;12.99</span>
-              <span className="text-right font-medium text-gray-900">&pound;12.99</span>
+              <span className="text-right text-gray-500">{sym}12.99</span>
+              <span className="text-right font-medium text-gray-900">{sym}12.99</span>
             </div>
           </div>
         </div>
