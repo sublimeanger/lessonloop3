@@ -916,6 +916,26 @@ export function SchedulingSettingsTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Closure date lesson warning */}
+      <AlertDialog open={lessonWarningOpen} onOpenChange={setLessonWarningOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Lessons scheduled on this date</AlertDialogTitle>
+            <AlertDialogDescription>
+              {affectedLessonCount} lesson{affectedLessonCount !== 1 ? 's are' : ' is'} scheduled on the selected date{pendingClosureDates && pendingClosureDates.dates.length > 1 ? 's' : ''}. The closure date will be added but existing lessons will not be automatically cancelled.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setLessonWarningOpen(false); setPendingClosureDates(null); }}>
+              Go Back
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmClosureWithLessons}>
+              Add Closure Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
