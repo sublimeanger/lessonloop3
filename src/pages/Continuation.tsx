@@ -112,6 +112,7 @@ export default function Continuation() {
 
   const previewBulk = usePreviewBulkProcess();
   const deleteRun = useDeleteContinuationRun();
+  const updateResponse = useUpdateContinuationResponse();
 
   // FIX 2: Preview dialog state
   const [bulkPreview, setBulkPreview] = useState<BulkProcessPreview | null>(null);
