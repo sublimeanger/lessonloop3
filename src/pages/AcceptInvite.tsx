@@ -415,6 +415,7 @@ export default function AcceptInvite() {
                   placeholder="Create a password"
                   autoComplete="new-password"
                   className="pr-10 h-11"
+                  disabled={isAccepting}
                 />
                 <button
                   type="button"
@@ -439,7 +440,8 @@ export default function AcceptInvite() {
                   aria-invalid={passwordMismatch}
                   placeholder="Confirm your password"
                   autoComplete="new-password"
-                  className="pr-10 h-11"
+                  className={`pr-10 h-11 ${passwordMismatch ? 'border-destructive focus-visible:ring-destructive/20' : ''}`}
+                  disabled={isAccepting}
                 />
                 <button
                   type="button"
@@ -451,6 +453,9 @@ export default function AcceptInvite() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {passwordMismatch && (
+                <p className="text-xs text-destructive" role="alert">Passwords do not match</p>
+              )}
             </div>
             <p className="text-xs text-muted-foreground text-center">
               By creating an account, you agree to our{' '}
