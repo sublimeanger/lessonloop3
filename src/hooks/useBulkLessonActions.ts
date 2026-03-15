@@ -26,6 +26,9 @@ export function useBulkLessonActions({ refetch, orgId, userId, currentRole, teac
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
+  const isMounted = useRef(true);
+
+  useEffect(() => () => { isMounted.current = false; }, []);
 
   const toggleSelection = useCallback((id: string) => {
     setSelectedIds(prev => {
