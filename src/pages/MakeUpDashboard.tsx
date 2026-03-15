@@ -17,7 +17,7 @@ const MakeUpDashboard = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
 
   const { data: stats, isLoading: statsLoading } = useWaitlistStats();
-  const { entries: matchedEntries, isLoading: matchedLoading } = useWaitlist({ status: 'matched' });
+  const { entries: actionEntries, isLoading: actionLoading } = useWaitlist({ statuses: ['matched', 'accepted'] });
   const { entries: allEntries, isLoading: allLoading, refetch } = useWaitlist({
     status: statusFilter,
     teacherId: teacherFilter,
