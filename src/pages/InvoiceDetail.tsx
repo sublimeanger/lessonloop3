@@ -117,7 +117,7 @@ export default function InvoiceDetail() {
 
   const handlePayNow = () => {
     if (id) {
-      initiatePayment(id);
+      setPaymentDrawerOpen(true);
     }
   };
 
