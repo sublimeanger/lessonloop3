@@ -129,7 +129,11 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
   };
 
   const toggleSlot = (id: string) => {
-    setSlots(prev => prev.map(s => s.id === id ? { ...s, excluded: !s.excluded } : s));
+    setSlots(prev => prev.map(s => {
+      // Don't allow toggling conflict slots back on
+      if (s.id === id && s.conflictMessage) return s;
+      return s.id === id ? { ...s, excluded: !s.excluded } : s;
+    }));
   };
 
   const handleGenerate = async () => {
