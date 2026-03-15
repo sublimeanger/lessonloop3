@@ -143,7 +143,7 @@ async function handleCreate(
   const { data: org, error: orgError } = await client
     .from("organisations")
     .select(
-      "vat_enabled, vat_rate, currency_code, subscription_status, trial_ends_at"
+      "vat_enabled, vat_rate, currency_code, subscription_status, trial_ends_at, timezone"
     )
     .eq("id", orgId)
     .single();
@@ -350,7 +350,7 @@ async function handleRetry(
 async function executeBillingLogic(
   client: any,
   orgId: string,
-  org: { vat_enabled: boolean; vat_rate: number; currency_code: string },
+  org: { vat_enabled: boolean; vat_rate: number; currency_code: string; timezone?: string },
   startDate: string,
   endDate: string,
   billingMode: string,
@@ -537,9 +537,13 @@ async function executeBillingLogic(
   }> = [];
 
   if (generateInvoices) {
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 14);
-    const dueDateStr = dueDate.toISOString().split("T")[0];
+    // Calculate due date in the org's timezone so the 14-day window
+    // aligns with the org's local calendar date, not UTC.
+    const tz = org.timezone || "Europe/London";
+    const nowInTz = new Date().toLocaleDateString("en-CA", { timeZone: tz }); // YYYY-MM-DD
+    const localDate = new Date(nowInTz + "T00:00:00");
+    localDate.setDate(localDate.getDate() + 14);
+    const dueDateStr = localDate.toISOString().split("T")[0];
     const vatRate = org.vat_enabled ? org.vat_rate : 0;
 
     // Pre-compute all invoice rows and their associated items
