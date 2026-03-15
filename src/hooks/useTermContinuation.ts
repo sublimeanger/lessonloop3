@@ -673,7 +673,7 @@ export function useBulkProcessContinuation() {
         }
       );
 
-      return { processedCount, extendedCount, withdrawnCount };
+      return { processedCount, extendedCount, withdrawnCount, conflictWarnings };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['continuation-runs'] });
