@@ -1,3 +1,10 @@
+// CRON SETUP REQUIRED:
+// This function must be scheduled via Supabase Dashboard → Edge Functions → Schedules
+// Schedule: Daily at 2am UTC (0 2 * * *)
+// Also schedule credit-expiry with the same frequency (0 2 * * *)
+//
+// Sends warning emails to guardians about credits expiring in the next 3 days.
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateCronAuth } from "../_shared/cron-auth.ts";
 import { escapeHtml } from "../_shared/escape-html.ts";

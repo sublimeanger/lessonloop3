@@ -563,7 +563,7 @@ export function useBulkProcessContinuation() {
             // Check current end_date of recurrence
             const { data: rec } = await (supabase as any)
               .from('recurrence_rules')
-              .select('id, end_date')
+              .select('id, end_date, days_of_week')
               .eq('id', lesson.recurrence_id)
               .single();
 
@@ -573,6 +573,13 @@ export function useBulkProcessContinuation() {
                 .update({ end_date: data.next_term_end_date })
                 .eq('id', lesson.recurrence_id);
             }
+
+            // TODO(FIX-3): Extending recurrence end_date does NOT generate actual
+            // lesson records for the new term. The calendar relies on materialised
+            // lesson rows in the `lessons` table. An admin must verify that lessons
+            // appear in the calendar for the new term and use the Bulk Slot Generator
+            // if they are missing. A future improvement should call an RPC or edge
+            // function here to generate the lesson rows automatically.
           }
           extendedCount++;
         } else if (resp.response === 'withdrawing') {
@@ -710,6 +717,14 @@ export function useBulkProcessContinuation() {
         title: 'Processing complete',
         description: parts.join(', ') || `${data.processedCount} responses processed`,
       });
+
+      if (data.extendedCount > 0) {
+        toast({
+          title: 'Action required',
+          description: 'Recurrence dates extended. Please verify lessons were created for the new term in the calendar. Use the Bulk Slot Generator if lessons are missing.',
+          variant: 'default',
+        });
+      }
     },
     onError: (error) => {
       toast({
