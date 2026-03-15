@@ -22,6 +22,7 @@ import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
 import { SendInvoiceModal } from '@/components/invoices/SendInvoiceModal';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { RecurringBillingTab } from '@/components/settings/RecurringBillingTab';
+import { BillingRunHistory } from '@/components/invoices/BillingRunHistory';
 import { useToast } from '@/hooks/use-toast';
 
 import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
