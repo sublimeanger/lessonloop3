@@ -1,0 +1,83 @@
+-- FIX 4 [8B.2]: Use org timezone (not UTC) in waitlist match function
+--
+-- find_waitlist_matches extracts day name and lesson time using
+-- AT TIME ZONE 'UTC'. During BST a 4pm lesson stored as 15:00 UTC
+-- would compare against parent preferences using the wrong local time,
+-- causing missed or incorrect matches.
+--
+-- Fix: Look up the org timezone and use it for day/time extraction.
+
+CREATE OR REPLACE FUNCTION public.find_waitlist_matches(_lesson_id uuid, _absent_student_id uuid, _org_id uuid)
+ RETURNS TABLE(waitlist_id uuid, student_id uuid, student_name text, guardian_name text, guardian_email text, missed_lesson_title text, missed_lesson_date date, waiting_since timestamp with time zone, match_quality text)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  _lesson RECORD;
+  _duration INTEGER;
+  _day_name TEXT;
+  _lesson_time TIME;
+  _participant_count INTEGER;
+  _tz TEXT;
+BEGIN
+  SELECT * INTO _lesson FROM lessons WHERE id = _lesson_id AND org_id = _org_id;
+  IF NOT FOUND THEN RETURN; END IF;
+
+  -- Capacity check
+  IF _lesson.max_participants IS NOT NULL THEN
+    SELECT COUNT(*) INTO _participant_count
+    FROM lesson_participants WHERE lesson_id = _lesson_id;
+
+    IF _participant_count >= _lesson.max_participants THEN
+      RETURN;
+    END IF;
+  END IF;
+
+  -- Use org timezone for day/time comparisons
+  SELECT COALESCE(o.timezone, 'Europe/London') INTO _tz
+    FROM organisations o WHERE o.id = _org_id;
+
+  _duration := EXTRACT(EPOCH FROM (_lesson.end_at::timestamp - _lesson.start_at::timestamp)) / 60;
+  _day_name := TRIM(LOWER(TO_CHAR(_lesson.start_at AT TIME ZONE _tz, 'day')));
+  _lesson_time := (_lesson.start_at AT TIME ZONE _tz)::TIME;
+
+  RETURN QUERY
+  SELECT w.id, w.student_id,
+    (s.first_name || ' ' || s.last_name)::TEXT,
+    g.full_name::TEXT, g.email::TEXT,
+    w.lesson_title, w.missed_lesson_date, w.created_at,
+    CASE
+      WHEN w.teacher_id = _lesson.teacher_id AND w.lesson_duration_minutes = _duration
+        AND (w.location_id IS NULL OR w.location_id = _lesson.location_id) THEN 'exact'
+      WHEN w.teacher_id = _lesson.teacher_id AND w.lesson_duration_minutes = _duration THEN 'same_teacher'
+      WHEN w.lesson_duration_minutes = _duration THEN 'same_duration'
+      ELSE 'partial'
+    END
+  FROM make_up_waitlist w
+  JOIN students s ON s.id = w.student_id
+  LEFT JOIN guardians g ON g.id = w.guardian_id
+  WHERE w.org_id = _org_id AND w.status = 'waiting'
+    AND w.student_id != _absent_student_id
+    AND w.lesson_duration_minutes <= _duration
+    AND (w.expires_at IS NULL OR w.expires_at > NOW())
+    AND (w.preferred_days IS NULL OR _day_name = ANY(w.preferred_days))
+    AND (w.preferred_time_earliest IS NULL OR _lesson_time >= w.preferred_time_earliest)
+    AND (w.preferred_time_latest IS NULL OR _lesson_time <= w.preferred_time_latest)
+    AND NOT EXISTS (
+      SELECT 1 FROM lesson_participants lp JOIN lessons l ON l.id = lp.lesson_id
+      WHERE lp.student_id = w.student_id AND l.status = 'scheduled'
+        AND l.start_at < _lesson.end_at AND l.end_at > _lesson.start_at
+    )
+  ORDER BY
+    CASE
+      WHEN w.teacher_id = _lesson.teacher_id AND w.lesson_duration_minutes = _duration THEN 0
+      WHEN w.teacher_id = _lesson.teacher_id THEN 1
+      WHEN w.lesson_duration_minutes = _duration THEN 2
+      ELSE 3
+    END,
+    w.created_at ASC
+  FOR UPDATE OF w SKIP LOCKED
+  LIMIT 10;
+END;
+$function$;
