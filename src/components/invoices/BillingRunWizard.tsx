@@ -28,7 +28,7 @@ import type { BillingRunSummary } from '@/hooks/useBillingRuns';
 import { useRateCards, findRateForDuration } from '@/hooks/useRateCards';
 import { useTerms } from '@/hooks/useTerms';
 import type { Database } from '@/integrations/supabase/types';
-import { formatCurrencyMinor } from '@/lib/utils';
+import { formatCurrencyMinor, currencySymbol } from '@/lib/utils';
 
 type BillingRunType = Database['public']['Enums']['billing_run_type'];
 type BillingMode = 'delivered' | 'upfront';
