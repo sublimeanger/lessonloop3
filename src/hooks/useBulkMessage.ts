@@ -135,7 +135,8 @@ export function useRecipientPreview(filters: FilterCriteria) {
         .is('deleted_at', null)
         .not('email', 'is', null);
 
-      const { data: guardians } = await guardianQuery;
+      const { data: guardians, error: gErr } = await guardianQuery;
+      if (gErr) throw new Error(`Failed to fetch guardian details: ${gErr.message}`);
 
       let filteredGuardians = guardians || [];
 
