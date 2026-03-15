@@ -96,6 +96,15 @@ export default function Login() {
       return;
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast({
+        title: 'Invalid email',
+        description: 'Please enter a valid email address.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
     setLoginFailed(false);
     const { error } = await signIn(trimmedEmail, password);
@@ -103,9 +112,16 @@ export default function Login() {
 
     if (error) {
       setLoginFailed(true);
+      // Provide clearer error messages for common cases
+      let description = error.message;
+      if (error.message?.toLowerCase().includes('invalid login credentials')) {
+        description = 'Incorrect email or password. Please try again.';
+      } else if (error.message?.toLowerCase().includes('email not confirmed')) {
+        description = 'Please verify your email address before signing in. Check your inbox for the verification link.';
+      }
       toast({
         title: 'Sign in failed',
-        description: error.message,
+        description,
         variant: 'destructive',
       });
     }

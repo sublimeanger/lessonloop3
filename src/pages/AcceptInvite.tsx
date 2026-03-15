@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/hooks/use-toast';
 import { DetailSkeleton } from '@/components/shared/LoadingState';
 import { Loader2, CheckCircle, XCircle, Music, Eye, EyeOff } from 'lucide-react';
+import { LogoHorizontal } from '@/components/brand/Logo';
 import { PasswordStrengthIndicator, PASSWORD_MIN_LENGTH } from '@/components/auth/PasswordStrengthIndicator';
 import { usePageMeta } from '@/hooks/usePageMeta';
 

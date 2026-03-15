@@ -300,7 +300,7 @@ export default function Signup() {
                   aria-invalid={passwordMismatch}
                   disabled={isLoading}
                   autoComplete="new-password"
-                  className="pr-10 h-11"
+                  className={`pr-10 h-11 ${passwordMismatch ? 'border-destructive focus-visible:ring-destructive/20' : ''}`}
                 />
                 <button
                   type="button"
@@ -312,6 +312,9 @@ export default function Signup() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {passwordMismatch && (
+                <p className="text-xs text-destructive" role="alert">Passwords do not match</p>
+              )}
             </div>
             <p className="text-xs text-muted-foreground text-center">
               By creating an account, you agree to our{' '}

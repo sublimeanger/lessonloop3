@@ -26,6 +26,19 @@ export default function VerifyEmail() {
     return () => clearInterval(timer);
   }, [cooldownSeconds]);
 
+  // Auto-poll for verification every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data.user?.email_confirmed_at) {
+        clearInterval(interval);
+        toast({ title: 'Email verified!', description: 'Redirecting…' });
+        navigate('/onboarding');
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [navigate, toast]);
+
   const handleResend = async () => {
     if (!user?.email) return;
     setResending(true);

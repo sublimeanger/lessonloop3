@@ -100,6 +100,18 @@ export default function ResetPassword() {
     }
   };
 
+  if (isCheckingSession && !sessionError) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center gradient-hero-light p-4">
+        <div className="text-center space-y-4">
+          <LogoHorizontal size="lg" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Verifying reset link…</p>
+        </div>
+      </div>
+    );
+  }
+
   if (sessionError) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center gradient-hero-light p-4 sm:p-6">
