@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText, PoundSterling, Users, CheckCircle2, AlertTriangle, RotateCcw } from 'lucide-react';
+import { Loader2, FileText, Banknote, Users, CheckCircle2, AlertTriangle, RotateCcw } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useUnbilledLessons } from '@/hooks/useInvoices';
 import { useCreateBillingRun, useRetryBillingRunPayers } from '@/hooks/useBillingRuns';
