@@ -30,6 +30,7 @@ export function MobileDayView({
   savingLessonIds,
   onLongPress,
 }: MobileDayViewProps) {
+  const { selectionMode, selectedIds } = useBulkSelection();
   // Filter lessons for the current day and sort chronologically
   const dayLessons = useMemo(() => {
     return lessons
