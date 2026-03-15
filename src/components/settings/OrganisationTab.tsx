@@ -168,6 +168,28 @@ export function OrganisationTab() {
     setShowTimezoneWarning(false);
   };
 
+  const handleCurrencyChange = (value: string) => {
+    if (value !== orgData?.currency_code) {
+      setPendingCurrency(value);
+      setShowCurrencyWarning(true);
+    } else {
+      setCurrencyCode(value);
+    }
+  };
+
+  const confirmCurrencyChange = () => {
+    if (pendingCurrency) {
+      setCurrencyCode(pendingCurrency);
+      setPendingCurrency(null);
+    }
+    setShowCurrencyWarning(false);
+  };
+
+  const cancelCurrencyChange = () => {
+    setPendingCurrency(null);
+    setShowCurrencyWarning(false);
+  };
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       const nameErr = validateName(orgName);
