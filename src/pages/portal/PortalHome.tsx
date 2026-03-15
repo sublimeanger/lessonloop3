@@ -118,7 +118,7 @@ export default function PortalHome() {
   const handleInlineAccept = async (id: string) => {
     const entry = activeWaitlist.find((e) => e.id === id);
     try {
-      const { error } = await supabase.rpc('respond_to_makeup_offer', {
+      const { error } = await (supabase.rpc as any)('respond_to_makeup_offer', {
         _waitlist_id: id,
         _action: 'accept',
       });
