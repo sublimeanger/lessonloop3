@@ -643,6 +643,99 @@ export default function Continuation() {
         onOpenChange={setDetailOpen}
         currency={currency}
       />
+
+      {/* FIX 2: Bulk Process Preview Dialog */}
+      <AlertDialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Bulk Processing</AlertDialogTitle>
+            <AlertDialogDescription>
+              Review the following before proceeding:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {bulkPreview && (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                {bulkPreview.confirmedCount > 0 && (
+                  <div className="rounded-lg border p-2">
+                    <p className="text-muted-foreground">Students to extend</p>
+                    <p className="text-lg font-semibold">{bulkPreview.confirmedCount}</p>
+                  </div>
+                )}
+                {bulkPreview.withdrawingCount > 0 && (
+                  <div className="rounded-lg border p-2">
+                    <p className="text-muted-foreground">Withdrawals to process</p>
+                    <p className="text-lg font-semibold">{bulkPreview.withdrawingCount}</p>
+                  </div>
+                )}
+                {bulkPreview.estimatedLessons > 0 && (
+                  <div className="rounded-lg border p-2">
+                    <p className="text-muted-foreground">Est. lessons created</p>
+                    <p className="text-lg font-semibold">~{bulkPreview.estimatedLessons}</p>
+                  </div>
+                )}
+                <div className="rounded-lg border p-2">
+                  <p className="text-muted-foreground">Date range</p>
+                  <p className="font-medium">
+                    {format(new Date(bulkPreview.dateRange.start), 'dd MMM yyyy')} –{' '}
+                    {format(new Date(bulkPreview.dateRange.end), 'dd MMM yyyy')}
+                  </p>
+                </div>
+              </div>
+              {bulkPreview.conflicts.length > 0 && (
+                <div className="rounded-lg border border-warning/30 bg-warning/10 p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <AlertTriangle className="h-4 w-4 text-warning" />
+                    <span className="font-medium text-warning">Schedule Conflicts Detected</span>
+                  </div>
+                  <ul className="list-disc list-inside text-muted-foreground text-xs space-y-0.5">
+                    {bulkPreview.conflicts.map((c, i) => (
+                      <li key={i}>{c}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmBulkProcess}
+              disabled={bulkProcess.isPending}
+            >
+              {bulkProcess.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirm & Process
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* FIX 3: Delete Run Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Continuation Run?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this run
+              {runToDelete?.summary?.total_students
+                ? ` and ${runToDelete.summary.total_students} response(s)`
+                : ''}
+              . This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteRun}
+              disabled={deleteRun.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteRun.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete Run
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
