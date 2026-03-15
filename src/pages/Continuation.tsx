@@ -459,8 +459,8 @@ export default function Continuation() {
               <Button
                 size="sm"
                 variant="destructive"
-                onClick={() => handleBulkProcess('withdrawals')}
-                disabled={bulkProcess.isPending}
+                onClick={() => handleBulkProcessPreview('withdrawals')}
+                disabled={bulkProcess.isPending || previewBulk.isPending}
               >
                 Process Withdrawals
               </Button>
