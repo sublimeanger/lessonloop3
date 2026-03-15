@@ -363,7 +363,8 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                 disabled={
                   loadingLessons ||
                   loadingRateCards ||
-                  (config.runType === 'term' && !config.termId)
+                  (config.runType === 'term' && !config.termId) ||
+                  !isDateRangeValid
                 }
               >
                 {(loadingLessons || loadingRateCards) ? (
