@@ -956,38 +956,35 @@ async function handleChargeRefunded(supabase: any, charge: Stripe.Charge) {
     log(`Refund ${truncate(refund.id)} recorded: ${refund.amount} for payment ${truncate(payment.id)}`);
   }
 
-  // Recalculate invoice paid_minor
-  const { data: allPayments } = await supabase
-    .from("payments")
-    .select("amount_minor")
-    .eq("invoice_id", payment.invoice_id);
-
-  const { data: allRefunds } = await supabase
-    .from("refunds")
-    .select("amount_minor")
-    .eq("invoice_id", payment.invoice_id)
-    .eq("status", "succeeded");
-
-  const totalPaid = (allPayments || []).reduce((sum: number, p: any) => sum + p.amount_minor, 0);
-  const totalRefunded = (allRefunds || []).reduce((sum: number, r: any) => sum + r.amount_minor, 0);
-  const netPaid = totalPaid - totalRefunded;
-
-  const { data: invoice } = await supabase
-    .from("invoices")
-    .select("total_minor")
-    .eq("id", payment.invoice_id)
-    .single();
-
-  const invoiceUpdate: Record<string, unknown> = { paid_minor: netPaid };
-  if (invoice && netPaid < invoice.total_minor) {
-    // Reopen invoice if it was fully paid but now has a refund
-    invoiceUpdate.status = "sent";
+  // Check current invoice status before recalculating
+  const { data: inv } = await supabase.from('invoices').select('status').eq('id', payment.invoice_id).single();
+  if (inv?.status === 'void') {
+    // Voided invoice: only update paid_minor, do NOT change status
+    const { data: allPayments } = await supabase
+      .from("payments")
+      .select("amount_minor")
+      .eq("invoice_id", payment.invoice_id);
+    const { data: allRefunds } = await supabase
+      .from("refunds")
+      .select("amount_minor")
+      .eq("invoice_id", payment.invoice_id)
+      .eq("status", "succeeded");
+    const totalPaid = (allPayments || []).reduce((sum: number, p: any) => sum + p.amount_minor, 0);
+    const totalRefunded = (allRefunds || []).reduce((sum: number, r: any) => sum + r.amount_minor, 0);
+    const netPaid = totalPaid - totalRefunded;
+    await supabase.from('invoices').update({ paid_minor: netPaid }).eq('id', payment.invoice_id);
+    log(`Voided invoice ${truncate(payment.invoice_id)} — updated paid_minor=${netPaid} without changing status`);
+    return;
   }
 
-  await supabase
-    .from("invoices")
-    .update(invoiceUpdate)
-    .eq("id", payment.invoice_id);
+  // Atomically recalculate invoice paid_minor (handles status transitions)
+  const { error: recalcError } = await supabase.rpc('recalculate_invoice_paid', {
+    _invoice_id: payment.invoice_id,
+  });
 
-  log(`Invoice ${truncate(payment.invoice_id)} recalculated after refund: net_paid=${netPaid}`);
+  if (recalcError) {
+    console.error("Failed to recalculate invoice after refund:", recalcError);
+  }
+
+  log(`Invoice ${truncate(payment.invoice_id)} recalculated after refund`);
 }

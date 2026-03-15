@@ -29,8 +29,14 @@ BEGIN
   _net_paid := _total_paid - _total_refunded;
 
   _new_status := _invoice.status;
-  IF _net_paid >= _invoice.total_minor AND _invoice.status NOT IN ('void', 'cancelled') THEN
-    _new_status := 'paid';
+  -- Never change status on void/cancelled invoices
+  IF _invoice.status NOT IN ('void', 'cancelled') THEN
+    IF _net_paid >= _invoice.total_minor THEN
+      _new_status := 'paid';
+    ELSIF _invoice.status = 'paid' AND _net_paid < _invoice.total_minor THEN
+      -- Reopen after refund
+      _new_status := 'sent';
+    END IF;
   END IF;
 
   UPDATE invoices SET paid_minor = _net_paid, status = _new_status WHERE id = _invoice_id;
