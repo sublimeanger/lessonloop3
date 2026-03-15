@@ -872,7 +872,7 @@ export default function Locations() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Name *</Label>
-                <Input autoFocus value={locName} onChange={(e) => setLocName(e.target.value)} placeholder="Main Studio" />
+                <Input autoFocus value={locName} onChange={(e) => setLocName(e.target.value)} placeholder="Main Studio" maxLength={200} />
               </div>
               <div className="space-y-2">
                 <Label>Type</Label>
