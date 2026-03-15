@@ -407,19 +407,19 @@ async function executeBillingLogic(
 
   if (lessonsError) throw lessonsError;
 
-  // Get already billed lesson IDs
+  // Get already billed (lesson, student) pairs — dedup must be per-student
+  // so group lessons bill each student independently
   const { data: billedItems } = await client
     .from("invoice_items")
-    .select("linked_lesson_id")
+    .select("linked_lesson_id, student_id")
     .eq("org_id", orgId)
     .not("linked_lesson_id", "is", null);
 
-  const billedLessonIds = new Set(
-    billedItems?.map((i: any) => i.linked_lesson_id) || []
+  const billedPairs = new Set(
+    (billedItems || []).map((i: any) => `${i.linked_lesson_id}-${i.student_id}`)
   );
-  const unbilledLessons = lessons?.filter(
-    (l: any) => !billedLessonIds.has(l.id)
-  ) || [];
+  // Keep all lessons that have at least one unbilled student
+  const unbilledLessons = lessons || [];
 
   // Fetch attendance records for unbilled lessons
   const unbilledIds = unbilledLessons.map((l: any) => l.id);
@@ -469,6 +469,10 @@ async function executeBillingLogic(
     lesson.lesson_participants?.forEach((lp: any) => {
       const student = lp.student;
       if (!student || student.status !== "active") return;
+
+      // Skip already-billed (lesson, student) pairs
+      const billedKey = `${lesson.id}-${student.id}`;
+      if (billedPairs.has(billedKey)) return;
 
       const attKey = `${lesson.id}-${student.id}`;
       const attStatus = attendanceMap.get(attKey);
