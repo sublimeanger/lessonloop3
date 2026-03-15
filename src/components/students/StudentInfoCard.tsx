@@ -159,7 +159,7 @@ export function StudentInfoCard({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-dob">Date of birth</Label>
-                <Input id="edit-dob" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+                <Input id="edit-dob" type="date" value={dob} onChange={(e) => setDob(e.target.value)} max={new Date().toISOString().split('T')[0]} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-notes">Notes</Label>

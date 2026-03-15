@@ -182,14 +182,15 @@ export function StudentInfoStep({ data, onChange }: StudentInfoStepProps) {
       </p>
 
       <div className="space-y-2">
-        <Label htmlFor="wizard-notes">Notes</Label>
+        <Label htmlFor="wizard-notes">Notes <span className="text-muted-foreground font-normal">(medical, learning needs, etc.)</span></Label>
         <Textarea
           id="wizard-notes"
           value={data.notes}
           onChange={(e) => update('notes', e.target.value)}
-          placeholder="Any additional notes..."
+          placeholder="e.g. hearing difficulty in left ear, requires large print music…"
           rows={3}
         />
+        <p className="text-xs text-muted-foreground">This information is only visible to staff members.</p>
       </div>
     </div>
   );
