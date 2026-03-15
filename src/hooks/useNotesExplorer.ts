@@ -44,7 +44,7 @@ export interface NotesStats {
 }
 
 export function useNotesExplorer(filters: NotesExplorerFilters, page: number = 0) {
-  const { currentOrg, isOrgAdmin } = useOrg();
+  const { currentOrg, isOrgAdmin, currentRole } = useOrg();
   const { user } = useAuth();
   const PAGE_SIZE = 50;
 
