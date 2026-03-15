@@ -422,6 +422,7 @@ export interface BatchLessonRow {
     student_id: string;
     student_name: string;
     current_status: AttendanceStatus | null;
+    has_notes?: boolean;
   }[];
 }
 
@@ -443,7 +444,7 @@ export function useBatchAttendanceLessons(date: Date) {
         .from('lessons')
         .select(`
           id, title, start_at, end_at, status,
-          lesson_participants(student_id, student:students(id, first_name, last_name)),
+          lesson_participants(student_id, student:students(id, first_name, last_name, notes)),
           attendance_records(student_id, attendance_status)
         `)
         .eq('org_id', currentOrg.id)
@@ -475,7 +476,7 @@ export function useBatchAttendanceLessons(date: Date) {
 
       interface BatchQueryRow {
         id: string; title: string; start_at: string; end_at: string; status: string;
-        lesson_participants: { student_id: string; student: { id: string; first_name: string; last_name: string } | null }[];
+        lesson_participants: { student_id: string; student: { id: string; first_name: string; last_name: string; notes: string | null } | null }[];
         attendance_records: { student_id: string; attendance_status: AttendanceStatus }[];
       }
       const typed = (lessonsData || []) as unknown as BatchQueryRow[];
@@ -491,6 +492,7 @@ export function useBatchAttendanceLessons(date: Date) {
             student_id: p.student_id,
             student_name: p.student ? `${p.student.first_name} ${p.student.last_name}` : 'Unknown',
             current_status: existing?.attendance_status || null,
+            has_notes: !!p.student?.notes,
           };
         }),
       }));
