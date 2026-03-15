@@ -30,11 +30,20 @@ export function useBulkLessonActions({ refetch, orgId, userId, currentRole, teac
 
   useEffect(() => () => { isMounted.current = false; }, []);
 
+  const MAX_BULK = 100;
+
   const toggleSelection = useCallback((id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        if (next.size >= MAX_BULK) {
+          toast({ title: 'Selection limit reached', description: `Maximum ${MAX_BULK} lessons can be selected at once.` });
+          return prev;
+        }
+        next.add(id);
+      }
       return next;
     });
   }, []);
