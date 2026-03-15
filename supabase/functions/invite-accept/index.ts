@@ -93,12 +93,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create org membership
-    await supabaseAdmin.from("org_memberships").upsert(
-      { org_id: invite.org_id, user_id: user.id, role: invite.role, status: "active" },
-      { onConflict: "org_id,user_id" }
-    );
-
     // Get user's profile for display name (used by teacher and parent flows)
     const { data: profile } = await supabaseAdmin
       .from("profiles")
@@ -106,10 +100,8 @@ Deno.serve(async (req) => {
       .eq("id", user.id)
       .maybeSingle();
 
-    // If this is a teacher invite, handle the new teachers table
+    // If this is a teacher invite, check teacher limit before proceeding
     if (invite.role === "teacher") {
-      const displayName = profile?.full_name || user.email?.split("@")[0] || "Teacher";
-      
       // Check if there's an existing unlinked teacher record with matching email
       const { data: existingTeacher } = await supabaseAdmin
         .from("teachers")
@@ -118,17 +110,41 @@ Deno.serve(async (req) => {
         .eq("email", user.email?.toLowerCase())
         .maybeSingle();
 
+      // Only check limit if we'd be creating a NEW teacher record
+      // (linking an existing record doesn't increase the count)
+      if (!existingTeacher) {
+        const { count: activeTeachers } = await supabaseAdmin
+          .from("teachers")
+          .select("id", { count: "exact", head: true })
+          .eq("org_id", invite.org_id)
+          .eq("status", "active");
+
+        const { data: org } = await supabaseAdmin
+          .from("organisations")
+          .select("max_teachers")
+          .eq("id", invite.org_id)
+          .single();
+
+        if (org && activeTeachers !== null && activeTeachers >= org.max_teachers) {
+          return new Response(
+            JSON.stringify({ error: "Teacher limit reached for this plan. Please ask the organisation admin to upgrade." }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+
+      const displayName = profile?.full_name || user.email?.split("@")[0] || "Teacher";
+
       if (existingTeacher) {
         // Link the existing unlinked teacher record to this user
         if (!existingTeacher.user_id) {
           await supabaseAdmin
             .from("teachers")
-            .update({ 
+            .update({
               user_id: user.id,
-              display_name: displayName, // Update name in case it's more accurate now
+              display_name: displayName,
             })
             .eq("id", existingTeacher.id);
-          // teacher record linked
         }
       } else {
         // Create a new teacher record
@@ -146,8 +162,13 @@ Deno.serve(async (req) => {
           console.error("Error creating teacher record:", teacherError?.message || "unknown error");
         }
       }
-
     }
+
+    // Create org membership (after teacher limit check passes)
+    await supabaseAdmin.from("org_memberships").upsert(
+      { org_id: invite.org_id, user_id: user.id, role: invite.role, status: "active" },
+      { onConflict: "org_id,user_id" }
+    );
 
     // If this is a parent invite, create/link guardian record
     if (invite.role === "parent") {

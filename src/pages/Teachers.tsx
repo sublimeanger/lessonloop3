@@ -198,6 +198,10 @@ export default function Teachers() {
 
   const handleSelfAdd = async () => {
     if (!user || !currentOrg) return;
+    if (!canAddTeacher) {
+      toast({ title: 'Teacher limit reached', description: 'Upgrade your plan to add more teachers.', variant: 'destructive' });
+      return;
+    }
     setIsSelfAdding(true);
     try {
       const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
@@ -260,7 +264,7 @@ export default function Teachers() {
             .single();
 
           if (inviteError) {
-            if (inviteError.message.includes('duplicate')) {
+            if (inviteError.code === '23505') {
               toast({ title: 'Already invited', description: 'This email already has a pending invite.', variant: 'destructive' });
             } else {
               logger.error('Invite insert error:', inviteError);
@@ -417,6 +421,20 @@ export default function Teachers() {
         .eq('default_teacher_id', teacher.id)
         .eq('org_id', currentOrg.id);
       if (sdError) logger.error('Failed to clear default teacher on students:', sdError);
+
+      // Deactivate booking pages for this teacher (TCH-13)
+      const { error: bpError } = await supabase
+        .from('booking_pages')
+        .update({ enabled: false })
+        .eq('teacher_id', teacher.id);
+      if (bpError) logger.error('Failed to deactivate booking pages:', bpError);
+
+      // Remove recurring lesson templates for this teacher (TCH-13)
+      const { error: rltError } = await supabase
+        .from('recurring_lesson_templates')
+        .delete()
+        .eq('teacher_id', teacher.id);
+      if (rltError) logger.error('Failed to clean up recurring lesson templates:', rltError);
 
       await deleteTeacher.mutateAsync(teacher.id);
 
@@ -820,8 +838,8 @@ export default function Teachers() {
         onRemove={(t) => { setQuickViewTeacher(null); initiateRemoval(t); }}
         colour={quickViewTeacher ? TEACHER_COLOURS[getTeacherColourIndex(activeTeachers, quickViewTeacher.id)] : TEACHER_COLOURS[0]}
       />
-      {teachers.length >= 100 && (
-        <p className="text-xs text-muted-foreground text-center mt-4">Showing first 100 teachers. Use the search bar to find specific teachers.</p>
+      {teachers.length >= 500 && (
+        <p className="text-xs text-muted-foreground text-center mt-4">Showing first 500 teachers. Use the search bar to find specific teachers.</p>
       )}
     </AppLayout>
   );

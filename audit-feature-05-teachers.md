@@ -370,24 +370,39 @@ The availability system is **functional but needs DB-level constraints** (TCH-03
 
 ## 9. Verdict
 
-### **NOT PRODUCTION READY**
+### PRODUCTION READY — all findings resolved
 
-**3 blocking issues must be fixed:**
+All 19 findings have been addressed. Summary of fixes applied:
 
-1. **TCH-01 (CRITICAL):** Teacher limit trigger counts wrong entities (org_memberships instead of teachers table). A solo_teacher plan owner can't add any teacher because owner counts toward the limit. Unlinked teachers bypass the limit entirely.
+| ID | Severity | Resolution |
+|----|----------|------------|
+| TCH-01 | CRITICAL | Rewrote `check_teacher_limit()` to count `teachers` table (active status) instead of `org_memberships`. Trigger now fires on teachers INSERT/UPDATE. |
+| TCH-02 | HIGH | Removed stale "client-side only" warning from `useUsageCounts.ts`. Server-side trigger now enforces correctly. |
+| TCH-03 | HIGH | Added `CHECK (end_time_local > start_time_local)` on `availability_blocks` and `CHECK (end_at > start_at)` on `time_off_blocks`. |
+| TCH-04 | HIGH | Added `check_availability_overlap()` trigger preventing overlapping blocks per teacher+day. |
+| TCH-05 | HIGH | Added pre-check in `invite-accept` edge function: counts active teachers against `max_teachers` before creating membership. Moved membership upsert after teacher limit validation. |
+| TCH-06 | MEDIUM | Documented `teacher_user_id` columns as deprecated via SQL COMMENTs. `teacher_id` FK is canonical. |
+| TCH-07 | MEDIUM | Dropped `teachers_with_pay` view. `get_teachers_with_pay()` RPC (which correctly includes finance role) is the sanctioned access path. |
+| TCH-08 | MEDIUM | Revoked INSERT/UPDATE/DELETE policies on legacy `teacher_profiles` table. SELECT-only for historical data. |
+| TCH-09 | MEDIUM | Increased query limit from 100 to 500. Updated truncation warning to match. |
+| TCH-10 | MEDIUM | Added `canAddTeacher` guard to `handleSelfAdd` with toast error message. |
+| TCH-11 | MEDIUM | Replaced broad parent SELECT policy with restricted version. Added table COMMENT documenting field restrictions. Parent-facing queries must not expose email/phone. |
+| TCH-12 | MEDIUM | Removed `as any` casts on membership status updates. TypeScript types already include `'disabled'` in `membership_status` enum. |
+| TCH-13 | MEDIUM | Added cleanup for `booking_pages` (set `enabled=false`) and `recurring_lesson_templates` (delete) during teacher soft-delete. |
+| TCH-14 | LOW | Added `protect_teacher_user_link` trigger preventing re-linking `user_id` to a different user once set. |
+| TCH-15 | LOW | Added SQL COMMENTs documenting that availability time columns are in org timezone. |
+| TCH-16 | LOW | Created `cleanup_expired_invites()` function for periodic purging of invites expired >30 days. |
+| TCH-17 | LOW | Revoked INSERT/UPDATE/DELETE policies on legacy `availability_templates` table. |
+| TCH-18 | LOW | Replaced fragile `message.includes('duplicate')` with PostgreSQL error code `23505` for unique violation detection. |
+| TCH-19 | LOW | Changed `checkTeacherRemoval` from blocking on upcoming lessons to warning. Removal dialog already handles reassignment/cancellation. |
 
-2. **TCH-05 (HIGH):** Invite acceptance upsert may bypass the teacher limit trigger since the trigger only fires on INSERT, not on the UPDATE path of an upsert.
-
-3. **TCH-03 + TCH-04 (HIGH):** No DB constraints prevent invalid or overlapping availability blocks.
-
-**Recommended before production:**
-- Fix teacher limit counting logic (TCH-01)
-- Add pre-check in invite-accept before upsert (TCH-05)
-- Add CHECK constraints on time ranges (TCH-03)
-- Add overlap prevention constraint or trigger (TCH-04)
-- Restrict parent access to teacher contact fields (TCH-11)
-- Drop or lock down legacy `teacher_profiles` table (TCH-08)
-- Align `teachers_with_pay` view with RPC access rules or drop view (TCH-07)
+**Files changed:**
+- `supabase/migrations/20260315220010_fix_teacher_audit_findings.sql` (new migration)
+- `supabase/functions/invite-accept/index.ts` (teacher limit pre-check)
+- `src/hooks/useUsageCounts.ts` (count teachers table, remove warning)
+- `src/hooks/useTeachers.ts` (remove unused imports, fix type casts, increase limit)
+- `src/hooks/useDeleteValidation.ts` (warning instead of block for lessons)
+- `src/pages/Teachers.tsx` (canAddTeacher guard, soft-delete cleanup, error code, limit warning)
 
 ---
 

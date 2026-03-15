@@ -1,5 +1,4 @@
-// ⚠️ IMPORTANT: These limits are currently client-side only.
-// Server-side enforcement via RLS/triggers is required before production.
+// Server-side enforcement: check_teacher_limit() trigger on teachers table.
 import { useQuery } from '@tanstack/react-query';
 import { STALE_STABLE, GC_DEFAULT } from '@/config/query-stale-times';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,11 +45,10 @@ export function useUsageCounts(): UsageStatus {
         activeStudentsQuery(currentOrg.id)
           .then(r => ({ ...r, count: r.data?.length ?? 0 })),
         supabase
-          .from('org_memberships')
+          .from('teachers')
           .select('id', { count: 'exact', head: true })
           .eq('org_id', currentOrg.id)
-          .eq('status', 'active')
-          .in('role', ['owner', 'admin', 'teacher']),
+          .eq('status', 'active'),
         supabase
           .from('locations')
           .select('id', { count: 'exact', head: true })
