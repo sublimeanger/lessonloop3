@@ -423,19 +423,25 @@ export default function Teachers() {
         .eq('org_id', currentOrg.id);
       if (sdError) logger.error('Failed to clear default teacher on students:', sdError);
 
-      // Deactivate booking pages for this teacher (TCH-13)
-      const { error: bpError } = await supabase
-        .from('booking_pages')
-        .update({ enabled: false })
+      // Deactivate booking pages linked to this teacher (TCH-13)
+      const { data: linkedPages } = await supabase
+        .from('booking_page_teachers')
+        .select('booking_page_id')
         .eq('teacher_id', teacher.id);
-      if (bpError) logger.error('Failed to deactivate booking pages:', bpError);
-
-      // Remove recurring lesson templates for this teacher (TCH-13)
-      const { error: rltError } = await supabase
-        .from('recurring_lesson_templates')
-        .delete()
-        .eq('teacher_id', teacher.id);
-      if (rltError) logger.error('Failed to clean up recurring lesson templates:', rltError);
+      if (linkedPages && linkedPages.length > 0) {
+        const pageIds = linkedPages.map(p => p.booking_page_id);
+        const { error: bpError } = await supabase
+          .from('booking_pages')
+          .update({ enabled: false })
+          .in('id', pageIds);
+        if (bpError) logger.error('Failed to deactivate booking pages:', bpError);
+        // Remove junction entries
+        const { error: bptError } = await supabase
+          .from('booking_page_teachers')
+          .delete()
+          .eq('teacher_id', teacher.id);
+        if (bptError) logger.error('Failed to clean up booking_page_teachers:', bptError);
+      }
 
       await deleteTeacher.mutateAsync(teacher.id);
 

@@ -952,7 +952,7 @@ export default function Locations() {
             </div>
             <div className="space-y-2">
               <Label>Capacity (optional)</Label>
-              <Input type="number" min="1" step="1" value={roomCapacity} onChange={(e) => setRoomCapacity(e.target.value)} placeholder="4" />
+              <Input type="number" min="1" step="1" value={roomCapacity} onChange={(e) => setRoomCapacity(e.target.value.replace(/[^0-9]/g, ''))} placeholder="4" />
             </div>
           </div>
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
