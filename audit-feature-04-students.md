@@ -158,6 +158,9 @@ CREATE TABLE public.student_guardians (
   guardian_id       UUID NOT NULL REFERENCES guardians(id) ON DELETE CASCADE,
   relationship     relationship_type NOT NULL DEFAULT 'guardian',  -- ENUM: mother|father|guardian|other
   is_primary_payer BOOLEAN NOT NULL DEFAULT false,
+  receives_billing  BOOLEAN DEFAULT true,   -- notification preference
+  receives_schedule BOOLEAN DEFAULT true,   -- notification preference
+  receives_practice BOOLEAN DEFAULT true,   -- notification preference
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (student_id, guardian_id)
 );
