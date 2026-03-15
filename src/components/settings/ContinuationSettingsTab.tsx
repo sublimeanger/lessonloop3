@@ -125,7 +125,7 @@ export function ContinuationSettingsTab() {
             </div>
             <Switch
               checked={assumedContinuing}
-              onCheckedChange={handleAssumedContinuingChange}
+              onCheckedChange={setAssumedContinuing}
             />
           </div>
 
