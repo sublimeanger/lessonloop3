@@ -347,15 +347,17 @@ export function useMarkLessonComplete() {
       if (error) throw error;
 
       // Back-fill 'present' for any participant without an attendance record
-      const { data: participants } = await supabase
+      const { data: participants, error: partErr } = await supabase
         .from('lesson_participants')
         .select('student_id')
         .eq('lesson_id', lessonId);
+      if (partErr) throw partErr;
 
-      const { data: existing } = await supabase
+      const { data: existing, error: exErr } = await supabase
         .from('attendance_records')
         .select('student_id')
         .eq('lesson_id', lessonId);
+      if (exErr) throw exErr;
 
       const existingSet = new Set((existing || []).map(e => e.student_id));
       const missing = (participants || []).filter(p => !existingSet.has(p.student_id));
