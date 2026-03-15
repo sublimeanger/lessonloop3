@@ -86,6 +86,10 @@ export default function CalendarPage() {
       });
       return next;
     });
+    // Clear bulk selection when filters change to avoid invisible selected lessons
+    if (bulk?.selectionMode) {
+      bulk.clearSelection();
+    }
   }, []);
 
   useEffect(() => { safeSetItem('ll-calendar-compact', isCompact ? '1' : '0'); }, [isCompact]);
