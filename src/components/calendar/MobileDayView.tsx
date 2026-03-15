@@ -97,10 +97,11 @@ export function MobileDayView({
               onClick={() => onLessonClick(lesson)}
               onContextMenu={onLongPress ? (e) => { e.preventDefault(); onLongPress(lesson); } : undefined}
               className={cn(
-                'w-full flex items-stretch gap-0 px-0 py-3 text-left transition-colors active:bg-muted/50',
+                'w-full flex items-stretch gap-0 px-0 py-3 text-left transition-colors active:bg-muted/50 relative',
                 isCancelled && 'opacity-40',
                 isOpenSlot && 'border-l-2 border-dashed border-primary/40',
                 isSaving && 'animate-pulse',
+                selectionMode && selectedIds.has(lesson.id) && 'bg-primary/5 ring-2 ring-primary ring-inset',
               )}
               style={{ minHeight: 64 }}
             >
