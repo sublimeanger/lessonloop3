@@ -310,18 +310,20 @@ export function useLessonsDeliveredReport(startDate: string, endDate: string) {
       const locationIds = [...new Set((lessons || []).filter(l => l.location_id).map(l => l.location_id!))];
 
       // Fetch teachers
-      const { data: teachers } = teacherIds.length > 0
+      const { data: teachers, error: tErr } = teacherIds.length > 0
         ? await supabase
             .from('teachers')
             .select('id, display_name')
             .in('id', teacherIds)
-        : { data: [] };
+        : { data: [] as { id: string; display_name: string }[], error: null };
+      if (tErr) throw tErr;
 
       // Fetch locations
-      const { data: locations } = await supabase
+      const { data: locations, error: lErr } = await supabase
         .from('locations')
         .select('id, name')
         .in('id', locationIds);
+      if (lErr) throw lErr;
 
       // Build maps
       const teacherNameMap = new Map<string, string>();
