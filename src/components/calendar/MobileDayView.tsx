@@ -3,7 +3,8 @@ import { format, parseISO, differenceInMinutes, isSameDay } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { TeacherWithColour, TeacherColourEntry, getTeacherColour } from './teacherColours';
 import { cn } from '@/lib/utils';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, Check } from 'lucide-react';
+import { useBulkSelection } from './BulkSelectionContext';
 
 function resolveColour(
   colourMap: Map<string, TeacherWithColour>,
