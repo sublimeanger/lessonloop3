@@ -48,13 +48,15 @@ export function usePayroll(startDate: string, endDate: string) {
       const rangeEnd = fromZonedTime(new Date(`${endDate}T23:59:59`), orgTimezone).toISOString();
 
       // Fetch completed lessons in date range - now with teacher_id
+      // FIX 4: Exclude open slots from payroll
       let lessonsQuery = supabase
         .from('lessons')
         .select('id, title, start_at, end_at, teacher_id, status')
         .eq('org_id', currentOrg.id)
         .eq('status', 'completed')
         .gte('start_at', rangeStart)
-        .lte('start_at', rangeEnd);
+        .lte('start_at', rangeEnd)
+        .or('is_open_slot.is.null,is_open_slot.eq.false');
 
       // If teacher, filter by their teacher_id (lookup via user_id)
       if (!isAdmin && user) {
