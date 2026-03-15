@@ -384,8 +384,8 @@ export function BrandingTab() {
                           )}
                           Upload Logo
                         </Button>
-                        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
-                        <p className="text-xs text-muted-foreground mt-1">Square, 200x200px+. Max 2MB.</p>
+                        <input ref={fileInputRef} type="file" accept={ALLOWED_LOGO_ACCEPT} className="hidden" onChange={handleFileSelect} />
+                        <p className="text-xs text-muted-foreground mt-1">PNG, JPEG, or WebP. Square, 200×200px+. Max 2 MB.</p>
                       </div>
                     )}
                   </div>
