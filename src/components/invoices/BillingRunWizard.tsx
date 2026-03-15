@@ -318,7 +318,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
               <div className="flex items-center justify-between">
                 <div>
                   <div className="font-medium flex items-center gap-2">
-                    <PoundSterling className="h-4 w-4" />
+                    <Banknote className="h-4 w-4" />
                     Pricing
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
