@@ -116,10 +116,11 @@ export function useRecipientPreview(filters: FilterCriteria) {
 
       const allStudentIds = students.map(s => s.id);
 
-      const { data: studentGuardians } = await supabase
+      const { data: studentGuardians, error: sgErr } = await supabase
         .from('student_guardians')
         .select('guardian_id')
         .in('student_id', allStudentIds);
+      if (sgErr) throw new Error(`Failed to fetch guardians: ${sgErr.message}`);
 
       if (!studentGuardians || studentGuardians.length === 0) {
         return { count: 0, guardians: [] };
