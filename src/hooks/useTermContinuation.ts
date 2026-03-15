@@ -762,3 +762,136 @@ export function useParentRespondToContinuation() {
     },
   });
 }
+
+// ── Preview for bulk process (FIX 2) ───────────────────────────────────
+
+export interface BulkProcessPreview {
+  confirmedCount: number;
+  withdrawingCount: number;
+  estimatedLessons: number;
+  conflicts: string[];
+  dateRange: { start: string; end: string };
+}
+
+export function usePreviewBulkProcess() {
+  const { currentOrg } = useOrg();
+
+  return useMutation({
+    mutationFn: async (data: {
+      run_id: string;
+      next_term_start_date: string;
+      next_term_end_date: string;
+      process_type: 'confirmed' | 'withdrawals' | 'all';
+    }): Promise<BulkProcessPreview> => {
+      if (!currentOrg?.id) throw new Error('No organisation selected');
+
+      const responseFilter: ContinuationResponseType[] =
+        data.process_type === 'confirmed'
+          ? ['continuing', 'assumed_continuing']
+          : data.process_type === 'withdrawals'
+            ? ['withdrawing']
+            : ['continuing', 'assumed_continuing', 'withdrawing'];
+
+      const { data: responses, error } = await (supabase as any)
+        .from('term_continuation_responses')
+        .select('id, student_id, response, lesson_summary')
+        .eq('run_id', data.run_id)
+        .eq('org_id', currentOrg.id)
+        .eq('is_processed', false)
+        .in('response', responseFilter);
+
+      if (error) throw error;
+
+      let confirmedCount = 0;
+      let withdrawingCount = 0;
+      let estimatedLessons = 0;
+      const conflicts: string[] = [];
+
+      for (const resp of responses || []) {
+        if (['continuing', 'assumed_continuing'].includes(resp.response)) {
+          confirmedCount++;
+          const lessons = resp.lesson_summary || [];
+          for (const lesson of lessons) {
+            if (!lesson.recurrence_id) continue;
+            // Rough estimate: weeks between term dates
+            const weeks = Math.max(1, Math.round(
+              (new Date(data.next_term_end_date).getTime() - new Date(data.next_term_start_date).getTime()) /
+              (7 * 24 * 60 * 60 * 1000)
+            ));
+            estimatedLessons += weeks;
+
+            // Check teacher conflicts
+            if (lesson.teacher_id) {
+              const { data: existing } = await supabase
+                .from('lessons')
+                .select('id')
+                .eq('teacher_id', lesson.teacher_id)
+                .gte('start_at', data.next_term_start_date)
+                .lte('start_at', data.next_term_end_date)
+                .neq('status', 'cancelled')
+                .limit(1);
+
+              if (existing && existing.length > 0) {
+                conflicts.push(`${lesson.teacher_name || 'A teacher'} has existing lessons in this period`);
+              }
+            }
+          }
+        } else if (resp.response === 'withdrawing') {
+          withdrawingCount++;
+        }
+      }
+
+      return {
+        confirmedCount,
+        withdrawingCount,
+        estimatedLessons,
+        conflicts: [...new Set(conflicts)],
+        dateRange: { start: data.next_term_start_date, end: data.next_term_end_date },
+      };
+    },
+  });
+}
+
+// ── Delete Run (FIX 3) ─────────────────────────────────────────────────
+
+export function useDeleteContinuationRun() {
+  const queryClient = useQueryClient();
+  const { currentOrg } = useOrg();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (runId: string) => {
+      if (!currentOrg?.id) throw new Error('No organisation selected');
+
+      // Delete responses first (FK constraint)
+      const { error: respError } = await (supabase as any)
+        .from('term_continuation_responses')
+        .delete()
+        .eq('run_id', runId)
+        .eq('org_id', currentOrg.id);
+
+      if (respError) throw respError;
+
+      const { error } = await (supabase as any)
+        .from('term_continuation_runs')
+        .delete()
+        .eq('id', runId)
+        .eq('org_id', currentOrg.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['continuation-runs'] });
+      queryClient.invalidateQueries({ queryKey: ['continuation-run'] });
+      queryClient.invalidateQueries({ queryKey: ['continuation-responses'] });
+      toast({ title: 'Run deleted' });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Failed to delete run',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
