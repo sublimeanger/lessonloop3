@@ -292,6 +292,12 @@ export default function Invoices() {
           <TabsContent value="recurring">
             <RecurringBillingTab />
           </TabsContent>
+
+          {(currentRole === 'owner' || currentRole === 'admin') && (
+            <TabsContent value="run-history">
+              <BillingRunHistory />
+            </TabsContent>
+          )}
         </Tabs>
       ) : (
         <div className="space-y-6">
