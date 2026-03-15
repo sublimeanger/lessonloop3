@@ -94,10 +94,12 @@ export function CalendarMobileLayout({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setSlotWizardOpen(true)}>
-                    <Zap className="h-4 w-4 mr-2" />
-                    Generate Open Slots
-                  </DropdownMenuItem>
+                  {isOrgAdmin && (
+                    <DropdownMenuItem onClick={() => setSlotWizardOpen(true)}>
+                      <Zap className="h-4 w-4 mr-2" />
+                      Generate Open Slots
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => bulk.enterSelectionMode()}>
                     <CheckSquare className="h-4 w-4 mr-2" />
                     Select Lessons
