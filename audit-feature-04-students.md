@@ -521,3 +521,21 @@ The Students feature is **PRODUCTION READY**. All MEDIUM findings have been fixe
 - Immutable `org_id` via `prevent_org_id_change` trigger
 - Attendance validation ensures only lesson participants can have attendance recorded
 - Make-up credit restoration trigger when participant removed from lesson
+
+### Cross-feature note: other SECURITY DEFINER RPCs without auth checks
+
+While auditing STU-06, a broader scan revealed ~10 additional SECURITY DEFINER RPCs called from client-side code that also lack `is_org_member()` auth checks. These are **not in scope** for the Students feature but should be addressed in their respective feature audits:
+
+| Function | Called from | Feature |
+|----------|------------|---------|
+| `confirm_makeup_booking` | `useMakeUpWaitlist.ts` | Make-up credits |
+| `find_waitlist_matches` | `useMakeUpWaitlist.ts` | Make-up credits |
+| `convert_waitlist_to_student` | `useEnrolmentWaitlist.ts` | Enrolment |
+| `generate_installments` | `useInvoiceInstallments.ts` | Invoicing |
+| `record_payment_and_update_status` | `useInvoices.ts` | Invoicing |
+| `get_unbilled_lesson_ids` | `useInvoices.ts` | Invoicing |
+| `seed_make_up_policies` | `useMakeUpPolicies.ts` | Make-up credits |
+| `get_org_sync_error_count` | `CalendarSyncBanner.tsx` | Calendar sync |
+| `shift_recurring_lesson_times` | `useLessonForm.ts` | Lessons |
+
+All of these accept `_org_id` as a parameter and bypass RLS. The same `is_org_member(auth.uid(), _org_id)` guard pattern used in the STU-06 fix should be applied to each.
