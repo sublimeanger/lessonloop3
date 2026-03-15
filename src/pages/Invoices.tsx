@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { InvoicesSkeleton } from '@/components/shared/LoadingState';
-import { Receipt, Plus, PlayCircle, CreditCard, Download, CalendarClock } from 'lucide-react';
+import { Receipt, Plus, PlayCircle, CreditCard, Download, CalendarClock, History } from 'lucide-react';
 import { useDataExport } from '@/hooks/useDataExport';
 import { useOrg } from '@/contexts/OrgContext';
 import { useInvoices, useInvoiceStats, useUpdateInvoiceStatus, type InvoiceFilters, type InvoiceWithDetails } from '@/hooks/useInvoices';
