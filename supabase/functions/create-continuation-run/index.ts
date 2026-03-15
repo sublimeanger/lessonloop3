@@ -930,11 +930,13 @@ async function handleSend(
   // Get org details
   const { data: org } = await client
     .from("organisations")
-    .select("name")
+    .select("name, currency_code")
     .eq("id", org_id)
     .single();
 
   const orgName = org?.name || "Your Music Service";
+  const currencySymbol = org?.currency_code === 'EUR' ? '€' : org?.currency_code === 'USD' ? '$' : '£';
+  const currencyHtmlEntity = org?.currency_code === 'EUR' ? '&euro;' : org?.currency_code === 'USD' ? '$' : '&pound;';
 
   // Get responses with guardian details
   const { data: responses } = await client
@@ -1018,12 +1020,12 @@ async function handleSend(
             <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">${escapeHtml(l.day)} at ${escapeHtml(l.time)}</td>
             <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">${escapeHtml(l.instrument || "Music")}</td>
             <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">${l.lessons_next_term} lessons</td>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">&pound;${(l.rate_minor * l.lessons_next_term / 100).toFixed(2)}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">${currencyHtmlEntity}${(l.rate_minor * l.lessons_next_term / 100).toFixed(2)}</td>
           </tr>`;
       }
 
       const feeFormatted = resp.next_term_fee_minor
-        ? `£${(resp.next_term_fee_minor / 100).toFixed(2)}`
+        ? `${currencySymbol}${(resp.next_term_fee_minor / 100).toFixed(2)}`
         : "";
 
       const continueUrl = `${FRONTEND_URL}/respond/continuation?token=${resp.response_token}&action=continuing`;
