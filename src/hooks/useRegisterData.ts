@@ -476,7 +476,7 @@ export function useBatchAttendanceLessons(date: Date) {
 
       interface BatchQueryRow {
         id: string; title: string; start_at: string; end_at: string; status: string;
-        lesson_participants: { student_id: string; student: { id: string; first_name: string; last_name: string } | null }[];
+        lesson_participants: { student_id: string; student: { id: string; first_name: string; last_name: string; notes: string | null } | null }[];
         attendance_records: { student_id: string; attendance_status: AttendanceStatus }[];
       }
       const typed = (lessonsData || []) as unknown as BatchQueryRow[];
