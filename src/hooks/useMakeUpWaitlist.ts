@@ -44,6 +44,7 @@ export interface WaitlistEntry {
 
 export interface WaitlistFilters {
   status?: string;
+  statuses?: string[];
   teacherId?: string;
   studentId?: string;
 }
