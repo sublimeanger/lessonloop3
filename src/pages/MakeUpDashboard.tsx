@@ -47,9 +47,9 @@ const MakeUpDashboard = () => {
       {/* Summary cards */}
       <MakeUpStatsCards stats={stats} isLoading={statsLoading} />
 
-      {/* Needs Action (matched entries) */}
-      {(matchedEntries?.length ?? 0) > 0 && (
-        <NeedsActionSection entries={matchedEntries ?? []} isLoading={matchedLoading} />
+      {/* Needs Action (matched + accepted entries) */}
+      {(actionEntries?.length ?? 0) > 0 && (
+        <NeedsActionSection entries={actionEntries ?? []} isLoading={actionLoading} />
       )}
 
       {/* Full waitlist table */}
