@@ -150,18 +150,57 @@ export default function Continuation() {
     }
   };
 
-  const handleBulkProcess = async (type: 'confirmed' | 'withdrawals' | 'all') => {
+  // FIX 2: Show preview before bulk processing
+  const handleBulkProcessPreview = async (type: 'confirmed' | 'withdrawals' | 'all') => {
     if (!run?.id || !run.next_term?.end_date || !run.next_term?.start_date) return;
+    setPendingProcessType(type);
+    try {
+      const preview = await previewBulk.mutateAsync({
+        run_id: run.id,
+        next_term_start_date: run.next_term.start_date,
+        next_term_end_date: run.next_term.end_date,
+        process_type: type,
+      });
+      setBulkPreview(preview);
+      setPreviewDialogOpen(true);
+    } catch {
+      // Error handled by mutation
+    }
+  };
+
+  const handleConfirmBulkProcess = async () => {
+    if (!run?.id || !run.next_term?.end_date || !run.next_term?.start_date || !pendingProcessType) return;
+    setPreviewDialogOpen(false);
     try {
       await bulkProcess.mutateAsync({
         run_id: run.id,
         next_term_end_date: run.next_term.end_date,
         next_term_start_date: run.next_term.start_date,
-        process_type: type,
+        process_type: pendingProcessType,
       });
-    } catch (error: any) {
+    } catch {
       // Error toast handled by mutation onError
     }
+    setPendingProcessType(null);
+    setBulkPreview(null);
+  };
+
+  // FIX 3: Delete run handler
+  const handleDeleteRun = (r: ContinuationRun) => {
+    setRunToDelete(r);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteRun = async () => {
+    if (!runToDelete) return;
+    try {
+      await deleteRun.mutateAsync(runToDelete.id);
+      if (selectedRunId === runToDelete.id) setSelectedRunId(null);
+    } catch {
+      // Error toast handled by mutation
+    }
+    setDeleteDialogOpen(false);
+    setRunToDelete(null);
   };
 
   const handleExportCSV = () => {
