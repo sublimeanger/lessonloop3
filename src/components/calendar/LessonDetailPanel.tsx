@@ -428,12 +428,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         return;
       }
 
-      // Clean up attendance records (awaited, not fire-and-forget)
-      const { error: attErr } = await supabase
-        .from('attendance_records')
-        .delete()
-        .in('lesson_id', deletedIds);
-      if (attErr) logger.warn('[delete-cascade] Failed to delete attendance records:', attErr.message);
+      // attendance_records.lesson_id has ON DELETE CASCADE — no manual cleanup needed.
 
       // Check for draft invoice items (warning only, non-blocking)
       const { data: draftInvoiceItems } = await supabase
