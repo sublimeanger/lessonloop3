@@ -377,6 +377,7 @@ async function executeBillingLogic(
     )
     .eq("org_id", orgId)
     .in("status", statusFilter)
+    .or('is_open_slot.is.null,is_open_slot.eq.false')
     .gte("start_at", startDate)
     .lte("start_at", endDate);
 
