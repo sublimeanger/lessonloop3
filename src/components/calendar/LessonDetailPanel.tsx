@@ -396,6 +396,47 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
     const mode = pendingMode || 'this_only';
 
     try {
+      // Determine lesson IDs that will be deleted
+      let lessonIds: string[];
+      if (mode === 'this_only' || !isRecurring) {
+        lessonIds = [lesson.id];
+      } else {
+        const { data: futureLessons, error: fetchError } = await supabase
+          .from('lessons')
+          .select('id')
+          .eq('recurrence_id', lesson.recurrence_id!)
+          .gte('start_at', lesson.start_at);
+
+        if (fetchError) {
+          toast({ title: 'Error', description: 'Could not fetch recurring lessons. Deletion cancelled.', variant: 'destructive' });
+          return;
+        }
+        lessonIds = (futureLessons || []).map(l => l.id);
+      }
+
+      // Check for non-draft invoice items referencing these lessons
+      const { data: invoicedItems } = await supabase
+        .from('invoice_items')
+        .select('id, invoice_id, invoices!inner(status)')
+        .in('linked_lesson_id', lessonIds)
+        .neq('invoices.status', 'draft');
+
+      if (invoicedItems && invoicedItems.length > 0) {
+        toast({
+          title: 'Cannot delete invoiced lessons',
+          description: `${invoicedItems.length} lessons have been invoiced. Cancel them instead or create credit notes first.`,
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Delete attendance records before deleting lessons
+      const { error: attError } = await supabase
+        .from('attendance_records')
+        .delete()
+        .in('lesson_id', lessonIds);
+      if (attError) console.error('Failed to delete attendance:', attError);
+
       if (mode === 'this_only' || !isRecurring) {
         // Delete just this lesson
         const { error } = await supabase
@@ -411,20 +452,6 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         syncZoomMeeting(lesson.id, 'delete');
         toast({ title: 'Lesson deleted' });
       } else {
-        // Delete this and all future lessons in series
-        const { data: futureLessons, error: fetchError } = await supabase
-          .from('lessons')
-          .select('id')
-          .eq('recurrence_id', lesson.recurrence_id!)
-          .gte('start_at', lesson.start_at);
-
-        if (fetchError) {
-          toast({ title: 'Error', description: 'Could not fetch recurring lessons. Deletion cancelled.', variant: 'destructive' });
-          return;
-        }
-
-        const deletedIds = (futureLessons || []).map(l => l.id);
-
         const { error } = await supabase
           .from('lessons')
           .delete()
@@ -435,8 +462,8 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           before: { title: lesson.title, start_at: lesson.start_at, scope: 'this_and_future' },
         });
         // Fire-and-forget calendar + Zoom sync for all deleted lessons
-        syncLessons(deletedIds, 'delete');
-        syncZoomMeetings(deletedIds, 'delete');
+        syncLessons(lessonIds, 'delete');
+        syncZoomMeetings(lessonIds, 'delete');
         toast({ title: 'Series deleted', description: 'This and all future lessons have been deleted.' });
       }
       onUpdated();
