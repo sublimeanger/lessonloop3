@@ -231,12 +231,12 @@
 
 ## 7. Verdict
 
-### PRODUCTION READY — with 2 recommended fixes before launch
+PRODUCTION READY — all findings resolved.
 
-**Blocking Issues (should fix before production):**
+**Blocking Issues — FIXED:**
 
-1. **AUTH-01 (HIGH):** Add explicit rate limit for `onboarding-setup` to prevent mass org creation. One-line fix in `rate-limit.ts`.
-2. **AUTH-05 (MEDIUM):** Remove `req.headers.get("origin")` fallback in `send-invite-email` to prevent invite URL manipulation.
+1. **AUTH-01 (HIGH):** ~~Add explicit rate limit for `onboarding-setup`~~ FIXED — added `"onboarding-setup": { maxRequests: 3, windowMinutes: 60 }` to `_shared/rate-limit.ts`
+2. **AUTH-05 (MEDIUM):** ~~Remove `req.headers.get("origin")` fallback in `send-invite-email`~~ FIXED — now uses only `FRONTEND_URL` env var or hardcoded `https://app.lessonloop.net`
 
 **Recommended Before Launch (non-blocking):**
 
@@ -248,7 +248,7 @@
 
 The authentication and onboarding system is well-architected with strong security practices:
 - Proper JWT validation on all edge functions via `auth.getUser()` (not just token decode)
-- Comprehensive rate limiting on all auth-related endpoints
+- Comprehensive rate limiting on all auth-related endpoints (including onboarding-setup)
 - CORS origin validation with explicit allowlist
 - Account enumeration protection on login
 - Global signout invalidating refresh tokens server-side
@@ -260,5 +260,4 @@ The authentication and onboarding system is well-architected with strong securit
 - No console.log of tokens or sensitive data
 - Open-redirect prevention on route guards
 - Anonymous access blocked on all auth tables
-
-The two blocking issues are simple fixes (one config line, one line removal). The system is otherwise production-ready.
+- Invite email URLs use trusted source only (no Origin header fallback)
