@@ -133,6 +133,15 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Validate timezone if provided — must be a well-known IANA format
+    const VALID_TZ_PATTERN = /^[A-Za-z]+\/[A-Za-z_\/\-]+$/;
+    if (body.timezone && !VALID_TZ_PATTERN.test(body.timezone)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid timezone. Must be an IANA timezone (e.g. Europe/London).' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Determine plan limits - unlimited students for all plans
     const plan = subscription_plan || 'solo_teacher';
     const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.solo_teacher;
