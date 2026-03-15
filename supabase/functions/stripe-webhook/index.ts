@@ -236,6 +236,13 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
 
   log(`Checkout completed for invoice ${truncate(invoiceId)}, installment: ${truncate(installmentId)}, payRemaining: ${payRemaining}`);
 
+  // Guard: skip payment on voided or cancelled invoices
+  const { data: invStatus } = await supabase.from('invoices').select('status').eq('id', invoiceId).single();
+  if (invStatus?.status === 'void' || invStatus?.status === 'cancelled') {
+    console.warn(`[stripe-webhook] Skipping payment on ${invStatus.status} invoice ${truncate(invoiceId)}`);
+    return;
+  }
+
   const paymentIntentId = session.payment_intent as string;
 
   // DOUBLE PAYMENT GUARD: Check if payment with this provider_reference already exists
@@ -675,6 +682,13 @@ async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe
   }
 
   log(`PaymentIntent succeeded for invoice ${truncate(invoiceId)}, installment: ${truncate(installmentId)}, payRemaining: ${payRemaining}`);
+
+  // Guard: skip payment on voided or cancelled invoices
+  const { data: invStatus } = await supabase.from('invoices').select('status').eq('id', invoiceId).single();
+  if (invStatus?.status === 'void' || invStatus?.status === 'cancelled') {
+    console.warn(`[stripe-webhook] Skipping payment on ${invStatus.status} invoice ${truncate(invoiceId)}`);
+    return;
+  }
 
   // DOUBLE PAYMENT GUARD
   const { data: existingPayment } = await supabase
