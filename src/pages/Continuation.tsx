@@ -444,12 +444,12 @@ export default function Continuation() {
               <span className="text-sm font-medium self-center mr-2">
                 Process:
               </span>
-              <Button
+               <Button
                 size="sm"
-                onClick={() => handleBulkProcess('confirmed')}
-                disabled={bulkProcess.isPending}
+                onClick={() => handleBulkProcessPreview('confirmed')}
+                disabled={bulkProcess.isPending || previewBulk.isPending}
               >
-                {bulkProcess.isPending ? (
+                {(bulkProcess.isPending || previewBulk.isPending) ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <RefreshCw className="mr-2 h-4 w-4" />
