@@ -87,6 +87,7 @@ export function RecurrenceSection({
                   onSelect={(date) => setRecurrenceEndDate(date || null)}
                   disabled={(date) => date < selectedDate}
                   initialFocus
+                  className={cn("p-3 pointer-events-auto")}
                 />
               </PopoverContent>
             </Popover>
