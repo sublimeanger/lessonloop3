@@ -138,6 +138,12 @@ function InvoiceActions({
   alwaysVisible?: boolean;
 }) {
   const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const guard = (fn: (inv: InvoiceWithDetails) => void) => {
+    if (busy) return;
+    setBusy(true);
+    fn(invoice);
+  };
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
