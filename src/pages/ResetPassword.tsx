@@ -24,6 +24,8 @@ export default function ResetPassword() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+
   useEffect(() => {
     let mounted = true;
 
@@ -31,6 +33,16 @@ export default function ResetPassword() {
       if (!mounted) return;
       if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
         setSessionError(false);
+        setIsCheckingSession(false);
+      }
+    });
+
+    // Check session immediately
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      if (session) {
+        setSessionError(false);
+        setIsCheckingSession(false);
       }
     });
 
@@ -40,6 +52,7 @@ export default function ResetPassword() {
       if (!session && mounted) {
         setSessionError(true);
       }
+      if (mounted) setIsCheckingSession(false);
     }, 5000);
 
     return () => {
@@ -86,6 +99,18 @@ export default function ResetPassword() {
       setIsLoading(false);
     }
   };
+
+  if (isCheckingSession && !sessionError) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center gradient-hero-light p-4">
+        <div className="text-center space-y-4">
+          <LogoHorizontal size="lg" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Verifying reset link…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (sessionError) {
     return (

@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/hooks/use-toast';
 import { DetailSkeleton } from '@/components/shared/LoadingState';
 import { Loader2, CheckCircle, XCircle, Music, Eye, EyeOff } from 'lucide-react';
+import { LogoHorizontal } from '@/components/brand/Logo';
 import { PasswordStrengthIndicator, PASSWORD_MIN_LENGTH } from '@/components/auth/PasswordStrengthIndicator';
 import { usePageMeta } from '@/hooks/usePageMeta';
 
@@ -320,8 +321,8 @@ export default function AcceptInvite() {
       <div className="flex min-h-[100dvh] items-center justify-center gradient-hero-light p-4 sm:p-6">
         <Card className="w-full max-w-md shadow-elevated animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <Music className="h-6 w-6 text-primary" />
+            <div className="mx-auto mb-4">
+              <LogoHorizontal size="lg" />
             </div>
             <CardTitle>Join {organisation?.name || 'Organisation'}</CardTitle>
             <CardDescription>
@@ -366,8 +367,8 @@ export default function AcceptInvite() {
     <div className="flex min-h-[100dvh] items-center justify-center gradient-hero-light p-4 sm:p-6">
       <Card className="w-full max-w-md shadow-elevated animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <Music className="h-6 w-6 text-primary" />
+          <div className="mx-auto mb-4">
+            <LogoHorizontal size="lg" />
           </div>
           <CardTitle>Join {organisation?.name || 'Organisation'}</CardTitle>
           <CardDescription>
@@ -386,6 +387,7 @@ export default function AcceptInvite() {
                 placeholder="Enter your email address"
                 autoComplete="email"
                 className="h-11"
+                disabled={isAccepting}
               />
               <p className="text-xs text-muted-foreground">
                 This invite was sent to <strong>{invite.email}</strong>. Please use the matching email address.
@@ -400,6 +402,7 @@ export default function AcceptInvite() {
                 placeholder="Enter your full name"
                 autoComplete="name"
                 className="h-11"
+                disabled={isAccepting}
               />
             </div>
             <div className="space-y-2">
@@ -413,6 +416,7 @@ export default function AcceptInvite() {
                   placeholder="Create a password"
                   autoComplete="new-password"
                   className="pr-10 h-11"
+                  disabled={isAccepting}
                 />
                 <button
                   type="button"
@@ -437,7 +441,8 @@ export default function AcceptInvite() {
                   aria-invalid={passwordMismatch}
                   placeholder="Confirm your password"
                   autoComplete="new-password"
-                  className="pr-10 h-11"
+                  className={`pr-10 h-11 ${passwordMismatch ? 'border-destructive focus-visible:ring-destructive/20' : ''}`}
+                  disabled={isAccepting}
                 />
                 <button
                   type="button"
@@ -449,12 +454,15 @@ export default function AcceptInvite() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {passwordMismatch && (
+                <p className="text-xs text-destructive" role="alert">Passwords do not match</p>
+              )}
             </div>
             <p className="text-xs text-muted-foreground text-center">
               By creating an account, you agree to our{' '}
-              <a href="https://lessonloop.net/terms" className="font-medium text-primary hover:underline" target="_blank" rel="noopener noreferrer">Terms of Service</a>{' '}
+              <Link to="/terms" className="font-medium text-primary hover:underline">Terms of Service</Link>{' '}
               and{' '}
-              <a href="https://lessonloop.net/privacy" className="font-medium text-primary hover:underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+              <Link to="/privacy" className="font-medium text-primary hover:underline">Privacy Policy</Link>.
             </p>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">

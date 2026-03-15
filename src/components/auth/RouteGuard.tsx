@@ -53,7 +53,7 @@ export function RouteGuard({
   requireAuth = true,
   requireOnboarding = true,
   allowedRoles,
-  redirectTo = '/auth',
+  redirectTo = '/login',
 }: RouteGuardProps) {
   const { user, profile, isInitialised, signOut } = useAuth();
   const { currentRole, hasInitialised: orgInitialised } = useOrg();
