@@ -312,7 +312,7 @@ export function SendInvoiceModal({
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
-              <Button className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={handleSend} disabled={isSending}>
+              <Button className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={handleSend} disabled={isSending || invoice?.status === 'void' || invoice?.status === 'paid'}>
                 {isSending ? 'Sending...' : isReminder ? 'Send Reminder' : 'Send Invoice'}
               </Button>
             </DialogFooter>

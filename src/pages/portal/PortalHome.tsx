@@ -182,7 +182,7 @@ export default function PortalHome() {
   // FIX 6: Cancel a booked make-up
   const handleCancelBookedMakeup = async (id: string) => {
     try {
-      const guardianId = await resolveGuardianId();
+      const guardianId = guardianInfo?.id;
       if (!guardianId) {
         toast({ title: 'Guardian record not found', variant: 'destructive' });
         return;
