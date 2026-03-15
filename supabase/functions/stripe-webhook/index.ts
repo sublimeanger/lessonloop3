@@ -532,6 +532,11 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
       throw new Error(`DB update failed for subscription update (lookup): ${error.message}`);
     }
     log(`Org ${truncate(org.id)} subscription updated to ${status}${plan ? `, plan: ${plan}` : ''}`);
+
+    // Check if downgrade exceeded teacher limits
+    if (limits) {
+      await checkTeacherLimitExceeded(supabase, org.id, limits.max_teachers);
+    }
     return;
   }
 
@@ -556,6 +561,31 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
     throw new Error(`DB update failed for subscription update: ${error.message}`);
   }
   log(`Org ${truncate(orgId)} subscription updated: ${status}${plan ? `, plan: ${plan}` : ''}`);
+
+  // Check if downgrade exceeded teacher limits
+  await checkTeacherLimitExceeded(supabase, orgId, limits.max_teachers);
+}
+
+// Check if active teachers exceed the new plan limit after a downgrade
+async function checkTeacherLimitExceeded(supabase: any, orgId: string, maxTeachers: number) {
+  const { data: activeTeachers } = await supabase
+    .from('org_memberships')
+    .select('id')
+    .eq('org_id', orgId)
+    .eq('role', 'teacher')
+    .eq('status', 'active');
+
+  if (activeTeachers && activeTeachers.length > maxTeachers) {
+    await supabase.from('organisations')
+      .update({ teacher_limit_exceeded: true })
+      .eq('id', orgId);
+    log(`Org ${truncate(orgId)} has ${activeTeachers.length} teachers but limit is ${maxTeachers} — flagged`);
+  } else {
+    // Clear flag if within limits
+    await supabase.from('organisations')
+      .update({ teacher_limit_exceeded: false })
+      .eq('id', orgId);
+  }
 }
 
 async function handleSubscriptionDeleted(supabase: any, subscription: Stripe.Subscription) {

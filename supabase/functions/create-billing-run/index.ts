@@ -377,6 +377,7 @@ async function executeBillingLogic(
     )
     .eq("org_id", orgId)
     .in("status", statusFilter)
+    .or('is_open_slot.is.null,is_open_slot.eq.false')
     .gte("start_at", startDate)
     .lte("start_at", endDate);
 
@@ -596,6 +597,21 @@ async function executeBillingLogic(
             .insert(allItems);
           if (itemsError) {
             console.error("[BillingRun] Batch items insert failed:", itemsError);
+            // Clean up orphaned invoices that have no items
+            const orphanIds = invoiceIds.splice(0, invoiceIds.length);
+            if (orphanIds.length > 0) {
+              await client.from('invoices').delete().in('id', orphanIds);
+            }
+            totalAmount = 0;
+            for (const { payer } of payerItemsMap) {
+              failedPayers.push({
+                payerName: payer.payerName,
+                payerEmail: payer.payerEmail,
+                payerType: payer.payerType,
+                payerId: payer.payerId,
+                error: 'Failed to create invoice items',
+              });
+            }
           }
         }
       }

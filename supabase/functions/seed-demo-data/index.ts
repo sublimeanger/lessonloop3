@@ -14,6 +14,13 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // Guard 1: Environment variable kill-switch
+  const ALLOW_SEED = Deno.env.get('ALLOW_SEED');
+  if (ALLOW_SEED !== 'true') {
+    return new Response('Seed functions disabled', { status: 403, headers: corsHeaders });
+  }
+
+  // Guard 2: URL-based production check (belt-and-suspenders)
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
   if (supabaseUrl.includes('ximxgnkpcswbvfrkkmjq') || supabaseUrl.includes('lessonloop') && !supabaseUrl.includes('local')) {
     return new Response(
@@ -21,7 +28,22 @@ Deno.serve(async (req) => {
       { status: 403, headers: { 'Content-Type': 'application/json' } }
     );
   }
+
+  // Guard 3: Require a valid authenticated user
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return new Response('Unauthorized', { status: 401, headers: corsHeaders });
+  }
+  const authClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") || serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: { user }, error: authError } = await authClient.auth.getUser();
+  if (authError || !user) {
+    return new Response('Unauthorized', { status: 401, headers: corsHeaders });
+  }
+
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
