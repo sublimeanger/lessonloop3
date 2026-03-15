@@ -108,6 +108,8 @@ export function OrganisationTab() {
   const [currencyCode, setCurrencyCode] = useState('GBP');
   const [showTimezoneWarning, setShowTimezoneWarning] = useState(false);
   const [pendingTimezone, setPendingTimezone] = useState<string | null>(null);
+  const [showCurrencyWarning, setShowCurrencyWarning] = useState(false);
+  const [pendingCurrency, setPendingCurrency] = useState<string | null>(null);
   const [teacherPaymentNotifications, setTeacherPaymentNotifications] = useState(true);
   const [teacherPaymentAnalytics, setTeacherPaymentAnalytics] = useState(true);
 
@@ -164,6 +166,28 @@ export function OrganisationTab() {
   const cancelTimezoneChange = () => {
     setPendingTimezone(null);
     setShowTimezoneWarning(false);
+  };
+
+  const handleCurrencyChange = (value: string) => {
+    if (value !== orgData?.currency_code) {
+      setPendingCurrency(value);
+      setShowCurrencyWarning(true);
+    } else {
+      setCurrencyCode(value);
+    }
+  };
+
+  const confirmCurrencyChange = () => {
+    if (pendingCurrency) {
+      setCurrencyCode(pendingCurrency);
+      setPendingCurrency(null);
+    }
+    setShowCurrencyWarning(false);
+  };
+
+  const cancelCurrencyChange = () => {
+    setPendingCurrency(null);
+    setShowCurrencyWarning(false);
   };
 
   const saveMutation = useMutation({
@@ -224,6 +248,34 @@ export function OrganisationTab() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={showCurrencyWarning} onOpenChange={(open) => !open && cancelCurrencyChange()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              Change currency?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  Changing your currency will affect how all future invoices, rate cards, and payments are displayed.
+                </p>
+                <p>
+                  Existing invoices and payments will keep their original currency. New invoices will use the updated currency.
+                </p>
+                <p className="font-medium text-foreground">Are you sure you want to continue?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelCurrencyChange}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmCurrencyChange}>
+              Change Currency
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Card>
         <CardHeader>
           <CardTitle>Organisation Details</CardTitle>
@@ -266,7 +318,7 @@ export function OrganisationTab() {
               <div className="space-y-2">
                 <Label>Currency</Label>
                 {canEdit ? (
-                  <Select value={currencyCode} onValueChange={setCurrencyCode}>
+                  <Select value={currencyCode} onValueChange={handleCurrencyChange}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
