@@ -443,6 +443,22 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
           }
 
           setSavingProgress('Updating participants…');
+
+          // Delete attendance records for removed students on future lessons
+          const originalStudentIds = (lesson.participants || [])
+            .map(p => p.student?.id)
+            .filter((id): id is string => !!id);
+          const removedStudents = originalStudentIds.filter(id => !selectedStudents.includes(id));
+          if (removedStudents.length > 0 && editMode === 'this_and_future') {
+            const futureIds = lessonIdsToUpdate.filter(id => id !== lesson.id);
+            for (const removedStudentId of removedStudents) {
+              await supabase.from('attendance_records')
+                .delete()
+                .in('lesson_id', futureIds)
+                .eq('student_id', removedStudentId);
+            }
+          }
+
           await supabase
             .from('lesson_participants')
             .delete()
