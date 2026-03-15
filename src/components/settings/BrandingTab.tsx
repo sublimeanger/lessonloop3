@@ -200,17 +200,20 @@ export function BrandingTab() {
 
   // ─── Logo handlers ───
 
+  const ALLOWED_LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+  const ALLOWED_LOGO_ACCEPT = '.png,.jpg,.jpeg,.webp';
+
   const handleFileSelect = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     if (fileInputRef.current) fileInputRef.current.value = '';
 
-    if (!file.type.startsWith('image/')) {
-      toast({ title: 'Invalid file', description: 'Please upload an image file', variant: 'destructive' });
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
+      toast({ title: 'Unsupported file type', description: 'Please upload a PNG, JPEG, or WebP image (SVG is not supported)', variant: 'destructive' });
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      toast({ title: 'File too large', description: 'Logo must be under 2MB', variant: 'destructive' });
+      toast({ title: 'File too large', description: 'Logo must be under 2 MB', variant: 'destructive' });
       return;
     }
 
