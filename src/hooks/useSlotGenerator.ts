@@ -5,7 +5,7 @@ import { useOrg } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { logAudit } from '@/lib/auditLog';
 import { toast } from '@/hooks/use-toast';
-import { addMinutes, format, setHours, setMinutes, startOfDay, endOfDay } from 'date-fns';
+import { addMinutes, format, setHours, setMinutes, startOfDay, endOfDay, getDay } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 
 export interface SlotGeneratorConfig {
@@ -37,6 +37,13 @@ function timeToMinutes(h: number, m: number): number {
   return h * 60 + m;
 }
 
+const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+
+function timeStringToMinutes(time: string): number {
+  const parts = time.split(':');
+  return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+}
+
 export function computeSlots(config: SlotGeneratorConfig): GeneratedSlot[] {
   const startMins = timeToMinutes(config.startHour, config.startMinute);
   const endMins = timeToMinutes(config.endHour, config.endMinute);
@@ -64,43 +71,139 @@ export function computeSlots(config: SlotGeneratorConfig): GeneratedSlot[] {
   return slots;
 }
 
-/** FIX 3: Check for existing lessons and mark conflicting slots */
+/** SG-01..04: Check teacher lessons, room conflicts, closure dates, time-off, and availability */
 export async function checkSlotConflicts(
   slots: GeneratedSlot[],
-  teacherId: string,
+  config: { teacherId: string; roomId: string | null; locationId: string | null; orgId: string },
   date: Date,
   timezone: string,
 ): Promise<GeneratedSlot[]> {
   const dayStart = fromZonedTime(startOfDay(date), timezone).toISOString();
   const dayEnd = fromZonedTime(endOfDay(date), timezone).toISOString();
+  const dateStr = format(date, 'yyyy-MM-dd');
+  const dayOfWeek = DAY_NAMES[getDay(date)];
 
-  const { data: existingLessons } = await supabase
-    .from('lessons')
-    .select('start_at, end_at')
-    .eq('teacher_id', teacherId)
-    .gte('start_at', dayStart)
-    .lte('start_at', dayEnd)
-    .neq('status', 'cancelled');
+  // Fetch all conflict sources in parallel
+  const [teacherLessonsResult, roomLessonsResult, closuresResult, timeOffResult, availResult] = await Promise.all([
+    // 1. Teacher double-booking
+    supabase
+      .from('lessons')
+      .select('start_at, end_at')
+      .eq('teacher_id', config.teacherId)
+      .gte('start_at', dayStart)
+      .lte('start_at', dayEnd)
+      .neq('status', 'cancelled'),
 
-  const conflicts = existingLessons || [];
-  if (conflicts.length === 0) return slots;
+    // 2. Room double-booking (only if room selected)
+    config.roomId
+      ? supabase
+          .from('lessons')
+          .select('start_at, end_at')
+          .eq('room_id', config.roomId)
+          .gte('start_at', dayStart)
+          .lte('start_at', dayEnd)
+          .neq('status', 'cancelled')
+      : Promise.resolve({ data: null }),
+
+    // 3. Closure dates
+    supabase
+      .from('closure_dates')
+      .select('date, reason, location_id, applies_to_all_locations')
+      .eq('org_id', config.orgId)
+      .eq('date', dateStr),
+
+    // 4. Teacher time-off
+    supabase
+      .from('time_off_blocks')
+      .select('start_at, end_at, reason')
+      .eq('teacher_id', config.teacherId)
+      .lte('start_at', dayEnd)
+      .gte('end_at', dayStart),
+
+    // 5. Teacher availability blocks for this day of week
+    supabase
+      .from('availability_blocks')
+      .select('start_time_local, end_time_local')
+      .eq('teacher_id', config.teacherId)
+      .eq('day_of_week', dayOfWeek),
+  ]);
+
+  const teacherLessons = teacherLessonsResult.data || [];
+  const roomLessons = roomLessonsResult.data || [];
+  const closures = closuresResult.data || [];
+  const timeOffBlocks = timeOffResult.data || [];
+  const availBlocks = availResult.data || [];
+
+  // Check for org-wide or location-specific closure
+  const hasClosure = closures.some(c =>
+    c.applies_to_all_locations || !config.locationId || c.location_id === config.locationId || !c.location_id
+  );
+  const closureReason = hasClosure
+    ? closures[0]?.reason || 'Closure date'
+    : null;
 
   return slots.map(slot => {
-    // Build local datetimes for comparison
     const [sh, sm] = slot.startTime.split(':').map(Number);
     const [eh, em] = slot.endTime.split(':').map(Number);
     const slotStartUtc = fromZonedTime(setMinutes(setHours(date, sh), sm), timezone).getTime();
     const slotEndUtc = fromZonedTime(setMinutes(setHours(date, eh), em), timezone).getTime();
+    const slotStartMins = sh * 60 + sm;
+    const slotEndMins = eh * 60 + em;
 
-    const hasConflict = conflicts.some(existing => {
+    // SG-02: Closure date — blocks all slots on this day
+    if (hasClosure) {
+      return { ...slot, excluded: true, conflictMessage: `Closure: ${closureReason}` };
+    }
+
+    // SG-01: Teacher double-booking
+    const teacherConflict = teacherLessons.some(existing => {
       const eStart = new Date(existing.start_at).getTime();
       const eEnd = new Date(existing.end_at).getTime();
       return slotStartUtc < eEnd && slotEndUtc > eStart;
     });
-
-    if (hasConflict) {
-      return { ...slot, excluded: true, conflictMessage: 'Conflicts with existing lesson' };
+    if (teacherConflict) {
+      return { ...slot, excluded: true, conflictMessage: 'Teacher has an existing lesson' };
     }
+
+    // SG-01: Room double-booking
+    if (config.roomId) {
+      const roomConflict = roomLessons.some(existing => {
+        const eStart = new Date(existing.start_at).getTime();
+        const eEnd = new Date(existing.end_at).getTime();
+        return slotStartUtc < eEnd && slotEndUtc > eStart;
+      });
+      if (roomConflict) {
+        return { ...slot, excluded: true, conflictMessage: 'Room already booked' };
+      }
+    }
+
+    // SG-03: Teacher time-off
+    const timeOffConflict = timeOffBlocks.some(to => {
+      const toStart = new Date(to.start_at).getTime();
+      const toEnd = new Date(to.end_at).getTime();
+      return slotStartUtc < toEnd && slotEndUtc > toStart;
+    });
+    if (timeOffConflict) {
+      const reason = timeOffBlocks.find(to => {
+        const toStart = new Date(to.start_at).getTime();
+        const toEnd = new Date(to.end_at).getTime();
+        return slotStartUtc < toEnd && slotEndUtc > toStart;
+      })?.reason;
+      return { ...slot, excluded: true, conflictMessage: `Teacher on leave${reason ? `: ${reason}` : ''}` };
+    }
+
+    // SG-04: Outside availability — warn but don't block (excluded: false)
+    if (availBlocks.length > 0) {
+      const coveredByAvailability = availBlocks.some(block => {
+        const blockStart = timeStringToMinutes(block.start_time_local);
+        const blockEnd = timeStringToMinutes(block.end_time_local);
+        return slotStartMins >= blockStart && slotEndMins <= blockEnd;
+      });
+      if (!coveredByAvailability) {
+        return { ...slot, excluded: false, conflictMessage: 'Outside teacher availability' };
+      }
+    }
+
     return slot;
   });
 }
@@ -164,7 +267,17 @@ export function useSlotGenerator() {
         .insert(allSlotRows)
         .select('id');
 
-      if (error) throw error;
+      // SG-05/SG-06: Parse DB trigger conflict errors into user-friendly messages
+      if (error) {
+        const msg = error.message || '';
+        if (msg.includes('CONFLICT:TEACHER:')) {
+          throw new Error('A teacher scheduling conflict was detected. Please re-run the preview to see updated conflicts.');
+        }
+        if (msg.includes('CONFLICT:ROOM:')) {
+          throw new Error('A room scheduling conflict was detected. Please re-run the preview to see updated conflicts.');
+        }
+        throw error;
+      }
       const createdIds = (data || []).map(d => d.id);
 
       // FIX 3: Include lesson_ids in audit log
