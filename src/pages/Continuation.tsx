@@ -616,6 +616,17 @@ export default function Continuation() {
                         {pastRun.summary?.total_students || 0} students
                       </Badge>
                       <Badge variant="secondary">Completed</Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10 h-7 w-7 p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteRun(pastRun);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
                 ))}
