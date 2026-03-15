@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { formatDateUK } from '@/lib/utils';
+import { formatDateUK, currencySymbol as getCurrencySymbol } from '@/lib/utils';
+import { useOrg } from '@/contexts/OrgContext';
 
 interface InvoiceBranding {
   orgName: string;
@@ -54,6 +55,8 @@ function contrastText(bg: string): string {
 }
 
 export function InvoicePreview({ branding, className = '' }: InvoicePreviewProps) {
+  const { currentOrg } = useOrg();
+  const sym = getCurrencySymbol(currentOrg?.currency_code || 'GBP');
   const {
     orgName,
     invoiceFromName,
@@ -194,14 +197,14 @@ export function InvoicePreview({ branding, className = '' }: InvoicePreviewProps
             <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-3 py-2 items-center">
               <span>Piano lesson (60 min)</span>
               <span className="text-right text-gray-500">4</span>
-              <span className="text-right text-gray-500">&pound;45.00</span>
-              <span className="text-right font-medium text-gray-900">&pound;180.00</span>
+              <span className="text-right text-gray-500">{sym}45.00</span>
+              <span className="text-right font-medium text-gray-900">{sym}180.00</span>
             </div>
             <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-3 py-2 items-center">
               <span>Theory workbook</span>
               <span className="text-right text-gray-500">1</span>
-              <span className="text-right text-gray-500">&pound;12.99</span>
-              <span className="text-right font-medium text-gray-900">&pound;12.99</span>
+              <span className="text-right text-gray-500">{sym}12.99</span>
+              <span className="text-right font-medium text-gray-900">{sym}12.99</span>
             </div>
           </div>
         </div>
@@ -211,14 +214,14 @@ export function InvoicePreview({ branding, className = '' }: InvoicePreviewProps
           <div className="w-40 space-y-1">
             <div className="flex justify-between text-gray-500">
               <span>Subtotal</span>
-              <span>&pound;192.99</span>
+              <span>{sym}192.99</span>
             </div>
             <div
               className="flex justify-between pt-1.5 border-t font-semibold text-xs"
               style={{ borderColor: `${accentColor}30` }}
             >
               <span className="text-gray-900">Total</span>
-              <span style={{ color: accentColor }}>&pound;192.99</span>
+              <span style={{ color: accentColor }}>{sym}192.99</span>
             </div>
           </div>
         </div>

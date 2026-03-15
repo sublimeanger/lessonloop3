@@ -143,6 +143,8 @@ function InvoiceActions({
     if (busy) return;
     setBusy(true);
     fn(invoice);
+    // Reset after a short delay so actions re-enable once the modal/dialog opens
+    setTimeout(() => setBusy(false), 1000);
   };
   return (
     <DropdownMenu>

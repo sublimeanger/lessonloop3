@@ -644,12 +644,13 @@ export default function InvoiceDetail() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={updateStatus.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleVoidConfirm}
+              disabled={updateStatus.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Void Invoice
+              {updateStatus.isPending ? 'Voiding...' : 'Void Invoice'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
