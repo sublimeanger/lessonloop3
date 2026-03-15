@@ -125,7 +125,7 @@ export default function Settings() {
   usePageMeta('Settings | LessonLoop', 'Manage your account, organisation, and subscription settings');
   const [searchParams, setSearchParams] = useSearchParams();
   const { isOrgAdmin } = useOrg();
-  const adminTabs = ['members', 'scheduling', 'audit', 'privacy', 'rate-cards', 'music', 'messaging', 'booking-page', 'billing', 'loopassist', 'data-import', 'continuation'];
+  const adminTabs = ['organisation', 'branding', 'members', 'scheduling', 'audit', 'privacy', 'rate-cards', 'music', 'messaging', 'booking-page', 'billing', 'loopassist', 'data-import', 'continuation'];
 
   const rawTab = searchParams.get('tab');
   // On desktop, default to profile. On mobile, null means show nav list.

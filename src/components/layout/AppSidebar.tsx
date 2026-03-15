@@ -336,7 +336,7 @@ export function AppSidebar() {
   const messageBadge = unreadInternal + pendingRequests;
   const collapsed = state === 'collapsed';
   const navGroups = getNavGroups(currentRole, currentOrg?.org_type);
-  const showLoopAssist = currentRole && currentRole !== 'parent';
+  const showLoopAssist = currentRole && ['owner', 'admin', 'teacher'].includes(currentRole);
 
   const handleSignOut = async () => {
     await signOut();

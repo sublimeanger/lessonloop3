@@ -38,7 +38,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
     shortcuts
   } = useKeyboardShortcuts();
 
-  const showLoopAssist = currentRole && currentRole !== 'parent';
+  const showLoopAssist = currentRole && ['owner', 'admin', 'teacher'].includes(currentRole);
   const showBottomNav = isMobile && platform.isNative;
 
   const pathChanged = prevPathRef.current !== location.pathname;
