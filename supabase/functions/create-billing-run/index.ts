@@ -205,6 +205,9 @@ async function handleCreate(
       invoiceIds: result.invoiceIds,
       skippedLessons: result.skippedLessons,
       skippedForCancellation: result.skippedForCancellation,
+      ...(result.skippedStudents.length > 0
+        ? { skippedStudents: result.skippedStudents }
+        : {}),
       ...(result.failedPayers.length > 0
         ? { failedPayers: result.failedPayers }
         : {}),
@@ -421,6 +424,13 @@ async function executeBillingLogic(
     }
   }
 
+  // Track students skipped due to no payer
+  const skippedStudents: Array<{
+    student_id: string;
+    student_name: string;
+    reason: string;
+  }> = [];
+
   // Group by payer
   const payerGroups = new Map<
     string,
@@ -466,7 +476,12 @@ async function executeBillingLogic(
         payerName = `${student.first_name} ${student.last_name}`;
         payerEmail = student.email;
       } else {
-        return; // no payer
+        skippedStudents.push({
+          student_id: student.id,
+          student_name: `${student.first_name} ${student.last_name}`,
+          reason: 'no_primary_payer',
+        });
+        return;
       }
 
       // If retrying, only process specific payers
@@ -624,6 +639,7 @@ async function executeBillingLogic(
     totalPayers: payerGroups.size,
     skippedLessons,
     skippedForCancellation,
+    skippedStudents,
     failedPayers,
   };
 }
