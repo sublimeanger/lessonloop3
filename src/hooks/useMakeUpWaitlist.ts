@@ -44,6 +44,7 @@ export interface WaitlistEntry {
 
 export interface WaitlistFilters {
   status?: string;
+  statuses?: string[];
   teacherId?: string;
   studentId?: string;
 }
@@ -110,7 +111,8 @@ export function useWaitlist(filters?: WaitlistFilters) {
         .eq('org_id', currentOrg.id)
         .order('created_at', { ascending: false });
 
-      if (filters?.status) query = query.eq('status', filters.status);
+      if (filters?.statuses && filters.statuses.length > 0) query = query.in('status', filters.statuses);
+      else if (filters?.status) query = query.eq('status', filters.status);
       if (filters?.teacherId) query = query.eq('teacher_id', filters.teacherId);
       if (filters?.studentId) query = query.eq('student_id', filters.studentId);
 
@@ -274,17 +276,31 @@ export function useWaitlistStats() {
     queryFn: async () => {
       if (!currentOrg?.id) return { waiting: 0, matched: 0, offered: 0, accepted: 0, booked: 0 };
 
-      const { data, error } = await supabase
+      // FIX 4: For booked count, only count this month
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const { data: activeData, error: activeErr } = await supabase
         .from('make_up_waitlist')
         .select('status')
         .eq('org_id', currentOrg.id)
-        .in('status', ['waiting', 'matched', 'offered', 'accepted', 'booked']);
+        .in('status', ['waiting', 'matched', 'offered', 'accepted']);
 
-      if (error) throw error;
+      if (activeErr) throw activeErr;
 
-      const counts = { waiting: 0, matched: 0, offered: 0, accepted: 0, booked: 0 };
-      for (const row of data || []) {
-        if (row.status in counts) {
+      const { count: bookedCount, error: bookedErr } = await supabase
+        .from('make_up_waitlist')
+        .select('id', { count: 'exact', head: true })
+        .eq('org_id', currentOrg.id)
+        .eq('status', 'booked')
+        .gte('updated_at', startOfMonth.toISOString());
+
+      if (bookedErr) throw bookedErr;
+
+      const counts = { waiting: 0, matched: 0, offered: 0, accepted: 0, booked: bookedCount || 0 };
+      for (const row of activeData || []) {
+        if (row.status in counts && row.status !== 'booked') {
           counts[row.status as keyof typeof counts] += 1;
         }
       }

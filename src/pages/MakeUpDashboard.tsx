@@ -17,7 +17,7 @@ const MakeUpDashboard = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
 
   const { data: stats, isLoading: statsLoading } = useWaitlistStats();
-  const { entries: matchedEntries, isLoading: matchedLoading } = useWaitlist({ status: 'matched' });
+  const { entries: actionEntries, isLoading: actionLoading } = useWaitlist({ statuses: ['matched', 'accepted'] });
   const { entries: allEntries, isLoading: allLoading, refetch } = useWaitlist({
     status: statusFilter,
     teacherId: teacherFilter,
@@ -47,9 +47,9 @@ const MakeUpDashboard = () => {
       {/* Summary cards */}
       <MakeUpStatsCards stats={stats} isLoading={statsLoading} />
 
-      {/* Needs Action (matched entries) */}
-      {(matchedEntries?.length ?? 0) > 0 && (
-        <NeedsActionSection entries={matchedEntries ?? []} isLoading={matchedLoading} />
+      {/* Needs Action (matched + accepted entries) */}
+      {(actionEntries?.length ?? 0) > 0 && (
+        <NeedsActionSection entries={actionEntries ?? []} isLoading={actionLoading} />
       )}
 
       {/* Full waitlist table */}
