@@ -413,7 +413,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <PoundSterling className="h-4 w-4" />
+                    <Banknote className="h-4 w-4" />
                     Total
                   </CardTitle>
                 </CardHeader>
