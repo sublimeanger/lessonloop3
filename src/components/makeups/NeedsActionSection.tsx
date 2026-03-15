@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, ArrowDown, Clock } from 'lucide-react';
+import { Bell, ArrowDown, Clock, CheckCircle2 } from 'lucide-react';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -84,27 +84,40 @@ export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionPro
           const studentName = entry.student
             ? `${entry.student.first_name} ${entry.student.last_name}`
             : 'Unknown Student';
+          const isAccepted = entry.status === 'accepted';
 
           return (
             <div key={entry.id} className="rounded-xl border border-border bg-card p-4 space-y-3">
+              {/* Status badge for accepted entries */}
+              {isAccepted && (
+                <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800">
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  Parent Accepted — Confirm Booking
+                </Badge>
+              )}
+
               {/* Match info */}
               <div className="space-y-1">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="font-semibold text-foreground flex items-center gap-1.5">
-                      <Bell className="h-4 w-4 text-warning" />
-                      Match Found
+                      {isAccepted ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Bell className="h-4 w-4 text-warning" />
+                      )}
+                      {isAccepted ? 'Accepted — Ready to Book' : 'Match Found'}
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
                       <span className="font-medium text-foreground">{studentName}</span> missed "{entry.lesson_title}" on {formatDate(entry.missed_lesson_date)} ({entry.absence_reason.replace(/_/g, ' ')})
                     </p>
                   </div>
-                  {qualityBadge()}
+                  {!isAccepted && qualityBadge()}
                 </div>
 
                 <div className="flex items-center gap-1 text-muted-foreground my-1">
                   <ArrowDown className="h-3 w-3" />
-                  <span className="text-xs">can take</span>
+                  <span className="text-xs">{isAccepted ? 'booked into' : 'can take'}</span>
                 </div>
 
                 {entry.matched_lesson ? (
@@ -126,14 +139,27 @@ export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionPro
 
               {/* Actions */}
               <div className="flex flex-col gap-2 pt-1 sm:flex-row">
-                <Button
-                  size="sm"
-                  className="min-h-11 sm:min-h-9"
-                  onClick={() => setConfirmEntry(entry)}
-                  disabled={offerMutation.isPending}
-                >
-                  Offer to Parent
-                </Button>
+                {isAccepted ? (
+                  /* For accepted entries, show Confirm Booking as primary action */
+                  <Button
+                    size="sm"
+                    className="min-h-11 sm:min-h-9 bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => setConfirmEntry(entry)}
+                    disabled={offerMutation.isPending}
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                    Confirm Booking
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="min-h-11 sm:min-h-9"
+                    onClick={() => setConfirmEntry(entry)}
+                    disabled={offerMutation.isPending}
+                  >
+                    Offer to Parent
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -153,13 +179,17 @@ export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionPro
       <AlertDialog open={!!confirmEntry} onOpenChange={(open) => !open && setConfirmEntry(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Send Make-Up Offer?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {confirmEntry?.status === 'accepted' ? 'Confirm Make-Up Booking?' : 'Send Make-Up Offer?'}
+            </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm text-muted-foreground">
                 {confirmEntry && (
                   <>
                     <p>
-                      This will email the parent to offer a make-up slot for{' '}
+                      {confirmEntry.status === 'accepted'
+                        ? 'The parent has accepted this offer. Confirm to add the student to the lesson.'
+                        : 'This will email the parent to offer a make-up slot for'}{' '}
                       <span className="font-medium text-foreground">
                         {confirmEntry.student
                           ? `${confirmEntry.student.first_name} ${confirmEntry.student.last_name}`
@@ -193,7 +223,7 @@ export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionPro
                 }
               }}
             >
-              Send Offer
+              {confirmEntry?.status === 'accepted' ? 'Confirm Booking' : 'Send Offer'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
