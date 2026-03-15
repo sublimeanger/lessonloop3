@@ -53,7 +53,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const jwtSecret = Deno.env.get("WAITLIST_JWT_SECRET") || supabaseServiceKey;
+    const jwtSecret = Deno.env.get("WAITLIST_JWT_SECRET");
+    if (!jwtSecret) throw new Error("JWT secret not configured");
 
     // 1. Verify JWT
     const secret = new TextEncoder().encode(jwtSecret);
