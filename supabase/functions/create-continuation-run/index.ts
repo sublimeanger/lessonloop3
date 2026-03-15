@@ -1120,13 +1120,15 @@ async function handleSend(
     }
   }
 
-  // Update run status
+  // Update run status based on email results
+  const emailsFailed = failed.length;
+  const status = sentCount === 0 ? 'failed' : emailsFailed > 0 ? 'partial' : 'sent';
   await client
     .from("term_continuation_runs")
-    .update({ status: "sent", sent_at: now })
+    .update({ status, sent_at: now })
     .eq("id", run_id);
 
-  return jsonResponse({ sent_count: sentCount, failed }, cors);
+  return jsonResponse({ sent_count: sentCount, failed, status }, cors);
 }
 
 // ── Action: send_reminders ──────────────────────────────────────────────
