@@ -3,7 +3,7 @@
 **Date:** 2026-03-15
 **Auditor:** Claude Code (Opus 4.6)
 **Scope:** Organisation profile, branding, timezone, currency, tier limits, academic terms, deletion, org-level defaults
-**Verdict:** **NOT PRODUCTION READY** — 5 blocking issues identified
+**Verdict:** **PRODUCTION READY** — all 5 blocking issues resolved (2026-03-15)
 
 ---
 
@@ -376,19 +376,19 @@ The limit triggers use `SELECT COUNT(*) ... INTO _current_count` followed by `IF
 
 ## 8. Verdict
 
-### **NOT PRODUCTION READY**
+### **PRODUCTION READY** — all 5 blocking issues resolved
 
-### Blocking Issues (Must Fix Before Launch)
+### Blocking Issues — ALL FIXED (2026-03-15)
 
-| ID | Severity | Issue | Effort |
-|----|----------|-------|--------|
-| **ORG-01** | CRITICAL | No timezone validation — invalid values silently accepted | 30 min (add DB trigger or CHECK) |
-| **ORG-02** | CRITICAL | No currency_code validation — invalid values cause runtime errors | 30 min (add CHECK constraint) |
-| **ORG-03** | HIGH | Tier limit race condition — concurrent inserts can exceed limits | 15 min (add FOR UPDATE to triggers) |
-| **ORG-04** | HIGH | Logo upload has no server-side file type validation | 1 hr (add storage hook or edge function) |
-| **ORG-05** | HIGH | BillingTab hardcodes GBP for subscription pricing display | 5 min (use org currency) |
+| ID | Severity | Issue | Fix Applied |
+|----|----------|-------|-------------|
+| **ORG-01** | CRITICAL | No timezone validation | DB trigger `validate_org_timezone_currency` validates against `pg_timezone_names`. Edge function `onboarding-setup` validates IANA format pattern. Migration: `20260315220006_org_settings_validation.sql` |
+| **ORG-02** | CRITICAL | No currency_code validation | Same DB trigger validates against 34 supported ISO 4217 codes. Migration: `20260315220006_org_settings_validation.sql` |
+| **ORG-03** | HIGH | Tier limit race condition | `check_student_limit()` and `check_teacher_limit()` now use `FOR UPDATE` on organisations row, preventing concurrent inserts from exceeding limits. Migration: `20260315220006_org_settings_validation.sql` |
+| **ORG-04** | HIGH | Logo upload no server-side MIME validation | Storage bucket `org-logos` now has `allowed_mime_types` (png/jpeg/webp), `file_size_limit` (2MB), and storage policies restrict file extensions. SVG blocked. Migration: `20260315220006_org_settings_validation.sql` |
+| **ORG-05** | HIGH | BillingTab hardcodes GBP | `PlanCard` now receives `currencyCode` prop from `currentOrg.currency_code`. File: `src/components/settings/BillingTab.tsx` |
 
-### Non-Blocking Issues (Fix Post-Beta)
+### Non-Blocking Issues — Accepted for Post-Beta
 
 | ID | Severity | Issue |
 |----|----------|-------|
@@ -411,9 +411,10 @@ The limit triggers use `SELECT COUNT(*) ... INTO _current_count` followed by `IF
 - **Subscription field protection** trigger prevents client-side tampering with plan/status/limits.
 - **org_id immutability** trigger prevents data from being reassigned between orgs.
 - **Realtime org refresh** ensures settings changes propagate to all open tabs immediately.
-- **Logo upload UX** has good client-side validation (type, size, dimensions, resize).
+- **Logo upload** has both client-side and server-side validation (type, size, dimensions, resize).
 - **Timezone change warning** dialog is well-implemented.
 - **Invoice branding** architecture is solid with live preview.
 - **parent_org_info** restricted view properly limits data exposure to parents.
 - **Subscription enforcement** via DB triggers blocks writes when subscription is inactive.
 - **Academic terms** properly scoped to organisations with cascading deletes.
+- **Tier limits** now race-condition safe via `FOR UPDATE` row locking.

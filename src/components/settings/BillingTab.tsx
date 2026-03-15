@@ -73,19 +73,21 @@ interface PlanCardProps {
   billingInterval: BillingInterval;
   onSelect: () => void;
   isLoading: boolean;
+  currencyCode: string;
 }
 
-function PlanCard({ 
-  plan: _plan, 
-  name, 
-  price, 
-  features, 
+function PlanCard({
+  plan: _plan,
+  name,
+  price,
+  features,
   limits,
-  isCurrentPlan, 
+  isCurrentPlan,
   isPopular,
   billingInterval,
   onSelect,
-  isLoading
+  isLoading,
+  currencyCode
 }: PlanCardProps) {
   const currentPrice = billingInterval === 'yearly' 
     ? Math.round(price.yearly / 12) 
@@ -121,7 +123,7 @@ function PlanCard({
           </div>
           <div className="mt-4">
             <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-semibold">{currencySymbol('GBP')}{currentPrice}</span>
+              <span className="text-4xl font-semibold">{currencySymbol(currencyCode)}{currentPrice}</span>
               <span className="text-muted-foreground">/month</span>
             </div>
             {billingInterval === 'yearly' && yearlyDiscount > 0 && (
@@ -598,6 +600,7 @@ export function BillingTab() {
                 billingInterval={billingInterval}
                 onSelect={() => handlePlanSelect(key)}
                 isLoading={isLoading}
+                currencyCode={currentOrg?.currency_code || 'GBP'}
               />
             ))}
           </div>
