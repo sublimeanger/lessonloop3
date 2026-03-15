@@ -98,10 +98,14 @@ export default function CalendarPage() {
     checkConflicts, isOnline, isMobile, isDesktop, isParent,
   });
 
+  const myTeacherRecord = currentRole === 'teacher' ? teachers.find(t => t.user_id === user?.id) : null;
+
   const bulk = useBulkLessonActions({
     refetch,
     orgId: currentOrg?.id ?? null,
     userId: user?.id ?? null,
+    currentRole: currentRole ?? null,
+    teacherId: myTeacherRecord?.id ?? null,
   });
 
   // Escape to exit selection mode
