@@ -116,17 +116,50 @@ export default function Continuation() {
 
   const handleProcessDeadline = async () => {
     if (!run?.id) return;
-    await processDeadline.mutateAsync(run.id);
+    try {
+      await processDeadline.mutateAsync(run.id);
+    } catch (error: any) {
+      // Error toast handled by mutation onError
+    }
   };
 
   const handleBulkProcess = async (type: 'confirmed' | 'withdrawals' | 'all') => {
     if (!run?.id || !run.next_term?.end_date || !run.next_term?.start_date) return;
-    await bulkProcess.mutateAsync({
-      run_id: run.id,
-      next_term_end_date: run.next_term.end_date,
-      next_term_start_date: run.next_term.start_date,
-      process_type: type,
+    try {
+      await bulkProcess.mutateAsync({
+        run_id: run.id,
+        next_term_end_date: run.next_term.end_date,
+        next_term_start_date: run.next_term.start_date,
+        process_type: type,
+      });
+    } catch (error: any) {
+      // Error toast handled by mutation onError
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (!filteredResponses.length) return;
+    const headers = ['Student Name', 'Guardian Name', 'Guardian Email', 'Status', 'Responded At', 'Notes'];
+    const rows = filteredResponses.map((r) => {
+      const studentName = r.student ? `${r.student.first_name} ${r.student.last_name}` : 'Unknown';
+      const guardianName = r.guardian?.full_name || '';
+      const guardianEmail = r.guardian?.email || '';
+      const badge = RESPONSE_BADGE[r.response];
+      const status = badge?.label || r.response;
+      const respondedAt = r.response_at ? new Date(r.response_at).toLocaleDateString('en-GB') : '';
+      const notes = (r.withdrawal_notes || r.withdrawal_reason || '').replace(/"/g, '""');
+      return [studentName, guardianName, guardianEmail, status, respondedAt, notes]
+        .map((v) => `"${v}"`)
+        .join(',');
     });
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `continuation-${run?.current_term?.name || 'export'}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const totalConfirmed = (summary?.confirmed || 0) + (summary?.assumed_continuing || 0);
