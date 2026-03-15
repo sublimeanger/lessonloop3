@@ -20,6 +20,7 @@
 | `supabase/migrations/20260120215124_*.sql` | `student_teacher_assignments` table + RLS |
 | `supabase/migrations/20260120215727_*.sql` | `is_assigned_teacher()` helper function |
 | `supabase/migrations/20260120215754_*.sql` | Full RLS rewrite: role-based policies for students, guardians, student_guardians |
+| `supabase/migrations/20260120215818_*.sql` | **RLS rewrite**: lesson_participants, attendance_records (role-based, teacher-scoped) |
 | `supabase/migrations/20260124020340_*.sql` | `make_up_credits` table (FK to students ON DELETE CASCADE) |
 | `supabase/migrations/20260124023938_*.sql` | `practice_assignments`, `practice_logs` (FK to students ON DELETE CASCADE) |
 | `supabase/migrations/20260126115938_*.sql` | `default_teacher_user_id`, `default_rate_card_id` columns on students |
@@ -169,9 +170,15 @@ CREATE TABLE public.lesson_participants (
   org_id     UUID NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
   lesson_id  UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
   student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  rate_minor INTEGER DEFAULT NULL,  -- rate snapshot in minor currency (pence/cents)
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(lesson_id, student_id)
 );
+
+-- Triggers
+trg_clear_open_slot          AFTER INSERT → clear_open_slot_on_participant()
+trg_makeup_participant_removed AFTER DELETE → on_makeup_participant_removed()
+-- Attendance validation trigger on attendance_records ensures student is participant
 ```
 
 ### student_teacher_assignments table
@@ -209,8 +216,8 @@ CREATE TABLE public.student_teacher_assignments (
 | STU-13 | **LOW** | `check_student_limit()` trigger counts `WHERE deleted_at IS NULL AND status != 'inactive'`. This means only `active` students count toward limit. But the enum only has `active | inactive`, so this is equivalent to `status = 'active'`. If enum is ever expanded, the logic may need updating. | `supabase/migrations/20260315220006_*.sql:66-70` | Document the counting logic. Consider `status = 'active'` for clarity. |
 | STU-14 | **INFO** | CSV import (`csv-import-execute`) checks student limit before import: queries `max_students` from org, counts existing students, rejects if capacity exceeded. This is separate from the DB trigger — defense in depth. | `supabase/functions/csv-import-execute/index.ts:549-567` | Good — double enforcement at edge function + DB trigger level. |
 | STU-15 | **INFO** | Audit logging is comprehensive. All student operations (`created`, `updated`, `deleted`, `status_changed`, `guardian_added`, `guardian_removed`, `guardian_edited`, `defaults_updated`, `teacher_assigned`, `teacher_removed`) are logged via `logAudit()`. | Multiple files | Good — full audit trail. |
-| STU-16 | **MEDIUM** | `lesson_participants` RLS allows any org member to INSERT/UPDATE/DELETE participants. A teacher could add/remove students from any lesson in the org, not just their own lessons. Finance role could also modify participants. | `supabase/migrations/20260119233145_*.sql:148-161` | Tighten to: teachers can only manage participants in their own lessons; finance should have no write access to participants. |
-| STU-17 | **LOW** | `attendance_records` RLS allows any org member to INSERT/UPDATE. A parent with org membership could theoretically create/modify attendance records if they bypass the UI. | `supabase/migrations/20260119233145_*.sql:164-178` | Consider restricting INSERT/UPDATE to staff roles (owner, admin, teacher). Parents should only SELECT. |
+| STU-16 | **RESOLVED** | `lesson_participants` RLS was initially `is_org_member` for all ops but was **replaced** in migration `20260120215818` with proper role-based policies: admin can manage all; teachers can only manage participants in their own lessons; parents can only SELECT their children's participations. Finance has no access. | `supabase/migrations/20260120215818_*.sql:67-131` | No fix needed — already properly role-restricted. |
+| STU-17 | **RESOLVED** | `attendance_records` RLS was initially `is_org_member` but was **replaced** in migration `20260120215818` with: admin full access; teachers can only record/update for own lessons (with `recorded_by = auth.uid()` check on INSERT); parents SELECT only; finance no access. | `supabase/migrations/20260120215818_*.sql:133-193` | No fix needed — already properly role-restricted. |
 | STU-18 | **INFO** | `is_open_slot` trigger correctly auto-clears when a participant is added to a lesson. | `supabase/migrations/20260315100200_*.sql` | Good — properly implemented. |
 
 ---
@@ -244,16 +251,16 @@ CREATE TABLE public.student_teacher_assignments (
 | **UPDATE** | Yes | No | No | No |
 | **DELETE** | Yes | No | No | No |
 
-### lesson_participants table
+### lesson_participants table (updated RLS from migration `20260120215818`)
 
 | Operation | owner/admin | teacher | finance | parent |
 |-----------|-------------|---------|---------|--------|
-| **SELECT** | All | All org | All org | Own children only |
-| **INSERT** | All org members | All org members | All org members | Via parent policy |
-| **UPDATE** | All org members | All org members | All org members | No |
-| **DELETE** | All org members | All org members | All org members | No |
+| **SELECT** | All (`is_org_admin`) | Own lessons only (`is_lesson_teacher`) | No | Own children only (`is_parent_of_student`) |
+| **INSERT** | Yes (`is_org_admin`) | Own lessons only (`is_lesson_teacher`) | No | No |
+| **UPDATE** | Yes (`is_org_admin`) | Own lessons only (`is_lesson_teacher`) | No | No |
+| **DELETE** | Yes (`is_org_admin`) | Own lessons only (`is_lesson_teacher`) | No | No |
 
-**STU-16 applies here** — INSERT/UPDATE/DELETE is too permissive for lesson_participants.
+Properly role-restricted. Teachers can only manage participants in their own lessons.
 
 ### student_teacher_assignments table
 
@@ -273,16 +280,16 @@ CREATE TABLE public.student_teacher_assignments (
 | **UPDATE** | Yes | No | No | No |
 | **DELETE** | Yes | No | No | No |
 
-### attendance_records table
+### attendance_records table (updated RLS from migration `20260120215818`)
 
 | Operation | owner/admin | teacher | finance | parent |
 |-----------|-------------|---------|---------|--------|
-| **SELECT** | All org | All org | All org | Own children only |
-| **INSERT** | All org members | All org members | All org members | No |
-| **UPDATE** | All org members | All org members | All org members | No |
+| **SELECT** | All (`is_org_admin`) | Own lessons only (`is_lesson_teacher`) | No | Own children only (`is_parent_of_student`) |
+| **INSERT** | Yes (`is_org_admin`) | Own lessons only + `recorded_by = auth.uid()` | No | No |
+| **UPDATE** | Yes (`is_org_admin`) | Own lessons only (`is_lesson_teacher`) | No | No |
 | **DELETE** | Yes (`is_org_admin`) | No | No | No |
 
-**STU-17 applies** — INSERT/UPDATE is too permissive.
+Properly role-restricted. Teachers can only record attendance for their own lessons.
 
 ---
 
@@ -486,14 +493,20 @@ The Students feature is **PRODUCTION READY** for beta launch with the following 
 
 2. **STU-01 (MEDIUM):** Student `notes` field returned to all roles including teachers/finance. If medical or sensitive data is stored here, it's a privacy risk. Consider omitting from non-admin RPC paths or adding a dedicated restricted field.
 
-3. **STU-16 (MEDIUM):** `lesson_participants` write access is too broad — any org member (including finance, parents with membership) can add/remove students from any lesson. Should be restricted to the lesson's teacher + admins.
+### Previously flagged, now confirmed resolved:
+
+- **STU-16:** `lesson_participants` RLS was updated in migration `20260120215818` — teachers can only manage participants in their own lessons. Finance and parents have no write access. **No fix needed.**
+- **STU-17:** `attendance_records` RLS was updated in same migration — teachers can only record attendance for own lessons with `recorded_by = auth.uid()` check. **No fix needed.**
 
 ### Strengths:
 - Comprehensive soft-delete with pre-deletion validation
-- Full audit logging on all student operations
+- Full audit logging on all student operations (10+ event types)
 - Race-condition-safe tier limit enforcement (FOR UPDATE lock)
 - Robust CSV import with AI column mapping, dry-run, duplicate detection
-- Well-designed RLS policies for students/guardians/student_guardians (role-appropriate access)
+- Well-designed RLS policies across all student-related tables (role-appropriate access)
 - GDPR anonymisation function ready
 - Guardian linking model is sound (many-to-many, primary payer flag)
 - `is_open_slot` auto-clear trigger works correctly
+- Immutable `org_id` via `prevent_org_id_change` trigger
+- Attendance validation ensures only lesson participants can have attendance recorded
+- Make-up credit restoration trigger when participant removed from lesson
