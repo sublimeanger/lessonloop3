@@ -103,6 +103,16 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
 
   const onSubmit = async (formData: FormData) => {
     if (!currentOrg?.id || !selectedLesson) return;
+
+    // FIX 8: Validate against make-up policy
+    if (policyBlocked) {
+      toast({
+        title: 'Not eligible for make-up',
+        description: `The "${ABSENCE_REASON_LABELS[selectedAbsenceReason]?.label}" policy does not allow make-up lessons.`,
+        variant: 'destructive',
+      });
+      return;
+    }
     setIsSubmitting(true);
     try {
       const durationMs = new Date(selectedLesson.end_at).getTime() - new Date(selectedLesson.start_at).getTime();
