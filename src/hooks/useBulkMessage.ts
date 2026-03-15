@@ -108,7 +108,8 @@ export function useRecipientPreview(filters: FilterCriteria) {
         studentQuery = studentQuery.in('id', studentIds);
       }
 
-      const { data: students } = await studentQuery;
+      const { data: students, error: studentErr } = await studentQuery;
+      if (studentErr) throw new Error(`Failed to fetch students: ${studentErr.message}`);
       if (!students || students.length === 0) {
         return { count: 0, guardians: [] };
       }
