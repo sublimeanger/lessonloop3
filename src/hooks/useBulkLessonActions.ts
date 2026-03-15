@@ -119,14 +119,48 @@ export function useBulkLessonActions({ refetch, orgId, userId, currentRole, teac
 
     setBulkProgress({ done: 0, total: ids.length });
 
+    // FIX 3: If changing teacher, look up teacher_user_id and warn about attendance
+    let resolvedTeacherUserId: string | null | undefined = undefined;
+    if (payload.teacher_id) {
+      const { data: teacher } = await supabase
+        .from('teachers')
+        .select('user_id')
+        .eq('id', payload.teacher_id)
+        .single();
+      resolvedTeacherUserId = teacher?.user_id ?? null;
+
+      // Warn about existing attendance
+      const { count: attCount } = await supabase
+        .from('attendance_records')
+        .select('*', { count: 'exact', head: true })
+        .in('lesson_id', ids);
+      if (attCount && attCount > 0) {
+        toast({
+          title: 'Warning',
+          description: `${attCount} attendance record${attCount !== 1 ? 's' : ''} exist for these lessons. Teacher change may affect reports.`,
+        });
+      }
+    }
+
     let successCount = 0;
     let failCount = 0;
 
     // Sequential updates to avoid RLS/rate limit issues
     for (let i = 0; i < ids.length; i++) {
+      // FIX 4: Check if component unmounted mid-loop
+      if (!isMounted.current) {
+        toast({ title: 'Update interrupted', description: `${successCount} of ${ids.length} lessons updated before navigating away.` });
+        break;
+      }
+
       const id = ids[i];
       const updateData: Record<string, unknown> = {};
-      if (payload.teacher_id !== undefined) updateData.teacher_id = payload.teacher_id;
+      if (payload.teacher_id !== undefined) {
+        updateData.teacher_id = payload.teacher_id;
+        if (resolvedTeacherUserId !== undefined) {
+          updateData.teacher_user_id = resolvedTeacherUserId;
+        }
+      }
       if (payload.location_id !== undefined) updateData.location_id = payload.location_id;
       if (payload.room_id !== undefined) updateData.room_id = payload.room_id;
       if (payload.status !== undefined) updateData.status = payload.status;
