@@ -134,6 +134,16 @@ export function SendInvoiceModal({
   const handleSend = async () => {
     if (!invoice || !currentOrg || !recipientEmail) return;
 
+    // FIX 2: Guard against sending paid/void invoices
+    if (invoice.status === 'void') {
+      toast({ title: 'Cannot send voided invoice', variant: 'destructive' });
+      return;
+    }
+    if (invoice.status === 'paid') {
+      toast({ title: 'Cannot send paid invoice', variant: 'destructive' });
+      return;
+    }
+
     setIsSending(true);
 
     try {
@@ -154,13 +164,29 @@ export function SendInvoiceModal({
 
       if (sendError) throw sendError;
 
+      // FIX 1: Retry status update to avoid email-sent-but-still-draft
       if (invoice.status === 'draft') {
-        await updateStatus.mutateAsync({ id: invoice.id, status: 'sent' });
+        let statusUpdated = false;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            await updateStatus.mutateAsync({ id: invoice.id, status: 'sent' });
+            statusUpdated = true;
+            break;
+          } catch {
+            await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
+          }
+        }
+        if (!statusUpdated) {
+          toast({
+            title: 'Email sent but status not updated',
+            description: 'Please refresh and check the invoice status.',
+            variant: 'destructive',
+          });
+        }
       }
 
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice'] });
-      // Sending invoice email creates a message_log entry (3.10)
       queryClient.invalidateQueries({ queryKey: ['message-log'] });
 
       toast({ title: isReminder ? 'Reminder sent' : 'Invoice sent' });
