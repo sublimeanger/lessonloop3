@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,6 +76,15 @@ Deno.serve(async (req: Request) => {
       });
     }
     const userId = user.id;
+
+    // Rate limiting: 3 billing runs per 5 minutes per user
+    const rateLimitResult = await checkRateLimit(userId, "billing-run", {
+      maxRequests: 3,
+      windowMinutes: 5,
+    });
+    if (!rateLimitResult.allowed) {
+      return rateLimitResponse(corsHeaders, rateLimitResult);
+    }
 
     // Service role client for data operations (bypasses RLS)
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
