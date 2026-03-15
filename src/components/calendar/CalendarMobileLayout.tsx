@@ -69,6 +69,7 @@ export function CalendarMobileLayout({
   bulk,
   refetch,
 }: CalendarMobileLayoutProps) {
+  const { isOrgAdmin } = useOrg();
   const [slotWizardOpen, setSlotWizardOpen] = useState(false);
 
   const wizardTeachers = teachers.map(t => ({ id: t.id, display_name: t.name, user_id: t.userId }));
