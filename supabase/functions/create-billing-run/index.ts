@@ -129,6 +129,16 @@ async function handleCreate(
   const billingMode = body.billing_mode || "delivered";
   const fallbackRate = body.fallback_rate_minor ?? 3000;
 
+  if (fallbackRate <= 0 || fallbackRate > 100000) {
+    return new Response(
+      JSON.stringify({ error: "Invalid fallback rate" }),
+      {
+        status: 400,
+        headers: { ...cors, "Content-Type": "application/json" },
+      }
+    );
+  }
+
   // Get org settings
   const { data: org, error: orgError } = await client
     .from("organisations")
