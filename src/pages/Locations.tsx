@@ -872,7 +872,7 @@ export default function Locations() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Name *</Label>
-                <Input autoFocus value={locName} onChange={(e) => setLocName(e.target.value)} placeholder="Main Studio" />
+                <Input autoFocus value={locName} onChange={(e) => setLocName(e.target.value)} placeholder="Main Studio" maxLength={200} />
               </div>
               <div className="space-y-2">
                 <Label>Type</Label>
@@ -952,7 +952,7 @@ export default function Locations() {
             </div>
             <div className="space-y-2">
               <Label>Capacity (optional)</Label>
-              <Input type="number" min="1" step="1" value={roomCapacity} onChange={(e) => setRoomCapacity(e.target.value)} placeholder="4" />
+              <Input type="number" min="1" step="1" value={roomCapacity} onChange={(e) => setRoomCapacity(e.target.value.replace(/[^0-9]/g, ''))} placeholder="4" />
             </div>
           </div>
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
