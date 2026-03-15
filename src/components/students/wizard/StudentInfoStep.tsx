@@ -93,6 +93,7 @@ export function StudentInfoStep({ data, onChange }: StudentInfoStepProps) {
           type="date"
           value={data.dob}
           onChange={(e) => update('dob', e.target.value)}
+          max={new Date().toISOString().split('T')[0]}
         />
       </div>
 
