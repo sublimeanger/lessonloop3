@@ -148,18 +148,20 @@ export function useRegisterData(date: Date) {
       let roomMap = new Map<string, string>();
 
       if (locationIds.length > 0) {
-        const { data: locations } = await supabase
+        const { data: locations, error: locErr } = await supabase
           .from('locations')
           .select('id, name')
           .in('id', locationIds);
+        if (locErr) throw locErr;
         locationMap = new Map((locations || []).map(l => [l.id, l.name]));
       }
 
       if (roomIds.length > 0) {
-        const { data: rooms } = await supabase
+        const { data: rooms, error: rmErr } = await supabase
           .from('rooms')
           .select('id, name')
           .in('id', roomIds);
+        if (rmErr) throw rmErr;
         roomMap = new Map((rooms || []).map(r => [r.id, r.name]));
       }
 
