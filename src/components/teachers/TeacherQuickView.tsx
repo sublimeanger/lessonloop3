@@ -128,6 +128,18 @@ export function TeacherQuickView({ teacher, open, onOpenChange, onEdit, onRemove
             View Calendar
           </Button>
           <Button
+            variant="outline"
+            size="sm"
+            className="min-h-11 flex-1 gap-1.5 sm:min-h-9"
+            onClick={() => {
+              onOpenChange(false);
+              navigate(`/settings?tab=availability${teacher.id ? `&teacher=${teacher.id}` : ''}`);
+            }}
+          >
+            <Clock className="h-3.5 w-3.5" />
+            Availability
+          </Button>
+          <Button
             size="sm"
             className="min-h-11 flex-1 gap-1.5 sm:min-h-9"
             onClick={() => {
