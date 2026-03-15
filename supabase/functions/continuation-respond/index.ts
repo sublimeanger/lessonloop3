@@ -191,13 +191,22 @@ async function handleTokenResponse(
   // Verify run is still accepting responses
   const { data: run } = await client
     .from("term_continuation_runs")
-    .select("status, next_term_id, current_term_id")
+    .select("status, next_term_id, current_term_id, notice_deadline")
     .eq("id", respRow.run_id)
     .single();
 
   if (!run || !["sent", "reminding"].includes(run.status)) {
     return jsonResponse(
       { error: "This continuation run is no longer accepting responses" },
+      cors,
+      400
+    );
+  }
+
+  // Enforce deadline server-side
+  if (run.notice_deadline && new Date(run.notice_deadline) < new Date()) {
+    return jsonResponse(
+      { error: "Response deadline has passed" },
       cors,
       400
     );
@@ -325,16 +334,25 @@ async function handlePortalResponse(
     );
   }
 
-  // Verify run status
+  // Verify run status and deadline
   const { data: run } = await client
     .from("term_continuation_runs")
-    .select("status")
+    .select("status, notice_deadline")
     .eq("id", run_id)
     .single();
 
   if (!run || !["sent", "reminding"].includes(run.status)) {
     return jsonResponse(
       { error: "This continuation run is no longer accepting responses" },
+      cors,
+      400
+    );
+  }
+
+  // Enforce deadline server-side
+  if (run.notice_deadline && new Date(run.notice_deadline) < new Date()) {
+    return jsonResponse(
+      { error: "Response deadline has passed" },
       cors,
       400
     );
