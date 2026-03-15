@@ -736,9 +736,19 @@ export default function PortalHome() {
 
                           {/* Booked: show the booked lesson date */}
                           {entry.status === 'booked' && entry.booked_lesson_id && matched && (
-                            <p className="text-xs text-green-600 dark:text-green-400">
-                              📅 {formatDateUK(parseISO(matched.start_at), 'EEEE d MMM')} at {formatTimeUK(parseISO(matched.start_at))}
-                            </p>
+                            <div className="space-y-2">
+                              <p className="text-xs text-green-600 dark:text-green-400">
+                                📅 {formatDateUK(parseISO(matched.start_at), 'EEEE d MMM')} at {formatTimeUK(parseISO(matched.start_at))}
+                              </p>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-destructive hover:bg-destructive/10"
+                                onClick={(e) => { e.stopPropagation(); handleCancelBookedMakeup(entry.id); }}
+                              >
+                                Cancel Make-Up
+                              </Button>
+                            </div>
                           )}
 
                           {entry.status === 'accepted' && (
