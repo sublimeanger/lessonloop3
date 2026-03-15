@@ -165,11 +165,8 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
     };
 
     await generateMutation.mutateAsync({ config, slots, timezone });
-    onOpenChange(false);
+    handleOpenChange(false);
     onComplete?.(date);
-    // Reset
-    setStep(1);
-    setSlots([]);
   };
 
   const activeSlotCount = slots.filter(s => !s.excluded).length;
