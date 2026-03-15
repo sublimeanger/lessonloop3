@@ -167,12 +167,7 @@ export function useDeleteValidation() {
     if (tlErr) throw tlErr;
 
     if (totalLessonCount != null && totalLessonCount > 0) {
-      blocks.push({
-        reason: `Teacher has ${totalLessonCount} upcoming lesson${totalLessonCount > 1 ? 's' : ''} scheduled`,
-        entityType: 'lessons',
-        count: totalLessonCount as number,
-        details: 'Reassign these lessons to another teacher before removing.',
-      });
+      warnings.push(`Teacher has ${totalLessonCount} upcoming lesson${totalLessonCount > 1 ? 's' : ''}. You'll be able to reassign or cancel them in the next step.`);
     }
 
     // Check for assigned students using teacher_id

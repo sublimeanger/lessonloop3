@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { logger } from '@/lib/logger';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,7 +48,7 @@ export function useTeachers() {
         .select('id, org_id, user_id, display_name, email, phone, instruments, employment_type, bio, status, default_lesson_length_mins, created_at, updated_at')
         .eq('org_id', currentOrg.id)
         .order('display_name')
-        .limit(100);
+        .limit(500);
 
       if (error) throw error;
 
@@ -148,7 +147,7 @@ export function useTeacherMutations() {
       if (teacher?.user_id) {
         const { error: memberError } = await supabase
           .from('org_memberships')
-          .update({ status: 'disabled' as any })
+          .update({ status: 'disabled' })
           .eq('org_id', currentOrg.id)
           .eq('user_id', teacher.user_id);
         if (memberError) logger.error('Failed to disable membership:', memberError);
@@ -188,7 +187,7 @@ export function useTeacherMutations() {
       if (teacher?.user_id) {
         const { error: memberError } = await supabase
           .from('org_memberships')
-          .update({ status: 'active' as any })
+          .update({ status: 'active' })
           .eq('org_id', currentOrg.id)
           .eq('user_id', teacher.user_id);
         if (memberError) logger.error('Failed to re-enable membership:', memberError);
