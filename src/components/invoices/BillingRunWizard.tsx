@@ -283,23 +283,28 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
 
             {/* Date pickers - shown for monthly/custom, or read-only for term */}
             {config.runType !== 'term' ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Start Date</Label>
-                  <Input
-                    type="date"
-                    value={config.startDate}
-                    onChange={(e) => setConfig((c) => ({ ...c, startDate: e.target.value }))}
-                  />
+              <div className="space-y-2">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Start Date</Label>
+                    <Input
+                      type="date"
+                      value={config.startDate}
+                      onChange={(e) => setConfig((c) => ({ ...c, startDate: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>End Date</Label>
+                    <Input
+                      type="date"
+                      value={config.endDate}
+                      onChange={(e) => setConfig((c) => ({ ...c, endDate: e.target.value }))}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>End Date</Label>
-                  <Input
-                    type="date"
-                    value={config.endDate}
-                    onChange={(e) => setConfig((c) => ({ ...c, endDate: e.target.value }))}
-                  />
-                </div>
+                {!isDateRangeValid && config.startDate && config.endDate && (
+                  <p className="text-sm text-destructive">End date must be on or after start date</p>
+                )}
               </div>
             ) : config.termId ? (
               <div className="grid gap-4 sm:grid-cols-2">
