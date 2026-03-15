@@ -422,6 +422,7 @@ export interface BatchLessonRow {
     student_id: string;
     student_name: string;
     current_status: AttendanceStatus | null;
+    has_notes?: boolean;
   }[];
 }
 
