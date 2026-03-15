@@ -272,14 +272,18 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
           <div className="space-y-4">
             <div>
               <Label>Teacher <span className="text-destructive">*</span></Label>
-              <Select value={teacherId} onValueChange={setTeacherId}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select teacher" /></SelectTrigger>
-                <SelectContent>
-                  {teachers.map(t => (
-                    <SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {teachers.length === 0 ? (
+                <p className="text-sm text-muted-foreground mt-1">No teachers available. Add a teacher first.</p>
+              ) : (
+                <Select value={teacherId} onValueChange={setTeacherId}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select teacher" /></SelectTrigger>
+                  <SelectContent>
+                    {teachers.map(t => (
+                      <SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
