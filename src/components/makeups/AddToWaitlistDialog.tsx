@@ -229,6 +229,19 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
                 ))}
               </SelectContent>
             </Select>
+            {policyBlocked && (
+              <Alert variant="destructive" className="mt-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  This absence reason ("{ABSENCE_REASON_LABELS[selectedAbsenceReason]?.label}") is not eligible for make-up lessons per your organisation's policy.
+                </AlertDescription>
+              </Alert>
+            )}
+            {matchingPolicy && !policyBlocked && matchingPolicy.eligibility === 'admin_discretion' && (
+              <p className="text-xs text-amber-600 mt-1">
+                ⚠️ This reason requires admin discretion per your policy.
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
