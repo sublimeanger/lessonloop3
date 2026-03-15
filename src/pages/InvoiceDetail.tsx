@@ -633,6 +633,22 @@ export default function InvoiceDetail() {
         currencyCode={currency}
       />
 
+      {/* Parent Embedded Payment Drawer */}
+      {isParent && (
+        <PaymentDrawer
+          open={paymentDrawerOpen}
+          onOpenChange={(open) => {
+            setPaymentDrawerOpen(open);
+            if (!open) refetch();
+          }}
+          invoiceId={invoice.id}
+          invoiceNumber={invoice.invoice_number}
+          amount={amountDue}
+          currencyCode={currency}
+          dueDate={formatDateUK(parseISO(invoice.due_date), 'dd MMM yyyy')}
+        />
+      )}
+
       {/* Void confirmation dialog */}
       <AlertDialog open={voidConfirmOpen} onOpenChange={setVoidConfirmOpen}>
         <AlertDialogContent>
