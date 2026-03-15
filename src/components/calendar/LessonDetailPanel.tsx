@@ -396,12 +396,11 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
     const mode = pendingMode || 'this_only';
 
     try {
-      let deletedIds: string[] = [];
-
+      // Determine lesson IDs that will be deleted
+      let deletedIds: string[];
       if (mode === 'this_only' || !isRecurring) {
         deletedIds = [lesson.id];
       } else {
-        // Fetch future lesson IDs first
         const { data: futureLessons, error: fetchError } = await supabase
           .from('lessons')
           .select('id')
@@ -415,41 +414,42 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         deletedIds = (futureLessons || []).map(l => l.id);
       }
 
-      // === Pre-delete cascade checks (same as cancel path) ===
-      if (deletedIds.length > 0) {
-        // 1. Clean up attendance records (awaited, not fire-and-forget)
-        const { error: attErr } = await supabase
-          .from('attendance_records')
-          .delete()
-          .in('lesson_id', deletedIds);
-        if (attErr) logger.warn('[delete-cascade] Failed to delete attendance records:', attErr.message);
+      // Check for non-draft invoice items — hard block on invoiced lessons
+      const { data: invoicedItems } = await supabase
+        .from('invoice_items')
+        .select('id, invoice_id, invoices!inner(status)')
+        .in('linked_lesson_id', deletedIds)
+        .neq('invoices.status', 'draft');
 
-        // 2. Check for non-draft invoice items referencing these lessons
-        const { data: invoiceItems } = await supabase
-          .from('invoice_items')
-          .select('id, invoice_id, invoices!inner(status)')
-          .in('linked_lesson_id', deletedIds);
+      if (invoicedItems && invoicedItems.length > 0) {
+        toast({
+          title: 'Cannot delete invoiced lessons',
+          description: `${invoicedItems.length} lessons have been invoiced. Cancel them instead or create credit notes first.`,
+          variant: 'destructive'
+        });
+        return;
+      }
 
-        if (invoiceItems && invoiceItems.length > 0) {
-          const nonDraftItems = invoiceItems.filter((item: any) => item.invoices?.status !== 'draft');
-          const draftItems = invoiceItems.filter((item: any) => item.invoices?.status === 'draft');
+      // Clean up attendance records (awaited, not fire-and-forget)
+      const { error: attErr } = await supabase
+        .from('attendance_records')
+        .delete()
+        .in('lesson_id', deletedIds);
+      if (attErr) logger.warn('[delete-cascade] Failed to delete attendance records:', attErr.message);
 
-          if (nonDraftItems.length > 0) {
-            const invoiceIds = [...new Set(nonDraftItems.map(i => i.invoice_id))];
-            toast({
-              title: 'Invoice items affected',
-              description: `${invoiceIds.length} sent/paid invoice(s) reference these lessons. Please review them.`,
-              variant: 'destructive',
-            });
-          }
-          if (draftItems.length > 0) {
-            const draftInvoiceIds = [...new Set(draftItems.map(i => i.invoice_id))];
-            toast({
-              title: 'Draft invoices affected',
-              description: `${draftInvoiceIds.length} draft invoice(s) contain items for these lessons. Please review them.`,
-            });
-          }
-        }
+      // Check for draft invoice items (warning only, non-blocking)
+      const { data: draftInvoiceItems } = await supabase
+        .from('invoice_items')
+        .select('id, invoice_id, invoices!inner(status)')
+        .in('linked_lesson_id', deletedIds)
+        .eq('invoices.status', 'draft');
+
+      if (draftInvoiceItems && draftInvoiceItems.length > 0) {
+        const draftInvoiceIds = [...new Set(draftInvoiceItems.map(i => i.invoice_id))];
+        toast({
+          title: 'Draft invoices affected',
+          description: `${draftInvoiceIds.length} draft invoice(s) contain items for these lessons. Please review them.`,
+        });
       }
 
       // === Perform deletion ===
@@ -475,6 +475,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         logAudit(currentOrg.id, user.id, 'delete', 'lesson', lesson.id, {
           before: { title: lesson.title, start_at: lesson.start_at, scope: 'this_and_future' },
         });
+        // Fire-and-forget calendar + Zoom sync for all deleted lessons
         syncLessons(deletedIds, 'delete');
         syncZoomMeetings(deletedIds, 'delete');
         toast({ title: 'Series deleted', description: 'This and all future lessons have been deleted.' });
