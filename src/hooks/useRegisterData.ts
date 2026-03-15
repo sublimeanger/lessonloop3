@@ -444,7 +444,7 @@ export function useBatchAttendanceLessons(date: Date) {
         .from('lessons')
         .select(`
           id, title, start_at, end_at, status,
-          lesson_participants(student_id, student:students(id, first_name, last_name)),
+          lesson_participants(student_id, student:students(id, first_name, last_name, notes)),
           attendance_records(student_id, attendance_status)
         `)
         .eq('org_id', currentOrg.id)
