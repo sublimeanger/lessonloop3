@@ -20,6 +20,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CalendarIcon, Plus, Trash2, Loader2, Calendar as CalendarIconSolid, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -471,9 +472,15 @@ export function SchedulingSettingsTab() {
     deleteClosure: _dc,
     deleteBulk,
     isSaving,
+    checkLessonsOnDates,
   } = useClosureDateSettings();
 
   const [blockScheduling, setBlockScheduling] = useState(true);
+
+  // Closure date lesson warning state
+  const [lessonWarningOpen, setLessonWarningOpen] = useState(false);
+  const [pendingClosureDates, setPendingClosureDates] = useState<{ dates: { date: Date; reason: string }[]; locationId: string } | null>(null);
+  const [affectedLessonCount, setAffectedLessonCount] = useState(0);
 
   // Add closure modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -507,13 +514,36 @@ export function SchedulingSettingsTab() {
     }
   };
 
+  const addWithWarningCheck = async (dates: { date: Date; reason: string }[], locationId: string) => {
+    const dateStrings = dates.map(d => format(d.date, 'yyyy-MM-dd'));
+    const affected = await checkLessonsOnDates(dateStrings);
+    const totalAffected = affected.reduce((sum, a) => sum + a.count, 0);
+
+    if (totalAffected > 0) {
+      setPendingClosureDates({ dates, locationId });
+      setAffectedLessonCount(totalAffected);
+      setLessonWarningOpen(true);
+    } else {
+      addClosureDatesHook(dates, locationId);
+      resetModal();
+    }
+  };
+
+  const confirmClosureWithLessons = () => {
+    if (pendingClosureDates) {
+      addClosureDatesHook(pendingClosureDates.dates, pendingClosureDates.locationId);
+    }
+    setLessonWarningOpen(false);
+    setPendingClosureDates(null);
+    resetModal();
+  };
+
   const handleAddSingle = () => {
     if (!singleDate || !reason.trim()) {
       toast({ title: 'Please fill in all fields', variant: 'destructive' });
       return;
     }
-    addClosureDatesHook([{ date: singleDate, reason: reason.trim() }], selectedLocationId);
-    resetModal();
+    addWithWarningCheck([{ date: singleDate, reason: reason.trim() }], selectedLocationId);
   };
 
   const handleAddRange = () => {
@@ -529,8 +559,7 @@ export function SchedulingSettingsTab() {
       toast({ title: 'Range too large', description: 'Closure date ranges cannot exceed 365 days.', variant: 'destructive' });
       return;
     }
-    addClosureDatesHook(dates, selectedLocationId);
-    resetModal();
+    addWithWarningCheck(dates, selectedLocationId);
   };
 
   const handleAddPreset = () => {
@@ -887,6 +916,26 @@ export function SchedulingSettingsTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Closure date lesson warning */}
+      <AlertDialog open={lessonWarningOpen} onOpenChange={setLessonWarningOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Lessons scheduled on this date</AlertDialogTitle>
+            <AlertDialogDescription>
+              {affectedLessonCount} lesson{affectedLessonCount !== 1 ? 's are' : ' is'} scheduled on the selected date{pendingClosureDates && pendingClosureDates.dates.length > 1 ? 's' : ''}. The closure date will be added but existing lessons will not be automatically cancelled.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setLessonWarningOpen(false); setPendingClosureDates(null); }}>
+              Go Back
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmClosureWithLessons}>
+              Add Closure Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

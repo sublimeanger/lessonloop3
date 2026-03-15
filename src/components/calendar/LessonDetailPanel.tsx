@@ -396,22 +396,12 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
     const mode = pendingMode || 'this_only';
 
     try {
+      let deletedIds: string[] = [];
+
       if (mode === 'this_only' || !isRecurring) {
-        // Delete just this lesson
-        const { error } = await supabase
-          .from('lessons')
-          .delete()
-          .eq('id', lesson.id);
-        if (error) throw error;
-        logAudit(currentOrg.id, user.id, 'delete', 'lesson', lesson.id, {
-          before: { title: lesson.title, start_at: lesson.start_at },
-        });
-        // Fire-and-forget calendar + Zoom sync
-        syncLesson(lesson.id, 'delete');
-        syncZoomMeeting(lesson.id, 'delete');
-        toast({ title: 'Lesson deleted' });
+        deletedIds = [lesson.id];
       } else {
-        // Delete this and all future lessons in series
+        // Fetch future lesson IDs first
         const { data: futureLessons, error: fetchError } = await supabase
           .from('lessons')
           .select('id')
@@ -422,9 +412,60 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           toast({ title: 'Error', description: 'Could not fetch recurring lessons. Deletion cancelled.', variant: 'destructive' });
           return;
         }
+        deletedIds = (futureLessons || []).map(l => l.id);
+      }
 
-        const deletedIds = (futureLessons || []).map(l => l.id);
+      // === Pre-delete cascade checks (same as cancel path) ===
+      if (deletedIds.length > 0) {
+        // 1. Clean up attendance records (awaited, not fire-and-forget)
+        const { error: attErr } = await supabase
+          .from('attendance_records')
+          .delete()
+          .in('lesson_id', deletedIds);
+        if (attErr) logger.warn('[delete-cascade] Failed to delete attendance records:', attErr.message);
 
+        // 2. Check for non-draft invoice items referencing these lessons
+        const { data: invoiceItems } = await supabase
+          .from('invoice_items')
+          .select('id, invoice_id, invoices!inner(status)')
+          .in('linked_lesson_id', deletedIds);
+
+        if (invoiceItems && invoiceItems.length > 0) {
+          const nonDraftItems = invoiceItems.filter((item: any) => item.invoices?.status !== 'draft');
+          const draftItems = invoiceItems.filter((item: any) => item.invoices?.status === 'draft');
+
+          if (nonDraftItems.length > 0) {
+            const invoiceIds = [...new Set(nonDraftItems.map(i => i.invoice_id))];
+            toast({
+              title: 'Invoice items affected',
+              description: `${invoiceIds.length} sent/paid invoice(s) reference these lessons. Please review them.`,
+              variant: 'destructive',
+            });
+          }
+          if (draftItems.length > 0) {
+            const draftInvoiceIds = [...new Set(draftItems.map(i => i.invoice_id))];
+            toast({
+              title: 'Draft invoices affected',
+              description: `${draftInvoiceIds.length} draft invoice(s) contain items for these lessons. Please review them.`,
+            });
+          }
+        }
+      }
+
+      // === Perform deletion ===
+      if (mode === 'this_only' || !isRecurring) {
+        const { error } = await supabase
+          .from('lessons')
+          .delete()
+          .eq('id', lesson.id);
+        if (error) throw error;
+        logAudit(currentOrg.id, user.id, 'delete', 'lesson', lesson.id, {
+          before: { title: lesson.title, start_at: lesson.start_at },
+        });
+        syncLesson(lesson.id, 'delete');
+        syncZoomMeeting(lesson.id, 'delete');
+        toast({ title: 'Lesson deleted' });
+      } else {
         const { error } = await supabase
           .from('lessons')
           .delete()
@@ -434,7 +475,6 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         logAudit(currentOrg.id, user.id, 'delete', 'lesson', lesson.id, {
           before: { title: lesson.title, start_at: lesson.start_at, scope: 'this_and_future' },
         });
-        // Fire-and-forget calendar + Zoom sync for all deleted lessons
         syncLessons(deletedIds, 'delete');
         syncZoomMeetings(deletedIds, 'delete');
         toast({ title: 'Series deleted', description: 'This and all future lessons have been deleted.' });
