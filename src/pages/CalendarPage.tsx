@@ -116,6 +116,15 @@ export default function CalendarPage() {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [bulk.selectionMode, bulk.exitSelectionMode]);
 
+  // Clear selection when filters change to avoid selecting invisible lessons
+  const filtersKey = `${filters.teacher_id}|${filters.location_id}|${filters.room_id}|${filters.instrument}|${filters.hide_cancelled}`;
+  useEffect(() => {
+    if (bulk.selectionMode && bulk.selectedIds.size > 0) {
+      bulk.clearSelection();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtersKey]);
+
   const lessonsByDay = useMemo(() => {
     const map = new Map<string, LessonWithDetails[]>();
     for (const lesson of lessons) {
