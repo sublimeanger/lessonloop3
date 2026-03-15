@@ -318,7 +318,7 @@ export function OrganisationTab() {
               <div className="space-y-2">
                 <Label>Currency</Label>
                 {canEdit ? (
-                  <Select value={currencyCode} onValueChange={setCurrencyCode}>
+                  <Select value={currencyCode} onValueChange={handleCurrencyChange}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
