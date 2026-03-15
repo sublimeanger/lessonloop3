@@ -134,6 +134,13 @@ async function recalcSummary(client: any, runId: string) {
 }
 
 // ── Main Handler ────────────────────────────────────────────────────────
+// CRON SETUP REQUIRED:
+// Schedule a 'process_deadline' action daily at 8am UTC to auto-process
+// runs whose notice_deadline has passed.
+// Cron: 0 8 * * *
+// Body: { "action": "process_deadline" }
+// Auth: Use service role key as Bearer token, or configure
+//       pg_cron / Supabase cron to call this edge function.
 
 Deno.serve(async (req: Request) => {
   const corsResponse = handleCorsPreflightRequest(req);
@@ -141,15 +148,28 @@ Deno.serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const body: ContinuationRunRequest = await req.json();
+
+    // Cron-compatible path: process_deadline without run_id processes all
+    // overdue runs (called by scheduled cron job with service role key)
+    if (body.action === "process_deadline" && !body.run_id) {
+      const authHeader = req.headers.get("Authorization");
+      if (authHeader !== `Bearer ${serviceRoleKey}`) {
+        return jsonResponse({ error: "Unauthorized – service role required" }, corsHeaders, 401);
+      }
+      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+      return await handleCronDeadlineProcessing(adminClient, corsHeaders);
+    }
+
     // Auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return jsonResponse({ error: "Unauthorized" }, corsHeaders, 401);
     }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -163,7 +183,6 @@ Deno.serve(async (req: Request) => {
     const userId = user.id;
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const body: ContinuationRunRequest = await req.json();
 
     // Rate limit
     const rateLimitResult = await checkRateLimit(
@@ -1380,4 +1399,63 @@ async function handleProcessDeadline(
   });
 
   return jsonResponse({ summary }, cors);
+}
+
+// ── Cron: process all overdue deadlines ─────────────────────────────────
+
+async function handleCronDeadlineProcessing(
+  client: any,
+  cors: Record<string, string>
+) {
+  const today = new Date().toISOString().split("T")[0];
+
+  // Find all runs past their deadline that haven't been processed
+  const { data: overdueRuns } = await client
+    .from("term_continuation_runs")
+    .select("id, org_id, assumed_continuing")
+    .in("status", ["sent", "reminding", "partial"])
+    .lte("notice_deadline", today);
+
+  if (!overdueRuns || overdueRuns.length === 0) {
+    return jsonResponse({ processed: 0 }, cors);
+  }
+
+  const now = new Date().toISOString();
+  let processed = 0;
+
+  for (const run of overdueRuns) {
+    const newResponse = run.assumed_continuing
+      ? "assumed_continuing"
+      : "no_response";
+
+    await client
+      .from("term_continuation_responses")
+      .update({
+        response: newResponse,
+        response_at: now,
+        response_method: "auto_deadline",
+      })
+      .eq("run_id", run.id)
+      .eq("response", "pending");
+
+    await client
+      .from("term_continuation_runs")
+      .update({ status: "deadline_passed", deadline_passed_at: now })
+      .eq("id", run.id);
+
+    await recalcSummary(client, run.id);
+
+    await client.from("audit_log").insert({
+      org_id: run.org_id,
+      actor_user_id: null,
+      action: "continuation_run.deadline_processed",
+      entity_type: "term_continuation_run",
+      entity_id: run.id,
+      after: { assumed_continuing: run.assumed_continuing, auto_response: newResponse, source: "cron" },
+    });
+
+    processed++;
+  }
+
+  return jsonResponse({ processed }, cors);
 }
