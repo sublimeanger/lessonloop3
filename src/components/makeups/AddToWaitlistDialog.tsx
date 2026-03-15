@@ -44,6 +44,7 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { policies } = useMakeUpPolicies();
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -51,6 +52,11 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
   });
 
   const selectedStudentId = watch('student_id');
+  const selectedAbsenceReason = watch('absence_reason') as AbsenceReason;
+
+  // FIX 8: Check policy for selected absence reason
+  const matchingPolicy = policies.find(p => p.absence_reason === selectedAbsenceReason);
+  const policyBlocked = matchingPolicy?.eligibility === 'not_eligible';
 
   const { data: students } = useQuery({
     queryKey: ['students_for_waitlist', currentOrg?.id],
