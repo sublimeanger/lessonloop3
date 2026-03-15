@@ -321,8 +321,8 @@ export default function AcceptInvite() {
       <div className="flex min-h-[100dvh] items-center justify-center gradient-hero-light p-4 sm:p-6">
         <Card className="w-full max-w-md shadow-elevated animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <Music className="h-6 w-6 text-primary" />
+            <div className="mx-auto mb-4">
+              <LogoHorizontal size="lg" />
             </div>
             <CardTitle>Join {organisation?.name || 'Organisation'}</CardTitle>
             <CardDescription>
