@@ -182,10 +182,7 @@ Deno.serve(async (req) => {
         );
       }
       
-      // Ensure owner role exists
-      await adminClient
-        .from('user_roles')
-        .upsert({ user_id: user.id, role: 'owner' }, { onConflict: 'user_id,role' });
+      // Owner role is assigned via org_memberships when the org is created below
     } else {
       // Step 1: Update existing profile with name
       const { error: profileError } = await adminClient

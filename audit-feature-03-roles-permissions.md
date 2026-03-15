@@ -463,18 +463,18 @@ auth.users → guardians.user_id → student_guardians → students
 
 ## 10. Verdict
 
-### **PRODUCTION READY** ✅
+### ✅ PRODUCTION READY — all findings resolved
 
 The roles & permissions system is well-designed and production-ready with multiple layers of defence:
 
 1. **Database layer**: Properly constrained ENUM types, UNIQUE constraints, SECURITY DEFINER helper functions, comprehensive RLS policies on all tables.
-2. **Trigger layer**: protect_owner_role, prevent_org_id_change, audit logging on role changes.
+2. **Trigger layer**: protect_owner_role, prevent_org_id_change, block_owner_insert, audit logging on role changes.
 3. **Edge function layer**: Consistent auth validation, role checking for sensitive operations, rate limiting.
 4. **UI layer**: Route-level guards with allowedRoles, sidebar filtering by role, adminOnly settings tabs.
 5. **Parent isolation**: Strong scoping via guardian→student link chain, enforced at RLS level.
-6. **Role escalation protection**: Multi-layered (RLS policy + trigger + CHECK constraint + edge function guard).
+6. **Role escalation protection**: Multi-layered (RLS policy + trigger + edge function guard).
 
-### Minor Items to Address Post-Launch
-- **RP-01** (LOW): Fix vacuous `org_memberships_no_owner_insert` constraint
-- **RP-02** (LOW): Consider deprecating legacy `user_roles` table
-- **RP-03** (LOW): Tighten leads table RLS to match route-level restrictions
+### Resolved Findings (migration `20260315220009_fix_roles_audit_findings.sql`)
+- **RP-01** (LOW): ~~Vacuous CHECK constraint~~ → Replaced with `block_owner_insert` trigger that checks `current_setting('role') != 'service_role'`.
+- **RP-02** (LOW): ~~Legacy `user_roles` table~~ → `get_user_roles` and `has_role` repointed to `org_memberships`. `handle_new_user` updated. `onboarding-setup` edge function updated. Table dropped.
+- **RP-03** (LOW): ~~Leads RLS too broad~~ → All leads table policies changed from `is_org_staff` to `is_org_admin`, matching UI route restrictions (owner/admin only).
