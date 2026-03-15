@@ -3,7 +3,8 @@ import { format, parseISO, differenceInMinutes, isSameDay } from 'date-fns';
 import { LessonWithDetails } from './types';
 import { TeacherWithColour, TeacherColourEntry, getTeacherColour } from './teacherColours';
 import { cn } from '@/lib/utils';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, Check } from 'lucide-react';
+import { useBulkSelection } from './BulkSelectionContext';
 
 function resolveColour(
   colourMap: Map<string, TeacherWithColour>,
@@ -29,6 +30,7 @@ export function MobileDayView({
   savingLessonIds,
   onLongPress,
 }: MobileDayViewProps) {
+  const { selectionMode, selectedIds } = useBulkSelection();
   // Filter lessons for the current day and sort chronologically
   const dayLessons = useMemo(() => {
     return lessons
@@ -95,13 +97,27 @@ export function MobileDayView({
               onClick={() => onLessonClick(lesson)}
               onContextMenu={onLongPress ? (e) => { e.preventDefault(); onLongPress(lesson); } : undefined}
               className={cn(
-                'w-full flex items-stretch gap-0 px-0 py-3 text-left transition-colors active:bg-muted/50',
+                'w-full flex items-stretch gap-0 px-0 py-3 text-left transition-colors active:bg-muted/50 relative',
                 isCancelled && 'opacity-40',
                 isOpenSlot && 'border-l-2 border-dashed border-primary/40',
                 isSaving && 'animate-pulse',
+                selectionMode && selectedIds.has(lesson.id) && 'bg-primary/5 ring-2 ring-primary ring-inset',
               )}
               style={{ minHeight: 64 }}
             >
+              {/* Selection checkbox */}
+              {selectionMode && (
+                <div className="w-8 shrink-0 flex items-start justify-center pt-1.5">
+                  <div className={cn(
+                    'h-5 w-5 rounded-sm border flex items-center justify-center transition-colors',
+                    selectedIds.has(lesson.id)
+                      ? 'bg-primary border-primary text-primary-foreground'
+                      : 'border-muted-foreground/40 bg-background'
+                  )}>
+                    {selectedIds.has(lesson.id) && <Check className="h-3.5 w-3.5" />}
+                  </div>
+                </div>
+              )}
               {/* Time column */}
               <div className="w-14 shrink-0 flex flex-col items-end justify-start pr-3 pt-0.5">
                 <span className="text-sm font-semibold tabular-nums text-foreground leading-tight">

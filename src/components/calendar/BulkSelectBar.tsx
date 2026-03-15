@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Edit, Trash2, Loader2 } from 'lucide-react';
+import { X, Edit, Trash2, Loader2, CheckSquare } from 'lucide-react';
 import { BulkEditDialog } from './BulkEditDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import type { BulkEditPayload } from '@/hooks/useBulkLessonActions';
@@ -13,6 +13,8 @@ interface BulkSelectBarProps {
   onExit: () => void;
   onBulkUpdate: (payload: BulkEditPayload) => Promise<void>;
   onBulkCancel: () => Promise<void>;
+  onSelectAll?: () => void;
+  totalVisible?: number;
   teachers: { id: string; name: string }[];
   locations: { id: string; name: string }[];
   rooms: { id: string; name: string; location_id: string }[];
@@ -26,6 +28,8 @@ export function BulkSelectBar({
   onExit,
   onBulkUpdate,
   onBulkCancel,
+  onSelectAll,
+  totalVisible,
   teachers,
   locations,
   rooms,
@@ -59,6 +63,12 @@ export function BulkSelectBar({
               <span className="text-sm font-semibold">{count} selected</span>
             </div>
             <div className="flex items-center gap-1.5">
+              {onSelectAll && totalVisible && totalVisible > count && (
+                <Button variant="ghost" size="sm" className="text-background hover:text-background/80 hover:bg-background/10 gap-1.5" onClick={onSelectAll}>
+                  <CheckSquare className="h-3.5 w-3.5" />
+                  All ({totalVisible})
+                </Button>
+              )}
               <Button variant="ghost" size="sm" className="text-background hover:text-background/80 hover:bg-background/10 gap-1.5" onClick={onClear} disabled={count === 0}>
                 Clear
               </Button>

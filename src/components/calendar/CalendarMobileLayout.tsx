@@ -69,7 +69,7 @@ export function CalendarMobileLayout({
   bulk,
   refetch,
 }: CalendarMobileLayoutProps) {
-  const { isOrgAdmin } = useOrg();
+  const { isOrgAdmin, currentRole } = useOrg();
   const [slotWizardOpen, setSlotWizardOpen] = useState(false);
 
   const wizardTeachers = teachers.map(t => ({ id: t.id, display_name: t.name, user_id: t.userId }));
@@ -100,10 +100,12 @@ export function CalendarMobileLayout({
                       Generate Open Slots
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={() => bulk.enterSelectionMode()}>
-                    <CheckSquare className="h-4 w-4 mr-2" />
-                    Select Lessons
-                  </DropdownMenuItem>
+                  {currentRole !== 'finance' && currentRole !== 'parent' && (
+                    <DropdownMenuItem onClick={() => bulk.enterSelectionMode()}>
+                      <CheckSquare className="h-4 w-4 mr-2" />
+                      Select Lessons
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
