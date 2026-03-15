@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { InvoicesSkeleton } from '@/components/shared/LoadingState';
-import { Receipt, Plus, PlayCircle, CreditCard, Download, CalendarClock } from 'lucide-react';
+import { Receipt, Plus, PlayCircle, CreditCard, Download, CalendarClock, History } from 'lucide-react';
 import { useDataExport } from '@/hooks/useDataExport';
 import { useOrg } from '@/contexts/OrgContext';
 import { useInvoices, useInvoiceStats, useUpdateInvoiceStatus, type InvoiceFilters, type InvoiceWithDetails } from '@/hooks/useInvoices';
@@ -22,6 +22,7 @@ import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
 import { SendInvoiceModal } from '@/components/invoices/SendInvoiceModal';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { RecurringBillingTab } from '@/components/settings/RecurringBillingTab';
+import { BillingRunHistory } from '@/components/invoices/BillingRunHistory';
 import { useToast } from '@/hooks/use-toast';
 
 import { LoopAssistPageBanner } from '@/components/shared/LoopAssistPageBanner';
@@ -231,6 +232,12 @@ export default function Invoices() {
               <CalendarClock className="h-3.5 w-3.5" />
               Recurring
             </TabsTrigger>
+            {(currentRole === 'owner' || currentRole === 'admin') && (
+              <TabsTrigger value="run-history" className="gap-1.5">
+                <History className="h-3.5 w-3.5" />
+                Run History
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="invoices" className="space-y-6">
@@ -285,6 +292,12 @@ export default function Invoices() {
           <TabsContent value="recurring">
             <RecurringBillingTab />
           </TabsContent>
+
+          {(currentRole === 'owner' || currentRole === 'admin') && (
+            <TabsContent value="run-history">
+              <BillingRunHistory />
+            </TabsContent>
+          )}
         </Tabs>
       ) : (
         <div className="space-y-6">
