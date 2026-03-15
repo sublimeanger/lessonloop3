@@ -55,6 +55,8 @@ function contrastText(bg: string): string {
 }
 
 export function InvoicePreview({ branding, className = '' }: InvoicePreviewProps) {
+  const { currentOrg } = useOrg();
+  const sym = getCurrencySymbol(currentOrg?.currency_code || 'GBP');
   const {
     orgName,
     invoiceFromName,
