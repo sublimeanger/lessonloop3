@@ -14,6 +14,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Plus,
   CheckCircle2,
   Clock,
@@ -24,6 +34,7 @@ import {
   Loader2,
   Search,
   Download,
+  Trash2,
 } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import {
@@ -33,16 +44,19 @@ import {
   useSendContinuationReminders,
   useProcessDeadline,
   useBulkProcessContinuation,
+  usePreviewBulkProcess,
+  useDeleteContinuationRun,
 } from '@/hooks/useTermContinuation';
 import type {
   ContinuationRun,
   ContinuationResponseEntry,
   ContinuationResponseType,
+  BulkProcessPreview,
 } from '@/hooks/useTermContinuation';
 import { ContinuationRunWizard } from '@/components/continuation/ContinuationRunWizard';
 import { ContinuationResponseDetail } from '@/components/continuation/ContinuationResponseDetail';
 import { formatCurrencyMinor } from '@/lib/utils';
-import { differenceInDays, isPast } from 'date-fns';
+import { differenceInDays, isPast, format } from 'date-fns';
 
 const RESPONSE_BADGE: Record<
   ContinuationResponseType,
@@ -95,6 +109,18 @@ export default function Continuation() {
   const processDeadline = useProcessDeadline();
   const bulkProcess = useBulkProcessContinuation();
 
+  const previewBulk = usePreviewBulkProcess();
+  const deleteRun = useDeleteContinuationRun();
+
+  // FIX 2: Preview dialog state
+  const [bulkPreview, setBulkPreview] = useState<BulkProcessPreview | null>(null);
+  const [pendingProcessType, setPendingProcessType] = useState<'confirmed' | 'withdrawals' | 'all' | null>(null);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+
+  // FIX 3: Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [runToDelete, setRunToDelete] = useState<ContinuationRun | null>(null);
+
   const currency = currentOrg?.currency_code || 'GBP';
   const run = runDetail || runToShow;
   const summary = run?.summary;
@@ -124,18 +150,57 @@ export default function Continuation() {
     }
   };
 
-  const handleBulkProcess = async (type: 'confirmed' | 'withdrawals' | 'all') => {
+  // FIX 2: Show preview before bulk processing
+  const handleBulkProcessPreview = async (type: 'confirmed' | 'withdrawals' | 'all') => {
     if (!run?.id || !run.next_term?.end_date || !run.next_term?.start_date) return;
+    setPendingProcessType(type);
+    try {
+      const preview = await previewBulk.mutateAsync({
+        run_id: run.id,
+        next_term_start_date: run.next_term.start_date,
+        next_term_end_date: run.next_term.end_date,
+        process_type: type,
+      });
+      setBulkPreview(preview);
+      setPreviewDialogOpen(true);
+    } catch {
+      // Error handled by mutation
+    }
+  };
+
+  const handleConfirmBulkProcess = async () => {
+    if (!run?.id || !run.next_term?.end_date || !run.next_term?.start_date || !pendingProcessType) return;
+    setPreviewDialogOpen(false);
     try {
       await bulkProcess.mutateAsync({
         run_id: run.id,
         next_term_end_date: run.next_term.end_date,
         next_term_start_date: run.next_term.start_date,
-        process_type: type,
+        process_type: pendingProcessType,
       });
-    } catch (error: any) {
+    } catch {
       // Error toast handled by mutation onError
     }
+    setPendingProcessType(null);
+    setBulkPreview(null);
+  };
+
+  // FIX 3: Delete run handler
+  const handleDeleteRun = (r: ContinuationRun) => {
+    setRunToDelete(r);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteRun = async () => {
+    if (!runToDelete) return;
+    try {
+      await deleteRun.mutateAsync(runToDelete.id);
+      if (selectedRunId === runToDelete.id) setSelectedRunId(null);
+    } catch {
+      // Error toast handled by mutation
+    }
+    setDeleteDialogOpen(false);
+    setRunToDelete(null);
   };
 
   const handleExportCSV = () => {
@@ -257,7 +322,22 @@ export default function Continuation() {
                   )}
                   Process Deadline
                 </Button>
-              )}
+               )}
+              {/* FIX 3: Delete run button */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:bg-destructive/10"
+                onClick={() => handleDeleteRun(run)}
+                disabled={deleteRun.isPending}
+              >
+                {deleteRun.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
+                Delete Run
+              </Button>
             </div>
           </div>
 
@@ -364,12 +444,12 @@ export default function Continuation() {
               <span className="text-sm font-medium self-center mr-2">
                 Process:
               </span>
-              <Button
+               <Button
                 size="sm"
-                onClick={() => handleBulkProcess('confirmed')}
-                disabled={bulkProcess.isPending}
+                onClick={() => handleBulkProcessPreview('confirmed')}
+                disabled={bulkProcess.isPending || previewBulk.isPending}
               >
-                {bulkProcess.isPending ? (
+                {(bulkProcess.isPending || previewBulk.isPending) ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <RefreshCw className="mr-2 h-4 w-4" />
@@ -379,8 +459,8 @@ export default function Continuation() {
               <Button
                 size="sm"
                 variant="destructive"
-                onClick={() => handleBulkProcess('withdrawals')}
-                disabled={bulkProcess.isPending}
+                onClick={() => handleBulkProcessPreview('withdrawals')}
+                disabled={bulkProcess.isPending || previewBulk.isPending}
               >
                 Process Withdrawals
               </Button>
@@ -536,6 +616,17 @@ export default function Continuation() {
                         {pastRun.summary?.total_students || 0} students
                       </Badge>
                       <Badge variant="secondary">Completed</Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10 h-7 w-7 p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteRun(pastRun);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -552,6 +643,99 @@ export default function Continuation() {
         onOpenChange={setDetailOpen}
         currency={currency}
       />
+
+      {/* FIX 2: Bulk Process Preview Dialog */}
+      <AlertDialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Bulk Processing</AlertDialogTitle>
+            <AlertDialogDescription>
+              Review the following before proceeding:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {bulkPreview && (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                {bulkPreview.confirmedCount > 0 && (
+                  <div className="rounded-lg border p-2">
+                    <p className="text-muted-foreground">Students to extend</p>
+                    <p className="text-lg font-semibold">{bulkPreview.confirmedCount}</p>
+                  </div>
+                )}
+                {bulkPreview.withdrawingCount > 0 && (
+                  <div className="rounded-lg border p-2">
+                    <p className="text-muted-foreground">Withdrawals to process</p>
+                    <p className="text-lg font-semibold">{bulkPreview.withdrawingCount}</p>
+                  </div>
+                )}
+                {bulkPreview.estimatedLessons > 0 && (
+                  <div className="rounded-lg border p-2">
+                    <p className="text-muted-foreground">Est. lessons created</p>
+                    <p className="text-lg font-semibold">~{bulkPreview.estimatedLessons}</p>
+                  </div>
+                )}
+                <div className="rounded-lg border p-2">
+                  <p className="text-muted-foreground">Date range</p>
+                  <p className="font-medium">
+                    {format(new Date(bulkPreview.dateRange.start), 'dd MMM yyyy')} –{' '}
+                    {format(new Date(bulkPreview.dateRange.end), 'dd MMM yyyy')}
+                  </p>
+                </div>
+              </div>
+              {bulkPreview.conflicts.length > 0 && (
+                <div className="rounded-lg border border-warning/30 bg-warning/10 p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <AlertTriangle className="h-4 w-4 text-warning" />
+                    <span className="font-medium text-warning">Schedule Conflicts Detected</span>
+                  </div>
+                  <ul className="list-disc list-inside text-muted-foreground text-xs space-y-0.5">
+                    {bulkPreview.conflicts.map((c, i) => (
+                      <li key={i}>{c}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmBulkProcess}
+              disabled={bulkProcess.isPending}
+            >
+              {bulkProcess.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirm & Process
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* FIX 3: Delete Run Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Continuation Run?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this run
+              {runToDelete?.summary?.total_students
+                ? ` and ${runToDelete.summary.total_students} response(s)`
+                : ''}
+              . This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteRun}
+              disabled={deleteRun.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteRun.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete Run
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
