@@ -471,6 +471,7 @@ export function SchedulingSettingsTab() {
     deleteClosure: _dc,
     deleteBulk,
     isSaving,
+    checkLessonsOnDates,
   } = useClosureDateSettings();
 
   const [blockScheduling, setBlockScheduling] = useState(true);
