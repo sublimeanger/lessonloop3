@@ -476,6 +476,11 @@ export function SchedulingSettingsTab() {
 
   const [blockScheduling, setBlockScheduling] = useState(true);
 
+  // Closure date lesson warning state
+  const [lessonWarningOpen, setLessonWarningOpen] = useState(false);
+  const [pendingClosureDates, setPendingClosureDates] = useState<{ dates: { date: Date; reason: string }[]; locationId: string } | null>(null);
+  const [affectedLessonCount, setAffectedLessonCount] = useState(0);
+
   // Add closure modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addMode, setAddMode] = useState<'single' | 'range' | 'preset'>('single');
