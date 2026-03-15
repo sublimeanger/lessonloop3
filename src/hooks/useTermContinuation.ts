@@ -601,8 +601,9 @@ export function useBulkProcessContinuation() {
                   .update({ term_adjustment_id: confirmResult.adjustment_id })
                   .eq('id', resp.id);
               }
-            } catch {
-              // Continue processing other lessons for this response
+            } catch (withdrawErr: any) {
+              // Log but continue processing other lessons for this response
+              console.warn(`[continuation] Withdrawal failed for recurrence ${lesson.recurrence_id}:`, withdrawErr?.message || withdrawErr);
             }
           }
 
