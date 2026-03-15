@@ -214,14 +214,14 @@ export function InvoicePreview({ branding, className = '' }: InvoicePreviewProps
           <div className="w-40 space-y-1">
             <div className="flex justify-between text-gray-500">
               <span>Subtotal</span>
-              <span>&pound;192.99</span>
+              <span>{sym}192.99</span>
             </div>
             <div
               className="flex justify-between pt-1.5 border-t font-semibold text-xs"
               style={{ borderColor: `${accentColor}30` }}
             >
               <span className="text-gray-900">Total</span>
-              <span style={{ color: accentColor }}>&pound;192.99</span>
+              <span style={{ color: accentColor }}>{sym}192.99</span>
             </div>
           </div>
         </div>
