@@ -386,6 +386,7 @@ export default function AcceptInvite() {
                 placeholder="Enter your email address"
                 autoComplete="email"
                 className="h-11"
+                disabled={isAccepting}
               />
               <p className="text-xs text-muted-foreground">
                 This invite was sent to <strong>{invite.email}</strong>. Please use the matching email address.
@@ -400,6 +401,7 @@ export default function AcceptInvite() {
                 placeholder="Enter your full name"
                 autoComplete="name"
                 className="h-11"
+                disabled={isAccepting}
               />
             </div>
             <div className="space-y-2">
