@@ -84,14 +84,14 @@ export function useBulkLessonActions({ refetch, orgId, userId }: UseBulkLessonAc
 
     try {
       // Build changes object — only include fields that were set
-      const changes: Record<string, unknown> = {};
+      const changes: Record<string, string | null> = {} as any;
       if (payload.teacher_id !== undefined) changes.teacher_id = payload.teacher_id;
       if (payload.location_id !== undefined) changes.location_id = payload.location_id;
       if (payload.room_id !== undefined) changes.room_id = payload.room_id;
       if (payload.status !== undefined) changes.status = payload.status;
       if (payload.lesson_type !== undefined) changes.lesson_type = payload.lesson_type;
 
-      const { data, error } = await supabase.rpc('bulk_update_lessons', {
+      const { data, error } = await (supabase.rpc as any)('bulk_update_lessons', {
         p_lesson_ids: ids,
         p_changes: changes,
       });
@@ -173,7 +173,7 @@ export function useBulkLessonActions({ refetch, orgId, userId }: UseBulkLessonAc
     setBulkProgress({ done: 0, total: ids.length });
 
     try {
-      const { data, error } = await supabase.rpc('bulk_cancel_lessons', {
+      const { data, error } = await (supabase.rpc as any)('bulk_cancel_lessons', {
         p_lesson_ids: ids,
       });
 

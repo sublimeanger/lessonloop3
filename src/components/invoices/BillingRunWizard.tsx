@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText, PoundSterling, Users, CheckCircle2, AlertTriangle, RotateCcw } from 'lucide-react';
+import { Loader2, FileText, Banknote, Users, CheckCircle2, AlertTriangle, RotateCcw } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useUnbilledLessons } from '@/hooks/useInvoices';
 import { useCreateBillingRun, useRetryBillingRunPayers } from '@/hooks/useBillingRuns';
@@ -28,7 +28,7 @@ import type { BillingRunSummary } from '@/hooks/useBillingRuns';
 import { useRateCards, findRateForDuration } from '@/hooks/useRateCards';
 import { useTerms } from '@/hooks/useTerms';
 import type { Database } from '@/integrations/supabase/types';
-import { formatCurrencyMinor } from '@/lib/utils';
+import { formatCurrencyMinor, currencySymbol } from '@/lib/utils';
 
 type BillingRunType = Database['public']['Enums']['billing_run_type'];
 type BillingMode = 'delivered' | 'upfront';
@@ -114,6 +114,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
 
   const totalInvoices = payerGroups.size;
   const totalAmount = Array.from(payerGroups.values()).reduce((sum, p) => sum + p.totalMinor, 0);
+  const isDateRangeValid = config.startDate && config.endDate && config.endDate >= config.startDate;
   const currency = currentOrg?.currency_code || 'GBP';
 
   const handleRunTypeChange = (type: BillingRunType) => {
@@ -282,23 +283,28 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
 
             {/* Date pickers - shown for monthly/custom, or read-only for term */}
             {config.runType !== 'term' ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Start Date</Label>
-                  <Input
-                    type="date"
-                    value={config.startDate}
-                    onChange={(e) => setConfig((c) => ({ ...c, startDate: e.target.value }))}
-                  />
+              <div className="space-y-2">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Start Date</Label>
+                    <Input
+                      type="date"
+                      value={config.startDate}
+                      onChange={(e) => setConfig((c) => ({ ...c, startDate: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>End Date</Label>
+                    <Input
+                      type="date"
+                      value={config.endDate}
+                      onChange={(e) => setConfig((c) => ({ ...c, endDate: e.target.value }))}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>End Date</Label>
-                  <Input
-                    type="date"
-                    value={config.endDate}
-                    onChange={(e) => setConfig((c) => ({ ...c, endDate: e.target.value }))}
-                  />
-                </div>
+                {!isDateRangeValid && config.startDate && config.endDate && (
+                  <p className="text-sm text-destructive">End date must be on or after start date</p>
+                )}
               </div>
             ) : config.termId ? (
               <div className="grid gap-4 sm:grid-cols-2">
@@ -318,13 +324,13 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
               <div className="flex items-center justify-between">
                 <div>
                   <div className="font-medium flex items-center gap-2">
-                    <PoundSterling className="h-4 w-4" />
+                    <Banknote className="h-4 w-4" />
                     Pricing
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     {hasRateCards
                       ? `Using ${rateCards.length} rate card${rateCards.length !== 1 ? 's' : ''} for pricing`
-                      : 'No rate cards configured - using default £30/lesson'}
+                      : `No rate cards configured - using default ${currencySymbol(currency)}30/lesson`}
                   </p>
                 </div>
                 {hasRateCards && (
@@ -357,7 +363,8 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                 disabled={
                   loadingLessons ||
                   loadingRateCards ||
-                  (config.runType === 'term' && !config.termId)
+                  (config.runType === 'term' && !config.termId) ||
+                  !isDateRangeValid
                 }
               >
                 {(loadingLessons || loadingRateCards) ? (
@@ -413,7 +420,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <PoundSterling className="h-4 w-4" />
+                    <Banknote className="h-4 w-4" />
                     Total
                   </CardTitle>
                 </CardHeader>
