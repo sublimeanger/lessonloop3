@@ -143,10 +143,12 @@ export function CalendarDesktopLayout({
                       Generate Open Slots
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={() => bulk.enterSelectionMode()}>
-                    <CheckSquare className="h-4 w-4 mr-2" />
-                    Select Lessons
-                  </DropdownMenuItem>
+                  {currentRole !== 'finance' && currentRole !== 'parent' && (
+                    <DropdownMenuItem onClick={() => bulk.enterSelectionMode()}>
+                      <CheckSquare className="h-4 w-4 mr-2" />
+                      Select Lessons
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

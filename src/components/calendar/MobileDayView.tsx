@@ -105,6 +105,19 @@ export function MobileDayView({
               )}
               style={{ minHeight: 64 }}
             >
+              {/* Selection checkbox */}
+              {selectionMode && (
+                <div className="w-8 shrink-0 flex items-start justify-center pt-1.5">
+                  <div className={cn(
+                    'h-5 w-5 rounded-sm border flex items-center justify-center transition-colors',
+                    selectedIds.has(lesson.id)
+                      ? 'bg-primary border-primary text-primary-foreground'
+                      : 'border-muted-foreground/40 bg-background'
+                  )}>
+                    {selectedIds.has(lesson.id) && <Check className="h-3.5 w-3.5" />}
+                  </div>
+                </div>
+              )}
               {/* Time column */}
               <div className="w-14 shrink-0 flex flex-col items-end justify-start pr-3 pt-0.5">
                 <span className="text-sm font-semibold tabular-nums text-foreground leading-tight">

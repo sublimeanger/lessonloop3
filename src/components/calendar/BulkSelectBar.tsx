@@ -63,6 +63,12 @@ export function BulkSelectBar({
               <span className="text-sm font-semibold">{count} selected</span>
             </div>
             <div className="flex items-center gap-1.5">
+              {onSelectAll && totalVisible && totalVisible > count && (
+                <Button variant="ghost" size="sm" className="text-background hover:text-background/80 hover:bg-background/10 gap-1.5" onClick={onSelectAll}>
+                  <CheckSquare className="h-3.5 w-3.5" />
+                  All ({totalVisible})
+                </Button>
+              )}
               <Button variant="ghost" size="sm" className="text-background hover:text-background/80 hover:bg-background/10 gap-1.5" onClick={onClear} disabled={count === 0}>
                 Clear
               </Button>
