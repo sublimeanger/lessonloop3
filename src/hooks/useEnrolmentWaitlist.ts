@@ -637,87 +637,21 @@ export function useConvertWaitlistToStudent() {
       if (!currentOrg) throw new Error('No organisation selected');
       if (!user) throw new Error('Not authenticated');
 
-      // Fetch the waitlist entry
-      const { data: entry, error: fetchError } = await db
-        .from('enrolment_waitlist')
-        .select('*')
-        .eq('id', input.waitlist_id)
-        .eq('org_id', currentOrg.id)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // 1. Create or find guardian
-      let guardianId = entry.guardian_id;
-      if (!guardianId) {
-        const { data: guardian, error: guardianError } = await supabase
-          .from('guardians')
-          .insert({
-            org_id: currentOrg.id,
-            full_name: entry.contact_name,
-            email: entry.contact_email || null,
-            phone: entry.contact_phone || null,
-          })
-          .select()
-          .single();
-
-        if (guardianError) throw guardianError;
-        guardianId = guardian.id;
-      }
-
-      // 2. Create student
-      const { data: student, error: studentError } = await supabase
-        .from('students')
-        .insert({
-          org_id: currentOrg.id,
-          first_name: entry.child_first_name,
-          last_name: entry.child_last_name || null,
-          default_teacher_id: input.teacher_id || entry.offered_teacher_id || entry.preferred_teacher_id || null,
-          status: 'active',
-        })
-        .select()
-        .single();
-
-      if (studentError) throw studentError;
-
-      // 3. Link student to guardian
-      const { error: linkError } = await supabase
-        .from('student_guardians')
-        .insert({
-          org_id: currentOrg.id,
-          student_id: student.id,
-          guardian_id: guardianId,
-          relationship: 'parent' as any,
-          is_primary_payer: true,
-        } as any);
-
-      if (linkError) throw linkError;
-
-      // 4. Update waitlist entry → enrolled
-      const { error: updateError } = await db
-        .from('enrolment_waitlist')
-        .update({
-          status: 'enrolled',
-          converted_student_id: student.id,
-          converted_at: new Date().toISOString(),
-          guardian_id: guardianId,
-        })
-        .eq('id', input.waitlist_id)
-        .eq('org_id', currentOrg.id);
-
-      if (updateError) throw updateError;
-
-      // 5. Log 'enrolled' activity
-      await db.from('enrolment_waitlist_activity').insert({
-        org_id: currentOrg.id,
-        waitlist_id: input.waitlist_id,
-        activity_type: 'enrolled',
-        description: `Converted to student: ${entry.child_first_name} ${entry.child_last_name || ''}`.trim(),
-        metadata: { student_id: student.id, guardian_id: guardianId },
-        created_by: user.id,
+      // Atomic RPC: creates guardian (if needed), student, links them,
+      // marks waitlist entry as enrolled, and logs activity — all in one transaction.
+      const { data, error } = await db.rpc('convert_waitlist_to_student', {
+        p_entry_id: input.waitlist_id,
+        p_org_id: currentOrg.id,
+        p_teacher_id: input.teacher_id || null,
       });
 
-      return { waitlist_id: input.waitlist_id, student_id: student.id, guardian_id: guardianId };
+      if (error) throw error;
+
+      return {
+        waitlist_id: data.waitlist_id,
+        student_id: data.student_id,
+        guardian_id: data.guardian_id,
+      };
     },
     onSuccess: () => {
       invalidateWaitlistQueries(queryClient, currentOrg!.id);
