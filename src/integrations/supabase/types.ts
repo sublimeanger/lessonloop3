@@ -5535,6 +5535,26 @@ export type Database = {
     Functions: {
       anonymise_guardian: { Args: { guardian_id: string }; Returns: undefined }
       anonymise_student: { Args: { student_id: string }; Returns: undefined }
+      bulk_cancel_lessons: {
+        Args: { p_lesson_ids: string[] }
+        Returns: {
+          updated_count: number
+          skipped_ids: string[]
+          skipped_reasons: string[]
+          conflict_ids: string[]
+          conflict_details: string[]
+        }
+      }
+      bulk_update_lessons: {
+        Args: { p_lesson_ids: string[]; p_changes: Json }
+        Returns: {
+          updated_count: number
+          skipped_ids: string[]
+          skipped_reasons: string[]
+          conflict_ids: string[]
+          conflict_details: string[]
+        }
+      }
       can_edit_lesson: {
         Args: { _lesson_id: string; _user_id: string }
         Returns: boolean

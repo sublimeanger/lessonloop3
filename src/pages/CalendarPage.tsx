@@ -125,6 +125,12 @@ export default function CalendarPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtersKey]);
 
+  // BE-7: Clear selection when date or view changes so invisible lessons aren't edited
+  useEffect(() => {
+    if (bulk.selectionMode) bulk.clearSelection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDate, view]);
+
   const lessonsByDay = useMemo(() => {
     const map = new Map<string, LessonWithDetails[]>();
     for (const lesson of lessons) {

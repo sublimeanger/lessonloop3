@@ -194,21 +194,26 @@ No SECURITY DEFINER RPC is involved in bulk edit. All operations go through stan
 
 ## 11. Verdict
 
-### **PRODUCTION READY — WITH CAVEATS**
+### PRODUCTION READY
 
-The bulk edit feature is **well-implemented at the UI/UX layer** and has **solid role enforcement** (double-layered: client + RLS). The handoff rating of SOLID is **largely correct** for the client-side implementation quality.
+All HIGH and MEDIUM findings have been resolved.
 
-**However, there are meaningful gaps:**
+**Fixes applied (2026-03-15):**
 
-| Priority | Issue | Risk | Mitigation |
-|----------|-------|------|------------|
-| **Should fix before scale** | BE-1: No atomicity | Partial failures leave inconsistent data | Create server-side RPC |
-| **Should fix** | BE-2: Completed lessons editable | Historical data corruption | Add completed-lesson guard for all fields |
-| **Should fix** | BE-3: No conflict detection | Double-bookings on bulk teacher/room change | Wire up existing `useConflictDetection` |
-| **Should fix** | BE-4: Invoiced lessons unguarded on update | Billing integrity risk | Filter or trigger |
-| **Monitor** | BE-5: Client-only cap | Low risk — requires API tampering | Server-side cap in future RPC |
-| **Low priority** | BE-6/7: Unmount + stale selection | Edge cases | AbortController + clear on nav |
+| ID | Fix | Implementation |
+|----|-----|---------------|
+| **BE-1** | Atomic bulk update via server-side RPC | `bulk_update_lessons(uuid[], jsonb)` — single transaction, all-or-nothing |
+| **BE-2** | Completed lesson guard on ALL fields | RPC skips lessons with `status = 'completed'`, returns reason in result |
+| **BE-3** | Conflict detection on teacher/room changes | RPC checks for overlapping lessons per teacher and room before applying |
+| **BE-4** | Invoiced lesson guard on status changes | RPC checks `invoice_items.linked_lesson_id` before status changes |
+| **BE-5** | Server-side 100-lesson cap | RPC raises exception if `array_length > 100` |
+| **BE-6** | Single RPC replaces 50-request loop | Unmount guard no longer needed — one HTTP call instead of N |
+| **BE-7** | Selection clears on date/view change | `useEffect` in CalendarPage clears selection when `currentDate` or `view` changes |
 
-**For a beta launch with small academies (< 50 lessons per bulk op), the current implementation is acceptable.** The sequential update loop works fine at small scale, RLS provides server-side protection, and the UI is polished. The gaps become material at scale or under adversarial conditions.
+**Files changed:**
+- `supabase/migrations/20260316100000_bulk_update_lessons_rpc.sql` — new RPCs
+- `src/hooks/useBulkLessonActions.ts` — rewritten to call RPCs
+- `src/pages/CalendarPage.tsx` — selection clear on navigation
+- `src/integrations/supabase/types.ts` — RPC type definitions
 
-**Revised assessment: SOLID for beta, needs BE-1 through BE-4 before scaling.**
+**Quality gates:** `npm run typecheck` and `npm run build` both pass.
