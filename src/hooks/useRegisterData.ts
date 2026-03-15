@@ -492,6 +492,7 @@ export function useBatchAttendanceLessons(date: Date) {
             student_id: p.student_id,
             student_name: p.student ? `${p.student.first_name} ${p.student.last_name}` : 'Unknown',
             current_status: existing?.attendance_status || null,
+            has_notes: !!p.student?.notes,
           };
         }),
       }));
