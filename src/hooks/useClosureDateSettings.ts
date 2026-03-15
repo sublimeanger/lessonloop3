@@ -131,6 +131,26 @@ export function useClosureDateSettings() {
     addClosureDatesMutation.mutate({ dates: allDates, locationId });
   };
 
+  const checkLessonsOnDates = async (dates: string[]): Promise<{ date: string; count: number }[]> => {
+    if (!currentOrg) return [];
+    const results: { date: string; count: number }[] = [];
+    for (const date of [...new Set(dates)]) {
+      const dayStart = `${date}T00:00:00`;
+      const dayEnd = `${date}T23:59:59`;
+      const { count, error } = await supabase
+        .from('lessons')
+        .select('id', { count: 'exact', head: true })
+        .eq('org_id', currentOrg.id)
+        .gte('start_at', dayStart)
+        .lte('start_at', dayEnd)
+        .neq('status', 'cancelled');
+      if (!error && count && count > 0) {
+        results.push({ date, count });
+      }
+    }
+    return results;
+  };
+
   return {
     closures: closuresQuery.data || [],
     locations: locationsQuery.data || [],
@@ -141,5 +161,6 @@ export function useClosureDateSettings() {
     deleteClosure: deleteClosureMutation.mutate,
     deleteBulk: deleteBulkMutation.mutate,
     isSaving: addClosureDatesMutation.isPending,
+    checkLessonsOnDates,
   };
 }
