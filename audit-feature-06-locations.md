@@ -218,27 +218,37 @@ If LessonLoop ever supports multi-timezone orgs (e.g., a franchise in London + N
 
 ## 7. Verdict
 
-### **PRODUCTION READY — with recommended fixes**
+### PRODUCTION READY — all findings resolved
 
-No **critical** issues found. The locations feature is well-built with proper RLS, deletion validation, feature gating, and archive support.
+All HIGH and MEDIUM findings have been fixed. Summary of fixes applied:
 
-**2 HIGH findings that should be fixed before production:**
+| ID | Severity | Resolution |
+|----|----------|------------|
+| LOC-01 | HIGH | Added `ON DELETE SET NULL` to `make_up_waitlist.location_id` FK. Location deletion no longer blocked by waitlist entries. |
+| LOC-02 | HIGH | Added `ON DELETE SET NULL` to `enrolment_waitlist.offered_location_id` FK. |
+| LOC-03 | HIGH | Added case-insensitive unique index `idx_locations_unique_name` on `locations(org_id, lower(name)) WHERE is_archived = false`. |
+| LOC-04 | HIGH | Added case-insensitive unique index `idx_rooms_unique_name` on `rooms(location_id, lower(name))`. |
+| LOC-05 | MEDIUM | Created `set_primary_location(p_org_id, p_location_id)` RPC — atomically clears old primary and sets new one in a single UPDATE. Frontend updated to use RPC. |
+| LOC-06 | MEDIUM | Added partial unique index `idx_locations_single_primary` on `locations(org_id) WHERE is_primary = true AND is_archived = false`. Ensures at most one primary per org. |
+| LOC-07 | MEDIUM | Added `CHECK (capacity > 0)` and `CHECK (max_capacity > 0)` on rooms table. Cleaned up any existing zero/negative values. |
+| LOC-08 | MEDIUM | Changed `max_capacity` default from 10 to NULL. Added SQL COMMENTs documenting both columns' purposes. |
+| LOC-09 | MEDIUM | Added `make_up_waitlist` and `enrolment_waitlist` reference checks to `checkLocationDeletion()`. Shows warnings about affected entries. |
+| LOC-11 | MEDIUM | Already handled — `useCalendarData.ts` filters `.eq('is_archived', false)` on locations query (line 260). Archived locations don't appear in calendar dropdowns. |
+| LOC-13 | LOW | Fixed `canAddLocation` to count only non-archived locations. Archived-only orgs can now add a new location. |
 
-1. **LOC-01 + LOC-02:** Missing `ON DELETE` clauses on `make_up_waitlist.location_id` and `enrolment_waitlist.offered_location_id` will cause unexpected FK errors when deleting locations. These are silent failures — the user sees "Error deleting location" with a Postgres FK violation message.
+**Accepted as-is (INFO/LOW — no action needed):**
+- LOC-10: Address visibility to parents — business decision (needed for drop-off directions).
+- LOC-12: Online location address validation — client-side only, acceptable.
+- LOC-14: No `maxLocations` in usage counts — feature gate handles this differently.
+- LOC-15: No audit trail on locations — low priority, `updated_at` suffices.
+- LOC-16: No timezone per location — correct for single-timezone orgs.
+- LOC-17: Buffer applies between different locations only — already correct (line 324 checks `location_id !== locationId`).
+- LOC-18: Nullable `location_id` on lessons — by design for online lessons.
 
-2. **LOC-03 + LOC-04:** No DB-level uniqueness on location/room names. Client-side duplicate checks are bypassable via concurrent requests or direct API access.
-
-**MEDIUM fixes recommended before production:**
-
-3. **LOC-05 + LOC-06:** Primary location set operation is non-atomic; no single-primary constraint at DB level.
-4. **LOC-07 + LOC-08:** Room capacity allows invalid values; dual capacity columns are confusing.
-5. **LOC-09:** Delete validation doesn't check waitlist references.
-6. **LOC-11:** Archived locations still selectable for new lessons.
-
-**LOW/INFO items acceptable as-is:**
-- LOC-10: Address visibility to parents — business decision (needed for drop-off).
-- LOC-12, LOC-13, LOC-14, LOC-15: Minor polish items.
-- LOC-16, LOC-17, LOC-18: Informational — current design is correct.
+**Files changed:**
+- `supabase/migrations/20260315220011_fix_location_audit_findings.sql` (new migration)
+- `src/pages/Locations.tsx` (atomic RPC for primary, canAddLocation fix)
+- `src/hooks/useDeleteValidation.ts` (waitlist reference warnings)
 
 ---
 
