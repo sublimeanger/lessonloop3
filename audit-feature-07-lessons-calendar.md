@@ -380,16 +380,16 @@ Calendar performance is **adequate for current scale**. The 500-lesson cap per w
 
 ## 9. Verdict
 
-### **NOT PRODUCTION READY** — 1 Critical, 4 High findings
+### **PRODUCTION READY** — All blocking findings resolved
 
-#### Must Fix Before Launch
-| ID | Severity | Summary |
-|----|----------|---------|
-| **LES-01** | CRITICAL | `shift_recurring_lesson_times` RPC has no org_id guard — cross-org data modification possible |
-| **LES-02** | HIGH | No `CHECK(end_at > start_at)` on lessons table |
-| **LES-03** | HIGH | No block on deleting lessons with linked invoice items |
-| **LES-04** | HIGH | Rate snapshot (`rate_minor`) lost on lesson edit |
-| **LES-05** | HIGH | `send-cancellation-notification` missing org validation |
+#### Resolved (migration `20260315220012_fix_lessons_calendar_audit_findings.sql`)
+| ID | Severity | Summary | Fix |
+|----|----------|---------|-----|
+| **LES-01** | CRITICAL | `shift_recurring_lesson_times` RPC had no org_id guard | Added org membership check (owner/admin/teacher) via `auth.uid()` at top of function |
+| **LES-02** | HIGH | No `CHECK(end_at > start_at)` on lessons table | Added `chk_lesson_time_range` constraint |
+| **LES-03** | HIGH | No block on deleting lessons with linked invoice items | Added `prevent_invoiced_lesson_delete` BEFORE DELETE trigger |
+| **LES-04** | HIGH | Rate snapshot (`rate_minor`) lost on lesson edit | Fixed `useLessonForm.ts` edit path to preserve existing `rate_minor` and snapshot for new participants |
+| **LES-05** | HIGH | `send-cancellation-notification` missing org validation | Added org membership check and lesson-org ownership verification |
 
 #### Should Fix (Medium Priority)
 | Count | Items |
