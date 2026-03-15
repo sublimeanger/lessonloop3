@@ -119,12 +119,13 @@ export function useRegisterData(date: Date) {
       // Filter by teacher_id for teacher role
       if (isTeacher && user) {
         // Look up teacher record by user_id, then filter by teacher_id
-        const { data: teacherRecord } = await supabase
+        const { data: teacherRecord, error: trErr } = await supabase
           .from('teachers')
           .select('id')
           .eq('user_id', user.id)
           .eq('org_id', currentOrg.id)
           .maybeSingle();
+        if (trErr) throw trErr;
         
         if (teacherRecord) {
           query = query.eq('teacher_id', teacherRecord.id);
