@@ -310,13 +310,11 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
       // === Cascade side effects (fire-and-forget, non-blocking) ===
       if (cancelledLessonIds.length > 0) {
         // 1. Delete attendance records for cancelled lessons
-        supabase
+        const { error: attError } = await supabase
           .from('attendance_records')
           .delete()
-          .in('lesson_id', cancelledLessonIds)
-          .then(({ error: attErr }) => {
-            if (attErr) logger.warn('[cancel-cascade] Failed to delete attendance records:', attErr.message);
-          });
+          .in('lesson_id', cancelledLessonIds);
+        if (attError) console.error('Failed to delete attendance:', attError);
 
         // 2. For "this_and_future", cap the recurrence rule end_date
         if (cancelMode === 'this_and_future' && lesson.recurrence_id) {
