@@ -59,12 +59,18 @@
 | `src/pages/Students.tsx` | Student list page with search, filters, export, import link |
 | `src/pages/StudentsImport.tsx` | CSV import wizard page |
 | `src/hooks/useStudents.ts` | `useStudents()`, `useToggleStudentStatus()` |
+| `src/hooks/useStudentDetail.ts` | Fetch lessons and invoices related to a student |
+| `src/hooks/useStudentDetailPage.ts` | Student detail CRUD, guardian management, soft delete |
+| `src/hooks/useStudentInstruments.ts` | Manage student instruments, grades, exam boards |
+| `src/hooks/useStudentTermLessons.ts` | Fetch recurring lesson series per term with progress |
+| `src/hooks/useStudentQuickNotes.ts` | Fetch profile notes + recent lesson notes (last 3) |
+| `src/hooks/useRelatedStudent.ts` | Fetch basic student info for relationship display |
 | `src/hooks/useStudentsImport.ts` | Full import flow hook |
 | `src/hooks/useUsageCounts.ts` | Client-side tier limit checks |
-| `src/hooks/useStudentDetailPage.ts` | Student detail CRUD, guardian management, soft delete |
 | `src/hooks/useDeleteValidation.ts` | Pre-deletion checks (future lessons, invoices, credits) |
 | `src/hooks/useDataExport.ts` | CSV export with `sanitiseCSVCell()` |
 | `src/lib/studentQuery.ts` | `activeStudentsQuery()` reusable query builder |
+| `src/lib/schemas.ts` | `studentSchema`, `newGuardianSchema` validation |
 | `src/components/students/StudentWizard.tsx` | Multi-step student creation wizard |
 | `src/components/students/GuardiansCard.tsx` | Guardian management panel |
 | `src/components/students/StudentInfoCard.tsx` | Student profile display |
@@ -76,6 +82,10 @@
 | `src/components/students/StudentPracticePanel.tsx` | Practice log panel |
 | `src/components/students/CreditBalanceBadge.tsx` | Credit count badge |
 | `src/components/students/InstrumentGradeSelector.tsx` | Instrument/grade picker |
+| `src/components/students/StudentTabsSection.tsx` | Tab navigation (overview, instruments, teachers, etc.) |
+| `src/components/calendar/lesson-form/StudentSelector.tsx` | Multi-select student picker for lesson forms |
+| `src/components/register/StudentNotesPopover.tsx` | Quick student notes display in register |
+| `src/pages/StudentDetail.tsx` | Individual student detail page |
 | `src/components/students/import/*` | Import wizard step components |
 
 ---
