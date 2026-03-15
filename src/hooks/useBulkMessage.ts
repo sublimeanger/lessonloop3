@@ -141,12 +141,13 @@ export function useRecipientPreview(filters: FilterCriteria) {
       let filteredGuardians = guardians || [];
 
       if (filters.has_overdue_invoice) {
-        const { data: overdueInvoices } = await supabase
+        const { data: overdueInvoices, error: oErr } = await supabase
           .from('invoices')
           .select('payer_guardian_id')
           .eq('org_id', currentOrg.id)
           .eq('status', 'overdue')
           .not('payer_guardian_id', 'is', null);
+        if (oErr) throw new Error(`Failed to fetch overdue invoices: ${oErr.message}`);
 
         if (overdueInvoices && overdueInvoices.length > 0) {
           const overdueGuardianIds = new Set(overdueInvoices.map(i => i.payer_guardian_id));

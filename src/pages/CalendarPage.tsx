@@ -205,7 +205,7 @@ export default function CalendarPage() {
           onExit={bulk.exitSelectionMode}
           onBulkUpdate={bulk.bulkUpdate}
           onBulkCancel={bulk.bulkCancel}
-          teachers={teachers.map(t => ({ id: t.id, name: t.name }))}
+          teachers={(teachers ?? []).map(t => ({ id: t.id, name: t.name }))}
           locations={locations}
           rooms={rooms}
         />

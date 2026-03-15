@@ -140,7 +140,9 @@ export function ZoomIntegrationTab() {
                           connectionId: zoomConnection.id,
                           deleteEvents: false
                         })}
+                        disabled={disconnectCalendar.isPending}
                       >
+                        {disconnectCalendar.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                         Disconnect
                       </AlertDialogAction>
                     </AlertDialogFooter>

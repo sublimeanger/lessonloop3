@@ -460,24 +460,26 @@ export function useCancellationReport(startDate: string, endDate: string) {
 
       // Fetch attendance records for cancellation reasons
       const lessonIds = (lessons || []).filter(l => l.status === 'cancelled').map(l => l.id);
-      const { data: attendance } = lessonIds.length > 0 
+      const { data: attendance, error: attErr } = lessonIds.length > 0 
         ? await supabase
             .from('attendance_records')
             .select('lesson_id, attendance_status, cancellation_reason')
             .in('lesson_id', lessonIds)
             .limit(10000)
-        : { data: [] };
+        : { data: [] as { lesson_id: string; attendance_status: string; cancellation_reason: string | null }[], error: null };
+      if (attErr) throw attErr;
 
       // Get teacher IDs
       const teacherIds = [...new Set((lessons || []).map(l => l.teacher_id).filter(Boolean) as string[])];
       
       // Fetch teachers
-      const { data: teachers } = teacherIds.length > 0
+      const { data: teachers, error: tErr2 } = teacherIds.length > 0
         ? await supabase
             .from('teachers')
             .select('id, display_name')
             .in('id', teacherIds)
-        : { data: [] };
+        : { data: [] as { id: string; display_name: string }[], error: null };
+      if (tErr2) throw tErr2;
 
       const teacherNameMap = new Map<string, string>();
       for (const t of teachers || []) {

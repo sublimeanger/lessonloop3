@@ -444,12 +444,13 @@ export function useBatchAttendanceLessons(date: Date) {
 
       // Teacher role: only show their own lessons
       if (currentRole === 'teacher' && user) {
-        const { data: teacherRecord } = await supabase
+        const { data: teacherRecord, error: trErr2 } = await supabase
           .from('teachers')
           .select('id')
           .eq('user_id', user.id)
           .eq('org_id', currentOrg.id)
           .maybeSingle();
+        if (trErr2) throw trErr2;
 
         if (teacherRecord) {
           query = query.eq('teacher_id', teacherRecord.id);
