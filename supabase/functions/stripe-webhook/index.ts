@@ -336,36 +336,23 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
     }
   }
 
-  // Update paid_minor on the invoice
-  const { data: payments } = await supabase
-    .from("payments")
-    .select("amount_minor")
-    .eq("invoice_id", invoiceId);
+  // Atomically recalculate paid_minor with row locking to prevent races
+  const { data: recalcResult, error: recalcError } = await supabase.rpc('recalculate_invoice_paid', {
+    _invoice_id: invoiceId,
+  });
 
-  const totalPaid = payments?.reduce((sum: number, p: any) => sum + p.amount_minor, 0) || 0;
+  if (recalcError) {
+    console.error("Failed to recalculate invoice paid_minor:", recalcError);
+  } else {
+    log(`Invoice ${truncate(invoiceId)} updated atomically: ${JSON.stringify(recalcResult)}`);
+  }
 
-  // Update paid_minor and check if fully paid
+  // Fetch invoice details for notification
   const { data: invoice } = await supabase
     .from("invoices")
     .select("total_minor, invoice_number, payer_guardian_id, payer_student_id")
     .eq("id", invoiceId)
     .single();
-
-  const updateData: Record<string, unknown> = { paid_minor: totalPaid };
-  if (invoice && totalPaid >= invoice.total_minor) {
-    updateData.status = "paid";
-  }
-
-  const { error: invoiceUpdateError } = await supabase
-    .from("invoices")
-    .update(updateData)
-    .eq("id", invoiceId);
-
-  if (invoiceUpdateError) {
-    console.error("Failed to update invoice:", invoiceUpdateError);
-  } else {
-    log(`Invoice ${truncate(invoiceId)} updated: paid_minor=${totalPaid}${totalPaid >= (invoice?.total_minor || 0) ? ', status=paid' : ''}`);
-  }
 
   const resolvedOrgId = checkoutSession?.org_id;
 
@@ -776,35 +763,23 @@ async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe
       .eq("id", installmentId);
   }
 
-  // Update paid_minor on invoice
-  const { data: payments } = await supabase
-    .from("payments")
-    .select("amount_minor")
-    .eq("invoice_id", invoiceId);
+  // Atomically recalculate paid_minor with row locking to prevent races
+  const { data: recalcResult, error: recalcError } = await supabase.rpc('recalculate_invoice_paid', {
+    _invoice_id: invoiceId,
+  });
 
-  const totalPaid = payments?.reduce((sum: number, p: any) => sum + p.amount_minor, 0) || 0;
+  if (recalcError) {
+    console.error("Failed to recalculate invoice paid_minor:", recalcError);
+  } else {
+    log(`Invoice ${truncate(invoiceId)} updated atomically: ${JSON.stringify(recalcResult)}`);
+  }
 
+  // Fetch invoice details for notification
   const { data: invoice } = await supabase
     .from("invoices")
     .select("total_minor, invoice_number, payer_guardian_id, payer_student_id")
     .eq("id", invoiceId)
     .single();
-
-  const updateData: Record<string, unknown> = { paid_minor: totalPaid };
-  if (invoice && totalPaid >= invoice.total_minor) {
-    updateData.status = "paid";
-  }
-
-  const { error: invoiceUpdateError } = await supabase
-    .from("invoices")
-    .update(updateData)
-    .eq("id", invoiceId);
-
-  if (invoiceUpdateError) {
-    console.error("Failed to update invoice:", invoiceUpdateError);
-  } else {
-    log(`Invoice ${truncate(invoiceId)} updated: paid_minor=${totalPaid}${totalPaid >= (invoice?.total_minor || 0) ? ', status=paid' : ''}`);
-  }
 
   // Create payment notification for real-time teacher alerts
   if (resolvedOrgId && invoice) {
