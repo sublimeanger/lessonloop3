@@ -331,7 +331,10 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
                   min={1}
                   max={30}
                   value={maxParticipants}
-                  onChange={(e) => setMaxParticipants(Number(e.target.value))}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10);
+                    setMaxParticipants(Math.max(1, Math.min(30, isNaN(v) ? 1 : v)));
+                  }}
                   className="mt-1"
                 />
               </div>
