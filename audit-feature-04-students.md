@@ -16,6 +16,7 @@
 | `supabase/migrations/20260119234233_*.sql` | `invoices`, `invoice_items`, `payments` tables |
 | `supabase/migrations/20260119235724_*.sql` | `is_parent_of_student()`, parent RLS policies, `message_requests` |
 | `supabase/migrations/20260120101011_*.sql` | Soft delete (`deleted_at`), `anonymise_student()` function |
+| `supabase/migrations/20260126115938_*.sql` | `default_location_id`, `default_teacher_user_id`, `default_rate_card_id` on students |
 | `supabase/migrations/20260120215124_*.sql` | `student_teacher_assignments` table + RLS |
 | `supabase/migrations/20260120215727_*.sql` | `is_assigned_teacher()` helper function |
 | `supabase/migrations/20260120215754_*.sql` | Full RLS rewrite: role-based policies for students, guardians, student_guardians |
@@ -35,6 +36,8 @@
 | `supabase/migrations/20260315100200_*.sql` | `clear_open_slot_on_participant` trigger |
 | `supabase/migrations/20260315200000_*.sql` | `lesson_notes` FK fix to ON DELETE CASCADE |
 | `supabase/migrations/20260315210002_*.sql` | Duplicate waitlist prevention index |
+| `supabase/migrations/20260225230233_*.sql` | `gender`, `start_date`, `tags` columns + GIN index on students |
+| `supabase/migrations/20260315100300_*.sql` | `prevent_org_id_change()` trigger on students (immutable org_id) |
 | `supabase/migrations/20260315220006_*.sql` | **ORG-03 fix**: `check_student_limit()` with FOR UPDATE lock (race condition fix) |
 
 ### Edge Functions
@@ -92,6 +95,10 @@ CREATE TABLE public.students (
   notes           TEXT,                    -- general notes, no medical_notes field
   status          student_status NOT NULL DEFAULT 'active',  -- ENUM: 'active' | 'inactive'
   deleted_at      TIMESTAMPTZ DEFAULT NULL,                  -- soft delete marker
+  gender          TEXT CHECK (gender IN ('male','female','non_binary','other','prefer_not_to_say')),
+  start_date      DATE,                   -- when student started lessons
+  tags            TEXT[] DEFAULT '{}',     -- array tags for categorisation
+  default_location_id     UUID REFERENCES locations(id) ON DELETE SET NULL,
   default_teacher_user_id UUID,           -- legacy, kept for backcompat
   default_teacher_id      UUID REFERENCES teachers(id) ON DELETE SET NULL,
   default_rate_card_id    UUID REFERENCES rate_cards(id) ON DELETE SET NULL,
@@ -100,15 +107,20 @@ CREATE TABLE public.students (
 );
 
 -- Indexes
-idx_students_org_id           ON students(org_id)
-idx_students_status           ON students(org_id, status)
-idx_students_deleted_at       ON students(deleted_at) WHERE deleted_at IS NULL
-idx_students_default_teacher  ON students(default_teacher_user_id) WHERE NOT NULL
+idx_students_org_id             ON students(org_id)
+idx_students_status             ON students(org_id, status)
+idx_students_deleted_at         ON students(deleted_at) WHERE deleted_at IS NULL
+idx_students_default_location   ON students(default_location_id) WHERE NOT NULL
+idx_students_default_teacher    ON students(default_teacher_user_id) WHERE NOT NULL
+idx_students_default_rate_card  ON students(default_rate_card_id) WHERE NOT NULL
 idx_students_default_teacher_id ON students(default_teacher_id)
+idx_students_tags               ON students USING GIN (tags) WHERE tags IS NOT NULL AND tags != '{}'
 
 -- Triggers
 update_students_updated_at    BEFORE UPDATE → update_updated_at_column()
 enforce_student_limit         BEFORE INSERT → check_student_limit()
+trg_prevent_org_id_change     BEFORE UPDATE → prevent_org_id_change()  -- immutable org_id
+audit_students_changes        AFTER INSERT/UPDATE/DELETE → log_audit_event()
 ```
 
 ### guardians table
@@ -417,9 +429,11 @@ DELETE FROM students WHERE id = X
 
 ## 10. Student Notes / Tags
 
-- **Notes:** Single `notes` text field on students table. No structured tags system.
-- **Lesson notes:** Separate `lesson_notes` table with per-student, per-lesson notes (content_covered, homework, focus_areas, engagement_rating, teacher_private_notes)
-- **Tags:** No student tags feature exists. CSV import supports a `tags` field but it's not clear where it's stored.
+- **Notes:** Single `notes` text field on students table. General-purpose, no role restriction.
+- **Lesson notes:** Separate `lesson_notes` table with per-student, per-lesson notes (content_covered, homework, focus_areas, engagement_rating, teacher_private_notes). `parent_visible` flag controls portal visibility.
+- **Tags:** `TEXT[]` array column on students table with GIN index. Supports filtering/categorisation. Populated during CSV import.
+- **Gender:** Text field with CHECK constraint (`male`, `female`, `non_binary`, `other`, `prefer_not_to_say`). Added for import support.
+- **Start date:** `DATE` field tracking when student started lessons. Added for import support.
 - **Medical notes:** No dedicated field. Any medical info would go in the general `notes` field, which is visible to all roles via the RPC (STU-01).
 
 ---
