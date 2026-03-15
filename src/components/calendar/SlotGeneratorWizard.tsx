@@ -172,7 +172,7 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
   const activeSlotCount = slots.filter(s => !s.excluded).length;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
