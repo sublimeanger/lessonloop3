@@ -108,24 +108,7 @@ serve(async (req) => {
       .eq("id", payment.org_id)
       .single();
 
-    const refundParams: Stripe.RefundCreateParams = {
-      payment_intent: payment.provider_reference,
-      amount: refundAmount,
-      reason: "requested_by_customer",
-    };
-
-    let stripeRefund: Stripe.Refund;
-    if (orgConnect?.stripe_connect_account_id) {
-      stripeRefund = await stripe.refunds.create(refundParams, {
-        stripeAccount: orgConnect.stripe_connect_account_id,
-      });
-    } else {
-      stripeRefund = await stripe.refunds.create(refundParams);
-    }
-
-    log(`Stripe refund created: ${stripeRefund.id}, amount: ${refundAmount}`);
-
-    // Record the refund
+    // Insert a pending refund row BEFORE calling Stripe API
     const { data: refundRecord, error: refundInsertError } = await supabase
       .from("refunds")
       .insert({
@@ -134,52 +117,69 @@ serve(async (req) => {
         org_id: payment.org_id,
         amount_minor: refundAmount,
         reason: reason || null,
-        status: stripeRefund.status === "succeeded" ? "succeeded" : "pending",
-        stripe_refund_id: stripeRefund.id,
+        status: "pending",
+        stripe_refund_id: null,
         refunded_by: user.id,
       })
       .select("id")
       .single();
 
     if (refundInsertError) {
-      console.error("Failed to record refund:", refundInsertError);
-      // Refund happened on Stripe side — don't throw, but log
+      console.error("Failed to insert pending refund record:", refundInsertError);
+      return new Response(
+        JSON.stringify({ success: false, error: "Failed to create refund record" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
     }
 
-    // Recalculate invoice paid_minor
-    const { data: allPayments } = await supabase
-      .from("payments")
-      .select("amount_minor")
-      .eq("invoice_id", payment.invoice_id);
+    const refundParams: Stripe.RefundCreateParams = {
+      payment_intent: payment.provider_reference,
+      amount: refundAmount,
+      reason: "requested_by_customer",
+    };
 
-    const { data: allRefunds } = await supabase
+    let stripeRefund: Stripe.Refund;
+    try {
+      if (orgConnect?.stripe_connect_account_id) {
+        stripeRefund = await stripe.refunds.create(refundParams, {
+          stripeAccount: orgConnect.stripe_connect_account_id,
+        });
+      } else {
+        stripeRefund = await stripe.refunds.create(refundParams);
+      }
+    } catch (stripeErr) {
+      // Stripe rejected the refund — mark DB row as failed
+      await supabase.from("refunds").update({ status: "failed" }).eq("id", refundRecord.id);
+      throw stripeErr;
+    }
+
+    log(`Stripe refund created: ${stripeRefund.id}, amount: ${refundAmount}`);
+
+    // Update the pending refund row with Stripe result
+    const finalStatus = stripeRefund.status === "succeeded" ? "succeeded" : "pending";
+    const { error: refundUpdateError } = await supabase
       .from("refunds")
-      .select("amount_minor")
-      .eq("invoice_id", payment.invoice_id)
-      .eq("status", "succeeded");
+      .update({ status: finalStatus, stripe_refund_id: stripeRefund.id })
+      .eq("id", refundRecord.id);
 
-    const totalPaid = (allPayments || []).reduce((sum: number, p: any) => sum + p.amount_minor, 0);
-    const totalRefundedNow = (allRefunds || []).reduce((sum: number, r: any) => sum + r.amount_minor, 0);
-    const netPaid = totalPaid - totalRefundedNow;
-
-    const { data: invoice } = await supabase
-      .from("invoices")
-      .select("total_minor, status")
-      .eq("id", payment.invoice_id)
-      .single();
-
-    const invoiceUpdate: Record<string, unknown> = { paid_minor: netPaid };
-    if (invoice && netPaid < invoice.total_minor && invoice.status === "paid") {
-      // Reopen invoice since it's no longer fully paid
-      invoiceUpdate.status = "sent";
+    if (refundUpdateError) {
+      console.error("Failed to update refund record after Stripe success:", refundUpdateError);
+      return new Response(
+        JSON.stringify({ success: false, error: "Stripe refund succeeded but DB update failed", stripeRefundId: stripeRefund.id }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
     }
 
-    await supabase
-      .from("invoices")
-      .update(invoiceUpdate)
-      .eq("id", payment.invoice_id);
+    // Atomically recalculate invoice paid_minor
+    const { error: recalcError } = await supabase.rpc('recalculate_invoice_paid', {
+      _invoice_id: payment.invoice_id,
+    });
 
-    log(`Invoice recalculated after refund: net_paid=${netPaid}`);
+    if (recalcError) {
+      console.error("Failed to recalculate invoice after refund:", recalcError);
+    }
+
+    log(`Invoice recalculated after refund`);
 
     // Trigger refund notification email (best-effort, non-blocking)
     try {
