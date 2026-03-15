@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { formatDateUK } from '@/lib/utils';
+import { formatDateUK, currencySymbol as getCurrencySymbol } from '@/lib/utils';
+import { useOrg } from '@/contexts/OrgContext';
 
 interface InvoiceBranding {
   orgName: string;
