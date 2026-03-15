@@ -150,13 +150,13 @@ export default function PortalHome() {
         : 'Student';
 
       // Use atomic RPC for decline action
-      const { error } = await supabase.rpc('respond_to_makeup_offer', {
+      const { error } = await (supabase.rpc as any)('respond_to_makeup_offer', {
         _waitlist_id: id,
         _action: 'decline',
       });
       if (error) throw error;
 
-      // FIX 5: Notify admin via audit log (visible in admin dashboard)
+      // Notify admin via audit log (visible in admin dashboard)
       if (entry?.org_id) {
         supabase
           .from('audit_log')
