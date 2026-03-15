@@ -324,7 +324,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
                   <p className="text-sm text-muted-foreground mt-1">
                     {hasRateCards
                       ? `Using ${rateCards.length} rate card${rateCards.length !== 1 ? 's' : ''} for pricing`
-                      : 'No rate cards configured - using default £30/lesson'}
+                      : `No rate cards configured - using default ${currencySymbol(currency)}30/lesson`}
                   </p>
                 </div>
                 {hasRateCards && (
