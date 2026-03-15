@@ -451,17 +451,7 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
             }
           }
 
-            if (timeOffsetMs !== 0 || originalDuration !== newDuration) {
-              setSavingProgress('Shifting future lesson times…');
-              await supabase.rpc('shift_recurring_lesson_times', {
-                p_recurrence_id: lesson.recurrence_id!,
-                p_after_start_at: utcStartAt,
-                p_offset_ms: timeOffsetMs,
-                p_new_duration_ms: newDuration,
-                p_exclude_lesson_id: lesson.id,
-              });
-            }
-          }
+
 
           setSavingProgress('Updating participants…');
           await supabase
