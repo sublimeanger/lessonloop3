@@ -234,12 +234,17 @@ export function useUpdateAttendance() {
       // Authorisation guard: verify user is the lesson's teacher or an admin
       const { data: lesson, error: lessonErr } = await supabase
         .from('lessons')
-        .select('teacher_user_id')
+        .select('teacher_user_id, start_at')
         .eq('id', lessonId)
         .single();
       if (lessonErr) throw lessonErr;
 
       if (!lesson) throw new Error('Lesson not found');
+
+      // Prevent marking attendance for future lessons
+      if (new Date(lesson.start_at) > new Date()) {
+        throw new Error('Cannot mark attendance for a lesson that hasn\'t started yet.');
+      }
 
       const isAssignedTeacher = lesson.teacher_user_id === user.id;
       if (!isAssignedTeacher) {
