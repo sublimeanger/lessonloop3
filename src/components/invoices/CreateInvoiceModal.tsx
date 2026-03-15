@@ -518,7 +518,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                     <span className="text-sm text-muted-foreground">Credit to apply:</span>
                     <Badge variant="secondary" className="gap-1">
                       <Gift className="h-3 w-3" />
-                      -{formatCurrencyMinor(totalSelectedCredit)}
+                      -{formatCurrencyMinor(totalSelectedCredit, currency)}
                     </Badge>
                   </div>
                 )}
