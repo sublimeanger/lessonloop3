@@ -76,7 +76,7 @@ export default function PortalHome() {
       try {
         if (action !== 'accept' && action !== 'decline') return;
 
-        const { data, error } = await supabase.rpc('respond_to_makeup_offer', {
+        const { data, error } = await (supabase.rpc as any)('respond_to_makeup_offer', {
           _waitlist_id: id,
           _action: action,
         });
@@ -118,7 +118,7 @@ export default function PortalHome() {
   const handleInlineAccept = async (id: string) => {
     const entry = activeWaitlist.find((e) => e.id === id);
     try {
-      const { error } = await supabase.rpc('respond_to_makeup_offer', {
+      const { error } = await (supabase.rpc as any)('respond_to_makeup_offer', {
         _waitlist_id: id,
         _action: 'accept',
       });
@@ -150,13 +150,13 @@ export default function PortalHome() {
         : 'Student';
 
       // Use atomic RPC for decline action
-      const { error } = await supabase.rpc('respond_to_makeup_offer', {
+      const { error } = await (supabase.rpc as any)('respond_to_makeup_offer', {
         _waitlist_id: id,
         _action: 'decline',
       });
       if (error) throw error;
 
-      // FIX 5: Notify admin via audit log (visible in admin dashboard)
+      // Notify admin via audit log (visible in admin dashboard)
       if (entry?.org_id) {
         supabase
           .from('audit_log')
@@ -182,7 +182,7 @@ export default function PortalHome() {
   // FIX 6: Cancel a booked make-up
   const handleCancelBookedMakeup = async (id: string) => {
     try {
-      const guardianId = await resolveGuardianId();
+      const guardianId = guardianInfo?.id;
       if (!guardianId) {
         toast({ title: 'Guardian record not found', variant: 'destructive' });
         return;

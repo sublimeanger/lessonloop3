@@ -46,6 +46,7 @@ export function useRealtimeInvoices() {
           queryClient.invalidateQueries({ queryKey: ['invoice-stats', orgId] });
           queryClient.invalidateQueries({ queryKey: ['invoices', orgId] });
           queryClient.invalidateQueries({ queryKey: ['urgent-actions', orgId] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard-stats', orgId] });
         }
       )
       .on(
@@ -59,6 +60,7 @@ export function useRealtimeInvoices() {
         () => {
           queryClient.invalidateQueries({ queryKey: ['invoice-stats', orgId] });
           queryClient.invalidateQueries({ queryKey: ['invoices', orgId] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard-stats', orgId] });
         }
       )
       .on(
@@ -96,6 +98,7 @@ export function useRealtimeInvoices() {
           }
           queryClient.invalidateQueries({ queryKey: ['invoice-stats', orgId] });
           queryClient.invalidateQueries({ queryKey: ['invoices', orgId] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard-stats', orgId] });
         }
       )
       .subscribe();

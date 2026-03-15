@@ -649,11 +649,27 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
           if (lessonError) throw lessonError;
 
           if (insertedLessons && selectedStudents.length > 0) {
+            // FIX 5: Snapshot rate at creation time
+            let rateLookup: number | null = null;
+            try {
+              const { data: rateCards } = await supabase
+                .from('rate_cards')
+                .select('rate_amount, duration_mins, is_default')
+                .eq('org_id', currentOrg.id)
+                .order('duration_mins', { ascending: true });
+              if (rateCards && rateCards.length > 0) {
+                const exact = rateCards.find(r => r.duration_mins === durationMins);
+                const def = rateCards.find(r => r.is_default);
+                rateLookup = exact?.rate_amount ?? def?.rate_amount ?? rateCards[0]?.rate_amount ?? null;
+              }
+            } catch { /* non-blocking — rate snapshot is best-effort */ }
+
             const allParticipants = insertedLessons.flatMap(l =>
               selectedStudents.map(studentId => ({
                 org_id: currentOrg.id,
                 lesson_id: l.id,
                 student_id: studentId,
+                ...(rateLookup != null ? { rate_minor: rateLookup } : {}),
               }))
             );
 

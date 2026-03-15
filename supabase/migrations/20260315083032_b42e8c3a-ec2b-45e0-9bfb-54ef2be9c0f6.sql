@@ -1,0 +1,1 @@
+ALTER TABLE public.lesson_participants ADD COLUMN IF NOT EXISTS rate_minor integer DEFAULT NULL;

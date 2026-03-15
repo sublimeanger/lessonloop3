@@ -2417,6 +2417,7 @@ export type Database = {
           id: string
           lesson_id: string
           org_id: string
+          rate_minor: number | null
           student_id: string
         }
         Insert: {
@@ -2424,6 +2425,7 @@ export type Database = {
           id?: string
           lesson_id: string
           org_id: string
+          rate_minor?: number | null
           student_id: string
         }
         Update: {
@@ -2431,6 +2433,7 @@ export type Database = {
           id?: string
           lesson_id?: string
           org_id?: string
+          rate_minor?: number | null
           student_id?: string
         }
         Relationships: [

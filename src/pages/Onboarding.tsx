@@ -213,6 +213,22 @@ export default function Onboarding() {
             throw new Error('Not logged in. Please refresh and try again.');
           }
 
+          // FIX 4: Idempotency — if user already owns an org, skip creation
+          const { data: existingMembership } = await supabase
+            .from('org_memberships')
+            .select('org_id')
+            .eq('user_id', currentSession.user.id)
+            .eq('role', 'owner')
+            .eq('status', 'active')
+            .limit(1);
+
+          if (existingMembership && existingMembership.length > 0) {
+            logger.info('[Onboarding] User already has an org — skipping creation');
+            await refreshProfile();
+            navigate('/dashboard', { replace: true });
+            return { success: true, skipped: true };
+          }
+
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 30000);
