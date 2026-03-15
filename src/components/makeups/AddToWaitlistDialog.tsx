@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 import { useOrg } from '@/contexts/OrgContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ABSENCE_REASON_LABELS, type AbsenceReason } from '@/hooks/useMakeUpPolicies';
+import { ABSENCE_REASON_LABELS, type AbsenceReason, useMakeUpPolicies } from '@/hooks/useMakeUpPolicies';
 import { format } from 'date-fns';
 
 interface StudentLesson {
@@ -42,6 +44,7 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { policies } = useMakeUpPolicies();
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -49,6 +52,11 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
   });
 
   const selectedStudentId = watch('student_id');
+  const selectedAbsenceReason = watch('absence_reason') as AbsenceReason;
+
+  // FIX 8: Check policy for selected absence reason
+  const matchingPolicy = policies.find(p => p.absence_reason === selectedAbsenceReason);
+  const policyBlocked = matchingPolicy?.eligibility === 'not_eligible';
 
   const { data: students } = useQuery({
     queryKey: ['students_for_waitlist', currentOrg?.id],
@@ -95,6 +103,16 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
 
   const onSubmit = async (formData: FormData) => {
     if (!currentOrg?.id || !selectedLesson) return;
+
+    // FIX 8: Validate against make-up policy
+    if (policyBlocked) {
+      toast({
+        title: 'Not eligible for make-up',
+        description: `The "${ABSENCE_REASON_LABELS[selectedAbsenceReason]?.label}" policy does not allow make-up lessons.`,
+        variant: 'destructive',
+      });
+      return;
+    }
     setIsSubmitting(true);
     try {
       const durationMs = new Date(selectedLesson.end_at).getTime() - new Date(selectedLesson.start_at).getTime();
@@ -211,6 +229,19 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
                 ))}
               </SelectContent>
             </Select>
+            {policyBlocked && (
+              <Alert variant="destructive" className="mt-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  This absence reason ("{ABSENCE_REASON_LABELS[selectedAbsenceReason]?.label}") is not eligible for make-up lessons per your organisation's policy.
+                </AlertDescription>
+              </Alert>
+            )}
+            {matchingPolicy && !policyBlocked && matchingPolicy.eligibility === 'admin_discretion' && (
+              <p className="text-xs text-amber-600 mt-1">
+                ⚠️ This reason requires admin discretion per your policy.
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -220,7 +251,7 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
 
           <DialogFooter className="flex-col gap-2 sm:flex-row">
             <Button type="button" variant="outline" className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" className="min-h-11 w-full sm:min-h-9 sm:w-auto" disabled={isSubmitting || !selectedLesson}>
+            <Button type="submit" className="min-h-11 w-full sm:min-h-9 sm:w-auto" disabled={isSubmitting || !selectedLesson || policyBlocked}>
               {isSubmitting ? 'Adding…' : 'Add to Waitlist'}
             </Button>
           </DialogFooter>

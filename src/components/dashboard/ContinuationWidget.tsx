@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowRightLeft, AlertTriangle, ChevronRight } from 'lucide-react';
 import { useContinuationRuns } from '@/hooks/useTermContinuation';
 import { useOrg } from '@/contexts/OrgContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 /**
  * Dashboard widget showing active continuation run status,
@@ -13,6 +16,31 @@ import { useOrg } from '@/contexts/OrgContext';
 export function ContinuationWidget() {
   const { currentOrg } = useOrg();
   const { data: runs = [] } = useContinuationRuns();
+  const queryClient = useQueryClient();
+
+  // FIX 1: Realtime subscription for continuation response changes
+  useEffect(() => {
+    if (!currentOrg?.id) return;
+    const channel = supabase
+      .channel('continuation-widget')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'continuation_responses',
+          filter: `org_id=eq.${currentOrg.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['continuation'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentOrg?.id, queryClient]);
 
   if (!currentOrg) return null;
 

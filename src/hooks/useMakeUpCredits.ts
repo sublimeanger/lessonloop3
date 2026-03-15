@@ -112,6 +112,24 @@ export function useMakeUpCredits(studentId?: string) {
         .single();
 
       if (error) throw error;
+
+      // FIX 7: Log credit issuance for admin visibility
+      supabase
+        .from('audit_log')
+        .insert({
+          org_id: currentOrg.id,
+          actor_user_id: user.id,
+          action: 'credit_issued',
+          entity_type: 'make_up_credit',
+          entity_id: data.id,
+          after: {
+            student_id: input.student_id,
+            credit_value_minor: input.credit_value_minor,
+            issued_for_lesson_id: input.issued_for_lesson_id,
+          } as any,
+        })
+        .then(() => {});
+
       return data;
     },
     onSuccess: () => {

@@ -46,6 +46,7 @@ import {
   useBulkProcessContinuation,
   usePreviewBulkProcess,
   useDeleteContinuationRun,
+  useUpdateContinuationResponse,
 } from '@/hooks/useTermContinuation';
 import type {
   ContinuationRun,
@@ -111,6 +112,7 @@ export default function Continuation() {
 
   const previewBulk = usePreviewBulkProcess();
   const deleteRun = useDeleteContinuationRun();
+  const updateResponse = useUpdateContinuationResponse();
 
   // FIX 2: Preview dialog state
   const [bulkPreview, setBulkPreview] = useState<BulkProcessPreview | null>(null);
@@ -568,8 +570,29 @@ export default function Continuation() {
                                 ? formatCurrencyMinor(resp.next_term_fee_minor, currency)
                                 : '—'}
                             </td>
-                            <td className="px-4 py-2.5">
-                              <Badge variant={badge.variant}>{badge.label}</Badge>
+                            <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
+                              {resp.response === 'pending' || resp.response === 'no_response' ? (
+                                <Select
+                                  value={resp.response}
+                                  onValueChange={(val) =>
+                                    updateResponse.mutate({
+                                      id: resp.id,
+                                      response: val as ContinuationResponseType,
+                                    })
+                                  }
+                                >
+                                  <SelectTrigger className="h-7 w-32 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="continuing">Confirmed</SelectItem>
+                                    <SelectItem value="withdrawing">Withdrawing</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Badge variant={badge.variant}>{badge.label}</Badge>
+                              )}
                             </td>
                             <td className="px-4 py-2.5 text-muted-foreground hidden md:table-cell">
                               {resp.response_at

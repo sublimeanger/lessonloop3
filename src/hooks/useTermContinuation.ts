@@ -910,3 +910,43 @@ export function useDeleteContinuationRun() {
     },
   });
 }
+
+// ── useUpdateContinuationResponse ───────────────────────────────────────
+
+export function useUpdateContinuationResponse() {
+  const { currentOrg } = useOrg();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, response }: { id: string; response: ContinuationResponseType }) => {
+      if (!currentOrg) throw new Error('No org');
+
+      const updateData: Record<string, unknown> = {
+        response,
+        response_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from('continuation_responses' as any)
+        .update(updateData)
+        .eq('id', id)
+        .eq('org_id', currentOrg.id);
+
+      if (error) throw error;
+
+      logAudit(currentOrg.id, user?.id || '', 'update', 'continuation_response', id, {
+        after: { response },
+      });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['continuation'] });
+      queryClient.invalidateQueries({ queryKey: ['continuation-responses'] });
+      toast({ title: `Response updated to "${variables.response}"` });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Failed to update response', description: error.message, variant: 'destructive' });
+    },
+  });
+}

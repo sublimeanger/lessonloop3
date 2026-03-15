@@ -206,6 +206,13 @@ export default function PortalHome() {
         toast({ title: 'Guardian record not found', description: 'Please contact the academy.', variant: 'destructive' });
         return;
       }
+
+      // FIX 5: Get entry info for admin notification before declining
+      const entry = activeWaitlist.find((e) => e.id === id);
+      const studentName = entry?.student
+        ? `${entry.student.first_name} ${entry.student.last_name}`
+        : 'Student';
+
       const { data, error: declineErr } = await supabase
         .from('make_up_waitlist')
         .update({
@@ -218,14 +225,64 @@ export default function PortalHome() {
         .eq('id', id)
         .eq('guardian_id', guardianId)
         .eq('status', 'offered')
-        .select('id');
+        .select('id, org_id');
       if (declineErr) throw declineErr;
+
+      // FIX 5: Notify admin via audit log (visible in admin dashboard)
+      if (data?.length && data[0].org_id) {
+        supabase
+          .from('audit_log')
+          .insert({
+            org_id: data[0].org_id,
+            actor_user_id: (await supabase.auth.getUser()).data.user?.id || null,
+            action: 'makeup_offer_declined',
+            entity_type: 'make_up_waitlist',
+            entity_id: id,
+            after: { student_name: studentName, lesson_title: entry?.lesson_title } as any,
+          })
+          .then(() => {});
+      }
 
       toast({ title: "Slot declined. We'll keep looking for another available time." });
       queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_parent'] });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       toast({ title: 'Something went wrong', description: message, variant: 'destructive' });
+    }
+  };
+
+  // FIX 6: Cancel a booked make-up
+  const handleCancelBookedMakeup = async (id: string) => {
+    try {
+      const guardianId = await resolveGuardianId();
+      if (!guardianId) {
+        toast({ title: 'Guardian record not found', variant: 'destructive' });
+        return;
+      }
+      const confirmed = window.confirm('Are you sure you want to cancel this booked make-up lesson?');
+      if (!confirmed) return;
+
+      const { error } = await supabase
+        .from('make_up_waitlist')
+        .update({
+          status: 'waiting',
+          matched_lesson_id: null,
+          matched_at: null,
+          offered_at: null,
+          responded_at: null,
+          booked_lesson_id: null,
+        } as any)
+        .eq('id', id)
+        .eq('guardian_id', guardianId)
+        .eq('status', 'booked');
+
+      if (error) throw error;
+
+      toast({ title: 'Make-up cancelled', description: "We'll look for another available slot." });
+      queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_parent'] });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      toast({ title: 'Failed to cancel', description: message, variant: 'destructive' });
     }
   };
 
@@ -679,9 +736,19 @@ export default function PortalHome() {
 
                           {/* Booked: show the booked lesson date */}
                           {entry.status === 'booked' && entry.booked_lesson_id && matched && (
-                            <p className="text-xs text-green-600 dark:text-green-400">
-                              📅 {formatDateUK(parseISO(matched.start_at), 'EEEE d MMM')} at {formatTimeUK(parseISO(matched.start_at))}
-                            </p>
+                            <div className="space-y-2">
+                              <p className="text-xs text-green-600 dark:text-green-400">
+                                📅 {formatDateUK(parseISO(matched.start_at), 'EEEE d MMM')} at {formatTimeUK(parseISO(matched.start_at))}
+                              </p>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-destructive hover:bg-destructive/10"
+                                onClick={(e) => { e.stopPropagation(); handleCancelBookedMakeup(entry.id); }}
+                              >
+                                Cancel Make-Up
+                              </Button>
+                            </div>
                           )}
 
                           {entry.status === 'accepted' && (
