@@ -98,7 +98,7 @@ export default function CalendarPage() {
     checkConflicts, isOnline, isMobile, isDesktop, isParent,
   });
 
-  const myTeacherRecord = currentRole === 'teacher' ? teachers.find(t => t.user_id === user?.id) : null;
+  const myTeacherRecord = currentRole === 'teacher' ? teachers.find(t => t.userId === user?.id) : null;
 
   const bulk = useBulkLessonActions({
     refetch,
