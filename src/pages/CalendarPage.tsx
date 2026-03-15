@@ -209,6 +209,8 @@ export default function CalendarPage() {
           onExit={bulk.exitSelectionMode}
           onBulkUpdate={bulk.bulkUpdate}
           onBulkCancel={bulk.bulkCancel}
+          onSelectAll={() => bulk.selectAll(lessons)}
+          totalVisible={lessons.length}
           teachers={(teachers ?? []).map(t => ({ id: t.id, name: t.name }))}
           locations={locations}
           rooms={rooms}
