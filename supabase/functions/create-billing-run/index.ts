@@ -30,6 +30,18 @@ interface RateCard {
   is_default: boolean;
 }
 
+// BIL-L3: Valid run_type values per DB enum
+const VALID_RUN_TYPES = ["monthly", "term", "custom"];
+
+// BIL-H1: ISO date format validation (YYYY-MM-DD)
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function isValidIsoDate(s: string): boolean {
+  if (!ISO_DATE_RE.test(s)) return false;
+  const d = new Date(s + "T00:00:00Z");
+  return !isNaN(d.getTime());
+}
+
 function findRateForDuration(
   durationMins: number,
   rateCards: RateCard[],
@@ -77,11 +89,8 @@ Deno.serve(async (req: Request) => {
     }
     const userId = user.id;
 
-    // Rate limiting: 3 billing runs per 5 minutes per user
-    const rateLimitResult = await checkRateLimit(userId, "billing-run", {
-      maxRequests: 3,
-      windowMinutes: 5,
-    });
+    // BIL-H5: Use shared rate limit config — no inline override
+    const rateLimitResult = await checkRateLimit(userId, "billing-run");
     if (!rateLimitResult.allowed) {
       return rateLimitResponse(corsHeaders, rateLimitResult);
     }
@@ -139,6 +148,48 @@ async function handleCreate(
   const billingMode = body.billing_mode || "delivered";
   const fallbackRate = body.fallback_rate_minor ?? 3000;
 
+  // BIL-H1 + BIL-M2: Validate required date fields
+  if (!body.start_date || !body.end_date) {
+    return new Response(
+      JSON.stringify({ error: "start_date and end_date are required" }),
+      { status: 400, headers: { ...cors, "Content-Type": "application/json" } }
+    );
+  }
+
+  if (!isValidIsoDate(body.start_date) || !isValidIsoDate(body.end_date)) {
+    return new Response(
+      JSON.stringify({ error: "start_date and end_date must be valid ISO dates (YYYY-MM-DD)" }),
+      { status: 400, headers: { ...cors, "Content-Type": "application/json" } }
+    );
+  }
+
+  if (body.end_date < body.start_date) {
+    return new Response(
+      JSON.stringify({ error: "end_date must be on or after start_date" }),
+      { status: 400, headers: { ...cors, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Reasonable range check: max 366 days
+  const startMs = new Date(body.start_date + "T00:00:00Z").getTime();
+  const endMs = new Date(body.end_date + "T00:00:00Z").getTime();
+  const daySpan = (endMs - startMs) / (1000 * 60 * 60 * 24);
+  if (daySpan > 366) {
+    return new Response(
+      JSON.stringify({ error: "Billing period cannot exceed 366 days" }),
+      { status: 400, headers: { ...cors, "Content-Type": "application/json" } }
+    );
+  }
+
+  // BIL-L3: Validate run_type against DB enum
+  const runType = body.run_type || "custom";
+  if (!VALID_RUN_TYPES.includes(runType)) {
+    return new Response(
+      JSON.stringify({ error: `Invalid run_type: must be one of ${VALID_RUN_TYPES.join(", ")}` }),
+      { status: 400, headers: { ...cors, "Content-Type": "application/json" } }
+    );
+  }
+
   if (fallbackRate <= 0 || fallbackRate > 100000) {
     return new Response(
       JSON.stringify({ error: "Invalid fallback rate" }),
@@ -165,12 +216,35 @@ async function handleCreate(
     });
   }
 
+  // BIL-M3: Check for overlapping billing runs (not just exact date match)
+  const { data: overlapping } = await client
+    .from("billing_runs")
+    .select("id, start_date, end_date")
+    .eq("org_id", orgId)
+    .neq("status", "failed")
+    .lte("start_date", body.end_date)
+    .gte("end_date", body.start_date)
+    .limit(1);
+
+  if (overlapping && overlapping.length > 0) {
+    const existing = overlapping[0];
+    return new Response(
+      JSON.stringify({
+        error: `A billing run already exists that overlaps this period (${existing.start_date} to ${existing.end_date})`,
+      }),
+      {
+        status: 409,
+        headers: { ...cors, "Content-Type": "application/json" },
+      }
+    );
+  }
+
   // Insert billing run
   const { data: billingRun, error: runError } = await client
     .from("billing_runs")
     .insert({
       org_id: orgId,
-      run_type: body.run_type || "manual",
+      run_type: runType,
       start_date: body.start_date,
       end_date: body.end_date,
       created_by: userId,
@@ -202,13 +276,14 @@ async function handleCreate(
       client,
       orgId,
       org,
-      body.start_date!,
-      body.end_date!,
+      body.start_date,
+      body.end_date,
       billingMode,
       fallbackRate,
       body.generate_invoices !== false,
       body.term_id || null,
-      null // no payer filter
+      null, // no payer filter
+      billingRun.id // BIL-H2: pass billing_run_id for FK
     );
 
     // Determine status
@@ -247,6 +322,13 @@ async function handleCreate(
       { headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (innerError: any) {
+    // BIL-M4: Clean up orphan invoices on unexpected failure
+    await client
+      .from("invoices")
+      .delete()
+      .eq("billing_run_id", billingRun.id)
+      .eq("org_id", orgId);
+
     await client
       .from("billing_runs")
       .update({ status: "failed" })
@@ -324,7 +406,8 @@ async function handleRetry(
     3000,
     true,
     billingRun.term_id || null,
-    retryPayerIds
+    retryPayerIds,
+    billingRunId // BIL-H2: pass billing_run_id for FK
   );
 
   // Update billing run summary
@@ -367,7 +450,8 @@ async function executeBillingLogic(
   fallbackRate: number,
   generateInvoices: boolean,
   termId: string | null,
-  retryPayerIds: Set<string> | null
+  retryPayerIds: Set<string> | null,
+  billingRunId: string // BIL-H2: link invoices to billing run
 ) {
   // Fetch rate cards
   const { data: rateCards } = await client
@@ -595,6 +679,7 @@ async function executeBillingLogic(
         currency_code: org.currency_code,
         status: "draft",
         term_id: termId,
+        billing_run_id: billingRunId, // BIL-H2: link invoice to billing run
       });
       payerItemsMap.push({ payer, lessonRates, total });
     }

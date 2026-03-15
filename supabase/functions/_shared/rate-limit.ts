@@ -23,8 +23,8 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   "send-invoice-email":    { maxRequests: 50,  windowMinutes: 60 },
   "notify-internal-message": { maxRequests: 50, windowMinutes: 60 },
 
-  // Billing operations
-  "billing-run":           { maxRequests: 10,  windowMinutes: 60 },
+  // Billing operations — 5 runs per hour is generous for normal use
+  "billing-run":           { maxRequests: 5,   windowMinutes: 60 },
   "stripe-create-checkout": { maxRequests: 10, windowMinutes: 60 },
   "record-payment":        { maxRequests: 10,  windowMinutes: 60 },
 
