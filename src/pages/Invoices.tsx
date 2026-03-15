@@ -186,10 +186,12 @@ export default function Invoices() {
                 <Download className="h-4 w-4" />
                 <span className="hidden sm:inline">Export</span>
               </Button>
-              <Button variant="outline" size="sm" className="min-h-11 gap-1.5 sm:min-h-9" onClick={() => setBillingRunOpen(true)} data-tour="billing-run-button">
-                <PlayCircle className="h-4 w-4" />
-                <span className="hidden sm:inline">Billing Run</span>
-              </Button>
+              {(currentRole === 'owner' || currentRole === 'admin') && (
+                <Button variant="outline" size="sm" className="min-h-11 gap-1.5 sm:min-h-9" onClick={() => setBillingRunOpen(true)} data-tour="billing-run-button">
+                  <PlayCircle className="h-4 w-4" />
+                  <span className="hidden sm:inline">Billing Run</span>
+                </Button>
+              )}
               <Button size="sm" className="min-h-11 gap-1.5 sm:min-h-9" onClick={() => setCreateModalOpen(true)} data-tour="create-invoice-button">
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Create Invoice</span>
