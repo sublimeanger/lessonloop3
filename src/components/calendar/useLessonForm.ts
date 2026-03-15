@@ -470,18 +470,54 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
             }
           }
 
+          // Snapshot existing rate_minor values before deleting participants
+          const { data: existingParticipants } = await supabase
+            .from('lesson_participants')
+            .select('student_id, rate_minor')
+            .in('lesson_id', lessonIdsToUpdate);
+
+          // Build lookup: student_id -> rate_minor (use first non-null value found)
+          const existingRateMap = new Map<string, number | null>();
+          for (const p of existingParticipants || []) {
+            if (!existingRateMap.has(p.student_id) && p.rate_minor != null) {
+              existingRateMap.set(p.student_id, p.rate_minor);
+            }
+          }
+
           await supabase
             .from('lesson_participants')
             .delete()
             .in('lesson_id', lessonIdsToUpdate);
 
           if (selectedStudents.length > 0) {
+            // For newly added students, snapshot rate from rate_cards
+            const newStudents = selectedStudents.filter(id => !existingRateMap.has(id));
+            let newStudentRate: number | null = null;
+            if (newStudents.length > 0) {
+              try {
+                const { data: rateCards } = await supabase
+                  .from('rate_cards')
+                  .select('rate_amount, duration_mins, is_default')
+                  .eq('org_id', currentOrg.id)
+                  .order('duration_mins', { ascending: true });
+                if (rateCards && rateCards.length > 0) {
+                  const exact = rateCards.find(r => r.duration_mins === durationMins);
+                  const def = rateCards.find(r => r.is_default);
+                  newStudentRate = exact?.rate_amount ?? def?.rate_amount ?? rateCards[0]?.rate_amount ?? null;
+                }
+              } catch { /* non-blocking — rate snapshot is best-effort */ }
+            }
+
             const allParticipants = lessonIdsToUpdate.flatMap(lessonId =>
-              selectedStudents.map(studentId => ({
-                org_id: currentOrg.id,
-                lesson_id: lessonId,
-                student_id: studentId,
-              }))
+              selectedStudents.map(studentId => {
+                const rate = existingRateMap.get(studentId) ?? newStudentRate;
+                return {
+                  org_id: currentOrg.id,
+                  lesson_id: lessonId,
+                  student_id: studentId,
+                  ...(rate != null ? { rate_minor: rate } : {}),
+                };
+              })
             );
 
             const { error: partError } = await supabase

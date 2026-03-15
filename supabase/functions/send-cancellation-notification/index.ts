@@ -52,6 +52,35 @@ const handler = async (req: Request): Promise<Response> => {
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Verify caller is an active member of the org
+    const { data: membership } = await supabaseService
+      .from("org_memberships")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("org_id", orgId)
+      .eq("status", "active")
+      .limit(1)
+      .single();
+
+    if (!membership) {
+      return new Response(JSON.stringify({ error: "Not authorized for this organisation" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Verify all lessonIds belong to the caller's org
+    const { count: lessonCount } = await supabaseService
+      .from("lessons")
+      .select("id", { count: "exact", head: true })
+      .in("id", lessonIds)
+      .eq("org_id", orgId);
+
+    if (lessonCount !== lessonIds.length) {
+      return new Response(JSON.stringify({ error: "One or more lessons do not belong to this organisation" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Get participants across all cancelled lessons
     const { data: participants } = await supabaseService
       .from("lesson_participants")
