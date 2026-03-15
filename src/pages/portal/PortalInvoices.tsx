@@ -462,6 +462,7 @@ interface InvoiceCardProps {
     due_date: string;
     issue_date: string;
     total_minor: number;
+    paid_minor?: number | null;
     payer_guardian?: { full_name: string } | null;
     payer_student?: { first_name: string; last_name: string } | null;
   };
@@ -474,7 +475,8 @@ interface InvoiceCardProps {
 }
 
 function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, isHighlighted, showPayButton = true }: InvoiceCardProps) {
-  const isPayable = ['sent', 'overdue'].includes(invoice.status) && showPayButton;
+  const remainingMinor = invoice.total_minor - (invoice.paid_minor || 0);
+  const isPayable = ['sent', 'overdue'].includes(invoice.status) && showPayButton && remainingMinor > 0;
   const isPaid = invoice.status === 'paid';
   const { downloadPdf, isLoading: isPdfLoading } = useInvoicePdf();
 
@@ -544,7 +546,7 @@ function InvoiceCard({ invoice, currencyCode, getStatusBadge, onPay, isPaying, i
               ) : (
                 <CreditCard className="h-5 w-5" />
               )}
-              {isPaying ? 'Processing...' : `Pay ${formatCurrencyMinor(invoice.total_minor, currencyCode)}`}
+              {isPaying ? 'Processing...' : `Pay ${formatCurrencyMinor(remainingMinor, currencyCode)}`}
             </Button>
           )}
           {isPayable && platform.isNative && (

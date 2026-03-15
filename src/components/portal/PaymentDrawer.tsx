@@ -273,9 +273,28 @@ export function PaymentDrawer({
                 Something went wrong. Please try again or contact your teacher.
               </p>
             </div>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Close
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
+              <Button onClick={() => {
+                setClientSecret(null);
+                setPaymentStatus('loading');
+                createPaymentIntent(invoiceId!, { installmentId, payRemaining }).then((result) => {
+                  if (result) {
+                    setClientSecret(result.clientSecret);
+                    setPaymentAmount(result.amount);
+                    setPaymentCurrency(result.currency);
+                    setPaymentDescription(result.description);
+                    setPaymentStatus('ready');
+                  } else {
+                    setPaymentStatus('error');
+                  }
+                });
+              }}>
+                Try Again
+              </Button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -15,6 +15,7 @@ import { RefundDialog } from '@/components/invoices/RefundDialog';
 import { useOrg } from '@/contexts/OrgContext';
 import { useInvoice, useUpdateInvoiceStatus } from '@/hooks/useInvoices';
 import { useStripePayment } from '@/hooks/useStripePayment';
+import { PaymentDrawer } from '@/components/portal/PaymentDrawer';
 import { useInvoicePdf } from '@/hooks/useInvoicePdf';
 import { useToast } from '@/hooks/use-toast';
 import { platform } from '@/lib/platform';
@@ -88,6 +89,7 @@ export default function InvoiceDetail() {
   const [paymentPlanOpen, setPaymentPlanOpen] = useState(false);
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [refundPayment, setRefundPayment] = useState<any>(null);
+  const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false);
   const { data: orgPaymentPrefs } = useOrgPaymentPreferences();
 
   const onlinePaymentsEnabled = orgPaymentPrefs?.online_payments_enabled !== false;
@@ -115,7 +117,7 @@ export default function InvoiceDetail() {
 
   const handlePayNow = () => {
     if (id) {
-      initiatePayment(id);
+      setPaymentDrawerOpen(true);
     }
   };
 
@@ -200,7 +202,7 @@ export default function InvoiceDetail() {
                   )}
                   {isPdfLoading ? 'Generating...' : 'Download PDF'}
                 </Button>
-                {invoice.status !== 'paid' && invoice.status !== 'void' && onlinePaymentsEnabled && !platform.isNative && (
+                {invoice.status !== 'paid' && invoice.status !== 'void' && amountDue > 0 && onlinePaymentsEnabled && !platform.isNative && (
                   <Button
                     className="min-h-11 gap-2 sm:min-h-9"
                     onClick={handlePayNow}
@@ -211,7 +213,7 @@ export default function InvoiceDetail() {
                     ) : (
                       <CreditCard className="h-4 w-4" />
                     )}
-                    {isPaymentLoading ? 'Processing...' : 'Pay Now'}
+                    {isPaymentLoading ? 'Processing...' : `Pay ${formatCurrencyMinor(amountDue, currency)}`}
                   </Button>
                 )}
               </>
@@ -630,6 +632,22 @@ export default function InvoiceDetail() {
         invoiceNumber={invoice.invoice_number}
         currencyCode={currency}
       />
+
+      {/* Parent Embedded Payment Drawer */}
+      {isParent && (
+        <PaymentDrawer
+          open={paymentDrawerOpen}
+          onOpenChange={(open) => {
+            setPaymentDrawerOpen(open);
+            if (!open) refetch();
+          }}
+          invoiceId={invoice.id}
+          invoiceNumber={invoice.invoice_number}
+          amount={amountDue}
+          currencyCode={currency}
+          dueDate={formatDateUK(parseISO(invoice.due_date), 'dd MMM yyyy')}
+        />
+      )}
 
       {/* Void confirmation dialog */}
       <AlertDialog open={voidConfirmOpen} onOpenChange={setVoidConfirmOpen}>
