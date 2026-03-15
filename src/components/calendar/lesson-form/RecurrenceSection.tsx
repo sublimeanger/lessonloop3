@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -87,6 +88,7 @@ export function RecurrenceSection({
                   onSelect={(date) => setRecurrenceEndDate(date || null)}
                   disabled={(date) => date < selectedDate}
                   initialFocus
+                  className={cn("p-3 pointer-events-auto")}
                 />
               </PopoverContent>
             </Popover>
