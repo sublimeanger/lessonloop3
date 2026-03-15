@@ -105,7 +105,7 @@ export function BookingPageTab() {
   }, [config, configLoading, currentOrg]);
 
   // ─── Derived ───────────────────────────────────────────
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app.lessonloop.com';
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app.lessonloop.net';
   const bookingUrl = `${baseUrl}/book/${slug}`;
   const slugValid = isValidSlug(slug);
   const isSaving = updateMutation.isPending || teachersMutation.isPending || instrumentsMutation.isPending;

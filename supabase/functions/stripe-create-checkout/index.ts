@@ -199,10 +199,7 @@ serve(async (req) => {
     // Check for existing Stripe customer or create one
     let customerId: string | undefined;
     if (payerEmail) {
-      const customers = await stripe.customers.search({
-        query: `email:"${payerEmail}" AND metadata["lessonloop_org_id"]:"${invoice.org_id}"`,
-        limit: 1,
-      });
+      const customers = await stripe.customers.list({ email: payerEmail, limit: 1 });
       if (customers.data.length > 0) {
         customerId = customers.data[0].id;
       } else {

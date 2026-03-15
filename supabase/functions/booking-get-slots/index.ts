@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
     // 2. Get bookable teachers
     const { data: bpTeachers } = await supabase
       .from('booking_page_teachers')
-      .select('teacher_id, teacher:teachers(id, display_name, user_id)')
+      .select('teacher_id, teacher:teachers(id, display_name)')
       .eq('booking_page_id', bookingPage.id);
 
     if (!bpTeachers || bpTeachers.length === 0) {
@@ -113,7 +113,6 @@ Deno.serve(async (req) => {
         id: t.teacher.id,
         ref: t.teacher.id.replace(/-/g, ''),
         first_name: (t.teacher.display_name || '').split(' ')[0] || 'Teacher',
-        user_id: t.teacher.user_id,
       }));
 
     // Filter by teacher_id if provided (accept either UUID or opaque ref)
