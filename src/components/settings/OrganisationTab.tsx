@@ -248,6 +248,34 @@ export function OrganisationTab() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={showCurrencyWarning} onOpenChange={(open) => !open && cancelCurrencyChange()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              Change currency?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  Changing your currency will affect how all future invoices, rate cards, and payments are displayed.
+                </p>
+                <p>
+                  Existing invoices and payments will keep their original currency. New invoices will use the updated currency.
+                </p>
+                <p className="font-medium text-foreground">Are you sure you want to continue?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelCurrencyChange}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmCurrencyChange}>
+              Change Currency
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Card>
         <CardHeader>
           <CardTitle>Organisation Details</CardTitle>
