@@ -462,6 +462,7 @@ interface InvoiceCardProps {
     due_date: string;
     issue_date: string;
     total_minor: number;
+    paid_minor?: number | null;
     payer_guardian?: { full_name: string } | null;
     payer_student?: { first_name: string; last_name: string } | null;
   };
