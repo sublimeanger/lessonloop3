@@ -15,6 +15,7 @@ import { RefundDialog } from '@/components/invoices/RefundDialog';
 import { useOrg } from '@/contexts/OrgContext';
 import { useInvoice, useUpdateInvoiceStatus } from '@/hooks/useInvoices';
 import { useStripePayment } from '@/hooks/useStripePayment';
+import { PaymentDrawer } from '@/components/portal/PaymentDrawer';
 import { useInvoicePdf } from '@/hooks/useInvoicePdf';
 import { useToast } from '@/hooks/use-toast';
 import { platform } from '@/lib/platform';
