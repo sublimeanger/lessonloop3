@@ -91,7 +91,7 @@ export function useBulkLessonActions({ refetch, orgId, userId }: UseBulkLessonAc
       if (payload.status !== undefined) changes.status = payload.status;
       if (payload.lesson_type !== undefined) changes.lesson_type = payload.lesson_type;
 
-      const { data, error } = await supabase.rpc('bulk_update_lessons', {
+      const { data, error } = await (supabase.rpc as any)('bulk_update_lessons', {
         p_lesson_ids: ids,
         p_changes: changes,
       });
