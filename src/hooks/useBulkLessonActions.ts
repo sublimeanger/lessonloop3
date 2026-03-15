@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { logAudit } from '@/lib/auditLog';
 import { toast } from '@/hooks/use-toast';
@@ -13,6 +13,14 @@ export interface BulkEditPayload {
   lesson_type?: LessonType;
 }
 
+interface BulkLessonResult {
+  updated_count: number;
+  skipped_ids: string[];
+  skipped_reasons: string[];
+  conflict_ids: string[];
+  conflict_details: string[];
+}
+
 interface UseBulkLessonActionsParams {
   refetch: () => void;
   orgId: string | null;
@@ -21,14 +29,11 @@ interface UseBulkLessonActionsParams {
   teacherId?: string | null;
 }
 
-export function useBulkLessonActions({ refetch, orgId, userId, currentRole, teacherId: myTeacherId }: UseBulkLessonActionsParams) {
+export function useBulkLessonActions({ refetch, orgId, userId }: UseBulkLessonActionsParams) {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
-  const isMounted = useRef(true);
-
-  useEffect(() => () => { isMounted.current = false; }, []);
 
   const MAX_BULK = 100;
 
@@ -74,146 +79,155 @@ export function useBulkLessonActions({ refetch, orgId, userId, currentRole, teac
     if (selectedIds.size === 0 || !orgId || !userId) return;
 
     setIsBulkUpdating(true);
-    let ids = Array.from(selectedIds);
-
-    // FIX 1: Role check — teachers can only edit their own lessons
-    if (currentRole === 'teacher' && userId) {
-      const filterQuery = supabase
-        .from('lessons')
-        .select('id')
-        .in('id', ids);
-
-      if (myTeacherId) {
-        filterQuery.or(`teacher_user_id.eq.${userId},teacher_id.eq.${myTeacherId}`);
-      } else {
-        filterQuery.eq('teacher_user_id', userId);
-      }
-
-      const { data: myLessons, error: filterErr } = await filterQuery;
-      if (filterErr) {
-        logger.warn('[bulk-edit] Failed to filter lessons by ownership:', filterErr.message);
-      }
-
-      const allowedIds = new Set((myLessons || []).map(l => l.id));
-      const skipped = ids.length - allowedIds.size;
-      ids = ids.filter(id => allowedIds.has(id));
-
-      if (skipped > 0) {
-        toast({
-          title: 'Some lessons skipped',
-          description: `${skipped} lesson${skipped !== 1 ? 's' : ''} belong to other teachers and were not modified.`,
-        });
-      }
-    }
-
-    // FIX 2: Prevent cancelling completed lessons
-    if (payload.status === 'cancelled' && ids.length > 0) {
-      const { data: completedLessons } = await supabase
-        .from('lessons')
-        .select('id')
-        .in('id', ids)
-        .eq('status', 'completed');
-
-      const completedIds = new Set((completedLessons || []).map(l => l.id));
-      if (completedIds.size > 0) {
-        ids = ids.filter(id => !completedIds.has(id));
-        toast({
-          title: 'Completed lessons skipped',
-          description: `${completedIds.size} completed lesson${completedIds.size !== 1 ? 's' : ''} cannot be cancelled.`,
-        });
-      }
-    }
-
-    if (ids.length === 0) {
-      setIsBulkUpdating(false);
-      toast({ title: 'No lessons to update', description: 'All selected lessons were filtered out.' });
-      exitSelectionMode();
-      return;
-    }
-
+    const ids = Array.from(selectedIds);
     setBulkProgress({ done: 0, total: ids.length });
 
-    // FIX 3: If changing teacher, look up teacher_user_id and warn about attendance
-    let resolvedTeacherUserId: string | null | undefined = undefined;
-    if (payload.teacher_id) {
-      const { data: teacher } = await supabase
-        .from('teachers')
-        .select('user_id')
-        .eq('id', payload.teacher_id)
-        .single();
-      resolvedTeacherUserId = teacher?.user_id ?? null;
+    try {
+      // Build changes object — only include fields that were set
+      const changes: Record<string, unknown> = {};
+      if (payload.teacher_id !== undefined) changes.teacher_id = payload.teacher_id;
+      if (payload.location_id !== undefined) changes.location_id = payload.location_id;
+      if (payload.room_id !== undefined) changes.room_id = payload.room_id;
+      if (payload.status !== undefined) changes.status = payload.status;
+      if (payload.lesson_type !== undefined) changes.lesson_type = payload.lesson_type;
 
-      // Warn about existing attendance
-      const { count: attCount } = await supabase
-        .from('attendance_records')
-        .select('*', { count: 'exact', head: true })
-        .in('lesson_id', ids);
-      if (attCount && attCount > 0) {
-        toast({
-          title: 'Warning',
-          description: `${attCount} attendance record${attCount !== 1 ? 's' : ''} exist for these lessons. Teacher change may affect reports.`,
-        });
-      }
-    }
+      const { data, error } = await supabase.rpc('bulk_update_lessons', {
+        p_lesson_ids: ids,
+        p_changes: changes,
+      });
 
-    let successCount = 0;
-    let failCount = 0;
-
-    // Sequential updates to avoid RLS/rate limit issues
-    for (let i = 0; i < ids.length; i++) {
-      // FIX 4: Check if component unmounted mid-loop
-      if (!isMounted.current) {
-        toast({ title: 'Update interrupted', description: `${successCount} of ${ids.length} lessons updated before navigating away.` });
-        break;
-      }
-
-      const id = ids[i];
-      const updateData: Record<string, unknown> = {};
-      if (payload.teacher_id !== undefined) {
-        updateData.teacher_id = payload.teacher_id;
-        if (resolvedTeacherUserId !== undefined) {
-          updateData.teacher_user_id = resolvedTeacherUserId;
-        }
-      }
-      if (payload.location_id !== undefined) updateData.location_id = payload.location_id;
-      if (payload.room_id !== undefined) updateData.room_id = payload.room_id;
-      if (payload.status !== undefined) updateData.status = payload.status;
-      if (payload.lesson_type !== undefined) updateData.lesson_type = payload.lesson_type;
-
-      const { error } = await supabase
-        .from('lessons')
-        .update(updateData)
-        .eq('id', id);
+      setBulkProgress({ done: ids.length, total: ids.length });
 
       if (error) {
-        logger.warn(`[bulk-edit] Failed to update lesson ${id}:`, error.message);
-        failCount++;
-      } else {
-        successCount++;
+        logger.warn('[bulk-edit] RPC failed:', error.message);
+        toast({ title: 'Bulk update failed', description: error.message, variant: 'destructive' });
+        setIsBulkUpdating(false);
+        return;
       }
-      setBulkProgress({ done: i + 1, total: ids.length });
+
+      const result = data as unknown as BulkLessonResult;
+
+      // Audit log
+      logAudit(orgId, userId, 'bulk_update', 'lesson', null, {
+        after: { count: result.updated_count, fields: Object.keys(changes), lesson_ids: ids } as any,
+      });
+
+      // Build user feedback
+      const messages: string[] = [];
+
+      if (result.updated_count > 0) {
+        messages.push(`${result.updated_count} lesson${result.updated_count !== 1 ? 's' : ''} updated`);
+      }
+
+      if (result.skipped_ids.length > 0) {
+        // Group skip reasons for a cleaner message
+        const reasonCounts = new Map<string, number>();
+        for (const reason of result.skipped_reasons) {
+          reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
+        }
+        const parts: string[] = [];
+        for (const [reason, count] of reasonCounts) {
+          parts.push(`${count} skipped: ${reason}`);
+        }
+        messages.push(parts.join('. '));
+      }
+
+      if (result.conflict_ids.length > 0) {
+        messages.push(`${result.conflict_ids.length} skipped due to scheduling conflicts`);
+      }
+
+      const hasIssues = result.skipped_ids.length > 0 || result.conflict_ids.length > 0;
+
+      if (result.updated_count === 0 && hasIssues) {
+        toast({
+          title: 'No lessons updated',
+          description: messages.join('. ') || 'All selected lessons were filtered out.',
+          variant: 'destructive',
+        });
+      } else if (hasIssues) {
+        toast({
+          title: 'Bulk update completed with warnings',
+          description: messages.join('. '),
+        });
+      } else {
+        toast({
+          title: 'Bulk update complete',
+          description: messages[0] || `${result.updated_count} lessons updated.`,
+        });
+      }
+    } catch (err) {
+      logger.warn('[bulk-edit] Unexpected error:', err);
+      toast({ title: 'Bulk update failed', description: 'An unexpected error occurred.', variant: 'destructive' });
+    } finally {
+      setIsBulkUpdating(false);
+      exitSelectionMode();
+      refetch();
     }
-
-    // Single audit log entry
-    logAudit(orgId, userId, 'bulk_update', 'lesson', null, {
-      after: { count: successCount, fields: Object.keys(payload), lesson_ids: ids } as any,
-    });
-
-    setIsBulkUpdating(false);
-
-    if (failCount === 0) {
-      toast({ title: 'Bulk update complete', description: `${successCount} lesson${successCount !== 1 ? 's' : ''} updated.` });
-    } else {
-      toast({ title: 'Bulk update finished with errors', description: `${successCount} updated, ${failCount} failed.`, variant: 'destructive' });
-    }
-
-    exitSelectionMode();
-    refetch();
-  }, [selectedIds, orgId, userId, currentRole, myTeacherId, refetch, exitSelectionMode]);
+  }, [selectedIds, orgId, userId, refetch, exitSelectionMode]);
 
   const bulkCancel = useCallback(async () => {
-    await bulkUpdate({ status: 'cancelled' as LessonStatus });
-  }, [bulkUpdate]);
+    if (selectedIds.size === 0 || !orgId || !userId) return;
+
+    setIsBulkUpdating(true);
+    const ids = Array.from(selectedIds);
+    setBulkProgress({ done: 0, total: ids.length });
+
+    try {
+      const { data, error } = await supabase.rpc('bulk_cancel_lessons', {
+        p_lesson_ids: ids,
+      });
+
+      setBulkProgress({ done: ids.length, total: ids.length });
+
+      if (error) {
+        logger.warn('[bulk-cancel] RPC failed:', error.message);
+        toast({ title: 'Bulk cancel failed', description: error.message, variant: 'destructive' });
+        setIsBulkUpdating(false);
+        return;
+      }
+
+      const result = data as unknown as BulkLessonResult;
+
+      logAudit(orgId, userId, 'bulk_cancel', 'lesson', null, {
+        after: { count: result.updated_count, lesson_ids: ids } as any,
+      });
+
+      const messages: string[] = [];
+      if (result.updated_count > 0) {
+        messages.push(`${result.updated_count} lesson${result.updated_count !== 1 ? 's' : ''} cancelled`);
+      }
+      if (result.skipped_ids.length > 0) {
+        const reasonCounts = new Map<string, number>();
+        for (const reason of result.skipped_reasons) {
+          reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
+        }
+        for (const [reason, count] of reasonCounts) {
+          messages.push(`${count} skipped: ${reason}`);
+        }
+      }
+
+      const hasIssues = result.skipped_ids.length > 0;
+
+      if (result.updated_count === 0 && hasIssues) {
+        toast({
+          title: 'No lessons cancelled',
+          description: messages.join('. ') || 'All selected lessons were filtered out.',
+          variant: 'destructive',
+        });
+      } else if (hasIssues) {
+        toast({ title: 'Bulk cancel completed with warnings', description: messages.join('. ') });
+      } else {
+        toast({ title: 'Bulk cancel complete', description: messages[0] || 'Done.' });
+      }
+    } catch (err) {
+      logger.warn('[bulk-cancel] Unexpected error:', err);
+      toast({ title: 'Bulk cancel failed', description: 'An unexpected error occurred.', variant: 'destructive' });
+    } finally {
+      setIsBulkUpdating(false);
+      exitSelectionMode();
+      refetch();
+    }
+  }, [selectedIds, orgId, userId, refetch, exitSelectionMode]);
 
   return {
     selectionMode,
