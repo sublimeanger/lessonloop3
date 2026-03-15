@@ -388,6 +388,7 @@ async function executeBillingLogic(
       `
       id, title, start_at, end_at,
       lesson_participants(
+        rate_minor,
         student:students(
           id, first_name, last_name, status, email,
           student_guardians(
@@ -459,7 +460,7 @@ async function executeBillingLogic(
       payerId: string;
       payerName: string;
       payerEmail: string | null;
-      lessons: Array<{ lesson: any; studentId: string }>;
+      lessons: Array<{ lesson: any; studentId: string; snapshotRate: number | null }>;
       addedKeys: Set<string>;
     }
   >();
@@ -521,7 +522,7 @@ async function executeBillingLogic(
       const group = payerGroups.get(key)!;
       const dedupKey = `${lesson.id}-${student.id}`;
       if (!group.addedKeys.has(dedupKey)) {
-        group.lessons.push({ lesson, studentId: student.id });
+        group.lessons.push({ lesson, studentId: student.id, snapshotRate: lp.rate_minor ?? null });
         group.addedKeys.add(dedupKey);
       }
     });
@@ -561,7 +562,10 @@ async function executeBillingLogic(
     const payerItemsMap: Array<{ payer: any; lessonRates: number[]; total: number }> = [];
 
     for (const [, payer] of payerGroups) {
-      const lessonRates = payer.lessons.map(({ lesson }: any) => {
+      const lessonRates = payer.lessons.map(({ lesson, snapshotRate }: any) => {
+        // Prefer the rate snapshotted at lesson creation to avoid
+        // retroactive billing when rate cards change mid-term
+        if (snapshotRate != null && snapshotRate > 0) return snapshotRate;
         const start = new Date(lesson.start_at).getTime();
         const end = new Date(lesson.end_at).getTime();
         const durationMins = Math.round((end - start) / 60000);

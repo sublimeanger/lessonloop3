@@ -649,7 +649,8 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
           if (lessonError) throw lessonError;
 
           if (insertedLessons && selectedStudents.length > 0) {
-            // FIX 5: Snapshot rate at creation time
+            // Snapshot rate at creation time so mid-term rate changes
+            // don't retroactively affect billing
             let rateLookup: number | null = null;
             try {
               const { data: rateCards } = await supabase
