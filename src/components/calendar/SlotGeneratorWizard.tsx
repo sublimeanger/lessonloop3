@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { SlotPreviewTimeline } from './SlotPreviewTimeline';
-import { computeSlots, useSlotGenerator, type SlotGeneratorConfig, type GeneratedSlot } from '@/hooks/useSlotGenerator';
+import { computeSlots, checkSlotConflicts, useSlotGenerator, type SlotGeneratorConfig, type GeneratedSlot } from '@/hooks/useSlotGenerator';
 import { useOrgTimezone } from '@/hooks/useOrgTimezone';
 import { cn } from '@/lib/utils';
 
