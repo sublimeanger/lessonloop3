@@ -99,7 +99,7 @@ export function CalendarDesktopLayout({
   bulk,
   refetch,
 }: CalendarDesktopLayoutProps) {
-  const { isOrgAdmin } = useOrg();
+  const { isOrgAdmin, currentRole } = useOrg();
   const [slotWizardOpen, setSlotWizardOpen] = useState(false);
   // hide_cancelled is now applied server-side in useCalendarData
 
