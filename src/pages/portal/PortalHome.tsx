@@ -76,7 +76,7 @@ export default function PortalHome() {
       try {
         if (action !== 'accept' && action !== 'decline') return;
 
-        const { data, error } = await supabase.rpc('respond_to_makeup_offer', {
+        const { data, error } = await (supabase.rpc as any)('respond_to_makeup_offer', {
           _waitlist_id: id,
           _action: action,
         });
