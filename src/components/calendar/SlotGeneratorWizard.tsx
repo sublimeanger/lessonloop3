@@ -354,7 +354,14 @@ export function SlotGeneratorWizard({ open, onOpenChange, teachers, locations, r
         )}
 
         {step === 3 && (
-          <SlotPreviewTimeline slots={slots} onToggleSlot={toggleSlot} />
+          <div className="space-y-3">
+            <SlotPreviewTimeline slots={slots} onToggleSlot={toggleSlot} />
+            {activeSlotCount === 0 && slots.length > 0 && (
+              <p className="text-sm text-destructive text-center">
+                All slots have conflicts. Go back and choose a different date or time range.
+              </p>
+            )}
+          </div>
         )}
 
         <DialogFooter className="flex gap-2">
