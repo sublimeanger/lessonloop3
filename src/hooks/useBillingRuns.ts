@@ -115,6 +115,35 @@ export function useCreateBillingRun() {
   });
 }
 
+export function useDeleteBillingRun() {
+  const queryClient = useQueryClient();
+  const { currentOrg } = useOrg();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (billingRunId: string) => {
+      if (!currentOrg?.id) throw new Error('No organisation selected');
+
+      const { data, error } = await supabase.rpc('delete_billing_run', {
+        _billing_run_id: billingRunId,
+        _org_id: currentOrg.id,
+      });
+
+      if (error) throw error;
+      return data as { deleted_invoices: number; deleted_items: number };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['billing-runs'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+      toast({ title: `Billing run deleted: ${data.deleted_invoices} invoice${data.deleted_invoices !== 1 ? 's' : ''} removed` });
+    },
+    onError: (error) => {
+      toast({ title: 'Delete failed', description: error.message, variant: 'destructive' });
+    },
+  });
+}
+
 export function useRetryBillingRunPayers() {
   const queryClient = useQueryClient();
   const { currentOrg } = useOrg();

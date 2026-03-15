@@ -1914,6 +1914,7 @@ export type Database = {
       }
       invoices: {
         Row: {
+          billing_run_id: string | null
           created_at: string
           credit_applied_minor: number
           currency_code: string
@@ -1937,6 +1938,7 @@ export type Database = {
           vat_rate: number
         }
         Insert: {
+          billing_run_id?: string | null
           created_at?: string
           credit_applied_minor?: number
           currency_code?: string
@@ -1960,6 +1962,7 @@ export type Database = {
           vat_rate?: number
         }
         Update: {
+          billing_run_id?: string | null
           created_at?: string
           credit_applied_minor?: number
           currency_code?: string
@@ -1983,6 +1986,13 @@ export type Database = {
           vat_rate?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_billing_run_id_fkey"
+            columns: ["billing_run_id"]
+            isOneToOne: false
+            referencedRelation: "billing_runs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_org_id_fkey"
             columns: ["org_id"]
@@ -5538,6 +5548,10 @@ export type Database = {
       can_edit_lesson: {
         Args: { _lesson_id: string; _user_id: string }
         Returns: boolean
+      }
+      delete_billing_run: {
+        Args: { _billing_run_id: string; _org_id: string }
+        Returns: Json
       }
       check_rate_limit: {
         Args: {
