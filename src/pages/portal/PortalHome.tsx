@@ -251,6 +251,41 @@ export default function PortalHome() {
     }
   };
 
+  // FIX 6: Cancel a booked make-up
+  const handleCancelBookedMakeup = async (id: string) => {
+    try {
+      const guardianId = await resolveGuardianId();
+      if (!guardianId) {
+        toast({ title: 'Guardian record not found', variant: 'destructive' });
+        return;
+      }
+      const confirmed = window.confirm('Are you sure you want to cancel this booked make-up lesson?');
+      if (!confirmed) return;
+
+      const { error } = await supabase
+        .from('make_up_waitlist')
+        .update({
+          status: 'waiting',
+          matched_lesson_id: null,
+          matched_at: null,
+          offered_at: null,
+          responded_at: null,
+          booked_lesson_id: null,
+        } as any)
+        .eq('id', id)
+        .eq('guardian_id', guardianId)
+        .eq('status', 'booked');
+
+      if (error) throw error;
+
+      toast({ title: 'Make-up cancelled', description: "We'll look for another available slot." });
+      queryClient.invalidateQueries({ queryKey: ['make_up_waitlist_parent'] });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      toast({ title: 'Failed to cancel', description: message, variant: 'destructive' });
+    }
+  };
+
   const firstName = profile?.full_name?.split(' ')[0] || 'there';
   const currencyCode = currentOrg?.currency_code || 'GBP';
   const tz = currentOrg?.timezone || 'Europe/London';
