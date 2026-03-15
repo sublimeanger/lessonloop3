@@ -124,13 +124,13 @@ export function useDeleteBillingRun() {
     mutationFn: async (billingRunId: string) => {
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
-      const { data, error } = await supabase.rpc('delete_billing_run', {
+      const { data, error } = await (supabase.rpc as any)('delete_billing_run', {
         _billing_run_id: billingRunId,
         _org_id: currentOrg.id,
       });
 
       if (error) throw error;
-      return data as { deleted_invoices: number; deleted_items: number };
+      return data as unknown as { deleted_invoices: number; deleted_items: number };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['billing-runs'] });
