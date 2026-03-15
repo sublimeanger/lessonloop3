@@ -73,7 +73,8 @@ export default function InvoiceDetail() {
   const { currentOrg, currentRole, isOrgOwner, isOrgAdmin } = useOrg();
   const { toast } = useToast();
   const isParent = currentRole === 'parent';
-  const canManageBilling = isOrgOwner || isOrgAdmin || currentOrg?.org_type === 'solo_teacher';
+  const isFinance = currentRole === 'finance';
+  const canManageBilling = isOrgOwner || isOrgAdmin || isFinance || currentOrg?.org_type === 'solo_teacher';
   const { data: invoice, isLoading, refetch } = useInvoice(id);
   const updateStatus = useUpdateInvoiceStatus();
   const { initiatePayment, isLoading: isPaymentLoading } = useStripePayment();

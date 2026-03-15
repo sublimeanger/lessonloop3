@@ -415,32 +415,43 @@ export function useLessonForm({ open, lesson, initialDate, initialEndDate, onSav
           const futureIds = lessonIdsToUpdate.filter(id => id !== lesson.id);
 
           if (futureIds.length > 0 && editMode === 'this_and_future') {
-            const { error: batchError } = await supabase
-              .from('lessons')
-              .update({
-                lesson_type: lessonType,
-                teacher_user_id: teacherUserId,
-                teacher_id: teacherId,
-                location_id: locationId,
-                room_id: roomId,
-                title,
-              })
-             .eq('recurrence_id', lesson.recurrence_id!)
-              .gt('start_at', utcStartAt);
+            try {
+              const { error: batchError } = await supabase
+                .from('lessons')
+                .update({
+                  lesson_type: lessonType,
+                  teacher_user_id: teacherUserId,
+                  teacher_id: teacherId,
+                  location_id: locationId,
+                  room_id: roomId,
+                  title,
+                })
+               .eq('recurrence_id', lesson.recurrence_id!)
+                .gt('start_at', utcStartAt);
 
-            if (batchError) throw batchError;
+              if (batchError) throw batchError;
 
-            if (timeOffsetMs !== 0 || originalDuration !== newDuration) {
-              setSavingProgress('Shifting future lesson times…');
-              await supabase.rpc('shift_recurring_lesson_times', {
-                p_recurrence_id: lesson.recurrence_id!,
-                p_after_start_at: utcStartAt,
-                p_offset_ms: timeOffsetMs,
-                p_new_duration_ms: newDuration,
-                p_exclude_lesson_id: lesson.id,
+              if (timeOffsetMs !== 0 || originalDuration !== newDuration) {
+                setSavingProgress('Shifting future lesson times…');
+                await supabase.rpc('shift_recurring_lesson_times', {
+                  p_recurrence_id: lesson.recurrence_id!,
+                  p_after_start_at: utcStartAt,
+                  p_offset_ms: timeOffsetMs,
+                  p_new_duration_ms: newDuration,
+                  p_exclude_lesson_id: lesson.id,
+                });
+              }
+            } catch (futureError: any) {
+              toast({
+                title: 'Partial update',
+                description: 'Current lesson updated but future lessons may not have been modified. Please check the calendar.',
+                variant: 'destructive',
               });
+              // Don't rethrow — the current lesson was saved successfully
             }
           }
+
+
 
           setSavingProgress('Updating participants…');
           await supabase

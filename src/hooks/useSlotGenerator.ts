@@ -129,46 +129,45 @@ export function useSlotGenerator() {
         }
       }
 
-      const createdIds: string[] = [];
       const dateStr = format(config.date, 'yyyy-MM-dd');
 
-      for (const slot of activeSlots) {
+      // FIX 6: Batch insert all slots at once
+      const allSlotRows = activeSlots.map(slot => {
         const [sh, sm] = slot.startTime.split(':').map(Number);
         const [eh, em] = slot.endTime.split(':').map(Number);
-
-        // Build local datetime then convert to UTC
         const localStart = setMinutes(setHours(config.date, sh), sm);
         const localEnd = setMinutes(setHours(config.date, eh), em);
         const utcStart = fromZonedTime(localStart, timezone);
         const utcEnd = fromZonedTime(localEnd, timezone);
 
-        const { data, error } = await supabase
-          .from('lessons')
-          .insert({
-            org_id: currentOrg.id,
-            title: `Open Slot — ${slot.startTime}`,
-            start_at: utcStart.toISOString(),
-            end_at: utcEnd.toISOString(),
-            lesson_type: config.lessonType,
-            status: 'scheduled',
-            teacher_id: config.teacherId,
-            teacher_user_id: config.teacherUserId,
-            location_id: config.locationId || null,
-            room_id: config.roomId || null,
-            max_participants: config.maxParticipants,
-            notes_shared: config.notes || null,
-            is_open_slot: true,
-            is_online: false,
-            created_by: user.id,
-          })
-          .select('id')
-          .single();
+        return {
+          org_id: currentOrg.id,
+          title: `Open Slot — ${slot.startTime}`,
+          start_at: utcStart.toISOString(),
+          end_at: utcEnd.toISOString(),
+          lesson_type: config.lessonType,
+          status: 'scheduled' as const,
+          teacher_id: config.teacherId,
+          teacher_user_id: config.teacherUserId,
+          location_id: config.locationId || null,
+          room_id: config.roomId || null,
+          max_participants: config.maxParticipants,
+          notes_shared: config.notes || null,
+          is_open_slot: true,
+          is_online: false,
+          created_by: user.id,
+        };
+      });
 
-        if (error) throw error;
-        if (data) createdIds.push(data.id);
-      }
+      const { data, error } = await supabase
+        .from('lessons')
+        .insert(allSlotRows)
+        .select('id');
 
-      // Audit log
+      if (error) throw error;
+      const createdIds = (data || []).map(d => d.id);
+
+      // FIX 3: Include lesson_ids in audit log
       logAudit(
         currentOrg.id,
         user.id,
@@ -181,6 +180,7 @@ export function useSlotGenerator() {
             date: dateStr,
             teacher_id: config.teacherId,
             duration_mins: config.durationMins,
+            lesson_ids: createdIds,
           },
         }
       );
