@@ -251,7 +251,7 @@ export function AddToWaitlistDialog({ open, onOpenChange }: AddToWaitlistDialogP
 
           <DialogFooter className="flex-col gap-2 sm:flex-row">
             <Button type="button" variant="outline" className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" className="min-h-11 w-full sm:min-h-9 sm:w-auto" disabled={isSubmitting || !selectedLesson}>
+            <Button type="submit" className="min-h-11 w-full sm:min-h-9 sm:w-auto" disabled={isSubmitting || !selectedLesson || policyBlocked}>
               {isSubmitting ? 'Adding…' : 'Add to Waitlist'}
             </Button>
           </DialogFooter>
