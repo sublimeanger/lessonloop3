@@ -82,6 +82,10 @@ export function useNotesExplorer(filters: NotesExplorerFilters, page: number = 0
         query = query.eq('parent_visible', true);
       } else if (filters.visibilityFilter === 'private') {
         query = query.eq('parent_visible', false);
+        // Teachers should only see their own private notes
+        if (currentRole === 'teacher' && filters.teacherId) {
+          query = query.eq('teacher_id', filters.teacherId);
+        }
       }
 
       const { data, error } = await query;

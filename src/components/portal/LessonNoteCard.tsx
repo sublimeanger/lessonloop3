@@ -49,11 +49,7 @@ export function LessonNoteCard({
         </div>
       )}
 
-      {engagementRating && (
-        <div className="flex items-center gap-2">
-          <EngagementBadge rating={engagementRating} />
-        </div>
-      )}
+      {/* engagement_rating intentionally excluded from parent portal */}
     </div>
   );
 }
