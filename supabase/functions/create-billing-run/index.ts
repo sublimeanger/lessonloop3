@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -76,6 +77,15 @@ Deno.serve(async (req: Request) => {
     }
     const userId = user.id;
 
+    // Rate limiting: 3 billing runs per 5 minutes per user
+    const rateLimitResult = await checkRateLimit(userId, "billing-run", {
+      maxRequests: 3,
+      windowMinutes: 5,
+    });
+    if (!rateLimitResult.allowed) {
+      return rateLimitResponse(corsHeaders, rateLimitResult);
+    }
+
     // Service role client for data operations (bypasses RLS)
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
@@ -129,11 +139,21 @@ async function handleCreate(
   const billingMode = body.billing_mode || "delivered";
   const fallbackRate = body.fallback_rate_minor ?? 3000;
 
+  if (fallbackRate <= 0 || fallbackRate > 100000) {
+    return new Response(
+      JSON.stringify({ error: "Invalid fallback rate" }),
+      {
+        status: 400,
+        headers: { ...cors, "Content-Type": "application/json" },
+      }
+    );
+  }
+
   // Get org settings
   const { data: org, error: orgError } = await client
     .from("organisations")
     .select(
-      "vat_enabled, vat_rate, currency_code, subscription_status, trial_ends_at"
+      "vat_enabled, vat_rate, currency_code, subscription_status, trial_ends_at, timezone"
     )
     .eq("id", orgId)
     .single();
@@ -205,6 +225,9 @@ async function handleCreate(
       invoiceIds: result.invoiceIds,
       skippedLessons: result.skippedLessons,
       skippedForCancellation: result.skippedForCancellation,
+      ...(result.skippedStudents.length > 0
+        ? { skippedStudents: result.skippedStudents }
+        : {}),
       ...(result.failedPayers.length > 0
         ? { failedPayers: result.failedPayers }
         : {}),
@@ -337,7 +360,7 @@ async function handleRetry(
 async function executeBillingLogic(
   client: any,
   orgId: string,
-  org: { vat_enabled: boolean; vat_rate: number; currency_code: string },
+  org: { vat_enabled: boolean; vat_rate: number; currency_code: string; timezone?: string },
   startDate: string,
   endDate: string,
   billingMode: string,
@@ -421,6 +444,13 @@ async function executeBillingLogic(
     }
   }
 
+  // Track students skipped due to no payer
+  const skippedStudents: Array<{
+    student_id: string;
+    student_name: string;
+    reason: string;
+  }> = [];
+
   // Group by payer
   const payerGroups = new Map<
     string,
@@ -466,7 +496,12 @@ async function executeBillingLogic(
         payerName = `${student.first_name} ${student.last_name}`;
         payerEmail = student.email;
       } else {
-        return; // no payer
+        skippedStudents.push({
+          student_id: student.id,
+          student_name: `${student.first_name} ${student.last_name}`,
+          reason: 'no_primary_payer',
+        });
+        return;
       }
 
       // If retrying, only process specific payers
@@ -512,9 +547,13 @@ async function executeBillingLogic(
   }> = [];
 
   if (generateInvoices) {
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 14);
-    const dueDateStr = dueDate.toISOString().split("T")[0];
+    // Calculate due date in the org's timezone so the 14-day window
+    // aligns with the org's local calendar date, not UTC.
+    const tz = org.timezone || "Europe/London";
+    const nowInTz = new Date().toLocaleDateString("en-CA", { timeZone: tz }); // YYYY-MM-DD
+    const localDate = new Date(nowInTz + "T00:00:00");
+    localDate.setDate(localDate.getDate() + 14);
+    const dueDateStr = localDate.toISOString().split("T")[0];
     const vatRate = org.vat_enabled ? org.vat_rate : 0;
 
     // Pre-compute all invoice rows and their associated items
@@ -626,6 +665,7 @@ async function executeBillingLogic(
     totalPayers: payerGroups.size,
     skippedLessons,
     skippedForCancellation,
+    skippedStudents,
     failedPayers,
   };
 }
