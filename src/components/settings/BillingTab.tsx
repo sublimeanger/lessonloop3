@@ -443,6 +443,24 @@ export function BillingTab() {
             </div>
           </div>
 
+          {/* Cancelled — Resubscribe prompt */}
+          {status === 'cancelled' && (
+            <div className="p-4 rounded-lg bg-muted/50 border border-dashed border-muted-foreground/30">
+              <p className="text-sm text-muted-foreground mb-3">
+                Your subscription has been cancelled. Choose a plan below to reactivate your account.
+              </p>
+              {!platform.isNative && (
+                <Button asChild size="sm">
+                  <a href="#plans-section">
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    View Plans
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </a>
+                </Button>
+              )}
+            </div>
+          )}
+
           {/* Usage Stats */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="p-4 rounded-lg border">
