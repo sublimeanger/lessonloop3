@@ -11,6 +11,9 @@ import { useUpdateAttendance } from '@/hooks/useRegisterData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
 import { useToast } from '@/hooks/use-toast';
+import { EntityLink } from '@/components/shared/EntityLink';
+import { TeacherLink } from '@/components/shared/TeacherLink';
+import { LocationLink } from '@/components/shared/LocationLink';
 
 interface LessonDetailSidePanelProps {
   lesson: LessonWithDetails | null;
