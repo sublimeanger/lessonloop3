@@ -61,6 +61,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
   const createInvoice = useCreateInvoice();
   const { data: rateCards = [] } = useRateCards();
   const { isOnline, guardOffline } = useOnlineStatus();
+  const generateInstallments = useGenerateInstallments();
   const [tab, setTab] = useState<'manual' | 'lessons'>('manual');
   const [lessonDateRange, setLessonDateRange] = useState({
     from: format(addDays(new Date(), -30), 'yyyy-MM-dd'),
@@ -68,6 +69,12 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
   });
   const [selectedLessons, setSelectedLessons] = useState<Set<string>>(new Set());
   const [selectedCredits, setSelectedCredits] = useState<Set<string>>(new Set());
+
+  // Payment plan state
+  const [planEnabled, setPlanEnabled] = useState(false);
+  const [planCount, setPlanCount] = useState(3);
+  const [planFrequency, setPlanFrequency] = useState<'monthly' | 'fortnightly'>('monthly');
+  const [planStartDate, setPlanStartDate] = useState('');
 
   const { data: unbilledLessons = [] } = useUnbilledLessons(lessonDateRange);
 
