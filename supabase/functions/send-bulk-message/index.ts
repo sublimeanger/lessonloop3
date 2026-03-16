@@ -151,6 +151,14 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing required fields: org_id, name, subject, body");
     }
 
+    // MSG-L2: body-length validation
+    if (data.body.length > 10000 || data.subject.length > 500) {
+      return new Response(
+        JSON.stringify({ error: "Message content too long" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Get org details
     const { data: org } = await supabase
       .from("organisations")

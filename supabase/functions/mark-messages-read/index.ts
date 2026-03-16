@@ -11,8 +11,9 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
+
     // Get auth header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -22,12 +23,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create client with user's JWT to verify identity
-    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
-    
+    // Use anon key for JWT verification (MSG-M4: don't use service role for auth)
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
     // Verify the user's JWT
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
     
     if (authError || !user) {
       return new Response(
@@ -51,8 +54,11 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Service role client for DB operations (bypasses RLS for message_log UPDATE)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     // Verify this guardian belongs to the authenticated user
-    const { data: guardian, error: guardianError } = await supabaseClient
+    const { data: guardian, error: guardianError } = await supabase
       .from('guardians')
       .select('id, user_id')
       .eq('id', guardian_id)
@@ -66,8 +72,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build query to update messages
-    let query = supabaseClient
+    // Build query to update messages (service role bypasses RLS)
+    let query = supabase
       .from('message_log')
       .update({ read_at: new Date().toISOString() })
       .eq('org_id', org_id)

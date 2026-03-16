@@ -63,6 +63,11 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400, headers: jsonHeaders });
     }
 
+    // MSG-L2: body-length validation
+    if (data.body.length > 10000 || (data.subject && data.subject.length > 500)) {
+      return new Response(JSON.stringify({ error: "Message content too long" }), { status: 400, headers: jsonHeaders });
+    }
+
     const isReply = !!data.parent_message_id;
 
     if (!isReply && !data.subject?.trim()) {

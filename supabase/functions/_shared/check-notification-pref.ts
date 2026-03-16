@@ -7,8 +7,15 @@ export type NotifPrefKey =
   | "email_makeup_offers";
 
 /**
+ * Marketing notification keys default to opt-OUT (GDPR/PECR compliance).
+ * Transactional keys default to opt-IN.
+ */
+const MARKETING_KEYS: ReadonlySet<string> = new Set(["email_marketing"]);
+
+/**
  * Check if a user has a specific email notification enabled.
- * Returns true if no preference row exists (opt-in by default).
+ * When no preference row exists, transactional emails default to true
+ * and marketing emails default to false (GDPR compliance — MSG-M1).
  */
 export async function isNotificationEnabled(
   supabase: any,
@@ -23,6 +30,6 @@ export async function isNotificationEnabled(
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (!data) return true; // No prefs row = defaults (all enabled except marketing)
+  if (!data) return !MARKETING_KEYS.has(prefKey);
   return !!(data as Record<string, unknown>)[prefKey];
 }
