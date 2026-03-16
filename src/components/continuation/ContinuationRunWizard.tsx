@@ -196,7 +196,10 @@ export function ContinuationRunWizard({
                   <SelectContent>
                     {terms.map((term) => (
                       <SelectItem key={term.id} value={term.id}>
-                        {term.name}
+                        {term.name}{' '}
+                        <span className="text-muted-foreground">
+                          ({new Date(term.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – {new Date(term.end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
