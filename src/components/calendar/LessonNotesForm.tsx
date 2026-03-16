@@ -296,6 +296,7 @@ export function LessonNotesForm({
   }
 
   return (
+    <>
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger asChild>
         <button
