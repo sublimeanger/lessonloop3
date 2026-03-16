@@ -534,6 +534,7 @@ export function useBulkProcessContinuation() {
       let processedCount = 0;
       let extendedCount = 0;
       let withdrawnCount = 0;
+      let lessonsCreated = 0;
 
       const conflictWarnings: string[] = [];
 
