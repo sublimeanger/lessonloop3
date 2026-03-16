@@ -28,9 +28,9 @@ export function ContinuationWidget() {
         {
           event: '*',
           schema: 'public',
-          table: 'continuation_responses',
-          filter: `org_id=eq.${currentOrg.id}`,
-        },
+        table: 'term_continuation_responses',
+        filter: `org_id=eq.${currentOrg.id}`,
+      },
         () => {
           queryClient.invalidateQueries({ queryKey: ['continuation'] });
         }
