@@ -154,21 +154,27 @@ export default function PortalHome() {
   };
 
   const handleInlineDecline = async (id: string) => {
+    // Show confirmation dialog instead of declining immediately
+    setDeclineConfirmId(id);
+  };
+
+  const executeDecline = async () => {
+    const id = declineConfirmId;
+    if (!id) return;
+    setDeclineConfirmId(null);
+
     try {
-      // Get entry info for admin notification before declining
       const entry = activeWaitlist.find((e) => e.id === id);
       const studentName = entry?.student
         ? `${entry.student.first_name} ${entry.student.last_name}`
         : 'Student';
 
-      // Use atomic RPC for decline action
       const { error } = await (supabase.rpc as any)('respond_to_makeup_offer', {
         _waitlist_id: id,
         _action: 'decline',
       });
       if (error) throw error;
 
-      // Notify admin via audit log (visible in admin dashboard)
       if (entry?.org_id) {
         supabase
           .from('audit_log')
@@ -193,14 +199,20 @@ export default function PortalHome() {
 
   // FIX 6: Cancel a booked make-up
   const handleCancelBookedMakeup = async (id: string) => {
+    setCancelConfirmId(id);
+  };
+
+  const executeCancelMakeup = async () => {
+    const id = cancelConfirmId;
+    if (!id) return;
+    setCancelConfirmId(null);
+
     try {
       const guardianId = guardianInfo?.id;
       if (!guardianId) {
         toast({ title: 'Guardian record not found', variant: 'destructive' });
         return;
       }
-      const confirmed = window.confirm('Are you sure you want to cancel this booked make-up lesson?');
-      if (!confirmed) return;
 
       const { error } = await supabase
         .from('make_up_waitlist')
