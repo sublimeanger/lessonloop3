@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useOfferMakeUp, useDismissMatch, type WaitlistEntry } from '@/hooks/useMakeUpWaitlist';
+import { useOfferMakeUp, useDismissMatch, useConfirmMakeUp, type WaitlistEntry } from '@/hooks/useMakeUpWaitlist';
 
 interface NeedsActionSectionProps {
   entries: WaitlistEntry[];
@@ -58,6 +58,7 @@ function waitingSince(dateStr: string | null) {
 
 export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionProps) {
   const offerMutation = useOfferMakeUp();
+  const confirmMutation = useConfirmMakeUp();
   const dismissMutation = useDismissMatch();
   const [confirmEntry, setConfirmEntry] = useState<WaitlistEntry | null>(null);
 
@@ -69,6 +70,32 @@ export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionPro
       </Card>
     );
   }
+
+  const handleConfirm = () => {
+    if (!confirmEntry) return;
+    const isAccepted = confirmEntry.status === 'accepted';
+    const studentName = confirmEntry.student
+      ? `${confirmEntry.student.first_name} ${confirmEntry.student.last_name}`
+      : undefined;
+    const lessonTitle = confirmEntry.matched_lesson?.title;
+    const lessonDate = confirmEntry.matched_lesson?.start_at
+      ? formatDate(confirmEntry.matched_lesson.start_at)
+      : undefined;
+
+    if (isAccepted) {
+      // Use atomic confirm_makeup_booking RPC for accepted entries
+      confirmMutation.mutate({
+        waitlistId: confirmEntry.id,
+        studentName,
+        lessonTitle,
+        lessonDate,
+      });
+    } else {
+      // For matched entries, send offer to parent
+      offerMutation.mutate(confirmEntry.id);
+    }
+    setConfirmEntry(null);
+  };
 
   return (
     <Card className="border-warning/30 bg-warning/5">
@@ -90,7 +117,7 @@ export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionPro
             <div key={entry.id} className="rounded-xl border border-border bg-card p-4 space-y-3">
               {/* Status badge for accepted entries */}
               {isAccepted && (
-                <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800">
+                <Badge className="bg-success/10 text-success border-success/20">
                   <CheckCircle2 className="h-3 w-3 mr-1" />
                   Parent Accepted — Confirm Booking
                 </Badge>
@@ -102,7 +129,7 @@ export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionPro
                   <div>
                     <p className="font-semibold text-foreground flex items-center gap-1.5">
                       {isAccepted ? (
-                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        <CheckCircle2 className="h-4 w-4 text-success" />
                       ) : (
                         <Bell className="h-4 w-4 text-warning" />
                       )}
@@ -140,12 +167,12 @@ export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionPro
               {/* Actions */}
               <div className="flex flex-col gap-2 pt-1 sm:flex-row">
                 {isAccepted ? (
-                  /* For accepted entries, show Confirm Booking as primary action */
                   <Button
                     size="sm"
-                    className="min-h-11 sm:min-h-9 bg-green-600 hover:bg-green-700 text-white"
+                    className="min-h-11 sm:min-h-9"
+                    variant="default"
                     onClick={() => setConfirmEntry(entry)}
-                    disabled={offerMutation.isPending}
+                    disabled={confirmMutation.isPending}
                   >
                     <CheckCircle2 className="h-4 w-4 mr-1.5" />
                     Confirm Booking
@@ -188,7 +215,7 @@ export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionPro
                   <>
                     <p>
                       {confirmEntry.status === 'accepted'
-                        ? 'The parent has accepted this offer. Confirm to add the student to the lesson.'
+                        ? 'The parent has accepted this offer. This will add the student to the lesson and mark the credit as redeemed.'
                         : 'This will email the parent to offer a make-up slot for'}{' '}
                       <span className="font-medium text-foreground">
                         {confirmEntry.student
@@ -215,14 +242,7 @@ export function NeedsActionSection({ entries, isLoading }: NeedsActionSectionPro
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (confirmEntry) {
-                  offerMutation.mutate(confirmEntry.id);
-                  setConfirmEntry(null);
-                }
-              }}
-            >
+            <AlertDialogAction onClick={handleConfirm}>
               {confirmEntry?.status === 'accepted' ? 'Confirm Booking' : 'Send Offer'}
             </AlertDialogAction>
           </AlertDialogFooter>

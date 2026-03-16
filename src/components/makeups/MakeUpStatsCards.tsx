@@ -1,4 +1,4 @@
-import { Bell, Clock, Mail, CheckCircle2 } from 'lucide-react';
+import { Bell, Clock, Mail, CheckCircle2, UserCheck } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatsGrid } from '@/components/shared/StatsGrid';
@@ -20,6 +20,7 @@ const cards = [
   { key: 'matched' as const, label: 'Needs Action', icon: Bell, color: 'text-warning' },
   { key: 'waiting' as const, label: 'Waiting', icon: Clock, color: 'text-muted-foreground' },
   { key: 'offered' as const, label: 'Offered', icon: Mail, color: 'text-primary' },
+  { key: 'accepted' as const, label: 'Accepted', icon: UserCheck, color: 'text-success' },
   { key: 'booked' as const, label: 'Booked This Month', icon: CheckCircle2, color: 'text-success' },
 ];
 
