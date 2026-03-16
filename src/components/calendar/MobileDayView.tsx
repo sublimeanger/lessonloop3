@@ -167,7 +167,11 @@ export function MobileDayView({
                 </p>
                 {lesson.teacher?.full_name && (
                   <p className="text-micro text-muted-foreground/70 truncate mt-0.5">
-                    {lesson.teacher.full_name}
+                    <TeacherLink teacherId={lesson.teacher_id} className="text-micro text-muted-foreground/70">
+                      {lesson.teacher.full_name}
+                    </TeacherLink>
+                  </p>
+                )}
                   </p>
                 )}
                 {studentNames.length > 1 && (

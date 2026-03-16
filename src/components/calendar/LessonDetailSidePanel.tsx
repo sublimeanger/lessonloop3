@@ -231,7 +231,7 @@ export function LessonDetailSidePanel({
                     return (
                       <div key={p.id} className="space-y-1.5">
                         <div className="font-medium text-sm text-foreground">
-                          {p.student.first_name} {p.student.last_name}
+                          <EntityLink type="student" id={p.student.id}>{p.student.first_name} {p.student.last_name}</EntityLink>
                         </div>
                         <div className="flex flex-wrap gap-1">
                           {ATTENDANCE_OPTIONS.map((option) => (

@@ -121,8 +121,12 @@ export function MobileLessonSheet({
               <div className="flex items-start gap-3">
                 <Users className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                 <div className="text-sm space-y-0.5">
-                  {studentNames.map((name, i) => (
-                    <div key={i} className="text-foreground">{name}</div>
+                 {studentNames.map((name, i) => (
+                    <div key={i} className="text-foreground">
+                      {lesson.participants?.[i] ? (
+                        <EntityLink type="student" id={lesson.participants[i].student.id}>{name}</EntityLink>
+                      ) : name}
+                    </div>
                   ))}
                 </div>
               </div>
