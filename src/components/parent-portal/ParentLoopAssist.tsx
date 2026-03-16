@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -106,12 +106,10 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
                   <Trash2 className="h-4 w-4" />
                 </Button>
               )}
-              <SheetClose asChild>
-                <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]">
-                  <X className="h-4 w-4" />
-                  <span className="sr-only">Close</span>
-                </Button>
-              </SheetClose>
+              <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]" onClick={() => onOpenChange(false)}>
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+              </Button>
             </div>
           </div>
         </SheetHeader>
