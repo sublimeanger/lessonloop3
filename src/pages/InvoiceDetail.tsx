@@ -37,6 +37,8 @@ import {
 import type { Database } from '@/integrations/supabase/types';
 import { cn } from '@/lib/utils';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
+import { EntityLink } from '@/components/shared/EntityLink';
+import { Link } from 'react-router-dom';
 
 type InvoiceStatus = Database['public']['Enums']['invoice_status'];
 
