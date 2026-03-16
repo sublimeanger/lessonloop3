@@ -207,16 +207,18 @@ export default function Continuation() {
 
   const handleExportCSV = () => {
     if (!filteredResponses.length) return;
-    const headers = ['Student Name', 'Guardian Name', 'Guardian Email', 'Status', 'Responded At', 'Notes'];
+    const headers = ['Student Name', 'Guardian Name', 'Guardian Email', 'Status', 'Fee', 'Responded At', 'Method', 'Notes'];
     const rows = filteredResponses.map((r) => {
       const studentName = r.student ? `${r.student.first_name} ${r.student.last_name}` : 'Unknown';
       const guardianName = r.guardian?.full_name || '';
       const guardianEmail = r.guardian?.email || '';
       const badge = RESPONSE_BADGE[r.response];
       const status = badge?.label || r.response;
+      const fee = r.next_term_fee_minor != null ? formatCurrencyMinor(r.next_term_fee_minor, currency) : '';
       const respondedAt = r.response_at ? new Date(r.response_at).toLocaleDateString('en-GB') : '';
+      const method = r.response_method ? r.response_method.replace(/_/g, ' ') : '';
       const notes = (r.withdrawal_notes || r.withdrawal_reason || '').replace(/"/g, '""');
-      return [studentName, guardianName, guardianEmail, status, respondedAt, notes]
+      return [studentName, guardianName, guardianEmail, status, fee, respondedAt, method, notes]
         .map((v) => `"${v}"`)
         .join(',');
     });
