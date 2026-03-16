@@ -65,7 +65,7 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
     termId: '' as string,
     billingMode: 'delivered' as BillingMode,
     planEnabled: false,
-    planThreshold: currentOrg?.default_plan_threshold_minor || 0,
+    planThreshold: (currentOrg as any)?.default_plan_threshold_minor || 0,
     planInstallments: (currentOrg as any)?.default_plan_installments || 3,
     planFrequency: ((currentOrg as any)?.default_plan_frequency || 'monthly') as string,
   });
