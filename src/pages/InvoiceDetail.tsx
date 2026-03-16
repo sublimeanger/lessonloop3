@@ -294,7 +294,11 @@ export default function InvoiceDetail() {
                   <div>
                     <div className="text-sm font-medium text-muted-foreground">{isCreditNote ? 'Credit To' : 'Bill To'}</div>
                     <div className="mt-1">
-                      <div className="font-medium">{payerName}</div>
+                      <div className="font-medium">
+                        {invoice.payer_student ? (
+                          <EntityLink type="student" id={invoice.payer_student.id}>{payerName}</EntityLink>
+                        ) : payerName}
+                      </div>
                     </div>
                   </div>
                   <div>
