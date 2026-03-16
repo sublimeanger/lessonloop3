@@ -27,7 +27,7 @@ export function LocationLink({ locationId, children, className }: LocationLinkPr
     queryFn: async () => {
       const { data, error } = await supabase
         .from('locations')
-        .select('id, name, address, is_archived, rooms(id, name)')
+        .select('id, name, is_archived, rooms(id, name)')
         .eq('id', locationId!)
         .eq('org_id', currentOrg!.id)
         .maybeSingle();
