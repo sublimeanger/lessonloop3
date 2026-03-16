@@ -43,6 +43,9 @@ export function InvoiceSettingsTab() {
   const [reminderDays, setReminderDays] = useState<number[]>([7, 14, 30]);
   const [customDay, setCustomDay] = useState('');
   const [hydrated, setHydrated] = useState(false);
+  const [planThreshold, setPlanThreshold] = useState('');
+  const [planInstallments, setPlanInstallments] = useState('3');
+  const [planFrequency, setPlanFrequency] = useState('monthly');
 
   if (settingsData && !hydrated) {
     setVatRegistered(settingsData.vat_enabled || false);
