@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
 import { useMakeUpCredits, MakeUpCredit } from '@/hooks/useMakeUpCredits';
 import { useOrg } from '@/contexts/OrgContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Gift, Calendar, Clock, Trash2, Plus, CheckCircle2 } from 'lucide-react';
+import { Gift, Calendar, Clock, Trash2, Plus, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { formatCurrencyMinor } from '@/lib/utils';
 import { IssueCreditModal } from './IssueCreditModal';
 
@@ -27,6 +27,8 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
 
   const fmtCurrency = (minor: number) => formatCurrencyMinor(minor, currentOrg?.currency_code);
 
+  const maxCredits = (currentOrg as any)?.max_credits_per_term ?? null;
+
   const getCreditStatus = (credit: MakeUpCredit): { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' } => {
     if (credit.redeemed_at) {
       return { label: 'Redeemed', variant: 'secondary' };
@@ -38,6 +40,16 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
       return { label: 'Expired', variant: 'destructive' };
     }
     return { label: 'Available', variant: 'default' };
+  };
+
+  const isExpiringSoon = (credit: MakeUpCredit): boolean => {
+    if (!credit.expires_at || credit.redeemed_at || credit.expired_at || credit.applied_to_invoice_id) return false;
+    const daysLeft = differenceInDays(parseISO(credit.expires_at), new Date());
+    return daysLeft >= 0 && daysLeft <= 7;
+  };
+
+  const isExpired = (credit: MakeUpCredit): boolean => {
+    return !!(credit.expired_at || (credit.expires_at && new Date(credit.expires_at) < new Date()));
   };
 
   const handleDelete = async () => {
@@ -91,9 +103,27 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
               </div>
               <div className="text-left sm:text-right">
                 <p className="text-sm text-muted-foreground">Available Credits</p>
-                <p className="text-section-title">{availableCredits.length}</p>
+                <p className="text-section-title">
+                  {availableCredits.length}
+                  {maxCredits != null && (
+                    <span className="text-sm font-normal text-muted-foreground"> / {maxCredits} per term</span>
+                  )}
+                </p>
               </div>
             </div>
+            {/* Max credits warning */}
+            {maxCredits != null && availableCredits.length >= maxCredits && (
+              <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-destructive">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Credit limit reached for this term
+              </div>
+            )}
+            {maxCredits != null && availableCredits.length >= maxCredits - 1 && availableCredits.length < maxCredits && (
+              <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Approaching credit limit ({availableCredits.length} of {maxCredits} used)
+              </div>
+            )}
           </div>
 
           {/* Credits List */}
@@ -117,15 +147,29 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
             <div className="space-y-3">
               {visibleCredits.map((credit) => {
                 const status = getCreditStatus(credit);
+                const expired = isExpired(credit) && !credit.redeemed_at;
+                const expiringSoon = isExpiringSoon(credit);
+                const daysLeft = credit.expires_at ? differenceInDays(parseISO(credit.expires_at), new Date()) : null;
+
                 return (
                   <div 
                     key={credit.id} 
-                    className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-start sm:justify-between"
+                    className={`flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-start sm:justify-between ${
+                      expired ? 'opacity-50 bg-muted/30' : ''
+                    } ${expiringSoon ? 'border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/10' : ''}`}
                   >
                     <div className="flex-1 min-w-0">
                       <div className="mb-1 flex flex-wrap items-center gap-2">
-                        <span className="font-medium">{fmtCurrency(credit.credit_value_minor)}</span>
+                        <span className={`font-medium ${expired ? 'line-through text-muted-foreground' : ''}`}>
+                          {fmtCurrency(credit.credit_value_minor)}
+                        </span>
                         <Badge variant={status.variant}>{status.label}</Badge>
+                        {expiringSoon && (
+                          <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-400 gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            {daysLeft === 0 ? 'Expires today' : `${daysLeft}d left`}
+                          </Badge>
+                        )}
                       </div>
                       
                       <div className="text-sm text-muted-foreground space-y-0.5">
@@ -141,8 +185,8 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
                           </div>
                         )}
                         
-                        {credit.expires_at && (
-                          <div className="flex items-center gap-1.5">
+                        {credit.expires_at && !expired && (
+                          <div className={`flex items-center gap-1.5 ${expiringSoon ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}`}>
                             <Clock className="h-3.5 w-3.5" />
                             Expires {format(parseISO(credit.expires_at), 'dd MMM yyyy')}
                           </div>
@@ -162,7 +206,7 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
                       </div>
                     </div>
                     
-                    {!credit.redeemed_at && !credit.applied_to_invoice_id && (
+                    {!credit.redeemed_at && !credit.applied_to_invoice_id && !expired && (
                       <Button
                         variant="ghost"
                         size="icon-sm"
@@ -203,15 +247,20 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
             <AlertDialogTitle>Delete Credit</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete this make-up credit? This cannot be undone.
+              {(() => {
+                const credit = credits?.find(c => c.id === deleteConfirmId);
+                return credit ? ` This credit is worth ${fmtCurrency(credit.credit_value_minor)}.` : '';
+              })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
+              disabled={deleteCredit.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {deleteCredit.isPending ? 'Deleting…' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
