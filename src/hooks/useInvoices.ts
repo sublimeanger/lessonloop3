@@ -134,6 +134,18 @@ export function useInvoice(id: string | undefined) {
 
       if (paymentsError) throw paymentsError;
 
+      // Fetch refunds for this invoice's payments
+      const paymentIds = (payments || []).map((p: any) => p.id);
+      let refunds: any[] = [];
+      if (paymentIds.length > 0) {
+        const { data: refundData } = await supabase
+          .from('refunds')
+          .select('*')
+          .in('payment_id', paymentIds)
+          .order('created_at', { ascending: false });
+        refunds = refundData || [];
+      }
+
       return {
         ...invoice,
         items: items || [],
