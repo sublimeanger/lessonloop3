@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { LessonWithDetails, AttendanceStatus } from './types';
 import { TeacherColourEntry } from './teacherColours';
@@ -10,6 +10,7 @@ import { X, Clock, User, MapPin, Repeat, Edit2, Check, Ban, AlertCircle, Loader2
 import { useUpdateAttendance } from '@/hooks/useRegisterData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface LessonDetailSidePanelProps {
   lesson: LessonWithDetails | null;
@@ -45,26 +46,46 @@ export function LessonDetailSidePanel({
 }: LessonDetailSidePanelProps) {
   const { currentOrg } = useOrg();
   const { user } = useAuth();
+  const { toast } = useToast();
   const updateAttendance = useUpdateAttendance();
   const [savingAttendance, setSavingAttendance] = useState<string | null>(null);
+  const [localAttendance, setLocalAttendance] = useState<Record<string, AttendanceStatus>>({});
+
+  // Reset local optimistic attendance when lesson data changes (server refresh)
+  useEffect(() => {
+    setLocalAttendance({});
+  }, [lesson?.id, lesson?.attendance]);
 
   const handleAttendanceChange = useCallback(async (studentId: string, status: AttendanceStatus) => {
     if (!currentOrg || !user || !lesson) return;
     setSavingAttendance(studentId);
+    // Optimistic local update for instant visual feedback
+    setLocalAttendance(prev => ({ ...prev, [studentId]: status }));
     try {
       await updateAttendance.mutateAsync({
         lessonId: lesson.id,
         studentId,
         status,
       });
+      toast({ title: 'Attendance saved', description: `Marked as ${status.replace(/_/g, ' ')}` });
+    } catch {
+      // Revert optimistic update on failure
+      setLocalAttendance(prev => {
+        const next = { ...prev };
+        delete next[studentId];
+        return next;
+      });
+      // Error toast is handled by the hook's onError
     } finally {
       setSavingAttendance(null);
     }
-  }, [currentOrg, user, lesson, updateAttendance]);
+  }, [currentOrg, user, lesson, updateAttendance, toast]);
 
   const getStudentAttendance = useCallback((studentId: string): AttendanceStatus | null => {
+    // Local optimistic state takes priority over server data
+    if (localAttendance[studentId]) return localAttendance[studentId];
     return lesson?.attendance?.find(a => a.student_id === studentId)?.attendance_status || null;
-  }, [lesson]);
+  }, [lesson, localAttendance]);
 
   if (!lesson) return null;
 

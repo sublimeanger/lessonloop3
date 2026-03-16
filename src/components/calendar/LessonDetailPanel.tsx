@@ -66,7 +66,13 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
   }, [open, lesson?.id]);
   
   const [savingAttendance, setSavingAttendance] = useState<string | null>(null);
+  const [localAttendance, setLocalAttendance] = useState<Record<string, AttendanceStatus>>({});
   const [actionInProgress, setActionInProgress] = useState(false);
+
+  // Reset local optimistic attendance when lesson changes (new data from server)
+  useEffect(() => {
+    setLocalAttendance({});
+  }, [lesson?.id, lesson?.attendance]);
   
   // Recurring action dialog state
   const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
@@ -180,6 +186,8 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
     if (!currentOrg || !user) return;
     
     setSavingAttendance(studentId);
+    // Optimistic local update for instant visual feedback
+    setLocalAttendance(prev => ({ ...prev, [studentId]: status }));
 
     try {
       await updateAttendance.mutateAsync({
@@ -187,6 +195,8 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         studentId,
         status,
       });
+      
+      toast({ title: 'Attendance saved', description: `Marked as ${status.replace(/_/g, ' ')}` });
       
       // Check for make-up credit eligibility on student cancellation
       if (status === 'cancelled_by_student') {
@@ -210,6 +220,12 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
         }
       }
     } catch (error: any) {
+      // Revert optimistic update on failure
+      setLocalAttendance(prev => {
+        const next = { ...prev };
+        delete next[studentId];
+        return next;
+      });
       // Error toast is handled by the hook
     } finally {
       setSavingAttendance(null);
@@ -217,6 +233,8 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
   };
 
   const getStudentAttendance = (studentId: string): AttendanceStatus | null => {
+    // Local optimistic state takes priority over server data
+    if (localAttendance[studentId]) return localAttendance[studentId];
     return lesson.attendance?.find(a => a.student_id === studentId)?.attendance_status || null;
   };
 
