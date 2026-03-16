@@ -9,15 +9,68 @@ const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://app.lessonloop.net
 
 interface InvoiceEmailRequest {
   invoiceId: string;
-  recipientEmail: string;
-  recipientName: string;
-  invoiceNumber: string;
-  amount: string;
-  dueDate: string;
-  orgName: string;
-  orgId: string;
   isReminder: boolean;
   customMessage?: string;
+}
+
+/** Format minor units (pence) to major units with 2 decimal places */
+function formatMinorAmount(amountMinor: number, currencyCode: string): string {
+  const major = amountMinor / 100;
+  const symbol = currencyCode === "GBP" ? "£" : currencyCode === "USD" ? "$" : currencyCode === "EUR" ? "€" : `${currencyCode} `;
+  return `${symbol}${major.toFixed(2)}`;
+}
+
+/** Format a date string (YYYY-MM-DD) as DD/MM/YYYY */
+function formatDateUK(dateStr: string): string {
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+/** Send email via Resend with 3x retry and exponential backoff */
+async function sendWithRetry(
+  resendApiKey: string,
+  payload: { from: string; to: string[]; subject: string; html: string },
+): Promise<{ ok: boolean; result: unknown }> {
+  const maxAttempts = 3;
+  const baseDelayMs = 1000;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        return { ok: true, result };
+      }
+
+      // Don't retry on 4xx client errors (bad request, auth, etc.)
+      if (response.status >= 400 && response.status < 500) {
+        console.error(`[send-invoice-email] Resend returned ${response.status}, not retrying:`, result);
+        return { ok: false, result };
+      }
+
+      // 5xx — retry
+      console.warn(`[send-invoice-email] Resend attempt ${attempt}/${maxAttempts} failed (${response.status}):`, result);
+    } catch (err) {
+      console.warn(`[send-invoice-email] Resend attempt ${attempt}/${maxAttempts} threw:`, err);
+    }
+
+    if (attempt < maxAttempts) {
+      const delay = baseDelayMs * Math.pow(2, attempt - 1); // 1s, 2s
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+
+  return { ok: false, result: { error: "All retry attempts failed" } };
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -59,33 +112,96 @@ const handler = async (req: Request): Promise<Response> => {
       return rateLimitResponse(corsHeaders, rateLimitResult);
     }
 
-    const {
-      invoiceId,
-      recipientEmail,
-      recipientName,
-      invoiceNumber,
-      amount,
-      dueDate,
-      orgName,
-      orgId,
-      isReminder,
-      customMessage,
-    }: InvoiceEmailRequest = await req.json();
+    const { invoiceId, isReminder, customMessage }: InvoiceEmailRequest = await req.json();
 
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!invoiceId) {
+      return new Response(JSON.stringify({ error: "invoiceId is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch org payment preferences
-    const { data: orgPaymentPrefs } = await supabaseService
+    // ── INV-H2 FIX: Fetch invoice from DB (server-side source of truth) ──
+    const { data: invoice, error: invoiceError } = await supabaseService
+      .from("invoices")
+      .select(`
+        id, org_id, invoice_number, status, total_minor, due_date,
+        currency_code, paid_minor,
+        payer_guardian:guardians!payer_guardian_id(full_name, email),
+        payer_student:students!payer_student_id(first_name, last_name, email)
+      `)
+      .eq("id", invoiceId)
+      .single();
+
+    if (invoiceError || !invoice) {
+      return new Response(JSON.stringify({ error: "Invoice not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── INV-H1 FIX: Verify caller belongs to the invoice's org ──
+    const { data: membership } = await supabaseService
+      .from("org_memberships")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("org_id", invoice.org_id)
+      .eq("status", "active")
+      .in("role", ["owner", "admin", "finance"])
+      .maybeSingle();
+
+    if (!membership) {
+      return new Response(JSON.stringify({ error: "Not authorized" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── INV-H2 FIX: Status guard — don't send paid or voided invoices ──
+    if (invoice.status === "paid" || invoice.status === "void") {
+      return new Response(
+        JSON.stringify({ error: `Cannot send a ${invoice.status} invoice` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // ── Derive all email fields from DB data (not client-supplied) ──
+    const orgId = invoice.org_id;
+
+    // Resolve recipient from DB
+    const payer = invoice.payer_guardian as { full_name: string; email: string } | null;
+    const payerStudent = invoice.payer_student as { first_name: string; last_name: string; email: string } | null;
+
+    const recipientEmail = payer?.email || payerStudent?.email || null;
+    const recipientName = payer?.full_name ||
+      (payerStudent ? `${payerStudent.first_name} ${payerStudent.last_name}`.trim() : "Customer");
+
+    if (!recipientEmail) {
+      return new Response(
+        JSON.stringify({ error: "No email address found for the invoice payer" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const invoiceNumber = invoice.invoice_number;
+    const outstandingMinor = invoice.total_minor - (invoice.paid_minor || 0);
+    const amount = formatMinorAmount(outstandingMinor, invoice.currency_code);
+    const dueDate = formatDateUK(invoice.due_date);
+
+    // Fetch org details (name + payment preferences)
+    const { data: org } = await supabaseService
       .from("organisations")
-      .select("online_payments_enabled, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix")
+      .select("name, online_payments_enabled, bank_account_name, bank_sort_code, bank_account_number, bank_reference_prefix")
       .eq("id", orgId)
       .single();
 
-    const onlinePaymentsEnabled = orgPaymentPrefs?.online_payments_enabled !== false;
-    const hasBankDetails = !!(orgPaymentPrefs?.bank_account_name && orgPaymentPrefs?.bank_sort_code && orgPaymentPrefs?.bank_account_number);
-    const bankRef = orgPaymentPrefs?.bank_reference_prefix
-      ? `${orgPaymentPrefs.bank_reference_prefix}-${invoiceNumber}`
+    const orgName = org?.name || "Your Academy";
+    const onlinePaymentsEnabled = org?.online_payments_enabled !== false;
+    const hasBankDetails = !!(org?.bank_account_name && org?.bank_sort_code && org?.bank_account_number);
+    const bankRef = org?.bank_reference_prefix
+      ? `${org.bank_reference_prefix}-${invoiceNumber}`
       : invoiceNumber;
 
     // Build the portal link with invoice ID and action=pay to auto-open payment drawer
@@ -105,31 +221,37 @@ const handler = async (req: Request): Promise<Response> => {
       border-radius: 6px;
       font-weight: 600;
       margin: 20px 0;
-    `.replace(/\s+/g, ' ').trim();
+    `.replace(/\s+/g, " ").trim();
 
     // Bank details HTML block
-    const bankDetailsHtml = hasBankDetails ? `
+    const bankDetailsHtml = hasBankDetails
+      ? `
       <div style="background: #f0f9ff; padding: 16px 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #bae6fd;">
         <p style="margin: 0 0 8px; font-weight: 600; color: #0c4a6e;">Bank Transfer Details</p>
-        <p style="margin: 4px 0; font-size: 14px;"><strong>Account Name:</strong> ${escapeHtml(orgPaymentPrefs.bank_account_name)}</p>
-        <p style="margin: 4px 0; font-size: 14px;"><strong>Sort Code:</strong> ${escapeHtml(orgPaymentPrefs.bank_sort_code)}</p>
-        <p style="margin: 4px 0; font-size: 14px;"><strong>Account Number:</strong> ${escapeHtml(orgPaymentPrefs.bank_account_number)}</p>
+        <p style="margin: 4px 0; font-size: 14px;"><strong>Account Name:</strong> ${escapeHtml(org!.bank_account_name)}</p>
+        <p style="margin: 4px 0; font-size: 14px;"><strong>Sort Code:</strong> ${escapeHtml(org!.bank_sort_code)}</p>
+        <p style="margin: 4px 0; font-size: 14px;"><strong>Account Number:</strong> ${escapeHtml(org!.bank_account_number)}</p>
         <p style="margin: 4px 0; font-size: 14px;"><strong>Reference:</strong> ${escapeHtml(bankRef)}</p>
-      </div>` : "";
+      </div>`
+      : "";
 
     // CTA section based on payment preferences
-    const payOnlineCta = onlinePaymentsEnabled ? `
+    const payOnlineCta = onlinePaymentsEnabled
+      ? `
       <p style="text-align: center;">
         <a href="${portalLink}" style="${buttonStyle}">View & Pay Invoice</a>
       </p>
       <p style="font-size: 12px; color: #666;">
         Click the button above to view your invoice and make a payment securely online.
-      </p>` : "";
+      </p>`
+      : "";
 
     const bankTransferCta = hasBankDetails && !onlinePaymentsEnabled ? bankDetailsHtml : "";
-    const secondaryBankDetails = hasBankDetails && onlinePaymentsEnabled ? `
+    const secondaryBankDetails = hasBankDetails && onlinePaymentsEnabled
+      ? `
       <p style="font-size: 13px; color: #666; margin-top: 12px; text-align: center;">Or pay by bank transfer:</p>
-      ${bankDetailsHtml}` : "";
+      ${bankDetailsHtml}`
+      : "";
 
     const invoiceDetailsBlock = `
       <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -165,78 +287,95 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Log message to message_log and capture the row ID for deterministic status update
     let logEntryId: string | null = null;
-    if (orgId && invoiceId) {
-      const { data: logEntry, error: logError } = await supabaseService
-        .from("message_log")
-        .insert({
-          org_id: orgId,
-          channel: "email",
-          subject,
-          body: htmlContent,
-          sender_user_id: user.id,
-          recipient_email: recipientEmail,
-          recipient_name: recipientName,
-          recipient_type: "guardian",
-          related_id: invoiceId,
-          message_type: isReminder ? "invoice_reminder" : "invoice",
-          status: resendApiKey ? "pending" : "logged",
-        })
-        .select("id")
-        .single();
+    const { data: logEntry, error: logError } = await supabaseService
+      .from("message_log")
+      .insert({
+        org_id: orgId,
+        channel: "email",
+        subject,
+        body: htmlContent,
+        sender_user_id: user.id,
+        recipient_email: recipientEmail,
+        recipient_name: recipientName,
+        recipient_type: "guardian",
+        related_id: invoiceId,
+        message_type: isReminder ? "invoice_reminder" : "invoice",
+        status: "pending",
+      })
+      .select("id")
+      .single();
 
-      if (logError) {
-        console.warn("[send-invoice-email] message_log insert failed:", logError.message);
-      } else {
-        logEntryId = logEntry.id;
-      }
+    if (logError) {
+      console.warn("[send-invoice-email] message_log insert failed:", logError.message);
+    } else {
+      logEntryId = logEntry.id;
     }
 
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+
     if (!resendApiKey) {
+      // Update log status to "logged" (no email provider configured)
+      if (logEntryId) {
+        await supabaseService.from("message_log").update({ status: "logged" }).eq("id", logEntryId);
+      }
       console.log("Email logged (RESEND_API_KEY not configured):", { to: recipientEmail, subject });
       return new Response(
         JSON.stringify({ success: true, message: "Email logged (Resend not configured)" }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
       );
     }
 
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: `${orgName} <billing@lessonloop.net>`,
-        to: [recipientEmail],
-        subject,
-        html: htmlContent,
-      }),
+    // ── INV-H3 FIX: Send with 3x retry and exponential backoff ──
+    const { ok: emailSent, result } = await sendWithRetry(resendApiKey, {
+      from: `${orgName} <billing@lessonloop.net>`,
+      to: [recipientEmail],
+      subject,
+      html: htmlContent,
     });
-
-    const result = await response.json();
-    console.log("Email sent:", result);
 
     // Update message log status by primary key (deterministic)
     if (logEntryId) {
       await supabaseService
         .from("message_log")
         .update({
-          status: response.ok ? "sent" : "failed",
-          sent_at: response.ok ? new Date().toISOString() : null,
-          error_message: response.ok ? null : JSON.stringify(result),
+          status: emailSent ? "sent" : "failed",
+          sent_at: emailSent ? new Date().toISOString() : null,
+          error_message: emailSent ? null : JSON.stringify(result),
         })
         .eq("id", logEntryId);
     }
 
+    if (!emailSent) {
+      console.error("[send-invoice-email] All retry attempts failed:", result);
+      return new Response(
+        JSON.stringify({ error: "Failed to send email after 3 attempts. Please try again." }),
+        { status: 502, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
+
+    // ── INV-H2 FIX: Update status to 'sent' server-side after successful send ──
+    if (invoice.status === "draft") {
+      const { error: statusError } = await supabaseService
+        .from("invoices")
+        .update({ status: "sent" })
+        .eq("id", invoiceId)
+        .eq("status", "draft"); // Conditional update — only if still draft
+
+      if (statusError) {
+        console.warn("[send-invoice-email] Failed to update invoice status to sent:", statusError.message);
+      }
+    }
+
     return new Response(JSON.stringify(result), {
-      status: response.ok ? 200 : 500,
+      status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
-  } catch (error: any) {
-    console.error("Error in send-invoice-email:", error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[send-invoice-email] Unhandled error:", message);
     return new Response(
       JSON.stringify({ error: "An internal error occurred. Please try again." }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } },
     );
   }
 };

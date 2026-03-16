@@ -14,7 +14,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Mail, AlertCircle, ArrowLeft, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrg } from '@/contexts/OrgContext';
-import { useUpdateInvoiceStatus } from '@/hooks/useInvoices';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import type { InvoiceWithDetails } from '@/hooks/useInvoices';
@@ -94,7 +93,6 @@ export function SendInvoiceModal({
   const { currentOrg } = useOrg();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const updateStatus = useUpdateInvoiceStatus();
   const [isSending, setIsSending] = useState(false);
   const [customMessage, setCustomMessage] = useState('');
   const [step, setStep] = useState<'compose' | 'preview'>('compose');
@@ -132,7 +130,7 @@ export function SendInvoiceModal({
   }, [invoice, currentOrg, recipientName, amount, dueDate, isReminder, customMessage]);
 
   const handleSend = async () => {
-    if (!invoice || !currentOrg || !recipientEmail) return;
+    if (!invoice || !currentOrg) return;
 
     // FIX 2: Guard against sending paid/void invoices
     if (invoice.status === 'void') {
@@ -150,40 +148,12 @@ export function SendInvoiceModal({
       const { error: sendError } = await supabase.functions.invoke('send-invoice-email', {
         body: {
           invoiceId: invoice.id,
-          recipientEmail,
-          recipientName,
-          invoiceNumber: invoice.invoice_number,
-          amount,
-          dueDate: invoice.due_date,
-          orgName: currentOrg.name,
-          orgId: currentOrg.id,
           isReminder,
           customMessage,
         },
       });
 
       if (sendError) throw sendError;
-
-      // FIX 1: Retry status update to avoid email-sent-but-still-draft
-      if (invoice.status === 'draft') {
-        let statusUpdated = false;
-        for (let attempt = 0; attempt < 3; attempt++) {
-          try {
-            await updateStatus.mutateAsync({ id: invoice.id, status: 'sent' });
-            statusUpdated = true;
-            break;
-          } catch {
-            await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
-          }
-        }
-        if (!statusUpdated) {
-          toast({
-            title: 'Email sent but status not updated',
-            description: 'Please refresh and check the invoice status.',
-            variant: 'destructive',
-          });
-        }
-      }
 
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice'] });
