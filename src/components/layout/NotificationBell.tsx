@@ -78,7 +78,7 @@ export function NotificationBell() {
                 </span>
               </DropdownMenuItem>
             );
-          }))
+          })
         ) : (
           <div className="px-3 py-6 text-center text-sm text-muted-foreground">
             No unread messages
