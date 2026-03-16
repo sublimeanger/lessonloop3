@@ -86,7 +86,7 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col p-0 sm:max-w-lg" hideCloseButton>
+      <SheetContent className="flex w-full flex-col p-0 sm:max-w-lg max-sm:max-w-full" hideCloseButton>
         <SheetHeader className="border-b px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -99,7 +99,7 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="min-h-[44px] min-w-[44px]"
                   onClick={clearMessages}
                   title="Clear chat"
                 >
@@ -107,7 +107,7 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
                 </Button>
               )}
               <SheetClose asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]">
                   <X className="h-4 w-4" />
                   <span className="sr-only">Close</span>
                 </Button>
@@ -135,9 +135,9 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
                   onKeyDown={handleKeyDown}
                   placeholder="Ask me anything..."
                   rows={1}
-                  className="flex-1 min-h-[36px] max-h-[96px] resize-none py-2 text-sm"
+                  className="flex-1 min-h-[44px] max-h-[96px] resize-none py-2 text-sm"
                 />
-                <Button onClick={handleSend} disabled={!input.trim()} size="icon" className="shrink-0">
+                <Button onClick={handleSend} disabled={!input.trim()} size="icon" className="shrink-0 min-h-[44px] min-w-[44px]">
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
@@ -209,7 +209,7 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
               </div>
             </ScrollArea>
 
-            <div className="border-t p-4">
+            <div className="border-t p-4 pb-safe sticky bottom-0 bg-background">
               <div className="flex gap-3 items-end">
                 <Textarea
                   ref={chatInputRef}
@@ -219,14 +219,14 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
                   placeholder="Ask me anything..."
                   disabled={isStreaming}
                   rows={1}
-                  className="flex-1 min-h-[36px] max-h-[96px] resize-none py-2 text-sm"
+                  className="flex-1 min-h-[44px] max-h-[96px] resize-none py-2 text-sm"
                 />
                 {isStreaming ? (
-                  <Button onClick={cancelStreaming} size="icon" variant="destructive" title="Stop" className="shrink-0">
+                  <Button onClick={cancelStreaming} size="icon" variant="destructive" title="Stop" className="shrink-0 min-h-[44px] min-w-[44px]">
                     <Square className="h-3.5 w-3.5" />
                   </Button>
                 ) : (
-                  <Button onClick={handleSend} disabled={!input.trim()} size="icon" className="shrink-0">
+                  <Button onClick={handleSend} disabled={!input.trim()} size="icon" className="shrink-0 min-h-[44px] min-w-[44px]">
                     <Send className="h-4 w-4" />
                   </Button>
                 )}
