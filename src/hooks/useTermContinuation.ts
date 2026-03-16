@@ -704,7 +704,7 @@ export function useBulkProcessContinuation() {
         }
       );
 
-      return { processedCount, extendedCount, withdrawnCount, conflictWarnings };
+      return { processedCount, extendedCount, withdrawnCount, lessonsCreated, conflictWarnings };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['continuation-runs'] });
