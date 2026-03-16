@@ -64,7 +64,7 @@ export function useLessonNotes(lessonId: string | undefined) {
     queryFn: async () => {
       if (!lessonId || !currentOrg) return [];
 
-      const { data, error } = await supabase.rpc('get_lesson_notes_for_staff', {
+      const { data, error } = await (supabase.rpc as any)('get_lesson_notes_for_staff', {
         p_org_id: currentOrg.id,
         p_filters: { lesson_id: lessonId },
       });
