@@ -79,22 +79,26 @@ export function usePayroll(startDate: string, endDate: string) {
       const lessonIds = (lessons || []).map(l => l.id);
       const invoiceItemsMap = new Map<string, number>();
       if (lessonIds.length > 0) {
-        const { data: invoiceItems } = await supabase
-          .from('invoice_items')
-          .select('linked_lesson_id, amount_minor')
-          .eq('org_id', currentOrg.id)
-          .in('linked_lesson_id', lessonIds);
-        
-        for (const item of invoiceItems || []) {
-          if (item.linked_lesson_id) {
-            invoiceItemsMap.set(
-              item.linked_lesson_id,
-              (invoiceItemsMap.get(item.linked_lesson_id) || 0) + item.amount_minor
-            );
+        // Batch in chunks of 500 to stay within PostgREST in() limits
+        const CHUNK_SIZE = 500;
+        for (let i = 0; i < lessonIds.length; i += CHUNK_SIZE) {
+          const chunk = lessonIds.slice(i, i + CHUNK_SIZE);
+          const { data: invoiceItems } = await supabase
+            .from('invoice_items')
+            .select('linked_lesson_id, amount_minor')
+            .eq('org_id', currentOrg.id)
+            .in('linked_lesson_id', chunk);
+
+          for (const item of invoiceItems || []) {
+            if (item.linked_lesson_id) {
+              invoiceItemsMap.set(
+                item.linked_lesson_id,
+                (invoiceItemsMap.get(item.linked_lesson_id) || 0) + item.amount_minor
+              );
+            }
           }
         }
       }
-      if (lessonsError) throw lessonsError;
 
       // Get unique teacher IDs (prefer teacher_id, fallback to teacher_user_id)
       const teacherIds = [...new Set((lessons || [])
@@ -154,7 +158,7 @@ export function usePayroll(startDate: string, endDate: string) {
         teacherMap.set(tid, {
           name: teacherData?.display_name || 'Unknown',
           payRateType: teacherData?.pay_rate_type as 'per_lesson' | 'hourly' | 'percentage' | null,
-          payRateValue: (Number(teacherData?.pay_rate_value) || 0) / 100,
+          payRateValue: Number(teacherData?.pay_rate_value) || 0,
         });
       }
 
