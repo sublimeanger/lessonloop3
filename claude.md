@@ -120,7 +120,7 @@ All Supabase API calls from Node.js (in E2E tests) use `curl` via `child_process
 - 950+ tests across 24 test files
 - Runs against live site via container proxy
 - **Never use `waitUntil: 'networkidle'`** — causes hangs
-- Test accounts: `patrick-{owner,admin,teacher,finance,parent,parent2}@test.lessonloop.net` / `PatrickTest123!`
+- Test accounts: patrick-{owner,admin,teacher,finance,parent,parent2}@test.lessonloop.net — password in .env.patrick (not committed)
 - `.env.patrick` for E2E config
 ### Quality Gates
 Always run before pushing:
