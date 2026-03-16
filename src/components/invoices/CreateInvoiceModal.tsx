@@ -291,6 +291,10 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
       setSelectedLessons(new Set());
       setSelectedCredits(new Set());
       setTab('manual');
+      setPlanEnabled(false);
+      setPlanCount(3);
+      setPlanFrequency('monthly');
+      setPlanStartDate('');
     }
     onOpenChange(isOpen);
   };
