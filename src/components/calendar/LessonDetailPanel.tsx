@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { format, parseISO, subDays, addDays, startOfDay, differenceInMinutes, differenceInHours, addWeeks, isAfter, isBefore, getDay } from 'date-fns';
+import { format, parseISO, subDays, addDays, startOfDay, differenceInMinutes, differenceInHours, isBefore } from 'date-fns';
 import { useCalendarSync } from '@/hooks/useCalendarSync';
 import { useZoomSync } from '@/hooks/useZoomSync';
 import { useQuery } from '@tanstack/react-query';
