@@ -305,7 +305,6 @@ function PayrollTeacherList({
                             {format(new Date(lesson.startAt), 'd MMM yyyy, HH:mm')}
                           </Link>
                         </TableCell>
-                        </TableCell>
                         <TableCell className="text-right">{lesson.durationMins} min</TableCell>
                         <TableCell className="text-right font-medium">
                           {lesson.hasWarning ? (
