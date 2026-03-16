@@ -139,9 +139,9 @@ Owner/Admin clicks upgrade in Settings → Billing
 
 | ID | Severity | Description | File(s) | Recommended Fix |
 |----|----------|-------------|---------|-----------------|
-| PAY-H1 | HIGH | **Webhook payment recording is NOT atomic with payment insert.** In `handleInvoiceCheckoutCompleted` and `handlePaymentIntentSucceeded`, the payment insert, installment updates, and `recalculate_invoice_paid` RPC are three separate operations. If the function crashes between insert and recalculate, `paid_minor` won't reflect the payment. The `recalculate_invoice_paid` RPC will fix it on retry (Stripe retries send 500), but there's a window where DB state is inconsistent. | `stripe-webhook/index.ts:284-348`, `stripe-webhook/index.ts:722-775` | Wrap payment insert + installment updates + recalc in a single DB transaction using `supabase.rpc()` that does all three atomically. Alternatively, since Stripe retries on 500 and the recalc RPC is idempotent, this is mitigated but not ideal. |
-| PAY-H2 | HIGH | **Payment recording silently returns on insert failure.** In `handleInvoiceCheckoutCompleted:299-306`, if payment insert fails with a non-23505 error, the function `return`s without throwing. This means Stripe receives 200 (success), the webhook is marked as processed (dedup), and the payment is never recorded. The event won't be retried. | `stripe-webhook/index.ts:299-306` | Change `return` to `throw new Error(...)` so Stripe receives 500 and retries. Same issue at line 737-744 in `handlePaymentIntentSucceeded`. |
-| PAY-H3 | HIGH | **Stripe Connect refund uses `stripeAccount` but payment was created on platform.** In `stripe-process-refund/index.ts:143-148`, refunds for Connect payments use `stripeAccount` option. However, if the original payment was created with `transfer_data.destination` (destination charge), the refund should be issued on the platform account, not the connected account. Using `stripeAccount` would create an account-level refund on the connected account which may fail or refund the wrong charge. | `stripe-process-refund/index.ts:143-148` | For destination charges (which this codebase uses), refund via the platform account (no `stripeAccount` option). Only use `stripeAccount` for direct charges. Remove the `stripeAccount` branch entirely. |
+| PAY-H1 | ~~HIGH~~ FIXED | **Webhook payment recording is NOT atomic with payment insert.** ~~Payment insert, installment updates, and recalculate were three separate operations.~~ **Fixed:** Created `record_stripe_payment` RPC that atomically handles idempotent insert + installment reconciliation + paid_minor recalculation in a single transaction with `FOR UPDATE` row locking. Both webhook handlers now use this RPC. | `20260316230000_atomic_record_stripe_payment.sql`, `stripe-webhook/index.ts` | RESOLVED |
+| PAY-H2 | ~~HIGH~~ FIXED | **Payment recording silently returned on insert failure.** ~~Function returned without throwing, so Stripe received 200 and wouldn't retry.~~ **Fixed:** Both `handleInvoiceCheckoutCompleted` and `handlePaymentIntentSucceeded` now throw on RPC failure, causing Stripe to receive 500 and retry. The atomic RPC also handles idempotency internally (returns duplicate flag if provider_reference already exists). | `stripe-webhook/index.ts` | RESOLVED |
+| PAY-H3 | ~~HIGH~~ FIXED | **Stripe Connect refund used `stripeAccount` but payment was created on platform.** ~~For destination charges, using `stripeAccount` would fail or refund the wrong charge.~~ **Fixed:** Removed `stripeAccount` option entirely. For destination charges, Stripe automatically issues the refund on the platform account and reverses the transfer. | `stripe-process-refund/index.ts` | RESOLVED |
 | PAY-M1 | MEDIUM | **`handlePaymentIntentSucceeded` uses `paymentIntent.amount` directly.** This is the Stripe-side amount, not verified against the invoice's expected amount. While the payment was created server-side with the correct amount, if Stripe ever has a discrepancy (e.g., currency conversion), the recorded `amount_minor` in the `payments` table would differ from what was intended. | `stripe-webhook/index.ts:727` | This is acceptable since the server created the PaymentIntent with the correct amount. The `recalculate_invoice_paid` RPC derives `paid_minor` from the `payments` table anyway, so it's self-consistent. No action required. |
 | PAY-M2 | MEDIUM | **Idempotency key in checkout creation is amount-dependent.** The key is `checkout_{invoiceId}_{installmentId}_{amount}`. If between creating one session and it expiring, the invoice amount changes (e.g., item edited), a new session can be created. This is by design but worth noting. Stripe idempotency keys expire after 24h anyway. | `stripe-create-checkout/index.ts:278` | Acceptable — expired sessions are cleaned up, and amount-specific keys prevent stale-amount sessions from being reused. |
 | PAY-M3 | MEDIUM | **`stripe-create-checkout` doesn't check refunds when calculating amount due.** At line 86-92, `amountDue = total_minor - SUM(payments)` but doesn't subtract refunds. If an invoice was partially paid, then refunded, the checkout would calculate a lower `amountDue` than actual. However, `recalculate_invoice_paid` RPC does account for refunds when updating `paid_minor`, so after the next recalc the invoice would be correct. The checkout amount could still be wrong. | `stripe-create-checkout/index.ts:86-92`, `stripe-create-payment-intent/index.ts:76-82` | Calculate `amountDue = total_minor - SUM(payments) + SUM(refunds WHERE status='succeeded')`. Or use the already-computed `paid_minor` from the invoice (which the recalc RPC keeps in sync). |
@@ -244,7 +244,7 @@ Owner/Admin clicks upgrade in Settings → Billing
 | Payment for voided invoice | Webhook checks `invoice.status === 'void'` and skips | PASS |
 | Payment for cancelled invoice | Webhook checks `invoice.status === 'cancelled'` and skips | PASS |
 | Partial payment | Supported — multiple payments per invoice, `recalculate_invoice_paid` sums all | PASS |
-| DB insert succeeds but recalc fails | `recalculate_invoice_paid` is called after insert. If it fails, Stripe has already received 200 (due to dedup passing). However, any subsequent payment or manual recalc will fix the state. | ACCEPTABLE |
+| DB insert succeeds but recalc fails | No longer possible — `record_stripe_payment` RPC performs both atomically in one transaction | PASS |
 
 ---
 
@@ -262,8 +262,8 @@ Owner/Admin clicks upgrade in Settings → Billing
 3. Payments use `transfer_data.destination` to route funds
 4. `account.application.deauthorized` handles disconnect
 
-### Connect Issue: PAY-H3
-The refund flow incorrectly passes `stripeAccount` for Connect payments. For destination charges, refunds should be issued on the platform account (the default). This is a HIGH severity issue as it could cause refund failures.
+### Connect Issue: PAY-H3 (FIXED)
+~~The refund flow incorrectly passes `stripeAccount` for Connect payments.~~ Fixed: refunds now always go through the platform account. Stripe automatically reverses the transfer to the connected account for destination charges.
 
 ---
 
@@ -272,7 +272,7 @@ The refund flow incorrectly passes `stripeAccount` for Connect payments. For des
 | Scenario | Recovery Mechanism | Status |
 |----------|-------------------|--------|
 | Webhook fails (500) | Stripe retries up to 16 times over 3 days. Dedup prevents duplicate processing on retry. | PASS |
-| DB update fails after payment | Critical handlers re-throw errors → 500 → Stripe retries | PASS (for subscription handlers). FAIL for invoice payment handlers (PAY-H2) |
+| DB update fails after payment | Critical handlers re-throw errors → 500 → Stripe retries | PASS (all handlers now throw on failure — PAY-H2 fixed) |
 | Checkout session created but never completed | 30-minute expiry. `checkout.session.expired` webhook marks as expired. Old pending sessions cleaned up on next checkout attempt. | PASS |
 | Stripe API down | Checkout creation returns 400 error to frontend | PASS |
 | Payment succeeds but receipt email fails | Receipt is best-effort, non-blocking (`try/catch` around the fetch) | PASS |
@@ -300,23 +300,22 @@ The refund flow incorrectly passes `stripeAccount` for Connect payments. For des
 
 | Severity | Count | IDs |
 |----------|-------|-----|
-| HIGH | 3 | PAY-H1, PAY-H2, PAY-H3 |
+| ~~HIGH~~ FIXED | 3 | PAY-H1, PAY-H2, PAY-H3 — all resolved |
 | MEDIUM | 5 | PAY-M1, PAY-M2, PAY-M3, PAY-M4, PAY-M5 |
 | LOW | 5 | PAY-L1, PAY-L2, PAY-L3, PAY-L4, PAY-L5 |
 
-### Critical Path Assessment
-- **PAY-H2** is the most important fix: if payment insert fails (non-duplicate), the webhook returns success (200 via dedup), meaning Stripe won't retry, and the payment is lost. This is a **data loss risk**.
-- **PAY-H3** could cause refund failures for Connect payments. Must be validated against actual Stripe account type.
-- **PAY-H1** is mitigated by Stripe's retry mechanism but represents a consistency window.
+### Fixes Applied (2026-03-16)
+- **PAY-H1 + PAY-H2:** Created `record_stripe_payment` RPC — atomic transaction with FOR UPDATE locking that handles idempotent payment insert, installment reconciliation, and paid_minor recalculation. Both webhook handlers (`handleInvoiceCheckoutCompleted`, `handlePaymentIntentSucceeded`) now call this RPC and throw on failure (triggering Stripe retries).
+- **PAY-H3:** Removed `stripeAccount` from refund call. Destination charges are refunded on the platform account; Stripe auto-reverses the transfer.
 
 ---
 
-## VERDICT: PRODUCTION READY WITH CAVEATS
+## VERDICT: PRODUCTION READY
 
-The Stripe payments system is well-architected with strong idempotency, security, and financial accuracy. The three HIGH findings should be addressed:
+All 3 HIGH findings have been resolved. The Stripe payments system has:
+- Atomic payment recording with row-level locking
+- Three-layer idempotency (event dedup + app-level check + DB unique constraint)
+- Proper error propagation for Stripe retry on failure
+- Correct refund routing for destination charges
 
-1. **PAY-H2 (MUST FIX):** Change `return` to `throw` on payment insert failure so Stripe retries
-2. **PAY-H3 (MUST FIX):** Remove `stripeAccount` from refund call for destination charges
-3. **PAY-H1 (SHOULD FIX):** Acceptable for now due to Stripe retry mechanism, but wrap in transaction long-term
-
-All other findings are MEDIUM/LOW and do not block production launch.
+Remaining MEDIUM/LOW findings do not block production launch.

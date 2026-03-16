@@ -228,7 +228,7 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
   const invoiceId = session.metadata?.lessonloop_invoice_id;
   const installmentId = session.metadata?.lessonloop_installment_id || null;
   const payRemaining = session.metadata?.lessonloop_pay_remaining === "true";
-  
+
   if (!invoiceId) {
     console.error("No invoice ID in session metadata");
     return;
@@ -236,30 +236,9 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
 
   log(`Checkout completed for invoice ${truncate(invoiceId)}, installment: ${truncate(installmentId)}, payRemaining: ${payRemaining}`);
 
-  // Guard: skip payment on voided or cancelled invoices
-  const { data: invStatus } = await supabase.from('invoices').select('status').eq('id', invoiceId).single();
-  if (invStatus?.status === 'void' || invStatus?.status === 'cancelled') {
-    console.warn(`[stripe-webhook] Skipping payment on ${invStatus.status} invoice ${truncate(invoiceId)}`);
-    return;
-  }
-
   const paymentIntentId = session.payment_intent as string;
 
-  // DOUBLE PAYMENT GUARD: Check if payment with this provider_reference already exists
-  if (paymentIntentId) {
-    const { data: existingPayment } = await supabase
-      .from("payments")
-      .select("id")
-      .eq("provider_reference", paymentIntentId)
-      .maybeSingle();
-
-    if (existingPayment) {
-      log(`Payment already recorded for PI ${truncate(paymentIntentId)}, skipping`);
-      return;
-    }
-  }
-
-  // Update our checkout session record
+  // Update our checkout session record (best-effort, non-critical)
   const { error: updateSessionError } = await supabase
     .from("stripe_checkout_sessions")
     .update({
@@ -273,79 +252,42 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
     console.error("Failed to update checkout session:", updateSessionError);
   }
 
-  // Get the checkout session record to get org_id
+  // Get the checkout session record to get org_id and amount
   const { data: checkoutSession } = await supabase
     .from("stripe_checkout_sessions")
     .select("org_id, amount_minor")
     .eq("stripe_session_id", session.id)
     .single();
 
-  // Record the payment
-  const { data: paymentRecord, error: paymentError } = await supabase
-    .from("payments")
-    .insert({
-      invoice_id: invoiceId,
-      org_id: checkoutSession?.org_id,
-      amount_minor: checkoutSession?.amount_minor || session.amount_total,
-      method: "card",
-      provider: "stripe",
-      provider_reference: paymentIntentId,
-      paid_at: new Date().toISOString(),
-      installment_id: installmentId || null,
-    })
-    .select("id")
-    .single();
+  const resolvedOrgId = checkoutSession?.org_id;
+  const amountMinor = checkoutSession?.amount_minor || session.amount_total;
 
-  if (paymentError) {
-    if (paymentError.code === '23505') {
-      log(`Duplicate payment prevented by DB constraint for PI ${truncate(paymentIntentId)}`);
-      return;
-    }
-    console.error("Failed to record payment:", paymentError);
+  // PAY-H1 + PAY-H2 FIX: Atomic payment recording via RPC.
+  // Single transaction: idempotent insert + installment reconciliation + recalculate.
+  // Throws on failure so Stripe receives 500 and retries.
+  const { data: rpcResult, error: rpcError } = await supabase.rpc('record_stripe_payment', {
+    _invoice_id: invoiceId,
+    _org_id: resolvedOrgId,
+    _amount_minor: amountMinor,
+    _provider_reference: paymentIntentId,
+    _installment_id: installmentId || null,
+    _pay_remaining: payRemaining,
+  });
+
+  if (rpcError) {
+    console.error("Failed to record payment atomically:", rpcError);
+    throw new Error(`Atomic payment recording failed: ${rpcError.message}`);
+  }
+
+  // If invoice was voided/cancelled or payment was duplicate, skip notifications
+  if (rpcResult?.skipped || rpcResult?.duplicate) {
+    log(`Payment ${rpcResult.skipped ? 'skipped' : 'duplicate'} for invoice ${truncate(invoiceId)}: ${rpcResult.reason || 'already recorded'}`);
     return;
   }
 
-  // ─── Installment reconciliation ───────────────────────────
+  log(`Invoice ${truncate(invoiceId)} payment recorded atomically: ${JSON.stringify(rpcResult)}`);
 
-  // If pay_remaining, mark all pending/overdue installments as paid
-  if (payRemaining) {
-    const { error: bulkUpdateError } = await supabase
-      .from("invoice_installments")
-      .update({ status: "paid", paid_at: new Date().toISOString() })
-      .eq("invoice_id", invoiceId)
-      .in("status", ["pending", "overdue"]);
-
-    if (bulkUpdateError) {
-      console.error("Failed to bulk-update installments:", bulkUpdateError);
-    }
-  }
-
-  // If specific installment, store the stripe payment intent on it
-  if (installmentId) {
-    const { error: instUpdateError } = await supabase
-      .from("invoice_installments")
-      .update({
-        stripe_payment_intent_id: paymentIntentId,
-        status: "paid",
-        paid_at: new Date().toISOString(),
-      })
-      .eq("id", installmentId);
-
-    if (instUpdateError) {
-      console.error("Failed to update installment with payment intent:", instUpdateError);
-    }
-  }
-
-  // Atomically recalculate paid_minor with row locking to prevent races
-  const { data: recalcResult, error: recalcError } = await supabase.rpc('recalculate_invoice_paid', {
-    _invoice_id: invoiceId,
-  });
-
-  if (recalcError) {
-    console.error("Failed to recalculate invoice paid_minor:", recalcError);
-  } else {
-    log(`Invoice ${truncate(invoiceId)} updated atomically: ${JSON.stringify(recalcResult)}`);
-  }
+  const paymentId = rpcResult?.payment_id;
 
   // Fetch invoice details for notification
   const { data: invoice } = await supabase
@@ -353,8 +295,6 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
     .select("total_minor, invoice_number, payer_guardian_id, payer_student_id")
     .eq("id", invoiceId)
     .single();
-
-  const resolvedOrgId = checkoutSession?.org_id;
 
   // Create payment notification for real-time teacher alerts
   if (resolvedOrgId && invoice) {
@@ -378,15 +318,15 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
     await supabase.from("payment_notifications").insert({
       org_id: resolvedOrgId,
       invoice_id: invoiceId,
-      payment_id: paymentRecord?.id,
-      amount_minor: checkoutSession?.amount_minor || session.amount_total,
+      payment_id: paymentId,
+      amount_minor: amountMinor,
       payer_name: payerName,
       invoice_number: invoice.invoice_number || "",
     });
   }
 
   // Send receipt email (best-effort, non-blocking)
-  if (resolvedOrgId && paymentRecord?.id) {
+  if (resolvedOrgId && paymentId) {
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -397,7 +337,7 @@ async function handleInvoiceCheckoutCompleted(supabase: any, session: Stripe.Che
           "Authorization": `Bearer ${supabaseServiceKey}`,
         },
         body: JSON.stringify({
-          paymentId: paymentRecord.id,
+          paymentId,
           invoiceId,
           orgId: resolvedOrgId,
         }),
@@ -670,26 +610,9 @@ async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe
 
   log(`PaymentIntent succeeded for invoice ${truncate(invoiceId)}, installment: ${truncate(installmentId)}, payRemaining: ${payRemaining}`);
 
-  // Guard: skip payment on voided or cancelled invoices
-  const { data: invStatus } = await supabase.from('invoices').select('status').eq('id', invoiceId).single();
-  if (invStatus?.status === 'void' || invStatus?.status === 'cancelled') {
-    console.warn(`[stripe-webhook] Skipping payment on ${invStatus.status} invoice ${truncate(invoiceId)}`);
-    return;
-  }
-
-  // DOUBLE PAYMENT GUARD
-  const { data: existingPayment } = await supabase
-    .from("payments")
-    .select("id")
-    .eq("provider_reference", paymentIntent.id)
-    .maybeSingle();
-
-  if (existingPayment) {
-    log(`Payment already recorded for PI ${truncate(paymentIntent.id)}, skipping`);
-    return;
-  }
-
-  // Update checkout session record
+  // Update checkout session record (best-effort, non-critical)
+  // Matches by payment_intent_id or by the pi_ prefixed synthetic session id
+  // (see stripe-create-payment-intent/index.ts:262 where pi_ prefix is set)
   await supabase
     .from("stripe_checkout_sessions")
     .update({
@@ -699,7 +622,6 @@ async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe
     })
     .eq("stripe_payment_intent_id", paymentIntent.id);
 
-  // Also try matching by pi_ prefixed session id
   await supabase
     .from("stripe_checkout_sessions")
     .update({
@@ -718,61 +640,32 @@ async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe
     return data?.org_id;
   })());
 
-  // Record the payment
-  const { data: paymentRecord, error: paymentError } = await supabase
-    .from("payments")
-    .insert({
-      invoice_id: invoiceId,
-      org_id: resolvedOrgId,
-      amount_minor: paymentIntent.amount,
-      method: "card",
-      provider: "stripe",
-      provider_reference: paymentIntent.id,
-      paid_at: new Date().toISOString(),
-      installment_id: installmentId || null,
-    })
-    .select("id")
-    .single();
+  // PAY-H1 + PAY-H2 FIX: Atomic payment recording via RPC.
+  // Single transaction: idempotent insert + installment reconciliation + recalculate.
+  // Throws on failure so Stripe receives 500 and retries.
+  const { data: rpcResult, error: rpcError } = await supabase.rpc('record_stripe_payment', {
+    _invoice_id: invoiceId,
+    _org_id: resolvedOrgId,
+    _amount_minor: paymentIntent.amount,
+    _provider_reference: paymentIntent.id,
+    _installment_id: installmentId || null,
+    _pay_remaining: payRemaining,
+  });
 
-  if (paymentError) {
-    if (paymentError.code === '23505') {
-      log(`Duplicate payment prevented by DB constraint for PI ${truncate(paymentIntent.id)}`);
-      return;
-    }
-    console.error("Failed to record payment:", paymentError);
+  if (rpcError) {
+    console.error("Failed to record payment atomically:", rpcError);
+    throw new Error(`Atomic payment recording failed: ${rpcError.message}`);
+  }
+
+  // If invoice was voided/cancelled or payment was duplicate, skip notifications
+  if (rpcResult?.skipped || rpcResult?.duplicate) {
+    log(`Payment ${rpcResult.skipped ? 'skipped' : 'duplicate'} for invoice ${truncate(invoiceId)}: ${rpcResult.reason || 'already recorded'}`);
     return;
   }
 
-  // Installment reconciliation
-  if (payRemaining) {
-    await supabase
-      .from("invoice_installments")
-      .update({ status: "paid", paid_at: new Date().toISOString() })
-      .eq("invoice_id", invoiceId)
-      .in("status", ["pending", "overdue"]);
-  }
+  log(`Invoice ${truncate(invoiceId)} payment recorded atomically: ${JSON.stringify(rpcResult)}`);
 
-  if (installmentId) {
-    await supabase
-      .from("invoice_installments")
-      .update({
-        stripe_payment_intent_id: paymentIntent.id,
-        status: "paid",
-        paid_at: new Date().toISOString(),
-      })
-      .eq("id", installmentId);
-  }
-
-  // Atomically recalculate paid_minor with row locking to prevent races
-  const { data: recalcResult, error: recalcError } = await supabase.rpc('recalculate_invoice_paid', {
-    _invoice_id: invoiceId,
-  });
-
-  if (recalcError) {
-    console.error("Failed to recalculate invoice paid_minor:", recalcError);
-  } else {
-    log(`Invoice ${truncate(invoiceId)} updated atomically: ${JSON.stringify(recalcResult)}`);
-  }
+  const paymentId = rpcResult?.payment_id;
 
   // Fetch invoice details for notification
   const { data: invoice } = await supabase
@@ -803,7 +696,7 @@ async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe
     await supabase.from("payment_notifications").insert({
       org_id: resolvedOrgId,
       invoice_id: invoiceId,
-      payment_id: paymentRecord?.id,
+      payment_id: paymentId,
       amount_minor: paymentIntent.amount,
       payer_name: payerName,
       invoice_number: invoice.invoice_number || "",
@@ -811,7 +704,7 @@ async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe
   }
 
   // Send receipt email (best-effort, non-blocking)
-  if (resolvedOrgId && paymentRecord?.id) {
+  if (resolvedOrgId && paymentId) {
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -822,7 +715,7 @@ async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe
           "Authorization": `Bearer ${supabaseServiceKey}`,
         },
         body: JSON.stringify({
-          paymentId: paymentRecord.id,
+          paymentId,
           invoiceId,
           orgId: resolvedOrgId,
         }),
