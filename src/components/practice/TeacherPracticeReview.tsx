@@ -112,10 +112,9 @@ export function TeacherPracticeReview() {
           />
           <Button 
             size="sm" 
-            className="min-h-11 gap-1 sm:min-h-9" 
+            className="min-h-[44px] sm:min-h-9 gap-1" 
             onClick={() => handleSubmitFeedback(log.id)}
             disabled={addFeedback.isPending}
-
           >
             <Send className="h-4 w-4" />
             Send Feedback
