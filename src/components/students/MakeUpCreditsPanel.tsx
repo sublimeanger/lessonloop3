@@ -6,7 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Gift, Calendar, Clock, Ban, Plus, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Gift, Calendar, Clock, Ban, Plus, CheckCircle2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { formatCurrencyMinor } from '@/lib/utils';
 import { IssueCreditModal } from './IssueCreditModal';
 
