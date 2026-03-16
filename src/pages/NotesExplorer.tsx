@@ -27,8 +27,18 @@ export default function NotesExplorer() {
   usePageMeta('Lesson Notes Explorer | LessonLoop', 'Review all lesson notes across students and dates');
 
   const { currentOrg, isOrgAdmin, currentRole } = useOrg();
+  const { user } = useAuth();
   const { timezone, formatDate, formatTime } = useOrgTimezone();
   const isTeacherRole = currentRole === 'teacher';
+
+  // Resolve current user's teacher ID for private note visibility
+  const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isTeacherRole || !user || !currentOrg) return;
+    supabase
+      .rpc('get_teacher_id_for_user', { _user_id: user.id, _org_id: currentOrg.id })
+      .then(({ data }) => { if (data) setCurrentTeacherId(data); });
+  }, [isTeacherRole, user, currentOrg]);
 
   const [filters, setFilters] = useState<NotesExplorerFilters>(DEFAULT_FILTERS);
   const [page, setPage] = useState(0);
