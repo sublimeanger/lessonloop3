@@ -578,7 +578,7 @@ export function useBulkProcessContinuation() {
                 .eq('id', lesson.recurrence_id);
 
               // Materialise lesson rows for the extended period
-              const { data: matResult, error: matError } = await supabase.rpc(
+              const { data: matResult, error: matError } = await (supabase.rpc as any)(
                 'materialise_continuation_lessons',
                 {
                   p_org_id: currentOrg.id,
@@ -595,6 +595,7 @@ export function useBulkProcessContinuation() {
                 console.warn(`[continuation] Lesson materialisation failed for recurrence ${lesson.recurrence_id}:`, matError.message);
               } else if (matResult) {
                 const result = matResult as Record<string, number>;
+                lessonsCreated += result.created ?? 0;
                 if (result.conflicts > 0) {
                   conflictWarnings.push(
                     `${lesson.teacher_name || 'Teacher'}: ${result.conflicts} time-slot conflict(s) skipped`
