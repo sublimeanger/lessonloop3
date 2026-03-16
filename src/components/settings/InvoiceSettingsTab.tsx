@@ -90,7 +90,10 @@ export function InvoiceSettingsTab() {
           vat_registration_number: vatRegistered ? vatNumber : null,
           default_payment_terms_days: paymentTermsDays,
           overdue_reminder_days: reminderDays,
-        })
+          default_plan_threshold_minor: planThreshold ? Math.round(parseFloat(planThreshold) * 100) : null,
+          default_plan_installments: parseInt(planInstallments) || 3,
+          default_plan_frequency: planFrequency,
+        } as any)
         .eq('id', currentOrg!.id);
       if (error) throw error;
     },
