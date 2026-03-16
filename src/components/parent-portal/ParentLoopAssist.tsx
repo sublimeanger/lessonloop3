@@ -135,9 +135,9 @@ export function ParentLoopAssist({ open, onOpenChange }: ParentLoopAssistProps) 
                   onKeyDown={handleKeyDown}
                   placeholder="Ask me anything..."
                   rows={1}
-                  className="flex-1 min-h-[36px] max-h-[96px] resize-none py-2 text-sm"
+                  className="flex-1 min-h-[44px] max-h-[96px] resize-none py-2 text-sm"
                 />
-                <Button onClick={handleSend} disabled={!input.trim()} size="icon" className="shrink-0">
+                <Button onClick={handleSend} disabled={!input.trim()} size="icon" className="shrink-0 min-h-[44px] min-w-[44px]">
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
