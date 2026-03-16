@@ -8,7 +8,7 @@ import { fromZonedTime } from 'date-fns-tz';
 
 export interface UrgentAction {
   id: string;
-  type: 'unmarked_lessons' | 'overdue_invoices' | 'pending_requests' | 'unreviewed_practice';
+  type: 'unmarked_lessons' | 'overdue_invoices' | 'pending_requests' | 'unreviewed_practice' | 'continuation_withdrawals';
   count: number;
   label: string;
   href: string;
@@ -108,6 +108,27 @@ export function useUrgentActions() {
               count: requestsCount,
               label: requestsCount === 1 ? 'pending request' : 'pending requests',
               href: '/messages?tab=requests',
+              severity: 'warning',
+            });
+          }
+        }
+
+        // Fetch unprocessed continuation withdrawals (for admins)
+        if (isAdmin) {
+          const { count: withdrawalCount } = await (supabase as any)
+            .from('term_continuation_responses')
+            .select('id', { count: 'exact', head: true })
+            .eq('org_id', currentOrg.id)
+            .eq('response', 'withdrawing')
+            .eq('is_processed', false);
+
+          if (withdrawalCount && withdrawalCount > 0) {
+            urgentActions.push({
+              id: 'continuation-withdrawals',
+              type: 'continuation_withdrawals',
+              count: withdrawalCount,
+              label: withdrawalCount === 1 ? 'student withdrawing' : 'students withdrawing',
+              href: '/continuation',
               severity: 'warning',
             });
           }

@@ -32,7 +32,7 @@ export function ContinuationWidget() {
         filter: `org_id=eq.${currentOrg.id}`,
       },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['continuation'] });
+          queryClient.invalidateQueries({ queryKey: ['continuation-runs'] });
         }
       )
       .subscribe();

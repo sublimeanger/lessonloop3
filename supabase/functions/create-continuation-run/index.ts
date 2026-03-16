@@ -935,8 +935,9 @@ async function handleSend(
     .single();
 
   const orgName = org?.name || "Your Music Service";
-  const currencySymbol = org?.currency_code === 'EUR' ? '€' : org?.currency_code === 'USD' ? '$' : '£';
-  const currencyHtmlEntity = org?.currency_code === 'EUR' ? '&euro;' : org?.currency_code === 'USD' ? '$' : '&pound;';
+  const currencyCode = org?.currency_code || 'GBP';
+  const currencySymbol = new Intl.NumberFormat('en', { style: 'currency', currency: currencyCode, maximumFractionDigits: 0 }).format(0).replace(/[\d.,\s]/g, '');
+  const currencyHtmlEntity = currencySymbol;
 
   // Get responses with guardian details
   const { data: responses } = await client

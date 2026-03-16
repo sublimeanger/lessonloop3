@@ -14,7 +14,9 @@ export type ContinuationRunStatus =
   | 'sent'
   | 'reminding'
   | 'deadline_passed'
-  | 'completed';
+  | 'completed'
+  | 'failed'
+  | 'partial';
 
 export type ContinuationResponseType =
   | 'pending'
@@ -568,18 +570,38 @@ export function useBulkProcessContinuation() {
               .single();
 
             if (rec && rec.end_date && rec.end_date < data.next_term_end_date) {
+              const oldEndDate = rec.end_date;
+
               await (supabase as any)
                 .from('recurrence_rules')
                 .update({ end_date: data.next_term_end_date })
                 .eq('id', lesson.recurrence_id);
-            }
 
-            // TODO(FIX-3): Extending recurrence end_date does NOT generate actual
-            // lesson records for the new term. The calendar relies on materialised
-            // lesson rows in the `lessons` table. An admin must verify that lessons
-            // appear in the calendar for the new term and use the Bulk Slot Generator
-            // if they are missing. A future improvement should call an RPC or edge
-            // function here to generate the lesson rows automatically.
+              // Materialise lesson rows for the extended period
+              const { data: matResult, error: matError } = await supabase.rpc(
+                'materialise_continuation_lessons',
+                {
+                  p_org_id: currentOrg.id,
+                  p_recurrence_id: lesson.recurrence_id,
+                  p_student_id: resp.student_id,
+                  p_from_date: oldEndDate,
+                  p_to_date: data.next_term_end_date,
+                  p_rate_minor: lesson.rate_minor ?? null,
+                  p_created_by: user.id,
+                }
+              );
+
+              if (matError) {
+                console.warn(`[continuation] Lesson materialisation failed for recurrence ${lesson.recurrence_id}:`, matError.message);
+              } else if (matResult) {
+                const result = matResult as Record<string, number>;
+                if (result.conflicts > 0) {
+                  conflictWarnings.push(
+                    `${lesson.teacher_name || 'Teacher'}: ${result.conflicts} time-slot conflict(s) skipped`
+                  );
+                }
+              }
+            }
           }
           extendedCount++;
         } else if (resp.response === 'withdrawing') {
@@ -720,8 +742,8 @@ export function useBulkProcessContinuation() {
 
       if (data.extendedCount > 0) {
         toast({
-          title: 'Action required',
-          description: 'Recurrence dates extended. Please verify lessons were created for the new term in the calendar. Use the Bulk Slot Generator if lessons are missing.',
+          title: 'Lessons extended',
+          description: `Recurrence dates extended and lesson rows materialised for ${data.extendedCount} student(s). Verify in calendar.`,
           variant: 'default',
         });
       }
@@ -878,15 +900,7 @@ export function useDeleteContinuationRun() {
     mutationFn: async (runId: string) => {
       if (!currentOrg?.id) throw new Error('No organisation selected');
 
-      // Delete responses first (FK constraint)
-      const { error: respError } = await (supabase as any)
-        .from('term_continuation_responses')
-        .delete()
-        .eq('run_id', runId)
-        .eq('org_id', currentOrg.id);
-
-      if (respError) throw respError;
-
+      // Responses are deleted automatically via ON DELETE CASCADE on the run_id FK
       const { error } = await (supabase as any)
         .from('term_continuation_runs')
         .delete()
@@ -941,7 +955,8 @@ export function useUpdateContinuationResponse() {
       });
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['continuation'] });
+      queryClient.invalidateQueries({ queryKey: ['continuation-runs'] });
+      queryClient.invalidateQueries({ queryKey: ['continuation-run'] });
       queryClient.invalidateQueries({ queryKey: ['continuation-responses'] });
       toast({ title: `Response updated to "${variables.response}"` });
     },

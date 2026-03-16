@@ -214,7 +214,7 @@ export function ContinuationResponseDetail({
           )}
 
           {/* Admin Override */}
-          {response.response === 'pending' && (
+          {['pending', 'assumed_continuing', 'no_response'].includes(response.response) && (
             <div className="space-y-3 border-t pt-4">
               <Label>Admin Override</Label>
               <Select value={overrideResponse} onValueChange={setOverrideResponse}>
