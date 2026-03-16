@@ -330,6 +330,14 @@ html {
     background: hsl(var(--ink) / 0.85);
     backdrop-filter: blur(12px);
   }
+
+  /* Safe-area padding for Capacitor / notched devices */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
 }
 
 /* Status color utilities - theme-aware */
