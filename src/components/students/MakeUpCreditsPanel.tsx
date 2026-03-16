@@ -140,8 +140,18 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
             )}
           </div>
 
+          {/* Voided toggle */}
+          {voidedCount > 0 && (
+            <div className="flex items-center gap-2 mb-3">
+              <Switch id="show-voided" checked={showVoided} onCheckedChange={setShowVoided} />
+              <Label htmlFor="show-voided" className="text-sm text-muted-foreground cursor-pointer">
+                Show voided ({voidedCount})
+              </Label>
+            </div>
+          )}
+
           {/* Credits List */}
-          {(!credits || credits.length === 0) ? (
+          {filteredCredits.length === 0 && !showVoided && (!credits || credits.length === 0) ? (
             <div className="flex flex-col items-center text-center py-8 space-y-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                 <Gift className="h-6 w-6 text-muted-foreground" />
