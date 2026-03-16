@@ -152,8 +152,10 @@ export function WaitlistTable({
                 <SelectItem value="waiting">Waiting</SelectItem>
                 <SelectItem value="matched">Matched</SelectItem>
                 <SelectItem value="offered">Offered</SelectItem>
+                <SelectItem value="accepted">Accepted</SelectItem>
                 <SelectItem value="booked">Booked</SelectItem>
                 <SelectItem value="expired">Expired</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
             <Select
