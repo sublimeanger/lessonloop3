@@ -131,8 +131,8 @@ export function useNotesStats(filters: NotesExplorerFilters) {
           (r.content_covered?.toLowerCase().includes(q)) ||
           (r.homework?.toLowerCase().includes(q)) ||
           (r.focus_areas?.toLowerCase().includes(q)) ||
-          (r.student?.first_name?.toLowerCase().includes(q)) ||
-          (r.student?.last_name?.toLowerCase().includes(q))
+          (r.student_first_name?.toLowerCase().includes(q)) ||
+          (r.student_last_name?.toLowerCase().includes(q))
         );
       }
 
