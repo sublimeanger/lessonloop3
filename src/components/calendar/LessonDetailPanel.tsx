@@ -103,76 +103,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
   const [cancellationReason, setCancellationReason] = useState('');
   const [cancelMode, setCancelMode] = useState<RecurringActionMode>('this_only');
 
-  // Fetch recurrence rule details
-  const { data: recurrenceRule } = useQuery({
-    queryKey: ['recurrence-rule', lesson?.recurrence_id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('recurrence_rules')
-        .select('days_of_week, end_date, interval_weeks, start_date')
-        .eq('id', lesson!.recurrence_id!)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!lesson?.recurrence_id,
-    staleTime: STALE_STABLE,
-  });
-
-  const recurrenceDescription = useMemo(() => {
-    if (!recurrenceRule) return null;
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const days = (recurrenceRule.days_of_week || []).sort().map(d => dayNames[d]).join(', ');
-    const freq = recurrenceRule.interval_weeks === 1 ? 'Weekly' : `Every ${recurrenceRule.interval_weeks} weeks`;
-    const endDate = recurrenceRule.end_date ? format(parseISO(recurrenceRule.end_date), 'd MMM yyyy') : null;
-
-    // Count remaining lessons
-    let remaining: number | null = null;
-    if (recurrenceRule.end_date && recurrenceRule.days_of_week?.length) {
-      const now = startOfDay(new Date());
-      const end = parseISO(recurrenceRule.end_date);
-      const daysSet = new Set(recurrenceRule.days_of_week as number[]);
-      const intervalWeeks = recurrenceRule.interval_weeks || 1;
-
-      if (intervalWeeks === 1) {
-        // Weekly: count matching day-of-week dates using DST-safe addDays
-        let count = 0;
-        let current = now;
-        while (!isAfter(current, end)) {
-          if (daysSet.has(getDay(current))) count++;
-          current = addDays(current, 1);
-        }
-        remaining = count;
-      } else {
-        // Multi-week interval: walk from series start in interval-week steps
-        const seriesStart = recurrenceRule.start_date
-          ? startOfDay(parseISO(recurrenceRule.start_date))
-          : now;
-        let count = 0;
-        let weekCursor = seriesStart;
-        // Advance to the first recurrence week at or after now
-        while (isBefore(addWeeks(weekCursor, intervalWeeks), now)) {
-          weekCursor = addWeeks(weekCursor, intervalWeeks);
-        }
-        // Count matching days in each recurrence week
-        while (!isAfter(weekCursor, end)) {
-          for (let d = 0; d < 7; d++) {
-            const date = addDays(weekCursor, d);
-            if (daysSet.has(getDay(date)) && !isBefore(date, now) && !isAfter(date, end)) {
-              count++;
-            }
-          }
-          weekCursor = addWeeks(weekCursor, intervalWeeks);
-        }
-        remaining = count;
-      }
-    }
-
-    let desc = `${freq} on ${days}`;
-    if (endDate) desc += ` · Until ${endDate}`;
-    if (remaining !== null) desc += ` · ${remaining} remaining`;
-    return desc;
-  }, [recurrenceRule]);
+  // Recurrence info is now handled by the RecurrenceInfo component
 
   if (!lesson) return null;
 
