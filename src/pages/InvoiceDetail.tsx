@@ -651,6 +651,7 @@ export default function InvoiceDetail() {
         }}
         paymentId={refundPayment?.id || null}
         paymentAmount={refundPayment?.amount_minor || 0}
+        alreadyRefunded={refundPayment?._alreadyRefunded || 0}
         method={refundPayment?.method}
         paidAt={refundPayment?.paid_at}
         invoiceNumber={invoice.invoice_number}
