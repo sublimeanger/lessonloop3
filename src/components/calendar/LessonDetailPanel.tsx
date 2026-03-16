@@ -595,11 +595,12 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           )}
 
           {/* Recurrence info */}
-          {isRecurring && recurrenceDescription && (
-            <div className="flex items-center gap-3 text-muted-foreground">
-              <Repeat className="h-4 w-4 flex-shrink-0" />
-              <span className="text-sm text-foreground">{recurrenceDescription}</span>
-            </div>
+          {isRecurring && lesson.recurrence_id && (
+            <RecurrenceInfo
+              recurrenceId={lesson.recurrence_id}
+              currentLessonId={lesson.id}
+              currentStartAt={lesson.start_at}
+            />
           )}
 
           {/* Students */}

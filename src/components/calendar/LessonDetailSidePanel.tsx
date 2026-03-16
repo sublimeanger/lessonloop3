@@ -174,11 +174,12 @@ export function LessonDetailSidePanel({
               </div>
             )}
 
-            {recurrenceLabel && (
-              <div className="flex items-center gap-3">
-                <Repeat className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm text-muted-foreground">{recurrenceLabel}</span>
-              </div>
+            {isRecurring && (
+              <RecurrenceInfo
+                recurrenceId={lesson.recurrence_id!}
+                currentLessonId={lesson.id}
+                currentStartAt={lesson.start_at}
+              />
             )}
           </div>
 
