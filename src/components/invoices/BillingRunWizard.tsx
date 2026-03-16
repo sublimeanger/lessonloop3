@@ -331,6 +331,56 @@ export function BillingRunWizard({ open, onOpenChange }: BillingRunWizardProps) 
               </div>
             ) : null}
 
+            {/* Payment Plans */}
+            <div className="rounded-lg border p-3 space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox
+                  checked={config.planEnabled}
+                  onCheckedChange={(v) => setConfig((c) => ({ ...c, planEnabled: !!v }))}
+                />
+                <span className="text-sm font-medium">Enable payment plans for this run</span>
+              </label>
+              {config.planEnabled && (
+                <div className="grid gap-3 sm:grid-cols-3 pl-6">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Auto-split invoices over ({currencySymbol(currency)})</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="1"
+                      value={config.planThreshold ? (config.planThreshold / 100).toFixed(0) : ''}
+                      onChange={(e) => setConfig((c) => ({ ...c, planThreshold: Math.round(parseFloat(e.target.value || '0') * 100) }))}
+                      placeholder="e.g. 200"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Installments</Label>
+                    <Select value={config.planInstallments.toString()} onValueChange={(v) => setConfig((c) => ({ ...c, planInstallments: parseInt(v) }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {[2, 3, 4, 6].map((n) => (
+                          <SelectItem key={n} value={n.toString()}>{n}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Frequency</Label>
+                    <Select value={config.planFrequency} onValueChange={(v) => setConfig((c) => ({ ...c, planFrequency: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-muted-foreground sm:col-span-3">
+                    Student-level preferences (always/never split) are respected automatically.
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Rate Cards Status */}
             <div className="rounded-lg border p-3">
               <div className="flex items-center justify-between">

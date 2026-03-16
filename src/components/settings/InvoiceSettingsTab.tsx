@@ -255,6 +255,55 @@ export function InvoiceSettingsTab() {
             </div>
           )}
         </div>
+        <Separator />
+
+        {/* Default Payment Plan */}
+        <div className="space-y-3">
+          <div>
+            <Label className="text-base">Default Payment Plan</Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              Pre-fill payment plan settings for billing runs and manual invoices.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="planThreshold">Auto-offer for invoices over ({currencySymbol(currentOrg?.currency_code || 'GBP')})</Label>
+              <Input
+                id="planThreshold"
+                type="number"
+                min={0}
+                step="1"
+                placeholder="Leave blank for no auto"
+                value={planThreshold}
+                onChange={(e) => setPlanThreshold(e.target.value)}
+                disabled={!canEdit}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Default Installments</Label>
+              <Select value={planInstallments} onValueChange={setPlanInstallments} disabled={!canEdit}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[2, 3, 4, 6, 8, 10, 12].map((n) => (
+                    <SelectItem key={n} value={n.toString()}>{n}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Default Frequency</Label>
+              <Select value={planFrequency} onValueChange={setPlanFrequency} disabled={!canEdit}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
 
         {canEdit && (
           <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>

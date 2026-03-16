@@ -8,7 +8,7 @@ import { fromZonedTime } from 'date-fns-tz';
 
 export interface UrgentAction {
   id: string;
-  type: 'unmarked_lessons' | 'overdue_invoices' | 'pending_requests' | 'unreviewed_practice' | 'continuation_withdrawals';
+  type: 'unmarked_lessons' | 'overdue_invoices' | 'pending_requests' | 'unreviewed_practice' | 'continuation_withdrawals' | 'overdue_installments';
   count: number;
   label: string;
   href: string;
