@@ -612,9 +612,9 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
           {/* Teacher */}
           <div className="flex items-center gap-3 text-muted-foreground">
             <User className="h-4 w-4 flex-shrink-0" />
-            <span className="text-sm font-medium text-foreground">
+            <TeacherLink teacherId={lesson.teacher_id} className="text-sm font-medium">
               {lesson.teacher?.full_name || lesson.teacher?.email || 'Unknown'}
-            </span>
+            </TeacherLink>
           </div>
 
           {/* Location */}
