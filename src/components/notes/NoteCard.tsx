@@ -99,7 +99,7 @@ export function NoteCard({ note, isAdmin, currentTeacherId, timezone }: NoteCard
                 <p className="text-sm text-foreground whitespace-pre-wrap">{note.focus_areas}</p>
               </div>
             )}
-            {isAdmin && note.teacher_private_notes && (
+            {(isAdmin || (currentTeacherId && note.teacher_id === currentTeacherId)) && note.teacher_private_notes && (
               <div className="rounded-md bg-muted/50 p-2.5 border-l-2 border-primary/30">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-0.5 flex items-center gap-1">
                   <Lock className="h-3 w-3" /> Private Notes

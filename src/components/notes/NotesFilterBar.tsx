@@ -142,7 +142,7 @@ export function NotesFilterBar({ filters, onFiltersChange, teachers, isTeacherRo
         value={filters.visibilityFilter || 'all'}
         onValueChange={(v) => onFiltersChange({ ...filters, visibilityFilter: v as any })}
       >
-        <SelectTrigger className="w-[160px]">
+        <SelectTrigger className="w-full sm:w-[160px]">
           <SelectValue placeholder="All Notes" />
         </SelectTrigger>
         <SelectContent>
