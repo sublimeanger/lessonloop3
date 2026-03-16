@@ -717,7 +717,7 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
                 const currentStatus = getStudentAttendance(p.student.id);
                 return (
                   <div key={p.id} className="space-y-2">
-                    <div className="font-medium text-sm">{p.student.first_name} {p.student.last_name}</div>
+                    <div className="font-medium text-sm"><EntityLink type="student" id={p.student.id}>{p.student.first_name} {p.student.last_name}</EntityLink></div>
                     <div className="flex flex-wrap gap-1">
                       {ATTENDANCE_OPTIONS.map((option) => (
                         <Button
