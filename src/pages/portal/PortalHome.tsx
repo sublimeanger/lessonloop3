@@ -900,6 +900,50 @@ export default function PortalHome() {
       </div>
 
       <RequestModal open={requestModalOpen} onOpenChange={setRequestModalOpen} />
+
+      {/* Decline make-up confirmation */}
+      <AlertDialog open={!!declineConfirmId} onOpenChange={(open) => !open && setDeclineConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Decline this make-up slot?</AlertDialogTitle>
+            <AlertDialogDescription>
+              If you decline, your credit will be preserved and we'll keep looking for another
+              available time. You can always accept a future offer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Offer</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeDecline}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Decline Slot
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel booked make-up confirmation */}
+      <AlertDialog open={!!cancelConfirmId} onOpenChange={(open) => !open && setCancelConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel this booked make-up?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will cancel your booked make-up lesson and return your entry to the waiting list.
+              We'll keep looking for another available slot.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Booking</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeCancelMakeup}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Cancel Make-Up
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PortalLayout>
   );
 }
