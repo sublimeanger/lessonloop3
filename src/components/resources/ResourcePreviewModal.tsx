@@ -19,9 +19,10 @@ interface ResourcePreviewModalProps {
   title: string;
 }
 
-function isPreviewable(fileType: string): 'image' | 'pdf' | 'none' {
+function isPreviewable(fileType: string): 'image' | 'pdf' | 'video' | 'none' {
   if (fileType.startsWith('image/')) return 'image';
   if (fileType === 'application/pdf') return 'pdf';
+  if (fileType.startsWith('video/')) return 'video';
   return 'none';
 }
 
