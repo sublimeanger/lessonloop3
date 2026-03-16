@@ -102,6 +102,28 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
 
   const payerType = watch('payerType');
   const payerId = watch('payerId');
+  const dueDate = watch('dueDate');
+
+  // Sync plan start date with due date when not manually set
+  useEffect(() => {
+    if (dueDate && !planStartDate) {
+      setPlanStartDate(dueDate);
+    }
+  }, [dueDate]);
+
+  // Compute total in minor units for plan preview
+  const items = watch('items');
+  const computedTotalMinor = useMemo(() => {
+    if (tab === 'lessons') {
+      // Can't easily compute lesson total here, show 0
+      return 0;
+    }
+    const subtotal = (items || []).reduce(
+      (sum, item) => sum + Math.round((item.unitPrice || 0) * 100) * (item.quantity || 0),
+      0,
+    );
+    return Math.max(0, subtotal - totalSelectedCredit);
+  }, [items, totalSelectedCredit, tab]);
 
   // Fetch available credits for the selected payer
   const { data: availableCredits = [] } = useAvailableCreditsForPayer(payerType, payerId);
