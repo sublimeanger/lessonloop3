@@ -154,22 +154,9 @@ export function LessonNotesForm({
     }));
   }, []);
 
-  const handleSave = useCallback(async (key: string) => {
+  const executeSave = useCallback(async (key: string) => {
     const form = forms[key];
     if (!form) return;
-
-    // Don't save if all fields are empty
-    const hasContent = form.contentCovered || form.homework || form.focusAreas ||
-      form.engagementRating || form.teacherPrivateNotes;
-    if (!hasContent) return;
-
-    // FIX 6: Warn when parent_visible is on and private notes exist
-    if (form.parentVisible && form.teacherPrivateNotes) {
-      const confirmed = window.confirm(
-        'This note will be visible to parents immediately. Private notes are hidden but the note content will be shared. Continue?'
-      );
-      if (!confirmed) return;
-    }
 
     await saveMutation.mutateAsync({
       id: form.id,
@@ -183,6 +170,23 @@ export function LessonNotesForm({
       parent_visible: form.parentVisible,
     });
   }, [forms, lessonId, saveMutation]);
+
+  const handleSave = useCallback(async (key: string) => {
+    const form = forms[key];
+    if (!form) return;
+
+    const hasContent = form.contentCovered || form.homework || form.focusAreas ||
+      form.engagementRating || form.teacherPrivateNotes;
+    if (!hasContent) return;
+
+    // Warn when parent_visible is on and private notes exist
+    if (form.parentVisible && form.teacherPrivateNotes) {
+      setConfirmSaveKey(key);
+      return;
+    }
+
+    await executeSave(key);
+  }, [forms, executeSave]);
 
   const handleSaveAll = useCallback(async () => {
     if (perStudentMode) {
