@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { format, addDays, differenceInMinutes } from 'date-fns';
+import { useGenerateInstallments } from '@/hooks/useInvoiceInstallments';
+import { PaymentPlanToggle } from '@/components/invoices/PaymentPlanToggle';
 import {
   Dialog,
   DialogContent,
