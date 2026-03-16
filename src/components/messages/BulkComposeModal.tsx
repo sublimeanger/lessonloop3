@@ -327,7 +327,7 @@ export function BulkComposeModal({ open, onOpenChange }: BulkComposeModalProps) 
         <AlertDialogHeader>
           <AlertDialogTitle>Send to {recipientCount} guardian{recipientCount !== 1 ? 's' : ''}?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will send an email to {recipientCount} guardian{recipientCount !== 1 ? 's' : ''}.
+            This will send {sendEmail ? 'an in-app message and email' : 'an in-app message'} to {recipientCount} guardian{recipientCount !== 1 ? 's' : ''}.
             This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>

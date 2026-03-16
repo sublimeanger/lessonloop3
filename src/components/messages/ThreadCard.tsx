@@ -260,7 +260,7 @@ export function ThreadCard({ thread, isExpanded, onToggle, replyingTo, setReplyi
                   variant="outline" 
                   size="sm"
                   onClick={() => setReplyingTo(thread.thread_id)}
-                  className="gap-2 rounded-full"
+                  className="gap-2 rounded-full min-h-[44px] sm:min-h-9"
                 >
                   <Reply className="h-4 w-4" />
                   Reply
