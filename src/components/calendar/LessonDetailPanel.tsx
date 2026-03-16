@@ -26,6 +26,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Clock, MapPin, User, Users, Edit2, Check, X, AlertCircle, Loader2, Trash2, Ban, Gift, AlertTriangle, CalendarClock, StopCircle, Repeat, Video, ExternalLink, RefreshCw, ArrowRightLeft } from 'lucide-react';
 import { LessonNotesForm } from './LessonNotesForm';
+import { EntityLink } from '@/components/shared/EntityLink';
+import { TeacherLink } from '@/components/shared/TeacherLink';
+import { LocationLink } from '@/components/shared/LocationLink';
 import { TermAdjustmentWizard } from '@/components/term-adjustments/TermAdjustmentWizard';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
