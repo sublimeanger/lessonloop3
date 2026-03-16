@@ -576,6 +576,20 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
               </div>
             )}
 
+            {/* Payment Plan Toggle */}
+            <PaymentPlanToggle
+              enabled={planEnabled}
+              onEnabledChange={setPlanEnabled}
+              count={planCount}
+              onCountChange={setPlanCount}
+              frequency={planFrequency}
+              onFrequencyChange={setPlanFrequency}
+              startDate={planStartDate}
+              onStartDateChange={setPlanStartDate}
+              totalMinor={computedTotalMinor}
+              currency={currency}
+            />
+
             <div className="space-y-2">
               <Label htmlFor="notes">Notes (Optional)</Label>
               <Textarea
