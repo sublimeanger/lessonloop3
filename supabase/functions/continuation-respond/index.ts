@@ -34,10 +34,15 @@ function jsonResponse(
 
 /** Recalculate and persist run summary. */
 async function recalcSummary(client: any, runId: string) {
-  const { data: responses } = await client
+  const { data: responses, error: fetchError } = await client
     .from("term_continuation_responses")
     .select("response")
     .eq("run_id", runId);
+
+  if (fetchError) {
+    console.error("[continuation-respond] recalcSummary fetch failed:", fetchError);
+    return null;
+  }
 
   const summary = {
     total_students: responses?.length || 0,
@@ -68,10 +73,14 @@ async function recalcSummary(client: any, runId: string) {
     }
   }
 
-  await client
+  const { error: updateError } = await client
     .from("term_continuation_runs")
     .update({ summary })
     .eq("id", runId);
+
+  if (updateError) {
+    console.error("[continuation-respond] recalcSummary update failed:", updateError);
+  }
 
   return summary;
 }
@@ -214,7 +223,7 @@ async function handleTokenResponse(
 
   // Update response
   const now = new Date().toISOString();
-  await client
+  const { error: updateError } = await client
     .from("term_continuation_responses")
     .update({
       response: response,
@@ -224,6 +233,15 @@ async function handleTokenResponse(
       withdrawal_notes: response === "withdrawing" ? withdrawal_notes : null,
     })
     .eq("id", respRow.id);
+
+  if (updateError) {
+    console.error("[continuation-respond] Token update failed:", updateError);
+    return jsonResponse(
+      { error: "Failed to save response. Please try again." },
+      cors,
+      500
+    );
+  }
 
   // Get student name for confirmation
   const { data: student } = await client
@@ -360,7 +378,7 @@ async function handlePortalResponse(
 
   // Update
   const now = new Date().toISOString();
-  await client
+  const { error: updateError } = await client
     .from("term_continuation_responses")
     .update({
       response: response,
@@ -370,6 +388,15 @@ async function handlePortalResponse(
       withdrawal_notes: response === "withdrawing" ? withdrawal_notes : null,
     })
     .eq("id", respRow.id);
+
+  if (updateError) {
+    console.error("[continuation-respond] Portal update failed:", updateError);
+    return jsonResponse(
+      { error: "Failed to save response. Please try again." },
+      cors,
+      500
+    );
+  }
 
   // Get student name
   const { data: student } = await client
