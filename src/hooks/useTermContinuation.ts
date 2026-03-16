@@ -928,8 +928,8 @@ export function useUpdateContinuationResponse() {
         response_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
-        .from('continuation_responses' as any)
+      const { error } = await (supabase as any)
+        .from('term_continuation_responses')
         .update(updateData)
         .eq('id', id)
         .eq('org_id', currentOrg.id);
