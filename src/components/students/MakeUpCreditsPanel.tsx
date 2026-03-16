@@ -252,7 +252,7 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
                   className="w-full"
                   onClick={() => setVisibleCount((c) => c + 10)}
                 >
-                  Show older credits ({(credits?.length || 0) - visibleCount} more)
+                  Show older credits ({filteredCredits.length - visibleCount} more)
                 </Button>
               )}
             </div>
