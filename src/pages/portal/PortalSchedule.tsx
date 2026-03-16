@@ -336,7 +336,29 @@ export default function PortalSchedule() {
                 </div>
               )}
 
-              {/* Recap Link */}
+              {/* Structured lesson notes (from lesson_notes table, parent-safe RPC) */}
+              {(() => {
+                const notesForLesson = (parentNotes || []).filter(n => n.lesson_id === lesson.id && n.parent_visible);
+                if (notesForLesson.length === 0) return null;
+                return (
+                  <div className="mt-3 pt-3 border-t space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
+                      <FileText className="h-3.5 w-3.5" /> Detailed Notes
+                    </div>
+                    {notesForLesson.map(n => (
+                      <div key={n.id} className="bg-primary/5 rounded-md p-3">
+                        <LessonNoteCard
+                          contentCovered={n.content_covered}
+                          homework={n.homework}
+                          focusAreas={n.focus_areas}
+                          engagementRating={null}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
               {lesson.recap_url && (
                 <div className="mt-3 pt-3 border-t">
                   <a
