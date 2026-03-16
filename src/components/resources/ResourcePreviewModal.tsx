@@ -77,7 +77,7 @@ export function ResourcePreviewModal({
   const dialogSize =
     previewType === 'pdf'
       ? 'h-screen w-screen max-w-none rounded-none border-0 p-3 sm:h-[85vh] sm:max-w-[900px] sm:rounded-lg sm:border sm:p-6'
-      : previewType === 'image'
+      : previewType === 'image' || previewType === 'video'
         ? 'h-screen w-screen max-w-none rounded-none border-0 p-3 sm:max-h-[90vh] sm:max-w-[90vw] sm:rounded-lg sm:border sm:p-6'
         : 'h-screen w-screen max-w-none rounded-none border-0 p-3 sm:max-w-[450px] sm:rounded-lg sm:border sm:p-6';
 
