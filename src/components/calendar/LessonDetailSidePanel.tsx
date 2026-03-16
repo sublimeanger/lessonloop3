@@ -57,6 +57,9 @@ export function LessonDetailSidePanel({
         studentId,
         status,
       });
+      // Optimistic local state is handled by React Query cache invalidation in the hook
+    } catch {
+      // Error toast is handled by the hook's onError
     } finally {
       setSavingAttendance(null);
     }
