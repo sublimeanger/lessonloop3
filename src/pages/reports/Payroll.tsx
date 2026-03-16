@@ -252,7 +252,7 @@ function PayrollTeacherList({
                   {teacher.teacherName[0]}
                 </div>
                 <div className="text-left">
-                  <p className="font-medium">{teacher.teacherName}</p>
+                  <p className="font-medium"><TeacherLink teacherId={teacher.teacherId}>{teacher.teacherName}</TeacherLink></p>
                   <p className="text-sm text-muted-foreground">
                     {getPayRateLabel(teacher.payRateType, teacher.payRateValue)}
                   </p>
