@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { TeacherAssignmentsPanel } from './TeacherAssignmentsPanel';
 import { MakeUpCreditsPanel } from './MakeUpCreditsPanel';
@@ -18,6 +20,9 @@ import { LoadingSpinner } from '@/components/shared/LoadingState';
 import { TermAdjustmentWizard } from '@/components/term-adjustments/TermAdjustmentWizard';
 import { AdjustmentHistoryPanel } from '@/components/term-adjustments/AdjustmentHistoryPanel';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useOrg } from '@/contexts/OrgContext';
+import { useToast } from '@/hooks/use-toast';
 import { Loader2, Calendar, Receipt, Music, MessageSquare, Send, ArrowRightLeft } from 'lucide-react';
 import type { useStudentDetailPage } from '@/hooks/useStudentDetailPage';
 
@@ -31,6 +36,29 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
   const student = hook.student!;
   const fullName = hook.fullName;
   const [termAdjustmentOpen, setTermAdjustmentOpen] = useState(false);
+  const [planPref, setPlanPref] = useState(student.payment_plan_preference || 'default');
+  const [savingPref, setSavingPref] = useState(false);
+  const { currentOrg, isOrgAdmin } = useOrg();
+  const { toast } = useToast();
+
+  const handlePlanPrefChange = async (value: string) => {
+    setPlanPref(value);
+    setSavingPref(true);
+    try {
+      const { error } = await supabase
+        .from('students')
+        .update({ payment_plan_preference: value } as any)
+        .eq('id', student.id)
+        .eq('org_id', currentOrg!.id);
+      if (error) throw error;
+      toast({ title: 'Payment plan preference updated' });
+    } catch {
+      toast({ title: 'Failed to update preference', variant: 'destructive' });
+      setPlanPref(student.payment_plan_preference || 'default');
+    } finally {
+      setSavingPref(false);
+    }
+  };
 
   return (
     <Tabs defaultValue="overview" className="space-y-6" onValueChange={() => hook.setIsEditing(false)}>
@@ -213,6 +241,30 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
 
       <TabsContent value="invoices">
         <SectionErrorBoundary name="Invoices">
+          {isOrgAdmin && (
+            <Card className="mb-4">
+              <CardContent className="pt-4 pb-3">
+                <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-4">
+                  <Label htmlFor="plan-pref" className="text-sm font-medium whitespace-nowrap">
+                    Payment plan preference
+                  </Label>
+                  <Select value={planPref} onValueChange={handlePlanPrefChange} disabled={savingPref}>
+                    <SelectTrigger id="plan-pref" className="w-full sm:w-[200px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Use default</SelectItem>
+                      <SelectItem value="always">Always offer plan</SelectItem>
+                      <SelectItem value="never">Never offer plan</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs text-muted-foreground">
+                    Controls whether billing runs auto-split invoices for this student
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardHeader>
               <CardTitle>Invoices</CardTitle>
