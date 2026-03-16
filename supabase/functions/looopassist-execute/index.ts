@@ -261,6 +261,9 @@ serve(async (req) => {
           }
 
           case "send_bulk_reminders": {
+            const { data: _reminderOrg } = await supabase.from("organisations").select("currency_code").eq("id", orgId).single();
+            const fmtCurrency = (minor: number) =>
+              new Intl.NumberFormat("en-GB", { style: "currency", currency: _reminderOrg?.currency_code || "GBP" }).format(minor / 100);
             const { data: overdueInvoices } = await supabase
               .from("invoices")
               .select(`
