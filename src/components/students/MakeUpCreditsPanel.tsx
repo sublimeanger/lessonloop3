@@ -22,10 +22,17 @@ export function MakeUpCreditsPanel({ studentId, studentName }: MakeUpCreditsPane
   const { credits, availableCredits, totalAvailableValue, isLoading, voidCredit } = useMakeUpCredits(studentId);
   const [issueModalOpen, setIssueModalOpen] = useState(false);
   const [voidConfirmId, setVoidConfirmId] = useState<string | null>(null);
+  const [showVoided, setShowVoided] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
 
-  const visibleCredits = useMemo(() => (credits || []).slice(0, visibleCount), [credits, visibleCount]);
-  const hasMore = (credits?.length || 0) > visibleCount;
+  const filteredCredits = useMemo(() => {
+    if (!credits) return [];
+    return showVoided ? credits : credits.filter(c => !c.voided_at);
+  }, [credits, showVoided]);
+
+  const visibleCredits = useMemo(() => filteredCredits.slice(0, visibleCount), [filteredCredits, visibleCount]);
+  const hasMore = filteredCredits.length > visibleCount;
+  const voidedCount = credits?.filter(c => c.voided_at).length || 0;
 
   const fmtCurrency = (minor: number) => formatCurrencyMinor(minor, currentOrg?.currency_code);
 
