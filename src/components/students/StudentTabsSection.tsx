@@ -36,6 +36,29 @@ export function StudentTabsSection({ hook }: StudentTabsSectionProps) {
   const student = hook.student!;
   const fullName = hook.fullName;
   const [termAdjustmentOpen, setTermAdjustmentOpen] = useState(false);
+  const [planPref, setPlanPref] = useState(student.payment_plan_preference || 'default');
+  const [savingPref, setSavingPref] = useState(false);
+  const { currentOrg, isOrgAdmin } = useOrg();
+  const { toast } = useToast();
+
+  const handlePlanPrefChange = async (value: string) => {
+    setPlanPref(value);
+    setSavingPref(true);
+    try {
+      const { error } = await supabase
+        .from('students')
+        .update({ payment_plan_preference: value } as any)
+        .eq('id', student.id)
+        .eq('org_id', currentOrg!.id);
+      if (error) throw error;
+      toast({ title: 'Payment plan preference updated' });
+    } catch {
+      toast({ title: 'Failed to update preference', variant: 'destructive' });
+      setPlanPref(student.payment_plan_preference || 'default');
+    } finally {
+      setSavingPref(false);
+    }
+  };
 
   return (
     <Tabs defaultValue="overview" className="space-y-6" onValueChange={() => hook.setIsEditing(false)}>
