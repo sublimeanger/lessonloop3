@@ -381,5 +381,28 @@ export function LessonNotesForm({
         </div>
       </CollapsibleContent>
     </Collapsible>
+
+    <AlertDialog open={!!confirmSaveKey} onOpenChange={(open) => { if (!open) setConfirmSaveKey(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Share note with parents?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This note is marked as visible to parents. The main content (what was covered, homework, focus areas) will be shared immediately. Private notes remain hidden from parents.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={async () => {
+              if (confirmSaveKey) await executeSave(confirmSaveKey);
+              setConfirmSaveKey(null);
+            }}
+          >
+            Save &amp; Share
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
