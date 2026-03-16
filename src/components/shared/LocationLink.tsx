@@ -66,9 +66,7 @@ export function LocationLink({ locationId, children, className }: LocationLinkPr
             <Badge variant="secondary" className="text-micro">Archived</Badge>
           )}
         </div>
-        {location?.address && (
-          <p className="text-xs text-muted-foreground pl-6">{location.address}</p>
-        )}
+        
         {location?.rooms && location.rooms.length > 0 && (
           <div className="pl-6 space-y-1">
             <p className="text-micro font-medium text-muted-foreground">Rooms</p>
