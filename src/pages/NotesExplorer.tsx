@@ -208,6 +208,7 @@ export default function NotesExplorer() {
                       key={note.id}
                       note={note}
                       isAdmin={isOrgAdmin}
+                      currentTeacherId={currentTeacherId}
                       timezone={timezone as string}
                     />
                   ))}
