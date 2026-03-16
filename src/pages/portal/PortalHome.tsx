@@ -882,20 +882,22 @@ export default function PortalHome() {
                 Send a Message
               </Button>
             </div>
-            <Link to={portalLink("/portal/resources")} className="block">
-              <Card data-interactive className="rounded-2xl">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
-                    <FolderOpen className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">Resources</p>
-                    <p className="text-xs text-muted-foreground">Teaching materials from your teacher</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
-                </CardContent>
-              </Card>
-            </Link>
+            {resourcesEnabled && (
+              <Link to={portalLink("/portal/resources")} className="block">
+                <Card data-interactive className="rounded-2xl">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                      <FolderOpen className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">Resources</p>
+                      <p className="text-xs text-muted-foreground">Teaching materials from your teacher</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                  </CardContent>
+                </Card>
+              </Link>
+            )}
           </>
         )}
       </div>
