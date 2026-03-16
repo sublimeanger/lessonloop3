@@ -41,6 +41,16 @@ import { PortalWelcomeDialog } from '@/components/portal/PortalWelcomeDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { parseISO, formatDistanceToNowStrict, isBefore, isToday, isTomorrow, isAfter, addMinutes } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { formatCurrencyMinor, formatDateUK, formatTimeUK } from '@/lib/utils';
@@ -61,6 +71,8 @@ export default function PortalHome() {
   const { portalLink } = usePortalLink();
   const [searchParams, setSearchParams] = useSearchParams();
   const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [declineConfirmId, setDeclineConfirmId] = useState<string | null>(null);
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const makeupHandled = useRef(false);
@@ -142,21 +154,27 @@ export default function PortalHome() {
   };
 
   const handleInlineDecline = async (id: string) => {
+    // Show confirmation dialog instead of declining immediately
+    setDeclineConfirmId(id);
+  };
+
+  const executeDecline = async () => {
+    const id = declineConfirmId;
+    if (!id) return;
+    setDeclineConfirmId(null);
+
     try {
-      // Get entry info for admin notification before declining
       const entry = activeWaitlist.find((e) => e.id === id);
       const studentName = entry?.student
         ? `${entry.student.first_name} ${entry.student.last_name}`
         : 'Student';
 
-      // Use atomic RPC for decline action
       const { error } = await (supabase.rpc as any)('respond_to_makeup_offer', {
         _waitlist_id: id,
         _action: 'decline',
       });
       if (error) throw error;
 
-      // Notify admin via audit log (visible in admin dashboard)
       if (entry?.org_id) {
         supabase
           .from('audit_log')
@@ -181,14 +199,20 @@ export default function PortalHome() {
 
   // FIX 6: Cancel a booked make-up
   const handleCancelBookedMakeup = async (id: string) => {
+    setCancelConfirmId(id);
+  };
+
+  const executeCancelMakeup = async () => {
+    const id = cancelConfirmId;
+    if (!id) return;
+    setCancelConfirmId(null);
+
     try {
       const guardianId = guardianInfo?.id;
       if (!guardianId) {
         toast({ title: 'Guardian record not found', variant: 'destructive' });
         return;
       }
-      const confirmed = window.confirm('Are you sure you want to cancel this booked make-up lesson?');
-      if (!confirmed) return;
 
       const { error } = await supabase
         .from('make_up_waitlist')
@@ -876,6 +900,50 @@ export default function PortalHome() {
       </div>
 
       <RequestModal open={requestModalOpen} onOpenChange={setRequestModalOpen} />
+
+      {/* Decline make-up confirmation */}
+      <AlertDialog open={!!declineConfirmId} onOpenChange={(open) => !open && setDeclineConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Decline this make-up slot?</AlertDialogTitle>
+            <AlertDialogDescription>
+              If you decline, your credit will be preserved and we'll keep looking for another
+              available time. You can always accept a future offer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Offer</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeDecline}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Decline Slot
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel booked make-up confirmation */}
+      <AlertDialog open={!!cancelConfirmId} onOpenChange={(open) => !open && setCancelConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel this booked make-up?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will cancel your booked make-up lesson and return your entry to the waiting list.
+              We'll keep looking for another available slot.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Booking</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeCancelMakeup}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Cancel Make-Up
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PortalLayout>
   );
 }

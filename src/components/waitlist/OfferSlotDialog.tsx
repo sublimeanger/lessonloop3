@@ -27,6 +27,9 @@ import {
 import { Loader2, Send } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTeachers } from '@/hooks/useTeachers';
+import { useOrg } from '@/contexts/OrgContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useOfferSlot, type EnrolmentWaitlistEntry } from '@/hooks/useEnrolmentWaitlist';
 
 // ---------------------------------------------------------------------------
@@ -56,6 +59,23 @@ export function OfferSlotDialog({ open, onOpenChange, entry }: OfferSlotDialogPr
   const isMobile = useIsMobile();
   const offerMutation = useOfferSlot();
   const { data: teachers } = useTeachers();
+  const { currentOrg } = useOrg();
+
+  // Fetch locations for the org
+  const { data: locations } = useQuery({
+    queryKey: ['locations_for_offer', currentOrg?.id],
+    queryFn: async () => {
+      if (!currentOrg?.id) return [];
+      const { data, error } = await supabase
+        .from('locations')
+        .select('id, name')
+        .eq('org_id', currentOrg.id)
+        .order('name');
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!currentOrg?.id && open,
+  });
 
   const [day, setDay] = useState(entry.preferred_days?.[0] || '');
   const [time, setTime] = useState(entry.preferred_time_earliest || '');
@@ -101,7 +121,7 @@ export function OfferSlotDialog({ open, onOpenChange, entry }: OfferSlotDialogPr
       </div>
 
       {/* Slot details */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="offer-day">Day *</Label>
           <Select value={day} onValueChange={setDay}>
@@ -142,12 +162,16 @@ export function OfferSlotDialog({ open, onOpenChange, entry }: OfferSlotDialogPr
 
       <div className="space-y-2">
         <Label htmlFor="offer-location">Location *</Label>
-        <Input
-          id="offer-location"
-          value={locationId}
-          onChange={(e) => setLocationId(e.target.value)}
-          placeholder="Location ID (v1: enter manually)"
-        />
+        <Select value={locationId} onValueChange={setLocationId}>
+          <SelectTrigger id="offer-location">
+            <SelectValue placeholder="Select location" />
+          </SelectTrigger>
+          <SelectContent>
+            {locations?.map((l) => (
+              <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-2">
