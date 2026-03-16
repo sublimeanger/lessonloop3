@@ -25,9 +25,6 @@ import { FileText, ChevronDown, Loader2, Save, Lock, Users } from 'lucide-react'
 import { cn } from '@/lib/utils';
 import { EngagementRating } from './EngagementRating';
 import { useLessonNotes, useSaveLessonNote } from '@/hooks/useLessonNotes';
-import { cn } from '@/lib/utils';
-import { EngagementRating } from './EngagementRating';
-import { useLessonNotes, useSaveLessonNote } from '@/hooks/useLessonNotes';
 
 interface Participant {
   id: string;
