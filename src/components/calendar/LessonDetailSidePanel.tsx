@@ -6,7 +6,8 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { X, Clock, User, MapPin, Repeat, Edit2, Check, Ban, AlertCircle, Loader2, Video, ExternalLink } from 'lucide-react';
+import { X, Clock, User, MapPin, Edit2, Check, Ban, AlertCircle, Loader2, Video, ExternalLink } from 'lucide-react';
+import { RecurrenceInfo } from './RecurrenceInfo';
 import { useUpdateAttendance } from '@/hooks/useRegisterData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrg } from '@/contexts/OrgContext';
@@ -104,7 +105,7 @@ export function LessonDetailSidePanel({
   const statusInfo = lesson ? STATUS_STYLES[lesson.status] || STATUS_STYLES.scheduled : STATUS_STYLES.scheduled;
   const teacherName = lesson?.teacher?.full_name || lesson?.teacher?.email || 'Unknown';
   const teacherInitials = teacherName.split(' ').slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
-  const recurrenceLabel = lesson?.recurrence_id ? 'Recurring lesson' : null;
+  const isRecurring = !!lesson?.recurrence_id;
   const isCancelled = lesson?.status === 'cancelled';
 
   return (
@@ -173,11 +174,12 @@ export function LessonDetailSidePanel({
               </div>
             )}
 
-            {recurrenceLabel && (
-              <div className="flex items-center gap-3">
-                <Repeat className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm text-muted-foreground">{recurrenceLabel}</span>
-              </div>
+            {isRecurring && (
+              <RecurrenceInfo
+                recurrenceId={lesson.recurrence_id!}
+                currentLessonId={lesson.id}
+                currentStartAt={lesson.start_at}
+              />
             )}
           </div>
 

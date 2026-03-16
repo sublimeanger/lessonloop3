@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
-import { Clock, User, MapPin, Repeat, Users, Edit2, Video, ExternalLink } from 'lucide-react';
+import { Clock, User, MapPin, Users, Edit2, Video, ExternalLink } from 'lucide-react';
+import { RecurrenceInfo } from './RecurrenceInfo';
 import { EntityLink } from '@/components/shared/EntityLink';
 import { TeacherLink } from '@/components/shared/TeacherLink';
 import { LocationLink } from '@/components/shared/LocationLink';
@@ -111,10 +112,11 @@ export function MobileLessonSheet({
             )}
 
             {lesson.recurrence_id && (
-              <div className="flex items-center gap-3">
-                <Repeat className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm text-muted-foreground">Recurring lesson</span>
-              </div>
+              <RecurrenceInfo
+                recurrenceId={lesson.recurrence_id}
+                currentLessonId={lesson.id}
+                currentStartAt={lesson.start_at}
+              />
             )}
 
             {studentNames.length > 1 && (
