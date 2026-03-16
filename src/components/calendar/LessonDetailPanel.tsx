@@ -675,9 +675,10 @@ export function LessonDetailPanel({ lesson, open, onClose, onEdit, onUpdated }: 
             <Users className="h-4 mt-0.5 flex-shrink-0" />
             <div className="flex-1 text-sm">
               {lesson.participants?.map((p, i) => (
-                <EntityLink type="student" id={p.student.id} className="text-foreground">
-                  {p.student.first_name} {p.student.last_name}
-                </EntityLink>
+                <span key={p.id} className="text-foreground">
+                  <EntityLink type="student" id={p.student.id}>
+                    {p.student.first_name} {p.student.last_name}
+                  </EntityLink>
                   {lesson.makeupStudentIds?.includes(p.student.id) && (() => {
                     const detail = lesson.makeupDetails?.[p.student.id];
                     const tooltipText = detail
