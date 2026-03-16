@@ -37,6 +37,7 @@ export interface Student {
   default_teacher_user_id: string | null;
   default_teacher_id: string | null;
   default_rate_card_id: string | null;
+  payment_plan_preference: string | null;
 }
 
 export interface Guardian {
